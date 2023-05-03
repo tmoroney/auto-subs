@@ -1,6 +1,7 @@
 import sys
 import time
 
+print("Add Subs")
 projectManager = resolve.GetProjectManager()
 project = projectManager.GetCurrentProject()
 mediaPool = project.GetMediaPool()
@@ -16,13 +17,11 @@ if not timeline:
 if not timeline:
     print("Current project has no timelines")
     sys.exit()
-
 else:
     #timeline.SetStartTimecode(timecode)
     file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\audio.srt'
     with open(file_path, 'r') as f:
-        lines = f.readlines()
-
+       lines = f.readlines()
     # PARSE SRT FILE
     subs = []
     for i in range(0, len(lines), 4):
@@ -45,32 +44,37 @@ else:
     # PUT TEXT+ ON TIMELINE
     folder = mediaPool.GetRootFolder()
     items = folder.GetClipList()
-    subtitles = []
+    foundText = False
     for item in items:
         if item.GetName() == "Text+": # Find Text+ in Media Pool
+            foundText = True
             for i in range(len(subs)):
+                print("Adding Subtitle: ", i)
                 timelinePos, duration, text = subs[i]
                 if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
-                    duration = subs[i+1][0] - subs[i][0] # set duration to next start frame
-                timelineTrack = 2 # set video track
+                   duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
+                timelineTrack = win.Find(trackID).Value # set video track
                 newClip = {
-                    "mediaPoolItem" : item,
-                    "startFrame" : 0,
-                    "endFrame" : duration,
-                    "trackIndex" : timelineTrack,
-                    "recordFrame" : timelinePos
+                   "mediaPoolItem" : item,
+                   "startFrame" : 0,
+                   "endFrame" : duration,
+                   "trackIndex" : timelineTrack,
+                   "recordFrame" : timelinePos
                 }
                 if mediaPool.AppendToTimeline( [newClip] ) :    # Append text to timeline
-                    print("Added clip to timeline: " + item.GetName())
-                    timeline.SetCurrentTimecode(timelinePos)    # Move playhead to start of text
-                    resolve.OpenPage('fusion')                  # Open the Fusion page
-                    fusion = resolve.Fusion()                   # Call the Fusion Object
-                    cc = fusion.GetCurrentComp()                # Get the Current Fusion Composition
-                    template = cc.FindTool('Template')          # Find the Template Tool for Setting +aText
-                    cc.SetActiveTool(template)                  # Set it to active
-                    template.SetInput('StyledText', text, 0)    # Set the input of the StyledText to the variable text.
-                    resolve.OpenPage('edit')                    # Go Back to the Edit Page.
-                    if i % 4 == 0: projectManager.SaveProject() # Save Project every 4 Text+ added
+                   timeline.SetCurrentTimecode(timelinePos)     # Move playhead to start of text
+                   resolve.OpenPage('fusion')                   # Open the Fusion page
+                   fusion = resolve.Fusion()                    # Call the Fusion Object
+                   cc = fusion.GetCurrentComp()                 # Get the Current Fusion Composition
+                   template = cc.FindTool('Template')           # Find the Template Tool for Setting +aText
+                   cc.SetActiveTool(template)                   # Set it to active
+                   template.SetInput('StyledText', text)        # Set the input of the StyledText to the variable text.
+                   resolve.OpenPage('edit')                     # Go Back to the Edit Page.
+                   if i % 6 == 0: 
+                      projectManager.SaveProject() # Save Project every 4 Text+ added
+                      print("Waiting 4 seconds...")
+                      time.sleep(4)
             break # only execute once if multiple Text+ in Media Pool
-
+    if not foundText:
+        print("Text+ not found in Media Pool")
 projectManager.SaveProject()
