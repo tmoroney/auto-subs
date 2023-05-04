@@ -48,12 +48,14 @@ else:
     for item in items:
         if item.GetName() == "Text+": # Find Text+ in Media Pool
             foundText = True
+            print("Found Text+ in Media Pool")
+            print("Adding template subtitles to timeline")
             for i in range(len(subs)):
-                print("Adding Subtitle: ", i)
+                #print("Adding Subtitle: ", i)
                 timelinePos, duration, text = subs[i]
                 if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
                    duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
-                timelineTrack = win.Find(trackID).Value # set video track
+                timelineTrack = 3 # set video track
                 newClip = {
                    "mediaPoolItem" : item,
                    "startFrame" : 0,
@@ -61,19 +63,36 @@ else:
                    "trackIndex" : timelineTrack,
                    "recordFrame" : timelinePos
                 }
-                if mediaPool.AppendToTimeline( [newClip] ) :    # Append text to timeline
-                   timeline.SetCurrentTimecode(timelinePos)     # Move playhead to start of text
-                   resolve.OpenPage('fusion')                   # Open the Fusion page
-                   fusion = resolve.Fusion()                    # Call the Fusion Object
-                   cc = fusion.GetCurrentComp()                 # Get the Current Fusion Composition
-                   template = cc.FindTool('Template')           # Find the Template Tool for Setting +aText
-                   cc.SetActiveTool(template)                   # Set it to active
-                   template.SetInput('StyledText', text)        # Set the input of the StyledText to the variable text.
-                   resolve.OpenPage('edit')                     # Go Back to the Edit Page.
-                   if i % 6 == 0: 
-                      projectManager.SaveProject() # Save Project every 4 Text+ added
-                      print("Waiting 4 seconds...")
-                      time.sleep(4)
+                mediaPool.AppendToTimeline( [newClip] ) # Add Text+ to timeline
+            projectManager.SaveProject()
+            
+            fusion = resolve.Fusion() # Call the Fusion Object
+            subList = timeline.GetItemListInTrack('video', 3)
+            print("Updating Text in Subtitles")
+            for i, sub in enumerate(subList):
+                sub.SetClipColor('Orange')
+                comp = sub.GetFusionCompByIndex(1)
+                toollist = comp.GetToolList().values()
+                for tool in toollist:
+                    if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
+                        comp.SetActiveTool(tool)
+                        tool.SetInput('StyledText', subs[i][2])
+                sub.SetClipColor('Tan')
+
+            #compList = fusion.GetCompList()
+            #time.sleep(1)
+            #
+            #for key, cmp in sorted(compList.items()):
+            #    print("Adding Subtitle: ", key-1)
+            #    text = subs[key-2][2]
+            #    toollist = cmp.GetToolList().values()
+            #    tool = []
+            #    for tool in toollist:
+            #        if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
+            #            cmp.SetActiveTool(tool)
+            #            tool.SetInput('StyledText', text)
+            #    if key == 20:
+            #        time.sleep(0.5)
             break # only execute once if multiple Text+ in Media Pool
     if not foundText:
         print("Text+ not found in Media Pool")
