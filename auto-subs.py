@@ -92,13 +92,11 @@ def OnAddSubs(ev):
           hours, minutes, seconds_milliseconds = start_time.split(':')
           seconds, milliseconds = seconds_milliseconds.split(',')
           frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-          timelinePos = frames + timeline.GetStartFrame() # calculate time in frames
-          #print("Start Frame: ", timelinePos)
+          timelinePos = frames + timeline.GetStartFrame() # set postition of subtitle in frames
           hours, minutes, seconds_milliseconds = end_time.split(':')
           seconds, milliseconds = seconds_milliseconds.split(',')
           frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
           duration = frames - timelinePos # set duration of subtitle in frames
-          #print("End Frame: ", duration)
           subs.append([timelinePos, duration, text])
       
       # PUT TEXT+ ON TIMELINE
@@ -111,19 +109,18 @@ def OnAddSubs(ev):
             print("Found Text+ in Media Pool")
             print("Adding template subtitles to timeline")
             for i in range(len(subs)):
-                #print("Adding Subtitle: ", i)
-                timelinePos, duration, text = subs[i]
-                if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
-                   duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
-                timelineTrack = 3 # set video track
-                newClip = {
-                   "mediaPoolItem" : item,
-                   "startFrame" : 0,
-                   "endFrame" : duration,
-                   "trackIndex" : timelineTrack,
-                   "recordFrame" : timelinePos
-                }
-                mediaPool.AppendToTimeline( [newClip] ) # Add Text+ to timeline
+               timelinePos, duration, text = subs[i]
+               if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
+                  duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
+               timelineTrack = win.Find(trackID).Value # set video track
+               newClip = {
+                  "mediaPoolItem" : item,
+                  "startFrame" : 0,
+                  "endFrame" : duration,
+                  "trackIndex" : timelineTrack,
+                  "recordFrame" : timelinePos
+               }
+               mediaPool.AppendToTimeline( [newClip] ) # Add Text+ to timeline
             projectManager.SaveProject()
             
             subList = timeline.GetItemListInTrack('video', 3)
