@@ -10,6 +10,7 @@ wordsID = "MaxWords"
 charsID = "MaxChars"
 addSubsID = "AddSubs"
 generateSubsID = "GenSubs"
+browseFilesID = "BrowseButton"
 
 ui = fusion.UIManager
 dispatcher = bmd.UIDispatcher(ui)
@@ -21,30 +22,37 @@ if win:
    win.Raise()
    exit()
    
-# otherwise, we set up a new window, with HTML header (using the Examples logo.png)
-logoPath = fusion.MapPath(r"AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png")
+# otherwise, we set up a new window, with HTML header
 header = '<html><body><h1 style="vertical-align:middle; font-family: Arial, Helvetica, sans-serif;">'
-#header = header + '<img src="' + logoPath + '" style="max-height:5px"/>&nbsp;&nbsp;&nbsp;'
 header = header + '<h1>Auto Subtitle Generator</h1>'
 header = header + '</h1></body></html>'
+
+storagePath = fusion.MapPath(r"Scripts:/Utility/")
 
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100,400,400 ],
+   'Geometry': [ 100,100,335,420 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup([
       ui.Label({ 'Text': header, 'Weight': 0.1, 'Font': ui.Font({ 'Family': "Times New Roman" }) }),
-      ui.Label({ 'Text': "Select Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
-      ui.VGap(5),
-      ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({ 'Text': "Max words per line (generate)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
-      ui.VGap(5),
-      ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.VGap(3),
+      ui.Label({ 'Text': "Max characters per line (generate)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
-      ui.VGap(80),
+      ui.VGap(3),
+      ui.Label({'ID': 'Label', 'Text': 'Custom Subtitles (.srt) File', 'Weight': 0.1}),
+      ui.HGroup({'Weight': 0.0,},[
+			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
+			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Geometry': [0, 0, 30, 50], 'Weight': 0.1}),
+		]),
+      ui.CheckBox({"ID": "MyCheckbox", "Text": "Use Custom Subtitles", "Checked": False}),
+      ui.VGap(3),
+      ui.Label({ 'Text': "Select Track for Subtitles (add)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
+      ui.VGap(30),
       ui.HGroup({ 'Weight': 0, }, [
          ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 30]}),
          ui.HGap(2),
@@ -54,12 +62,18 @@ win = dispatcher.AddWindow({
       ])
    )
 
+itm = win.GetItems()
+
 # Event handlers
 def OnClose(ev):
    dispatcher.ExitLoop()
 
+def OnBrowseFiles(ev):
+	selectedPath = fusion.RequestFile()
+	if selectedPath:
+		itm['FileLineTxt'].Text = str(selectedPath)
+
 def OnAddSubs(ev):
-   print("Add Subs")
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
    mediaPool = project.GetMediaPool()
@@ -77,10 +91,24 @@ def OnAddSubs(ev):
        sys.exit()
 
    else:
-      #timeline.SetStartTimecode(timecode)
-      file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\audio.srt'
-      with open(file_path, 'r') as f:
-         lines = f.readlines()
+      if win.Find(trackID).Value > timeline.GetTrackCount('video'):
+         print("Track not found - Please select a valid track")
+         return
+      
+      # CHOOSE SRT FILE
+      if itm["MyCheckbox"].Checked == True and itm['FileLineTxt'].Text != '':
+         file_path = r"{}".format(itm['FileLineTxt'].Text)
+         print("Using custom subtitles from -> [", file_path, "]")
+      else:
+         file_path = storagePath + 'audio.srt'
+      
+      # READ SRT FILE
+      try:
+         with open(file_path, 'r') as f:
+            lines = f.readlines()
+      except FileNotFoundError:
+         print("Subtitles file (audio.srt) not found - Click 'Generate Subtitles' first")
+         return
 
       # PARSE SRT FILE
       subs = []
@@ -99,7 +127,7 @@ def OnAddSubs(ev):
           duration = frames - timelinePos # set duration of subtitle in frames
           subs.append([timelinePos, duration, text])
       
-      # PUT TEXT+ ON TIMELINE
+      # ADD TEXT+ TO TIMELINE
       folder = mediaPool.GetRootFolder()
       items = folder.GetClipList()
       foundText = False
@@ -107,7 +135,7 @@ def OnAddSubs(ev):
          if item.GetName() == "Text+": # Find Text+ in Media Pool
             foundText = True
             print("Found Text+ in Media Pool")
-            print("Adding template subtitles to timeline")
+            print("Adding template subtitles")
             for i in range(len(subs)):
                timelinePos, duration, text = subs[i]
                if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
@@ -124,7 +152,7 @@ def OnAddSubs(ev):
             projectManager.SaveProject()
             
             subList = timeline.GetItemListInTrack('video', 3)
-            print("Updating Text in Subtitles")
+            print("Updating text content")
             for i, sub in enumerate(subList):
                 sub.SetClipColor('Orange')
                 comp = sub.GetFusionCompByIndex(1)
@@ -133,7 +161,7 @@ def OnAddSubs(ev):
                     if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
                         comp.SetActiveTool(tool)
                         tool.SetInput('StyledText', subs[i][2])
-                sub.SetClipColor('Tan')
+                sub.SetClipColor('Teal')
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
          print("Text+ not found in Media Pool")
@@ -153,7 +181,7 @@ def OnGenSubs(ev):
        print("Progress: ", project.GetRenderJobStatus(pid).get("CompletionPercentage"))
    print("Audio Rendering Complete!")
    filename = "test.mp3"
-   location = "S:\\Blackmagic Design\\DaVinci Resolve\\Fusion\\Scripts\\Utility\\" + filename
+   location = storagePath + filename
    #file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\'
    print("Transcribing -> [", filename, "]")
    model = stable_whisper.load_model("small.en")
@@ -165,14 +193,15 @@ def OnGenSubs(ev):
        .merge_by_gap(.10, max_words=3)
        .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
    )
-   result.to_srt_vtt("S:\\Blackmagic Design\\DaVinci Resolve\\Fusion\\Scripts\\Utility\\audio.srt", word_level=False) # save to SRT file
+   file_path = storagePath + 'audio.srt'
+   result.to_srt_vtt(file_path, word_level=False) # save to SRT file
    print("Transcription Complete!")
-
 
 # assign event handlers
 win.On[winID].Close     = OnClose
 win.On[addSubsID].Clicked  = OnAddSubs
 win.On[generateSubsID].Clicked = OnGenSubs
+win.On[browseFilesID].Clicked = OnBrowseFiles
 
 # Main dispatcher loop
 win.Show()
