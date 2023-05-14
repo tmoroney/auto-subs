@@ -1,6 +1,7 @@
 import stable_whisper
 import sys
 import time
+import re
 
 # some element IDs
 winID = "com.blackmagicdesign.resolve.AutoSubsGen"   # should be unique for single instancing
@@ -23,42 +24,46 @@ if win:
    exit()
    
 # otherwise, we set up a new window, with HTML header
-header = '<html><body><h1 style="vertical-align:middle; font-family: Arial, Helvetica, sans-serif;">'
-header = header + '<h1>Auto Subtitle Generator</h1>'
-header = header + '</h1></body></html>'
+header1 = '<html><body><h1 style="horizontal-align:middle; font-family: Arial, Helvetica, sans-serif;">'
+header1 = header1 + 'Auto Subtitles Generator'
+header1 = header1 + '</h1></body></html>'
 
 storagePath = fusion.MapPath(r"Scripts:/Utility/")
 
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100,335,420 ],
+   'Geometry': [ 100,100, 400, 480 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup([
-      ui.Label({ 'Text': header, 'Weight': 0.1, 'Font': ui.Font({ 'Family': "Times New Roman" }) }),
-      ui.Label({ 'Text': "Max words per line (generate)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({ 'Text': "Generate Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+      ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
-      ui.VGap(3),
-      ui.Label({ 'Text': "Max characters per line (generate)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.VGap(2),
+      ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
       ui.VGap(3),
-      ui.Label({ 'Text': "Select Track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
+      ui.VGap(10),
+      ui.Label({ 'Text': "Add to Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+      ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
-      ui.VGap(3),
-      ui.Label({'ID': 'Label', 'Text': 'Custom Subtitles .srt File', 'Weight': 0.1}),
+      ui.HGroup({'Weight': 0.0,},[
+         ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom Subtitles", "Checked": False}),
+         ui.CheckBox({"ID": "CensorWords", "Text": "Censor Swear Words", "Checked": False}),
+      ]),
+      ui.VGap(2),
+      ui.Label({'ID': 'Label', 'Text': 'Select custom SRT file for subtitles', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0,},[
 			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
 		]),
-      ui.CheckBox({"ID": "MyCheckbox", "Text": "Use Custom Subtitles", "Checked": False}),
-      ui.VGap(30),
-      ui.HGroup({ 'Weight': 0, }, [
-         ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 30]}),
-         ui.HGap(2),
-         ui.Button({ 'ID': addSubsID,  'Text': "Add Subs to Timeline", 'MinimumSize': [150, 30]}),
-         ui.HGap(0, 2),
-         ])
+      ui.VGap(2),
+      ui.Label({'ID': 'Label', 'Text': 'Censored word list (comma separated)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, pop', 'Weight': 0}),
+      ui.VGap(3),
+      ui.Button({ 'ID': addSubsID,  'Text': "Add Subs to Timeline", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
       ])
    )
 
@@ -96,7 +101,7 @@ def OnAddSubs(ev):
          return
       
       # CHOOSE SRT FILE
-      if itm["MyCheckbox"].Checked == True and itm['FileLineTxt'].Text != '':
+      if itm["UseCustomSRT"].Checked == True and itm['FileLineTxt'].Text != '':
          file_path = r"{}".format(itm['FileLineTxt'].Text)
          print("Using custom subtitles from -> [", file_path, "]")
       else:
@@ -112,20 +117,33 @@ def OnAddSubs(ev):
 
       # PARSE SRT FILE
       subs = []
+      checkCensor = False
+      if itm["CensorWords"].Checked == True and itm['CensorList'].Text != '':
+            swear_words = itm['CensorList'].Text.split(',')
+            checkCensor = True
       for i in range(0, len(lines), 4):
-          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
-          start_time, end_time = lines[i+1].strip().split(" --> ")
-          text = lines[i+2].strip()
-          # Convert the timestamp string to seconds
-          hours, minutes, seconds_milliseconds = start_time.split(':')
-          seconds, milliseconds = seconds_milliseconds.split(',')
-          frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-          timelinePos = frames + timeline.GetStartFrame() # set postition of subtitle in frames
-          hours, minutes, seconds_milliseconds = end_time.split(':')
-          seconds, milliseconds = seconds_milliseconds.split(',')
-          frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-          duration = frames - timelinePos # set duration of subtitle in frames
-          subs.append([timelinePos, duration, text])
+         frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+         start_time, end_time = lines[i+1].strip().split(" --> ")
+         text = lines[i+2].strip() # get subtitle text
+         # Censor swear words
+         if checkCensor:
+            for word in swear_words:
+               pattern = r"\b" + re.escape(word) + r"\b"
+               censored_word = word[0] + '*' * (len(word) - 2) + word[-1]
+               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
+               pattern = re.escape(word)
+               censored_word = word[0] + '**'
+               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
+         # Convert timestamps to frames
+         hours, minutes, seconds_milliseconds = start_time.split(':')
+         seconds, milliseconds = seconds_milliseconds.split(',')
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
+         timelinePos = frames + timeline.GetStartFrame() # set postition of subtitle in frames
+         hours, minutes, seconds_milliseconds = end_time.split(':')
+         seconds, milliseconds = seconds_milliseconds.split(',')
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
+         duration = frames - timelinePos # set duration of subtitle in frames
+         subs.append([timelinePos, duration, text])
       
       # ADD TEXT+ TO TIMELINE
       folder = mediaPool.GetRootFolder()
