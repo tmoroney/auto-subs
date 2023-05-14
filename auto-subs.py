@@ -43,26 +43,26 @@ win = dispatcher.AddWindow({
       ui.VGap(2),
       ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
-      ui.VGap(3),
+      ui.VGap(4),
       ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
       ui.VGap(10),
       ui.Label({ 'Text': "Add to Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
       ui.HGroup({'Weight': 0.0,},[
-         ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom Subtitles", "Checked": False}),
-         ui.CheckBox({"ID": "CensorWords", "Text": "Censor Swear Words", "Checked": False}),
+         ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom .SRT Subtitles File", "Checked": False}),
+         #ui.CheckBox({"ID": "CensorWords", "Text": "Censor Swear Words", "Checked": False}),
       ]),
       ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Select custom SRT file for subtitles', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({'ID': 'Label', 'Text': 'Select a custom SRT subtitles file', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0,},[
 			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
 		]),
       ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Censored word list (comma separated)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, pop', 'Weight': 0}),
-      ui.VGap(3),
+      ui.Label({'ID': 'Label', 'Text': 'Words to censor (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0}),
+      ui.VGap(4),
       ui.Button({ 'ID': addSubsID,  'Text': "Add Subs to Timeline", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
       ])
    )
@@ -118,7 +118,7 @@ def OnAddSubs(ev):
       # PARSE SRT FILE
       subs = []
       checkCensor = False
-      if itm["CensorWords"].Checked == True and itm['CensorList'].Text != '':
+      if itm['CensorList'].Text != '':
             swear_words = itm['CensorList'].Text.split(',')
             checkCensor = True
       for i in range(0, len(lines), 4):
