@@ -1,4 +1,3 @@
-import stable_whisper
 import sys
 import time
 import re
@@ -7,10 +6,7 @@ import re
 winID = "com.blackmagicdesign.resolve.AutoSubsGen"   # should be unique for single instancing
 textID = "TextEdit"
 trackID = "TrackSelector"
-wordsID = "MaxWords"
-charsID = "MaxChars"
 addSubsID = "AddSubs"
-generateSubsID = "GenSubs"
 browseFilesID = "BrowseButton"
 
 ui = fusion.UIManager
@@ -28,19 +24,10 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 400, 480 ],
-   'WindowTitle': "Resolve Auto Subtitle Generator",
+   'Geometry': [ 100,100, 400, 300 ],
+   'WindowTitle': "Resolve Text+ Subtitle Generator",
    },
    ui.VGroup([
-      ui.Label({ 'Text': "Generate Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
-      ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
-      ui.VGap(2),
-      ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
-      ui.VGap(4),
-      ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
-      ui.VGap(10),
       ui.Label({ 'Text': "Add to Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
@@ -180,40 +167,9 @@ def OnAddSubs(ev):
          print("Text+ not found in Media Pool")
    projectManager.SaveProject()
 
-
-def OnGenSubs(ev):
-   projectManager = resolve.GetProjectManager()
-   project = projectManager.GetCurrentProject()
-   project.LoadRenderPreset("Audio Only")
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "test", "TargetDir": "S:\\Blackmagic Design\\DaVinci Resolve\\Fusion\\Scripts\\Utility\\"})
-   pid = project.AddRenderJob()
-   project.StartRendering(pid)
-   print("Rendering Audio for Transcription...")
-   while project.IsRenderingInProgress():
-       time.sleep(1)
-       print("Progress: ", project.GetRenderJobStatus(pid).get("CompletionPercentage"))
-   print("Audio Rendering Complete!")
-   filename = "test.mp3"
-   location = storagePath + filename
-   #file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\'
-   print("Transcribing -> [", filename, "]")
-   model = stable_whisper.load_model("small.en")
-   result = model.transcribe(location, fp16=False, language='en', regroup=False) # transcribe audio file
-   (
-       result
-       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-       .split_by_gap(.5)
-       .merge_by_gap(.10, max_words=3)
-       .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
-   )
-   file_path = storagePath + 'audio.srt'
-   result.to_srt_vtt(file_path, word_level=False) # save to SRT file
-   print("Transcription Complete!")
-
 # assign event handlers
 win.On[winID].Close     = OnClose
 win.On[addSubsID].Clicked  = OnAddSubs
-win.On[generateSubsID].Clicked = OnGenSubs
 win.On[browseFilesID].Clicked = OnBrowseFiles
 
 # Main dispatcher loop
