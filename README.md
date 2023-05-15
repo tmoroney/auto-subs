@@ -28,7 +28,9 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
   
     pip install sox
     
-**Step 4:** Place the `auto-subs.py` file inside the Utility folder of one of the Fusion Script folder locations
+**Step 4:** Download the `auto-subs.py` file and drag it into the `Utility` folder of one of the Fusion Scripting folders like this address
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+
+Once the python file has been placed here, it should show up in the scripts menu within Resolve.
    
