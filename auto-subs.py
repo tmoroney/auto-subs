@@ -28,27 +28,24 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 400, 550 ],
+   'Geometry': [ 100,100, 400, 620 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup([
-      ui.Label({ 'ID': 'DialogBox', 'Text': "No Task Started", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.Label({ 'Text': "Generate Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+      ui.Label({ 'Text': "Transcribe Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
       ui.VGap(2),
       ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
       ui.VGap(4),
-      ui.Button({ 'ID': generateSubsID, 'Text': "Generate Subtitles", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
+      ui.Button({ 'ID': generateSubsID, 'Text': "Transcribe", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
       ui.VGap(10),
-      ui.Label({ 'Text': "Add to Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+      ui.Label({ 'Text': "Generate Text+ Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
-      ui.HGroup({'Weight': 0.0,},[
-         ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom .SRT Subtitles File", "Checked": False}),
-         #ui.CheckBox({"ID": "CensorWords", "Text": "Censor Swear Words", "Checked": False}),
-      ]),
+      ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom .SRT Subtitles File", "Checked": False}),
+      ui.CheckBox({"ID": "NoCapitals", "Text": "Make each line lowercase", "Checked": False}),
       ui.VGap(2),
       ui.Label({'ID': 'Label', 'Text': 'Select a custom SRT subtitles file', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0,},[
@@ -60,6 +57,9 @@ win = dispatcher.AddWindow({
       ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0}),
       ui.VGap(4),
       ui.Button({ 'ID': addSubsID,  'Text': "Add Subs to Timeline", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
+      ui.VGap(26),
+      ui.Label({ 'ID': 'DialogBox', 'Text': "No Task Started", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 18 }), 'Alignment': { 'AlignHCenter': True } }),
+      ui.VGap(22)
       ])
    )
 
@@ -90,10 +90,10 @@ def OnAddSubs(ev):
    if not timeline:
        print("Current project has no timelines")
        sys.exit()
-
    else:
       if win.Find(trackID).Value > timeline.GetTrackCount('video'):
          print("Track not found - Please select a valid track")
+         itm['DialogBox'].Text = "Please select a valid track!"
          return
       
       # CHOOSE SRT FILE
@@ -108,21 +108,21 @@ def OnAddSubs(ev):
          with open(file_path, 'r') as f:
             lines = f.readlines()
       except FileNotFoundError:
-         print("Subtitles file (audio.srt) not found - Click 'Generate Subtitles' first")
+         print("No subtitles file (audio.srt) found - Please Transcribe the timeline or load your own SRT file!")
+         itm['DialogBox'].Text = "No subtitles found!"
          return
 
       # PARSE SRT FILE
       subs = []
       checkCensor = False
-      if itm['CensorList'].Text != '':
+      if itm['CensorList'].Text != '': # only check for swear words if list is not empty
             swear_words = itm['CensorList'].Text.split(',')
             checkCensor = True
       for i in range(0, len(lines), 4):
          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
          start_time, end_time = lines[i+1].strip().split(" --> ")
-         text = lines[i+2].strip() # get subtitle text
-         # Censor swear words
-         if checkCensor:
+         text = lines[i+2].strip() # get  subtitle text
+         if checkCensor: # check for swear words
             for word in swear_words:
                pattern = r"\b" + re.escape(word) + r"\b"
                censored_word = word[0] + '*' * (len(word) - 2) + word[-1]
@@ -130,15 +130,18 @@ def OnAddSubs(ev):
                pattern = re.escape(word)
                censored_word = word[0] + '**'
                text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
-         # Convert timestamps to frames
+               if itm['NoCapitals'].Checked: # make each line lowercase
+                  text = text.lower()
+         # Convert timestamps to frames set postition of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
          frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-         timelinePos = frames + timeline.GetStartFrame() # set postition of subtitle in frames
+         timelinePos = frames + timeline.GetStartFrame()
+         # Set duration of subtitle in frames
          hours, minutes, seconds_milliseconds = end_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
          frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-         duration = frames - timelinePos # set duration of subtitle in frames
+         duration = frames - timelinePos
          subs.append([timelinePos, duration, text])
       
       # ADD TEXT+ TO TIMELINE
@@ -170,14 +173,18 @@ def OnAddSubs(ev):
             print("Updating text content")
             itm['DialogBox'].Text = "Updating text content..."
             for i, sub in enumerate(subList):
-                sub.SetClipColor('Orange')
-                comp = sub.GetFusionCompByIndex(1)
-                toollist = comp.GetToolList().values()
-                for tool in toollist:
-                    if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
-                        comp.SetActiveTool(tool)
-                        tool.SetInput('StyledText', subs[i][2])
-                sub.SetClipColor('Teal')
+               sub.SetClipColor('Orange')
+               comp = sub.GetFusionCompByIndex(1)
+               toollist = comp.GetToolList().values()
+               for tool in toollist:
+                   if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
+                       comp.SetActiveTool(tool)
+                       tool.SetInput('StyledText', subs[i][2])
+               sub.SetClipColor('Teal')
+               if i == len(subList)-1:
+                  print("Finished updating text content")
+                  itm['DialogBox'].Text = "Finished updating text content"
+                  break
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
          print("Text+ not found in Media Pool")
