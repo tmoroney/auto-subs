@@ -185,7 +185,7 @@ def OnGenSubs(ev):
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
    project.LoadRenderPreset("Audio Only")
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "test", "TargetDir": "S:\\Blackmagic Design\\DaVinci Resolve\\Fusion\\Scripts\\Utility\\"})
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath})
    pid = project.AddRenderJob()
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
@@ -193,7 +193,7 @@ def OnGenSubs(ev):
        time.sleep(1)
        print("Progress: ", project.GetRenderJobStatus(pid).get("CompletionPercentage"))
    print("Audio Rendering Complete!")
-   filename = "test.mp3"
+   filename = "audio.mp3"
    location = storagePath + filename
    #file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\'
    print("Transcribing -> [", filename, "]")
@@ -209,6 +209,9 @@ def OnGenSubs(ev):
    file_path = storagePath + 'audio.srt'
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
    print("Transcription Complete!")
+   print("Subtitles saved to -> [", file_path, "]")
+   print("Click 'Add Subs to Timeline' to add to timeline")
+   resolve.OpenPage("edit")
 
 # assign event handlers
 win.On[winID].Close     = OnClose
