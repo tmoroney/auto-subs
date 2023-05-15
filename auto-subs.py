@@ -10,7 +10,8 @@ trackID = "TrackSelector"
 wordsID = "MaxWords"
 charsID = "MaxChars"
 addSubsID = "AddSubs"
-generateSubsID = "GenSubs"
+transcribeID = "Transcribe"
+executeAllID = "ExecuteAll"
 browseFilesID = "BrowseButton"
 
 ui = fusion.UIManager
@@ -28,42 +29,69 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 400, 620 ],
+   'Geometry': [ 100,100, 450, 750 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
-   ui.VGroup([
+   ui.VGroup({"ID": "root",},[
       ui.Label({ 'Text': "Transcribe Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
-      ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
-      ui.VGap(2),
-      ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
-      ui.VGap(4),
-      ui.Button({ 'ID': generateSubsID, 'Text': "Transcribe", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
-      ui.VGap(10),
+      ui.HGroup({'Weight': 0.0},[
+         ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
+            ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+            ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
+         ]),
+         ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 50]},[
+            ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+            ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
+         ]),
+      ]),
+      ui.VGap(0),
+      ui.Label({ 'Text': "Transcription Model", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 })}),
+      ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
+      ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True}),
+      ui.VGap(15),
       ui.Label({ 'Text': "Generate Text+ Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
-      ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
-      ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use Custom .SRT Subtitles File", "Checked": False}),
-      ui.CheckBox({"ID": "NoCapitals", "Text": "Make each line lowercase", "Checked": False}),
+      ui.VGap(0),
+      ui.VGroup({'Weight': 0.0, 'MinimumSize': [200, 50]},[
+         ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+         ui.HGroup([
+            ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
+            ui.HGap(5),
+            ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use custom SRT file instead", "Checked": False}),
+         ]),
+      ]),
       ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Select a custom SRT subtitles file', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.HGroup({'Weight': 0.0,},[
+      ui.Label({'ID': 'Label', 'Text': 'Select a Custom Subtitles file (.srt)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
 			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
 		]),
       ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Words to censor (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0}),
-      ui.VGap(4),
-      ui.Button({ 'ID': addSubsID,  'Text': "Add Subs to Timeline", 'MinimumSize': [150, 25], 'MaximumSize': [1000, 30]}),
-      ui.VGap(26),
-      ui.Label({ 'ID': 'DialogBox', 'Text': "No Task Started", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 18 }), 'Alignment': { 'AlignHCenter': True } }),
-      ui.VGap(22)
+      ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0, 'MinimumSize': [200, 30]}),
+      ui.VGap(2),
+      ui.Label({ 'Text': "Change Text Formatting", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
+      ui.VGap(20),
+      ui.Button({ 
+         'ID': executeAllID,
+         'Text': "  Transcribe + Generate Subtitles", 
+         'MinimumSize': [150, 35],
+         'MaximumSize': [1000, 35], 
+         'IconSize': [17, 17], 
+         'Font': ui.Font({'PixelSize': 15}),
+         'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
+      ui.HGroup({'Weight': 0.0,},[
+         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe Timeline", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': addSubsID, 'Text': "Generate Text+ Subtitles", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
+      ]),
+      ui.VGap(40),
+      ui.Label({ 'ID': 'DialogBox', 'Text': "> No Task Started <", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 18 }), 'Alignment': { 'AlignHCenter': True } }),
+      ui.VGap(35)
       ])
    )
 
 itm = win.GetItems()
+#itm['WhisperModel'].SetCurrentText("small") # set default model to small
 
 # Event handlers
 def OnClose(ev):
@@ -73,8 +101,68 @@ def OnBrowseFiles(ev):
 	selectedPath = fusion.RequestFile()
 	if selectedPath:
 		itm['FileLineTxt'].Text = str(selectedPath)
+                
+# Transcribe + Generate Subtitles on Timeline
+def OnSubsGen(ev):
+   OnTranscribe(ev)
+   OnGenerate(ev)
 
-def OnAddSubs(ev):
+# Transcribe Timeline to SRT file              
+def OnTranscribe(ev):
+   # Choose Transcription Model
+   chosenModel = "small" # default model
+   if itm['WhisperModel'].CurrentIndex == 1:
+      chosenModel = "tiny"
+   elif itm['WhisperModel'].CurrentIndex == 2:
+      chosenModel = "base"
+   elif itm['WhisperModel'].CurrentIndex == 3:
+      chosenModel = "small"
+   elif itm['WhisperModel'].CurrentIndex == 4:
+      chosenModel = "medium"
+   
+   if itm['EnglishOnly'].Checked == True: # use english only model
+      chosenModel = chosenModel + ".en"
+   print("Using model -> [", chosenModel, "]")
+
+   # RENDER AUDIO
+   projectManager = resolve.GetProjectManager()
+   project = projectManager.GetCurrentProject()
+   project.LoadRenderPreset("Audio Only")
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath})
+   pid = project.AddRenderJob()
+   project.StartRendering(pid)
+   print("Rendering Audio for Transcription...")
+   itm['DialogBox'].Text = "Rendering Audio for Transcription..."
+   while project.IsRenderingInProgress():
+      time.sleep(1)
+      progress = project.GetRenderJobStatus(pid).get("CompletionPercentage")
+      print("Progress: ", progress, "%")
+      itm['DialogBox'].Text = "Progress: ", progress, "%"
+   print("Audio Rendering Complete!")
+   filename = "audio.mp3"
+   location = storagePath + filename
+   print("Transcribing -> [", filename, "]")
+   itm['DialogBox'].Text = "Transcribing Audio..."
+   model = stable_whisper.load_model("small.en")
+   result = model.transcribe(location, fp16=False, language='en', regroup=False) # transcribe audio file
+   (
+       result
+       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+       .split_by_gap(.5)
+       .merge_by_gap(.10, max_words=3)
+       .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
+   )
+   file_path = storagePath + 'audio.srt'
+   result.to_srt_vtt(file_path, word_level=False) # save to SRT file
+   print("Transcription Complete!")
+   resolve.OpenPage("edit")
+   itm['DialogBox'].Text = "Transcription Complete!"
+   print("Subtitles saved to -> [", file_path, "]")
+   print("Click 'Generate Subtitles' to add to the Timeline")
+
+
+# Generate Text+ Subtitles on Timeline
+def OnGenerate(ev):
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
    mediaPool = project.GetMediaPool()
@@ -109,7 +197,7 @@ def OnAddSubs(ev):
             lines = f.readlines()
       except FileNotFoundError:
          print("No subtitles file (audio.srt) found - Please Transcribe the timeline or load your own SRT file!")
-         itm['DialogBox'].Text = "No subtitles found!"
+         itm['DialogBox'].Text = "No subtitles file found!"
          return
 
       # PARSE SRT FILE
@@ -130,8 +218,11 @@ def OnAddSubs(ev):
                pattern = re.escape(word)
                censored_word = word[0] + '**'
                text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
-               if itm['NoCapitals'].Checked: # make each line lowercase
-                  text = text.lower()
+
+         if itm['FormatText'].CurrentIndex == 1: # make each line lowercase
+            text = text.lower()
+         elif itm['FormatText'].CurrentIndex == 2: # make each line uppercase
+            text = text.upper()
          # Convert timestamps to frames set postition of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
@@ -174,16 +265,16 @@ def OnAddSubs(ev):
             itm['DialogBox'].Text = "Updating text content..."
             for i, sub in enumerate(subList):
                sub.SetClipColor('Orange')
+               text = subs[i][2]
                comp = sub.GetFusionCompByIndex(1)
                toollist = comp.GetToolList().values()
                for tool in toollist:
                    if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
                        comp.SetActiveTool(tool)
-                       tool.SetInput('StyledText', subs[i][2])
+                       tool.SetInput('StyledText', text)
                sub.SetClipColor('Teal')
                if i == len(subList)-1:
                   print("Finished updating text content")
-                  itm['DialogBox'].Text = "Finished updating text content"
                   break
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
@@ -191,49 +282,23 @@ def OnAddSubs(ev):
    projectManager.SaveProject()
    itm['DialogBox'].Text = "Subtitles added to timeline!"
 
+# Add the items to the FormatText ComboBox menu
+itm['FormatText'].AddItem("None")
+itm['FormatText'].AddItem("All Lowercase")
+itm['FormatText'].AddItem("All Uppercase")
 
-def OnGenSubs(ev):
-   projectManager = resolve.GetProjectManager()
-   project = projectManager.GetCurrentProject()
-   project.LoadRenderPreset("Audio Only")
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath})
-   pid = project.AddRenderJob()
-   project.StartRendering(pid)
-   print("Rendering Audio for Transcription...")
-   itm['DialogBox'].Text = "Rendering Audio for Transcription..."
-   while project.IsRenderingInProgress():
-      time.sleep(1)
-      progress = project.GetRenderJobStatus(pid).get("CompletionPercentage")
-      print("Progress: ", progress, "%")
-      itm['DialogBox'].Text = "Progress: ", progress, "%"
-   print("Audio Rendering Complete!")
-   itm['DialogBox'].Text = "Audio Rendering Complete!"
-   filename = "audio.mp3"
-   location = storagePath + filename
-   #file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\'
-   print("Transcribing -> [", filename, "]")
-   itm['DialogBox'].Text = "Transcribing ", filename
-   model = stable_whisper.load_model("small.en")
-   result = model.transcribe(location, fp16=False, language='en', regroup=False) # transcribe audio file
-   (
-       result
-       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-       .split_by_gap(.5)
-       .merge_by_gap(.10, max_words=3)
-       .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
-   )
-   file_path = storagePath + 'audio.srt'
-   result.to_srt_vtt(file_path, word_level=False) # save to SRT file
-   print("Transcription Complete!")
-   itm['DialogBox'].Text = "Transcription Complete!"
-   print("Subtitles saved to -> [", file_path, "]")
-   print("Click 'Add Subs to Timeline' to add to timeline")
-   resolve.OpenPage("edit")
+# Add the items to the Transcription Model ComboBox menu
+itm['WhisperModel'].AddItem("Recommended: small")
+itm['WhisperModel'].AddItem("tiny - fastest / lowest accuracy")
+itm['WhisperModel'].AddItem("base")
+itm['WhisperModel'].AddItem("small")
+itm['WhisperModel'].AddItem("medium - slowest / highest accuracy")
 
 # assign event handlers
 win.On[winID].Close     = OnClose
-win.On[addSubsID].Clicked  = OnAddSubs
-win.On[generateSubsID].Clicked = OnGenSubs
+win.On[addSubsID].Clicked  = OnGenerate
+win.On[transcribeID].Clicked = OnTranscribe
+win.On[executeAllID].Clicked = OnSubsGen
 win.On[browseFilesID].Clicked = OnBrowseFiles
 
 # Main dispatcher loop
