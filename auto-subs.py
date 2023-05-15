@@ -28,10 +28,11 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 400, 480 ],
+   'Geometry': [ 100,100, 400, 550 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup([
+      ui.Label({ 'ID': 'DialogBox', 'Text': "No Task Started", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.Label({ 'Text': "Generate Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
       ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
@@ -149,6 +150,7 @@ def OnAddSubs(ev):
             foundText = True
             print("Found Text+ in Media Pool")
             print("Adding template subtitles")
+            itm['DialogBox'].Text = "Adding template subtitles..."
             for i in range(len(subs)):
                timelinePos, duration, text = subs[i]
                if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
@@ -166,6 +168,7 @@ def OnAddSubs(ev):
             
             subList = timeline.GetItemListInTrack('video', 3)
             print("Updating text content")
+            itm['DialogBox'].Text = "Updating text content..."
             for i, sub in enumerate(subList):
                 sub.SetClipColor('Orange')
                 comp = sub.GetFusionCompByIndex(1)
@@ -179,6 +182,7 @@ def OnAddSubs(ev):
       if not foundText:
          print("Text+ not found in Media Pool")
    projectManager.SaveProject()
+   itm['DialogBox'].Text = "Subtitles added to timeline!"
 
 
 def OnGenSubs(ev):
@@ -189,14 +193,19 @@ def OnGenSubs(ev):
    pid = project.AddRenderJob()
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
+   itm['DialogBox'].Text = "Rendering Audio for Transcription..."
    while project.IsRenderingInProgress():
-       time.sleep(1)
-       print("Progress: ", project.GetRenderJobStatus(pid).get("CompletionPercentage"))
+      time.sleep(1)
+      progress = project.GetRenderJobStatus(pid).get("CompletionPercentage")
+      print("Progress: ", progress, "%")
+      itm['DialogBox'].Text = "Progress: ", progress, "%"
    print("Audio Rendering Complete!")
+   itm['DialogBox'].Text = "Audio Rendering Complete!"
    filename = "audio.mp3"
    location = storagePath + filename
    #file_path = r'S:\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility\'
    print("Transcribing -> [", filename, "]")
+   itm['DialogBox'].Text = "Transcribing ", filename
    model = stable_whisper.load_model("small.en")
    result = model.transcribe(location, fp16=False, language='en', regroup=False) # transcribe audio file
    (
@@ -209,6 +218,7 @@ def OnGenSubs(ev):
    file_path = storagePath + 'audio.srt'
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
    print("Transcription Complete!")
+   itm['DialogBox'].Text = "Transcription Complete!"
    print("Subtitles saved to -> [", file_path, "]")
    print("Click 'Add Subs to Timeline' to add to timeline")
    resolve.OpenPage("edit")
