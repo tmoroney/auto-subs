@@ -3,7 +3,7 @@ Uses AI to generate Text+ subtitles with custom styling - works with both the **
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
-![image](https://github.com/tmoroney/auto-subs/assets/72154813/a792207b-ad88-434f-8f88-8869259b7031)   |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/32059a0b-1cd4-4bcd-af25-1321d83cb62f" width="750">
+![image](https://github.com/tmoroney/auto-subs/assets/72154813/a792207b-ad88-434f-8f88-8869259b7031)   |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/32059a0b-1cd4-4bcd-af25-1321d83cb62f" width="700">
 
 
 ## Running the Script
