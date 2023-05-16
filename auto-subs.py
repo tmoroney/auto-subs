@@ -6,9 +6,6 @@ import re
 # some element IDs
 winID = "com.blackmagicdesign.resolve.AutoSubsGen"   # should be unique for single instancing
 textID = "TextEdit"
-trackID = "TrackSelector"
-wordsID = "MaxWords"
-charsID = "MaxChars"
 addSubsID = "AddSubs"
 transcribeID = "Transcribe"
 executeAllID = "ExecuteAll"
@@ -29,7 +26,7 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 450, 730 ],
+   'Geometry': [ 100,100, 450, 780 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
@@ -51,16 +48,10 @@ win = dispatcher.AddWindow({
       ui.VGap(15),
       ui.Label({ 'Text': "Generate Text+ Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.VGap(0),
-      ui.VGroup({'Weight': 0.0, 'MinimumSize': [200, 50]},[
-         ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-         ui.HGroup([
-            ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
-            ui.HGap(5),
-            ui.CheckBox({"ID": "UseCustomSRT", "Text": "Use custom SRT file instead", "Checked": False}),
-         ]),
-      ]),
+      ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
       ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Select a Custom Subtitles file (.srt)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({'ID': 'Label', 'Text': 'Use Custom Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
 			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
@@ -71,6 +62,7 @@ win = dispatcher.AddWindow({
       ui.VGap(2),
       ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
+      ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False}),
       ui.VGap(15),
       ui.Button({ 
          'ID': executeAllID,
@@ -108,6 +100,7 @@ def OnSubsGen(ev):
    OnTranscribe(ev)
    OnGenerate(ev)
 
+
 # Transcribe Timeline to SRT file              
 def OnTranscribe(ev):
    # Choose Transcription Model
@@ -140,18 +133,19 @@ def OnTranscribe(ev):
       print("Progress: ", progress, "%")
       itm['DialogBox'].Text = "Progress: ", progress, "%"
    print("Audio Rendering Complete!")
-   filename = "audio.mov"
-   location = storagePath + filename
-   print("Transcribing -> [", filename, "]")
+   format = project.GetCurrentRenderFormatAndCodec() # get audio format
+   filename = "audio." + format['format'] # get audio filename
+   location = storagePath + filename # get audio filepath
+   print("Transcribing Audio...")
    itm['DialogBox'].Text = "Transcribing Audio..."
-   model = stable_whisper.load_model(chosenModel)
+   model = stable_whisper.load_model(chosenModel) # load whisper transcription model
    result = model.transcribe(location, fp16=False, regroup=False) # transcribe audio file
    (
       result
       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
       .split_by_gap(.5)
       .merge_by_gap(.10, max_words=3)
-      .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
+      .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
    )
    file_path = storagePath + 'audio.srt'
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
@@ -159,6 +153,8 @@ def OnTranscribe(ev):
    resolve.OpenPage("edit")
    itm['DialogBox'].Text = "Transcription Complete!"
    print("Subtitles saved to -> [", file_path, "]")
+
+
 
 
 # Generate Text+ Subtitles on Timeline
@@ -179,17 +175,16 @@ def OnGenerate(ev):
        print("Current project has no timelines")
        sys.exit()
    else:
-      if win.Find(trackID).Value > timeline.GetTrackCount('video'):
+      if itm['TrackSelector'].Value > timeline.GetTrackCount('video'):
          print("Track not found - Please select a valid track")
          itm['DialogBox'].Text = "Please select a valid track!"
          return
       
-      # CHOOSE SRT FILE
-      if itm["UseCustomSRT"].Checked == True and itm['FileLineTxt'].Text != '':
+      if itm['FileLineTxt'].Text != '': # use custom subtitles file
          file_path = r"{}".format(itm['FileLineTxt'].Text)
          print("Using custom subtitles from -> [", file_path, "]")
       else:
-         file_path = storagePath + 'audio.srt'
+         file_path = storagePath + 'audio.srt' # use generated subtitles file at default location
       
       # READ SRT FILE
       try:
@@ -223,6 +218,11 @@ def OnGenerate(ev):
             text = text.lower()
          elif itm['FormatText'].CurrentIndex == 2: # make each line uppercase
             text = text.upper()
+
+         if itm['RemovePunc'].Checked == True: # remove commas and full stops
+            text = text.replace(',', '')
+            text = text.replace('.', '')
+
          # Convert timestamps to frames set postition of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
@@ -242,14 +242,14 @@ def OnGenerate(ev):
       for item in items:
          if item.GetName() == "Text+": # Find Text+ in Media Pool
             foundText = True
-            print("Found Text+ in Media Pool")
-            print("Adding template subtitles")
+            print("Found Text+ in Media Pool!")
+            print("Adding template subtitles...")
             itm['DialogBox'].Text = "Adding template subtitles..."
+            timelineTrack = itm['TrackSelector'].Value # set video track to add subtitles
             for i in range(len(subs)):
                timelinePos, duration, text = subs[i]
                if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
                   duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
-               timelineTrack = win.Find(trackID).Value # set video track
                newClip = {
                   "mediaPoolItem" : item,
                   "startFrame" : 0,
@@ -257,28 +257,28 @@ def OnGenerate(ev):
                   "trackIndex" : timelineTrack,
                   "recordFrame" : timelinePos
                }
-               mediaPool.AppendToTimeline( [newClip] ) # Add Text+ to timeline
+               mediaPool.AppendToTimeline( [newClip] ) # add template Text+ to timeline (text not set yet)
             projectManager.SaveProject()
             
-            subList = timeline.GetItemListInTrack('video', 3)
-            print("Updating text content")
+            subList = timeline.GetItemListInTrack('video', timelineTrack) # get list of Text+ in timeline
+            print("Updating text content...")
             itm['DialogBox'].Text = "Updating text content..."
             for i, sub in enumerate(subList):
                sub.SetClipColor('Orange')
                text = subs[i][2]
-               comp = sub.GetFusionCompByIndex(1)
-               toollist = comp.GetToolList().values()
+               comp = sub.GetFusionCompByIndex(1) # get fusion comp from Text+
+               toollist = comp.GetToolList().values() # get list of tools in comp
                for tool in toollist:
-                   if tool.GetAttrs()['TOOLS_Name'] == 'Template' :
-                       comp.SetActiveTool(tool)
-                       tool.SetInput('StyledText', text)
+                  if tool.GetAttrs()['TOOLS_Name'] == 'Template' : # find Template tool
+                     comp.SetActiveTool(tool)
+                     tool.SetInput('StyledText', text)
                sub.SetClipColor('Teal')
                if i == len(subList)-1:
                   print("Finished updating text content")
                   break
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
-         print("Text+ not found in Media Pool")
+         print("No Text+ found in Media Pool")
    projectManager.SaveProject()
    itm['DialogBox'].Text = "Subtitles added to timeline!"
 
