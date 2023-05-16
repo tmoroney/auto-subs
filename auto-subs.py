@@ -29,7 +29,7 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 450, 750 ],
+   'Geometry': [ 100,100, 450, 730 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
@@ -69,9 +69,9 @@ win = dispatcher.AddWindow({
       ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0, 'MinimumSize': [200, 30]}),
       ui.VGap(2),
-      ui.Label({ 'Text': "Change Text Formatting", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
-      ui.VGap(20),
+      ui.VGap(15),
       ui.Button({ 
          'ID': executeAllID,
          'Text': "  Transcribe + Generate Subtitles", 
@@ -80,13 +80,14 @@ win = dispatcher.AddWindow({
          'IconSize': [17, 17], 
          'Font': ui.Font({'PixelSize': 15}),
          'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
+      ui.VGap(2),
       ui.HGroup({'Weight': 0.0,},[
          ui.Button({ 'ID': transcribeID, 'Text': "Transcribe Timeline", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
          ui.Button({ 'ID': addSubsID, 'Text': "Generate Text+ Subtitles", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
       ]),
       ui.VGap(40),
-      ui.Label({ 'ID': 'DialogBox', 'Text': "> No Task Started <", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 18 }), 'Alignment': { 'AlignHCenter': True } }),
-      ui.VGap(35)
+      ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }), 'Alignment': { 'AlignHCenter': True } }),
+      ui.VGap(40)
       ])
    )
 
@@ -127,8 +128,8 @@ def OnTranscribe(ev):
    # RENDER AUDIO
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
-   project.LoadRenderPreset("Audio Only")
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath})
+   project.LoadRenderPreset('Audio Only')
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3"})
    pid = project.AddRenderJob()
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
@@ -139,18 +140,18 @@ def OnTranscribe(ev):
       print("Progress: ", progress, "%")
       itm['DialogBox'].Text = "Progress: ", progress, "%"
    print("Audio Rendering Complete!")
-   filename = "audio.mp3"
+   filename = "audio.mov"
    location = storagePath + filename
    print("Transcribing -> [", filename, "]")
    itm['DialogBox'].Text = "Transcribing Audio..."
-   model = stable_whisper.load_model("small.en")
-   result = model.transcribe(location, fp16=False, language='en', regroup=False) # transcribe audio file
+   model = stable_whisper.load_model(chosenModel)
+   result = model.transcribe(location, fp16=False, regroup=False) # transcribe audio file
    (
-       result
-       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-       .split_by_gap(.5)
-       .merge_by_gap(.10, max_words=3)
-       .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
+      result
+      .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+      .split_by_gap(.5)
+      .merge_by_gap(.10, max_words=3)
+      .split_by_length(max_words=win.Find(wordsID).Value, max_chars=win.Find(charsID).Value)
    )
    file_path = storagePath + 'audio.srt'
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
@@ -158,7 +159,6 @@ def OnTranscribe(ev):
    resolve.OpenPage("edit")
    itm['DialogBox'].Text = "Transcription Complete!"
    print("Subtitles saved to -> [", file_path, "]")
-   print("Click 'Generate Subtitles' to add to the Timeline")
 
 
 # Generate Text+ Subtitles on Timeline
