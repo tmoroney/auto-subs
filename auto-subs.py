@@ -58,7 +58,7 @@ win = dispatcher.AddWindow({
 		]),
       ui.VGap(2),
       ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g kill, shot (k**l)', 'Weight': 0, 'MinimumSize': [200, 30]}),
+      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g. bombing = b***ing', 'Weight': 0, 'MinimumSize': [200, 30]}),
       ui.VGap(2),
       ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
