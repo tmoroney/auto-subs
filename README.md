@@ -17,20 +17,33 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 
 ## Setup
 
-**Step 1:** Install `Stable-TS` (a fork of OpenAI Whisper)
+**Step 1:** Install `[Stable-TS](https://github.com/jianfch/stable-ts)` (a fork of [OpenAI Whisper](https://github.com/openai/whisper))
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
-**Step 2:** Install `FFMPEG`
+**Step 2:** Install `[FFMPEG](https://ffmpeg.org/)`
 
+    # on Ubuntu or Debian
+    sudo apt update && sudo apt install ffmpeg
+
+    # on Arch Linux
+    sudo pacman -S ffmpeg
+
+    # on MacOS using Homebrew (https://brew.sh/)
+    brew install ffmpeg
+
+    # on Windows using Chocolatey (https://chocolatey.org/)
     choco install ffmpeg
 
-**Step 3 (Windows):** Fix audio backend
+    # on Windows using Scoop (https://scoop.sh/)
+    scoop install ffmpeg
 
+**Step 3:** Fix audio backend
+    
+    # on Windows
     pip install soundfile 
     
-**Step 3 (Linux):** Fix audio backend
-  
+    # on Linux
     pip install sox
     
 **Step 4:** Download the `auto-subs.py` file and drag it into the `Utility` folder of one of the Fusion Scripting folders like this address
