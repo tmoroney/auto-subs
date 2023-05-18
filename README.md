@@ -10,14 +10,14 @@ UI Preview             |  Subtitle Example
 
 Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-subs` from the list.
 
-## Prerequisites
-- Python version `3.10` or less installed **(3.11 is not currently supported by Whisper)**
-- Check Davinci Console that Python is working (click py3 button in console)
-- If python is not working in Resolve, check that the system environment variables for python are set correctly so that Resolve knows where to find the python interpreter.
-
 ## Setup
 
-**Step 1:** Download this script [`whisper.ps1`](https://github.com/TCNOco/TcNo-TCHT/blob/main/PowerShell/AI/whisper.ps1) by clicking **Download Raw File** in the top right. This [video](https://youtu.be/R5pZPpIIUzA) explains what it does.
+#### Important Notes:
+- Python version `3.10` or less is necessary for Auto Subs to work, as anything above this is not currently supported by `OpenAI Whisper`.
+- The powershell script below will ensure that the correct python version is installed. However, if you are installing Python yourself using the Python installer on Windows, make sure to tick `set envirement variables` during installation so that Davinci Resolve knows where to find the python interpreter.
+- Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.
+
+**Step 1:** Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right. This [video](https://youtu.be/R5pZPpIIUzA) explains what it does.
 
 **Step 2:** Open powershell in administrator mode and run the following command. This installs [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies. For Mac and Linux, you will need to follow the [Whisper installation guide](https://github.com/openai/whisper/tree/main#readme) to set it up.
 
@@ -39,5 +39,8 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-Once the python script has been placed in the correct directory, it should show up in the `scripts` menu within the `Workspace` dropdown in the top menu of Resolve.
+**Step 6:** You can now run the script by clicking `Workspace` in the top menu bar, then `Scripts`, and you should see `auto-subs` in the list here.
+
+## Help
+If you have any issues installing Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes is necessary).
    
