@@ -17,28 +17,17 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 
 ## Setup
 
-**Step 1:** Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (a fork of [OpenAI Whisper](https://github.com/openai/whisper))
+**Step 1:** Download this script [`whisper.ps1`](https://github.com/TCNOco/TcNo-TCHT/blob/main/PowerShell/AI/whisper.ps1) by clicking **Download Raw File** in the top right. This [video](https://youtu.be/R5pZPpIIUzA) explains what it does.
+
+**Step 2:** Open powershell in administrator mode and run the following command. This installs [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies. For Mac and Linux, you will need to follow the [Whisper installation guide](https://github.com/openai/whisper/tree/main#readme) to set it up.
+
+    iex (irm whisper.tc.ht)
+
+**Step 3:** Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (modifies Whisper for more accurate timestamps)
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
-**Step 2:** Install [`FFMPEG`](https://ffmpeg.org/)
-
-    # on Ubuntu or Debian
-    sudo apt update && sudo apt install ffmpeg
-
-    # on Arch Linux
-    sudo pacman -S ffmpeg
-
-    # on MacOS using Homebrew (https://brew.sh/)
-    brew install ffmpeg
-
-    # on Windows using Chocolatey (https://chocolatey.org/)
-    choco install ffmpeg
-
-    # on Windows using Scoop (https://scoop.sh/)
-    scoop install ffmpeg
-
-**Step 3:** Fix audio backend
+**Step 4:** Fix audio backend
     
     # on Windows
     pip install soundfile 
@@ -46,9 +35,9 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
     # on Linux
     pip install sox
     
-**Step 4:** Download the `auto-subs.py` file and drag it into the `Utility` folder of one of the Fusion Scripting folders like this address
+**Step 5:** Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file (**download raw file**) and drag it into the `Utility` folder within the Fusion `Scripts` folder. There may be multiple fusion scripts folders, but any of them will do. The directory will look like this:
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-Once the python file has been placed here, it should show up in the scripts menu within Resolve.
+Once the python script has been placed in the correct directory, it should show up in the `scripts` menu within the `Workspace` dropdown in the top menu of Resolve.
    
