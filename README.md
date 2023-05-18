@@ -17,11 +17,11 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 
 ## Setup
 
-**Step 1:** Install `[Stable-TS](https://github.com/jianfch/stable-ts)` (a fork of [OpenAI Whisper](https://github.com/openai/whisper))
+**Step 1:** Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (a fork of [OpenAI Whisper](https://github.com/openai/whisper))
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
-**Step 2:** Install `[FFMPEG](https://ffmpeg.org/)`
+**Step 2:** Install [`FFMPEG`](https://ffmpeg.org/)
 
     # on Ubuntu or Debian
     sudo apt update && sudo apt install ffmpeg
