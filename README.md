@@ -18,7 +18,7 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 - Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.
 
 ### Step 1: Installing Whisper (on Windows)
-Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right (This [video](https://youtu.be/R5pZPpIIUzA) explains what it does). Open powershell in administrator mode and run the following command. This installs [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies.
+Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right (This [video](https://youtu.be/R5pZPpIIUzA) explains what it does). This script will install [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies. To run it, open Powershell in `administrator mode` and run the following command.
 
     iex (irm whisper.tc.ht)
 
@@ -26,7 +26,7 @@ Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/
 Make sure that you have [Python](https://www.python.org/downloads/release/python-31011/) version `3.10` or less installed. Then you need to follow this [installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and it's dependencies.
 
 ### Step 2: Install Stable-TS
-[`Stable-TS`](https://github.com/jianfch/stable-ts) modifies Whisper for more accurate timestamps
+[`Stable-TS`](https://github.com/jianfch/stable-ts) modifies Whisper for more accurate timestamps.
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
