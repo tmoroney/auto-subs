@@ -39,7 +39,7 @@ Make sure that you have [Python](https://www.python.org/downloads/release/python
     pip install sox
     
 ### Step 4: Download the Script
-Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file (**download raw file**) and drag it into the `Utility` folder within the Fusion `Scripts` folder. There may be multiple fusion scripts folders, but any of them will do. The directory will look like this:
+Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) from the GitHub repo (**download raw file**) and drag it into the `Utility` folder within the Fusion `Scripts` folder. There may be multiple fusion scripts folders, but any of them will do. The directory will look like this:
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
