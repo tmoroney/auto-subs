@@ -17,12 +17,12 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 - The powershell script below will ensure that the correct python version is installed. However, if you are installing Python yourself using the Python installer on Windows, make sure to tick `set envirement variables` during installation so that Davinci Resolve knows where to find the python interpreter.
 - Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.
 
-### Step 1: Installing Whisper (on Windows)
+### Step 1: Install Whisper (on Windows)
 Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right (This [video](https://youtu.be/R5pZPpIIUzA) explains what it does). This script will install [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies. To run it, open Powershell in `administrator mode` and run the following command.
 
     iex (irm whisper.tc.ht)
 
-### Step 1: Installing Whisper (on Mac and Linux)
+### Step 1: Install Whisper (on Mac and Linux)
 Make sure that you have [Python](https://www.python.org/downloads/release/python-31011/) version `3.10` or less installed. Then you need to follow this [installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and it's dependencies.
 
 ### Step 2: Install Stable-TS
@@ -38,13 +38,13 @@ Make sure that you have [Python](https://www.python.org/downloads/release/python
     # on Linux
     pip install sox
     
-### Step 4: Script Download + Setup
+### Step 4: Download the Script
 Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file (**download raw file**) and drag it into the `Utility` folder within the Fusion `Scripts` folder. There may be multiple fusion scripts folders, but any of them will do. The directory will look like this:
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-### Step 5: Running the Script
-You can now run the script by clicking `Workspace` in the top menu bar, then `Scripts`, and you should see `auto-subs` in the list here.
+### Step 5: Run the Script
+You can now run the script in Davinci Resolve by clicking `Workspace` in the top menu bar, then `Scripts`, and you should see `auto-subs` in the list here.
     
     Workspace -> Scripts -> auto-subs
 
