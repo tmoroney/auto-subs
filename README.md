@@ -5,12 +5,13 @@ UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/03186165-73c2-476f-b0a2-56c01b601660) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
-
 ## Running the Script
 
 Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-subs` from the list.
 
 ## Setup
+
+Video Tutorial: https://youtu.be/--4vfAM9_tI
 
 #### Important Notes:
 - Python version `3.10` or less is necessary for Auto Subs to work. Anything above this is not currently supported by [`OpenAI Whisper`](https://github.com/openai/whisper). Version `3.10.11` works for me.
