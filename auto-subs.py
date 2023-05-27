@@ -121,8 +121,8 @@ def OnTranscribe(ev):
    # RENDER AUDIO
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
-   project.LoadRenderPreset('Audio Only')
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3"})
+   project.LoadRenderPreset('H.265 Master')
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3", "ExportVideo": False, "ExportAudio": True})
    pid = project.AddRenderJob()
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
