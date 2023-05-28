@@ -49,7 +49,7 @@ win = dispatcher.AddWindow({
       ui.Label({ 'Text': "Generate Text+ Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.VGap(0),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
       ui.VGap(2),
       ui.Label({'ID': 'Label', 'Text': 'Use Custom Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
