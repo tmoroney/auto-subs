@@ -226,12 +226,12 @@ def OnGenerate(ev):
          # Convert timestamps to frames set postition of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
          timelinePos = frames + timeline.GetStartFrame()
          # Set duration of subtitle in frames
          hours, minutes, seconds_milliseconds = end_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
          duration = frames - timelinePos
          subs.append([timelinePos, duration, text])
       
