@@ -11,30 +11,29 @@ Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 4. Add [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file to the Fusion Scripts folder (simple drag and drop)
 5. Run the script by navigating to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
-<br />
+#### Video Tutorial: https://youtu.be/--4vfAM9_tI
+#### Contact me here: https://discord.gg/hskJ593gk
+
+
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/03186165-73c2-476f-b0a2-56c01b601660) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
-## Installation Guide
-
-#### Video Tutorial: https://youtu.be/--4vfAM9_tI
-#### Contact me here: https://discord.gg/hskJ593gk
-
-### Important Notes:
+## Important Notes
 - **Only Python `3.10` or less supported** (Version `3.10.11` works for me - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
 - The included Powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
 - **Verify that Resolve detects the Python installation by opening the Console and clicking `py3` at the top.**
 
-### Step 1: Install Python + Whisper (Automatic Install - only Windows)
-Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right. This script will install Python (if not already installed) + [`OpenAI Whisper`](https://github.com/openai/whisper) and all of its dependencies. To run it, open Powershell in `administrator mode` and run the following command.
+## Installation Guide
+
+### Step 1: Install Python + Whisper
+#### `Automatic Install` only for Windows:
+Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right. This script will install Python (if not already installed) + [`OpenAI Whisper`](https://github.com/openai/whisper) and all of its dependencies. To run it, open Powershell in `administrator mode` and run the following command. [- Video explaining what this script does -](https://youtu.be/R5pZPpIIUzA)
 
     iex (irm whisper.tc.ht)
 
-[Video explaining what this script does](https://youtu.be/R5pZPpIIUzA)
-
-### Step 1: Install Python + Whisper (Manual Install - Mac, Linux and Windows)
+#### `Manual Install` for Mac, Linux and Windows:
 Install [Python](https://www.python.org/downloads/release/python-31011/) version `3.10` or less. Then you need to follow this [installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and its dependencies.
 
 ### Step 2: Install Stable-TS
