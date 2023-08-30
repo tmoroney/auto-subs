@@ -11,12 +11,20 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 
 ## Setup
 
-Video Tutorial: https://youtu.be/--4vfAM9_tI
+#### Video Tutorial: https://youtu.be/--4vfAM9_tI
+#### Contact me here: https://discord.gg/hskJ593gk
+
+### Setup Overview:
+1. Install Python `3.10` + OpenAI Whisper (1 line)
+2. Install Stable-TS (1 line)
+3. Fix audio backend (1 line)
+4. Add AutoSubs.py file to Fusion Scripts folder (drag and drop)
+5. Run the Script `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
 #### Important Notes:
-- Python version `3.10` or less is necessary for Auto Subs to work. Anything above this is not currently supported by [`OpenAI Whisper`](https://github.com/openai/whisper). Version `3.10.11` works for me.
-- The powershell script below will ensure that the correct python version is installed. However, if you are installing Python yourself using the Python installer on Windows, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the python interpreter.
-- Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.
+- **Python `3.10` or less required** (Version `3.10.11` works for me - anthing newer is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
+- The included powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
+- **Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.**
 
 ### Step 1: Install Whisper (on Windows)
 Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right (This [video](https://youtu.be/R5pZPpIIUzA) explains what it does). This script will install [`OpenAI Whisper`](https://github.com/openai/whisper) and all of it's dependencies. To run it, open Powershell in `administrator mode` and run the following command.
@@ -31,7 +39,7 @@ Make sure that you have [Python](https://www.python.org/downloads/release/python
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
-### Step 3: Fix audio backend
+### Step 3: Fix audio backend (may not be needed)
     
     # on Windows
     pip install soundfile 
