@@ -30,7 +30,7 @@ win = dispatcher.AddWindow({
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
-      ui.Label({ 'Text': "Transcribe Timeline", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
+      ui.Label({ 'Text': "Transcribe Using AI", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.HGroup({'Weight': 0.0},[
          ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
             ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
@@ -221,6 +221,7 @@ def OnGenerate(ev):
                   print("Found Censor")
                   censorSound = item
 
+      timelineStartFrame = timeline.GetStartFrame()
       for i in range(0, len(lines), 4):
          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
          start_time, end_time = lines[i+1].strip().split(" --> ")
@@ -230,7 +231,7 @@ def OnGenerate(ev):
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
          frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
-         timelinePos = frames + timeline.GetStartFrame()
+         timelinePos = timelineStartFrame + frames
          # Set duration of subtitle in frames
          hours, minutes, seconds_milliseconds = end_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
