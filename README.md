@@ -1,8 +1,8 @@
 # Davinci Resolve AI Subtitles
 Uses AI to generate Text+ subtitles with custom styling - works with both the **Free and Studio versions** of Resolve. This python script uses OpenAI Whisper to transcribe the current timeline, and then uses the Davinci Resolve and Fusion APIs to add each subtitle to the timeline in a Fusion Text+ object at the correct time. The script is run through the `Scripts` menu within Resolve.
 
-### Run the Script
-From the top menu bar in Resolve: `Workspace` -> `Scripts` -> `auto-subs`.
+### Run the Script:
+Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 
 ## Setup Overview
 1. Install Python `3.10` + OpenAI Whisper ([download quick install script](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) + single command)
