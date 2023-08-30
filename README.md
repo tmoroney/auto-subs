@@ -26,12 +26,12 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 - The included powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
 - **Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.**
 
-### Step 1 (automatic install - only Windows): Install Python + Whisper
+### Step 1 (Automatic Install - only Windows): Install Python + Whisper
 Download this script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) by clicking **Download Raw File** in the top right (This [video](https://youtu.be/R5pZPpIIUzA) explains what it does). This script will install Python (if not already installed) and [`OpenAI Whisper`](https://github.com/openai/whisper) + all of it's dependencies. To run it, open Powershell in `administrator mode` and run the following command. Alternatively you can install Python and Whisper manually below.
 
     iex (irm whisper.tc.ht)
 
-### Step 1 (manual install - Mac, Linux and Windows): Install Python + Whisper
+### Step 1 (Manual Install - Mac, Linux and Windows): Install Python + Whisper
 Install [Python](https://www.python.org/downloads/release/python-31011/) version `3.10` or less. Then you need to follow this [installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and it's dependencies.
 
 ### Step 2: Install Stable-TS
