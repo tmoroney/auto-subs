@@ -15,7 +15,7 @@ Video Tutorial: https://youtu.be/--4vfAM9_tI
 
 #### Important Notes:
 - Python version `3.10` or less is necessary for Auto Subs to work. Anything above this is not currently supported by [`OpenAI Whisper`](https://github.com/openai/whisper). Version `3.10.11` works for me.
-- The powershell script below will ensure that the correct python version is installed. However, if you are installing Python yourself using the Python installer on Windows, make sure to tick `set envirement variables` during installation so that Davinci Resolve knows where to find the python interpreter.
+- The powershell script below will ensure that the correct python version is installed. However, if you are installing Python yourself using the Python installer on Windows, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the python interpreter.
 - Verify that Resolve detects the python installation by opening the Console and clicking `py3` at the top.
 
 ### Step 1: Install Whisper (on Windows)
