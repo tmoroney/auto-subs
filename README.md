@@ -11,6 +11,8 @@ From the top menu bar in Resolve: `Workspace` -> `Scripts` -> `auto-subs`.
 4. Add [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file to the Fusion Scripts folder (simple drag and drop)
 5. Run the script by navigating to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
+<br />
+
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/03186165-73c2-476f-b0a2-56c01b601660) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
