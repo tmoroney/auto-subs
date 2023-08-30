@@ -22,7 +22,7 @@ UI Preview             |  Subtitle Example
 #### Video Tutorial: https://youtu.be/--4vfAM9_tI
 #### Contact me here: https://discord.gg/hskJ593gk
 
-#### Important Notes:
+### Important Notes:
 - **Only Python `3.10` or less supported** (Version `3.10.11` works for me - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
 - The included Powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
 - **Verify that Resolve detects the Python installation by opening the Console and clicking `py3` at the top.**
