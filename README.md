@@ -18,8 +18,8 @@ Click `Workspace` in the top menu bar. Then click `Scripts` and select `auto-sub
 1. Install Python `3.10` + OpenAI Whisper (1 line)
 2. Install Stable-TS (1 line)
 3. Fix audio backend (1 line)
-4. Add AutoSubs.py file to Fusion Scripts folder (drag and drop)
-5. Run the Script `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
+4. Add `AutoSubs.py` file to Fusion Scripts folder (simple drag and drop)
+5. Run the script by navigating to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
 #### Important Notes:
 - **Python `3.10` or less required** (Version `3.10.11` works for me - anthing newer is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
