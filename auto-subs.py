@@ -49,7 +49,7 @@ win = dispatcher.AddWindow({
       ui.Label({ 'Text': "Generate Text+ Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
       ui.VGap(0),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
       ui.VGap(2),
       ui.Label({'ID': 'Label', 'Text': 'Use Custom Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
@@ -66,7 +66,7 @@ win = dispatcher.AddWindow({
       ui.VGap(15),
       ui.Button({ 
          'ID': executeAllID,
-         'Text': "  Transcribe + Generate Subtitles", 
+         'Text': "  Generate Subtitles", 
          'MinimumSize': [150, 35],
          'MaximumSize': [1000, 35], 
          'IconSize': [17, 17], 
@@ -74,8 +74,8 @@ win = dispatcher.AddWindow({
          'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
       ui.VGap(2),
       ui.HGroup({'Weight': 0.0,},[
-         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe Timeline", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
-         ui.Button({ 'ID': addSubsID, 'Text': "Generate Text+ Subtitles", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe to Subitles File", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': addSubsID, 'Text': "Regenerate Timeline Text", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
       ]),
       ui.VGap(40),
       ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }), 'Alignment': { 'AlignHCenter': True } }),
@@ -97,9 +97,20 @@ def OnBrowseFiles(ev):
                 
 # Transcribe + Generate Subtitles on Timeline
 def OnSubsGen(ev):
-   OnTranscribe(ev)
+   if itm['FileLineTxt'].Text == '':
+      OnTranscribe(ev)
    OnGenerate(ev)
 
+def AudioToSRT(ev):
+   OnTranscribe(ev)
+   # Show the file in the Media Storage
+   mediaStorage = resolve.GetMediaStorage()
+   fileList = mediaStorage.GetFileList(storagePath)
+   for filePath in fileList:
+      if 'audio.srt' in filePath:
+         mediaStorage.RevealInStorage(filePath)
+         itm['DialogBox'].Text = "Directory opened of audio.srt"
+         break
 
 # Transcribe Timeline to SRT file              
 def OnTranscribe(ev):
@@ -121,8 +132,8 @@ def OnTranscribe(ev):
    # RENDER AUDIO
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
-   project.LoadRenderPreset('Audio Only')
-   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3"})
+   project.LoadRenderPreset('H.265 Master')
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3", "ExportVideo": False, "ExportAudio": True})
    pid = project.AddRenderJob()
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
@@ -162,6 +173,9 @@ def OnGenerate(ev):
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
    mediaPool = project.GetMediaPool()
+   folder = mediaPool.GetRootFolder()
+   items = folder.GetClipList()
+
    if not project:
        print("No project is loaded")
        sys.exit()
@@ -198,21 +212,30 @@ def OnGenerate(ev):
       # PARSE SRT FILE
       subs = []
       checkCensor = False
+      censorSound = None
       if itm['CensorList'].Text != '': # only check for swear words if list is not empty
             swear_words = itm['CensorList'].Text.split(',')
             checkCensor = True
+            for item in items:
+               if "Censor" in item.GetClipProperty("Clip Name"): # Find Censor in Media Pool
+                  print("Found Censor")
+                  censorSound = item
+
       for i in range(0, len(lines), 4):
          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
          start_time, end_time = lines[i+1].strip().split(" --> ")
          text = lines[i+2].strip() # get  subtitle text
-         if checkCensor: # check for swear words
-            for word in swear_words:
-               pattern = r"\b" + re.escape(word) + r"\b"
-               censored_word = word[0] + '*' * (len(word) - 2) + word[-1]
-               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
-               pattern = re.escape(word)
-               censored_word = word[0] + '**'
-               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
+
+         # Convert timestamps to frames for position of subtitle
+         hours, minutes, seconds_milliseconds = start_time.split(':')
+         seconds, milliseconds = seconds_milliseconds.split(',')
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+         timelinePos = frames + timeline.GetStartFrame()
+         # Set duration of subtitle in frames
+         hours, minutes, seconds_milliseconds = end_time.split(':')
+         seconds, milliseconds = seconds_milliseconds.split(',')
+         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+         duration = frames - timelinePos
 
          if itm['FormatText'].CurrentIndex == 1: # make each line lowercase
             text = text.lower()
@@ -223,24 +246,38 @@ def OnGenerate(ev):
             text = text.replace(',', '')
             text = text.replace('.', '')
 
-         # Convert timestamps to frames set postition of subtitle
-         hours, minutes, seconds_milliseconds = start_time.split(':')
-         seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-         timelinePos = frames + timeline.GetStartFrame()
-         # Set duration of subtitle in frames
-         hours, minutes, seconds_milliseconds = end_time.split(':')
-         seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
-         duration = frames - timelinePos
-         subs.append([timelinePos, duration, text])
+         if checkCensor: # check for swear words
+            for swear in swear_words:
+               if censorSound is not None:
+                  words = text.split()
+                  wordCount = len(words)
+                  for i, word in enumerate(words):
+                     if swear in word:
+                        censorDuration = duration/wordCount
+                        censorStart = timelinePos + (censorDuration * i)
+                        newClip = {
+                           "mediaPoolItem" : censorSound,
+                           "startFrame" : 5,
+                           "endFrame" : censorDuration,
+                           "mediaType" : "audio",
+                           "trackIndex" : 4,
+                           "recordFrame" : censorStart
+                        }
+                        mediaPool.AppendToTimeline( [newClip] ) # add censor sound to timeline
+               pattern = r"\b" + re.escape(swear) + r"\b"
+               censored_word = swear[0] + '*' * (len(swear) - 2) + swear[-1]
+               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
+               pattern = re.escape(swear)
+               censored_word = swear[0] + '**'
+               text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
+                  
+         subs.append((timelinePos, duration, text)) # add subtitle to list
       
       # ADD TEXT+ TO TIMELINE
-      folder = mediaPool.GetRootFolder()
-      items = folder.GetClipList()
       foundText = False
       for item in items:
-         if item.GetName() == "Text+": # Find Text+ in Media Pool
+         itemName = item.GetName();
+         if itemName == "Text+" or itemName == "Fusion Title" : # Find Text+ in Media Pool
             foundText = True
             print("Found Text+ in Media Pool!")
             print("Adding template subtitles...")
@@ -267,15 +304,16 @@ def OnGenerate(ev):
                sub.SetClipColor('Orange')
                text = subs[i][2]
                comp = sub.GetFusionCompByIndex(1) # get fusion comp from Text+
-               toollist = comp.GetToolList().values() # get list of tools in comp
-               for tool in toollist:
-                  if tool.GetAttrs()['TOOLS_Name'] == 'Template' : # find Template tool
-                     comp.SetActiveTool(tool)
-                     tool.SetInput('StyledText', text)
-               sub.SetClipColor('Teal')
+               if (comp is not None):
+                  toollist = comp.GetToolList().values() # get list of tools in comp
+                  for tool in toollist:
+                     if tool.GetAttrs()['TOOLS_Name'] == 'Template' : # find Template tool
+                        comp.SetActiveTool(tool)
+                        tool.SetInput('StyledText', text)
+                  sub.SetClipColor('Teal')
                if i == len(subList)-1:
-                  print("Finished updating text content")
                   break
+            print("Finished updating text content")
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
          print("No Text+ found in Media Pool")
@@ -297,7 +335,7 @@ itm['WhisperModel'].AddItem("medium - slowest / highest accuracy")
 # assign event handlers
 win.On[winID].Close     = OnClose
 win.On[addSubsID].Clicked  = OnGenerate
-win.On[transcribeID].Clicked = OnTranscribe
+win.On[transcribeID].Clicked = AudioToSRT
 win.On[executeAllID].Clicked = OnSubsGen
 win.On[browseFilesID].Clicked = OnBrowseFiles
 
