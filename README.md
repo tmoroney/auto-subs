@@ -27,7 +27,7 @@ UI Preview             |  Subtitle Example
 - Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
 
 ## Important Notes
-- **Only Python `3.10` or less supported** (Version `3.10.11` works for me - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
+- **Only compatible with Python 3.8 - 3.11** (I am using `3.10.11` - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
 - The included Powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
 - **Verify that Resolve detects the Python installation by opening the Console and clicking `py3` at the top.**
 
