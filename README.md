@@ -68,4 +68,7 @@ Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, 
 ## Help
 If you have any issues installing Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes is necessary).
 
+#### Video Tutorial: https://youtu.be/--4vfAM9_tI
+#### Contact me here: https://discord.gg/hskJ593gk
+
 If you want to make your own python script for Davinci Resolve, DON'T. It's not worth it, the documentation is literally hell.
