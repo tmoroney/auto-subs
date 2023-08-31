@@ -5,14 +5,9 @@
 - This is a `Python` script that transcribes the current timeline and uses the `Davinci Resolve API` and `Fusion API` to add each subtitle to the timeline in Fusion Text+ objects with custom styling.
 - The script is run through the `Scripts` menu within Resolve.
 
-### Run the Script:
-Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
-
-## Light Version (standalone - no AI transcription)
-- `auto-subs-light.py` is a **simplified version** of the original script with **AI transcription removed**.
-- Given an SRT file, it can generate subtitles on the timeline in your custom style.
-- **Skip steps 1-3 of the installation guide** as no external libraries are needed for this version of the script to work.
-- Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
+#### Run the Script (top menu bar of Resolve): `Workspace -> Scripts -> auto-subs`
+#### Video Tutorial: https://youtu.be/--4vfAM9_tI
+#### Contact me here: https://discord.gg/hskJ593gk
 
 ## Setup Overview
 1. Install Python `3.10` + OpenAI Whisper ([download quick install script](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) + single command)
@@ -21,14 +16,15 @@ Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 4. Add [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file to the Fusion Scripts folder (simple drag and drop)
 5. Run the script by navigating to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
-#### Video Tutorial: https://youtu.be/--4vfAM9_tI
-#### Contact me here: https://discord.gg/hskJ593gk
-
-
-
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/60d85a23-ac79-4756-ad8b-83d455a59e81) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
+
+## Light Version (standalone - no AI transcription)
+- `auto-subs-light.py` is a **simplified version** of the original script with **AI transcription removed**.
+- Given an SRT file, it can generate subtitles on the timeline in your custom style.
+- **Skip steps 1-3 of the installation guide** as no external libraries are needed for this version of the script to work.
+- Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
 
 ## Important Notes
 - **Only Python `3.10` or less supported** (Version `3.10.11` works for me - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
