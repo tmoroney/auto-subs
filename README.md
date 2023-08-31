@@ -8,7 +8,7 @@
 ### Run the Script:
 Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 
-## Light Version (standalone)
+## Light Version (standalone - no AI transcription)
 - `auto-subs-light.py` is a **simplified version** of the original script with **AI transcription removed**.
 - Given an SRT file, it can generate subtitles on the timeline in your custom style.
 - **Skip steps 1-3 of the installation guide** as no external libraries are needed for this version of the script to work.
