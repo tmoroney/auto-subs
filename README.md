@@ -28,7 +28,7 @@ Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
-![image](https://github.com/tmoroney/auto-subs/assets/72154813/03186165-73c2-476f-b0a2-56c01b601660) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
+![image](https://github.com/tmoroney/auto-subs/assets/72154813/60d85a23-ac79-4756-ad8b-83d455a59e81) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
 ## Important Notes
 - **Only Python `3.10` or less supported** (Version `3.10.11` works for me - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
