@@ -9,7 +9,10 @@
 Navigate to `Workspace -> Scripts -> auto-subs` in the top menu bar of Resolve.
 
 ## Light Version (standalone)
-A **standalone version** of the script **without AI transcription**. Given an SRT subtitles file, it generates subtitles on the timeline with your custom styling. **Skip steps 1-3 of the installation guide** for this script and **download** [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead.
+- `auto-subs-light.py` is a **simplified version** of the original script with **AI transcription removed**.
+- Given an SRT file, it can generate subtitles on the timeline in your custom style.
+- **Skip steps 1-3 of the installation guide** as no external libraries are needed for this version of the script to work.
+- Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
 
 ## Setup Overview
 1. Install Python `3.10` + OpenAI Whisper ([download quick install script](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) + single command)
