@@ -33,7 +33,7 @@ win = dispatcher.AddWindow({
    ui.VGroup([
       ui.Label({ 'Text': "Generate Subtitles from SRT File", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
       ui.Label({ 'Text': "Select track to add subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 3}),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
       ui.VGap(2),
       ui.Label({'ID': 'Label', 'Text': 'Use Custom Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
@@ -118,7 +118,14 @@ def OnAddSubs(ev):
                   print("Found Censor")
                   censorSound = item
 
-      timelineStartFrame = timeline.GetStartFrame()
+      # CREATE CLIPS FROM SRT FILE
+      if len(lines) < 4:
+         print("No subtitles found in SRT file")
+         itm['DialogBox'].Text = "No subtitles found in SRT file!"
+         return
+
+      timelineStartFrame = timeline.GetStartFrame() # get timeline start frame
+      #print("-> Start of timeline: ", timelineStartFrame)
       for i in range(0, len(lines), 4):
          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
          start_time, end_time = lines[i+1].strip().split(" --> ")
@@ -127,13 +134,16 @@ def OnAddSubs(ev):
          # Convert timestamps to frames for position of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
-         timelinePos = timelineStartFrame + frames
+         posInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+         timelinePos = timelineStartFrame + posInFrames
+         #print("->", i//4+1, ":", text, " @ ", timelinePos, " frames")
+
          # Set duration of subtitle in frames
          hours, minutes, seconds_milliseconds = end_time.split(':')
          seconds, milliseconds = seconds_milliseconds.split(',')
-         frames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
-         duration = frames - timelinePos
+         endPosInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+         duration = (timelineStartFrame + endPosInFrames) - timelinePos
+         #print("-> Duration: ", duration, " frames")
 
          if itm['FormatText'].CurrentIndex == 1: # make each line lowercase
             text = text.lower()
@@ -144,7 +154,7 @@ def OnAddSubs(ev):
             text = text.replace(',', '')
             text = text.replace('.', '')
 
-         if checkCensor: # check for swear words
+         if checkCensor: # check for words to censor
             for swear in swear_words:
                if censorSound is not None:
                   words = text.split()
@@ -171,6 +181,8 @@ def OnAddSubs(ev):
                   
          subs.append((timelinePos, duration, text)) # add subtitle to list
       
+      print("Found", len(subs), "subtitles in SRT file")
+      
       # ADD TEXT+ TO TIMELINE
       foundText = False
       for item in items:
@@ -196,7 +208,7 @@ def OnAddSubs(ev):
             projectManager.SaveProject()
             
             subList = timeline.GetItemListInTrack('video', timelineTrack) # get list of Text+ in timeline
-            print("Updating text content...")
+            print("Modifying subtitle text content...")
             itm['DialogBox'].Text = "Updating text content..."
             for i, sub in enumerate(subList):
                sub.SetClipColor('Orange')
@@ -210,8 +222,9 @@ def OnAddSubs(ev):
                         tool.SetInput('StyledText', text)
                   sub.SetClipColor('Teal')
                if i == len(subList)-1:
+                  print("Updated text content for", i+1, "subtitles")
                   break
-            print("Finished updating text content")
+            print("Subtitles added to timeline!")
             break # only execute once if multiple Text+ in Media Pool
       if not foundText:
          print("No Text+ found in Media Pool")
