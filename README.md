@@ -21,9 +21,9 @@ UI Preview             |  Subtitle Example
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/60d85a23-ac79-4756-ad8b-83d455a59e81) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
 ## Light Version (standalone - no AI transcription)
-- `auto-subs-light.py` is a **simplified version** of the original script with **AI transcription removed**.
-- Given an SRT file, it can generate subtitles on the timeline in your custom style.
-- **Skip steps 1-3 of the installation guide** as no external libraries are needed for this version of the script to work.
+- Simplified version with **no audio transcription**.
+- Generates subtitles on the timeline in your custom style given an SRT file.
+- **Skip steps 1-3 of the installation guide** - no external libraries necessary.
 - Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
 
 ## Important Notes
