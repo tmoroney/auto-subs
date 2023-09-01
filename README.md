@@ -20,15 +20,15 @@ UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/60d85a23-ac79-4756-ad8b-83d455a59e81) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
-## Light Version (standalone - no AI transcription)
-- Simplified version with **no audio transcription**.
-- Generates subtitles on the timeline in your custom style given an SRT file.
-- **Skip steps 1-3 of the installation guide** - no external libraries necessary.
-- Download [`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py) instead of `auto-subs.py`.
+## Light Version (standalone - no audio transcription)
+- Simplified version with **no audio transcription** - no external libraries needed.
+- Generates subtitles on the timeline in your own custom style - **given an SRT file**.
+- **Skip steps 1-3 of the installation guide**.
+- Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** instead of `auto-subs.py`.
 
 ## Important Notes
 - **Only compatible with Python 3.8 - 3.11** (I am using `3.10.11` - any later version is not supported by [`OpenAI Whisper`](https://github.com/openai/whisper)
-- The included Powershell script will ensure that the correct Python version is installed. If installing Python yourself, make sure to tick `set envirement variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
+- The included Powershell script will ensure the correct Python version is installed. If installing Python yourself, make sure to tick `set environment variables` or `Add python.exe to PATH` during installation so that Davinci Resolve knows where to find the Python interpreter.
 - **Verify that Resolve detects the Python installation by opening the Console and clicking `py3` at the top.**
 
 ## Installation Guide
