@@ -10,11 +10,11 @@
 #### Contact me here: https://discord.gg/hskJ593gk
 
 ## Setup Overview
-1. Install Python `3.10` + OpenAI Whisper ([download quick install script](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) + single command)
+1. Install Python `3.10` + OpenAI Whisper (single command with PowerShell script)
 2. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (single command)
 3. Fix audio backend (single command)
-4. Add [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file to the Fusion Scripts folder (simple drag and drop)
-5. Run the script by navigating to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
+4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
+5. Navigate to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
