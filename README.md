@@ -6,11 +6,11 @@
 - The script is run through the `Scripts` menu within Resolve.
 
 #### Run the Script (top menu bar of Resolve): `Workspace -> Scripts -> auto-subs`
-#### Video Tutorial: https://youtu.be/--4vfAM9_tI
-#### Contact me here: https://discord.gg/hskJ593gk
+- **Video Tutorial:** https://youtu.be/--4vfAM9_tI
+- **Contact me here:** https://discord.gg/hskJ593gk
 
 ## Setup Overview
-1. Install Python `3.10` + OpenAI Whisper (single command with PowerShell script)
+1. Install Python `3.10` + OpenAI Whisper (single command using PowerShell script)
 2. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (single command)
 3. Fix audio backend (single command)
 4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
