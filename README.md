@@ -28,7 +28,7 @@ UI Preview             |  Subtitle Example
 
 ## Important Notes
 - **Only compatible with Python `3.8 - 3.11`** - verified working on `3.10.11`.
-- Make sure to tick `set environment variables` or `Add python.exe to PATH` during manual installation of Python so that Davinci Resolve can find the Python interpreter.
+- Make sure to tick `set environment variables` or `Add python.exe to PATH` during manual Python installation on Windows so that Davinci Resolve can find the Python interpreter.
 - The included Powershell script will set these environment variables automatically.
 - Verify that Resolve detects the Python installation by opening the Console and clicking `py3` at the top.
 
