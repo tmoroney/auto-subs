@@ -2,12 +2,11 @@
 - Uses AI to generate Text+ subtitles with your own custom style.
 - Works with both the **Free and Studio versions** of Resolve.
 - Uses [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for **extremely accurate transcription**.
-- This is a `Python` script that transcribes the current timeline and uses the `Davinci Resolve API` and `Fusion API` to add each subtitle to the timeline in Fusion Text+ objects with custom styling.
+- This `Python` script transcribes your editing timeline using AI and uses the `Davinci Resolve API` + `Fusion API` to add each subtitle to the timeline in Text+ format with **custom styling**.
 - The script is run through the `Scripts` menu within Resolve.
 
-#### Run the Script (top menu bar of Resolve): `Workspace -> Scripts -> auto-subs`
-- **Video Tutorial:** https://youtu.be/--4vfAM9_tI
-- **Contact me here:** https://discord.gg/hskJ593gk
+> :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
+> :tea: **Contact me here:** https://discord.gg/hskJ593gk
 
 ## Setup Overview
 1. Install Python `3.10` + [`OpenAI Whisper`](https://github.com/openai/whisper) (single command using PowerShell script)
