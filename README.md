@@ -6,7 +6,7 @@
 - The script is run through the `Scripts` menu within Resolve.
 
 > :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
-> :tea: **Contact me here:** https://discord.gg/hskJ593gk
+> :tea: **Contact me here:** [https://discord.gg/hskJ593gk](https://discord.gg/qB3tTACW9)
 
 ## Setup Overview
 1. Install Python `3.10` + [`OpenAI Whisper`](https://github.com/openai/whisper) (single command using PowerShell script)
