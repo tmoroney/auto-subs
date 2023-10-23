@@ -28,8 +28,7 @@ Running this command will install `Python` (if not already installed) + `OpenAI 
 
 - **Manual Install (for Mac, Linux and Windows):** <br>
 Install `Python 3.10` (or less) from [here](https://www.python.org/downloads/release/python-31011/). Make sure to tick `Add python.exe to PATH` or `set environment variables` during installation on Windows. Then you need to follow this [simple installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and its dependencies.
-    > **Warning**
-    Only compatible with Python 3.8 - 3.11
+    > ⚠️ **Only compatible with Python 3.8 - 3.11**
 
 ### Step 2: Install Stable-TS
 Modifies OpenAI Whisper for more accurate timestamps.
@@ -45,9 +44,10 @@ Modifies OpenAI Whisper for more accurate timestamps.
     pip install sox
     
 ### Step 4: Download the Script
-Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py), then add it to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
+- Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file.
+- Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
-    ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+            ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ### Step 5: Run the Script
 Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, and there you should see `auto-subs` in the list.
