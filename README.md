@@ -31,23 +31,19 @@ Install `Python 3.10` (or less) from [here](https://www.python.org/downloads/rel
     > ⚠️ **Only compatible with Python 3.8 - 3.11**
 
 ### Step 2: Install Stable-TS
-Modifies OpenAI Whisper for more accurate timestamps.
+Run this command. Modifies OpenAI Whisper for more accurate timestamps.
 
     pip install -U git+https://github.com/jianfch/stable-ts.git
 
 ### Step 3: Fix audio backend (may not be needed)
-    
-    # on Windows
-    pip install soundfile 
-    
-    # on Linux
-    pip install sox
+Run one of these commands:
+- `pip install soundfile` - Windows
+- `pip install sox` - Linux
     
 ### Step 4: Download the Script
-- Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file.
-- Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
+Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
-            ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+        ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ### Step 5: Run the Script
 Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, and there you should see `auto-subs` in the list.
