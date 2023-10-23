@@ -1,9 +1,8 @@
 # Davinci Resolve AI Subtitles
-- Uses AI to generate Text+ subtitles with your own custom style.
-- Works with both the **Free and Studio versions** of Resolve.
-- Uses [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for **extremely accurate transcription**.
-- This `Python` script transcribes your editing timeline using AI and uses the `Davinci Resolve API` + `Fusion API` to add each subtitle to the timeline in Text+ format with **custom styling**.
-- The script is run through the `Scripts` menu within Resolve.
+- Generate subtitles in a **custom style**.
+- Supports **Free** and **Studio** versions of Resolve.
+- Automatically transcribes your editing timeline using a combination of [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
+- Easily run through the `Scripts` menu within Resolve.
 
 > :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
 > :tea: **Contact me here:** [https://discord.gg/hskJ593gk](https://discord.gg/qB3tTACW9)
@@ -15,7 +14,7 @@ UI Preview             |  Subtitle Example
 ## Setup
 
 ### Step 1: Install Python + Whisper
-Choose **one** of these options. Click here if you need help.
+Choose **one** of the options below.
 - **Automatic Install (only for Windows):** <br> 
 Download this PowerShell script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) (Click **`Download Raw File`** in the top right). Open `Powershell` in **administrator mode** and run the command below - the location of the `whisper.ps1` file doesn't matter.
 Running this command will install `Python` (if not already installed) + `OpenAI Whisper` and all of its dependencies ([video explainer](https://youtu.be/R5pZPpIIUzA)). 
@@ -23,7 +22,7 @@ Running this command will install `Python` (if not already installed) + `OpenAI 
         iex (irm whisper.tc.ht)
 
 - **Manual Install (for Mac, Linux and Windows):** <br>
-Install Python version `3.10` or less from [here](https://www.python.org/downloads/release/python-31011/). Make sure to tick `set environment variables` or `Add python.exe to PATH` during installation on Windows. Then you need to follow this [installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and its dependencies.
+Install `Python 3.10` (or less) from [here](https://www.python.org/downloads/release/python-31011/). Make sure to tick `Add python.exe to PATH` or `set environment variables` during installation on Windows. Then you need to follow this [simple installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and its dependencies.
     > **Warning**
     Only compatible with Python 3.8 - 3.11
 
