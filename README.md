@@ -11,6 +11,11 @@ UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
+## How To Use
+1. Open from Resolve toolbar: `Workspace -> Scripts -> auto-subs`.
+2. Add a **`timeline marker`** (must be blue) at the **`start`** and **`end`** of the segment to subtitle.
+3. Click the **`Generate Subtitles`** button.
+
 ## Setup
 
 ### Step 1: Install Python + Whisper
