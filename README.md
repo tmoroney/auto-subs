@@ -33,7 +33,7 @@ Install `Python 3.10` (or less) from [here](https://www.python.org/downloads/rel
 ### Step 2: Install Stable-TS
 Run this command. Modifies OpenAI Whisper for more accurate timestamps.
 
-    pip install -U git+https://github.com/jianfch/stable-ts.git
+    pip install -U stable-ts
 
 ### Step 3: Fix audio backend (may not be needed)
 Run one of these commands:
