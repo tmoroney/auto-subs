@@ -5,7 +5,7 @@
 - Easily run through the `Scripts` menu within Resolve.
 
 > :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
-> :tea: **Contact me here:** [https://discord.gg/hskJ593gk](https://discord.gg/qB3tTACW9)
+> :tea: **Contact me here:** [https://discord.gg/mNt4X6TrA3](https://discord.gg/mNt4X6TrA3)
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
