@@ -19,13 +19,13 @@ UI Preview             |  Subtitle Example
 ## Setup
 
 ### Step 1: Install Dependencies (Python, Whisper, Stable-TS)
-**Automatic Install (only for Windows):** <br> 
+**Automatic Install (Windows only):** <br> 
 1. Download [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) (top right - **Download Raw File** button).
 2. Open `Powershell` in **administrator mode** and run the command below - the location of the `whisper.ps1` file doesn't matter. Running this command will install `Python` (if not already installed) + `OpenAI Whisper` and all of its dependencies ([video explainer](https://youtu.be/R5pZPpIIUzA)). 
 
         iex (irm whisper.tc.ht)
 
-**Manual Install (for Mac, Linux and Windows):** <br>
+**Manual Install (Mac, Linux, Windows):** <br>
 1. Download `Python < 3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
     > Ensure that **`Add python.exe to PATH`** or **`Set environment variables`** is selected during installation on Windows.
 4. Install OpenAI Whisper by following the [short installation guide](https://github.com/openai/whisper/tree/main#readme).
