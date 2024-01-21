@@ -187,8 +187,10 @@ if ($condaFound) {
     #Open-Conda
     conda activate whisper
     pip install -U openai-whisper # Environment is already active
+    pip install -U stable-ts # Add this line to install stable-ts
 } else {
     &$python -m pip install -U openai-whisper
+    &$python -m pip install -U stable-ts # Add this line to install stable-ts
     Update-SessionEnvironment
 }
 
@@ -203,9 +205,11 @@ else {
     if ($condaFound){
         pip install -U setuptools-rust
         pip install git+https://github.com/openai/whisper.git
+        pip install -U stable-ts # Add this line to install stable-ts
     } else {
         &$python -m pip install -U setuptools-rust
         &$python -m pip install -U --no-deps --force-reinstall git+https://github.com/openai/whisper.git
+        &$python -m pip install -U stable-ts # Add this line to install stable-ts
     }
 
     if (Get-Command whisper -ErrorAction SilentlyContinue) {
