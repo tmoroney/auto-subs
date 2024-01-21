@@ -27,7 +27,7 @@ UI Preview             |  Subtitle Example
 
 **Manual Install (for Mac, Linux and Windows):** <br>
 1. Download `Python < 3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
-    > ⚠️ Ensure that **`Add python.exe to PATH`** or **`Set environment variables`** is selected during installation on Windows.
+    > Ensure that **`Add python.exe to PATH`** or **`Set environment variables`** is selected during installation on Windows.
 4. Install OpenAI Whisper by following the [short installation guide](https://github.com/openai/whisper/tree/main#readme).
 5. Install Stable-TS by running this command in the terminal:
 
