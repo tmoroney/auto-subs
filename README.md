@@ -18,34 +18,27 @@ UI Preview             |  Subtitle Example
 
 ## Setup
 
-### Step 1: Install Python + Whisper
-Choose **one** of the options below.
-- **Automatic Install (only for Windows):** <br> 
-Download this PowerShell script [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) (Click **`Download Raw File`** in the top right). Open `Powershell` in **administrator mode** and run the command below - the location of the `whisper.ps1` file doesn't matter.
-Running this command will install `Python` (if not already installed) + `OpenAI Whisper` and all of its dependencies ([video explainer](https://youtu.be/R5pZPpIIUzA)). 
+### Step 1: Install Dependencies (Python, Whisper, Stable-TS)
+**Automatic Install (only for Windows):** <br> 
+1. Download [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) (top right - **Download Raw File** button).
+2. Open `Powershell` in **administrator mode** and run the command below - the location of the `whisper.ps1` file doesn't matter. Running this command will install `Python` (if not already installed) + `OpenAI Whisper` and all of its dependencies ([video explainer](https://youtu.be/R5pZPpIIUzA)). 
 
         iex (irm whisper.tc.ht)
 
-- **Manual Install (for Mac, Linux and Windows):** <br>
-Install `Python 3.10` (or less) from [here](https://www.python.org/downloads/release/python-31011/). Make sure to tick `Add python.exe to PATH` or `set environment variables` during installation on Windows. Then you need to follow this [simple installation guide](https://github.com/openai/whisper/tree/main#readme) to install Whisper and its dependencies.
-    > ⚠️ **Only compatible with Python 3.8 - 3.11**
+**Manual Install (for Mac, Linux and Windows):** <br>
+1. Download `Python < 3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
+    > ⚠️ Ensure that **`Add python.exe to PATH`** or **`Set environment variables`** is selected during installation on Windows.
+4. Install OpenAI Whisper by following the [short installation guide](https://github.com/openai/whisper/tree/main#readme).
+5. Install Stable-TS by running this command in the terminal:
 
-### Step 2: Install Stable-TS
-Run this command. Modifies OpenAI Whisper for more accurate timestamps.
-
-    pip install -U stable-ts
-
-### Step 3: Fix audio backend (may not be needed)
-Run one of these commands:
-- `pip install soundfile` - Windows
-- `pip install sox` - Linux
+        pip install -U stable-ts
     
-### Step 4: Download the Script
+### Step 3: Download the Script
 Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
         ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-### Step 5: Run the Script
+### Step 4: Run the Script
 Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, and there you should see `auto-subs` in the list.
     
     Workspace -> Scripts -> auto-subs
