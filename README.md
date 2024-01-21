@@ -48,7 +48,7 @@ Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, 
 ## Light Version (standalone - no audio transcription)
 - Simplified version with **no audio transcription** - no external libraries needed.
 - Generates subtitles on the timeline in your own custom style - **given an SRT file**.
-- **Skip steps 1-3 of the installation guide**.
+- **Skip step 1 of the installation guide** (no dependencies are needed).
 - Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** instead of `auto-subs.py`.
 
 ## Help
