@@ -33,12 +33,12 @@ UI Preview             |  Subtitle Example
 
         pip install -U stable-ts
     
-### Step 3: Download the Script
+### Step 2: Download the Script
 Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
         ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-### Step 4: Run the Script
+### Step 3: Run the Script
 Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, and there you should see `auto-subs` in the list.
     
     Workspace -> Scripts -> auto-subs
