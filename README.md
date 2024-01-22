@@ -28,7 +28,7 @@ UI Preview             |  Subtitle Example
         iex (irm whisper.tc.ht)
 
 #### Alternate Method - Manual Install (Mac, Linux, Windows):
-1. Download `Python < 3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
+1. Download `Python 3.8-3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
     > Ensure that **`Add python.exe to PATH`** / **`Set environment variables`** is ticked during installation on Windows.
 4. Install OpenAI Whisper using the [short installation guide](https://github.com/openai/whisper/tree/main#readme).
 5. Install Stable-TS by running this command in the terminal:
