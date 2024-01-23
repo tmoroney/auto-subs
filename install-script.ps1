@@ -45,3 +45,23 @@ pip install -U openai-whisper
 # Step 5: Install Stable-ts
 Write-Host "Installing Stable-ts (improves quality of subtitles)..."
 pip install -U stable-ts
+
+# Step 6: Download auto-subs.py and place it in the specified folder
+Write-Host "Downloading auto-subs.py..."
+$downloadUrl = "https://raw.githubusercontent.com/tmoroney/auto-subs/main/auto-subs.py"
+$destinationFolder = "$env:ProgramData\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility"
+$destinationFile = "$destinationFolder\auto-subs.py"
+
+# If the file already exists, delete it
+if (Test-Path -Path $destinationFile) {
+    Remove-Item -Path $destinationFile -Force
+}
+
+# Download the file and move it to the destination folder
+try {
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $destinationFile
+    Write-Host "auto-subs.py downloaded successfully."
+    Write-Host "Installation complete."
+} catch {
+    Write-Host "Failed to download auto-subs.py: $_"
+}
