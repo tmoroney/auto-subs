@@ -20,7 +20,7 @@ UI Preview             |  Subtitle Example
 
 ### Step 1: Install Dependencies (Python, Whisper, Stable-TS)
 
-#### Recommended Method - Automatic Install (Windows only) !!TEMPORARILY BROKEN!!: 
+#### Recommended Method - Automatic Install (Windows only) ⚠️Temporarily broken⚠️: 
 1. Download [`whisper.ps1`](https://github.com/tmoroney/auto-subs/blob/main/whisper.ps1) (button in top right - **"Download Raw File"**).
 2. Open `Powershell` in **administrator mode** and run the command below.
    > The location of `whisper.ps1` doesn't matter. Running this command will install `Python` (if not already installed), `OpenAI Whisper` (and all dependencies), and Stable-TS - [explanation video for PowerShell script](https://youtu.be/R5pZPpIIUzA).
