@@ -12,10 +12,10 @@ UI Preview             |  Subtitle Example
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
 ## Usage Guide
-1. Click `Workspace` within Resolve's top menu bar.
-2. Select `auto-subs` within the `Scripts` section:
+1. Open the `Workspace` menu within Resolve's top bar, then within the `Scripts` dropdown, select `auto-subs`.
 
        Workspace -> Scripts -> auto-subs
+   
 3. Add a timeline marker **(must be blue)** at the **`start`** and **`end`** of the segment to add subtitles.
 4. Click **`Generate Subtitles`** in the script UI.
 
