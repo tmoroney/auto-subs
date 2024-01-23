@@ -11,37 +11,59 @@ UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
-## How To Use
-1. Open from Resolve toolbar: `Workspace -> Scripts -> auto-subs`.
-2. Add a **`timeline marker`** (must be blue) at the **`start`** and **`end`** of the segment to subtitle.
-3. Click the **`Generate Subtitles`** button.
+## Usage Guide
+1. Click `Workspace` within Resolve's top menu bar.
+2. Select `auto-subs` within the `Scripts` section:
 
-## Setup
+       Workspace -> Scripts -> auto-subs
+3. Add a timeline marker **(must be blue)** at the **`start`** and **`end`** of the segment to add subtitles.
+4. Click **`Generate Subtitles`** in the script UI.
 
-### Step 1: Install Dependencies (Python, Whisper, Stable-TS)
+## Automatic Setup (Windows only)
+Open PowerShell in **administrator mode**. Copy this command into Powershell + Run it by hitting the enter key.
 
-#### Recommended Method - Automatic Install (Windows only): 
-Open PowerShell in **administrator mode** and run the command below. This will install Whisper and all of its dependencies, as well as Stable-TS.
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
+> [!NOTE] 
+> This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS (improves subtitles).
+> It also places the auto-subs.py file in the Fusion scripts folder so it can be accessed within Resolve.
 
-      Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
-
-#### Alternate Method - Manual Install (Mac, Linux, Windows):
-1. Download `Python 3.8-3.11` from [python.org](https://www.python.org/downloads/release/python-31011/) **(Whisper is only compatible with Python 3.8 - 3.11)**.
-    > Ensure that **`Add python.exe to PATH`** / **`Set environment variables`** is ticked during installation on Windows.
-4. Install OpenAI Whisper using the [short installation guide](https://github.com/openai/whisper/tree/main#readme).
-5. Install Stable-TS by running this command in the terminal:
-
-        pip install -U stable-ts
+## Manual Setup (Mac, Linux, Windows)
+### Step 1: Install Python
+Download `Python 3.8-3.11` from the [python.org](https://www.python.org/downloads/release/python-31011/) website and run the installer.
+> [!WARNING] 
+> During installation on Windows, make sure to tick **`"Add python.exe to PATH"`** or **`"Set environment variables"`**. <br/>
+> Whisper is only compatible with Python 3.8 - 3.11.
+### Step 2: Install Whisper
+From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
     
-### Step 2: Download the Script
+    pip install -U openai-whisper
+
+Then choose one of the following to install FFMPEG:
+
+    # on Ubuntu or Debian
+    sudo apt update && sudo apt install ffmpeg
+
+    # on Arch Linux
+    sudo pacman -S ffmpeg
+
+    # on MacOS using Homebrew (https://brew.sh/)
+    brew install ffmpeg
+
+    # on Windows using Chocolatey (https://chocolatey.org/)
+    choco install ffmpeg
+
+    # on Windows using Scoop (https://scoop.sh/)
+    scoop install ffmpeg
+
+### Step 3: Install Stable-TS
+Install Stable-TS by running this command in the terminal:
+
+    pip install -U stable-ts
+
+### Step 4: Download the Python Script
 Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
-        ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
-
-### Step 3: Run the Script
-Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, and there you should see `auto-subs` in the list.
-    
-    Workspace -> Scripts -> auto-subs
+    ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Light Version (standalone - no audio transcription)
 - Simplified version with **no audio transcription** - no external libraries needed.
@@ -57,7 +79,7 @@ Click `Workspace` in the top menu bar of Davinci Resolve, then click `Scripts`, 
 
 If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is literally hell.
 
-## Setup Overview
+## Summary of Setup
 1. Install Python `3.10` + [`OpenAI Whisper`](https://github.com/openai/whisper) (single command using PowerShell script)
 2. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (single command)
 3. Fix audio backend (single command)
