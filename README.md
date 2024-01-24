@@ -88,7 +88,7 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
 > Possibly broken - not updated in a long time. Will fix soon.
 
 A simplified version with **no audio transcription**. No external libraries are needed. Generates subtitles on the timeline in your custom style from **a given SRT file**.
-  1. Install any version of [Python](https://www.python.org/downloads/)
+  1. Install any version of [Python](https://www.python.org/downloads/) (tick `"Add python.exe to PATH"` during install)
   2. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
 
          ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
