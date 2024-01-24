@@ -7,6 +7,10 @@
 > :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
 > :tea: **Contact me here:** [https://discord.gg/mNt4X6TrA3](https://discord.gg/mNt4X6TrA3)
 
+### Table of Contents
+- [Usage Guide](#usage-guide)
+- [Automatic Setup](Automatic-Setup-(Windows-only))
+
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
