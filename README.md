@@ -38,6 +38,7 @@ UI Preview             |  Subtitle Example
 2. Copy this command into Powershell + Run it by hitting the enter key.
 
        Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
+3. Setup complete!
 
 ## Manual Setup
 ### Summary:
