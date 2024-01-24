@@ -12,8 +12,8 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 ## Table of Contents
 #### 1. [Usage Guide](#usage-guide)
-#### 2. [Automatic Setup (Recommended)](#automatic-setup)
-#### 3. [Manual Setup](#manual-setup)
+#### 2. [Automatic Setup (Windows Only - Recommended)](#automatic-setup)
+#### 3. [Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [Help me](#help)
 
 <br/>
@@ -31,13 +31,14 @@ UI Preview             |  Subtitle Example
 4. Click **`Generate Subtitles`** in the script UI.
 
 ## Automatic Setup
-> [!NOTE] 
-> **Only works on Windows** - This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
-> It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
 
 Open PowerShell in **administrator mode**. Copy this command into Powershell + Run it by hitting the enter key.
 
     Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
+
+> [!IMPORTANT] 
+> **Only works on Windows** - This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
+> It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
 
 ## Manual Setup
 ### Step 1: Install Python
