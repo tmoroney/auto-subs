@@ -1,15 +1,22 @@
 # Davinci Resolve AI Subtitles
+Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
 - Generate subtitles in a **custom style**.
-- Supports **Free** and **Studio** versions of Resolve.
-- Automatically transcribes your editing timeline using a combination of [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
+- **Completely free** and runs locally on your computer.
+- Works on Mac, Linux, and Windows.
+- Supports both **Free** and **Studio** versions of Resolve.
 - Easily run through the `Scripts` menu within Resolve.
 
-> :tv: **Video Tutorial:** https://youtu.be/--4vfAM9_tI <br>
-> :tea: **Contact me here:** [https://discord.gg/mNt4X6TrA3](https://discord.gg/mNt4X6TrA3)
+> :tv: **Video Tutorial:** [Youtube Video (slightly outdated)](https://youtu.be/--4vfAM9_tI) <br>
+> :tea: **Contact me here:** [Join my Discord](https://discord.com/invite/TBFUfGWegm)
 
-### Table of Contents
-- [Usage Guide](#usage-guide)
-- [Automatic Setup](Automatic-Setup-(Windows-only))
+
+## Table of Contents
+#### 1. [Usage Guide](#usage-guide)
+#### 2. [Automatic Setup (Recommended)](#automatic-setup)
+#### 3. [Manual Setup](#manual-setup)
+#### 4. [Help me](#help)
+
+<br/>
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
@@ -23,15 +30,16 @@ UI Preview             |  Subtitle Example
 3. Add a timeline marker **(must be blue)** at the **`start`** and **`end`** of the segment to add subtitles.
 4. Click **`Generate Subtitles`** in the script UI.
 
-## Automatic Setup (Windows only)
+## Automatic Setup
+> [!NOTE] 
+> **Only works on Windows** - This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
+> It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
+
 Open PowerShell in **administrator mode**. Copy this command into Powershell + Run it by hitting the enter key.
 
     Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
-> [!NOTE] 
-> This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS (improves subtitles).
-> It also places the auto-subs.py file in the Fusion scripts folder so it can be accessed within Resolve.
 
-## Manual Setup (Mac, Linux, Windows)
+## Manual Setup
 ### Step 1: Install Python
 Download `Python 3.8-3.11` from the [python.org](https://www.python.org/downloads/release/python-31011/) website and run the installer.
 > [!WARNING] 
@@ -78,7 +86,7 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
 ## Help
 1. You can verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
 2. Video Tutorial: https://youtu.be/--4vfAM9_tI
-3. Contact me here: https://discord.gg/hskJ593gk
+3. Contact me here: https://discord.com/invite/TBFUfGWegm
 4. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is literally hell.
