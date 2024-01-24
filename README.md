@@ -41,6 +41,11 @@ Open PowerShell in **administrator mode**. Copy this command into Powershell + R
 > It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
 
 ## Manual Setup
+### Summary:
+1. Install `Python 3.8 - 3.11`
+2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + FFMPEG
+3. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
+4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
 ### Step 1: Install Python
 Download `Python 3.8-3.11` from the [python.org](https://www.python.org/downloads/release/python-31011/) website and run the installer.
 > [!WARNING] 
@@ -51,7 +56,7 @@ From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readm
     
     pip install -U openai-whisper
 
-Then choose one of the following to install FFMPEG:
+Then choose one of the following to install FFMPEG (used for audio processing):
 
     # on Ubuntu or Debian
     sudo apt update && sudo apt install ffmpeg
@@ -91,10 +96,3 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
 4. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is literally hell.
-
-## Summary of Setup
-1. Install Python `3.10` + [`OpenAI Whisper`](https://github.com/openai/whisper) (single command using PowerShell script)
-2. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (single command)
-3. Fix audio backend (single command)
-4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
-5. Navigate to `Workspace -> Scripts -> auto-subs` in the top menu of Resolve.
