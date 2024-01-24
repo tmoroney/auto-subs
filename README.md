@@ -13,7 +13,8 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [❓ Help me](#help)
+#### 4. [📜 Light Version (just custom styled subtitles - No audio transcription)](#light-version)
+#### 5. [❓ Help me](#help)
 
 <br/>
 
@@ -82,7 +83,7 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-## Light Version (standalone - no audio transcription)
+## Light Version
 - Simplified version with **no audio transcription** - no external libraries needed.
 - Generates subtitles on the timeline in your own custom style - **given an SRT file**.
 - **Skip step 1 of the installation guide** (no dependencies are needed).
