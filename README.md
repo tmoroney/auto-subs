@@ -23,7 +23,7 @@ UI Preview             |  Subtitle Example
 ![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
 ## Usage Guide
-1. Open the `Workspace` menu within Resolve's top bar, then within the `Scripts` dropdown, select `auto-subs`.
+1. Open the `Workspace` menu within the top bar of Resolve, then select `auto-subs` from the `Scripts` dropdown.
 
        Workspace -> Scripts -> auto-subs
    
