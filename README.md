@@ -42,15 +42,15 @@ UI Preview             |  Subtitle Example
 
 ## Manual Setup
 ### Summary:
-1. Install `Python 3.8 - 3.11`
+1. Install [`Python 3.8 - 3.11`](https://www.python.org/downloads/)
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + FFMPEG
 3. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
 4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
 ### Step 1: Install Python
-Download `Python 3.8-3.11` from the [python.org](https://www.python.org/downloads/release/python-31011/) website and run the installer.
+Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer.
 > [!WARNING] 
 > During installation on Windows, make sure to tick **`"Add python.exe to PATH"`** or **`"Set environment variables"`**. <br/>
-> Whisper is only compatible with Python 3.8 - 3.11.
+> Whisper is only compatible with Python versions in the range 3.8 - 3.11.
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
     
@@ -84,10 +84,11 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Light Version
-- Simplified version with **no audio transcription** - no external libraries needed.
-- Generates subtitles on the timeline in your own custom style - **given an SRT file**.
-- **Skip step 1 of the installation guide** (no dependencies are needed).
-- Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** instead of `auto-subs.py`.
+A simplified version with **no audio transcription**. No external libraries are needed. Generates subtitles on the timeline in your custom style from **a given SRT file**.
+  1. Install any version of [Python](https://www.python.org/downloads/)
+  2. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
+
+         ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Help
 1. You can verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
