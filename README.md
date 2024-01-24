@@ -11,10 +11,10 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 
 ## Table of Contents
-#### 1. [Usage Guide](#usage-guide)
-#### 2. [Automatic Setup (Windows Only - Recommended)](#automatic-setup)
-#### 3. [Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [Help me](#help)
+#### 1. [📋 Usage Guide](#usage-guide)
+#### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
+#### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
+#### 4. [❓ Help me](#help)
 
 <br/>
 
