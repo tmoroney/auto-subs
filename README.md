@@ -1,6 +1,6 @@
 # Davinci Resolve AI Subtitles
 Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
-- Generate subtitles in a **custom style**.
+- Generate subtitles in your own **custom style**.
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
 - Supported on both **Free** and **Studio** versions of Resolve.
