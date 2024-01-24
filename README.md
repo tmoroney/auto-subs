@@ -26,8 +26,8 @@ UI Preview             |  Subtitle Example
 
        Workspace -> Scripts -> auto-subs
    
-3. Add a timeline marker **(must be blue)** at the **`start`** and **`end`** of the segment to add subtitles.
-4. Click **`Generate Subtitles`** in the script UI.
+3. Add a timeline marker **(must be blue)** at the `start` and `end` of the segment to add subtitles.
+4. Click `Generate Subtitles` in the script UI.
 
 ## Automatic Setup
 
