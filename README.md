@@ -78,7 +78,7 @@ Install Stable-TS by running this command in the terminal:
     pip install -U stable-ts
 
 ### Step 4: Download the Python Script
-Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
+Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy this file to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
