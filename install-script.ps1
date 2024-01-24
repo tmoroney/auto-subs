@@ -6,8 +6,22 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManage
 $pythonInstalled = Get-Command python -ErrorAction SilentlyContinue
 
 if ($pythonInstalled) {
-    Write-Host "Python $($pythonInstalled.Version.Major) is installed."
-    $pythonVersion = $pythonInstalled.Version.Major
+    # Get the Python version
+    $commandNames = @('py', 'python', 'python3') # Possible command names
+
+    # Iterate over the command names
+    foreach ($commandName in $commandNames) {
+        # Try to get the Python version
+        $pythonVersionOutput = & $commandName --version 2>&1
+        if ($pythonVersionOutput -and $pythonVersionOutput -notmatch 'not recognized') {
+            # If the command worked, split the output to get the version number
+            $versionParts = $pythonVersionOutput.Split(' ')[1].Split('.')
+            $pythonVersion = [double]"$($versionParts[0]).$($versionParts[1])"
+            Write-Host "Python version $pythonVersion is already installed."
+            break
+        }
+    }
+
     if ($pythonVersion -lt 3.8 -or $pythonVersion -gt 3.11) {
         Write-Host "Python version is outside the range 3.8 to 3.11. Installing Python 3.11..."
         # Install Python 3.11 if the version is outside the range
@@ -55,6 +69,11 @@ $destinationFile = "$destinationFolder\auto-subs.py"
 # If the file already exists, delete it
 if (Test-Path -Path $destinationFile) {
     Remove-Item -Path $destinationFile -Force
+}
+
+# if the folder doesn't exist, create it
+if (-not (Test-Path -Path $destinationFolder)) {
+    New-Item -Path $destinationFolder -ItemType Directory
 }
 
 # Download the file and move it to the destination folder
