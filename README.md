@@ -97,8 +97,9 @@ A simplified version with **no audio transcription**. No external libraries are 
 ## Help
 1. **Auto-Subs not opening:** Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
 2. **Can't find Fusion folder:** Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
-3. Video Tutorial: https://youtu.be/--4vfAM9_tI
-4. Contact me here: https://discord.com/invite/TBFUfGWegm
-5. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
+3. Check Python version being used by Resolve: `import sys` + `print (sys.version)` in the Resolve console.
+4. Video Tutorial: https://youtu.be/--4vfAM9_tI
+5. Contact me here: https://discord.com/invite/TBFUfGWegm
+6. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is hell and I was literally working off scraps for this project.
