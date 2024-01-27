@@ -43,32 +43,35 @@ UI Preview             |  Subtitle Example
 ## Manual Setup
 ### Summary:
 1. Install [`Python 3.8 - 3.11`](https://www.python.org/downloads/)
-2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + FFMPEG
+2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + [`FFMPEG`](https://ffmpeg.org/)
 3. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
 4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
 ### Step 1: Install Python
 Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer.
 > [!WARNING] 
 > **During installation on Windows, make sure to tick `"Add python.exe to PATH"`.** <br/>
-> If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`. <br/>
-> Whisper is only compatible with Python versions in the range 3.8 - 3.11.
+> If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`.
+
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
     
     pip install -U openai-whisper
 
-Then choose one of the following to install FFMPEG (used for audio processing):
+> [!NOTE]
+> I recommend using a package manager to install FFMPEG as it is quite confusing otherwise.
 
+Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed for audio processing):
+
+    # on MacOS using Homebrew (https://brew.sh/)
+    brew install ffmpeg
+    
     # on Ubuntu or Debian
     sudo apt update && sudo apt install ffmpeg
 
     # on Arch Linux
     sudo pacman -S ffmpeg
 
-    # on MacOS using Homebrew (https://brew.sh/)
-    brew install ffmpeg
-
-    # on Windows using Chocolatey (https://chocolatey.org/)
+    # on Windows using Chocolatey (https://chocolatey.org/install)
     choco install ffmpeg
 
     # on Windows using Scoop (https://scoop.sh/)
