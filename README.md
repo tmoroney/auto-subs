@@ -49,7 +49,8 @@ UI Preview             |  Subtitle Example
 ### Step 1: Install Python
 Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer.
 > [!WARNING] 
-> During installation on Windows, make sure to tick **`"Add python.exe to PATH"`** or **`"Set environment variables"`**. <br/>
+> **During installation on Windows, make sure to tick `"Add python.exe to PATH"`.** <br/>
+> If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`. <br/>
 > Whisper is only compatible with Python versions in the range 3.8 - 3.11.
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
