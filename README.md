@@ -57,10 +57,7 @@ From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readm
     
     pip install -U openai-whisper
 
-> [!NOTE]
-> I recommend using a package manager to install FFMPEG as it is quite confusing otherwise.
-
-Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed for audio processing):
+Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed for audio processing). I recommend using a package manager to install FFMPEG as the process can be quite confusing otherwise:
 
     # on MacOS using Homebrew (https://brew.sh/)
     brew install ffmpeg
@@ -98,9 +95,10 @@ A simplified version with **no audio transcription**. No external libraries are 
          ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Help
-1. You can verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
-2. Video Tutorial: https://youtu.be/--4vfAM9_tI
-3. Contact me here: https://discord.com/invite/TBFUfGWegm
-4. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
+1. If the script isn't opening, verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
+2. If you can't find the Fusion folder on your computer, you can use this tool [Everything](https://www.voidtools.com/) to quickly search for it (Windows only).
+3. Video Tutorial: https://youtu.be/--4vfAM9_tI
+4. Contact me here: https://discord.com/invite/TBFUfGWegm
+5. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
-If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is literally hell.
+If you wish to create your own Python script for Davinci Resolve, **DON'T**. It's not worth it, the documentation is hell and I was literally working off scraps for this project.
