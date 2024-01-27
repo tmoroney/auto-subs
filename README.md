@@ -95,8 +95,8 @@ A simplified version with **no audio transcription**. No external libraries are 
          ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Help
-1. If the script isn't opening, verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
-2. If you can't find the Fusion folder on your computer, you can use this tool [Everything](https://www.voidtools.com/) to quickly search for it (Windows only).
+1. **Auto-Subs not opening:** Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
+2. **Can't find Fusion folder:** Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
 3. Video Tutorial: https://youtu.be/--4vfAM9_tI
 4. Contact me here: https://discord.com/invite/TBFUfGWegm
 5. If you encounter issues installing OpenAI Whisper, [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
