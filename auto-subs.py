@@ -1,5 +1,26 @@
+#MIT License
+#
+#Copyright (c) 2023 Tom Moroney
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
 import stable_whisper
-import sys
 import time
 import re
 
@@ -10,6 +31,10 @@ addSubsID = "AddSubs"
 transcribeID = "Transcribe"
 executeAllID = "ExecuteAll"
 browseFilesID = "BrowseButton"
+addMarkerID = "AddMarker"
+removeMarkersID = "RemoveMarkers"
+
+subtitlesInTrack = []
 
 ui = fusion.UIManager
 dispatcher = bmd.UIDispatcher(ui)
@@ -30,32 +55,36 @@ win = dispatcher.AddWindow({
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
-      ui.Label({ 'Text': "Transcribe AI Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
+      ui.Label({ 'Text': "Basic Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
+      ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
+      ui.VGap(2),
+      ui.Label({ 'Text': "Transcription Model (auto detects language)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 })}),
+      ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
+      ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True}),
+      ui.VGap(2),
+      ui.HGroup({'Weight': 0.0,},[
+         ui.Button({ 'ID': addMarkerID, 'Text': "Add In / Out Marker", 'MinimumSize': [150, 28], 'MaximumSize': [1000, 28], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': removeMarkersID, 'Text': "Reset Markers", 'MinimumSize': [150, 28], 'MaximumSize': [1000, 28], 'Font': ui.Font({'PixelSize': 13}),}),
+      ]),
+      ui.Label({ 'Text': "       [ Place marker at start + end of segment to subtitle ]", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 15 }) }),
+      ui.VGap(18),
+      ui.Label({ 'Text': "Advanced Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
+      ui.Label({ 'Text': "Colour of In / Out Markers (area to subtitle)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.ComboBox({"ID": "MarkerColor", 'MaximumSize': [2000, 30]}),
+      ui.VGap(2),
       ui.HGroup({'Weight': 0.0},[
          ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
-            ui.Label({ 'Text': "Max words per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+            ui.Label({ 'Text': "Max Words Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
             ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
          ]),
          ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 50]},[
-            ui.Label({ 'Text': "Max characters per line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+            ui.Label({ 'Text': "Max Characters Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
             ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
          ]),
       ]),
-      ui.VGap(0),
-      ui.Label({ 'Text': "Transcription Model", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 })}),
-      ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
-      ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True}),
-      ui.VGap(5),
-      ui.Label({ 'Text': "Timeline Text Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
-      ui.VGap(0),
-      ui.Label({ 'Text': "Select track to add subtitles on", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
       ui.VGap(2),
-      ui.Label({ 'Text': "Color of In/Out markers (for selecting area of timeline)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.ComboBox({"ID": "MarkerColor", 'MaximumSize': [2000, 30]}),
-      ui.VGap(15),
-      ui.Label({ 'Text': "Advanced Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 18 }) }),
-      ui.Label({'ID': 'Label', 'Text': 'Use Custom Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+      ui.Label({'ID': 'Label', 'Text': 'Use Your Own Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
       ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
 			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
@@ -68,7 +97,6 @@ win = dispatcher.AddWindow({
       ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
       ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False}),
       ui.VGap(10),
-      ui.Label({ 'Text': "# Place markers at the start and end of the area to subtitle.", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 15 }) }),
       ui.Button({ 
          'ID': executeAllID,
          'Text': "  Generate Subtitles", 
@@ -79,17 +107,19 @@ win = dispatcher.AddWindow({
          'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
       ui.VGap(2),
       ui.HGroup({'Weight': 0.0,},[
-         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe to Subitles File", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
-         ui.Button({ 'ID': addSubsID, 'Text': "Regenerate Timeline Text", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe to Subitles File", 'MinimumSize': [150, 30], 'MaximumSize': [1000, 30], 'Font': ui.Font({'PixelSize': 13}),}),
+         ui.Button({ 'ID': addSubsID, 'Text': "Reset to Original Subtitles", 'MinimumSize': [150, 30], 'MaximumSize': [1000, 30], 'Font': ui.Font({'PixelSize': 13}),}),
       ]),
       ui.VGap(35),
       ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }), 'Alignment': { 'AlignHCenter': True } }),
       ui.VGap(40)
-      ])
-   )
+   ])
+)
 
 itm = win.GetItems()
 #itm['WhisperModel'].SetCurrentText("small") # set default model to small
+projectManager = resolve.GetProjectManager()
+project = projectManager.GetCurrentProject()
 
 # Event handlers
 def OnClose(ev):
@@ -102,6 +132,12 @@ def OnBrowseFiles(ev):
                 
 # Transcribe + Generate Subtitles on Timeline
 def OnSubsGen(ev):
+   timeline = project.GetCurrentTimeline()
+   if itm['TrackSelector'].Value > timeline.GetTrackCount('video'):
+      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a valid track number ( 1 -", timeline.GetTrackCount('video'), ")")
+      itm['DialogBox'].Text = "Selected video track does not exist!"
+      return
+   
    if itm['FileLineTxt'].Text == '':
       OnTranscribe(ev)
    OnGenerate(ev)
@@ -134,9 +170,6 @@ def OnTranscribe(ev):
       chosenModel = chosenModel + ".en"
    print("Using model -> [", chosenModel, "]")
 
-   projectManager = resolve.GetProjectManager()
-   project = projectManager.GetCurrentProject()
-
    if not project:
       print("No project is loaded")
       return
@@ -155,12 +188,12 @@ def OnTranscribe(ev):
    markers = timeline.GetMarkers()
    marker1 = -1;
    marker2 = -1;
-   for timestamp, marker_info in markers.items():
+   for position, marker_info in markers.items():
       color = marker_info['color']
       if marker1 == -1 and color == markerColor:
-         marker1 = timestamp
+         marker1 = position
       elif marker2 == -1 and color == markerColor:
-         marker2 = timestamp
+         marker2 = position
          break
        
    if marker1 == -1:
@@ -183,7 +216,7 @@ def OnTranscribe(ev):
    print("Rendering Audio for Transcription...")
    itm['DialogBox'].Text = "Rendering Audio for Transcription..."
    while project.IsRenderingInProgress():
-      time.sleep(1)
+      time.sleep(3)
       progress = project.GetRenderJobStatus(pid).get("CompletionPercentage")
       print("Progress: ", progress, "%")
       itm['DialogBox'].Text = "Progress: ", progress, "%"
@@ -214,9 +247,7 @@ def OnTranscribe(ev):
 
 # Generate Text+ Subtitles on Timeline
 def OnGenerate(ev):
-   projectManager = resolve.GetProjectManager()
    resolve.OpenPage("edit")
-   project = projectManager.GetCurrentProject()
    mediaPool = project.GetMediaPool()
    folder = mediaPool.GetRootFolder()
    items = folder.GetClipList()
@@ -236,7 +267,7 @@ def OnGenerate(ev):
          return
    
    if itm['TrackSelector'].Value > timeline.GetTrackCount('video'):
-      print("Track not found - Please select a valid track")
+      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a valid track number ( 1-", timeline.GetTrackCount('video'), ")")
       itm['DialogBox'].Text = "Please select a valid track!"
       return
    
@@ -248,7 +279,7 @@ def OnGenerate(ev):
    
    # READ SRT FILE
    try:
-      with open(file_path, mode = 'r', encoding = 'utf-8') as f:
+      with open(file_path, 'r') as f:
          lines = f.readlines()
    except FileNotFoundError:
       print("No subtitles file (audio.srt) found - Please Transcribe the timeline or load your own SRT file!")
@@ -412,17 +443,51 @@ def OnGenerate(ev):
    itm['DialogBox'].Text = "Subtitles added to timeline!"
    projectManager.SaveProject()
 
+def OnAddMarker(ev):
+   timeline = project.GetCurrentTimeline()
+   if not timeline:
+      if project.GetTimelineCount() > 0:
+         timeline = project.GetTimelineByIndex(1)
+         project.SetCurrentTimeline(timeline)
+      else:
+         print("Current project has no timelines")
+         return
+      
+   markerColor = itm['MarkerColor'].CurrentText
+   currentPos = timeline.GetCurrentTimecode()
+   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+
+   # convert timecode to frames
+   hours, minutes, seconds, frames = currentPos.split(':')
+   posInFrames = int(hours) * 3600 * round(frame_rate) + int(minutes) * 60 * round(frame_rate) + int(seconds) * round(frame_rate) + int(frames)
+   posInFrames = posInFrames + timeline.GetStartFrame()
+   print("Adding", markerColor, "marker at", currentPos)
+   timeline.AddMarker(posInFrames, markerColor, "Subtitle area marker", "", 1.0)
+
+def OnRemoveMarkers(ev):
+   projectManager = resolve.GetProjectManager()
+   project = projectManager.GetCurrentProject()
+   timeline = project.GetCurrentTimeline()
+   if not timeline:
+      if project.GetTimelineCount() > 0:
+         timeline = project.GetTimelineByIndex(1)
+         project.SetCurrentTimeline(timeline)
+      else:
+         print("Current project has no timelines")
+         return
+   
+   markerColor = itm['MarkerColor'].CurrentText
+   timeline.DeleteMarkersByColor(markerColor)
+
 # Add the items to the FormatText ComboBox menu
 itm['FormatText'].AddItem("None")
-itm['FormatText'].AddItem("All Lowercase")
-itm['FormatText'].AddItem("All Uppercase")
+itm['FormatText'].AddItem("all lowercase")
+itm['FormatText'].AddItem("ALL UPPERCASE")
 
-# Add the items to the MarkerColor ComboBox menu
-itm['MarkerColor'].AddItem("Blue")
-itm['MarkerColor'].AddItem("Red")
-itm['MarkerColor'].AddItem("Green")
-itm['MarkerColor'].AddItem("Yellow")
-itm['MarkerColor'].AddItem("Pink")
+# Add colour options for In/Out Markers
+colors = ["Yellow", "Blue", "Cyan", "Green", "Red", "Pink", "Purple", "Fuchsia", "Rose", "Lavender", "Sky", "Mint", "Lemon", "Sand", "Cocoa", "Cream"]
+for color in colors:
+    itm['MarkerColor'].AddItem(color)
 
 # Add the items to the Transcription Model ComboBox menu
 itm['WhisperModel'].AddItem("Recommended: small")
@@ -437,7 +502,10 @@ win.On[addSubsID].Clicked  = OnGenerate
 win.On[transcribeID].Clicked = AudioToSRT
 win.On[executeAllID].Clicked = OnSubsGen
 win.On[browseFilesID].Clicked = OnBrowseFiles
+win.On[addMarkerID].Clicked = OnAddMarker
+win.On[removeMarkersID].Clicked = OnRemoveMarkers
 
 # Main dispatcher loop
 win.Show()
 dispatcher.RunLoop()
+win.Hide()
