@@ -4,6 +4,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
 - Supported on both **Free** and **Studio** versions of Resolve.
+- **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
 > :tv: **Video Tutorial:** [Youtube Video (slightly outdated)](https://youtu.be/--4vfAM9_tI) <br>
 > :tea: **Contact me here:** [Join my Discord](https://discord.com/invite/TBFUfGWegm)
@@ -20,7 +21,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 UI Preview             |  Subtitle Example
 :-------------------------:|:-------------------------:
-![image](https://github.com/tmoroney/auto-subs/assets/72154813/2aa582c6-fa72-4392-9619-822d2fe6592e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
+![image](https://github.com/tmoroney/auto-subs/assets/72154813/f480cbea-490e-45d6-8846-879ec376f00e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
 
 ## Usage Guide
 1. Open the `Workspace` menu within the top bar of Resolve, then select `auto-subs` from the `Scripts` dropdown.
