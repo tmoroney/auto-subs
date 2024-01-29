@@ -51,19 +51,20 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 950, 920 ],
+   'Geometry': [ 100,100, 950, 960 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
       ui.HGroup({'Weight': 1.0},[
          ui.HGap(10),
-         ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 900]},[
+         ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 940]},[
             ui.VGap(4),
             ui.Label({ 'Text': "AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
-            ui.VGap(40),
-            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.VGap(38),
+            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 25, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.VGap(50),
-            ui.Label({ 'Text': "Place a marker at the start + end of segment to subtitle.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.Label({ 'Text': "1. Add Text+ object to Media Pool to be subtitle template.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.Label({ 'Text': "2. Place a marker at the start + end of segment to subtitle.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.VGap(1),
             ui.HGroup({'Weight': 0.0,},[
                ui.Button({ 'ID': addMarkerID, 'Text': "✛ Add In / Out Marker", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
@@ -163,8 +164,8 @@ def OnBrowseFiles(ev):
 def OnSubsGen(ev):
    timeline = project.GetCurrentTimeline()
    if itm['TrackSelector'].Value > timeline.GetTrackCount('video'):
-      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a valid track number ( 1 -", timeline.GetTrackCount('video'), ")")
-      itm['DialogBox'].Text = "Selected video track does not exist!"
+      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a valid track number ( 1 - ", timeline.GetTrackCount('video'), ")")
+      itm['DialogBox'].Text = "Error: track " + str(itm['TrackSelector'].Value) + " does not exist!"
       return
    
    if itm['FileLineTxt'].Text == '':
@@ -172,14 +173,14 @@ def OnSubsGen(ev):
    OnGenerate(ev)
 
 def AudioToSRT(ev):
-   OnTranscribe(ev)
+   #OnTranscribe(ev)
    # Show the file in the Media Storage
    mediaStorage = resolve.GetMediaStorage()
    fileList = mediaStorage.GetFileList(storagePath)
    for filePath in fileList:
       if 'audio.srt' in filePath:
          mediaStorage.RevealInStorage(filePath)
-         itm['DialogBox'].Text = "Directory opened of audio.srt"
+         itm['DialogBox'].Text = "Storage folder of audio.srt opened!"
          break
 
 # Transcribe Timeline to SRT file              
@@ -294,8 +295,8 @@ def OnGenerate(ev):
          return
    
    if itm['TrackSelector'].Value > timeline.GetTrackCount('video'):
-      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a valid track number ( 1-", timeline.GetTrackCount('video'), ")")
-      itm['DialogBox'].Text = "Please select a valid track!"
+      print("Track", itm['TrackSelector'].Value ,"does not exist - please select a track number in the range 1 -", timeline.GetTrackCount('video'))
+      itm['DialogBox'].Text = "Error: track " + str(itm['TrackSelector'].Value) + " does not exist!"
       return
    
    if itm['FileLineTxt'].Text != '': # use custom subtitles file
