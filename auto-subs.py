@@ -61,7 +61,7 @@ win = dispatcher.AddWindow({
             ui.VGap(4),
             ui.Label({ 'Text': "AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
             ui.VGap(40),
-            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20, 'Italic': True, 'Stretch': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.VGap(50),
             ui.Label({ 'Text': "Place a marker at the start + end of segment to subtitle.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.VGap(1),
@@ -69,6 +69,7 @@ win = dispatcher.AddWindow({
                ui.Button({ 'ID': addMarkerID, 'Text': "✛ Add In / Out Marker", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
                ui.Button({ 'ID': removeMarkersID, 'Text': "✕ Clear Markers", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
             ]),
+            ui.VGap(1),
             ui.Button({ 
                'ID': executeAllID,
                'Text': "  Generate Subtitles", 
@@ -305,7 +306,7 @@ def OnGenerate(ev):
    
    # READ SRT FILE
    try:
-      with open(file_path, 'r') as f:
+      with open(file_path, 'r', encoding='utf-8') as f:
          lines = f.readlines()
    except FileNotFoundError:
       print("No subtitles file (audio.srt) found - Please Transcribe the timeline or load your own SRT file!")
