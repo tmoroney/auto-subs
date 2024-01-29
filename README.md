@@ -24,13 +24,13 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/88cdfba8-b3b3-4e5c-b349-1be0edf08755" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
 ## Usage Guide
-1. Open the `Workspace` menu within the top bar of Resolve, then select `auto-subs` from the `Scripts` dropdown.
+1. **Open Auto-Subs:** Click on `Workspace` in Resolve's top menu bar, then within `Scripts` select `auto-subs` from the list.
 
        Workspace -> Scripts -> auto-subs
 
-2. Add **`Text+`** to the timeline, customise to your liking, then drag it into `Media Pool` as your "template".
-3. Place your playhead at the **`start`** + **`end`** of the area to subtitle, clicking the `Add In/Out Marker` button for each of them.
-4. Click `Generate Subtitles` to transcribe the video.
+2. **Create your Template:** Add a `Text+` to the timeline, customise to your liking, then drag it into the `Media Pool`. This will be used as the template for your subtitles.
+3. **Select area to add subtitles:** Add a `Yellow` marker at the `Start` + `End` of the area to subtitle -> **`"Add In/Out Marker"`** button.
+4. **Run:** Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 ## Automatic Setup
 > [!NOTE] 
