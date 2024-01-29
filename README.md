@@ -45,9 +45,10 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 ## Manual Setup
 ### Summary:
 1. Install [`Python 3.8 - 3.11`](https://www.python.org/downloads/)
-2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + [`FFMPEG`](https://ffmpeg.org/)
-3. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
-4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
+2. Install [`OpenAI Whisper`](https://github.com/openai/whisper)
+3. Install [`FFMPEG`](https://ffmpeg.org/) (used by Whisper for audio processing)
+4. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
+5. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
 
 ### Setup Guides:
 <details>
