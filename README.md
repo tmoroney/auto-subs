@@ -48,10 +48,13 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper) + [`FFMPEG`](https://ffmpeg.org/)
 3. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
 4. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
+
+### Setup Guides:
+<details>
+<summary>Windows Setup</summary>
+       
 ### Step 1: Install Python
-Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer.
-> [!WARNING] 
-> **During installation on Windows, make sure to tick `"Add python.exe to PATH"`.** <br/>
+Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation.
 > If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`.
 
 ### Step 2: Install Whisper
@@ -60,15 +63,6 @@ From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readm
     pip install -U openai-whisper
 
 Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed for audio processing). I recommend using a package manager to install FFMPEG as the process can be quite confusing otherwise:
-
-    # on MacOS using Homebrew (https://brew.sh/)
-    brew install ffmpeg
-    
-    # on Ubuntu or Debian
-    sudo apt update && sudo apt install ffmpeg
-
-    # on Arch Linux
-    sudo pacman -S ffmpeg
 
     # on Windows using Chocolatey (https://chocolatey.org/install)
     choco install ffmpeg
@@ -86,7 +80,41 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-This directory can be found inside `C:\ProgramData\` on Windows.
+This directory can usually be found inside `C:\ProgramData\`.
+</details>
+
+<details>
+<summary>MacOS Setup</summary>
+
+### Open the terminal and run the following commands...
+1. Install [Homebrew](https://brew.sh/) package manager:
+
+       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+2. Install Python:
+
+       brew install python
+
+3. Install [FFMPEG](https://ffmpeg.org/) (used by Whisper for audio processing):
+
+       brew install ffmpeg
+
+4. Install OpenAI Whisper:
+
+       pip install -U openai-whisper
+
+5. Install Stable-TS:
+
+       pip install -U stable-ts
+
+6. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
+The directory should look like this:
+  
+       ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+
+
+</details>
+
 
 ## Light Version
 > [!WARNING]
