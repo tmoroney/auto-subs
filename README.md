@@ -19,9 +19,9 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 <br/>
 
-UI Preview             |  Subtitle Example
+Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 :-------------------------:|:-------------------------:
-![image](https://github.com/tmoroney/auto-subs/assets/72154813/f480cbea-490e-45d6-8846-879ec376f00e) |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/28553dc3-bd4f-4866-9083-1df5cd21aeaf" width="650">
+<img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/88cdfba8-b3b3-4e5c-b349-1be0edf08755" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
 ## Usage Guide
 1. Open the `Workspace` menu within the top bar of Resolve, then select `auto-subs` from the `Scripts` dropdown.
