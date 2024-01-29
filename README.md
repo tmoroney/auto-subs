@@ -54,15 +54,17 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 <summary>Windows Setup</summary>
        
 ### Step 1: Install Python
-Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation.
-> If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`.
+Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br>
+If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`.
 
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
     
     pip install -U openai-whisper
 
-Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed for audio processing). I recommend using a package manager to install FFMPEG as the process can be quite confusing otherwise:
+### Step 3: Install FFMPEG
+
+Install [FFMPEG](https://ffmpeg.org/) (for audio processing). I recommend using a package manager as it makes the install process less confusing.
 
     # on Windows using Chocolatey (https://chocolatey.org/install)
     choco install ffmpeg
@@ -70,12 +72,12 @@ Then install [FFMPEG](https://ffmpeg.org/) using your preferred method (needed f
     # on Windows using Scoop (https://scoop.sh/)
     scoop install ffmpeg
 
-### Step 3: Install Stable-TS
+### Step 4: Install Stable-TS
 Install Stable-TS by running this command in the terminal:
 
     pip install -U stable-ts
 
-### Step 4: Download the Python Script
+### Step 5: Download the Python Script
 Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy this file to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
@@ -112,6 +114,42 @@ The directory should look like this:
   
        ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
+</details>
+
+<details>
+<summary>Linux Setup</summary>
+
+### Install the following:
+1. Python
+       
+       # on Ubuntu or Debian
+       sudo apt-get install python3.11
+
+       # on Arch Linux
+       sudo pacman -S python3.11
+
+2. FFMPEG
+
+       # on Ubuntu or Debian
+       sudo apt update && sudo apt install ffmpeg
+
+       # on Arch Linux
+       sudo pacman -S ffmpeg
+
+3. OpenAI Whisper
+
+       pip install -U openai-whisper
+
+5. Stable-TS
+
+       pip install -U stable-ts
+
+6. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
+The directory should look like this:
+  
+       ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+
+      
 
 </details>
 
