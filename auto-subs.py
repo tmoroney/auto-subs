@@ -119,11 +119,11 @@ win = dispatcher.AddWindow({
          ui.VGroup({'Weight': 1.0, 'MinimumSize': [350, 600]},[
             ui.VGap(4),
             ui.Label({ 'Text': "Subtitles on Timeline:", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
-            ui.Label({ 'Text': "Click on a subtitle to jump to that position in the timeline.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15 }) }),
+            ui.Label({ 'Text': "Click on a subtitle to jump to its position in the timeline.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15 }) }),
             ui.VGap(1),
             ui.Tree({
 			      "ID": "Tree",
-			      "SortingEnabled": True,
+			      "SortingEnabled": False,
 			      "Events": {
 			      	"CurrentItemChanged": True,
 			      	"ItemActivated": True,
@@ -132,7 +132,7 @@ win = dispatcher.AddWindow({
 			      },
 		      }),     
             ui.VGap(1),
-            ui.Button({ 'ID': 'RefreshSubs', 'Text': "♺  Refresh to show latest changes", 'MinimumSize': [200, 40], 'MaximumSize': [1000, 40], 'Font': ui.Font({'PixelSize': 15}),}),
+            ui.Button({ 'ID': 'RefreshSubs', 'Text': "♺  Refresh + Show Latest Changes", 'MinimumSize': [200, 40], 'MaximumSize': [1000, 40], 'Font': ui.Font({'PixelSize': 15}),}),
             ui.VGap(1),
             ui.HGroup({'Weight': 0.0,},[
                ui.Button({ 'ID': transcribeID, 'Text': "➔  Get Subtitles File", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
