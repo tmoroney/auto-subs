@@ -85,6 +85,8 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
   
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
+This directory can be found inside `C:\ProgramData\` on Windows.
+
 ## Light Version
 > [!WARNING]
 > Possibly broken - not updated in a long time. Will fix soon.
