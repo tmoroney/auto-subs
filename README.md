@@ -28,7 +28,7 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
 
        Workspace -> Scripts -> auto-subs
    
-2. Move your playhead to the **start** and then **end** of the segment to subtitle, clicking the `Add In/Out Marker` button for each.
+2. Place your playhead at the **`start`** + **`end`**, of the area to subtitle, clicking the `Add In/Out Marker` button for each of them.
 3. Click `Generate Subtitles` to transcribe the video.
 
 ## Automatic Setup
