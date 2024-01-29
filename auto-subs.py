@@ -51,68 +51,96 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 450, 900 ],
+   'Geometry': [ 100,100, 950, 920 ],
    'WindowTitle': "Resolve Auto Subtitle Generator",
    },
    ui.VGroup({"ID": "root",},[
-      ui.Label({ 'Text': "Basic Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
-      ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
-      ui.VGap(2),
-      ui.Label({ 'Text': "Transcription Model (auto detects language)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 })}),
-      ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
-      ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True}),
-      ui.VGap(2),
-      ui.HGroup({'Weight': 0.0,},[
-         ui.Button({ 'ID': addMarkerID, 'Text': "Add In / Out Marker", 'MinimumSize': [150, 28], 'MaximumSize': [1000, 28], 'Font': ui.Font({'PixelSize': 13}),}),
-         ui.Button({ 'ID': removeMarkersID, 'Text': "Reset Markers", 'MinimumSize': [150, 28], 'MaximumSize': [1000, 28], 'Font': ui.Font({'PixelSize': 13}),}),
-      ]),
-      ui.Label({ 'Text': "       [ Place marker at start + end of segment to subtitle ]", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 15 }) }),
-      ui.VGap(18),
-      ui.Label({ 'Text': "Advanced Settings", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22 }) }),
-      ui.Label({ 'Text': "Colour of In / Out Markers (area to subtitle)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.ComboBox({"ID": "MarkerColor", 'MaximumSize': [2000, 30]}),
-      ui.VGap(2),
-      ui.HGroup({'Weight': 0.0},[
-         ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
-            ui.Label({ 'Text': "Max Words Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-            ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
+      ui.HGroup({'Weight': 1.0},[
+         ui.HGap(10),
+         ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 900]},[
+            ui.VGap(4),
+            ui.Label({ 'Text': "AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
+            ui.VGap(40),
+            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20, 'Italic': True, 'Stretch': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.VGap(50),
+            ui.Label({ 'Text': "Place a marker at the start + end of segment to subtitle.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.VGap(1),
+            ui.HGroup({'Weight': 0.0,},[
+               ui.Button({ 'ID': addMarkerID, 'Text': "✛ Add In / Out Marker", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+               ui.Button({ 'ID': removeMarkersID, 'Text': "✕ Clear Markers", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+            ]),
+            ui.Button({ 
+               'ID': executeAllID,
+               'Text': "  Generate Subtitles", 
+               'MinimumSize': [150, 40],
+               'MaximumSize': [1000, 40], 
+               'IconSize': [17, 17], 
+               'Font': ui.Font({'PixelSize': 15}),
+               'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
+            ui.VGap(10),
+            ui.Label({ 'Text': "Basic Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+            ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+            ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
+            ui.VGap(1),
+            ui.Label({ 'Text': "Transcription Model (auto detects language)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
+            ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.VGap(10),
+            ui.Label({ 'Text': "Advanced Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+            ui.Label({'ID': 'Label', 'Text': 'Use Your Own Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+            ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
+		      	ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
+		      	ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
+		      ]),
+            ui.VGap(1),
+            ui.HGroup({'Weight': 0.0},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
+                  ui.Label({ 'Text': "Max Words Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+                  ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
+               ]),
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 50]},[
+                  ui.Label({ 'Text': "Max Characters Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+                  ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
+               ]),
+            ]),
+            ui.VGap(1),
+            ui.Label({ 'Text': "Colour of In / Out Markers (area to subtitle)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+            ui.ComboBox({"ID": "MarkerColor", 'MaximumSize': [2000, 30]}),
+            ui.VGap(1),
+            ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+            ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g. bombing = b***ing', 'Weight': 0, 'MinimumSize': [200, 30]}),
+            ui.VGap(1),
+            ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
+            ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
+            ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.VGap(20),
          ]),
-         ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 50]},[
-            ui.Label({ 'Text': "Max Characters Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-            ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
+         ui.HGap(20),
+         ui.VGroup({'Weight': 1.0, 'MinimumSize': [350, 600]},[
+            ui.VGap(4),
+            ui.Label({ 'Text': "Subtitles on Timeline:", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+            ui.Label({ 'Text': "Click on a subtitle to jump to that position in the timeline.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15 }) }),
+            ui.VGap(1),
+            ui.Tree({
+			      "ID": "Tree",
+			      "SortingEnabled": True,
+			      "Events": {
+			      	"CurrentItemChanged": True,
+			      	"ItemActivated": True,
+			      	"ItemClicked": True,
+			      	"ItemDoubleClicked": True,
+			      },
+		      }),     
+            ui.VGap(1),
+            ui.Button({ 'ID': 'RefreshSubs', 'Text': "♺  Refresh to show latest changes", 'MinimumSize': [200, 40], 'MaximumSize': [1000, 40], 'Font': ui.Font({'PixelSize': 15}),}),
+            ui.VGap(1),
+            ui.HGroup({'Weight': 0.0,},[
+               ui.Button({ 'ID': transcribeID, 'Text': "➔  Get Subtitles File", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+               ui.Button({ 'ID': addSubsID, 'Text': "☇ Revert all changes", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+            ]),
+            ui.VGap(1),
          ]),
       ]),
-      ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Use Your Own Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
-			ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
-			ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
-		]),
-      ui.VGap(2),
-      ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g. bombing = b***ing', 'Weight': 0, 'MinimumSize': [200, 30]}),
-      ui.VGap(2),
-      ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
-      ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
-      ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False}),
-      ui.VGap(10),
-      ui.Button({ 
-         'ID': executeAllID,
-         'Text': "  Generate Subtitles", 
-         'MinimumSize': [150, 35],
-         'MaximumSize': [1000, 35], 
-         'IconSize': [17, 17], 
-         'Font': ui.Font({'PixelSize': 15}),
-         'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
-      ui.VGap(2),
-      ui.HGroup({'Weight': 0.0,},[
-         ui.Button({ 'ID': transcribeID, 'Text': "Transcribe to Subitles File", 'MinimumSize': [150, 30], 'MaximumSize': [1000, 30], 'Font': ui.Font({'PixelSize': 13}),}),
-         ui.Button({ 'ID': addSubsID, 'Text': "Reset to Original Subtitles", 'MinimumSize': [150, 30], 'MaximumSize': [1000, 30], 'Font': ui.Font({'PixelSize': 13}),}),
-      ]),
-      ui.VGap(35),
-      ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }), 'Alignment': { 'AlignHCenter': True } }),
-      ui.VGap(40)
    ])
 )
 
@@ -241,8 +269,6 @@ def OnTranscribe(ev):
    print("Subtitles saved to -> [", file_path, "]")
    itm['DialogBox'].Text = "Transcription Complete!"
    resolve.OpenPage("edit")
-
-
 
 
 # Generate Text+ Subtitles on Timeline
@@ -442,7 +468,9 @@ def OnGenerate(ev):
    print("Subtitles added to timeline!")
    itm['DialogBox'].Text = "Subtitles added to timeline!"
    projectManager.SaveProject()
+   OnPopulateSubs(ev)
 
+# Add In / Out Markers to Timeline
 def OnAddMarker(ev):
    timeline = project.GetCurrentTimeline()
    if not timeline:
@@ -464,7 +492,9 @@ def OnAddMarker(ev):
    print("Adding", markerColor, "marker at", currentPos)
    timeline.AddMarker(posInFrames, markerColor, "Subtitle area marker", "", 1.0)
 
+# Remove all In / Out Markers from Timeline (only markers of selected colour)
 def OnRemoveMarkers(ev):
+   itm["Tree"].Clear()
    projectManager = resolve.GetProjectManager()
    project = projectManager.GetCurrentProject()
    timeline = project.GetCurrentTimeline()
@@ -478,6 +508,61 @@ def OnRemoveMarkers(ev):
    
    markerColor = itm['MarkerColor'].CurrentText
    timeline.DeleteMarkersByColor(markerColor)
+
+def frame_to_timecode(frame_number, frame_rate):
+    total_seconds = frame_number / frame_rate
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    frames = int((seconds % 1) * frame_rate)
+
+    timecode = "{:02d}:{:02d}:{:02d}:{:02d}".format(int(hours), int(minutes), int(seconds), frames)
+    return timecode
+
+# Populate Subtitles in Table View
+def OnPopulateSubs(ev):
+   timeline = project.GetCurrentTimeline()
+   timelineTrack = itm['TrackSelector'].Value # set video track to retrieve subtitles from
+   clipList = timeline.GetItemListInTrack('video', timelineTrack) # get list of Text+ in timeline
+
+   # Return if no Text+ clips found
+   if len(clipList) == 0:
+      itm["Tree"].Clear()
+      itRow = itm["Tree"].NewItem()
+      itRow.Text[0] = "No subtitles"
+      itRow.Text[1] = "Select a video track that contains Text+ subtitles."
+      itm["Tree"].AddTopLevelItem(itRow)
+      return
+
+   # Retrieve subtitles from the specified timeline track
+   itm["Tree"].Clear()
+   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+   for count, clip in enumerate(clipList):
+      comp = clip.GetFusionCompByIndex(1) # get fusion comp from Text+
+      if (comp is not None):
+         toollist = comp.GetToolList().values() # get list of tools in comp
+         for tool in toollist:
+            if tool.GetAttrs()['TOOLS_Name'] == 'Template' : # find Template tool
+               comp.SetActiveTool(tool)
+               itRow = itm["Tree"].NewItem()
+               startFrame = clip.GetStart() + timeline.GetStartFrame()
+               itRow.Text[0] = frame_to_timecode(startFrame, frame_rate)
+               itRow.Text[1] = tool.GetInput('StyledText')
+               itm["Tree"].AddTopLevelItem(itRow)
+   
+   #itm["Tree"].GetAutoScroll()
+   #itm["Tree"].SetWordWrap()
+   #itm["Tree"].SortByColumn(0, 0)
+
+
+def OnSubtitleSelect(ev):
+   timeline = project.GetCurrentTimeline()
+   timecode = ev["item"].Text[0].split(':')
+   hours = int(timecode[0])
+   minutes = int(timecode[1])
+   seconds = int(timecode[2])
+   frames = int(timecode[3])
+   frames = frames + 1 # add 1 frame to ensure that playhead is on top of the subtitle
+   timeline.SetCurrentTimecode("{:02d}:{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds, frames))
 
 # Add the items to the FormatText ComboBox menu
 itm['FormatText'].AddItem("None")
@@ -496,6 +581,24 @@ itm['WhisperModel'].AddItem("base")
 itm['WhisperModel'].AddItem("small")
 itm['WhisperModel'].AddItem("medium - slowest / highest accuracy")
 
+# Add a header row
+hdr = itm["Tree"].NewItem()
+hdr.Text[0] = "Timecode"
+hdr.Text[1] = "Subtitle Content"
+itm["Tree"].SetHeaderItem(hdr)
+
+# Number of columns in the Tree list
+itm["Tree"].ColumnCount = 2
+
+# Resize the Columns
+itm["Tree"].ColumnWidth[0] = 110
+itm["Tree"].ColumnWidth[1] = 220
+
+itRow = itm["Tree"].NewItem()
+itRow.Text[0] = "No subtitles"
+itRow.Text[1] = "Select a video track that contains Text+ subtitles."
+itm["Tree"].AddTopLevelItem(itRow)
+
 # assign event handlers
 win.On[winID].Close     = OnClose
 win.On[addSubsID].Clicked  = OnGenerate
@@ -504,6 +607,9 @@ win.On[executeAllID].Clicked = OnSubsGen
 win.On[browseFilesID].Clicked = OnBrowseFiles
 win.On[addMarkerID].Clicked = OnAddMarker
 win.On[removeMarkersID].Clicked = OnRemoveMarkers
+win.On.Tree.ItemClicked = OnSubtitleSelect
+win.On.RefreshSubs.Clicked = OnPopulateSubs
+
 
 # Main dispatcher loop
 win.Show()
