@@ -19,9 +19,9 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 <br/>
 
-Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
+Transcription Settings + Subtitle Navigator             |  Subtitle Example
 :-------------------------:|:-------------------------:
-<img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/88cdfba8-b3b3-4e5c-b349-1be0edf08755" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
+<img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/fc144ba6-7f63-42a7-8a02-381009f32bae" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
 ## Usage Guide
 1. **Open Auto-Subs:** Click on `Workspace` in Resolve's top menu bar, then within `Scripts` select `auto-subs` from the list.
@@ -29,7 +29,7 @@ Basic to Advanced Options + Subtitle Navigator             |  Subtitle Example
        Workspace -> Scripts -> auto-subs
 
 2. **Create your Template:** Add a `Text+` to the timeline, customise to your liking, then drag it into the `Media Pool`. This will be used as the template for your subtitles.
-3. **Select area to add subtitles:** Add a `Yellow` marker at the `Start` + `End` of the area to subtitle -> **`"Add In/Out Marker"`** button.
+3. **Select area to add subtitles:** Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` and `O` keys on your keyboard.
 4. **Run:** Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 ## Automatic Setup
