@@ -23,6 +23,7 @@
 import stable_whisper
 import time
 import re
+from datetime import datetime, timedelta
 
 # some element IDs
 winID = "com.blackmagicdesign.resolve.AutoSubsGen"   # should be unique for single instancing
@@ -31,8 +32,6 @@ addSubsID = "AddSubs"
 transcribeID = "Transcribe"
 executeAllID = "ExecuteAll"
 browseFilesID = "BrowseButton"
-addMarkerID = "AddMarker"
-removeMarkersID = "RemoveMarkers"
 
 subtitlesInTrack = []
 
@@ -51,26 +50,21 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 950, 960 ],
-   'WindowTitle': "Resolve Auto Subtitle Generator",
+   'Geometry': [ 100,100, 910, 960 ],
+   'WindowTitle': "Resolve AI Subtitles",
    },
    ui.VGroup({"ID": "root",},[
       ui.HGroup({'Weight': 1.0},[
          ui.HGap(10),
          ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 940]},[
             ui.VGap(4),
-            ui.Label({ 'Text': "AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
-            ui.VGap(38),
-            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 25, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.Label({ 'Text': "♆ AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
             ui.VGap(50),
-            ui.Label({ 'Text': "1. Add Text+ object to Media Pool to be subtitle template.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
-            ui.Label({ 'Text': "2. Place a marker at the start + end of segment to subtitle.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
-            ui.VGap(1),
-            ui.HGroup({'Weight': 0.0,},[
-               ui.Button({ 'ID': addMarkerID, 'Text': "✛ Add In / Out Marker", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
-               ui.Button({ 'ID': removeMarkersID, 'Text': "✕ Clear Markers", 'MinimumSize': [150, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
-            ]),
-            ui.VGap(1),
+            ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 24, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.VGap(58),
+            ui.Label({ 'Text': "1. Add Text+ subtitle template to Media Pool.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.Label({ 'Text': "2. Mark In + Out of area to subtitle with \"I\" + \"O\" keys.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
+            ui.VGap(2),
             ui.Button({ 
                'ID': executeAllID,
                'Text': "  Generate Subtitles", 
@@ -79,16 +73,23 @@ win = dispatcher.AddWindow({
                'IconSize': [17, 17], 
                'Font': ui.Font({'PixelSize': 15}),
                'Icon': ui.Icon({'File': 'AllData:../Support/Developer/Workflow Integrations/Examples/SamplePlugin/img/logo.png'}),}),
-            ui.VGap(10),
+            ui.VGap(1),
+            ui.HGroup({'Weight': 0.0,},[
+               ui.Button({ 'ID': transcribeID, 'Text': "➔  Get Subtitles File", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+               ui.Button({ 'ID': addSubsID, 'Text': "☇ Revert all changes", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
+            ]),
+            ui.VGap(15),
             ui.Label({ 'Text': "Basic Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+            ui.VGap(1),
             ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
             ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
             ui.VGap(1),
             ui.Label({ 'Text': "Transcription Model (auto detects language)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
             ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
             ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True, 'Font': ui.Font({ 'PixelSize': 14 })}),
-            ui.VGap(10),
+            ui.VGap(25),
             ui.Label({ 'Text': "Advanced Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
+            ui.VGap(1),
             ui.Label({'ID': 'Label', 'Text': 'Use Your Own Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
             ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
 		      	ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
@@ -96,18 +97,15 @@ win = dispatcher.AddWindow({
 		      ]),
             ui.VGap(1),
             ui.HGroup({'Weight': 0.0},[
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 50]},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 55]},[
                   ui.Label({ 'Text': "Max Words Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
                   ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
                ]),
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 50]},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 55]},[
                   ui.Label({ 'Text': "Max Characters Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
                   ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
                ]),
             ]),
-            ui.VGap(1),
-            ui.Label({ 'Text': "Colour of In / Out Markers (area to subtitle)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
-            ui.ComboBox({"ID": "MarkerColor", 'MaximumSize': [2000, 30]}),
             ui.VGap(1),
             ui.Label({'ID': 'Label', 'Text': 'Censored Words (comma separated list)', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
             ui.LineEdit({'ID': 'CensorList', 'Text': '', 'PlaceholderText': 'e.g. bombing = b***ing', 'Weight': 0, 'MinimumSize': [200, 30]}),
@@ -136,12 +134,8 @@ win = dispatcher.AddWindow({
             ui.VGap(1),
             ui.Button({ 'ID': 'RefreshSubs', 'Text': "♺  Refresh + Show Latest Changes", 'MinimumSize': [200, 40], 'MaximumSize': [1000, 40], 'Font': ui.Font({'PixelSize': 15}),}),
             ui.VGap(1),
-            ui.HGroup({'Weight': 0.0,},[
-               ui.Button({ 'ID': transcribeID, 'Text': "➔  Get Subtitles File", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
-               ui.Button({ 'ID': addSubsID, 'Text': "☇ Revert all changes", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
-            ]),
-            ui.VGap(1),
          ]),
+         ui.HGap(2),
       ]),
    ])
 )
@@ -180,8 +174,26 @@ def AudioToSRT(ev):
    for filePath in fileList:
       if 'audio.srt' in filePath:
          mediaStorage.RevealInStorage(filePath)
-         itm['DialogBox'].Text = "Storage folder of audio.srt opened!"
+         itm['DialogBox'].Text = "Storage folder of \"audio.srt\" opened!"
          break
+
+def adjust_subtitle_timestamps(srt_content, time_delta):
+    # Define a regular expression pattern to match the timestamps in the SRT file
+    timestamp_pattern = re.compile(r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})')
+
+    # Function to adjust the timestamps by adding the specified time_delta
+    def adjust_timestamp(match):
+        start_time = datetime.strptime(match.group(1), '%H:%M:%S,%f')
+        end_time = datetime.strptime(match.group(2), '%H:%M:%S,%f')
+        adjusted_start_time = start_time + time_delta
+        adjusted_end_time = end_time + time_delta
+
+        return f"{adjusted_start_time.strftime('%H:%M:%S,%f')[:-3]} --> {adjusted_end_time.strftime('%H:%M:%S,%f')[:-3]}"
+
+    # Use the re.sub function to replace timestamps with adjusted timestamps
+    adjusted_srt_content = re.sub(timestamp_pattern, adjust_timestamp, srt_content)
+
+    return adjusted_srt_content
 
 # Transcribe Timeline to SRT file              
 def OnTranscribe(ev):
@@ -203,6 +215,8 @@ def OnTranscribe(ev):
    if not project:
       print("No project is loaded")
       return
+   
+   resolve.OpenPage("edit")
 
    timeline = project.GetCurrentTimeline()
    if not timeline:
@@ -212,36 +226,18 @@ def OnTranscribe(ev):
       else:
          print("Current project has no timelines")
          return
-
-   # Find markers
-   markerColor = itm['MarkerColor'].CurrentText
-   markers = timeline.GetMarkers()
-   marker1 = -1;
-   marker2 = -1;
-   for position, marker_info in markers.items():
-      color = marker_info['color']
-      if marker1 == -1 and color == markerColor:
-         marker1 = position
-      elif marker2 == -1 and color == markerColor:
-         marker2 = position
-         break
-       
-   if marker1 == -1:
-      print("Start and end markers not found!")
-      itm['DialogBox'].Text = "Please add markers to timeline!"
-      return
-   elif marker2 == -1:
-      print("End marker not found!")
-      itm['DialogBox'].Text = "Please add end marker to timeline!"
-      return
    
-   timelineStartFrame = marker1 + timeline.GetStartFrame()
-   timelineEndFrame = marker2 + timeline.GetStartFrame()
+   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
 
    # RENDER AUDIO FOR TRANSCRIPTION
    project.LoadRenderPreset('H.265 Master')
-   project.SetRenderSettings({"SelectAllFrames": 0, "MarkIn": timelineStartFrame, "MarkOut": timelineEndFrame, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3", "ExportVideo": False, "ExportAudio": True})
+   project.SetRenderSettings({"SelectAllFrames": 0, "CustomName": "audio", "TargetDir": storagePath, "AudioCodec": "mp3", "ExportVideo": False, "ExportAudio": True})
    pid = project.AddRenderJob()
+
+   renderSettings = project.GetRenderJobList()[-1]
+   markIn = renderSettings['MarkIn']
+   print("MarkIn:", markIn)
+
    project.StartRendering(pid)
    print("Rendering Audio for Transcription...")
    itm['DialogBox'].Text = "Rendering Audio for Transcription..."
@@ -250,10 +246,12 @@ def OnTranscribe(ev):
       progress = project.GetRenderJobStatus(pid).get("CompletionPercentage")
       print("Progress: ", progress, "%")
       itm['DialogBox'].Text = "Progress: ", progress, "%"
+
    print("Audio Rendering Complete!")
    format = project.GetCurrentRenderFormatAndCodec() # get audio format
    filename = "audio." + format['format'] # get audio filename
    location = storagePath + filename # get audio filepath
+
    print("Transcribing Audio...")
    itm['DialogBox'].Text = "Transcribing Audio..."
    model = stable_whisper.load_model(chosenModel) # load whisper transcription model
@@ -269,6 +267,24 @@ def OnTranscribe(ev):
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
    print("Transcription Complete!")
    print("Subtitles saved to -> [", file_path, "]")
+   
+   # Move subtitles forward to start at markIn
+   try:
+      with open(file_path, 'r', encoding='utf-8') as f:
+         original_content = f.read()
+   except FileNotFoundError:
+      print("There was an error transcribing the timeline!")
+      itm['DialogBox'].Text = "Error: No subtitles were returned!"
+      return
+   
+   # Adjust the timestamps in the SRT file to start at MarkIn (in seconds)
+   time_delta = timedelta(seconds=markIn / frame_rate)
+   adjusted_content = adjust_subtitle_timestamps(original_content, time_delta)
+
+   # Write the adjusted content to the SRT file
+   with open(file_path, 'w', encoding='utf-8') as f:
+      f.write(adjusted_content)
+
    itm['DialogBox'].Text = "Transcription Complete!"
    resolve.OpenPage("edit")
 
@@ -314,28 +330,6 @@ def OnGenerate(ev):
       itm['DialogBox'].Text = "No subtitles file found!"
       return
    
-   # Find markers
-   markerColor = itm['MarkerColor'].CurrentText
-   markers = timeline.GetMarkers()
-   marker1 = -1;
-   marker2 = -1;
-   for timestamp, marker_info in markers.items():
-      color = marker_info['color']
-      if marker1 == -1 and color == markerColor:
-         marker1 = timestamp
-      elif marker2 == -1 and color == markerColor:
-         marker2 = timestamp
-         break
-       
-   if marker1 == -1:
-      print("Start and end markers not found!")
-      itm['DialogBox'].Text = "Please add markers to timeline!"
-      return
-   elif marker2 == -1:
-      print("End marker not found!")
-      itm['DialogBox'].Text = "Please add end marker to timeline!"
-      return
-   
    # Find sound to block censored words (if available)
    subs = []
    checkCensor = False
@@ -354,18 +348,18 @@ def OnGenerate(ev):
       itm['DialogBox'].Text = "No subtitles found in SRT file!"
       return
    
-   timelineStartFrame = marker1 + timeline.GetStartFrame()
-   timelineEndFrame = marker2 + timeline.GetStartFrame()
+   timelineStartFrame = timeline.GetStartFrame()
+   timelineEndFrame = timeline.GetEndFrame()
+   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
 
    # Create clip object for each line in the SRT file
    for i in range(0, len(lines), 4):
-      frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
       start_time, end_time = lines[i+1].strip().split(" --> ")
       text = lines[i+2].strip() # get  subtitle text
       # Set start position of subtitle (in frames)
       hours, minutes, seconds_milliseconds = start_time.split(':')
       seconds, milliseconds = seconds_milliseconds.split(',')
-      posInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+      posInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
       timelinePos = timelineStartFrame + posInFrames
       #print("->", i//4+1, ":", text, " @ ", timelinePos, " frames")
       # stop subtitles if outside of marker range
@@ -374,7 +368,7 @@ def OnGenerate(ev):
       # Set duration of subtitle (in frames)
       hours, minutes, seconds_milliseconds = end_time.split(':')
       seconds, milliseconds = seconds_milliseconds.split(',')
-      endPosInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * round(frame_rate)))
+      endPosInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
       duration = (timelineStartFrame + endPosInFrames) - timelinePos
       #print("-> Duration: ", duration, " frames")
       if itm['FormatText'].CurrentIndex == 1: # make each line lowercase
@@ -472,45 +466,6 @@ def OnGenerate(ev):
    projectManager.SaveProject()
    OnPopulateSubs(ev)
 
-# Add In / Out Markers to Timeline
-def OnAddMarker(ev):
-   timeline = project.GetCurrentTimeline()
-   if not timeline:
-      if project.GetTimelineCount() > 0:
-         timeline = project.GetTimelineByIndex(1)
-         project.SetCurrentTimeline(timeline)
-      else:
-         print("Current project has no timelines")
-         return
-      
-   markerColor = itm['MarkerColor'].CurrentText
-   currentPos = timeline.GetCurrentTimecode()
-   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
-
-   # convert timecode to frames
-   hours, minutes, seconds, frames = currentPos.split(':')
-   posInFrames = int(hours) * 3600 * round(frame_rate) + int(minutes) * 60 * round(frame_rate) + int(seconds) * round(frame_rate) + int(frames)
-   posInFrames = posInFrames + timeline.GetStartFrame()
-   print("Adding", markerColor, "marker at", currentPos)
-   timeline.AddMarker(posInFrames, markerColor, "Subtitle area marker", "", 1.0)
-
-# Remove all In / Out Markers from Timeline (only markers of selected colour)
-def OnRemoveMarkers(ev):
-   itm["Tree"].Clear()
-   projectManager = resolve.GetProjectManager()
-   project = projectManager.GetCurrentProject()
-   timeline = project.GetCurrentTimeline()
-   if not timeline:
-      if project.GetTimelineCount() > 0:
-         timeline = project.GetTimelineByIndex(1)
-         project.SetCurrentTimeline(timeline)
-      else:
-         print("Current project has no timelines")
-         return
-   
-   markerColor = itm['MarkerColor'].CurrentText
-   timeline.DeleteMarkersByColor(markerColor)
-
 def frame_to_timecode(frame_number, frame_rate):
     total_seconds = frame_number / frame_rate
     hours, remainder = divmod(total_seconds, 3600)
@@ -571,11 +526,6 @@ itm['FormatText'].AddItem("None")
 itm['FormatText'].AddItem("all lowercase")
 itm['FormatText'].AddItem("ALL UPPERCASE")
 
-# Add colour options for In/Out Markers
-colors = ["Yellow", "Blue", "Cyan", "Green", "Red", "Pink", "Purple", "Fuchsia", "Rose", "Lavender", "Sky", "Mint", "Lemon", "Sand", "Cocoa", "Cream"]
-for color in colors:
-    itm['MarkerColor'].AddItem(color)
-
 # Add the items to the Transcription Model ComboBox menu
 itm['WhisperModel'].AddItem("Recommended: small")
 itm['WhisperModel'].AddItem("tiny - fastest / lowest accuracy")
@@ -607,8 +557,6 @@ win.On[addSubsID].Clicked  = OnGenerate
 win.On[transcribeID].Clicked = AudioToSRT
 win.On[executeAllID].Clicked = OnSubsGen
 win.On[browseFilesID].Clicked = OnBrowseFiles
-win.On[addMarkerID].Clicked = OnAddMarker
-win.On[removeMarkersID].Clicked = OnRemoveMarkers
 win.On.Tree.ItemClicked = OnSubtitleSelect
 win.On.RefreshSubs.Clicked = OnPopulateSubs
 
