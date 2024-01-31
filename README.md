@@ -6,7 +6,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - Supported on both **Free** and **Studio** versions of Resolve.
 - **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
-> :tv: **Video Tutorial:** [Youtube Video (slightly outdated)](https://youtu.be/--4vfAM9_tI) <br>
+> :tv: **Video Tutorial:** [Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) <br>
 > :tea: **Contact me here:** [Join my Discord](https://discord.com/invite/TBFUfGWegm)
 
 
