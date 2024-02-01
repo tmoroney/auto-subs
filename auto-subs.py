@@ -24,6 +24,13 @@ import stable_whisper
 import time
 import re
 from datetime import datetime, timedelta
+import os
+import platform
+
+# check for macOS, then configure ffmpeg path + homebrew path (ensures that script works on M1 Macs)
+if platform.system() == 'Darwin':
+   os.environ['FFMPEG'] = '/opt/homebrew/bin/ffmpeg'
+   os.environ['PATH'] = '/opt/homebrew/bin:' + os.environ['PATH']
 
 # some element IDs
 winID = "com.blackmagicdesign.resolve.AutoSubsGen"   # should be unique for single instancing
@@ -33,8 +40,7 @@ transcribeID = "Transcribe"
 executeAllID = "ExecuteAll"
 browseFilesID = "BrowseButton"
 
-subtitlesInTrack = []
-
+# create the UI
 ui = fusion.UIManager
 dispatcher = bmd.UIDispatcher(ui)
 storagePath = fusion.MapPath(r"Scripts:/Utility/")
@@ -95,15 +101,19 @@ win = dispatcher.AddWindow({
 		      	ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 		      	ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
 		      ]),
-            ui.VGap(1),
+            ui.VGap(3),
             ui.HGroup({'Weight': 0.0},[
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [213, 55]},[
-                  ui.Label({ 'Text': "Max Words Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
-                  ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 5}),
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+                  ui.Label({ 'Text': "Max Words", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+                  ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 6}),
                ]),
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [212, 55]},[
-                  ui.Label({ 'Text': "Max Characters Per Line", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
-                  ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 18}),
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+                  ui.Label({ 'Text': "Max Characters", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+                  ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 20}),
+               ]),
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+                  ui.Label({ 'Text': "Split by Gap (seconds)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
+                  ui.DoubleSpinBox({"ID": "SplitByGap", "Min": 0.1, "Value": 0.4}),
                ]),
             ]),
             ui.VGap(1),
@@ -112,6 +122,7 @@ win = dispatcher.AddWindow({
             ui.VGap(1),
             ui.Label({ 'Text': "Format Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
             ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
+            ui.VGap(1),
             ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False, 'Font': ui.Font({ 'PixelSize': 14 })}),
             ui.VGap(20),
          ]),
@@ -259,7 +270,7 @@ def OnTranscribe(ev):
    (
       result
       .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-      .split_by_gap(.5)
+      .split_by_gap(itm['SplitByGap'].Value)
       .merge_by_gap(.10, max_words=3)
       .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
    )
@@ -349,7 +360,6 @@ def OnGenerate(ev):
       return
    
    timelineStartFrame = timeline.GetStartFrame()
-   timelineEndFrame = timeline.GetEndFrame()
    frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
 
    # Create clip object for each line in the SRT file
@@ -362,9 +372,7 @@ def OnGenerate(ev):
       posInFrames = int(round((int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(milliseconds) / 1000) * frame_rate))
       timelinePos = timelineStartFrame + posInFrames
       #print("->", i//4+1, ":", text, " @ ", timelinePos, " frames")
-      # stop subtitles if outside of marker range
-      if timelinePos > timelineEndFrame:
-         break
+      
       # Set duration of subtitle (in frames)
       hours, minutes, seconds_milliseconds = end_time.split(':')
       seconds, milliseconds = seconds_milliseconds.split(',')
@@ -426,10 +434,11 @@ def OnGenerate(ev):
    itm['DialogBox'].Text = "Adding template subtitles..."
    timelineTrack = itm['TrackSelector'].Value # set video track to add subtitles
 
+   # Add template text to timeline (text not set yet)
    for i in range(len(subs)):
       timelinePos, duration, text = subs[i]
-      if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200: # if gap between subs is less than 10 frames
-         duration = (subs[i+1][0] - subs[i][0]) - 1 # set duration to next start frame -1 frame
+      if i < len(subs)-1 and subs[i+1][0] - (timelinePos + duration) < 200:   # if gap between subs is less than 10 frames
+         duration = (subs[i+1][0] - subs[i][0]) - 1                           # then set current subtitle to end at start of next subtitle - 1 frame
       newClip = {
          "mediaPoolItem" : templateText,
          "startFrame" : 0,
@@ -437,15 +446,16 @@ def OnGenerate(ev):
          "trackIndex" : timelineTrack,
          "recordFrame" : timelinePos
       }
-      mediaPool.AppendToTimeline( [newClip] ) # add template Text+ to timeline (text not set yet)
+      mediaPool.AppendToTimeline( [newClip] ) # add text+ to timeline
    
+   # Modify text content of Text+ clips
    print("Modifying subtitle text content...")
    itm['DialogBox'].Text = "Updating text content..."
    clipList = timeline.GetItemListInTrack('video', timelineTrack) # get list of Text+ in timeline
    #print("-> Found", len(clipList), "clips on the timeline")
    i = 0
    for count, clip in enumerate(clipList):
-      if clip.GetStart() >= timelineStartFrame and clip.GetStart() < timelineEndFrame:
+      if clip.GetStart() >= subs[0][0]: # check that this Text+ clip is within range of the subtitles being added
          clip.SetClipColor('Orange')
          text = subs[i][2]
          comp = clip.GetFusionCompByIndex(1) # get fusion comp from Text+
@@ -459,12 +469,12 @@ def OnGenerate(ev):
          if count == len(clipList)-1 or i == len(subs)-1:
             print("Updated text content for", i+1, "subtitles")
             break
-         i += 1
+         i += 1 # move to text of next subtitle
 
    print("Subtitles added to timeline!")
    itm['DialogBox'].Text = "Subtitles added to timeline!"
    projectManager.SaveProject()
-   OnPopulateSubs(ev)
+   OnPopulateSubs(ev) # populate subtitles in table view
 
 def frame_to_timecode(frame_number, frame_rate):
     total_seconds = frame_number / frame_rate
@@ -552,14 +562,14 @@ itRow.Text[1] = "Select a video track that contains Text+ subtitles."
 itm["Tree"].AddTopLevelItem(itRow)
 
 # assign event handlers
-win.On[winID].Close     = OnClose
-win.On[addSubsID].Clicked  = OnGenerate
-win.On[transcribeID].Clicked = AudioToSRT
-win.On[executeAllID].Clicked = OnSubsGen
-win.On[browseFilesID].Clicked = OnBrowseFiles
-win.On.Tree.ItemClicked = OnSubtitleSelect
-win.On.RefreshSubs.Clicked = OnPopulateSubs
-
+win.On[winID].Close     = OnClose               # close window
+win.On[addSubsID].Clicked  = OnGenerate         # generate Text+ subtitles on timeline (no transcription)
+win.On[transcribeID].Clicked = AudioToSRT       # get SRT file (old: transcribe audio to SRT file)
+win.On[executeAllID].Clicked = OnSubsGen        # transcribe + generate subtitles
+win.On[browseFilesID].Clicked = OnBrowseFiles   # browse for custom subtitles file
+win.On.Tree.ItemClicked = OnSubtitleSelect      # jump to subtitle position on timeline
+win.On.RefreshSubs.Clicked = OnPopulateSubs     # refresh subtitles
+# Note: there appears to be multiple ways to define event handlers
 
 # Main dispatcher loop
 win.Show()
