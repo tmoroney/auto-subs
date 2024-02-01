@@ -14,7 +14,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [📜 Light Version (Easy setup - requires an SRT file)](#light-version)
+#### 4. [📜 Light Version (requires an SRT file)](#light-version)
 #### 5. [❓ FAQ](#faq)
 #### 6. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
 
