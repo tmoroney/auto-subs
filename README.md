@@ -181,15 +181,18 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
 - Contact me here: https://discord.com/invite/TBFUfGWegm
 
 ## FAQ
-### Auto-Subs not opening
+### 1. Auto-Subs not opening
 Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
-### Can't find Fusion folder
+### 2. Can't find Fusion folder
 Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
-### MacOS Error
-`<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>` ✔️ Solution: Run this command in the terminal `/Applications/Python\ 3.11/Install\ Certificates.command` (replace the Python directory with wherever Python is installed on your computer).
-### Check Python version being used by Resolve
+### 3. MacOS Error
+    <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>
+**Solution:** Run this command in the terminal (replace the Python directory with wherever Python is installed on your computer).
+
+    /Applications/Python\ 3.11/Install\ Certificates.command
+### 4. Check Python version being used by Resolve
 `import sys` + `print (sys.version)` in the Resolve console.
-### Issues during Whisper setup
-[this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
+### 5. Issues during Whisper setup
+[This video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 <br>
