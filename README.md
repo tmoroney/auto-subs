@@ -9,14 +9,15 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 > :tv: **Video Tutorial:** [Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) <br>
 > :tea: **Contact me here:** [Join my Discord](https://discord.com/invite/TBFUfGWegm)
 
+If you would like a custom Resolve script made for you, I am open to enquiries.
+
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [📜 Light Version (requires an SRT file)](#light-version)
-#### 5. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
-#### 6. [❓ FAQ](#faq)
+#### 5. [❓ FAQ](#faq)
 
 <br/>
 
@@ -25,13 +26,19 @@ Transcription Settings + Subtitle Navigator             |  Subtitle Example
 <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/fc144ba6-7f63-42a7-8a02-381009f32bae" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
 ## Usage Guide
-1. **Open Auto-Subs:** Click on `Workspace` in Resolve's top menu bar, then within `Scripts` select `auto-subs` from the list.
+### Step 1: Open Auto-Subs
+Click on `Workspace` in Resolve's top menu bar, then within `Scripts` select `auto-subs` from the list.
 
-       Workspace -> Scripts -> auto-subs
+    Workspace -> Scripts -> auto-subs
 
-2. **Create your Template:** Add a `Text+` to the timeline, customise to your liking, then drag it into the `Media Pool`. This will be used as the template for your subtitles.
-3. **Select area to add subtitles:** Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` and `O` keys on your keyboard.
-4. **Run:** Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
+### Step 2: Create your Template
+Add a `Text+` to the timeline, customise it to your liking, then drag it into the `Media Pool`. This will be used as the template for your subtitles.
+
+### Step 3: Select an area to add subtitles
+Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` and `O` keys on your keyboard.
+
+### Step 4: Transcribe
+Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 ## Automatic Setup
 > [!NOTE] 
@@ -176,10 +183,6 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
 
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
-## Custom Script Enquiries
-- If you would like a custom Resolve script made for you, I am open to enquiries.
-- Contact me here: https://discord.com/invite/TBFUfGWegm
-
 ## FAQ
 ### 1. Auto-Subs not opening
 Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
@@ -195,4 +198,5 @@ Use [Everything](https://www.voidtools.com/) to quickly search your computer for
 ### 5. Issues during Whisper setup
 [This video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
+<br>
 <br>
