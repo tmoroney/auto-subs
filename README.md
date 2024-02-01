@@ -15,8 +15,8 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [📜 Light Version (requires an SRT file)](#light-version)
-#### 5. [❓ FAQ](#faq)
-#### 6. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
+#### 5. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
+#### 6. [❓ FAQ](#faq)
 
 <br/>
 
@@ -181,10 +181,15 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
 - Contact me here: https://discord.com/invite/TBFUfGWegm
 
 ## FAQ
-1. **Auto-Subs not opening:** Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
-2. **Can't find Fusion folder:** Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
-3. **MacOS Error:** `<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>` ✔️ Solution: Run this command in the terminal `/Applications/Python\ 3.11/Install\ Certificates.command` (replace the Python directory with wherever Python is installed on your computer).
-4. **Check Python version being used by Resolve:** `import sys` + `print (sys.version)` in the Resolve console.
-5. **Issues during Whisper setup:** [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
+### Auto-Subs not opening
+Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
+### Can't find Fusion folder
+Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
+### MacOS Error
+`<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>` ✔️ Solution: Run this command in the terminal `/Applications/Python\ 3.11/Install\ Certificates.command` (replace the Python directory with wherever Python is installed on your computer).
+### Check Python version being used by Resolve
+`import sys` + `print (sys.version)` in the Resolve console.
+### Issues during Whisper setup
+[this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 <br>
