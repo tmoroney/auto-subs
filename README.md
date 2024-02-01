@@ -16,7 +16,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [📜 Light Version (just custom styled subtitles - No audio transcription)](#light-version)
 #### 5. [❓ FAQ](#faq)
-#### 6. [✍🏻 Custom Scripting Enquiries](#custom-scripting-enquiries)
+#### 6. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
 
 <br/>
 
@@ -166,12 +166,14 @@ A simplified version with **no audio transcription**. No external libraries are 
 
          ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
+## Custom Script Enquiries
+- If you would like a custom Resolve script made for you, I am open to enquiries.
+- Contact me here: https://discord.com/invite/TBFUfGWegm
+
 ## FAQ
 1. **Auto-Subs not opening:** Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
 2. **Can't find Fusion folder:** Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
 3. **Check Python version being used by Resolve:** `import sys` + `print (sys.version)` in the Resolve console.
 4. **Issues during Whisper setup:** [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
-## Custom Scripting Enquiries
-- If you would like a custom Resolve script made for you, I am open to enquiries.
-- Contact me here: https://discord.com/invite/TBFUfGWegm
+<br>
