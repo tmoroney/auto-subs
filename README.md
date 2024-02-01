@@ -98,20 +98,28 @@ This directory can usually be found inside `C:\ProgramData\`.
 2. Install Python:
 
        brew install python
+   > ⚠️ **Possible Error:** `<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>` <br>
+   > ✔️ **Solution:** Run this command in the terminal `/Applications/Python\ 3.11/Install\ Certificates.command` (replace the Python directory with wherever Python is installed on your computer).
 
-3. Install [FFMPEG](https://ffmpeg.org/) (used by Whisper for audio processing):
+4. Install [FFMPEG](https://ffmpeg.org/) (used by Whisper for audio processing):
 
        brew install ffmpeg
 
-4. Install OpenAI Whisper:
+5. Install OpenAI Whisper:
 
        pip install -U openai-whisper
+   
+       # if previous command does not work
+       pip3 install -U openai-whisper
 
-5. Install Stable-TS:
+7. Install Stable-TS:
 
        pip install -U stable-ts
+   
+       # if previous command does not work
+       pip3 install -U stable-ts
 
-6. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
+9. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
 The directory should look like this:
   
        ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
@@ -173,7 +181,8 @@ A simplified version with **no audio transcription**. No external libraries are 
 ## FAQ
 1. **Auto-Subs not opening:** Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
 2. **Can't find Fusion folder:** Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
-3. **Check Python version being used by Resolve:** `import sys` + `print (sys.version)` in the Resolve console.
-4. **Issues during Whisper setup:** [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
+3. **MacOS Error:** `<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)>` ✔️ Solution: Run this command in the terminal `/Applications/Python\ 3.11/Install\ Certificates.command` (replace the Python directory with wherever Python is installed on your computer).
+4. **Check Python version being used by Resolve:** `import sys` + `print (sys.version)` in the Resolve console.
+5. **Issues during Whisper setup:** [this video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
 <br>
