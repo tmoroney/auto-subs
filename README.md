@@ -35,7 +35,7 @@ Transcription Settings + Subtitle Navigator             |  Subtitle Example
 
 ## Automatic Setup
 > [!NOTE] 
-> **Automatic setup only works on Windows** - This will run a PowerShell script which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
+> **Automatic setup only works on Windows** - This will run a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
 > It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
 1. Open PowerShell in **administrator mode**.
 2. Copy this command into Powershell + Run it by hitting the enter key.
