@@ -165,11 +165,9 @@ The directory should look like this:
 
 
 ## Light Version
-> [!WARNING]
-> Possibly broken - not updated in a long time. Will fix soon.
-
-A simplified version with **no audio transcription**. No external libraries are needed. Generates subtitles on the timeline in your custom style from **a given SRT file**.
-  1. Install any version of [Python](https://www.python.org/downloads/) (tick `"Add python.exe to PATH"` during install)
+Reads subtitles from a `.srt` file and creates themed subtitles on the timeline.
+> A simplified version with **audio transcription removed**. This means less setup, but a subtitles (SRT) file is required as input. Use this if you already have a way of transcribing video (such as Davinci Resolve Studio's built-in subtitles feature, or CapCut subtitles) and you just want subtitles in a custom theme.
+  1. Install any version of [Python](https://www.python.org/downloads/) (tick `"Add python.exe to PATH"` during installation)
   2. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
 
          ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
