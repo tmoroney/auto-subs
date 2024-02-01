@@ -287,7 +287,8 @@ def OnTranscribe(ev):
       print("There was an error transcribing the timeline!")
       itm['DialogBox'].Text = "Error: No subtitles were returned!"
       return
-   
+
+   markIn = markIn - timeline.GetStartFrame()
    # Adjust the timestamps in the SRT file to start at MarkIn (in seconds)
    time_delta = timedelta(seconds=markIn / frame_rate)
    adjusted_content = adjust_subtitle_timestamps(original_content, time_delta)
@@ -492,7 +493,7 @@ def OnPopulateSubs(ev):
    clipList = timeline.GetItemListInTrack('video', timelineTrack) # get list of Text+ in timeline
 
    # Return if no Text+ clips found
-   if len(clipList) == 0:
+   if clipList is None or len(clipList) == 0:
       itm["Tree"].Clear()
       itRow = itm["Tree"].NewItem()
       itRow.Text[0] = "No subtitles"
