@@ -14,7 +14,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [📜 Light Version (just custom styled subtitles - No audio transcription)](#light-version)
+#### 4. [📜 Light Version (Easy setup - requires an SRT file)](#light-version)
 #### 5. [❓ FAQ](#faq)
 #### 6. [✍🏻 Custom Script Enquiries](#custom-script-enquiries)
 
@@ -165,12 +165,16 @@ The directory should look like this:
 
 
 ## Light Version
-Reads subtitles from a `.srt` file and creates themed subtitles on the timeline.
-> A simplified version with **audio transcription removed**. This means less setup, but a subtitles (SRT) file is required as input. Use this if you already have a way of transcribing video (such as Davinci Resolve Studio's built-in subtitles feature, or CapCut subtitles) and you just want subtitles in a custom theme.
-  1. Install any version of [Python](https://www.python.org/downloads/) (tick `"Add python.exe to PATH"` during installation)
-  2. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
+> [!NOTE]
+> **Audio transcription has been removed on this version**. This means less setup, but a subtitles (SRT) file is required as input. Use this if you already have a way of transcribing video (such as Davinci Resolve Studio's built-in subtitles feature, or CapCut subtitles) and you just want subtitles with a custom theme.
 
-         ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+#### Creates themed subtitles from an SRT file.
+### Step 1
+Install any version of [Python](https://www.python.org/downloads/) (tick `"Add python.exe to PATH"` during installation)
+### Step 2
+Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
+
+    ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 ## Custom Script Enquiries
 - If you would like a custom Resolve script made for you, I am open to enquiries.
