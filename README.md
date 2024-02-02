@@ -18,6 +18,7 @@ If you would like a custom Resolve script made for you, I am open to enquiries.
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [📜 Light Version (requires an SRT file)](#light-version)
 #### 5. [❓ FAQ](#faq)
+#### 6. [🔭 Future / Planned Features](#future-features)
 
 <br/>
 
@@ -198,10 +199,11 @@ Use [Everything](https://www.voidtools.com/) to quickly search your computer for
 ### 5. Issues during Whisper setup
 [This video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
-### 6. Are any future features planned?
-- Speaker Diarization (different coloured subtitles for different people speaking)
-- Auto-translation (generate subtitles in a different language to the one being spoken)
-- ChatGPT Integration
+## Future Features
+1. "Improve Timestamps" button to refine subtitle timing.
+2. Speaker Diarization (different coloured subtitles for different people speaking).
+3. Auto-translation (generate subtitles in a different language to the one being spoken).
+4. ChatGPT Integration
 
 <br>
 <br>
