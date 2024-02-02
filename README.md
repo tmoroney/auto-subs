@@ -198,5 +198,10 @@ Use [Everything](https://www.voidtools.com/) to quickly search your computer for
 ### 5. Issues during Whisper setup
 [This video](https://youtu.be/ABFqbY_rmEk) may help you (Only the first 6 minutes are necessary).
 
+### 6. Are any future features planned?
+- Speaker Diarization (different coloured subtitles for different people speaking)
+- Auto-translation (generate subtitles in a different language to the one being spoken)
+- ChatGPT Integration
+
 <br>
 <br>
