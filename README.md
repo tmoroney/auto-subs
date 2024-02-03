@@ -26,7 +26,10 @@ Transcription Settings + Subtitle Navigator             |  Subtitle Example
 :-------------------------:|:-------------------------:
 <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/fc144ba6-7f63-42a7-8a02-381009f32bae" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
-![auto subs (6)](https://github.com/tmoroney/auto-subs/assets/72154813/b38d36b0-2406-41f1-b1e6-a0981636295d)
+<br/>
+
+![auto subs (6)-modified](https://github.com/tmoroney/auto-subs/assets/72154813/67cafbbd-d3e3-4984-8ba3-800df76e0a54)
+
 
 ## Usage Guide
 ### Step 1: Open Auto-Subs
