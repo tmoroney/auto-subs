@@ -172,9 +172,10 @@ The directory should look like this:
 </details>
 
 ## Contact and Support
-If you have any issues, get in touch on the support [Discord server](https://discord.com/invite/TBFUfGWegm). Thanks to everyone who has supported this project ❤️. <br/>
-Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a).
-<br/><br/>
+- If you have any issues, get in touch on my [Discord server](https://discord.com/invite/TBFUfGWegm) for support.
+- Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a).
+- Thanks to everyone who has supported this project ❤️
+
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
 
