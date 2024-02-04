@@ -6,19 +6,16 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - Supported on both **Free** and **Studio** versions of Resolve.
 - **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
-> :tv: **Video Tutorial:** [Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) <br>
-> :tea: **Contact me here:** [Join my Discord](https://discord.com/invite/TBFUfGWegm)
-
-If you would like a custom Resolve script made for you, I am open to enquiries.
-
+> [!TIP]
+> **Video tutorial of how to install and use the script: [:tv: Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a)**
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
 #### 4. [📜 Light Version (requires an SRT file)](#light-version)
-#### 5. [❓ FAQ](#faq)
-#### 6. [🔭 Future / Planned Features](#future-features)
+#### 5. [☕ Contact/Support](#contact-and-support)
+#### 6. [❓ FAQ](#faq)
 
 <br/>
 
@@ -186,6 +183,10 @@ Install any version of [Python](https://www.python.org/downloads/) (tick `"Add p
 Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
 
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+
+## Contact and Support
+Thank you to everyone who has supported this project ❤️. If you have any issues, contact me on the [support Discord server](https://discord.com/invite/TBFUfGWegm). Also, check out the video tutorial [here](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a). <br/><br/>
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
 ## FAQ
 ### 1. Auto-Subs not opening
