@@ -7,7 +7,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
 > [!TIP]
-> **How to install and use the script: [:tv: Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a)**
+> **How to install and use the script: [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) :tv:**
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
