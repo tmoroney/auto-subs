@@ -7,14 +7,14 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
 > [!TIP]
-> **Video tutorial of how to install and use the script: [:tv: Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a)**
+> **How to install and use the script: [:tv: Youtube Video (NEW)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a)**
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [📜 Light Version (requires an SRT file)](#light-version)
-#### 5. [☕ Contact/Support](#contact-and-support)
+#### 4. [☕ Contact/Support](#contact-and-support)
+#### 5. [📜 Light Version (requires an SRT file)](#light-version)
 #### 6. [❓ FAQ](#faq)
 
 <br/>
@@ -171,6 +171,12 @@ The directory should look like this:
 
 </details>
 
+## Contact and Support
+If you have any issues, get in touch on the support [Discord server](https://discord.com/invite/TBFUfGWegm). Thanks to everyone who has supported this project ❤️. <br/>
+Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a).
+<br/><br/>
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
+
 
 ## Light Version
 > [!NOTE]
@@ -183,10 +189,6 @@ Install any version of [Python](https://www.python.org/downloads/) (tick `"Add p
 Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
 
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
-
-## Contact and Support
-Thank you to everyone who has supported this project ❤️. If you have any issues, contact me on the [support Discord server](https://discord.com/invite/TBFUfGWegm). Also, check out the video tutorial [here](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a). <br/><br/>
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
 ## FAQ
 ### 1. Auto-Subs not opening
