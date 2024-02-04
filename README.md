@@ -171,14 +171,6 @@ The directory should look like this:
 
 </details>
 
-## Contact and Support
-- If you have any issues, get in touch on my [Discord server](https://discord.com/invite/TBFUfGWegm) for support.
-- Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a).
-- Thanks to everyone who has supported this project ❤️
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
-
-
 ## Light Version
 > [!NOTE]
 > **Audio transcription has been removed on this version**. This means less setup, but a subtitles (SRT) file is required as input. Use this if you already have a way of transcribing video (such as Davinci Resolve Studio's built-in subtitles feature, or CapCut subtitles) and you just want subtitles with a custom theme.
@@ -190,6 +182,14 @@ Install any version of [Python](https://www.python.org/downloads/) (tick `"Add p
 Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in the `Utility` folder of the Fusion Scripts folder.
 
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+
+
+## Contact and Support
+- Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) 📺
+- Thanks to everyone who has supported this project ❤️
+- If you have any issues, get in touch on my [Discord server](https://discord.com/invite/TBFUfGWegm) for support 📲
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
 ## FAQ
 ### 1. Auto-Subs not opening
