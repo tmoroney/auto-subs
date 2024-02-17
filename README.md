@@ -7,8 +7,8 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
 
 > [!TIP]
-> **Setup and Usage Guides: [Video Tutorial (English)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) or
-> [Spanish Tutorial](https://youtu.be/zcS7H6hSbcE?si=viPoQDD57T_UGIyc) :tv:**
+> **Setup and Usage Guides: [Video Tutorial (English 🇬🇧)](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) or
+> [Spanish Tutorial 🇪🇸](https://youtu.be/zcS7H6hSbcE?si=viPoQDD57T_UGIyc) :tv:**
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
