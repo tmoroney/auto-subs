@@ -8,6 +8,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 > [!TIP]
 > **How to install and use the script: [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) :tv:**
+> Spanish Tutorial: [Usage Guide](https://youtu.be/zcS7H6hSbcE?si=viPoQDD57T_UGIyc)
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
