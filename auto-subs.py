@@ -19,6 +19,9 @@
 #LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
+#
+# Support development of this script by buying me a coffee: https://www.buymeacoffee.com/tmoroney
+#
 
 import stable_whisper
 import time
@@ -238,7 +241,7 @@ def OnTranscribe(ev):
          print("Current project has no timelines")
          return
    
-   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+   frame_rate = int(timeline.GetSetting("timelineFrameRate")) # get timeline framerate (sometimes returned as string so must cast to int)
 
    # RENDER AUDIO FOR TRANSCRIPTION
    project.LoadRenderPreset('H.265 Master')
@@ -361,7 +364,7 @@ def OnGenerate(ev):
       return
    
    timelineStartFrame = timeline.GetStartFrame()
-   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+   frame_rate = int(timeline.GetSetting("timelineFrameRate")) # get timeline framerate
 
    # Create clip object for each line in the SRT file
    for i in range(0, len(lines), 4):
@@ -503,7 +506,7 @@ def OnPopulateSubs(ev):
 
    # Retrieve subtitles from the specified timeline track
    itm["Tree"].Clear()
-   frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
+   frame_rate = int(timeline.GetSetting("timelineFrameRate")) # get timeline framerate
    for count, clip in enumerate(clipList):
       comp = clip.GetFusionCompByIndex(1) # get fusion comp from Text+
       if (comp is not None):
