@@ -46,7 +46,20 @@ browseFilesID = "BrowseButton"
 # create the UI
 ui = fusion.UIManager
 dispatcher = bmd.UIDispatcher(ui)
-storagePath = fusion.MapPath(r"Scripts:/Utility/")
+
+# get the storage path for the settings file and other files
+settingsName = "settings.txt"
+if platform.system() == 'Darwin':
+   # MacOS
+   storagePath = os.path.expandvars("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/")
+elif platform.system() == 'Linux':
+   # Linux
+   storagePath = os.path.expandvars("$HOME/.local/share/DaVinciResolve/Fusion/Scripts/Utility/")
+elif platform.system() == 'Windows':
+   # Windows
+   storagePath = os.path.expandvars("%APPDATA%\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\")
+else:
+   storagePath = fusion.MapPath(r"Scripts:/Utility/")
 
 # check for existing instance
 win = ui.FindWindow(winID)
@@ -161,6 +174,7 @@ project = projectManager.GetCurrentProject()
 
 # Event handlers
 def OnClose(ev):
+   saveSettings()
    dispatcher.ExitLoop()
 
 def OnBrowseFiles(ev):
@@ -535,6 +549,52 @@ def OnSubtitleSelect(ev):
    frames = frames + 1 # add 1 frame to ensure that playhead is on top of the subtitle
    timeline.SetCurrentTimecode("{:02d}:{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds, frames))
 
+# Save settings to file
+def saveSettings():
+   # create text file to store settings
+   with open(storagePath + settingsName, 'w') as file:
+      # Write settings to the file
+      file.write('track=' + str(itm['TrackSelector'].Value) + '\n')
+      file.write('model=' + str(itm['WhisperModel'].CurrentIndex) + '\n')
+      file.write('english=' + str(itm['EnglishOnly'].Checked) + '\n')
+      file.write('maxWords=' + str(itm['MaxWords'].Value) + '\n')
+      file.write('maxChars=' + str(itm['MaxChars'].Value) + '\n')
+      file.write('splitByGap=' + str(itm['SplitByGap'].Value) + '\n')
+      file.write('censorList=' + str(itm['CensorList'].Text) + '\n')
+      file.write('formatText=' + str(itm['FormatText'].CurrentIndex) + '\n')
+      file.write('removePunc=' + str(itm['RemovePunc'].Checked) + '\n')
+
+# Load settings from file
+def loadSettings():
+   if not os.path.exists(storagePath + settingsName):
+      return
+
+   # read settings from the text file
+   with open(storagePath + settingsName, 'r') as file:
+      settings = file.readlines()
+
+   # parse the settings
+   track = int(settings[0].split('=')[1].strip())
+   model = int(settings[1].split('=')[1].strip())
+   english_only = settings[2].split('=')[1].strip() == 'True'
+   max_words = int(settings[3].split('=')[1].strip())
+   max_chars = int(settings[4].split('=')[1].strip())
+   split_by_gap = float(settings[5].split('=')[1].strip())
+   censor_list = settings[6].split('=')[1].strip()
+   format_text = int(settings[7].split('=')[1].strip())
+   remove_punc = settings[8].split('=')[1].strip() == 'True'
+
+   # use the settings as needed
+   itm['TrackSelector'].Value = track
+   itm['WhisperModel'].CurrentIndex = model
+   itm['EnglishOnly'].Checked = english_only
+   itm['MaxWords'].Value = max_words
+   itm['MaxChars'].Value = max_chars
+   itm['SplitByGap'].Value = split_by_gap
+   itm['CensorList'].Text = censor_list
+   itm['FormatText'].CurrentIndex = format_text
+   itm['RemovePunc'].Checked = remove_punc
+
 # Add the items to the FormatText ComboBox menu
 itm['FormatText'].AddItem("None")
 itm['FormatText'].AddItem("all lowercase")
@@ -574,6 +634,9 @@ win.On[browseFilesID].Clicked = OnBrowseFiles   # browse for custom subtitles fi
 win.On.Tree.ItemClicked = OnSubtitleSelect      # jump to subtitle position on timeline
 win.On.RefreshSubs.Clicked = OnPopulateSubs     # refresh subtitles
 # Note: there appears to be multiple ways to define event handlers
+
+# Load Settings from file
+loadSettings();
 
 # Main dispatcher loop
 win.Show()
