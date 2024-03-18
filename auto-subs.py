@@ -72,18 +72,18 @@ if win:
 # define the window UI layout
 win = dispatcher.AddWindow({
    'ID': winID,
-   'Geometry': [ 100,100, 910, 960 ],
+   'Geometry': [ 100,100, 910, 980 ],
    'WindowTitle': "Resolve AI Subtitles",
    },
    ui.VGroup({"ID": "root",},[
       ui.HGroup({'Weight': 1.0},[
          ui.HGap(10),
-         ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 940]},[
+         ui.VGroup({'Weight': 0.0, 'MinimumSize': [400, 960]},[
             ui.VGap(4),
             ui.Label({ 'Text': "♆ AutoSubs", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 22, 'Bold': True}) }),
-            ui.VGap(50),
+            ui.VGap(35),
             ui.Label({ 'ID': 'DialogBox', 'Text': "Waiting for Task", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 24, 'Italic': True }), 'Alignment': { 'AlignHCenter': True } }),
-            ui.VGap(58),
+            ui.VGap(40),
             ui.Label({ 'Text': "1. Add Text+ subtitle template to Media Pool.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.Label({ 'Text': "2. Mark In + Out of area to subtitle with \"I\" + \"O\" keys.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15, 'Bold': True }), 'Alignment': { 'AlignHCenter': True } }),
             ui.VGap(2),
@@ -100,34 +100,38 @@ win = dispatcher.AddWindow({
                ui.Button({ 'ID': transcribeID, 'Text': "➔  Get Subtitles File", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
                ui.Button({ 'ID': addSubsID, 'Text': "☇ Revert all changes", 'MinimumSize': [120, 35], 'MaximumSize': [1000, 35], 'Font': ui.Font({'PixelSize': 14}),}),
             ]),
-            ui.VGap(15),
+            ui.VGap(12),
             ui.Label({ 'Text': "Basic Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
             ui.VGap(1),
             ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
-            ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2}),
+            ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2, 'MaximumSize': [2000, 40]}),
             ui.VGap(1),
-            ui.Label({ 'Text': "Transcription Model (auto detects language)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
-            ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 30]}),
-            ui.CheckBox({"ID": "EnglishOnly", "Text": "English Only Mode (more accurate)", "Checked": True, 'Font': ui.Font({ 'PixelSize': 14 })}),
-            ui.VGap(25),
+            ui.Label({ 'Text': "Transcription Model", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 55]}),
+            ui.VGap(3),
+            ui.Label({ 'Text': "Output Mode  (spoken language is auto detected)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.ComboBox({"ID": "SubsOutput", 'MaximumSize': [2000, 55]}),
+            ui.VGap(1),
+            ui.CheckBox({"ID": "RefineSubs", "Text": "Refine Timestamps - may improve timing (slower)", "Checked": False, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.VGap(15),
             ui.Label({ 'Text': "Advanced Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
             ui.VGap(1),
             ui.Label({'ID': 'Label', 'Text': 'Use Your Own Subtitles File ( .srt )', 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
-            ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 30]},[
+            ui.HGroup({'Weight': 0.0, 'MinimumSize': [200, 25]},[
 		      	ui.LineEdit({'ID': 'FileLineTxt', 'Text': '', 'PlaceholderText': 'Please Enter a filepath', 'Weight': 0.9}),
 		      	ui.Button({'ID': 'BrowseButton', 'Text': 'Browse', 'Weight': 0.1}),
 		      ]),
             ui.VGap(3),
             ui.HGroup({'Weight': 0.0},[
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 48]},[
                   ui.Label({ 'Text': "Max Words", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
                   ui.SpinBox({"ID": "MaxWords", "Min": 1, "Value": 6}),
                ]),
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 48]},[
                   ui.Label({ 'Text': "Max Characters", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
                   ui.SpinBox({"ID": "MaxChars", "Min": 1, "Value": 20}),
                ]),
-               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 52]},[
+               ui.VGroup({'Weight': 0.0, 'MinimumSize': [140, 48]},[
                   ui.Label({ 'Text': "Split by Gap (seconds)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 13 }) }),
                   ui.DoubleSpinBox({"ID": "SplitByGap", "Min": 0.1, "Value": 0.4}),
                ]),
@@ -140,10 +144,10 @@ win = dispatcher.AddWindow({
             ui.ComboBox({"ID": "FormatText", 'MaximumSize': [2000, 30]}),
             ui.VGap(1),
             ui.CheckBox({"ID": "RemovePunc", "Text": "Remove commas , and full stops .", "Checked": False, 'Font': ui.Font({ 'PixelSize': 14 })}),
-            ui.VGap(20),
+            ui.VGap(10),
          ]),
          ui.HGap(20),
-         ui.VGroup({'Weight': 1.0, 'MinimumSize': [350, 600]},[
+         ui.VGroup({'Weight': 1.0},[
             ui.VGap(4),
             ui.Label({ 'Text': "Subtitles on Timeline:", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 20 }) }),
             ui.Label({ 'Text': "Click on a subtitle to jump to its position in the timeline.", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 15 }) }),
@@ -162,7 +166,6 @@ win = dispatcher.AddWindow({
             ui.Button({ 'ID': 'RefreshSubs', 'Text': "♺  Refresh + Show Latest Changes", 'MinimumSize': [200, 40], 'MaximumSize': [1000, 40], 'Font': ui.Font({'PixelSize': 15}),}),
             ui.VGap(1),
          ]),
-         ui.HGap(2),
       ]),
    ])
 )
@@ -236,8 +239,9 @@ def OnTranscribe(ev):
    elif itm['WhisperModel'].CurrentIndex == 4:
       chosenModel = "medium"
    
-   if itm['EnglishOnly'].Checked == True: # use english only model
+   if itm['SubsOutput'].CurrentIndex == 1: # use english only model
       chosenModel = chosenModel + ".en"
+
    print("Using model -> [", chosenModel, "]")
 
    if not project:
@@ -283,14 +287,31 @@ def OnTranscribe(ev):
    print("Transcribing Audio...")
    itm['DialogBox'].Text = "Transcribing Audio..."
    model = stable_whisper.load_model(chosenModel) # load whisper transcription model
-   result = model.transcribe(location, fp16=False, regroup=False) # transcribe audio file
-   (
-      result
-      .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-      .split_by_gap(itm['SplitByGap'].Value)
-      .merge_by_gap(.10, max_words=3)
-      .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
-   )
+
+   # TRANSCRIBE AUDIO TO SRT FILE
+   if itm['SubsOutput'].CurrentIndex == 3:  # translate to english
+      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True, task = 'translate')
+      (
+         result
+         .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+         .split_by_gap(itm['SplitByGap'].Value)
+         .merge_by_gap(.10, max_words=3)
+         .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
+      )
+   else: # subtitles in original language
+      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True) # transcribe audio file
+      (
+         result
+         .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+         .split_by_gap(itm['SplitByGap'].Value)
+         .merge_by_gap(.10, max_words=3)
+         .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
+      )
+   
+   if itm['RefineSubs'].Checked == True:
+      model.refine(location, result) # refine transcription to improve timing
+
+   # Save transcription to SRT file   
    file_path = storagePath + 'audio.srt'
    result.to_srt_vtt(file_path, word_level=False) # save to SRT file
    print("Transcription Complete!")
@@ -308,6 +329,7 @@ def OnTranscribe(ev):
    markIn = markIn - timeline.GetStartFrame()
    # Adjust the timestamps in the SRT file to start at MarkIn (in seconds)
    time_delta = timedelta(seconds=markIn / frame_rate)
+   print("Adjusting timestamps by", time_delta)
    adjusted_content = adjust_subtitle_timestamps(original_content, time_delta)
 
    # Write the adjusted content to the SRT file
@@ -556,7 +578,7 @@ def saveSettings():
       # Write settings to the file
       file.write('track=' + str(itm['TrackSelector'].Value) + '\n')
       file.write('model=' + str(itm['WhisperModel'].CurrentIndex) + '\n')
-      file.write('english=' + str(itm['EnglishOnly'].Checked) + '\n')
+      file.write('outputMode=' + str(itm['SubsOutput'].CurrentIndex) + '\n')
       file.write('maxWords=' + str(itm['MaxWords'].Value) + '\n')
       file.write('maxChars=' + str(itm['MaxChars'].Value) + '\n')
       file.write('splitByGap=' + str(itm['SplitByGap'].Value) + '\n')
@@ -576,7 +598,7 @@ def loadSettings():
    # parse the settings
    track = int(settings[0].split('=')[1].strip())
    model = int(settings[1].split('=')[1].strip())
-   english_only = settings[2].split('=')[1].strip() == 'True'
+   output_mode = int(settings[2].split('=')[1].strip())
    max_words = int(settings[3].split('=')[1].strip())
    max_chars = int(settings[4].split('=')[1].strip())
    split_by_gap = float(settings[5].split('=')[1].strip())
@@ -587,7 +609,7 @@ def loadSettings():
    # use the settings as needed
    itm['TrackSelector'].Value = track
    itm['WhisperModel'].CurrentIndex = model
-   itm['EnglishOnly'].Checked = english_only
+   itm['SubsOutput'].CurrentIndex = output_mode
    itm['MaxWords'].Value = max_words
    itm['MaxChars'].Value = max_chars
    itm['SplitByGap'].Value = split_by_gap
@@ -601,11 +623,16 @@ itm['FormatText'].AddItem("all lowercase")
 itm['FormatText'].AddItem("ALL UPPERCASE")
 
 # Add the items to the Transcription Model ComboBox menu
-itm['WhisperModel'].AddItem("Recommended: small")
-itm['WhisperModel'].AddItem("tiny - fastest / lowest accuracy")
-itm['WhisperModel'].AddItem("base")
-itm['WhisperModel'].AddItem("small")
-itm['WhisperModel'].AddItem("medium - slowest / highest accuracy")
+itm['WhisperModel'].AddItem("Recommended: Small")
+itm['WhisperModel'].AddItem("Tiny - fastest / lowest accuracy")
+itm['WhisperModel'].AddItem("Base")
+itm['WhisperModel'].AddItem("Small")
+itm['WhisperModel'].AddItem("Medium - slowest / highest accuracy")
+
+# Add the items to the Subtitles Output ComboBox menu
+itm['SubsOutput'].AddItem("English Only  ➞  Increase accuracy for English language")
+itm['SubsOutput'].AddItem("Any Language  ➞  Subtitles in original language")
+itm['SubsOutput'].AddItem("Translate to English  ➞  Any language to English")
 
 # Add a header row
 hdr = itm["Tree"].NewItem()
