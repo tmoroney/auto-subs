@@ -4,7 +4,8 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
 - Supported on both **Free** and **Studio** versions of Resolve.
-- **NEW!! -** Navigate through subtitles using the built-in viewer + jump to position on the timeline.
+- Jump to positions on the timeline using the Subtitle Navigator.
+- **NEW!! - Translate from any language to English.**
 
 > [!TIP]
 > **Setup and Usage Guides: [AutoSubs Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) or
@@ -25,7 +26,7 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 Transcription Settings + Subtitle Navigator             |  Subtitle Example
 :-------------------------:|:-------------------------:
-<img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/fc144ba6-7f63-42a7-8a02-381009f32bae" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
+<img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/074f8207-5e05-4011-b87b-780857da701f" width="1400">  |  <img alt="Subtitle Example" src="https://github.com/tmoroney/auto-subs/assets/72154813/a2b06385-672b-400d-9c14-ba0a4def1625" width="650">
 
 ![auto subs (6)-modified](https://github.com/tmoroney/auto-subs/assets/72154813/67cafbbd-d3e3-4984-8ba3-800df76e0a54)
 
