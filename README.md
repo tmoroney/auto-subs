@@ -48,16 +48,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 ## Automatic Setup
 > [!WARNING]
-> Many people seem to be having issues with this so Manual setup is recommended for now but you can give it a try.
-
-> [!NOTE] 
-> **Automatic setup only works on Windows** - This will run a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs Python (if not already installed), Whisper, FFMPEG, and Stable-TS.
-> It also places the `auto-subs.py` file in the Fusion scripts folder so it can be accessed within Resolve.
-1. Open PowerShell in **administrator mode**.
-2. Copy this command into Powershell + Run it by hitting the enter key.
-
-       Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
-3. Once finished running, the setup is complete!
+> Many people seem to be having issues with the automatic setup so Manual setup is recommended for now and I have temporarily removed it.
 
 ## Manual Setup
 ### Summary:
