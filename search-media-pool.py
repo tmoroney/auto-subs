@@ -18,6 +18,5 @@ print("Searching media pool...")
 recursiveSearch(folder)
 print("Found " + str(len(clipList)) + " items in media pool")
 for i in clipList:
-    print(i.GetName())
+    print("Name:", i.GetName())
     print(i.GetClipProperty())
-    print(i.GetFusionCompByIndex(1))
