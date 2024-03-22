@@ -106,6 +106,9 @@ win = dispatcher.AddWindow({
             ui.Label({ 'Text': "Video Track for Subtitles", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 }) }),
             ui.SpinBox({"ID": "TrackSelector", "Min": 1, "Value": 2, 'MaximumSize': [2000, 40]}),
             ui.VGap(1),
+            ui.Label({ 'Text': "Select Template Text", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.ComboBox({"ID": "Template", 'MaximumSize': [2000, 55]}),
+            ui.VGap(1),
             ui.Label({ 'Text': "Transcription Model", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
             ui.ComboBox({"ID": "WhisperModel", 'MaximumSize': [2000, 55]}),
             ui.VGap(3),
@@ -239,7 +242,7 @@ def OnTranscribe(ev):
    elif itm['WhisperModel'].CurrentIndex == 4:
       chosenModel = "medium"
    
-   if itm['SubsOutput'].CurrentIndex == 1: # use english only model
+   if itm['SubsOutput'].CurrentIndex == 0: # use english only model
       chosenModel = chosenModel + ".en"
 
    print("Using model -> [", chosenModel, "]")
@@ -289,8 +292,8 @@ def OnTranscribe(ev):
    model = stable_whisper.load_model(chosenModel) # load whisper transcription model
 
    # TRANSCRIBE AUDIO TO SRT FILE
-   if itm['SubsOutput'].CurrentIndex == 3:  # translate to english
-      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True, task = 'translate')
+   if itm['SubsOutput'].CurrentIndex == 0 or itm['SubsOutput'].CurrentIndex == 1: # subtitles in original language
+      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True) # transcribe audio file
       (
          result
          .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
@@ -298,8 +301,8 @@ def OnTranscribe(ev):
          .merge_by_gap(.10, max_words=3)
          .split_by_length(max_words=itm['MaxWords'].Value, max_chars=itm['MaxChars'].Value)
       )
-   else: # subtitles in original language
-      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True) # transcribe audio file
+   elif itm['SubsOutput'].CurrentIndex == 2:  # translate to english
+      result = model.transcribe(location, fp16=False, regroup=True, only_voice_freq=True, task = 'translate')
       (
          result
          .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
@@ -458,13 +461,8 @@ def OnGenerate(ev):
    print("Found", len(subs), "subtitles in SRT file")
    
    # ADD TEXT+ TO TIMELINE
-   templateText = None
-   for item in items:
-      itemName = item.GetName();
-      if itemName == "Text+" or itemName == "Fusion Title" : # Find Text+ in Media Pool
-         templateText = item
-         print("Found Text+ in Media Pool!")
-         break
+   templateText = mediaPoolItemsList[itm['Template'].CurrentIndex] # get selected Text+ template
+   print(templateText.GetClipProperty()['Clip Name'], "selected as template")
    if not templateText:
       print("No Text+ found in Media Pool")
       itm['DialogBox'].Text = "No Text+ found in Media Pool!"
@@ -617,6 +615,31 @@ def loadSettings():
    itm['FormatText'].CurrentIndex = format_text
    itm['RemovePunc'].Checked = remove_punc
 
+# Search Media Pool for Text+ template
+mediaPoolItemsList = []
+def searchMediaPool():
+   mediaPool = project.GetMediaPool()
+   folder = mediaPool.GetRootFolder()
+   items = folder.GetClipList()
+   itm['Template'].Clear()
+   recursiveSearch(folder)
+
+def recursiveSearch(folder):
+   items = folder.GetClipList()
+   for item in items:
+      itemType = item.GetClipProperty()["Type"]
+      if itemType == "Generator":
+         itemName = item.GetName()
+         clipName = item.GetClipProperty()['Clip Name']
+         itm['Template'].AddItem(clipName)
+         if re.search('text|Text|title|Title|subtitle|Subtitle', itemName) or re.search('text|Text|title|Title|subtitle|Subtitle', clipName):
+            itm['Template'].CurrentIndex = len(mediaPoolItemsList) - 1 # set default template to Text+
+         mediaPoolItemsList.append(item)
+   subfolders = folder.GetSubFolderList()
+   for subfolder in subfolders:
+      recursiveSearch(subfolder)
+   return
+
 # Add the items to the FormatText ComboBox menu
 itm['FormatText'].AddItem("None")
 itm['FormatText'].AddItem("all lowercase")
@@ -662,8 +685,8 @@ win.On.Tree.ItemClicked = OnSubtitleSelect      # jump to subtitle position on t
 win.On.RefreshSubs.Clicked = OnPopulateSubs     # refresh subtitles
 # Note: there appears to be multiple ways to define event handlers
 
-# Load Settings from file
-loadSettings();
+loadSettings() # Load Settings from file
+searchMediaPool() # Search media pool for possible templates
 
 # Main dispatcher loop
 win.Show()
