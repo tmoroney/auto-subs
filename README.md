@@ -18,9 +18,10 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 #### 1. [📋 Usage Guide](#usage-guide)
 #### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
 #### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [📜 Light Version (requires an SRT file)](#light-version)
-#### 5. [☕ Contact / Support](#contact-and-support)
-#### 6. [❓ FAQ](#faq)
+#### 4. [✨ Update AutoSubs](#update-autosubs)
+#### 5. [📜 Light Version (requires an SRT file)](#light-version)
+#### 6. [☕ Contact / Support](#contact-and-support)
+#### 7. [❓ FAQ](#faq)
 
 <br/>
 
@@ -30,8 +31,7 @@ Transcription Settings + Subtitle Navigator             |  Subtitle Example
 
 ![auto subs (6)-modified](https://github.com/tmoroney/auto-subs/assets/72154813/67cafbbd-d3e3-4984-8ba3-800df76e0a54)
 
-
-## Usage Guide
+# Usage Guide
 ### Step 1: Open Auto-Subs
 Click on `Workspace` in Resolve's top menu bar, then within `Scripts` select `auto-subs` from the list.
 
@@ -46,28 +46,7 @@ Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` 
 ### Step 4: Transcribe
 Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
-## Update AutoSubs
-### Automatic (Windows Only):
-Open PowerShell and run the following command:
-    
-    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
-
-### Manual (Windows, Mac, Linux)
-Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file and add it to one of the following directories:
-
-1. **Windows:**
-    - All users: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts`
-    - Specific user: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts`
-
-2. **Mac OS:**
-    - All users: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-    - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-
-3. **Linux:**
-    - All users: `/opt/resolve/Fusion/Scripts`  (or `/home/resolve/Fusion/Scripts/` depending on installation)
-    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts`
-
-## Automatic Setup
+# Automatic Setup
 > [!NOTE] 
 > **Automatic setup only works on Windows**<br>
 > The command below executes a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs all the dependencies and places `auto-subs.py` in the Fusion scripts folder.
@@ -78,7 +57,7 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
 
        Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
 
-## Manual Setup
+# Manual Setup
 ### Summary:
 1. Install [`Python 3.8 - 3.12`](https://www.python.org/downloads/)
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper)
@@ -197,6 +176,29 @@ The directory should look like this:
 
 </details>
 
+
+# Update AutoSubs
+
+### Automatic (Windows Only):
+Open PowerShell and run the following command:
+    
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
+
+### Manual (Windows, Mac, Linux)
+Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file and add it to one of the following directories:
+
+1. **Windows:**
+    - All users: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts`
+    - Specific user: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts`
+
+2. **Mac OS:**
+    - All users: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+    - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+
+3. **Linux:**
+    - All users: `/opt/resolve/Fusion/Scripts`  (or `/home/resolve/Fusion/Scripts/` depending on installation)
+    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts`
+
 ## Light Version
 > [!NOTE]
 > **Audio transcription has been removed on this version**. This means less setup, but a subtitles (SRT) file is required as input. Use this if you already have a way of transcribing video (such as Davinci Resolve Studio's built-in subtitles feature, or CapCut subtitles) and you just want subtitles with a custom theme.
@@ -210,14 +212,14 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
     ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
 
 
-## Contact and Support
+# Contact and Support
 - Check out the [Youtube Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) 📺
 - Thanks to everyone who has supported this project ❤️
 - If you have any issues, get in touch on my [Discord server](https://discord.com/invite/TBFUfGWegm) for support 📲
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
-## FAQ
+# FAQ
 ### 1. Auto-Subs not opening
 Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
 Ensure that `Path` in your system environment variables contains the following:
