@@ -57,6 +57,11 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
        Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
 
+## Update AutoSubs
+Open PowerShell and run the following command:
+    
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
+
 ## Manual Setup
 ### Summary:
 1. Install [`Python 3.8 - 3.12`](https://www.python.org/downloads/)
