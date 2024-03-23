@@ -46,6 +46,27 @@ Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` 
 ### Step 4: Transcribe
 Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
+## Update AutoSubs
+### Automatic (Windows Only):
+Open PowerShell and run the following command:
+    
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
+
+### Manual (Windows, Mac, Linux)
+Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file and add it to one of the following directories:
+
+1. **Windows:**
+    - All users: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts`
+    - Specific user: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts`
+
+2. **Mac OS:**
+    - All users: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+    - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+
+3. **Linux:**
+    - All users: `/opt/resolve/Fusion/Scripts`  (or `/home/resolve/Fusion/Scripts/` depending on installation)
+    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts`
+
 ## Automatic Setup
 > [!NOTE] 
 > **Automatic setup only works on Windows**<br>
@@ -56,11 +77,6 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 3. Copy this command into Powershell + Run it by hitting the enter key.
 
        Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
-
-## Update AutoSubs
-Open PowerShell and run the following command:
-    
-    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
 
 ## Manual Setup
 ### Summary:
