@@ -49,17 +49,17 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 ## Automatic Setup
 > [!NOTE] 
 > **Automatic setup only works on Windows**<br>
-> This command executes a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs all the dependencies and places `auto-subs.py` in the Fusion scripts folder.
+> The command below executes a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs all the dependencies and places `auto-subs.py` in the Fusion scripts folder.
 
 1. Download [Python 3.12](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
-2. Open PowerShell in **administrator mode**.
+2. Open PowerShell in **Administrator Mode**.
 3. Copy this command into Powershell + Run it by hitting the enter key.
 
        Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
 
 ## Manual Setup
 ### Summary:
-1. Install [`Python 3.8 - 3.11`](https://www.python.org/downloads/)
+1. Install [`Python 3.8 - 3.12`](https://www.python.org/downloads/)
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper)
 3. Install [`FFMPEG`](https://ffmpeg.org/) (used by Whisper for audio processing)
 4. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
@@ -70,8 +70,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 <summary>Windows Setup</summary>
        
 ### Step 1: Install Python
-Download `Python 3.12` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation.
-![image](https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01)
+Download [Python 3.12](https://www.python.org/downloads/) (or any version > 3.8) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
 
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
