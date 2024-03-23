@@ -93,11 +93,17 @@ Install Stable-TS by running this command in the terminal:
     pip install -U stable-ts
 
 ### Step 5: Download the Python Script
-Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) file. Copy this file to the `Utility` folder within the Fusion `Scripts` folder. The directory should look like this:
-  
-    ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+Run the following command in Powershell:
+    
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/update-script.ps1").Content
+***OR***
 
-This directory can usually be found inside `C:\ProgramData\`.
+Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in one of the following directories:
+- All users: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts`
+- Specific user: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts`
+
+<br>
+
 </details>
 
 <details>
@@ -132,10 +138,9 @@ This directory can usually be found inside `C:\ProgramData\`.
        # if previous command does not work
        pip3 install -U stable-ts
 
-9. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
-The directory should look like this:
-  
-       ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+9. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in one of the following directories:
+    - All users: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+    - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
 
 </details>
 
@@ -167,10 +172,9 @@ The directory should look like this:
 
        pip install -U stable-ts
 
-6. Download [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) (click **"Download Raw File"**) and copy it to `Fusion` -> `Scripts` -> **`Utility`**.
-The directory should look like this:
-  
-       ...\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility
+6. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in one of the following directories:
+    - All users: `/opt/resolve/Fusion/Scripts/Utility`  (or `/home/resolve/Fusion/Scripts/Utility` depending on installation)
+    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts/Utility`
 
       
 
@@ -196,8 +200,8 @@ Download the [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/au
     - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
 
 3. **Linux:**
-    - All users: `/opt/resolve/Fusion/Scripts`  (or `/home/resolve/Fusion/Scripts/` depending on installation)
-    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts`
+    - All users: `/opt/resolve/Fusion/Scripts/Utility`  (or `/home/resolve/Fusion/Scripts/Utility` depending on installation)
+    - Specific user: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts/Utility`
 
 ## Light Version
 > [!NOTE]
