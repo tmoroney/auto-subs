@@ -113,8 +113,8 @@ if (-not (Test-Path -Path $destinationFolder)) {
 # Download the file and move it to the destination folder
 try {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $destinationFile
-    Write-Host "auto-subs.py downloaded successfully."
-    Write-Host "Installation complete."
+    Write-Host "Placed in directory - $destinationFolder"
+    Write-Host "You can now access the script in DaVinci Resolve from Workspace -> Scripts in the top menu." -ForegroundColor Green
 } catch {
     Write-Host "Failed to download auto-subs.py: $_"
 }
