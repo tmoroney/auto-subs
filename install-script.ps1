@@ -20,12 +20,17 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-# Step 1: Install Chocolatey
-Write-Host "Installing Chocolatey..."
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+# Check if the current user has administrative privileges
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "Please open Powershell as Administor to run this script - requires administrative privileges." -ForegroundColor Red
+    exit
+}
 
-# Step 2: Check the installed Python version
+Write-Host "Script executed with administrative privileges. Proceeding with installation."
+
+# Step 1: Check the installed Python version
 $pythonInstalled = Get-Command python -ErrorAction SilentlyContinue
+$pythonVersion = 0
 
 if ($pythonInstalled) {
     # Get the Python version
@@ -33,38 +38,35 @@ if ($pythonInstalled) {
 
     # Iterate over the command names
     foreach ($commandName in $commandNames) {
-        # Try to get the Python version
-        $pythonVersionOutput = & $commandName --version 2>&1
-        if ($pythonVersionOutput -and $pythonVersionOutput -notmatch 'not recognized') {
-            # If the command worked, split the output to get the version number
-            $versionParts = $pythonVersionOutput.Split(' ')[1].Split('.')
-            $pythonVersion = [double]"$($versionParts[0]).$($versionParts[1])"
-            Write-Host "Python version $pythonVersion is already installed."
-            break
+        # Check if the command exists
+        if (Get-Command $commandName -ErrorAction SilentlyContinue) {
+            # Try to get the Python version
+            $pythonVersionOutput = & $commandName --version 2>&1
+            if ($pythonVersionOutput -match 'Python (\d+)\.(\d+)') {
+                $majorVersion = [int]$Matches[1]
+                $minorVersion = [int]$Matches[2]
+                if ($majorVersion -lt 3 -or ($majorVersion -eq 3 -and $minorVersion -lt 8)) {
+                    Write-Host "Python version must be greater than 3.8." -ForegroundColor Red
+                    Write-Host "Please install the latest version of Python (3.12.2 is verified to work)"
+                    Write-Host "https://www.python.org/downloads/" -ForegroundColor Green
+                    exit
+                } else {
+                    Write-Host "Python version $majorVersion.$minorVersion is already installed."
+                }
+                break
+            }
         }
-    }
-
-    if ($pythonVersion -lt 3.8 -or $pythonVersion -gt 3.11) {
-        Write-Host "Python version is outside the range 3.8 to 3.11. Installing Python 3.11..."
-        # Install Python 3.11 if the version is outside the range
-        choco install python --version 3.11 -y
-        # Add Python to system environment variables
-        $pythonPath = "C:\Python311\;C:\Python311\Scripts\"
-        [System.Environment]::SetEnvironmentVariable('Path', "$($env:Path);$pythonPath", [System.EnvironmentVariableTarget]::Machine)
-        # Refresh the environment variables in the current session
-        $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine')
     }
 }
 else {
-    Write-Host "Python is not installed. Installing Python 3.11..."
-    # Install Python 3.11 if not already installed
-    choco install python --version 3.11 -y
-    # Add Python to system environment variables
-    $pythonPath = "C:\Python311\;C:\Python311\Scripts\"
-    [System.Environment]::SetEnvironmentVariable('Path', "$($env:Path);$pythonPath", [System.EnvironmentVariableTarget]::Machine)
-    # Refresh the environment variables in the current session
-    $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine')
+    Write-Host "Python is not installed. Please install the latest version of Python"
+    Write-Host " (3.12.2 is verified to work) - " -NoNewline
+    Write-Host "https://www.python.org/downloads/" -ForegroundColor Green
 }
+
+# Step 2: Install Chocolatey
+Write-Host "Installing Chocolatey..."
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
 # Step 3: Install FFMPEG using Chocolatey if not already installed
 $ffmpegInstalled = Get-Command ffmpeg -ErrorAction SilentlyContinue
@@ -76,11 +78,21 @@ if (-not $ffmpegInstalled) {
 
 # Step 4: Install OpenAI Whisper
 Write-Host "Installing OpenAI Whisper..."
-pip install -U openai-whisper
+try {
+    pip install -U openai-whisper
+} catch {
+    Write-Host "Failed to install OpenAI Whisper using pip. Trying pip3..."
+    pip3 install -U openai-whisper
+}
 
 # Step 5: Install Stable-ts
 Write-Host "Installing Stable-ts (improves quality of subtitles)..."
-pip install -U stable-ts
+try {
+    pip install -U stable-ts
+} catch {
+    Write-Host "Failed to install Stable-ts using pip. Trying pip3..."
+    pip3 install -U stable-ts
+}
 
 # Step 6: Download auto-subs.py and place it in the specified folder
 Write-Host "Downloading auto-subs.py..."
