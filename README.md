@@ -47,8 +47,15 @@ Mark the beginning ("In") and end ("Out") of the area to subtitle using the `I` 
 Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 ## Automatic Setup
-> [!WARNING]
-> Many people seem to be having issues with the automatic setup so Manual setup is recommended for now and I have temporarily removed it.
+> [!NOTE] 
+> **Automatic setup only works on Windows**<br>
+> This command executes a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs all the dependencies and places `auto-subs.py` in the Fusion scripts folder.
+
+1. Download [Python 3.12](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
+2. Open PowerShell in **administrator mode**.
+3. Copy this command into Powershell + Run it by hitting the enter key.
+
+       Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
 
 ## Manual Setup
 ### Summary:
@@ -63,8 +70,8 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 <summary>Windows Setup</summary>
        
 ### Step 1: Install Python
-Download `Python 3.8 - 3.11` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br>
-If you are having issues, ensure that `Path` in your system environment variables contains `C:\Python311\` and `C:\Python311\Scripts\`.
+Download `Python 3.12` from [python.org](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation.
+![image](https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01)
 
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
@@ -193,6 +200,9 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
 ## FAQ
 ### 1. Auto-Subs not opening
 Verify that Resolve detects your Python installation by opening the Console from the top menu/toolbar in Resolve and clicking `py3` at the top of the console.
+Ensure that `Path` in your system environment variables contains the following:
+- `C:\Users\<your-user-name>\AppData\Local\Programs\Python\Python312`
+- `C:\Users\<your-user-name>\AppData\Local\Programs\Python\Python312\Scripts\`
 ### 2. Can't find Fusion folder
 Use [Everything](https://www.voidtools.com/) to quickly search your computer for it (Windows only).
 ### 3. MacOS Error
