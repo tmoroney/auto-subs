@@ -685,7 +685,7 @@ win.On.Tree.ItemClicked = OnSubtitleSelect      # jump to subtitle position on t
 win.On.RefreshSubs.Clicked = OnPopulateSubs     # refresh subtitles
 # Note: there appears to be multiple ways to define event handlers
 
-loadSettings() # Load Settings from file
+#loadSettings() # Load Settings from file
 searchMediaPool() # Search media pool for possible templates
 
 # Main dispatcher loop
