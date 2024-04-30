@@ -628,7 +628,7 @@ def recursiveSearch(folder):
    items = folder.GetClipList()
    for item in items:
       itemType = item.GetClipProperty()["Type"]
-      if itemType == "Generator":
+      if itemType == "Generator" or itemType == "Fusion Title":
          itemName = item.GetName()
          clipName = item.GetClipProperty()['Clip Name']
          itm['Template'].AddItem(clipName)
