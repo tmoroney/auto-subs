@@ -644,7 +644,6 @@ def recursiveSearch(folder):
    items = folder.GetClipList()
    for item in items:
       itemType = item.GetClipProperty()["Type"]
-      print(itemType)
       if itemType in CLIP_TYPES_LOCALE:
          itemName = item.GetName()
          clipName = item.GetClipProperty()['Clip Name']
