@@ -620,15 +620,32 @@ mediaPoolItemsList = []
 def searchMediaPool():
    mediaPool = project.GetMediaPool()
    folder = mediaPool.GetRootFolder()
-   items = folder.GetClipList()
+   items = folder.GetClipList() # remove this?
    itm['Template'].Clear()
    recursiveSearch(folder)
+
+CLIP_TYPES_LOCALE = [
+   'Título – Fusion', # spanish
+   "Título Fusion", # portuguese
+   "Generator", # en-us? or version < v19
+   "Fusion Title", # English
+   "Titre Fusion", # French
+   "Титры на стр. Fusion", # Russian
+   "Fusion Titel", # German
+   "Titolo Fusion", # Italian
+   "Fusionタイトル", # Japanese
+   "Fusion标题", # Chinese
+   "퓨전 타이틀", # Korean
+   "Tiêu đề Fusion", # Vietnamese
+   "Fusion Titles", # Thai
+]
 
 def recursiveSearch(folder):
    items = folder.GetClipList()
    for item in items:
       itemType = item.GetClipProperty()["Type"]
-      if itemType == "Generator" or itemType == "Fusion Title":
+      print(itemType)
+      if itemType in CLIP_TYPES_LOCALE:
          itemName = item.GetName()
          clipName = item.GetClipProperty()['Clip Name']
          itm['Template'].AddItem(clipName)
