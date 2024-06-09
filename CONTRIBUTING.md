@@ -67,5 +67,3 @@ If you need any help, feel free to open an issue on GitHub and I will try to get
 ---
 
 Thank you for your contributions and for helping improve AutoSubs!
-
-```
