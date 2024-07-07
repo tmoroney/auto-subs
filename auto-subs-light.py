@@ -99,7 +99,7 @@ def OnAddSubs(ev):
       
       # READ SRT FILE
       try:
-         with open(file_path, 'r') as f:
+         with open(file_path, 'r', -1, 'utf-8') as f:
             lines = f.readlines()
       except FileNotFoundError:
          print("No subtitles file (audio.srt) found - Please Transcribe the timeline or load your own SRT file!")
