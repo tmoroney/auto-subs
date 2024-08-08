@@ -16,12 +16,11 @@ Automatically transcribes your editing timeline using [`OpenAI Whisper`](https:/
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
-#### 2. [📡 Automatic Setup (Windows Only - Recommended)](#automatic-setup)
-#### 3. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
-#### 4. [✨ Update AutoSubs](#update-autosubs)
-#### 5. [📜 Light Version (requires an SRT file)](#light-version)
-#### 6. [☕ Contact / Support](#contact-and-support)
-#### 7. [❓ FAQ](#faq)
+#### 2. [🛠️ Manual Setup (Mac, Linux, Windows)](#manual-setup)
+#### 3. [✨ Update AutoSubs](#update-autosubs)
+#### 4. [📜 Light Version (requires an SRT file)](#light-version)
+#### 5. [☕ Contact / Support](#contact-and-support)
+#### 6. [❓ FAQ](#faq)
 
 <br/>
 
@@ -51,14 +50,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 
 # Automatic Setup
 > [!NOTE] 
-> **Automatic setup only works on Windows**<br>
-> The command below executes a [PowerShell script](https://github.com/tmoroney/auto-subs/blob/7e204b75b61081fb33168d5a50cb96e1a353ccc1/install-script.ps1) which installs all the dependencies and places `auto-subs.py` in the Fusion scripts folder.
-
-1. Download [Python 3.12](https://www.python.org/downloads/) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
-2. Open PowerShell in **Administrator Mode**.
-3. Copy this command into Powershell + Run it by hitting the enter key.
-
-       Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tmoroney/auto-subs/main/install-script.ps1").Content
+> **Temporarily removed until I have time to update it to work correctly**<br>
 
 # Manual Setup
 ### Summary:
