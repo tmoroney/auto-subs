@@ -646,7 +646,6 @@ def recursiveSearch(folder):
    items = folder.GetClipList()
    for item in items:
       itemType = item.GetClipProperty()["Type"]
-      print(itemType)
       if itemType in CLIP_TYPES_LOCALE:
          itemName = item.GetName()
          clipName = item.GetClipProperty()['Clip Name']
@@ -669,8 +668,8 @@ itm['WhisperModel'].AddItem("Recommended: Small")
 itm['WhisperModel'].AddItem("Tiny - fastest / lowest accuracy")
 itm['WhisperModel'].AddItem("Base")
 itm['WhisperModel'].AddItem("Small")
-itm['WhisperModel'].AddItem("Medium - slowest / highest accuracy")
-itm['WhisperModel'].AddItem("Large V2 - Very accurate?")
+itm['WhisperModel'].AddItem("Medium - slow / high accuracy")
+itm['WhisperModel'].AddItem("Large V2 - very slow / very high accuracy")
 
 # Add the items to the Subtitles Output ComboBox menu
 itm['SubsOutput'].AddItem("English Only  ➞  Increase accuracy for English language")
