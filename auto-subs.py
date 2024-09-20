@@ -241,6 +241,8 @@ def OnTranscribe(ev):
       chosenModel = "small"
    elif itm['WhisperModel'].CurrentIndex == 4:
       chosenModel = "medium"
+   elif itm['WhisperModel'].CurrentIndex == 5:
+      chosenModel = "large-v2"
    
    if itm['SubsOutput'].CurrentIndex == 0: # use english only model
       chosenModel = chosenModel + ".en"
@@ -644,6 +646,7 @@ def recursiveSearch(folder):
    items = folder.GetClipList()
    for item in items:
       itemType = item.GetClipProperty()["Type"]
+      print(itemType)
       if itemType in CLIP_TYPES_LOCALE:
          itemName = item.GetName()
          clipName = item.GetClipProperty()['Clip Name']
@@ -667,6 +670,7 @@ itm['WhisperModel'].AddItem("Tiny - fastest / lowest accuracy")
 itm['WhisperModel'].AddItem("Base")
 itm['WhisperModel'].AddItem("Small")
 itm['WhisperModel'].AddItem("Medium - slowest / highest accuracy")
+itm['WhisperModel'].AddItem("Large V2 - Very accurate?")
 
 # Add the items to the Subtitles Output ComboBox menu
 itm['SubsOutput'].AddItem("English Only  ➞  Increase accuracy for English language")
