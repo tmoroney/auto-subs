@@ -126,10 +126,17 @@ def OnAddSubs(ev):
 
       timelineStartFrame = timeline.GetStartFrame() # get timeline start frame
       #print("-> Start of timeline: ", timelineStartFrame)
-      for i in range(0, len(lines), 4):
+      i = 0
+      while i < len(lines):
          frame_rate = timeline.GetSetting("timelineFrameRate") # get timeline framerate
          start_time, end_time = lines[i+1].strip().split(" --> ")
-         text = lines[i+2].strip() # get  subtitle text
+
+         # Accumulate subtitle text until an empty line is found
+         text = lines[i+2].strip()
+         for j in range(i+3, len(lines)):
+            if lines[j].strip() == "":
+               break
+            text += "\n" + lines[j].strip()
 
          # Convert timestamps to frames for position of subtitle
          hours, minutes, seconds_milliseconds = start_time.split(':')
@@ -180,6 +187,9 @@ def OnAddSubs(ev):
                text = re.sub(pattern, censored_word, text, flags=re.IGNORECASE)
                   
          subs.append((timelinePos, duration, text)) # add subtitle to list
+
+         # Move to the next subtitle block
+         i = j + 1
       
       print("Found", len(subs), "subtitles in SRT file")
       
