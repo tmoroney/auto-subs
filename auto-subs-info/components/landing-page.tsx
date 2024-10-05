@@ -1,19 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Github, Download, Zap, Type, Globe, Sparkles, Clock, Heart, MessageCircle, Paintbrush } from 'lucide-react'
+import { Github, Download, Zap, Type, Globe, Sparkles, Heart, MessageCircle, Paintbrush } from 'lucide-react'
 
 export default function Component() {
-  const [email, setEmail] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle email submission here
-    console.log('Submitted email:', email)
-    setEmail('')
-  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
