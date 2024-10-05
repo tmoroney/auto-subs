@@ -3,7 +3,7 @@ name: publish-to-github-pages
 on:
   push:
     branches:
-      - website-dev
+      - master
 
 permissions:
   contents: read
@@ -19,27 +19,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js ⚙️
-        uses: actions/setup-node@v4
+      - name: Setup Node.js ⚙️ - Cache dependencies ⚡ - Install dependencies 🔧
+        uses: ./.github/workflows/setup-node
+
+      - name: Setup Pages ⚙️
+        uses: actions/configure-pages@v4
         with:
-          node-version: 20
+          static_site_generator: next
 
-      - name: Install dependencies 🔧
-        run: npm install
+      - name: Build with Next.js 🏗️
+        run: npx next build
 
-      - name: Build Next.js app
-        run: npm run build
-
-      - name: Export Next.js app
-        run: npm run export
-
-      - name: Upload artifact for GitHub Pages
+      - name: Upload artifact 📡
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out  # Make sure 'out' directory is created
+          path: ./out
 
   deploy:
     environment:
