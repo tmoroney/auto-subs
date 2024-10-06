@@ -42,7 +42,7 @@ export default function Component() {
           </a>
           <a
             className="text-sm font-medium hover:text-blue-600 text-gray-700"
-            href="https://github.com/yourusername/autosubs"
+            href="https://github.com/tmoroney/auto-subs"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -50,7 +50,7 @@ export default function Component() {
           </a>
           <a
             className="text-sm font-medium hover:text-blue-600 text-gray-700 flex items-center"
-            href="https://discord.gg/yourdiscordinvite"
+            href="https://discord.com/invite/TBFUfGWegm"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -223,7 +223,7 @@ export default function Component() {
               </a>
               <a
                 className="text-sm hover:underline underline-offset-4 text-gray-600 flex items-center"
-                href="https://discord.gg/yourdiscordinvite"
+                href="https://discord.com/invite/TBFUfGWegm"
                 target="_blank"
                 rel="noopener noreferrer"
               >
