@@ -243,8 +243,10 @@ def OnTranscribe(ev):
       chosenModel = "medium"
    elif itm['WhisperModel'].CurrentIndex == 5:
       chosenModel = "large-v2"
+   elif itm['WhisperModel'].CurrentIndex == 6:
+      chosenModel = "large-v3"
    
-   if itm['SubsOutput'].CurrentIndex == 0: # use english only model
+   if itm['SubsOutput'].CurrentIndex == 0 and chosenModel in ('tiny','base','small','medium'): # use english only model
       chosenModel = chosenModel + ".en"
 
    print("Using model -> [", chosenModel, "]")
@@ -670,6 +672,7 @@ itm['WhisperModel'].AddItem("Base")
 itm['WhisperModel'].AddItem("Small")
 itm['WhisperModel'].AddItem("Medium - slow / high accuracy")
 itm['WhisperModel'].AddItem("Large V2 - very slow / very high accuracy")
+itm['WhisperModel'].AddItem("Large V3 - very slow / very high accuracy")
 
 # Add the items to the Subtitles Output ComboBox menu
 itm['SubsOutput'].AddItem("English Only  ➞  Increase accuracy for English language")
