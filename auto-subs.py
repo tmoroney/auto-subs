@@ -115,7 +115,7 @@ win = dispatcher.AddWindow({
             ui.Label({ 'Text': "Output Mode  (spoken language is auto detected)", 'Weight': 0, 'Font': ui.Font({ 'PixelSize': 14 })}),
             ui.ComboBox({"ID": "SubsOutput", 'MaximumSize': [2000, 55]}),
             ui.VGap(1),
-            ui.CheckBox({"ID": "RefineSubs", "Text": "Refine Timestamps - may improve timing (slower)", "Checked": False, 'Font': ui.Font({ 'PixelSize': 14 })}),
+            ui.CheckBox({"ID": "RefineSubs", "Text": "Refine Timestamps - may improve timing (slower)", "Checked": True, 'Font': ui.Font({ 'PixelSize': 14 })}),
             ui.VGap(15),
             ui.Label({ 'Text': "Advanced Settings:", 'Weight': 1, 'Font': ui.Font({ 'PixelSize': 20 }) }),
             ui.VGap(1),
@@ -242,9 +242,9 @@ def OnTranscribe(ev):
    elif itm['WhisperModel'].CurrentIndex == 4:
       chosenModel = "medium"
    elif itm['WhisperModel'].CurrentIndex == 5:
-      chosenModel = "large-v2"
+      chosenModel = "turbo"
    
-   if itm['SubsOutput'].CurrentIndex == 0: # use english only model
+   if itm['SubsOutput'].CurrentIndex == 0 and itm['WhisperModel'].CurrentIndex != 5: # use english only model and not large models (no en)
       chosenModel = chosenModel + ".en"
 
    print("Using model -> [", chosenModel, "]")
@@ -651,7 +651,7 @@ def recursiveSearch(folder):
          clipName = item.GetClipProperty()['Clip Name']
          itm['Template'].AddItem(clipName)
          if re.search('text|Text|title|Title|subtitle|Subtitle', itemName) or re.search('text|Text|title|Title|subtitle|Subtitle', clipName):
-            itm['Template'].CurrentIndex = len(mediaPoolItemsList) - 1 # set default template to Text+
+            itm['Template'].CurrentIndex = len(mediaPoolItemsList) - 3 # set default template to Text+
          mediaPoolItemsList.append(item)
    subfolders = folder.GetSubFolderList()
    for subfolder in subfolders:
@@ -669,7 +669,7 @@ itm['WhisperModel'].AddItem("Tiny - fastest / lowest accuracy")
 itm['WhisperModel'].AddItem("Base")
 itm['WhisperModel'].AddItem("Small")
 itm['WhisperModel'].AddItem("Medium - slow / high accuracy")
-itm['WhisperModel'].AddItem("Large V2 - very slow / very high accuracy")
+itm['WhisperModel'].AddItem("Large V3-turbo - slow / very high accuracy")
 
 # Add the items to the Subtitles Output ComboBox menu
 itm['SubsOutput'].AddItem("English Only  ➞  Increase accuracy for English language")
