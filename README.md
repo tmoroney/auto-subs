@@ -1,4 +1,7 @@
 # Davinci Resolve AI Subtitles
+> [!NOTE]
+> **AutoSubs V2 is under development** - Official Installer + many other improvements. It should be released by the 25th of October.
+
 Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
 - Generate subtitles in your own **custom style**.
 - **Completely free** and runs locally within Davinci Resolve.
