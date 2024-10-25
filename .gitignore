@@ -1,2 +1,6 @@
-
-settings.txt
+Transcribe-Server/bin
+Transcribe-Server/__pycache__
+Transcribe-Server/lib
+Transcribe-Server/share
+.DS_Store
+*.wav
