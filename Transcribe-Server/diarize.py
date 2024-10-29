@@ -1,12 +1,16 @@
 from pyannote.audio import Pipeline
+from huggingface_hub import login
 import torch
 import torchaudio
 import time
 
 start = time.time()
 
+hf_token = input("Please enter your Hugging Face access token: ")
+login(token=hf_token)
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
 
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token="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")
+#pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token="")
 
 # send pipeline to GPU (when available)
 pipeline.to(torch.device("mps"))

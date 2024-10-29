@@ -15,8 +15,12 @@ import {
     Share,
     HeartHandshake,
     Worm,
-    Loader2
+    Loader2,
+    BellRing,
+    Speech
 } from "lucide-react"
+
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,98 +59,161 @@ import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { save } from '@tauri-apps/plugin-dialog';
+import { strict } from "assert"
 
-const tracks = [
-    {
-        value: "1",
-        label: "Track 1",
-    },
-    {
-        value: "2",
-        label: "Track 2",
-    },
-    {
-        value: "3",
-        label: "Subtitle Track",
-    }
-]
-
-const templates = [
-    {
-        value: "Fusion Title1",
-        label: "Fusion Title1",
-    },
-    {
-        value: "Fusion Title2",
-        label: "Fusion Title2",
-    },
-    {
-        value: "Fusion Title3",
-        label: "Fusion Title3",
-    },
-    {
-        value: "Fusion Title4",
-        label: "Fusion Title4",
-    },
-]
+const resolveAPI = "http://localhost:5016/";
+const transcribeAPI = "http://localhost:8000/transcribe/";
 
 const languages = [
-    {
-        value: "auto",
-        label: "Detect Automatically (Auto)",
-    },
-    {
-        value: "en",
-        label: "English",
-    },
-    {
-        value: "es",
-        label: "Spanish",
-    },
-    {
-        value: "fr",
-        label: "French",
-    },
-    {
-        value: "kr",
-        label: "Korean",
-    },
-    {
-        value: "de",
-        label: "German",
-    },
-]
+    { label: "Detect Automatically", value: "auto" },
+    { label: "English", value: "english" },
+    { label: "Chinese", value: "chinese" },
+    { label: "German", value: "german" },
+    { label: "Spanish", value: "spanish" },
+    { label: "Russian", value: "russian" },
+    { label: "Korean", value: "korean" },
+    { label: "French", value: "french" },
+    { label: "Japanese", value: "japanese" },
+    { label: "Portuguese", value: "portuguese" },
+    { label: "Turkish", value: "turkish" },
+    { label: "Polish", value: "polish" },
+    { label: "Catalan", value: "catalan" },
+    { label: "Dutch", value: "dutch" },
+    { label: "Arabic", value: "arabic" },
+    { label: "Swedish", value: "swedish" },
+    { label: "Italian", value: "italian" },
+    { label: "Indonesian", value: "indonesian" },
+    { label: "Hindi", value: "hindi" },
+    { label: "Finnish", value: "finnish" },
+    { label: "Vietnamese", value: "vietnamese" },
+    { label: "Hebrew", value: "hebrew" },
+    { label: "Ukrainian", value: "ukrainian" },
+    { label: "Greek", value: "greek" },
+    { label: "Malay", value: "malay" },
+    { label: "Czech", value: "czech" },
+    { label: "Romanian", value: "romanian" },
+    { label: "Danish", value: "danish" },
+    { label: "Hungarian", value: "hungarian" },
+    { label: "Tamil", value: "tamil" },
+    { label: "Norwegian", value: "norwegian" },
+    { label: "Thai", value: "thai" },
+    { label: "Urdu", value: "urdu" },
+    { label: "Croatian", value: "croatian" },
+    { label: "Bulgarian", value: "bulgarian" },
+    { label: "Lithuanian", value: "lithuanian" },
+    { label: "Latin", value: "latin" },
+    { label: "Maori", value: "maori" },
+    { label: "Malayalam", value: "malayalam" },
+    { label: "Welsh", value: "welsh" },
+    { label: "Slovak", value: "slovak" },
+    { label: "Telugu", value: "telugu" },
+    { label: "Persian", value: "persian" },
+    { label: "Latvian", value: "latvian" },
+    { label: "Bengali", value: "bengali" },
+    { label: "Serbian", value: "serbian" },
+    { label: "Azerbaijani", value: "azerbaijani" },
+    { label: "Slovenian", value: "slovenian" },
+    { label: "Kannada", value: "kannada" },
+    { label: "Estonian", value: "estonian" },
+    { label: "Macedonian", value: "macedonian" },
+    { label: "Breton", value: "breton" },
+    { label: "Basque", value: "basque" },
+    { label: "Icelandic", value: "icelandic" },
+    { label: "Armenian", value: "armenian" },
+    { label: "Nepali", value: "nepali" },
+    { label: "Mongolian", value: "mongolian" },
+    { label: "Bosnian", value: "bosnian" },
+    { label: "Kazakh", value: "kazakh" },
+    { label: "Albanian", value: "albanian" },
+    { label: "Swahili", value: "swahili" },
+    { label: "Galician", value: "galician" },
+    { label: "Marathi", value: "marathi" },
+    { label: "Punjabi", value: "punjabi" },
+    { label: "Sinhala", value: "sinhala" },
+    { label: "Khmer", value: "khmer" },
+    { label: "Shona", value: "shona" },
+    { label: "Yoruba", value: "yoruba" },
+    { label: "Somali", value: "somali" },
+    { label: "Afrikaans", value: "afrikaans" },
+    { label: "Occitan", value: "occitan" },
+    { label: "Georgian", value: "georgian" },
+    { label: "Belarusian", value: "belarusian" },
+    { label: "Tajik", value: "tajik" },
+    { label: "Sindhi", value: "sindhi" },
+    { label: "Gujarati", value: "gujarati" },
+    { label: "Amharic", value: "amharic" },
+    { label: "Yiddish", value: "yiddish" },
+    { label: "Lao", value: "lao" },
+    { label: "Uzbek", value: "uzbek" },
+    { label: "Faroese", value: "faroese" },
+    { label: "Haitian Creole", value: "haitian_creole" },
+    { label: "Pashto", value: "pashto" },
+    { label: "Turkmen", value: "turkmen" },
+    { label: "Nynorsk", value: "nynorsk" },
+    { label: "Maltese", value: "maltese" },
+    { label: "Sanskrit", value: "sanskrit" },
+    { label: "Luxembourgish", value: "luxembourgish" },
+    { label: "Myanmar", value: "myanmar" },
+    { label: "Tibetan", value: "tibetan" },
+    { label: "Tagalog", value: "tagalog" },
+    { label: "Malagasy", value: "malagasy" },
+    { label: "Assamese", value: "assamese" },
+    { label: "Tatar", value: "tatar" },
+    { label: "Hawaiian", value: "hawaiian" },
+    { label: "Lingala", value: "lingala" },
+    { label: "Hausa", value: "hausa" },
+    { label: "Bashkir", value: "bashkir" },
+    { label: "Javanese", value: "javanese" },
+    { label: "Sundanese", value: "sundanese" },
+    { label: "Cantonese", value: "cantonese" },
+] as const;
 
 export function HomePage() {
+    interface Template {
+        value: string;
+        label: string;
+    }
+    interface Track {
+        value: string;
+        label: string;
+    }
+
+    const [templateList, setTemplateList] = useState<Template[]>([]);
+    const [trackList, setTrackList] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [openLanguages, setOpenLanguages] = useState(false)
     const [openTemplates, setOpenTemplates] = useState(false)
+    const [openTracks, setOpenTracks] = useState(false)
     const [model, setModel] = useState("small")
-    const [track, setTrack] = useState("")
-    const [currentLanguage, setLanguage] = useState("auto")
+    const [currentLanguage, setLanguage] = useState("english")
     const [currentTemplate, setTemplate] = useState("")
+    const [currentTrack, setTrack] = useState("")
     const [subtitles, setSubtitles] = useState([])
     const [timeline, setTimeline] = useState("opinions")
-    const [outputMode, setOutputMode] = useState("transcribe")
+    const [translate, setTranslate] = useState(false)
+    const [diarize, setDiarize] = useState(false)
     const [maxWords, setMaxWords] = useState(6)
     const [maxChars, setMaxChars] = useState(30)
+    const [processingStep, setProcessingStep] = useState("Exporting audio...")
 
-    const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
-
-
+    // check if subtitles file exists
     useEffect(() => {
-        // check if subtitles file exists
-        exists(transcriptPath, {
-            baseDir: BaseDirectory.Document,
-        }).then((fileExists) => {
-            if (fileExists) {
-                populateSubtitles();
-            }
-        });
-    }, [timeline]);
+        populateSubtitles();
+    }, []);
 
     async function populateSubtitles() {
-        // read json file
+        // Check if the file exists
+        const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
+        const fileExists = await exists(transcriptPath, {
+            baseDir: BaseDirectory.Document,
+        });
+
+        if (!fileExists) {
+            console.log("Transcript file does not exist for this timeline.");
+            return;
+        }
+
+        // Read JSON file
         console.log("Reading json file...");
         const contents = await readTextFile(transcriptPath, {
             baseDir: BaseDirectory.Document,
@@ -186,20 +253,63 @@ export function HomePage() {
         }
     }
 
+    async function exportAudio() {
+        // send request to Lua server (Resolve)
+        const response = await fetch(resolveAPI, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                func: "ExportAudio",
+            }),
+        });
+
+        const data = await response.json();
+        console.log(data);
+        return data;
+    };
+
+    async function addSubtitles(filePath: string) {
+        // send request to Lua server (Resolve)
+        const response = await fetch(resolveAPI, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                func: "AddSubtitles",
+                filePath: filePath,
+                templateName: currentTemplate,
+                trackIndex: currentTrack,
+            }),
+        });
+
+        
+        return response.json();
+    }
+
     async function fetchTranscription() {
         setIsLoading(true);
-        console.log("Fetching transcription...");
+        setProcessingStep("Exporting Audio...")
         try {
-            const response = await fetch('http://localhost:8000/transcribe/', {
+            let audioInfo = await exportAudio();
+            setTimeline(audioInfo.timeline);
+            console.log("Fetching transcription...");
+            setProcessingStep("Transcribing Audio...")
+
+            const response = await fetch(transcribeAPI, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    file_path: "/Users/moroneyt/Downloads/opinions.mp3",
+                    file_path: audioInfo.path,
+                    timeline: audioInfo.timeline,
                     model: model,
                     language: currentLanguage,
-                    task: outputMode,
+                    task: translate ? "translate" : "transcribe",
+                    diarize: diarize,
                     max_words: maxWords,
                     max_chars: maxChars,
                 }),
@@ -209,7 +319,12 @@ export function HomePage() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            populateSubtitles();
+            const data = await response.json()
+            const filePath = data.result_file;
+
+            setProcessingStep("Populating timeline...")
+            populateSubtitles()
+            await addSubtitles(filePath);
         } catch (error) {
             console.error("Error fetching transcription:", error);
         } finally {
@@ -217,16 +332,204 @@ export function HomePage() {
         }
     }
 
+    async function populateTemplates() {
+        try {
+            // send request to Lua server
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    func: "GetTemplates",
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            setTemplateList(data); // Assuming the response has a 'templates' field
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+        }
+    }
+
+    async function populateTracks() {
+        try {
+            // send request to Lua server
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    func: "GetTracks",
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            setTrackList(data); // Assuming the response has a 'templates' field
+            console.log(data);
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+        }
+    }
+
     return (
 
-        <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
+        <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-2">
             <div
                 className="relative flex-col items-start gap-8 md:flex"
             >
                 <div className="grid w-full items-start gap-4">
                     <Card>
-                        <CardHeader className="pb-4">
+                        <CardHeader>
                             <CardTitle>Generate</CardTitle>
+                            <CardDescription>Analyses timeline audio and generates subtitles.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-5">
+                            <div className="grid gap-3">
+                                <Label htmlFor="template">Subtitle Template</Label>
+                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openTemplates}
+                                            className="justify-between font-normal"
+                                            onClick={() => populateTemplates()}
+                                        >
+                                            {currentTemplate
+                                                ? templateList.find((template) => template.value === currentTemplate)?.label
+                                                : "Select Template..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search MediaPool for Text+" />
+                                            <CommandList>
+                                                <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {templateList.map((template) => (
+                                                        <CommandItem
+                                                            key={template.value}
+                                                            value={template.value}
+                                                            onSelect={(currentValue) => {
+                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
+                                                                setOpenTemplates(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {template.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="grid gap-3">
+                                <Label>Language</Label>
+                                <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openLanguages}
+                                            className="justify-between font-normal"
+                                        >
+                                            {currentLanguage
+                                                ? languages.find((language) => language.value === currentLanguage)?.label
+                                                : "Select language..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search languages..." />
+                                            <CommandList className="max-h-[220px]">
+                                                <CommandEmpty>No language found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {languages.map((language) => (
+                                                        <CommandItem
+                                                            value={language.label}
+                                                            key={language.value}
+                                                            onSelect={() => {
+                                                                setLanguage(language.value)
+                                                                setOpenLanguages(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    language.value === currentLanguage
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {language.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className=" flex items-center space-x-4 rounded-md border p-4">
+                                <Speech />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Speaker Diarization
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Different color for each speaker.
+                                    </p>
+                                </div>
+                                <Switch checked={diarize} onCheckedChange={(checked) => setDiarize(checked)}/>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex items-center gap-2">
+                            {isLoading ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="gap-1.5 text-sm w-full"
+                                    disabled
+                                >
+                                    <Loader2 className="size-4 animate-spin" />
+                                    {processingStep}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="gap-1.5 text-sm w-full"
+                                    onClick={async () => await fetchTranscription()}
+                                >
+                                    <CirclePlay className="size-4" />
+                                    Generate
+                                </Button>
+                            )}
+                        </CardFooter>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Advanced Settings</CardTitle>
                             <CardDescription>Adjust the settings for generating subtitles.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
@@ -324,44 +627,43 @@ export function HomePage() {
                                 </Select>
                             </div>
                             <div className="grid gap-3">
-                                <Label htmlFor="role">Language</Label>
-                                <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                                <Label>Output Track</Label>
+                                <Popover open={openTracks} onOpenChange={setOpenTracks}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            aria-expanded={openLanguages}
                                             className="justify-between font-normal"
+                                            onClick={() => populateTracks()}
                                         >
-                                            {currentLanguage
-                                                ? languages.find((language) => language.value === currentLanguage)?.label
-                                                : "Select language..."}
+                                            {currentTrack
+                                                ? trackList.find((track) => track.value === currentTrack)?.label
+                                                : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
+                                    <PopoverContent className="p-0">
                                         <Command>
-                                            <CommandInput placeholder="Search languages..." />
+                                            <CommandInput placeholder="Select track to place subtitles" />
                                             <CommandList>
-                                                <CommandEmpty>No language found.</CommandEmpty>
+                                                <CommandEmpty>No tracks found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {languages.map((language) => (
+                                                    {trackList.map((track) => (
                                                         <CommandItem
-                                                            key={language.label}
-                                                            value={language.label}
+                                                            key={track.value}
+                                                            value={track.value}
                                                             onSelect={(currentValue) => {
-                                                                const selectedLanguage = languages.find(lang => lang.label === currentValue);
-                                                                setLanguage(selectedLanguage ? selectedLanguage.value : "");
-                                                                setOpenLanguages(false);
+                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                setOpenTracks(false)
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    currentLanguage === language.value ? "opacity-100" : "opacity-0"
+                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
-                                                            {language.label}
+                                                            {track.label}
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -369,149 +671,6 @@ export function HomePage() {
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                            </div>
-                            <div className="grid gap-3">
-                                <Label htmlFor="track">Track to add subtitles</Label>
-                                <Select onValueChange={(value) => setTrack(value)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a timeline track" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectLabel>Tracks available</SelectLabel>
-                                            {tracks.map((track) => (
-                                                <SelectItem key={track.value} value={track.value}>
-                                                    {track.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-3">
-                                <Label htmlFor="template">Template Text+</Label>
-                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openTemplates}
-                                            className="justify-between font-normal"
-                                        >
-                                            {currentTemplate
-                                                ? templates.find((template) => template.value === currentTemplate)?.label
-                                                : "Select template..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search MediaPool for Text+" />
-                                            <CommandList>
-                                                <CommandEmpty>No language found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {templates.map((template) => (
-                                                        <CommandItem
-                                                            key={template.value}
-                                                            value={template.value}
-                                                            onSelect={(currentValue) => {
-                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
-                                                                setOpenTemplates(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {template.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                        </CardContent>
-                        <CardFooter className="flex items-center gap-2">
-                            {isLoading ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 text-sm w-full"
-                                    disabled
-                                >
-                                    <Loader2 className="size-4 animate-spin" />
-                                    Transcribing Audio...
-                                </Button>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 text-sm w-full"
-                                    onClick={async () => await fetchTranscription()}
-                                >
-                                    <CirclePlay className="size-4" />
-                                    Generate
-                                </Button>
-                            )}
-                        </CardFooter>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-4">
-                            <CardTitle>Advanced</CardTitle>
-                            <CardDescription>Settings for more advanced users</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-5">
-                            <div className="grid gap-3">
-                                <Label htmlFor="output">Output Mode</Label>
-                                <Select defaultValue="transcribe" onValueChange={(value) => {
-                                    setOutputMode(value);
-                                    if (value === "translate" && (model === "base" || model === "tiny")) {
-                                        setModel("small");
-                                    }
-                                }
-
-                                }>
-                                    <SelectTrigger
-                                        id="model"
-                                        className="[&_[data-description]]:hidden"
-                                    >
-                                        <SelectValue placeholder="Select a model..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="transcribe">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <PencilLine className="size-5" />
-                                                <div className="grid gap-0.5">
-                                                    <p className="text-foreground">
-                                                        Transcribe (original language)
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Subtitles in the speaker's language.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="translate">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Languages className="size-5" />
-                                                <div className="grid gap-0.5">
-                                                    <p className="text-foreground">
-                                                        Translate to English
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        English subtitles for any language.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
@@ -523,11 +682,24 @@ export function HomePage() {
                                     <Input id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
                             </div>
+                            <div className=" flex items-center space-x-4 rounded-md border p-4">
+                                <Languages />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Translate to English
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        From any language to English.
+                                    </p>
+                                </div>
+                                <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
+                            </div>
+
                         </CardContent>
                     </Card>
                 </div>
             </div>
-            <div className="relative hidden flex md:flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
+            <div className="relative hidden flex md:flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-1">
                 <div className="flex flex-row w-full gap-2 pb-2">
                     <Button
                         variant="outline"

@@ -39,6 +39,7 @@ import {
     DialogTitle,
     DialogTrigger,
     DialogFooter,
+    DialogClose,
 } from "@/components/ui/dialog"
 import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
@@ -87,16 +88,27 @@ export function DiarizePage() {
     const [subtitles, setSubtitles] = useState([])
     const [timeline, setTimeline] = useState("opinions")
     const [speakers, setSpeakers] = useState(speakerList);
+    const [currentColor, setCurrentColor] = useState("#e11d48");
+    const [currentStyle, setCurrentStyle] = useState("Outline");
+    const [currentName, setCurrentName] = useState("John Doe");
 
     const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
 
     function hexToRgb(hex: string) {
         var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
         } : null;
+    }
+
+    function saveSpeaker(index: number) {
+        var newSpeakers = [...speakers];
+        newSpeakers[index].name = currentName;
+        newSpeakers[index].color = currentColor;
+        newSpeakers[index].style = currentStyle;
+        setSpeakers(newSpeakers);
     }
 
     function printRGB(color: string) {
@@ -153,7 +165,7 @@ export function DiarizePage() {
 
     return (
 
-        <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
+        <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-2">
             <div className="relative flex-col items-start gap-8 md:flex">
                 <div className="grid w-full items-start gap-4">
                     <Card>
@@ -181,7 +193,13 @@ export function DiarizePage() {
                                     </div>
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button variant="outline" className="gap-1.5 text-sm">
+                                            <Button variant="outline" onClick={
+                                                () => {
+                                                    setCurrentName(speaker.name);
+                                                    setCurrentColor(speaker.color);
+                                                    setCurrentStyle(speaker.style);
+                                                }
+                                            } className="gap-1.5 text-sm">
                                                 <UserPen className="size-4" />
                                                 Modify
                                             </Button>
@@ -202,13 +220,7 @@ export function DiarizePage() {
                                                         id="name"
                                                         defaultValue={speaker.name}
                                                         onChange={({ currentTarget }) => {
-                                                            const newSpeakers = speakers.map((s) => {
-                                                                if (s.name === speaker.name) {
-                                                                    return { ...s, name: currentTarget.value };
-                                                                }
-                                                                return s;
-                                                            });
-                                                            setSpeakers(newSpeakers);
+                                                            setCurrentName(currentTarget.value);
                                                         }}
                                                         className="col-span-3"
                                                     />
@@ -221,13 +233,8 @@ export function DiarizePage() {
                                                         <ColorPicker
                                                             value={speaker.color}
                                                             onChange={({ color, style }) => {
-                                                                const newSpeakers = speakers.map((s) => {
-                                                                    if (s.name === speaker.name) {
-                                                                        return { ...s, color, style };
-                                                                    }
-                                                                    return s;
-                                                                });
-                                                                setSpeakers(newSpeakers);
+                                                                setCurrentColor(color);
+                                                                setCurrentStyle(style);
                                                             }}
                                                             items={colors}
                                                         />
@@ -247,16 +254,27 @@ export function DiarizePage() {
                                                 </div>
                                             </div>
                                             <DialogFooter>
-                                                <Button
-                                                    variant="default"
-                                                    type="button"
-                                                    size="sm"
-                                                    className="gap-1.5 text-sm w-full"
-                                                    onClick={() => printRGB(speakers[0].color)}
-                                                >
-                                                    <RefreshCcw className="size-4" />
-                                                    Update Timeline
-                                                </Button>
+                                                <DialogClose asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        type="button"
+                                                        size="sm"
+                                                        className="gap-1.5 text-sm"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </DialogClose>
+                                                <DialogClose asChild>
+                                                    <Button
+                                                        variant="default"
+                                                        type="button"
+                                                        size="sm"
+                                                        className="gap-1.5 text-sm"
+                                                        onClick={() => saveSpeaker(index)}
+                                                    >
+                                                        Save Changes
+                                                    </Button>
+                                                </DialogClose>
                                             </DialogFooter>
                                         </DialogContent>
                                     </Dialog>
