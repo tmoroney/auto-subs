@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Link, useLocation } from "react
 import { HomePage } from "@/pages/home-page";
 import { SearchPage } from "@/pages/search-page";
 import { ChatPage } from "@/pages/chat-page";
-import { DiarizePage } from "@/pages/diarize-page";
+import { EditPage } from "@/pages/edit-page";
 import { ThemeProvider } from "@/components/theme-provider";
 import {
   Tooltip,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Pyramid, Type, Search, Bot, Book, Settings2, LifeBuoy, Speech, RefreshCcw, HeartHandshake, School, Github } from "lucide-react";
+import { Pyramid, Type, Search, Bot, Book, Settings2, LifeBuoy, Speech, RefreshCcw, HeartHandshake, School, Github, SquarePen } from "lucide-react";
 
 function App() {
   return (
@@ -26,7 +26,7 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
-              <Route path="/diarize" element={<DiarizePage />} />
+              <Route path="/edit" element={<EditPage />} />
               <Route path="/chat" element={<ChatPage />} />
             </Routes>
           </div>
@@ -44,7 +44,7 @@ function NavigationHeader() {
   const pathNames = {
     "/": "Transcribe",
     "/search": "Text Search",
-    "/diarize": "Label Speakers",
+    "/edit": "Edit Subtitles",
     "/chat": "Chat",
   };
 
@@ -156,19 +156,19 @@ function NavigationAside() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/diarize">
+                <Link to="/edit">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-lg ${currentPath === "/diarize" ? "bg-muted" : ""}`}
-                    aria-label="Diarize"
+                    className={`rounded-lg ${currentPath === "/edit" ? "bg-muted" : ""}`}
+                    aria-label="Edit Subtitles"
                   >
-                    <Speech className="size-5" />
+                    <SquarePen className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
-                Label Speakers
+                Edit Subtitles
               </TooltipContent>
             </Tooltip>
             <Tooltip>

@@ -20,6 +20,17 @@ import {
     Speech
 } from "lucide-react"
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog"
+
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -60,9 +71,11 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { save } from '@tauri-apps/plugin-dialog';
 import { strict } from "assert"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const resolveAPI = "http://localhost:5016/";
 const transcribeAPI = "http://localhost:8000/transcribe/";
+const validateAPI = "http://localhost:8000/validate/";
 
 const languages = [
     { label: "Detect Automatically", value: "auto" },
@@ -181,20 +194,25 @@ export function HomePage() {
     const [templateList, setTemplateList] = useState<Template[]>([]);
     const [trackList, setTrackList] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [openLanguages, setOpenLanguages] = useState(false)
-    const [openTemplates, setOpenTemplates] = useState(false)
-    const [openTracks, setOpenTracks] = useState(false)
-    const [model, setModel] = useState("small")
-    const [currentLanguage, setLanguage] = useState("english")
-    const [currentTemplate, setTemplate] = useState("")
-    const [currentTrack, setTrack] = useState("")
-    const [subtitles, setSubtitles] = useState([])
-    const [timeline, setTimeline] = useState("opinions")
-    const [translate, setTranslate] = useState(false)
-    const [diarize, setDiarize] = useState(false)
-    const [maxWords, setMaxWords] = useState(6)
-    const [maxChars, setMaxChars] = useState(30)
-    const [processingStep, setProcessingStep] = useState("Exporting audio...")
+    const [openLanguages, setOpenLanguages] = useState(false);
+    const [openTemplates, setOpenTemplates] = useState(false);
+    const [openTracks, setOpenTracks] = useState(false);
+    const [model, setModel] = useState("small");
+    const [currentLanguage, setLanguage] = useState("english");
+    const [currentTemplate, setTemplate] = useState("");
+    const [currentTrack, setTrack] = useState("");
+    const [subtitles, setSubtitles] = useState([]);
+    const [timeline, setTimeline] = useState("opinions");
+    const [translate, setTranslate] = useState(false);
+    const [diarize, setDiarize] = useState(false);
+    const [maxWords, setMaxWords] = useState(6);
+    const [maxChars, setMaxChars] = useState(30);
+    const [processingStep, setProcessingStep] = useState("Exporting audio...");
+    const [openTokenMenu, setOpenTokenMenu] = useState(false);
+    const [hfToken, setHfToken] = useState("");
+    const [hfMessage, setHfMessage] = useState("");
+    const [segmentationAccepted, setSegmentationAccepted] = useState(false);
+    const [diarizationAccepted, setDiarizationAccepted] = useState(false);
 
     // check if subtitles file exists
     useEffect(() => {
@@ -285,7 +303,7 @@ export function HomePage() {
             }),
         });
 
-        
+
         return response.json();
     }
 
@@ -378,6 +396,35 @@ export function HomePage() {
             console.log(data);
         } catch (error) {
             console.error('Error fetching templates:', error);
+        }
+    }
+
+    async function checkDiarizeAvailable(checked: boolean) {
+        setDiarize(checked)
+        if (checked == true) {
+            // check with server if model is available and HF token is correct
+            const response = await fetch(validateAPI, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            let message = data.message || "Hugging face token is incorrect";
+            let isAvailable = data.isAvailable || false;
+
+            if (!isAvailable) {
+                setDiarize(false);
+                console.log(message);
+                // open menu with instructions
+                setHfMessage(message);
+                setOpenTokenMenu(true);
+            }
         }
     }
 
@@ -496,10 +543,10 @@ export function HomePage() {
                                         Speaker Diarization
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Different color for each speaker.
+                                        Distinguish and style subtitles by speaker.
                                     </p>
                                 </div>
-                                <Switch checked={diarize} onCheckedChange={(checked) => setDiarize(checked)}/>
+                                <Switch checked={diarize} onCheckedChange={async (checked) => checkDiarizeAvailable(checked)} />
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center gap-2">
@@ -724,6 +771,83 @@ export function HomePage() {
                     <SubtitleList subtitles={subtitles} />
                 </div>
             </div>
+            <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Enable Diarization</DialogTitle>
+                        <DialogDescription>
+                            Follow the steps below to enable diarization.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-6 pt-2 pb-4">
+                        {/* Step 1 */}
+                        <div className="grid gap-3">
+                            <Label>
+                                Step 1: Accept the user conditions for these models
+                            </Label>
+                            <div className="flex space-x-2">
+                                <a href="https://hf.co/pyannote/segmentation-3.0" target="_blank" rel="noopener noreferrer">
+                                    <Button variant="secondary" size="sm" className="w-full">
+                                        Segmentation 3.0 Page
+                                    </Button>
+                                </a>
+                                <a href="https://huggingface.co/pyannote/speaker-diarization-3.1/" target="_blank" rel="noopener noreferrer">
+                                    <Button variant="secondary" size="sm" className="w-full">
+                                        Speaker Diarization 3.1 Page
+                                    </Button>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Label>
+                                Step 2: Create a <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary">Hugging Face access token</a> with read permissions
+                            </Label>
+                            <div className="flex space-x-2">
+                                <Input
+                                    id="hf_token"
+                                    placeholder="Enter your Hugging Face access token"
+                                    value={hfToken}
+                                    onChange={({ currentTarget }) => setHfToken(currentTarget.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* <p>{hfMessage}</p> */}
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button
+                                variant="outline"
+                                type="button"
+                                size="sm"
+                                className="gap-1.5 text-sm"
+                                onClick={() => setOpenTokenMenu(false)}
+                            >
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            variant="default"
+                            type="button"
+                            size="sm"
+                            className="gap-1.5 text-sm"
+                            onClick={async () => {
+                                if (segmentationAccepted && diarizationAccepted) {
+                                    await checkDiarizeAvailable(true);
+                                    setOpenTokenMenu(false); // Optionally close the dialog
+                                } else {
+                                    setHfMessage("Please accept all conditions.");
+                                }
+                            }}
+                        >
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </main>
     )
 }

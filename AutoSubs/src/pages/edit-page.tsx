@@ -10,7 +10,7 @@ import {
     UserPen,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LineDistributionChart } from "@/components/line-distribution-chart"
+import { SpeakerChart } from "@/components/speaker-chart"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -68,24 +68,26 @@ const templates = [
 
 var speakerList = [
     {
-        name: "John Doe",
+        label: "John Wallis",
         color: "#e11d48",
+        lines: 30,
         style: "Outline",
         sample: "3:00 - 5:00",
         wordsSpoken: 234
     },
     {
-        name: "Adam Doe",
+        label: "Adam Doe",
         color: "#db2777",
+        lines: 45,
         style: "Outline",
         sample: "5:00 - 7:00",
         wordsSpoken: 145
     }
 ]
 
-export function DiarizePage() {
+export function EditPage() {
     const [currentTemplate, setTemplate] = useState("")
-    const [subtitles, setSubtitles] = useState([])
+    const [topSpeaker, setTopSpeaker] = useState("Speaker 1")
     const [timeline, setTimeline] = useState("opinions")
     const [speakers, setSpeakers] = useState(speakerList);
     const [currentColor, setCurrentColor] = useState("#e11d48");
@@ -105,7 +107,7 @@ export function DiarizePage() {
 
     function saveSpeaker(index: number) {
         var newSpeakers = [...speakers];
-        newSpeakers[index].name = currentName;
+        newSpeakers[index].label = currentName;
         newSpeakers[index].color = currentColor;
         newSpeakers[index].style = currentStyle;
         setSpeakers(newSpeakers);
@@ -127,40 +129,19 @@ export function DiarizePage() {
             baseDir: BaseDirectory.Document,
         }).then((fileExists) => {
             if (fileExists) {
-                populateSubtitles();
+                populateSpeakers();
             }
         });
     }, [timeline]);
 
-    async function populateSubtitles() {
+    async function populateSpeakers() {
         // read json file
         console.log("Reading json file...");
         const contents = await readTextFile(transcriptPath, {
             baseDir: BaseDirectory.Document,
         });
         let transcript = JSON.parse(contents);
-        setSubtitles(transcript.segments);
-    }
-
-    async function fetchTranscription() {
-        console.log("Fetching transcription...");
-        try {
-            const response = await fetch('http://localhost:8000/transcribe/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ file_path: "/Users/moroneyt/Downloads/opinions.mp3" }),
-            });
-
-            if (response.status !== 200) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            populateSubtitles();
-        } catch (error) {
-            console.error("Error fetching transcription:", error);
-        }
+        //setSpeakers(transcript.speakers);
     }
 
     return (
@@ -183,11 +164,11 @@ export function DiarizePage() {
                                     <div className="flex items-center space-x-2">
                                         <Avatar>
                                             <AvatarFallback className="font-small h-9 w-9" style={{ backgroundColor: speaker.color }}>
-                                                {speaker.name.split(" ").map((n) => n[0]).join("")}
+                                                {speaker.label.split(" ").map((n) => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <p className="font-medium">{speaker.name}</p>
+                                            <p className="font-medium">{speaker.label}</p>
                                             <p className="text-sm text-muted-foreground">{speaker.wordsSpoken} lines</p>
                                         </div>
                                     </div>
@@ -195,7 +176,7 @@ export function DiarizePage() {
                                         <DialogTrigger asChild>
                                             <Button variant="outline" onClick={
                                                 () => {
-                                                    setCurrentName(speaker.name);
+                                                    setCurrentName(speaker.label);
                                                     setCurrentColor(speaker.color);
                                                     setCurrentStyle(speaker.style);
                                                 }
@@ -218,7 +199,7 @@ export function DiarizePage() {
                                                     </Label>
                                                     <Input
                                                         id="name"
-                                                        defaultValue={speaker.name}
+                                                        defaultValue={speaker.label}
                                                         onChange={({ currentTarget }) => {
                                                             setCurrentName(currentTarget.value);
                                                         }}
@@ -327,7 +308,6 @@ export function DiarizePage() {
                                 type="button"
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
-                                onClick={async () => await fetchTranscription()}
                             >
                                 <CirclePlay className="size-4" />
                                 Label Speakers
@@ -339,19 +319,19 @@ export function DiarizePage() {
             </div>
             <div className="relative flex-col items-start gap-8 md:flex">
                 <Card className="w-full">
-                    <CardHeader className="pb-4">
+                    <CardHeader className="items-center pb-0">
                         <CardTitle>Line Distribution</CardTitle>
                         <CardDescription>Number of lines spoken by each person</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <LineDistributionChart />
+                    <CardContent className="flex-1 pb-0">
+                        <SpeakerChart speakerList={speakerList} />
                     </CardContent>
-                    <CardFooter className="flex-col items-start gap-2 text-sm">
-                        <div className="flex gap-2 font-medium leading-none">
-                            Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+                    <CardFooter className="flex-col gap-2 text-sm">
+                        <div className="flex items-center gap-2 font-medium leading-none">
+                            {topSpeaker} spoke 50% of the time <TrendingUp className="h-4 w-4" />
                         </div>
                         <div className="leading-none text-muted-foreground">
-                            Showing total visitors for the last 6 months
+                            Showing total number of subtitle lines
                         </div>
                     </CardFooter>
                 </Card>

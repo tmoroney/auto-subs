@@ -17,12 +17,12 @@ def inference(audio, **kwargs) -> dict:
     )
     return output
 
-def transcribe_audio():
+def transcribe_audio(audio_file):
     print("Starting transcription...")
     whisperResult = stable_whisper.transcribe_any(inference, audio_file, vad=True)
     return whisperResult.to_dict()
 
-def diarize_audio():
+def diarize_audio(audio_file):
     print("Starting diarization...")
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",
@@ -49,8 +49,8 @@ print(f"Using device: {device}")
 
 # Run transcription and diarization in parallel
 with concurrent.futures.ThreadPoolExecutor() as executor:
-    future_transcription = executor.submit(transcribe_audio)
-    future_diarization = executor.submit(diarize_audio)
+    future_transcription = executor.submit(transcribe_audio, audio_file)
+    future_diarization = executor.submit(diarize_audio, audio_file)
     result = future_transcription.result()
     diarization = future_diarization.result()
 
