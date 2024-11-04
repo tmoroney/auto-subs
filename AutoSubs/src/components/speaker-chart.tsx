@@ -1,15 +1,6 @@
 import * as React from "react"
-import { TrendingUp } from "lucide-react"
 import { Label, Pie, PieChart } from "recharts"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
@@ -21,8 +12,14 @@ export const description = "A donut chart showing speakers and the number of lin
 
 interface Speaker {
   label: string;
-  lines: number;
   color: string;
+  style: string;
+  sample: {
+      start: number;
+      end: number;
+  };
+  subtitle_lines: number;
+  word_count: number;
 }
 
 interface SpeakerChartProps {
@@ -32,7 +29,7 @@ interface SpeakerChartProps {
 export function SpeakerChart({ speakerList }: SpeakerChartProps) {
   const chartData = speakerList.map(speaker => ({
     speaker: speaker.label,
-    lines: speaker.lines,
+    lines: speaker.subtitle_lines,
     fill: speaker.color,
   }))
 
@@ -45,7 +42,7 @@ export function SpeakerChart({ speakerList }: SpeakerChartProps) {
   }, {})
 
   const totalLines = React.useMemo(() => {
-    return speakerList.reduce((acc, curr) => acc + curr.lines, 0)
+    return speakerList.reduce((acc, curr) => acc + curr.subtitle_lines, 0)
   }, [speakerList])
 
   return (
@@ -63,7 +60,7 @@ export function SpeakerChart({ speakerList }: SpeakerChartProps) {
               dataKey="lines"
               nameKey="speaker"
               innerRadius={60}
-              strokeWidth={5}
+              strokeWidth={60}
             >
               <Label
                 content={({ viewBox }) => {

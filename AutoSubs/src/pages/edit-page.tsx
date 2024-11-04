@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { ColorPicker } from "@/components/ui/color-picker"
 import {
+    Check,
+    ChevronsUpDown,
     CirclePlay,
     Paintbrush,
     PaintBucket,
@@ -15,14 +17,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command"
 import {
     Card,
     CardContent,
@@ -41,31 +47,13 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
-import { SubtitleList } from "@/components/simple-subtitle-list"
-import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists } from '@tauri-apps/plugin-fs';
+import { fetch } from '@tauri-apps/plugin-http';
+import { useGlobal } from "@/GlobalContext"
+import { cn } from "@/lib/utils"
 
 var colors = [{ value: '#e11d48', label: '' }, { value: '#db2777', label: '' }, { value: '#c026d3', label: '' }, { value: '#9333ea', label: '' }, { value: '#4f46e5', label: '' }, { value: '#0284c7', label: '' }, { value: '#0d9488', label: '' }, { value: '#059669', label: '' }, { value: '#16a34a', label: '' }, { value: '#ca8a04', label: '' }, { value: '#ea580c', label: '' }, { value: '#dc2626', label: '' }, { value: '#000000', label: '' }, { value: '#ffffff', label: '' }];
-
-const templates = [
-    {
-        value: "Fusion Title1",
-        label: "Fusion Title1",
-    },
-    {
-        value: "Fusion Title2",
-        label: "Fusion Title2",
-    },
-    {
-        value: "Fusion Title3",
-        label: "Fusion Title3",
-    },
-    {
-        value: "Fusion Title4",
-        label: "Fusion Title4",
-    },
-]
-
+const resolveAPI = "http://localhost:5016/";
 var speakerList = [
     {
         label: "John Wallis",
@@ -86,15 +74,27 @@ var speakerList = [
 ]
 
 export function EditPage() {
-    const [currentTemplate, setTemplate] = useState("")
-    const [topSpeaker, setTopSpeaker] = useState("Speaker 1")
-    const [timeline, setTimeline] = useState("opinions")
-    const [speakers, setSpeakers] = useState(speakerList);
+    const { topSpeaker, speakers, templateList, trackList, setSpeakers, getTemplates, getTracks} = useGlobal();
+
+    interface Speaker {
+        label: string;
+        color: string;
+        style: string;
+        sample: {
+            start: number;
+            end: number;
+        };
+        subtitle_lines: number;
+        word_count: number;
+    }
+
+    const [openTemplates, setOpenTemplates] = useState(false);
+    const [openTracks, setOpenTracks] = useState(false);
+    const [currentTemplate, setTemplate] = useState("");
+    const [currentTrack, setTrack] = useState("");
     const [currentColor, setCurrentColor] = useState("#e11d48");
     const [currentStyle, setCurrentStyle] = useState("Outline");
     const [currentName, setCurrentName] = useState("John Doe");
-
-    const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
 
     function hexToRgb(hex: string) {
         var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -111,37 +111,6 @@ export function EditPage() {
         newSpeakers[index].color = currentColor;
         newSpeakers[index].style = currentStyle;
         setSpeakers(newSpeakers);
-    }
-
-    function printRGB(color: string) {
-        var rgb = hexToRgb(color);
-        if (!rgb) {
-            console.log("Invalid color");
-        } else {
-            console.log(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-            console.log(speakers[0].style);
-        }
-    }
-
-    useEffect(() => {
-        // check if subtitles file exists
-        exists(transcriptPath, {
-            baseDir: BaseDirectory.Document,
-        }).then((fileExists) => {
-            if (fileExists) {
-                populateSpeakers();
-            }
-        });
-    }, [timeline]);
-
-    async function populateSpeakers() {
-        // read json file
-        console.log("Reading json file...");
-        const contents = await readTextFile(transcriptPath, {
-            baseDir: BaseDirectory.Document,
-        });
-        let transcript = JSON.parse(contents);
-        //setSpeakers(transcript.speakers);
     }
 
     return (
@@ -161,15 +130,15 @@ export function EditPage() {
                             ) : null}
                             {speakers.map((speaker, index) => (
                                 <div key={index} className="flex items-center justify-between bg-muted/50 rounded-xl px-4 py-3">
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center space-x-3">
                                         <Avatar>
-                                            <AvatarFallback className="font-small h-9 w-9" style={{ backgroundColor: speaker.color }}>
+                                            <AvatarFallback className="text-small h-10 w-10 text-white" style={{ backgroundColor: speaker.color }}>
                                                 {speaker.label.split(" ").map((n) => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <p className="font-medium">{speaker.label}</p>
-                                            <p className="text-sm text-muted-foreground">{speaker.wordsSpoken} lines</p>
+                                            <p className="text-sm text-muted-foreground">{speaker.word_count} lines</p>
                                         </div>
                                     </div>
                                     <Dialog>
@@ -230,7 +199,7 @@ export function EditPage() {
                                                         className="col-span-3 gap-1.5 text-sm"
                                                     >
                                                         <Speech className="size-4" />
-                                                        Jump to {speaker.sample}
+                                                        Jump to {speaker.sample.start} - {speaker.sample.end}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -265,28 +234,103 @@ export function EditPage() {
                     </Card>
                     <Card>
                         <CardHeader className="pb-4">
-                            <CardTitle>Identify Speakers</CardTitle>
-                            <CardDescription>Analyses the timeline and identifies the different speakers</CardDescription>
+                            <CardTitle>Update Subtitles</CardTitle>
+                            <CardDescription>Re-generate the subtitles on the timeline</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
 
+                        <div className="grid gap-3">
+                                <Label htmlFor="template">Subtitle Template</Label>
+                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openTemplates}
+                                            className="justify-between font-normal"
+                                            onClick={() => getTemplates()}
+                                        >
+                                            {currentTemplate
+                                                ? templateList.find((template) => template.value === currentTemplate)?.label
+                                                : "Select Template..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search MediaPool for Text+" />
+                                            <CommandList>
+                                                <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {templateList.map((template) => (
+                                                        <CommandItem
+                                                            key={template.value}
+                                                            value={template.value}
+                                                            onSelect={(currentValue) => {
+                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
+                                                                setOpenTemplates(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {template.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                             <div className="grid gap-3">
-                                <Label htmlFor="template">Subtitles Track</Label>
-                                <Select>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pick Text+ subtitle track" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectLabel>Tracks available</SelectLabel>
-                                            <SelectItem value="apple">Apple</SelectItem>
-                                            <SelectItem value="banana">Banana</SelectItem>
-                                            <SelectItem value="blueberry">Blueberry</SelectItem>
-                                            <SelectItem value="grapes">Grapes</SelectItem>
-                                            <SelectItem value="pineapple">Pineapple</SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
+                                <Label>Output Track</Label>
+                                <Popover open={openTracks} onOpenChange={setOpenTracks}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className="justify-between font-normal"
+                                            onClick={() => getTracks()}
+                                        >
+                                            {currentTrack
+                                                ? trackList.find((track) => track.value === currentTrack)?.label
+                                                : "Select Track..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Select track to place subtitles" />
+                                            <CommandList>
+                                                <CommandEmpty>No tracks found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {trackList.map((track) => (
+                                                        <CommandItem
+                                                            key={track.value}
+                                                            value={track.value}
+                                                            onSelect={(currentValue) => {
+                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                setOpenTracks(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {track.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
                             <div className="grid gap-3">
@@ -324,7 +368,7 @@ export function EditPage() {
                         <CardDescription>Number of lines spoken by each person</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 pb-0">
-                        <SpeakerChart speakerList={speakerList} />
+                        <SpeakerChart speakerList={speakers} />
                     </CardContent>
                     <CardFooter className="flex-col gap-2 text-sm">
                         <div className="flex items-center gap-2 font-medium leading-none">

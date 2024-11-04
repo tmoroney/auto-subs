@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table"
 import { useEffect, useState } from "react"
 import { BaseDirectory, exists, readTextFile } from "@tauri-apps/plugin-fs"
+import { useGlobal } from "@/GlobalContext"
 
 export const columns: ColumnDef<Subtitle>[] = [
   {
@@ -99,32 +100,7 @@ export const columns: ColumnDef<Subtitle>[] = [
 ]
 
 export function SearchPage() {
-  const [subtitles, setSubtitles] = useState([])
-  const [timeline, setTimeline] = useState("opinions")
-
-  const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
-
-
-  useEffect(() => {
-    // check if subtitles file exists
-    exists(transcriptPath, {
-      baseDir: BaseDirectory.Document,
-    }).then((fileExists) => {
-      if (fileExists) {
-        populateSubtitles();
-      }
-    });
-  }, [timeline]);
-
-  async function populateSubtitles() {
-    // read json file
-    console.log("Reading json file...");
-    const contents = await readTextFile(transcriptPath, {
-      baseDir: BaseDirectory.Document,
-    });
-    let transcript = JSON.parse(contents);
-    setSubtitles(transcript.segments);
-  }
+  const { subtitles } = useGlobal()
 
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -133,6 +109,13 @@ export function SearchPage() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+
+  interface TableState {
+    sorting: SortingState;
+    columnFilters: ColumnFiltersState;
+    columnVisibility: VisibilityState;
+    rowSelection: Record<string, boolean>;
+  }
 
   const table = useReactTable<Subtitle>({
     data: subtitles,
@@ -150,7 +133,7 @@ export function SearchPage() {
       columnFilters,
       columnVisibility,
       rowSelection,
-    },
+    } as TableState,
   })
 
   return (

@@ -1,3 +1,20 @@
+export interface Speaker {
+    label: string;
+    color: string;
+    style: string;
+    sample: {
+        start: number;
+        end: number;
+    };
+    subtitle_lines: number;
+    word_count: number;
+}
+
+export interface AudioInfo {
+    timeline: string;
+    path: string;
+}
+
 export interface Subtitle {
     start: string;
     end: string;

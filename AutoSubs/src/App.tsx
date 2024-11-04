@@ -1,4 +1,5 @@
 // App.tsx
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from "react-router-dom";
 import { HomePage } from "@/pages/home-page";
 import { SearchPage } from "@/pages/search-page";
@@ -13,9 +14,16 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Pyramid, Type, Search, Bot, Book, Settings2, LifeBuoy, Speech, RefreshCcw, HeartHandshake, School, Github, SquarePen } from "lucide-react";
+import { Pyramid, Type, Search, Bot, Settings2, LifeBuoy, HeartHandshake, Github, SquarePen } from "lucide-react";
+import { useGlobal } from '@/GlobalContext';
 
 function App() {
+  const { initialize } = useGlobal();
+
+  useEffect(() => {
+    initialize();
+  }, []);
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Router>

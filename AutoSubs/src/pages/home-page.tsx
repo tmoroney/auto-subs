@@ -68,10 +68,7 @@ import {
 } from "@/components/ui/popover"
 import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
-import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
-import { save } from '@tauri-apps/plugin-dialog';
-import { strict } from "assert"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useGlobal } from '@/GlobalContext';
 
 const resolveAPI = "http://localhost:5016/";
 const transcribeAPI = "http://localhost:8000/transcribe/";
@@ -180,19 +177,9 @@ const languages = [
     { label: "Sundanese", value: "sundanese" },
     { label: "Cantonese", value: "cantonese" },
 ] as const;
-
 export function HomePage() {
-    interface Template {
-        value: string;
-        label: string;
-    }
-    interface Track {
-        value: string;
-        label: string;
-    }
+    const { trackList, templateList, subtitles, exportAudio, exportSubtitles, populateSubtitles, addSubtitles, getTemplates, getTracks} = useGlobal();
 
-    const [templateList, setTemplateList] = useState<Template[]>([]);
-    const [trackList, setTrackList] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [openLanguages, setOpenLanguages] = useState(false);
     const [openTemplates, setOpenTemplates] = useState(false);
@@ -201,8 +188,6 @@ export function HomePage() {
     const [currentLanguage, setLanguage] = useState("english");
     const [currentTemplate, setTemplate] = useState("");
     const [currentTrack, setTrack] = useState("");
-    const [subtitles, setSubtitles] = useState([]);
-    const [timeline, setTimeline] = useState("opinions");
     const [translate, setTranslate] = useState(false);
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
@@ -211,108 +196,14 @@ export function HomePage() {
     const [openTokenMenu, setOpenTokenMenu] = useState(false);
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
-    const [segmentationAccepted, setSegmentationAccepted] = useState(false);
-    const [diarizationAccepted, setDiarizationAccepted] = useState(false);
-
-    // check if subtitles file exists
-    useEffect(() => {
-        populateSubtitles();
-    }, []);
-
-    async function populateSubtitles() {
-        // Check if the file exists
-        const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
-        const fileExists = await exists(transcriptPath, {
-            baseDir: BaseDirectory.Document,
-        });
-
-        if (!fileExists) {
-            console.log("Transcript file does not exist for this timeline.");
-            return;
-        }
-
-        // Read JSON file
-        console.log("Reading json file...");
-        const contents = await readTextFile(transcriptPath, {
-            baseDir: BaseDirectory.Document,
-        });
-        let transcript = JSON.parse(contents);
-        setSubtitles(transcript.segments);
-    }
-
-    async function exportSubtitles(jsonData: object) {
-        try {
-            // Open the save dialog
-            const filePath = await save({
-                defaultPath: 'subtitles.json', // Suggested file name
-                filters: [{ name: 'JSON Files', extensions: ['json'] }],
-
-            });
-
-            if (!filePath) {
-                console.log('Save was canceled');
-                return;
-            }
-
-            // Log the file path to check it's valid
-            console.log('Chosen file path:', filePath);
-
-            // Convert the JSON data to string format
-            const jsonString = JSON.stringify(jsonData, null, 2);
-
-            console.log(jsonString);
-
-            // Write the JSON string to the file
-            await writeTextFile(filePath, jsonString);
-
-            console.log('File saved to', filePath);
-        } catch (error) {
-            console.error('Failed to save file', error);
-        }
-    }
-
-    async function exportAudio() {
-        // send request to Lua server (Resolve)
-        const response = await fetch(resolveAPI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                func: "ExportAudio",
-            }),
-        });
-
-        const data = await response.json();
-        console.log(data);
-        return data;
-    };
-
-    async function addSubtitles(filePath: string) {
-        // send request to Lua server (Resolve)
-        const response = await fetch(resolveAPI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                func: "AddSubtitles",
-                filePath: filePath,
-                templateName: currentTemplate,
-                trackIndex: currentTrack,
-            }),
-        });
-
-
-        return response.json();
-    }
+    const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
 
     async function fetchTranscription() {
         setIsLoading(true);
         setProcessingStep("Exporting Audio...")
         try {
             let audioInfo = await exportAudio();
-            setTimeline(audioInfo.timeline);
+            //setTimeline(audioInfo.timeline);
             console.log("Fetching transcription...");
             setProcessingStep("Transcribing Audio...")
 
@@ -342,7 +233,7 @@ export function HomePage() {
 
             setProcessingStep("Populating timeline...")
             populateSubtitles()
-            await addSubtitles(filePath);
+            await addSubtitles(filePath, currentTemplate, currentTrack);
         } catch (error) {
             console.error("Error fetching transcription:", error);
         } finally {
@@ -350,64 +241,18 @@ export function HomePage() {
         }
     }
 
-    async function populateTemplates() {
-        try {
-            // send request to Lua server
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    func: "GetTemplates",
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            setTemplateList(data); // Assuming the response has a 'templates' field
-        } catch (error) {
-            console.error('Error fetching templates:', error);
-        }
-    }
-
-    async function populateTracks() {
-        try {
-            // send request to Lua server
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    func: "GetTracks",
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            setTrackList(data); // Assuming the response has a 'templates' field
-            console.log(data);
-        } catch (error) {
-            console.error('Error fetching templates:', error);
-        }
-    }
-
     async function checkDiarizeAvailable(checked: boolean) {
-        setDiarize(checked)
-        if (checked == true) {
+        setDiarize(checked);
+        if (checked == true && isDiarizeAvailable == false) {
             // check with server if model is available and HF token is correct
             const response = await fetch(validateAPI, {
-                method: 'GET',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({
+                    token: hfToken,
+                }),
             });
 
             if (!response.ok) {
@@ -415,15 +260,22 @@ export function HomePage() {
             }
 
             const data = await response.json();
-            let message = data.message || "Hugging face token is incorrect";
+            let message = data.message;
             let isAvailable = data.isAvailable || false;
+            console.log(data);
 
-            if (!isAvailable) {
+            if (isAvailable) {
+                setDiarize(true);
+                setOpenTokenMenu(false);
+                setIsDiarizeAvailable(true);
+                console.log("Diarization enabled");
+            } else {
                 setDiarize(false);
                 console.log(message);
                 // open menu with instructions
                 setHfMessage(message);
                 setOpenTokenMenu(true);
+
             }
         }
     }
@@ -450,7 +302,7 @@ export function HomePage() {
                                             role="combobox"
                                             aria-expanded={openTemplates}
                                             className="justify-between font-normal"
-                                            onClick={() => populateTemplates()}
+                                            onClick={() => getTemplates()}
                                         >
                                             {currentTemplate
                                                 ? templateList.find((template) => template.value === currentTemplate)?.label
@@ -550,27 +402,25 @@ export function HomePage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center gap-2">
-                            {isLoading ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 text-sm w-full"
-                                    disabled
-                                >
-                                    <Loader2 className="size-4 animate-spin" />
-                                    {processingStep}
-                                </Button>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 text-sm w-full"
-                                    onClick={async () => await fetchTranscription()}
-                                >
-                                    <CirclePlay className="size-4" />
-                                    Generate
-                                </Button>
-                            )}
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="gap-1.5 text-sm w-full"
+                                onClick={async () => await fetchTranscription()}
+                            >
+
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="size-4 animate-spin" />
+                                        {processingStep}
+                                    </>
+                                ) : (
+                                    <>
+                                        <CirclePlay className="size-4" />
+                                        Generate
+                                    </>
+                                )}
+                            </Button>
                         </CardFooter>
                     </Card>
 
@@ -681,7 +531,7 @@ export function HomePage() {
                                             variant="outline"
                                             role="combobox"
                                             className="justify-between font-normal"
-                                            onClick={() => populateTracks()}
+                                            onClick={() => getTracks()}
                                         >
                                             {currentTrack
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
@@ -752,7 +602,7 @@ export function HomePage() {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
-                        onClick={() => populateSubtitles()}
+                        onClick={async () => populateSubtitles()}
                     >
                         <RefreshCcw className="size-3.5" />
                         Refresh
@@ -780,7 +630,7 @@ export function HomePage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-6 pt-2 pb-4">
+                    <div className="grid gap-8 pt-2">
                         {/* Step 1 */}
                         <div className="grid gap-3">
                             <Label>
@@ -807,14 +657,14 @@ export function HomePage() {
                             <div className="flex space-x-2">
                                 <Input
                                     id="hf_token"
+                                    type="password"
                                     placeholder="Enter your Hugging Face access token"
                                     value={hfToken}
                                     onChange={({ currentTarget }) => setHfToken(currentTarget.value)}
                                 />
                             </div>
+                            <p className="text-sm text-red-500">{hfMessage}</p>
                         </div>
-
-                        {/* <p>{hfMessage}</p> */}
                     </div>
 
                     <DialogFooter>
@@ -835,15 +685,19 @@ export function HomePage() {
                             size="sm"
                             className="gap-1.5 text-sm"
                             onClick={async () => {
-                                if (segmentationAccepted && diarizationAccepted) {
-                                    await checkDiarizeAvailable(true);
-                                    setOpenTokenMenu(false); // Optionally close the dialog
-                                } else {
-                                    setHfMessage("Please accept all conditions.");
-                                }
+                                setIsLoading(true);
+                                await checkDiarizeAvailable(true);
+                                setIsLoading(false);
                             }}
                         >
-                            Save Changes
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="size-4 animate-spin" />
+                                    Checking...
+                                </>
+                            ) : (
+                                "Save Changes"
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
