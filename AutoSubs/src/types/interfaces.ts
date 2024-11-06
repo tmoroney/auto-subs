@@ -10,6 +10,11 @@ export interface Speaker {
     word_count: number;
 }
 
+export interface TopSpeaker {
+    label: string;
+    percentage: number;
+}
+
 export interface AudioInfo {
     timeline: string;
     path: string;

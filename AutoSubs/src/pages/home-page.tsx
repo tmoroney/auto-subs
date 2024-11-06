@@ -8,7 +8,7 @@ import {
     ChevronsUpDown,
     Languages,
     PencilLine,
-    RefreshCcw,
+    RefreshCw,
     CirclePlay,
     Star,
     Rat,
@@ -69,6 +69,7 @@ import {
 import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from '@/GlobalContext';
+import { Skeleton } from "@/components/ui/skeleton"
 
 const resolveAPI = "http://localhost:5016/";
 const transcribeAPI = "http://localhost:8000/transcribe/";
@@ -178,68 +179,44 @@ const languages = [
     { label: "Cantonese", value: "cantonese" },
 ] as const;
 export function HomePage() {
-    const { trackList, templateList, subtitles, exportAudio, exportSubtitles, populateSubtitles, addSubtitles, getTemplates, getTracks} = useGlobal();
+    const {
+        timeline,
+        trackList,
+        templateList,
+        subtitles,
+        currentTemplate,
+        currentLanguage,
+        currentTrack,
+        diarize,
+        translate,
+        processingStep,
+        isLoading,
+        model,
+        setTemplate,
+        setLanguage,
+        setTrack,
+        setDiarize,
+        setTranslate,
+        setModel,
+        setMaxWords,
+        setMaxChars,
+        setIsLoading,
 
-    const [isLoading, setIsLoading] = useState(false);
+        fetchTranscription,
+        exportSubtitles,
+        populateSubtitles,
+        getTemplates,
+        getTracks,
+    } = useGlobal();
+
     const [openLanguages, setOpenLanguages] = useState(false);
     const [openTemplates, setOpenTemplates] = useState(false);
     const [openTracks, setOpenTracks] = useState(false);
-    const [model, setModel] = useState("small");
-    const [currentLanguage, setLanguage] = useState("english");
-    const [currentTemplate, setTemplate] = useState("");
-    const [currentTrack, setTrack] = useState("");
-    const [translate, setTranslate] = useState(false);
-    const [diarize, setDiarize] = useState(false);
-    const [maxWords, setMaxWords] = useState(6);
-    const [maxChars, setMaxChars] = useState(30);
-    const [processingStep, setProcessingStep] = useState("Exporting audio...");
     const [openTokenMenu, setOpenTokenMenu] = useState(false);
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
     const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
 
-    async function fetchTranscription() {
-        setIsLoading(true);
-        setProcessingStep("Exporting Audio...")
-        try {
-            let audioInfo = await exportAudio();
-            //setTimeline(audioInfo.timeline);
-            console.log("Fetching transcription...");
-            setProcessingStep("Transcribing Audio...")
-
-            const response = await fetch(transcribeAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    file_path: audioInfo.path,
-                    timeline: audioInfo.timeline,
-                    model: model,
-                    language: currentLanguage,
-                    task: translate ? "translate" : "transcribe",
-                    diarize: diarize,
-                    max_words: maxWords,
-                    max_chars: maxChars,
-                }),
-            });
-
-            if (response.status !== 200) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json()
-            const filePath = data.result_file;
-
-            setProcessingStep("Populating timeline...")
-            populateSubtitles()
-            await addSubtitles(filePath, currentTemplate, currentTrack);
-        } catch (error) {
-            console.error("Error fetching transcription:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    }
 
     async function checkDiarizeAvailable(checked: boolean) {
         setDiarize(checked);
@@ -289,8 +266,8 @@ export function HomePage() {
                 <div className="grid w-full items-start gap-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Generate</CardTitle>
-                            <CardDescription>Analyses timeline audio and generates subtitles.</CardDescription>
+                            <CardTitle>Subtitle Generation</CardTitle>
+                            <CardDescription>Generate subtitles on the current timeline</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
                             <div className="grid gap-3">
@@ -304,9 +281,9 @@ export function HomePage() {
                                             className="justify-between font-normal"
                                             onClick={() => getTemplates()}
                                         >
-                                            {currentTemplate
+                                            {currentTemplate && templateList.length > 0
                                                 ? templateList.find((template) => template.value === currentTemplate)?.label
-                                                : "Select Template..."}
+                                                : "Select template..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -427,12 +404,12 @@ export function HomePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Advanced Settings</CardTitle>
-                            <CardDescription>Adjust the settings for generating subtitles.</CardDescription>
+                            <CardDescription>Adjust the parameters for subtitle generation</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
                             <div className="grid gap-3">
                                 <Label htmlFor="model">Model</Label>
-                                <Select defaultValue="small" onValueChange={(value) => setModel(value)}>
+                                <Select defaultValue={model} onValueChange={(value) => setModel(value)}>
                                     <SelectTrigger
                                         id="model"
                                         className="[&_[data-description]]:hidden"
@@ -533,7 +510,7 @@ export function HomePage() {
                                             className="justify-between font-normal"
                                             onClick={() => getTracks()}
                                         >
-                                            {currentTrack
+                                            {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
                                                 : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -597,14 +574,14 @@ export function HomePage() {
                 </div>
             </div>
             <div className="relative hidden flex md:flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-1">
-                <div className="flex flex-row w-full gap-2 pb-2">
+                <div className="flex flex-row w-full gap-2 pb-4">
                     <Button
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
-                        onClick={async () => populateSubtitles()}
+                        onClick={async () => populateSubtitles(timeline)}
                     >
-                        <RefreshCcw className="size-3.5" />
+                        <RefreshCw className="size-3.5" />
                         Refresh
                     </Button>
                     <Button
@@ -618,7 +595,14 @@ export function HomePage() {
                     </Button>
                 </div>
                 <div className="overflow-y-auto">
-                    <SubtitleList subtitles={subtitles} />
+                    {subtitles.length > 0 ? (
+                        <SubtitleList subtitles={subtitles} />
+                    ) : (
+                        <div className="space-y-2 pt-4">
+                            <Skeleton className="h-4 w-[250px]" />
+                            <Skeleton className="h-4 w-[200px]" />
+                        </div>
+                    )}
                 </div>
             </div>
             <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>

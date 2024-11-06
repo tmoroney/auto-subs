@@ -2,5 +2,8 @@ Transcribe-Server/bin
 Transcribe-Server/__pycache__
 Transcribe-Server/lib
 Transcribe-Server/share
+Transcribe-Server-Mac/.venv
+Transcribe-Server-Mac/build
+Transcribe-Server-Mac/dist
 .DS_Store
 *.wav

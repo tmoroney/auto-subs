@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { ColorPicker } from "@/components/ui/color-picker"
 import {
+    AudioLines,
     Check,
     ChevronsUpDown,
     CirclePlay,
-    Paintbrush,
-    PaintBucket,
     RefreshCcw,
+    RefreshCw,
     Speech,
+    SquareActivity,
     TrendingUp,
     UserPen,
 } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { SpeakerChart } from "@/components/speaker-chart"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,51 +48,29 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
-import { BaseDirectory, readTextFile, exists } from '@tauri-apps/plugin-fs';
-import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from "@/GlobalContext"
 import { cn } from "@/lib/utils"
 
 var colors = [{ value: '#e11d48', label: '' }, { value: '#db2777', label: '' }, { value: '#c026d3', label: '' }, { value: '#9333ea', label: '' }, { value: '#4f46e5', label: '' }, { value: '#0284c7', label: '' }, { value: '#0d9488', label: '' }, { value: '#059669', label: '' }, { value: '#16a34a', label: '' }, { value: '#ca8a04', label: '' }, { value: '#ea580c', label: '' }, { value: '#dc2626', label: '' }, { value: '#000000', label: '' }, { value: '#ffffff', label: '' }];
-const resolveAPI = "http://localhost:5016/";
-var speakerList = [
-    {
-        label: "John Wallis",
-        color: "#e11d48",
-        lines: 30,
-        style: "Outline",
-        sample: "3:00 - 5:00",
-        wordsSpoken: 234
-    },
-    {
-        label: "Adam Doe",
-        color: "#db2777",
-        lines: 45,
-        style: "Outline",
-        sample: "5:00 - 7:00",
-        wordsSpoken: 145
-    }
-]
 
 export function EditPage() {
-    const { topSpeaker, speakers, templateList, trackList, setSpeakers, getTemplates, getTracks} = useGlobal();
-
-    interface Speaker {
-        label: string;
-        color: string;
-        style: string;
-        sample: {
-            start: number;
-            end: number;
-        };
-        subtitle_lines: number;
-        word_count: number;
-    }
+    const {
+        topSpeaker,
+        speakers,
+        templateList,
+        trackList,
+        currentTemplate,
+        currentTrack,
+        setTemplate,
+        setTrack,
+        addSubtitles,
+        setSpeakers,
+        getTemplates,
+        getTracks
+    } = useGlobal();
 
     const [openTemplates, setOpenTemplates] = useState(false);
     const [openTracks, setOpenTracks] = useState(false);
-    const [currentTemplate, setTemplate] = useState("");
-    const [currentTrack, setTrack] = useState("");
     const [currentColor, setCurrentColor] = useState("#e11d48");
     const [currentStyle, setCurrentStyle] = useState("Outline");
     const [currentName, setCurrentName] = useState("John Doe");
@@ -121,7 +100,7 @@ export function EditPage() {
                     <Card>
                         <CardHeader className="pb-4">
                             <CardTitle>Speakers</CardTitle>
-                            <CardDescription>People who were speaking in your video.</CardDescription>
+                            <CardDescription>People who were speaking in your video</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-4">
 
@@ -235,7 +214,7 @@ export function EditPage() {
                     <Card>
                         <CardHeader className="pb-4">
                             <CardTitle>Update Subtitles</CardTitle>
-                            <CardDescription>Re-generate the subtitles on the timeline</CardDescription>
+                            <CardDescription>Apply the latest style options to the subtitles on the timeline</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
 
@@ -250,7 +229,7 @@ export function EditPage() {
                                             className="justify-between font-normal"
                                             onClick={() => getTemplates()}
                                         >
-                                            {currentTemplate
+                                            {currentTemplate && templateList.length > 0
                                                 ? templateList.find((template) => template.value === currentTemplate)?.label
                                                 : "Select Template..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -296,7 +275,7 @@ export function EditPage() {
                                             className="justify-between font-normal"
                                             onClick={() => getTracks()}
                                         >
-                                            {currentTrack
+                                            {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
                                                 : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -333,7 +312,7 @@ export function EditPage() {
                                 </Popover>
                             </div>
 
-                            <div className="grid gap-3">
+                            {/* <div className="grid gap-3">
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-3">
@@ -345,22 +324,24 @@ export function EditPage() {
                                         <Input id="top-k" type="number" placeholder="3" />
                                     </div>
                                 </div>
-                            </div>
+                            </div> */}
                         </CardContent>
                         <CardFooter>
                             <Button
                                 type="button"
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
+                                onClick={async () => {addSubtitles(currentTemplate, currentTrack)}}
                             >
-                                <CirclePlay className="size-4" />
-                                Label Speakers
+                                <RefreshCw className="size-4" />
+                                Update Subtitles
                             </Button>
                         </CardFooter>
                     </Card>
 
                 </div>
             </div>
+            {speakers.length > 0 ? (
             <div className="relative flex-col items-start gap-8 md:flex">
                 <Card className="w-full">
                     <CardHeader className="items-center pb-0">
@@ -372,14 +353,15 @@ export function EditPage() {
                     </CardContent>
                     <CardFooter className="flex-col gap-2 text-sm">
                         <div className="flex items-center gap-2 font-medium leading-none">
-                            {topSpeaker} spoke 50% of the time <TrendingUp className="h-4 w-4" />
+                            {topSpeaker.label} spoke {topSpeaker.percentage}% of the time <AudioLines className="h-4 w-4" />
                         </div>
                         <div className="leading-none text-muted-foreground">
-                            Showing total number of subtitle lines
+                            Shows the distribution of subtitle lines
                         </div>
                     </CardFooter>
                 </Card>
             </div>
+            ) : null}
         </main>
     )
 }

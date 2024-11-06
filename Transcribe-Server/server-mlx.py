@@ -209,13 +209,17 @@ def merge_diarisation(transcript, diarization):
 
     # Convert speakers_info dict to a list
     speakers_list = list(speakers_info.values())
+    top_speaker = max(speakers_list, key=lambda speaker: speaker["subtitle_lines"])
 
     # Add speakers list to the result
     result = {
         "text": transcript["text"],
         "language": transcript["language"],
         "speakers": speakers_list,
-        "top_speaker": max(speakers_list, key=lambda speaker: speaker["subtitle_lines"]),
+        "top_speaker": {
+            "label": top_speaker["label"],
+            "percentage": round((top_speaker["subtitle_lines"] / len(transcript_segments)) * 100)
+        },
         "segments": new_segments
     }
     return result
