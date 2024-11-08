@@ -1,5 +1,5 @@
 {
-    "text": " Have you heard of transhumanism? If not, we believe that you should have. For us, transhumanism is of the utmost importance to the evolution of humanity and the continual growth of the human race due to the present, near future and long-term threats that society is facing. Transhumanism will be the key to our survival and we all need to get on board before it's too late. We're going to convince you today on why transhumanism is our last hope. Transhumanism has infinite possibilities, scientists have been creating bionic arms directly in previous animals and have even suggested the idea of digital and mit",
+    "text": " Have you heard of transhumanism? If not, we believe that you should have. For us, transhumanism is of the utmost importance to the evolution of humanity and the continual growth of the human race due to the present, near future and long-term threats that society is facing. Transhumanism will be the key to our survival and we all need to get on board before it's too late. We're going to convince you today on why transhumanism is our last hope. Transhumanism has infinite possibilities, scientists have been creating bionic arms genetically-empreaged animals and have even suggested the idea of digital immortality. What is digital immortality? Digital immortality is the reconstruction of a personality in digital form. It is evident that people want to live ever, although it has never been considered a realistic option. It has always made this subject of fiction. With improved technology, it has become a more probable.",
     "segments": [
         {
             "start": 0.28,
@@ -8,9 +8,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " Have",
@@ -42,9 +42,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " of",
@@ -57,7 +57,7 @@
                     "word": " transhumanism?",
                     "start": 0.8,
                     "end": 1.54,
-                    "probability": 0.8798828125,
+                    "probability": 0.87890625,
                     "tokens": null
                 }
             ]
@@ -69,9 +69,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " If",
@@ -96,9 +96,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " we",
@@ -130,9 +130,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " you",
@@ -164,9 +164,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " For",
@@ -191,15 +191,15 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " transhumanism",
                     "start": 5.664,
                     "end": 6.36,
-                    "probability": 0.99169921875,
+                    "probability": 0.9921875,
                     "tokens": null
                 },
                 {
@@ -227,7 +227,7 @@
                     "word": " utmost",
                     "start": 6.8,
                     "end": 6.98,
-                    "probability": 0.98828125,
+                    "probability": 0.98876953125,
                     "tokens": null
                 }
             ]
@@ -239,9 +239,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " importance",
@@ -280,9 +280,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " of",
@@ -302,21 +302,21 @@
                     "word": " and",
                     "start": 9.0,
                     "end": 9.48,
-                    "probability": 0.91015625,
+                    "probability": 0.91259765625,
                     "tokens": null
                 },
                 {
                     "word": " the",
                     "start": 9.48,
                     "end": 9.56,
-                    "probability": 0.9912109375,
+                    "probability": 0.99169921875,
                     "tokens": null
                 },
                 {
                     "word": " continual",
                     "start": 9.56,
                     "end": 9.92,
-                    "probability": 0.95263671875,
+                    "probability": 0.953125,
                     "tokens": null
                 }
             ]
@@ -328,9 +328,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " growth",
@@ -350,7 +350,7 @@
                     "word": " the",
                     "start": 10.46,
                     "end": 10.58,
-                    "probability": 0.96142578125,
+                    "probability": 0.9609375,
                     "tokens": null
                 },
                 {
@@ -369,9 +369,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " race",
@@ -384,7 +384,7 @@
                     "word": " due",
                     "start": 11.06,
                     "end": 11.56,
-                    "probability": 0.70849609375,
+                    "probability": 0.7080078125,
                     "tokens": null
                 },
                 {
@@ -398,7 +398,7 @@
                     "word": " the",
                     "start": 11.72,
                     "end": 11.78,
-                    "probability": 0.94482421875,
+                    "probability": 0.9453125,
                     "tokens": null
                 },
                 {
@@ -417,22 +417,22 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " near",
                     "start": 12.66,
                     "end": 12.72,
-                    "probability": 0.87255859375,
+                    "probability": 0.87353515625,
                     "tokens": null
                 },
                 {
                     "word": " future",
                     "start": 12.72,
                     "end": 12.98,
-                    "probability": 0.9306640625,
+                    "probability": 0.93115234375,
                     "tokens": null
                 },
                 {
@@ -465,9 +465,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " threats",
@@ -480,7 +480,7 @@
                     "word": " that",
                     "start": 14.06,
                     "end": 14.34,
-                    "probability": 0.86279296875,
+                    "probability": 0.8642578125,
                     "tokens": null
                 },
                 {
@@ -513,9 +513,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " Transhumanism",
@@ -528,7 +528,7 @@
                     "word": " will",
                     "start": 17.0,
                     "end": 17.16,
-                    "probability": 0.88720703125,
+                    "probability": 0.8857421875,
                     "tokens": null
                 },
                 {
@@ -561,15 +561,15 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " to",
                     "start": 17.6,
                     "end": 17.82,
-                    "probability": 0.95947265625,
+                    "probability": 0.9580078125,
                     "tokens": null
                 },
                 {
@@ -582,22 +582,22 @@
                 {
                     "word": " survival",
                     "start": 17.92,
-                    "end": 18.22,
+                    "end": 18.24,
                     "probability": 0.9990234375,
                     "tokens": null
                 },
                 {
                     "word": " and",
-                    "start": 18.22,
+                    "start": 18.24,
                     "end": 18.58,
-                    "probability": 0.72900390625,
+                    "probability": 0.7255859375,
                     "tokens": null
                 },
                 {
                     "word": " we",
                     "start": 18.58,
                     "end": 18.66,
-                    "probability": 0.99755859375,
+                    "probability": 0.9970703125,
                     "tokens": null
                 },
                 {
@@ -616,9 +616,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " need",
@@ -645,7 +645,7 @@
                     "word": " on",
                     "start": 19.18,
                     "end": 19.28,
-                    "probability": 0.931640625,
+                    "probability": 0.93115234375,
                     "tokens": null
                 },
                 {
@@ -664,9 +664,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " before",
@@ -699,28 +699,28 @@
             ]
         },
         {
-            "start": 20.94,
+            "start": 20.92,
             "end": 21.42,
             "text": " We're going to convince",
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " We're",
-                    "start": 20.94,
-                    "end": 21.04,
+                    "start": 20.92,
+                    "end": 21.02,
                     "probability": 0.9580078125,
                     "tokens": null
                 },
                 {
                     "word": " going",
-                    "start": 21.04,
+                    "start": 21.02,
                     "end": 21.1,
-                    "probability": 0.7998046875,
+                    "probability": 0.79736328125,
                     "tokens": null
                 },
                 {
@@ -746,9 +746,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " you",
@@ -768,14 +768,14 @@
                     "word": " on",
                     "start": 21.84,
                     "end": 22.02,
-                    "probability": 0.67138671875,
+                    "probability": 0.67041015625,
                     "tokens": null
                 },
                 {
                     "word": " why",
                     "start": 22.02,
                     "end": 22.24,
-                    "probability": 0.95361328125,
+                    "probability": 0.95068359375,
                     "tokens": null
                 },
                 {
@@ -794,9 +794,9 @@
             "seek": 0,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.1920644034326604,
+            "avg_logprob": -0.19178444516342297,
             "compression_ratio": 1.702290076335878,
-            "no_speech_prob": 0.018830211833119392,
+            "no_speech_prob": 0.01871739886701107,
             "words": [
                 {
                     "word": " is",
@@ -816,7 +816,7 @@
                     "word": " last",
                     "start": 23.7,
                     "end": 24.0,
-                    "probability": 0.9931640625,
+                    "probability": 0.99267578125,
                     "tokens": null
                 },
                 {
@@ -829,28 +829,28 @@
             ]
         },
         {
-            "start": 32.78,
+            "start": 32.84,
             "end": 33.58,
             "text": " Transhumanism has",
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
                     "word": " Transhumanism",
-                    "start": 32.78,
-                    "end": 33.38,
-                    "probability": 0.8408203125,
+                    "start": 32.84,
+                    "end": 33.4,
+                    "probability": 0.7607421875,
                     "tokens": null
                 },
                 {
                     "word": " has",
-                    "start": 33.38,
+                    "start": 33.4,
                     "end": 33.58,
-                    "probability": 0.99462890625,
+                    "probability": 0.9912109375,
                     "tokens": null
                 }
             ]
@@ -862,56 +862,56 @@
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
                     "word": " infinite",
                     "start": 33.58,
                     "end": 33.9,
-                    "probability": 0.6669921875,
+                    "probability": 0.775390625,
                     "tokens": null
                 },
                 {
                     "word": " possibilities,",
                     "start": 33.9,
                     "end": 34.32,
-                    "probability": 0.6279296875,
+                    "probability": 0.9013671875,
                     "tokens": null
                 }
             ]
         },
         {
-            "start": 34.4,
+            "start": 35.104,
             "end": 35.64,
             "text": " scientists have been",
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
                     "word": " scientists",
-                    "start": 34.4,
-                    "end": 35.3,
-                    "probability": 0.87451171875,
+                    "start": 35.104,
+                    "end": 35.32,
+                    "probability": 0.29443359375,
                     "tokens": null
                 },
                 {
                     "word": " have",
-                    "start": 35.3,
+                    "start": 35.32,
                     "end": 35.56,
-                    "probability": 0.99365234375,
+                    "probability": 0.9912109375,
                     "tokens": null
                 },
                 {
                     "word": " been",
                     "start": 35.56,
                     "end": 35.64,
-                    "probability": 0.998046875,
+                    "probability": 0.99755859375,
                     "tokens": null
                 }
             ]
@@ -923,104 +923,97 @@
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
                     "word": " creating",
                     "start": 35.64,
-                    "end": 35.92,
-                    "probability": 0.73095703125,
+                    "end": 35.9,
+                    "probability": 0.849609375,
                     "tokens": null
                 },
                 {
                     "word": " bionic",
-                    "start": 35.92,
-                    "end": 36.38,
-                    "probability": 0.9404296875,
+                    "start": 35.9,
+                    "end": 36.4,
+                    "probability": 0.9501953125,
                     "tokens": null
                 },
                 {
                     "word": " arms",
-                    "start": 36.38,
+                    "start": 36.4,
                     "end": 36.74,
-                    "probability": 0.97265625,
+                    "probability": 0.96044921875,
                     "tokens": null
                 }
             ]
         },
         {
             "start": 36.74,
-            "end": 38.86,
-            "text": " directly in previous animals and",
+            "end": 38.06,
+            "text": " genetically-empreaged animals",
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
-                    "word": " directly",
+                    "word": " genetically",
                     "start": 36.74,
-                    "end": 37.24,
-                    "probability": 0.75146484375,
+                    "end": 37.28,
+                    "probability": 0.478515625,
                     "tokens": null
                 },
                 {
-                    "word": " in",
-                    "start": 37.24,
-                    "end": 37.58,
-                    "probability": 0.29052734375,
-                    "tokens": null
-                },
-                {
-                    "word": " previous",
-                    "start": 37.58,
-                    "end": 37.7,
-                    "probability": 0.318603515625,
+                    "word": "-empreaged",
+                    "start": 37.28,
+                    "end": 37.82,
+                    "probability": 0.2373046875,
                     "tokens": null
                 },
                 {
                     "word": " animals",
-                    "start": 37.7,
-                    "end": 38.08,
-                    "probability": 0.86669921875,
-                    "tokens": null
-                },
-                {
-                    "word": " and",
-                    "start": 38.08,
-                    "end": 38.86,
-                    "probability": 0.59375,
+                    "start": 37.82,
+                    "end": 38.06,
+                    "probability": 0.98388671875,
                     "tokens": null
                 }
             ]
         },
         {
-            "start": 38.86,
+            "start": 38.06,
             "end": 39.88,
-            "text": " have even suggested the",
+            "text": " and have even suggested the",
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
+                    "word": " and",
+                    "start": 38.06,
+                    "end": 38.88,
+                    "probability": 0.62451171875,
+                    "tokens": null
+                },
+                {
                     "word": " have",
-                    "start": 38.86,
+                    "start": 38.88,
                     "end": 38.96,
-                    "probability": 0.93212890625,
+                    "probability": 0.9306640625,
                     "tokens": null
                 },
                 {
                     "word": " even",
                     "start": 38.96,
                     "end": 39.14,
-                    "probability": 0.99072265625,
+                    "probability": 0.990234375,
                     "tokens": null
                 },
                 {
@@ -1034,55 +1027,554 @@
                     "word": " the",
                     "start": 39.44,
                     "end": 39.88,
-                    "probability": 0.9033203125,
+                    "probability": 0.93603515625,
                     "tokens": null
                 }
             ]
         },
         {
             "start": 39.88,
-            "end": 41.16,
-            "text": " idea of digital and mit",
+            "end": 41.12,
+            "text": " idea of digital immortality.",
             "seek": 3000,
             "tokens": [],
             "temperature": 0.0,
-            "avg_logprob": -0.5850895968350497,
-            "compression_ratio": 1.3553719008264462,
-            "no_speech_prob": 0.05680743232369423,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
             "words": [
                 {
                     "word": " idea",
                     "start": 39.88,
-                    "end": 40.2,
-                    "probability": 0.99658203125,
+                    "end": 40.22,
+                    "probability": 0.99609375,
                     "tokens": null
                 },
                 {
                     "word": " of",
-                    "start": 40.2,
+                    "start": 40.22,
                     "end": 40.46,
-                    "probability": 0.99609375,
+                    "probability": 0.9951171875,
                     "tokens": null
                 },
                 {
                     "word": " digital",
                     "start": 40.46,
-                    "end": 40.74,
-                    "probability": 0.9716796875,
+                    "end": 40.76,
+                    "probability": 0.9345703125,
                     "tokens": null
                 },
                 {
-                    "word": " and",
-                    "start": 40.74,
-                    "end": 41.02,
-                    "probability": 0.353271484375,
+                    "word": " immortality.",
+                    "start": 40.76,
+                    "end": 41.12,
+                    "probability": 0.84375,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 42.38,
+            "end": 43.78,
+            "text": " What is digital immortality?",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " What",
+                    "start": 42.38,
+                    "end": 42.7,
+                    "probability": 0.9306640625,
                     "tokens": null
                 },
                 {
-                    "word": " mit",
-                    "start": 41.02,
-                    "end": 41.16,
-                    "probability": 0.046966552734375,
+                    "word": " is",
+                    "start": 42.7,
+                    "end": 42.96,
+                    "probability": 0.97509765625,
+                    "tokens": null
+                },
+                {
+                    "word": " digital",
+                    "start": 42.96,
+                    "end": 43.38,
+                    "probability": 0.88232421875,
+                    "tokens": null
+                },
+                {
+                    "word": " immortality?",
+                    "start": 43.38,
+                    "end": 43.78,
+                    "probability": 0.99609375,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 44.84,
+            "end": 46.58,
+            "text": " Digital immortality is the",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " Digital",
+                    "start": 44.84,
+                    "end": 45.32,
+                    "probability": 0.98486328125,
+                    "tokens": null
+                },
+                {
+                    "word": " immortality",
+                    "start": 45.32,
+                    "end": 45.78,
+                    "probability": 0.998046875,
+                    "tokens": null
+                },
+                {
+                    "word": " is",
+                    "start": 45.78,
+                    "end": 46.44,
+                    "probability": 0.99755859375,
+                    "tokens": null
+                },
+                {
+                    "word": " the",
+                    "start": 46.44,
+                    "end": 46.58,
+                    "probability": 0.9853515625,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 46.58,
+            "end": 47.54,
+            "text": " reconstruction of a",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " reconstruction",
+                    "start": 46.58,
+                    "end": 46.94,
+                    "probability": 0.982421875,
+                    "tokens": null
+                },
+                {
+                    "word": " of",
+                    "start": 46.94,
+                    "end": 47.48,
+                    "probability": 0.998046875,
+                    "tokens": null
+                },
+                {
+                    "word": " a",
+                    "start": 47.48,
+                    "end": 47.54,
+                    "probability": 0.96044921875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 47.54,
+            "end": 49.0,
+            "text": " personality in digital form.",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " personality",
+                    "start": 47.54,
+                    "end": 48.14,
+                    "probability": 0.998046875,
+                    "tokens": null
+                },
+                {
+                    "word": " in",
+                    "start": 48.14,
+                    "end": 48.42,
+                    "probability": 0.9189453125,
+                    "tokens": null
+                },
+                {
+                    "word": " digital",
+                    "start": 48.42,
+                    "end": 48.68,
+                    "probability": 0.92431640625,
+                    "tokens": null
+                },
+                {
+                    "word": " form.",
+                    "start": 48.68,
+                    "end": 49.0,
+                    "probability": 0.87353515625,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 50.02,
+            "end": 50.7,
+            "text": " It is evident that",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " It",
+                    "start": 50.02,
+                    "end": 50.1,
+                    "probability": 0.9853515625,
+                    "tokens": null
+                },
+                {
+                    "word": " is",
+                    "start": 50.1,
+                    "end": 50.22,
+                    "probability": 0.97216796875,
+                    "tokens": null
+                },
+                {
+                    "word": " evident",
+                    "start": 50.22,
+                    "end": 50.44,
+                    "probability": 0.94921875,
+                    "tokens": null
+                },
+                {
+                    "word": " that",
+                    "start": 50.44,
+                    "end": 50.7,
+                    "probability": 0.9921875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 50.7,
+            "end": 51.84,
+            "text": " people want to live ever,",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " people",
+                    "start": 50.7,
+                    "end": 50.86,
+                    "probability": 0.9931640625,
+                    "tokens": null
+                },
+                {
+                    "word": " want",
+                    "start": 50.86,
+                    "end": 51.14,
+                    "probability": 0.982421875,
+                    "tokens": null
+                },
+                {
+                    "word": " to",
+                    "start": 51.14,
+                    "end": 51.3,
+                    "probability": 0.98876953125,
+                    "tokens": null
+                },
+                {
+                    "word": " live",
+                    "start": 51.3,
+                    "end": 51.44,
+                    "probability": 0.986328125,
+                    "tokens": null
+                },
+                {
+                    "word": " ever,",
+                    "start": 51.44,
+                    "end": 51.84,
+                    "probability": 0.3857421875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 52.06,
+            "end": 52.9,
+            "text": " although it has never been",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " although",
+                    "start": 52.06,
+                    "end": 52.26,
+                    "probability": 0.9921875,
+                    "tokens": null
+                },
+                {
+                    "word": " it",
+                    "start": 52.26,
+                    "end": 52.44,
+                    "probability": 0.97607421875,
+                    "tokens": null
+                },
+                {
+                    "word": " has",
+                    "start": 52.44,
+                    "end": 52.52,
+                    "probability": 0.90283203125,
+                    "tokens": null
+                },
+                {
+                    "word": " never",
+                    "start": 52.52,
+                    "end": 52.76,
+                    "probability": 0.9970703125,
+                    "tokens": null
+                },
+                {
+                    "word": " been",
+                    "start": 52.76,
+                    "end": 52.9,
+                    "probability": 0.98779296875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 52.9,
+            "end": 54.16,
+            "text": " considered a realistic option.",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " considered",
+                    "start": 52.9,
+                    "end": 53.2,
+                    "probability": 0.998046875,
+                    "tokens": null
+                },
+                {
+                    "word": " a",
+                    "start": 53.2,
+                    "end": 53.48,
+                    "probability": 0.994140625,
+                    "tokens": null
+                },
+                {
+                    "word": " realistic",
+                    "start": 53.48,
+                    "end": 53.76,
+                    "probability": 0.99609375,
+                    "tokens": null
+                },
+                {
+                    "word": " option.",
+                    "start": 53.76,
+                    "end": 54.16,
+                    "probability": 0.99658203125,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 54.96,
+            "end": 55.82,
+            "text": " It has always made this",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " It",
+                    "start": 54.96,
+                    "end": 55.04,
+                    "probability": 0.99072265625,
+                    "tokens": null
+                },
+                {
+                    "word": " has",
+                    "start": 55.04,
+                    "end": 55.16,
+                    "probability": 0.9541015625,
+                    "tokens": null
+                },
+                {
+                    "word": " always",
+                    "start": 55.16,
+                    "end": 55.42,
+                    "probability": 0.99853515625,
+                    "tokens": null
+                },
+                {
+                    "word": " made",
+                    "start": 55.42,
+                    "end": 55.66,
+                    "probability": 0.7939453125,
+                    "tokens": null
+                },
+                {
+                    "word": " this",
+                    "start": 55.66,
+                    "end": 55.82,
+                    "probability": 0.50341796875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 55.82,
+            "end": 56.62,
+            "text": " subject of fiction.",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.2956044362938922,
+            "compression_ratio": 1.703422053231939,
+            "no_speech_prob": 0.04717744141817093,
+            "words": [
+                {
+                    "word": " subject",
+                    "start": 55.82,
+                    "end": 56.08,
+                    "probability": 0.978515625,
+                    "tokens": null
+                },
+                {
+                    "word": " of",
+                    "start": 56.08,
+                    "end": 56.44,
+                    "probability": 0.673828125,
+                    "tokens": null
+                },
+                {
+                    "word": " fiction.",
+                    "start": 56.44,
+                    "end": 56.62,
+                    "probability": 0.98388671875,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 57.66,
+            "end": 59.0,
+            "text": " With improved technology, it",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.44204502934994905,
+            "compression_ratio": 1.2464478687212326,
+            "no_speech_prob": 0.0769663043320179,
+            "words": [
+                {
+                    "word": " With",
+                    "start": 57.66,
+                    "end": 57.82,
+                    "probability": 0.8076171875,
+                    "tokens": null
+                },
+                {
+                    "word": " improved",
+                    "start": 57.82,
+                    "end": 57.98,
+                    "probability": 0.7392578125,
+                    "tokens": null
+                },
+                {
+                    "word": " technology,",
+                    "start": 57.98,
+                    "end": 58.58,
+                    "probability": 0.9873046875,
+                    "tokens": null
+                },
+                {
+                    "word": " it",
+                    "start": 58.58,
+                    "end": 59.0,
+                    "probability": 0.650390625,
+                    "tokens": null
+                }
+            ]
+        },
+        {
+            "start": 59.0,
+            "end": 60.12,
+            "text": " has become a more probable.",
+            "seek": 3000,
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": -0.44204502934994905,
+            "compression_ratio": 1.2464478687212326,
+            "no_speech_prob": 0.0769663043320179,
+            "words": [
+                {
+                    "word": " has",
+                    "start": 59.0,
+                    "end": 59.1,
+                    "probability": 0.0753173828125,
+                    "tokens": null
+                },
+                {
+                    "word": " become",
+                    "start": 59.1,
+                    "end": 59.26,
+                    "probability": 0.9013671875,
+                    "tokens": null
+                },
+                {
+                    "word": " a",
+                    "start": 59.26,
+                    "end": 59.5,
+                    "probability": 0.734375,
+                    "tokens": null
+                },
+                {
+                    "word": " more",
+                    "start": 59.5,
+                    "end": 59.68,
+                    "probability": 0.9306640625,
+                    "tokens": null
+                },
+                {
+                    "word": " probable.",
+                    "start": 59.68,
+                    "end": 60.12,
+                    "probability": 0.99365234375,
                     "tokens": null
                 }
             ]
@@ -1090,7 +1582,7 @@
     ],
     "language": "english",
     "ori_dict": {
-        "text": " Have you heard of transhumanism? If not, we believe that you should have. For us, transhumanism is of the utmost importance to the evolution of humanity and the continual growth of the human race due to the present, near future and long-term threats that society is facing. Transhumanism will be the key to our survival and we all need to get on board before it's too late. We're going to convince you today on why transhumanism is our last hope. Transhumanism has infinite possibilities, scientists have been creating bionic arms directly in previous animals and have even suggested the idea of digital and mit",
+        "text": " Have you heard of transhumanism? If not, we believe that you should have. For us, transhumanism is of the utmost importance to the evolution of humanity and the continual growth of the human race due to the present, near future and long-term threats that society is facing. Transhumanism will be the key to our survival and we all need to get on board before it's too late. We're going to convince you today on why transhumanism is our last hope. Transhumanism has infinite possibilities, scientists have been creating bionic arms genetically-empreaged animals and have even suggested the idea of digital immortality. What is digital immortality? Digital immortality is the reconstruction of a personality in digital form. It is evident that people want to live ever, although it has never been considered a realistic option. It has always made this subject of fiction. With improved technology, it has become a more probable.",
         "segments": [
             {
                 "start": 0.28,
@@ -1099,9 +1591,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " Have",
@@ -1135,7 +1627,7 @@
                         "word": " transhumanism?",
                         "start": 0.8,
                         "end": 1.54,
-                        "probability": 0.8798828125,
+                        "probability": 0.87890625,
                         "tokens": null
                     },
                     {
@@ -1203,9 +1695,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " For",
@@ -1225,7 +1717,7 @@
                         "word": " transhumanism",
                         "start": 5.664,
                         "end": 6.36,
-                        "probability": 0.99169921875,
+                        "probability": 0.9921875,
                         "tokens": null
                     },
                     {
@@ -1253,7 +1745,7 @@
                         "word": " utmost",
                         "start": 6.8,
                         "end": 6.98,
-                        "probability": 0.98828125,
+                        "probability": 0.98876953125,
                         "tokens": null
                     },
                     {
@@ -1302,21 +1794,21 @@
                         "word": " and",
                         "start": 9.0,
                         "end": 9.48,
-                        "probability": 0.91015625,
+                        "probability": 0.91259765625,
                         "tokens": null
                     },
                     {
                         "word": " the",
                         "start": 9.48,
                         "end": 9.56,
-                        "probability": 0.9912109375,
+                        "probability": 0.99169921875,
                         "tokens": null
                     },
                     {
                         "word": " continual",
                         "start": 9.56,
                         "end": 9.92,
-                        "probability": 0.95263671875,
+                        "probability": 0.953125,
                         "tokens": null
                     }
                 ]
@@ -1328,9 +1820,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " growth",
@@ -1350,7 +1842,7 @@
                         "word": " the",
                         "start": 10.46,
                         "end": 10.58,
-                        "probability": 0.96142578125,
+                        "probability": 0.9609375,
                         "tokens": null
                     },
                     {
@@ -1371,7 +1863,7 @@
                         "word": " due",
                         "start": 11.06,
                         "end": 11.56,
-                        "probability": 0.70849609375,
+                        "probability": 0.7080078125,
                         "tokens": null
                     },
                     {
@@ -1385,7 +1877,7 @@
                         "word": " the",
                         "start": 11.72,
                         "end": 11.78,
-                        "probability": 0.94482421875,
+                        "probability": 0.9453125,
                         "tokens": null
                     },
                     {
@@ -1399,14 +1891,14 @@
                         "word": " near",
                         "start": 12.66,
                         "end": 12.72,
-                        "probability": 0.87255859375,
+                        "probability": 0.87353515625,
                         "tokens": null
                     },
                     {
                         "word": " future",
                         "start": 12.72,
                         "end": 12.98,
-                        "probability": 0.9306640625,
+                        "probability": 0.93115234375,
                         "tokens": null
                     },
                     {
@@ -1441,7 +1933,7 @@
                         "word": " that",
                         "start": 14.06,
                         "end": 14.34,
-                        "probability": 0.86279296875,
+                        "probability": 0.8642578125,
                         "tokens": null
                     },
                     {
@@ -1460,9 +1952,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " is",
@@ -1489,7 +1981,7 @@
                         "word": " will",
                         "start": 17.0,
                         "end": 17.16,
-                        "probability": 0.88720703125,
+                        "probability": 0.8857421875,
                         "tokens": null
                     },
                     {
@@ -1517,7 +2009,7 @@
                         "word": " to",
                         "start": 17.6,
                         "end": 17.82,
-                        "probability": 0.95947265625,
+                        "probability": 0.9580078125,
                         "tokens": null
                     },
                     {
@@ -1530,22 +2022,22 @@
                     {
                         "word": " survival",
                         "start": 17.92,
-                        "end": 18.22,
+                        "end": 18.24,
                         "probability": 0.9990234375,
                         "tokens": null
                     },
                     {
                         "word": " and",
-                        "start": 18.22,
+                        "start": 18.24,
                         "end": 18.58,
-                        "probability": 0.72900390625,
+                        "probability": 0.7255859375,
                         "tokens": null
                     },
                     {
                         "word": " we",
                         "start": 18.58,
                         "end": 18.66,
-                        "probability": 0.99755859375,
+                        "probability": 0.9970703125,
                         "tokens": null
                     },
                     {
@@ -1580,7 +2072,7 @@
                         "word": " on",
                         "start": 19.18,
                         "end": 19.28,
-                        "probability": 0.931640625,
+                        "probability": 0.93115234375,
                         "tokens": null
                     },
                     {
@@ -1599,9 +2091,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " before",
@@ -1633,16 +2125,16 @@
                     },
                     {
                         "word": " We're",
-                        "start": 20.94,
-                        "end": 21.04,
+                        "start": 20.92,
+                        "end": 21.02,
                         "probability": 0.9580078125,
                         "tokens": null
                     },
                     {
                         "word": " going",
-                        "start": 21.04,
+                        "start": 21.02,
                         "end": 21.1,
-                        "probability": 0.7998046875,
+                        "probability": 0.79736328125,
                         "tokens": null
                     },
                     {
@@ -1677,14 +2169,14 @@
                         "word": " on",
                         "start": 21.84,
                         "end": 22.02,
-                        "probability": 0.67138671875,
+                        "probability": 0.67041015625,
                         "tokens": null
                     },
                     {
                         "word": " why",
                         "start": 22.02,
                         "end": 22.24,
-                        "probability": 0.95361328125,
+                        "probability": 0.95068359375,
                         "tokens": null
                     },
                     {
@@ -1712,7 +2204,7 @@
                         "word": " last",
                         "start": 23.7,
                         "end": 24.0,
-                        "probability": 0.9931640625,
+                        "probability": 0.99267578125,
                         "tokens": null
                     }
                 ]
@@ -1724,9 +2216,9 @@
                 "seek": 0,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.1920644034326604,
+                "avg_logprob": -0.19178444516342297,
                 "compression_ratio": 1.702290076335878,
-                "no_speech_prob": 0.018830211833119392,
+                "no_speech_prob": 0.01871739886701107,
                 "words": [
                     {
                         "word": " hope.",
@@ -1738,146 +2230,139 @@
                 ]
             },
             {
-                "start": 32.78,
+                "start": 32.84,
                 "end": 36.74,
                 "text": " Transhumanism has infinite possibilities, scientists have been creating bionic arms",
                 "seek": 3000,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.5850895968350497,
-                "compression_ratio": 1.3553719008264462,
-                "no_speech_prob": 0.05680743232369423,
+                "avg_logprob": -0.2956044362938922,
+                "compression_ratio": 1.703422053231939,
+                "no_speech_prob": 0.04717744141817093,
                 "words": [
                     {
                         "word": " Transhumanism",
-                        "start": 32.78,
-                        "end": 33.38,
-                        "probability": 0.8408203125,
+                        "start": 32.84,
+                        "end": 33.4,
+                        "probability": 0.7607421875,
                         "tokens": null
                     },
                     {
                         "word": " has",
-                        "start": 33.38,
+                        "start": 33.4,
                         "end": 33.58,
-                        "probability": 0.99462890625,
+                        "probability": 0.9912109375,
                         "tokens": null
                     },
                     {
                         "word": " infinite",
                         "start": 33.58,
                         "end": 33.9,
-                        "probability": 0.6669921875,
+                        "probability": 0.775390625,
                         "tokens": null
                     },
                     {
                         "word": " possibilities,",
                         "start": 33.9,
                         "end": 34.32,
-                        "probability": 0.6279296875,
+                        "probability": 0.9013671875,
                         "tokens": null
                     },
                     {
                         "word": " scientists",
-                        "start": 34.4,
-                        "end": 35.3,
-                        "probability": 0.87451171875,
+                        "start": 35.104,
+                        "end": 35.32,
+                        "probability": 0.29443359375,
                         "tokens": null
                     },
                     {
                         "word": " have",
-                        "start": 35.3,
+                        "start": 35.32,
                         "end": 35.56,
-                        "probability": 0.99365234375,
+                        "probability": 0.9912109375,
                         "tokens": null
                     },
                     {
                         "word": " been",
                         "start": 35.56,
                         "end": 35.64,
-                        "probability": 0.998046875,
+                        "probability": 0.99755859375,
                         "tokens": null
                     },
                     {
                         "word": " creating",
                         "start": 35.64,
-                        "end": 35.92,
-                        "probability": 0.73095703125,
+                        "end": 35.9,
+                        "probability": 0.849609375,
                         "tokens": null
                     },
                     {
                         "word": " bionic",
-                        "start": 35.92,
-                        "end": 36.38,
-                        "probability": 0.9404296875,
+                        "start": 35.9,
+                        "end": 36.4,
+                        "probability": 0.9501953125,
                         "tokens": null
                     },
                     {
                         "word": " arms",
-                        "start": 36.38,
+                        "start": 36.4,
                         "end": 36.74,
-                        "probability": 0.97265625,
+                        "probability": 0.96044921875,
                         "tokens": null
                     }
                 ]
             },
             {
                 "start": 36.74,
-                "end": 41.16,
-                "text": " directly in previous animals and have even suggested the idea of digital and mit",
+                "end": 41.12,
+                "text": " genetically-empreaged animals and have even suggested the idea of digital immortality.",
                 "seek": 3000,
                 "tokens": [],
                 "temperature": 0.0,
-                "avg_logprob": -0.5850895968350497,
-                "compression_ratio": 1.3553719008264462,
-                "no_speech_prob": 0.05680743232369423,
+                "avg_logprob": -0.2956044362938922,
+                "compression_ratio": 1.703422053231939,
+                "no_speech_prob": 0.04717744141817093,
                 "words": [
                     {
-                        "word": " directly",
+                        "word": " genetically",
                         "start": 36.74,
-                        "end": 37.24,
-                        "probability": 0.75146484375,
+                        "end": 37.28,
+                        "probability": 0.478515625,
                         "tokens": null
                     },
                     {
-                        "word": " in",
-                        "start": 37.24,
-                        "end": 37.58,
-                        "probability": 0.29052734375,
-                        "tokens": null
-                    },
-                    {
-                        "word": " previous",
-                        "start": 37.58,
-                        "end": 37.7,
-                        "probability": 0.318603515625,
+                        "word": "-empreaged",
+                        "start": 37.28,
+                        "end": 37.82,
+                        "probability": 0.2373046875,
                         "tokens": null
                     },
                     {
                         "word": " animals",
-                        "start": 37.7,
-                        "end": 38.08,
-                        "probability": 0.86669921875,
+                        "start": 37.82,
+                        "end": 38.06,
+                        "probability": 0.98388671875,
                         "tokens": null
                     },
                     {
                         "word": " and",
-                        "start": 38.08,
-                        "end": 38.86,
-                        "probability": 0.59375,
+                        "start": 38.06,
+                        "end": 38.88,
+                        "probability": 0.62451171875,
                         "tokens": null
                     },
                     {
                         "word": " have",
-                        "start": 38.86,
+                        "start": 38.88,
                         "end": 38.96,
-                        "probability": 0.93212890625,
+                        "probability": 0.9306640625,
                         "tokens": null
                     },
                     {
                         "word": " even",
                         "start": 38.96,
                         "end": 39.14,
-                        "probability": 0.99072265625,
+                        "probability": 0.990234375,
                         "tokens": null
                     },
                     {
@@ -1891,42 +2376,437 @@
                         "word": " the",
                         "start": 39.44,
                         "end": 39.88,
-                        "probability": 0.9033203125,
+                        "probability": 0.93603515625,
                         "tokens": null
                     },
                     {
                         "word": " idea",
                         "start": 39.88,
-                        "end": 40.2,
-                        "probability": 0.99658203125,
+                        "end": 40.22,
+                        "probability": 0.99609375,
                         "tokens": null
                     },
                     {
                         "word": " of",
-                        "start": 40.2,
+                        "start": 40.22,
                         "end": 40.46,
-                        "probability": 0.99609375,
+                        "probability": 0.9951171875,
                         "tokens": null
                     },
                     {
                         "word": " digital",
                         "start": 40.46,
-                        "end": 40.74,
-                        "probability": 0.9716796875,
+                        "end": 40.76,
+                        "probability": 0.9345703125,
                         "tokens": null
                     },
                     {
-                        "word": " and",
-                        "start": 40.74,
-                        "end": 41.02,
-                        "probability": 0.353271484375,
+                        "word": " immortality.",
+                        "start": 40.76,
+                        "end": 41.12,
+                        "probability": 0.84375,
+                        "tokens": null
+                    }
+                ]
+            },
+            {
+                "start": 42.38,
+                "end": 48.42,
+                "text": " What is digital immortality? Digital immortality is the reconstruction of a personality in",
+                "seek": 3000,
+                "tokens": [],
+                "temperature": 0.0,
+                "avg_logprob": -0.2956044362938922,
+                "compression_ratio": 1.703422053231939,
+                "no_speech_prob": 0.04717744141817093,
+                "words": [
+                    {
+                        "word": " What",
+                        "start": 42.38,
+                        "end": 42.7,
+                        "probability": 0.9306640625,
                         "tokens": null
                     },
                     {
-                        "word": " mit",
-                        "start": 41.02,
-                        "end": 41.16,
-                        "probability": 0.046966552734375,
+                        "word": " is",
+                        "start": 42.7,
+                        "end": 42.96,
+                        "probability": 0.97509765625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " digital",
+                        "start": 42.96,
+                        "end": 43.38,
+                        "probability": 0.88232421875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " immortality?",
+                        "start": 43.38,
+                        "end": 43.78,
+                        "probability": 0.99609375,
+                        "tokens": null
+                    },
+                    {
+                        "word": " Digital",
+                        "start": 44.84,
+                        "end": 45.32,
+                        "probability": 0.98486328125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " immortality",
+                        "start": 45.32,
+                        "end": 45.78,
+                        "probability": 0.998046875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " is",
+                        "start": 45.78,
+                        "end": 46.44,
+                        "probability": 0.99755859375,
+                        "tokens": null
+                    },
+                    {
+                        "word": " the",
+                        "start": 46.44,
+                        "end": 46.58,
+                        "probability": 0.9853515625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " reconstruction",
+                        "start": 46.58,
+                        "end": 46.94,
+                        "probability": 0.982421875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " of",
+                        "start": 46.94,
+                        "end": 47.48,
+                        "probability": 0.998046875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " a",
+                        "start": 47.48,
+                        "end": 47.54,
+                        "probability": 0.96044921875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " personality",
+                        "start": 47.54,
+                        "end": 48.14,
+                        "probability": 0.998046875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " in",
+                        "start": 48.14,
+                        "end": 48.42,
+                        "probability": 0.9189453125,
+                        "tokens": null
+                    }
+                ]
+            },
+            {
+                "start": 48.42,
+                "end": 53.2,
+                "text": " digital form. It is evident that people want to live ever, although it has never been considered",
+                "seek": 3000,
+                "tokens": [],
+                "temperature": 0.0,
+                "avg_logprob": -0.2956044362938922,
+                "compression_ratio": 1.703422053231939,
+                "no_speech_prob": 0.04717744141817093,
+                "words": [
+                    {
+                        "word": " digital",
+                        "start": 48.42,
+                        "end": 48.68,
+                        "probability": 0.92431640625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " form.",
+                        "start": 48.68,
+                        "end": 49.0,
+                        "probability": 0.87353515625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " It",
+                        "start": 50.02,
+                        "end": 50.1,
+                        "probability": 0.9853515625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " is",
+                        "start": 50.1,
+                        "end": 50.22,
+                        "probability": 0.97216796875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " evident",
+                        "start": 50.22,
+                        "end": 50.44,
+                        "probability": 0.94921875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " that",
+                        "start": 50.44,
+                        "end": 50.7,
+                        "probability": 0.9921875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " people",
+                        "start": 50.7,
+                        "end": 50.86,
+                        "probability": 0.9931640625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " want",
+                        "start": 50.86,
+                        "end": 51.14,
+                        "probability": 0.982421875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " to",
+                        "start": 51.14,
+                        "end": 51.3,
+                        "probability": 0.98876953125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " live",
+                        "start": 51.3,
+                        "end": 51.44,
+                        "probability": 0.986328125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " ever,",
+                        "start": 51.44,
+                        "end": 51.84,
+                        "probability": 0.3857421875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " although",
+                        "start": 52.06,
+                        "end": 52.26,
+                        "probability": 0.9921875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " it",
+                        "start": 52.26,
+                        "end": 52.44,
+                        "probability": 0.97607421875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " has",
+                        "start": 52.44,
+                        "end": 52.52,
+                        "probability": 0.90283203125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " never",
+                        "start": 52.52,
+                        "end": 52.76,
+                        "probability": 0.9970703125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " been",
+                        "start": 52.76,
+                        "end": 52.9,
+                        "probability": 0.98779296875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " considered",
+                        "start": 52.9,
+                        "end": 53.2,
+                        "probability": 0.998046875,
+                        "tokens": null
+                    }
+                ]
+            },
+            {
+                "start": 53.2,
+                "end": 58.58,
+                "text": " a realistic option. It has always made this subject of fiction. With improved technology,",
+                "seek": 3000,
+                "tokens": [],
+                "temperature": 0.0,
+                "avg_logprob": -0.2956044362938922,
+                "compression_ratio": 1.703422053231939,
+                "no_speech_prob": 0.04717744141817093,
+                "words": [
+                    {
+                        "word": " a",
+                        "start": 53.2,
+                        "end": 53.48,
+                        "probability": 0.994140625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " realistic",
+                        "start": 53.48,
+                        "end": 53.76,
+                        "probability": 0.99609375,
+                        "tokens": null
+                    },
+                    {
+                        "word": " option.",
+                        "start": 53.76,
+                        "end": 54.16,
+                        "probability": 0.99658203125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " It",
+                        "start": 54.96,
+                        "end": 55.04,
+                        "probability": 0.99072265625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " has",
+                        "start": 55.04,
+                        "end": 55.16,
+                        "probability": 0.9541015625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " always",
+                        "start": 55.16,
+                        "end": 55.42,
+                        "probability": 0.99853515625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " made",
+                        "start": 55.42,
+                        "end": 55.66,
+                        "probability": 0.7939453125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " this",
+                        "start": 55.66,
+                        "end": 55.82,
+                        "probability": 0.50341796875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " subject",
+                        "start": 55.82,
+                        "end": 56.08,
+                        "probability": 0.978515625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " of",
+                        "start": 56.08,
+                        "end": 56.44,
+                        "probability": 0.673828125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " fiction.",
+                        "start": 56.44,
+                        "end": 56.62,
+                        "probability": 0.98388671875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " With",
+                        "start": 57.66,
+                        "end": 57.82,
+                        "probability": 0.8076171875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " improved",
+                        "start": 57.82,
+                        "end": 57.98,
+                        "probability": 0.7392578125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " technology,",
+                        "start": 57.98,
+                        "end": 58.58,
+                        "probability": 0.9873046875,
+                        "tokens": null
+                    }
+                ]
+            },
+            {
+                "start": 58.58,
+                "end": 60.12,
+                "text": " it has become a more probable.",
+                "seek": 5858,
+                "tokens": [],
+                "temperature": 0.0,
+                "avg_logprob": -0.5884856224060059,
+                "compression_ratio": 0.7894736842105263,
+                "no_speech_prob": 0.10675516724586487,
+                "words": [
+                    {
+                        "word": " it",
+                        "start": 58.58,
+                        "end": 59.0,
+                        "probability": 0.650390625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " has",
+                        "start": 59.0,
+                        "end": 59.1,
+                        "probability": 0.0753173828125,
+                        "tokens": null
+                    },
+                    {
+                        "word": " become",
+                        "start": 59.1,
+                        "end": 59.26,
+                        "probability": 0.9013671875,
+                        "tokens": null
+                    },
+                    {
+                        "word": " a",
+                        "start": 59.26,
+                        "end": 59.5,
+                        "probability": 0.734375,
+                        "tokens": null
+                    },
+                    {
+                        "word": " more",
+                        "start": 59.5,
+                        "end": 59.68,
+                        "probability": 0.9306640625,
+                        "tokens": null
+                    },
+                    {
+                        "word": " probable.",
+                        "start": 59.68,
+                        "end": 60.12,
+                        "probability": 0.99365234375,
                         "tokens": null
                     }
                 ]
@@ -2013,8 +2893,48 @@
                 "end": 42.656
             },
             {
-                "start": 43.232,
-                "end": 43.233
+                "start": 44.352,
+                "end": 44.736
+            },
+            {
+                "start": 44.992,
+                "end": 45.152
+            },
+            {
+                "start": 49.184,
+                "end": 49.728
+            },
+            {
+                "start": 49.856,
+                "end": 50.048
+            },
+            {
+                "start": 51.552,
+                "end": 51.616
+            },
+            {
+                "start": 54.432,
+                "end": 54.784
+            },
+            {
+                "start": 54.976,
+                "end": 55.008
+            },
+            {
+                "start": 56.256,
+                "end": 56.384
+            },
+            {
+                "start": 56.928,
+                "end": 57.504
+            },
+            {
+                "start": 57.696,
+                "end": 57.76
+            },
+            {
+                "start": 60.352,
+                "end": 60.667
             }
         ]
     },
@@ -2097,8 +3017,48 @@
             "end": 42.656
         },
         {
-            "start": 43.232,
-            "end": 43.233
+            "start": 44.352,
+            "end": 44.736
+        },
+        {
+            "start": 44.992,
+            "end": 45.152
+        },
+        {
+            "start": 49.184,
+            "end": 49.728
+        },
+        {
+            "start": 49.856,
+            "end": 50.048
+        },
+        {
+            "start": 51.552,
+            "end": 51.616
+        },
+        {
+            "start": 54.432,
+            "end": 54.784
+        },
+        {
+            "start": 54.976,
+            "end": 55.008
+        },
+        {
+            "start": 56.256,
+            "end": 56.384
+        },
+        {
+            "start": 56.928,
+            "end": 57.504
+        },
+        {
+            "start": 57.696,
+            "end": 57.76
+        },
+        {
+            "start": 60.352,
+            "end": 60.667
         }
     ],
     "speakers": []

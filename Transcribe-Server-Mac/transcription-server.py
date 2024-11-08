@@ -16,7 +16,10 @@ os.environ['MPLCONFIGDIR'] = os.path.join(base_path, 'matplotlib_cachedir')
 # Add FFmpeg binaries to PATH
 ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin')
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
+end_time = time.time()
+print(f"Set environment variables: {end_time - start_time} seconds")
 
+start_time = time.time()
 # Now proceed with the rest of the imports
 from fastapi import FastAPI
 from pydantic import BaseModel

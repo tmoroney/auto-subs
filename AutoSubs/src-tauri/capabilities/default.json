@@ -65,6 +65,12 @@
         }
       ]
     },
-    "store:default"
+    "store:default",
+    "shell:default",
+    "core:window:default",
+    {
+      "identifier": "core:window:allow-close"
+    }
+
   ]
 }

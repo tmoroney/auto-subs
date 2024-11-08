@@ -5,7 +5,7 @@ import { documentDir, join } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, AudioInfo, Speaker, TopSpeaker } from "@/types/interfaces"
 import { load } from '@tauri-apps/plugin-store';
-import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface GlobalContextProps {
     // home page
@@ -313,6 +313,18 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             await store.save();
         };
         saveState();
+
+        getCurrentWindow().once("tauri://close-requested", async function () {
+            console.log("Exiting...");
+            await fetch(resolveAPI, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ func: "Exit" }),
+            }).catch((error) => {
+                console.error('Error during exit request:', error);
+            });
+            await getCurrentWindow().close();
+        });
     }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars]);
 
     return (
