@@ -1,25 +1,42 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
-import sys
-import matplotlib
-from matplotlib import get_cachedir
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
 
-# Collect hidden imports
-hiddenimports = collect_submodules('mlx')
+# Collect all data files, binaries, and hiddenimports for 'speechbrain'
+speechbrain_datas, speechbrain_binaries, speechbrain_hiddenimports = collect_all('speechbrain')
+
+# Initialize variables if not already defined
+hiddenimports = []
+datas = []
+binaries = []
+
+# Include 'speechbrain' components
+hiddenimports += speechbrain_hiddenimports
+datas += speechbrain_datas
+binaries += speechbrain_binaries
+
+# Include other packages as before
+hiddenimports += collect_submodules('mlx')
 hiddenimports += collect_submodules('mlx_whisper')
 hiddenimports += collect_submodules('lightning_fabric')
 hiddenimports += collect_submodules('pytorch_lightning')
+hiddenimports += collect_submodules('pyannote')
+hiddenimports += collect_submodules('torch')
+hiddenimports += collect_submodules('torchaudio')
+hiddenimports += collect_submodules('transformers')
+hiddenimports += collect_submodules('huggingface_hub')
 
 # Collect data files
-datas = collect_data_files('mlx')
+datas += collect_data_files('mlx')
 datas += collect_data_files('mlx_whisper')
 datas += collect_data_files('lightning_fabric')
 datas += collect_data_files('pytorch_lightning')
+datas += collect_data_files('pyannote')
 datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
 
 # Get the Matplotlib cache directory and add it to datas
+from matplotlib import get_cachedir
 matplotlib_cachedir = get_cachedir()
 datas += [(matplotlib_cachedir, 'matplotlib_cachedir')]
 
@@ -35,39 +52,39 @@ excludes = [
 a = Analysis(
     ['transcription-server.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,   # Include collected binaries
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=excludes,
-    noarchive=False,  # Set noarchive=False to include PYZ
+    noarchive=False,     # Include PYZ
     optimize=0,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None, optimize=2)
 
 exe = EXE(
-    pyz,   # Pass pyz here
+    pyz,
     a.scripts,
-    exclude_binaries=True,
-    name='transcription-server',
+    exclude_binaries=True,    # Exclude binaries from EXE
+    name='transcription-server',  # Use consistent naming
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
-    upx=True,  # Disable UPX compression
+    strip=False,              # Set strip to False for debugging
+    upx=False,                # Disable UPX compression
     console=False,
     disable_windowed_traceback=False,
 )
 
 coll = COLLECT(
     exe,
-    a.binaries,
+    a.binaries,               # Include binaries here
     a.zipfiles,
-    a.datas,
+    a.datas,                  # Include data files
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='Transcription-Server',
+    name='Transcription-Server',  # Use consistent naming
 )

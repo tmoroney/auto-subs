@@ -1,7 +1,7 @@
 import React, { useEffect } from "react"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
-import { Button } from "./button"
-import { Input } from "./input"
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
     Select,
@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Label } from "./label"
+import { Label } from "./ui/label"
 import { TypeOutline } from "lucide-react"
 
 type ColorPickerProps = {

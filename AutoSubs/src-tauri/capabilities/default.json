@@ -67,10 +67,22 @@
     },
     "store:default",
     "shell:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "transcription-server",
+          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Transcription-Server/transcription-server"
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-kill"
+    },
     "core:window:default",
     {
       "identifier": "core:window:allow-close"
-    }
-
+    },
+    "process:default"
   ]
 }

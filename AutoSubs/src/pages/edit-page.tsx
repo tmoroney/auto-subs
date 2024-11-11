@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ColorPicker } from "@/components/ui/color-picker"
+import { ColorPicker } from "@/components/color-picker"
 import {
     AudioLines,
     Check,
@@ -65,8 +65,10 @@ export function EditPage() {
         setTrack,
         addSubtitles,
         setSpeakers,
+        updateSubtitlesFile,
         getTemplates,
-        getTracks
+        getTracks,
+        jumpToTime
     } = useGlobal();
 
     const [openTemplates, setOpenTemplates] = useState(false);
@@ -84,12 +86,13 @@ export function EditPage() {
         } : null;
     }
 
-    function saveSpeaker(index: number) {
+    async function saveSpeaker(index: number) {
         var newSpeakers = [...speakers];
         newSpeakers[index].label = currentName;
         newSpeakers[index].color = currentColor;
         newSpeakers[index].style = currentStyle;
         setSpeakers(newSpeakers);
+        await updateSubtitlesFile(newSpeakers);
     }
 
     return (
@@ -176,9 +179,10 @@ export function EditPage() {
                                                     <Button
                                                         variant="secondary"
                                                         className="col-span-3 gap-1.5 text-sm"
+                                                        onClick={async () => await jumpToTime(speaker.sample.start)}
                                                     >
                                                         <Speech className="size-4" />
-                                                        Jump to {speaker.sample.start} - {speaker.sample.end}
+                                                        Jump to speaker on timeline
                                                     </Button>
                                                 </div>
                                             </div>

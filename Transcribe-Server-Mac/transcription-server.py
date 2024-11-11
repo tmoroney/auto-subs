@@ -1,6 +1,22 @@
 import sys
 import os
 
+class Unbuffered(object):
+   def __init__(self, stream):
+       self.stream = stream
+   def write(self, data):
+       self.stream.write(data)
+       self.stream.flush()
+   def writelines(self, datas):
+       self.stream.writelines(datas)
+       self.stream.flush()
+   def __getattr__(self, attr):
+       return getattr(self.stream, attr)
+
+# Ensure stdout and stderr are line-buffered
+sys.stdout = Unbuffered(sys.stdout)
+sys.stderr = Unbuffered(sys.stderr)
+
 import time
 
 start_time = time.time()
@@ -37,8 +53,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 end_time = time.time()
 print(f"Initialization time: {end_time - start_time} seconds")
-
-
 
 app = FastAPI()
 
@@ -187,6 +201,7 @@ def merge_diarisation(transcript, diarization):
                 speakers_info[speaker] = {
                     "label": speaker_label,
                     "color": color,
+                    "style": "Outline",
                     "sample": {
                         "start": segment_start,
                         "end": segment_end
@@ -348,4 +363,4 @@ async def validate_model(request: ValidateRequest):
     return {"isAvailable": True, "message": "All required models are available"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="localhost", port=8000, log_level="info")

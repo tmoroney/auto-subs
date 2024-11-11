@@ -1,11 +1,14 @@
-import { useEffect, createContext, useState, useContext } from 'react';
+import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { documentDir, join } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, AudioInfo, Speaker, TopSpeaker } from "@/types/interfaces"
 import { load } from '@tauri-apps/plugin-store';
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Child, Command } from '@tauri-apps/plugin-shell';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+
+let transcriptionProcess: Child | null = null;
 
 interface GlobalContextProps {
     // home page
@@ -33,18 +36,21 @@ interface GlobalContextProps {
     setMaxChars: (newMaxChars: number) => void;
     fetchTranscription: () => void;
     subtitles: Subtitle[];
+    tempSubtitles: Subtitle[];
 
     // edit page
     speakers: Speaker[];
     topSpeaker: TopSpeaker;
     setSpeakers: (newSpeakers: Speaker[]) => void;
+    updateSubtitlesFile: (speakers?: Speaker[], subtitles?: Subtitle[]) => Promise<void>;
     getTimelineInfo: () => void;
     getTracks: () => void;
     getTemplates: () => void;
     populateSubtitles: (timelineId?: string) => Promise<void>;
     addSubtitles: (currentTemplate: string, currentTrack: string, filePath?: string) => Promise<void>;
-    exportSubtitles: (jsonData: object) => void;
+    exportSubtitles: (jsonData: object) => Promise<void>;
     initialize: () => void;
+    jumpToTime: (start: number) => Promise<void>;
 }
 
 const resolveAPI = "http://localhost:5016/";
@@ -100,9 +106,78 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [diarize, setDiarize] = useState(storedDiarize || false);
     const [maxWords, setMaxWords] = useState(storedMaxWords || 6);
     const [maxChars, setMaxChars] = useState(storedMaxChars || 30);
+    const [tempSubtitles, setTempSubtitles] = useState<Subtitle[]>([]);
+
+    const parseSubtitle = (stdout: string) => {
+        const regex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
+        const match = stdout.match(regex);
+        if (match && match[1]) {
+            //const subtitle: Subtitle = { text: match[1].trim(), start: "", end: "", speaker: "" };
+            setProcessingStep(match[1].trim());
+        }
+    };
+
+    async function startTranscriptionServer() {
+        try {
+            // Create the command without using 'open' or shell-specific arguments
+            const command = Command.create('transcription-server');
+
+            // Set up event listeners for logging
+            command.on('close', (data) => {
+                console.log(`Transcription server exited with code ${data.code} and signal ${data.signal}`);
+            });
+
+            command.on('error', (error) => {
+                console.error(`Transcription server encountered an error: "${error}"`);
+            });
+
+            command.stdout.on('data', (line) => {
+                const regex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
+                const match = line.match(regex);
+                if (match && match[1]) {
+                    let subtitle = { text: match[1], start: "", end: "", speaker: "" };
+                    setSubtitles(prevSubtitles => [...prevSubtitles, subtitle]);
+                }
+                //console.log(`Transcription Server STDOUT: "${line}"`);
+            });
+
+            command.stderr.on('data', (line) => {
+                // Check if the message is an informational message
+                if (line == "" || line.length < 1) {
+                    return;
+                }
+                if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
+                    console.log(`Transcription Server INFO: "${line}"`);
+                } else {
+                    console.error(`Transcription Server STDERR: "${line}"`);
+                }
+            });
+
+            console.log('Starting transcription server...');
+            // Assign the spawned process to the global variable
+            transcriptionProcess = await command.spawn();
+            console.log('Transcription server started with PID:', transcriptionProcess.pid);
+        } catch (error) {
+            console.error("Failed to start the transcription server:", error);
+        }
+    }
+
+    async function stopTranscriptionServer() {
+        try {
+            if (transcriptionProcess) {
+                console.log('Stopping transcription server...');
+                await transcriptionProcess.kill();
+                console.log('Transcription server stopped');
+            }
+        }
+        catch (error) {
+            console.error("Failed to stop the transcription server:", error);
+        }
+    }
 
     async function fetchTranscription() {
         setIsLoading(true);
+        setSubtitles([]);
         setProcessingStep("Exporting Audio...")
         try {
             let audioInfo = await exportAudio();
@@ -135,6 +210,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             const filePath = data.result_file;
 
             setProcessingStep("Populating timeline...")
+            setSubtitles([]);
             await populateSubtitles(audioInfo.timeline);
             await addSubtitles(currentTemplate, currentTrack, filePath);
         } catch (error) {
@@ -143,7 +219,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setIsLoading(false);
         }
     }
-
 
     async function getTranscriptPath() {
         let filePath = await join(await documentDir(), `AutoSubs/Transcripts/${timeline}.json`);
@@ -168,6 +243,23 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.error('Error fetching timeline info:', error);
         }
         return timelineId;
+    }
+
+    async function jumpToTime(start: number) {
+        try {
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ func: "JumpToTime", start }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const data = await response.json();
+            console.log(data);
+        } catch (error) {
+            console.error('Error jumping to time:', error);
+        }
     }
 
     async function getTracks() {
@@ -206,9 +298,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function populateSubtitles(timelineId?: string) {
+    async function readSubtitlesFile(timelineId?: string) {
         if (!timelineId) {
-            timelineId = timeline;
+            timelineId = await getTimelineInfo();;
         }
         // Check if the file exists
         const transcriptPath = `AutoSubs/Transcripts/${timelineId}.json`;
@@ -227,6 +319,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             baseDir: BaseDirectory.Document,
         });
         let transcript = JSON.parse(contents);
+        return transcript;
+    }
+
+    async function populateSubtitles(timelineId?: string) {
+        let transcript = await readSubtitlesFile(timelineId);
         setSubtitles(transcript.segments);
         setSpeakers(transcript.speakers);
         setTopSpeaker(transcript.top_speaker);
@@ -251,6 +348,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     async function addSubtitles(currentTemplate: string, currentTrack: string, filePath?: string) {
         if (!filePath) {
+            await updateSubtitlesFile(speakers);
             filePath = await getTranscriptPath();
         }
         try {
@@ -293,6 +391,27 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
+    async function updateSubtitlesFile(speakers?: Speaker[], subtitles?: Subtitle[]) {
+        if (!speakers && !subtitles) {
+            return;
+        }
+        // read current file
+        let transcript = await readSubtitlesFile(timeline);
+        if (speakers) {
+            transcript.speakers = speakers;
+        }
+        if (subtitles) {
+            transcript.segments = subtitles;
+        }
+
+        // write to file
+        const transcriptPath = `AutoSubs/Transcripts/${timeline}.json`;
+        return writeTextFile(transcriptPath, JSON.stringify(transcript, null, 2), {
+            baseDir: BaseDirectory.Document,
+        });
+    }
+
+
     async function initialize() {
         let timelineId = await getTimelineInfo();
         await populateSubtitles(timelineId);
@@ -300,32 +419,35 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         await getTemplates();
     }
 
+    async function saveState() {
+        await store.set('model', model);
+        await store.set('currentLanguage', currentLanguage);
+        await store.set('currentTemplate', currentTemplate);
+        await store.set('currentTrack', currentTrack);
+        await store.set('translate', translate);
+        await store.set('diarize', diarize);
+        await store.set('maxWords', maxWords);
+        await store.set('maxChars', maxChars);
+        await store.save();
+    };
+
     useEffect(() => {
-        const saveState = async () => {
-            await store.set('model', model);
-            await store.set('currentLanguage', currentLanguage);
-            await store.set('currentTemplate', currentTemplate);
-            await store.set('currentTrack', currentTrack);
-            await store.set('translate', translate);
-            await store.set('diarize', diarize);
-            await store.set('maxWords', maxWords);
-            await store.set('maxChars', maxChars);
-            await store.save();
-        };
         saveState();
 
-        getCurrentWindow().once("tauri://close-requested", async function () {
-            console.log("Exiting...");
-            await fetch(resolveAPI, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ func: "Exit" }),
-            }).catch((error) => {
-                console.error('Error during exit request:', error);
-            });
-            await getCurrentWindow().close();
-        });
     }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars]);
+
+    let isServerStarted = useRef(false);
+    useEffect(() => {
+        if (!isServerStarted.current) {
+            startTranscriptionServer();
+            isServerStarted.current = true;
+        }
+        initialize();
+
+        getCurrentWindow().once("tauri://close-requested", async function () {
+            await stopTranscriptionServer();
+        });
+    }, []);
 
     return (
         <GlobalContext.Provider
@@ -334,6 +456,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 trackList,
                 templateList,
                 subtitles,
+                tempSubtitles,
                 speakers,
                 topSpeaker,
                 currentTrack,
@@ -358,12 +481,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 initialize,
                 fetchTranscription,
                 setSpeakers,
+                updateSubtitlesFile,
                 getTimelineInfo,
                 getTracks,
                 getTemplates,
                 populateSubtitles,
                 addSubtitles,
-                exportSubtitles
+                exportSubtitles,
+                jumpToTime
             }}
         >
             {children}

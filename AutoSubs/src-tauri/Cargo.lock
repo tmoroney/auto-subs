@@ -248,6 +248,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-http",
+ "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-store",
 ]
@@ -3917,6 +3918,16 @@ dependencies = [
  "tokio",
  "url",
  "urlpattern",
+]
+
+[[package]]
+name = "tauri-plugin-process"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae06a00087c148962a52814a2d7265b1a0505bced5ffb74f8c284a5f96a4d03d"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

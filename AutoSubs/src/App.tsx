@@ -15,15 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Pyramid, Type, Search, Bot, Settings2, LifeBuoy, HeartHandshake, Github, SquarePen } from "lucide-react";
-import { useGlobal } from '@/GlobalContext';
 
 function App() {
-  const { initialize } = useGlobal();
-
-  useEffect(() => {
-    initialize();
-  }, []);
-
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Router>

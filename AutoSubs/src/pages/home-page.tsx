@@ -184,6 +184,7 @@ export function HomePage() {
         trackList,
         templateList,
         subtitles,
+        tempSubtitles,
         currentTemplate,
         currentLanguage,
         currentTrack,
@@ -318,6 +319,52 @@ export function HomePage() {
                                 </Popover>
                             </div>
                             <div className="grid gap-3">
+                                <Label>Output Track</Label>
+                                <Popover open={openTracks} onOpenChange={setOpenTracks}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className="justify-between font-normal"
+                                            onClick={() => getTracks()}
+                                        >
+                                            {currentTrack && trackList.length > 0
+                                                ? trackList.find((track) => track.value === currentTrack)?.label
+                                                : "Select Track..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Select track to place subtitles" />
+                                            <CommandList>
+                                                <CommandEmpty>No tracks found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {trackList.map((track) => (
+                                                        <CommandItem
+                                                            key={track.value}
+                                                            value={track.value}
+                                                            onSelect={(currentValue) => {
+                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                setOpenTracks(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {track.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="grid gap-3">
                                 <Label>Language</Label>
                                 <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
                                     <PopoverTrigger asChild>
@@ -404,7 +451,7 @@ export function HomePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Advanced Settings</CardTitle>
-                            <CardDescription>Adjust the parameters for subtitle generation</CardDescription>
+                            <CardDescription>Customize subtitle generation parameters</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
                             <div className="grid gap-3">
@@ -499,52 +546,6 @@ export function HomePage() {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
-                            <div className="grid gap-3">
-                                <Label>Output Track</Label>
-                                <Popover open={openTracks} onOpenChange={setOpenTracks}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className="justify-between font-normal"
-                                            onClick={() => getTracks()}
-                                        >
-                                            {currentTrack && trackList.length > 0
-                                                ? trackList.find((track) => track.value === currentTrack)?.label
-                                                : "Select Track..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Select track to place subtitles" />
-                                            <CommandList>
-                                                <CommandEmpty>No tracks found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {trackList.map((track) => (
-                                                        <CommandItem
-                                                            key={track.value}
-                                                            value={track.value}
-                                                            onSelect={(currentValue) => {
-                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
-                                                                setOpenTracks(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {track.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
