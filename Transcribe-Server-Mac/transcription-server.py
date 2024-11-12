@@ -200,6 +200,7 @@ def merge_diarisation(transcript, diarization):
                 # Store speaker information
                 speakers_info[speaker] = {
                     "label": speaker_label,
+                    "id": speaker_label,
                     "color": color,
                     "style": "Outline",
                     "sample": {
@@ -235,6 +236,7 @@ def merge_diarisation(transcript, diarization):
                 color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             speakers_info["Unknown"] = {
                 "label": "Unknown",
+                "id": "Unknown",
                 "color": color,
                 "style": "outline",
                 "sample": {
@@ -259,6 +261,7 @@ def merge_diarisation(transcript, diarization):
         "speakers": speakers_list,
         "top_speaker": {
             "label": top_speaker["label"],
+            "id": top_speaker["id"],
             "percentage": round((top_speaker["subtitle_lines"] / len(transcript_segments)) * 100)
         },
         "segments": new_segments
@@ -268,6 +271,7 @@ def merge_diarisation(transcript, diarization):
 
 class TranscriptionRequest(BaseModel):
     file_path: str
+    output_dir: str
     timeline: str
     model: str
     language: str
@@ -325,7 +329,7 @@ async def transcribe(request: TranscriptionRequest):
 
     # Save the transcription to a JSON file
     json_filename = f"{timeline}.json"
-    json_filepath = os.path.join(os.path.expanduser('~/Documents/AutoSubs/Transcripts/'), json_filename)
+    json_filepath = os.path.join(request.output_dir, json_filename)
     
     # Save the new structure as a JSON file
     with open(json_filepath, 'w') as f:

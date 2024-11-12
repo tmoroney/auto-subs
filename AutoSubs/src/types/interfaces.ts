@@ -1,5 +1,6 @@
 export interface Speaker {
     label: string;
+    id: string;
     color: string;
     style: string;
     sample: {
@@ -12,6 +13,7 @@ export interface Speaker {
 
 export interface TopSpeaker {
     label: string;
+    id: string;
     percentage: number;
 }
 

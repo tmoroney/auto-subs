@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import {
     Bird,
@@ -7,16 +7,12 @@ import {
     Check,
     ChevronsUpDown,
     Languages,
-    PencilLine,
     RefreshCw,
     CirclePlay,
-    Star,
     Rat,
     Share,
-    HeartHandshake,
     Worm,
     Loader2,
-    BellRing,
     Speech
 } from "lucide-react"
 
@@ -26,22 +22,18 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
 
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
     Select,
     SelectContent,
-    SelectGroup,
     SelectItem,
-    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
@@ -71,8 +63,6 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 
-const resolveAPI = "http://localhost:5016/";
-const transcribeAPI = "http://localhost:8000/transcribe/";
 const validateAPI = "http://localhost:8000/validate/";
 
 const languages = [
@@ -184,7 +174,6 @@ export function HomePage() {
         trackList,
         templateList,
         subtitles,
-        tempSubtitles,
         currentTemplate,
         currentLanguage,
         currentTrack,
@@ -435,7 +424,7 @@ export function HomePage() {
 
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="size-4 animate-spin" />
+                                        <Loader2 className="size-4 animate-spin cursor-progress" />
                                         {processingStep}
                                     </>
                                 ) : (
@@ -589,7 +578,7 @@ export function HomePage() {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
-                        onClick={async () => await exportSubtitles({ segments: subtitles })}
+                        onClick={async () => await exportSubtitles()}
                     >
                         <Share className="size-3.5" />
                         Export
@@ -597,12 +586,19 @@ export function HomePage() {
                 </div>
                 <div className="overflow-y-auto">
                     {subtitles.length > 0 ? (
+                        <>
                         <SubtitleList subtitles={subtitles} />
+                        </>
                     ) : (
-                        <div className="space-y-2 pt-4">
-                            <Skeleton className="h-4 w-[250px]" />
-                            <Skeleton className="h-4 w-[200px]" />
-                        </div>
+                        <>
+                            <Label className="text-center">No subtitles found for this timeline</Label>
+                            <div className="space-y-2 pt-4 px-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-[80%]" />
+                                <Skeleton className="h-4 w-[60%]" />
+                                <Skeleton className="h-4 w-[50%]" />
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

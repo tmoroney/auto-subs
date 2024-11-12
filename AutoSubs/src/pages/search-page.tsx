@@ -11,8 +11,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Share } from "lucide-react"
-import { Subtitle, SubtitleListProps } from "@/types/interfaces"
+import { ArrowUpDown, ChevronDown } from "lucide-react"
+import { Subtitle } from "@/types/interfaces"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -20,9 +20,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -34,9 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useEffect, useState } from "react"
-import { BaseDirectory, exists, readTextFile } from "@tauri-apps/plugin-fs"
 import { useGlobal } from "@/GlobalContext"
+
+function formatSecondsToTime(seconds: number) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
 
 export const columns: ColumnDef<Subtitle>[] = [
   {
@@ -63,32 +65,41 @@ export const columns: ColumnDef<Subtitle>[] = [
   },
   {
     accessorKey: "start",
-    header: "Start",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="link"
+          className="pl-0"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Start
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => (
-      <div>{Number(row.getValue("start")).toFixed(2)}</div>
+      <div>{formatSecondsToTime(Number(row.getValue("start")))}</div>
     ),
+    enableSorting: true, // Ensure sorting is enabled for this column
+    sortingFn: (rowA, rowB, columnId) => {
+      const valueA = Number(rowA.getValue(columnId));
+      const valueB = Number(rowB.getValue(columnId));
+      return valueA - valueB; // Compare the numeric values
+    },
   },
   {
     accessorKey: "end",
     header: () => <div className="text-left">End</div>,
-    cell: ({ row }) => {
-      return <div className="text-left font-medium">{row.getValue("end")}</div>
-    },
+    cell: ({ row }) => (
+      <div className="text-left">{formatSecondsToTime(Number(row.getValue("end")))}</div>
+    ),
+    enableHiding: true,
   },
   {
     accessorKey: "text",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Subtitle Text
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
+    header: "Subtitle Text", // Make it static to avoid sorting button
     cell: ({ row }) => <div className="lowercase">{row.getValue("text")}</div>,
+    enableSorting: false, // Disable sorting for this column
   },
   {
     accessorKey: "speaker",
@@ -96,18 +107,22 @@ export const columns: ColumnDef<Subtitle>[] = [
     cell: ({ row }) => {
       return <div className="text-left font-medium">{row.getValue("speaker")}</div>
     },
-  }
+    enableHiding: true,
+  },
 ]
 
 export function SearchPage() {
-  const { subtitles } = useGlobal()
+  const { subtitles, speakers, jumpToTime } = useGlobal()
 
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({
+      end: false, // Hide the end column by default
+      speaker: speakers.length === 0 ? false : true, // Hide speaker column if speakers array is empty
+    })
   const [rowSelection, setRowSelection] = React.useState({})
 
   interface TableState {
@@ -137,7 +152,7 @@ export function SearchPage() {
   })
 
   return (
-    <div className="px-6">
+    <div className="px-4">
       <div className="flex items-center py-4">
         <Input
           placeholder="Filter subtitles..."
@@ -200,6 +215,8 @@ export function SearchPage() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer"
+                  onClick={() => jumpToTime(Number(row.getValue("start")))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

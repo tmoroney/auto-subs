@@ -32,6 +32,7 @@
       "identifier": "fs:scope",
       "allow": [
         {
+          "name": "transcripts_path",
           "path": "$DOCUMENT/AutoSubs/Transcripts/*"
         }
       ]
@@ -72,7 +73,7 @@
       "allow": [
         {
           "name": "transcription-server",
-          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Transcription-Server/transcription-server"
+          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/Transcription-Server/transcription-server"
         }
       ]
     },

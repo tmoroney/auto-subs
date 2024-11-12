@@ -1,10 +1,11 @@
 // App.tsx
-import React, { useEffect } from "react";
+import { useState } from "react";
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from "react-router-dom";
 import { HomePage } from "@/pages/home-page";
 import { SearchPage } from "@/pages/search-page";
 import { ChatPage } from "@/pages/chat-page";
-import { EditPage } from "@/pages/edit-page";
+import { DiarizePage } from "@/pages/diarize-page";
+import { AnimatePage } from "./pages/animate-page";
 import { ThemeProvider } from "@/components/theme-provider";
 import {
   Tooltip,
@@ -14,7 +15,53 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Pyramid, Type, Search, Bot, Settings2, LifeBuoy, HeartHandshake, Github, SquarePen } from "lucide-react";
+import { Pyramid, Type, Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, PenTool } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "./components/ui/scroll-area";
+
+const pathNames = {
+  "/": "Transcribe",
+  "/search": "Text Search",
+  "/diarize": "Edit Speakers",
+  "/animate": "Animate Subtitles",
+  "/chat": "Chat",
+};
+
+const tutorialSections = [
+  {
+    title: "Getting Started",
+    items: [
+      "Set the output track for subtitles.",
+      "Choose a subtitle template (default included).",
+      "Select the language and click Generate.",
+      "Subtitles will appear on the timeline shortly."
+    ]
+  },
+  {
+    title: "Transcription Models",
+    items: [
+      "Pick a transcription model from the list.",
+      "Larger models like Large-V3 offer more accuracy.",
+      "Lightweight models provide faster but less accurate results."
+    ]
+  },
+  {
+    title: "Speaker Diarization",
+    items: [
+      "Detects speakers in audio automatically if enabled.",
+      "Assigns each speaker a color for easy tracking.",
+      "Edit labels on the Edit Speakers page."
+    ]
+  }
+];
 
 function App() {
   return (
@@ -27,7 +74,8 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
-              <Route path="/edit" element={<EditPage />} />
+              <Route path="/diarize" element={<DiarizePage />} />
+              <Route path="/animate" element={<AnimatePage />} />
               <Route path="/chat" element={<ChatPage />} />
             </Routes>
           </div>
@@ -41,13 +89,6 @@ function NavigationHeader() {
 
   const location = useLocation();
   const currentPath = location.pathname;
-
-  const pathNames = {
-    "/": "Transcribe",
-    "/search": "Text Search",
-    "/edit": "Edit Subtitles",
-    "/chat": "Chat",
-  };
 
   return (
     <>
@@ -99,6 +140,7 @@ function NavigationAside() {
 
   const location = useLocation();
   const currentPath = location.pathname;
+  const [open, setOpen] = useState(false)
 
   return (
     <>
@@ -157,21 +199,39 @@ function NavigationAside() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/edit">
+                <Link to="/diarize">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-lg ${currentPath === "/edit" ? "bg-muted" : ""}`}
-                    aria-label="Edit Subtitles"
+                    className={`rounded-lg ${currentPath === "/diarize" ? "bg-muted" : ""}`}
+                    aria-label="Edit Speakers"
                   >
-                    <SquarePen className="size-5" />
+                    <Speech className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
-                Edit Subtitles
+                Edit Speakers
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/animate">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
+                  aria-label="Animate"
+                >
+                  <PenTool className="size-5" />
+                </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={5}>
+                Animate
+              </TooltipContent>
+            </Tooltip>
+            {/*
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/chat">
@@ -189,21 +249,7 @@ function NavigationAside() {
                 Chat AI
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg"
-                  aria-label="Settings"
-                >
-                  <Settings2 className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Settings
-              </TooltipContent>
-            </Tooltip>
+            */}
           </TooltipProvider>
         </nav>
         <nav className="mt-auto grid gap-1 p-2">
@@ -215,6 +261,7 @@ function NavigationAside() {
                   size="icon"
                   className="mt-auto rounded-lg"
                   aria-label="Help"
+                  onClick={() => setOpen(true)}
                 >
                   <LifeBuoy className="size-5" />
                 </Button>
@@ -225,9 +272,43 @@ function NavigationAside() {
             </Tooltip>
           </TooltipProvider>
           <ModeToggle />
-
         </nav>
       </aside>
+      <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Quick Tutorial</DialogTitle>
+          <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+          <div className="space-y-6">
+            {tutorialSections.map((section, index) => (
+              <section key={index} className="space-y-3">
+                <h2 className="text-lg font-semibold flex items-center">
+                  <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                    {index + 1}
+                  </span>
+                  {section.title}
+                </h2>
+                <ul className="space-y-2">
+                  {section.items.map((item, itemIndex) => (
+                    <li key={itemIndex} className="flex items-start">
+                      <ChevronRight className="mr-2 h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </ScrollArea>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     </>
   );

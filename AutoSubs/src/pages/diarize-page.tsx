@@ -4,12 +4,8 @@ import {
     AudioLines,
     Check,
     ChevronsUpDown,
-    CirclePlay,
-    RefreshCcw,
     RefreshCw,
     Speech,
-    SquareActivity,
-    TrendingUp,
     UserPen,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -48,12 +44,19 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { useGlobal } from "@/GlobalContext"
 import { cn } from "@/lib/utils"
 
 var colors = [{ value: '#e11d48', label: '' }, { value: '#db2777', label: '' }, { value: '#c026d3', label: '' }, { value: '#9333ea', label: '' }, { value: '#4f46e5', label: '' }, { value: '#0284c7', label: '' }, { value: '#0d9488', label: '' }, { value: '#059669', label: '' }, { value: '#16a34a', label: '' }, { value: '#ca8a04', label: '' }, { value: '#ea580c', label: '' }, { value: '#dc2626', label: '' }, { value: '#000000', label: '' }, { value: '#ffffff', label: '' }];
 
-export function EditPage() {
+export function DiarizePage() {
     const {
         topSpeaker,
         speakers,
@@ -64,8 +67,7 @@ export function EditPage() {
         setTemplate,
         setTrack,
         addSubtitles,
-        setSpeakers,
-        updateSubtitlesFile,
+        updateSpeaker,
         getTemplates,
         getTracks,
         jumpToTime
@@ -75,25 +77,7 @@ export function EditPage() {
     const [openTracks, setOpenTracks] = useState(false);
     const [currentColor, setCurrentColor] = useState("#e11d48");
     const [currentStyle, setCurrentStyle] = useState("Outline");
-    const [currentName, setCurrentName] = useState("John Doe");
-
-    function hexToRgb(hex: string) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16) / 255,
-            g: parseInt(result[2], 16) / 255,
-            b: parseInt(result[3], 16) / 255
-        } : null;
-    }
-
-    async function saveSpeaker(index: number) {
-        var newSpeakers = [...speakers];
-        newSpeakers[index].label = currentName;
-        newSpeakers[index].color = currentColor;
-        newSpeakers[index].style = currentStyle;
-        setSpeakers(newSpeakers);
-        await updateSubtitlesFile(newSpeakers);
-    }
+    const [currentLabel, setCurrentLabel] = useState("John Doe");
 
     return (
 
@@ -127,7 +111,7 @@ export function EditPage() {
                                         <DialogTrigger asChild>
                                             <Button variant="outline" onClick={
                                                 () => {
-                                                    setCurrentName(speaker.label);
+                                                    setCurrentLabel(speaker.label);
                                                     setCurrentColor(speaker.color);
                                                     setCurrentStyle(speaker.style);
                                                 }
@@ -152,10 +136,26 @@ export function EditPage() {
                                                         id="name"
                                                         defaultValue={speaker.label}
                                                         onChange={({ currentTarget }) => {
-                                                            setCurrentName(currentTarget.value);
+                                                            setCurrentLabel(currentTarget.value);
                                                         }}
                                                         className="col-span-3"
                                                     />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label className="text-left">
+                                                        Modifier
+                                                    </Label>
+                                                    <div className="col-span-3">
+                                                        <Select defaultValue={speaker.style} onValueChange={(value) => setCurrentStyle(value)}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Outline" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Outline">Outline Modifier</SelectItem>
+                                                                <SelectItem value="Fill">Fill Modifier</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-4 items-center gap-4">
                                                     <Label className="text-left">
@@ -164,9 +164,8 @@ export function EditPage() {
                                                     <div className="col-span-3">
                                                         <ColorPicker
                                                             value={speaker.color}
-                                                            onChange={({ color, style }) => {
+                                                            onChange={(color) => {
                                                                 setCurrentColor(color);
-                                                                setCurrentStyle(style);
                                                             }}
                                                             items={colors}
                                                         />
@@ -203,7 +202,7 @@ export function EditPage() {
                                                         type="button"
                                                         size="sm"
                                                         className="gap-1.5 text-sm"
-                                                        onClick={() => saveSpeaker(index)}
+                                                        onClick={async() => await updateSpeaker(index, currentLabel, currentColor, currentStyle)}
                                                     >
                                                         Save Changes
                                                     </Button>
@@ -222,7 +221,7 @@ export function EditPage() {
                         </CardHeader>
                         <CardContent className="grid gap-5">
 
-                        <div className="grid gap-3">
+                            <div className="grid gap-3">
                                 <Label htmlFor="template">Subtitle Template</Label>
                                 <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
                                     <PopoverTrigger asChild>
@@ -335,7 +334,7 @@ export function EditPage() {
                                 type="button"
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
-                                onClick={async () => {addSubtitles(currentTemplate, currentTrack)}}
+                                onClick={async () => { addSubtitles(currentTemplate, currentTrack) }}
                             >
                                 <RefreshCw className="size-4" />
                                 Update Subtitles
@@ -345,7 +344,7 @@ export function EditPage() {
 
                 </div>
             </div>
-            {speakers.length > 0 ? (
+
             <div className="relative flex-col items-start gap-8 md:flex">
                 <Card className="w-full">
                     <CardHeader className="items-center pb-0">
@@ -356,16 +355,29 @@ export function EditPage() {
                         <SpeakerChart speakerList={speakers} />
                     </CardContent>
                     <CardFooter className="flex-col gap-2 text-sm">
-                        <div className="flex items-center gap-2 font-medium leading-none">
-                            {topSpeaker.label} spoke {topSpeaker.percentage}% of the time <AudioLines className="h-4 w-4" />
-                        </div>
-                        <div className="leading-none text-muted-foreground">
-                            Shows the distribution of subtitle lines
-                        </div>
+                        {speakers.length > 0 ? (
+                            <>
+                                <div className="flex items-center gap-2 font-medium leading-none">
+                                    {topSpeaker.label} spoke {topSpeaker.percentage}% of the time <AudioLines className="h-4 w-4" />
+                                </div>
+                                <div className="leading-none text-muted-foreground">
+                                    Shows the distribution of subtitle lines
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2 font-medium leading-none">
+                                    No speakers found in audio <AudioLines className="h-4 w-4" />
+                                </div>
+                                <div className="leading-none text-muted-foreground">
+                                    Enable speaker diarization to see labels
+                                </div>
+                            </>
+                        )
+                        }
                     </CardFooter>
                 </Card>
             </div>
-            ) : null}
         </main>
     )
 }
