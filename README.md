@@ -1,6 +1,6 @@
 # Davinci Resolve AI Subtitles
 > [!NOTE]
-> **AutoSubs V2 is functionally complete** - Unfortunately I have had many issues in the past few days related to code signing on Mac which is preventing me from releasing it. Official Installer + many other improvements are coming and it should hopefully be released for Mac by the 17th of November and for Windows a few days after that (before 24th).
+> **AutoSubs V2 delayed** - It is functionally complete but I have had many issues in the past few days related to code signing on Mac which is preventing me from releasing it. Official Installer + many other improvements are coming and it should hopefully be released for Mac by the 17th of November and for Windows a few days after that (before 24th).
 
 Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
 - Generate subtitles in your own **custom style**.
