@@ -1,4 +1,4 @@
-import { useEffect, createContext, useState, useContext } from 'react';
+import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { documentDir, join } from '@tauri-apps/api/path';
@@ -26,6 +26,8 @@ interface GlobalContextProps {
     maxChars: number;
     processingStep: string;
     isLoading: boolean;
+    error: string;
+    setError: (errorMsg: string) => void
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
     setLanguage: (newLanguage: string) => void;
@@ -77,6 +79,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
     const [isLoading, setIsLoading] = useState(false);
     const [processingStep, setProcessingStep] = useState("");
+    const [error, setError] = useState("")
 
     const [model, setModel] = useState("small");
     const [currentLanguage, setLanguage] = useState("english");
@@ -86,7 +89,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
     const [maxChars, setMaxChars] = useState(30);
-    const transcriptsFolder = 'AutoSubs/Transcripts';
+    const transcriptsFolder = 'AutoSubs-Storage';
 
     async function getTranscriptStorageDir() {
         return await join(await documentDir(), transcriptsFolder)
@@ -118,7 +121,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             store.get<number>('maxWords'),
             store.get<number>('maxChars'),
         ]);
-    
+
         return {
             store,
             storedModel,
@@ -131,9 +134,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             storedMaxChars,
         };
     }
-    
+
     let store: any; // Add a type if possible
-    
+
     // Initialize the store
     initializeStore().then((result) => {
         store = result.store;
@@ -223,7 +226,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setProcessingStep("Exporting Audio...")
         try {
             let audioInfo = await exportAudio();
-            //setTimeline(audioInfo.timeline);
+            setTimeline(audioInfo.timeline);
             console.log("Fetching transcription...");
             setProcessingStep("Transcribing Audio...")
 
@@ -246,6 +249,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
 
             if (response.status !== 200) {
+                setError(response.statusText)
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -258,6 +262,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             await addSubtitles(currentTemplate, currentTrack, filePath);
         } catch (error) {
             console.error("Error fetching transcription:", error);
+            setError(String(error));
         } finally {
             setIsLoading(false);
         }
@@ -337,34 +342,44 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     async function readTranscript(timelineId: string) {
         if (timelineId == "") {
-            timelineId = await getTimelineInfo();;
+            timelineId = await getTimelineInfo();
+            if (timelineId == "" || timelineId == undefined) return
         }
-        // Check if the file exists
+
         const filePath = await join(transcriptsFolder, `${timelineId}.json`);
-        const fileExists = await exists(filePath, { baseDir: BaseDirectory.Document });
 
-        if (!fileExists) {
-            // check if directory exists
-            let folderExists = await exists(transcriptsFolder, { baseDir: BaseDirectory.Document });
-            if (!folderExists) {
-                mkdir(transcriptsFolder, { baseDir: BaseDirectory.Document })
+        try {
+            // Check if the file exists
+            const fileExists = await exists(filePath, { baseDir: BaseDirectory.Document });
+
+            if (!fileExists) {
+                let directoryExists = await exists(transcriptsFolder, { baseDir: BaseDirectory.Document })
+                if (!directoryExists) {
+                    console.log("Creating directory...")
+                    await mkdir(transcriptsFolder, { baseDir: BaseDirectory.Document })
+                    console.log("Directory created")
+                }
+                console.log("Transcript file does not exist for this timeline.");
+                return;
             }
-            console.log("Transcript file does not exist for this timeline.");
-            return;
-        }
 
-        // Read JSON file
-        console.log("Reading json file...");
-        const contents = await readTextFile(filePath, { baseDir: BaseDirectory.Document });
-        let transcript = JSON.parse(contents);
-        return transcript;
+            // Read JSON file
+            console.log("Reading json file...");
+            const contents = await readTextFile(filePath, { baseDir: BaseDirectory.Document });
+            let transcript = JSON.parse(contents);
+            return transcript;
+        } catch (error) {
+            setError(String(error))
+        }
     }
 
     async function populateSubtitles(timelineId: string) {
         let transcript = await readTranscript(timelineId);
-        setSubtitles(transcript.segments);
-        setSpeakers(transcript.speakers);
-        setTopSpeaker(transcript.top_speaker);
+        if (transcript) {
+            setSubtitles(transcript.segments);
+            setSpeakers(transcript.speakers);
+            setTopSpeaker(transcript.top_speaker);
+        }
     }
 
     async function exportAudio() {
@@ -376,7 +391,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             },
             body: JSON.stringify({
                 func: "ExportAudio",
-                outputDir: await join(await documentDir(), 'AutoSubs/')
+                outputDir: await join(await documentDir(), transcriptsFolder)
             }),
         });
 
@@ -496,7 +511,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         newSpeakers[index].label = label;
         newSpeakers[index].color = color;
         newSpeakers[index].style = style;
-    
+
         setSpeakers(newSpeakers);
         await updateTranscript(newSpeakers, newTopSpeaker); // Use updated newTopSpeaker
     }
@@ -520,9 +535,13 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         await store.save();
     };
 
-    useEffect(() => {
-        startTranscriptionServer();
+    const hasInitialized = useRef(false);
 
+    useEffect(() => {
+        if (hasInitialized.current) return; // Prevents the effect from running again
+        hasInitialized.current = true;
+
+        startTranscriptionServer();
         initialize();
 
         getCurrentWindow().once("tauri://close-requested", async () => {
@@ -569,6 +588,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 maxChars,
                 processingStep,
                 isLoading,
+                error,
+                setError,
                 setIsLoading,
                 setModel,
                 setTranslate,

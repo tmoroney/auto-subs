@@ -191,7 +191,7 @@ export function HomePage() {
         setMaxWords,
         setMaxChars,
         setIsLoading,
-
+        setError,
         fetchTranscription,
         exportSubtitles,
         populateSubtitles,
@@ -212,37 +212,41 @@ export function HomePage() {
         setDiarize(checked);
         if (checked == true && isDiarizeAvailable == false) {
             // check with server if model is available and HF token is correct
-            const response = await fetch(validateAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token: hfToken,
-                }),
-            });
+            try {
+                const response = await fetch(validateAPI, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        token: hfToken,
+                    }),
+                });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-            const data = await response.json();
-            let message = data.message;
-            let isAvailable = data.isAvailable || false;
-            console.log(data);
+                const data = await response.json();
+                let message = data.message;
+                let isAvailable = data.isAvailable || false;
+                console.log(data);
 
-            if (isAvailable) {
-                setDiarize(true);
-                setOpenTokenMenu(false);
-                setIsDiarizeAvailable(true);
-                console.log("Diarization enabled");
-            } else {
-                setDiarize(false);
-                console.log(message);
-                // open menu with instructions
-                setHfMessage(message);
-                setOpenTokenMenu(true);
+                if (isAvailable) {
+                    setDiarize(true);
+                    setOpenTokenMenu(false);
+                    setIsDiarizeAvailable(true);
+                    console.log("Diarization enabled");
+                } else {
+                    setDiarize(false);
+                    console.log(message);
+                    // open menu with instructions
+                    setHfMessage(message);
+                    setOpenTokenMenu(true);
 
+                }
+            } catch (error) {
+                setError(String(error));
             }
         }
     }
@@ -587,7 +591,7 @@ export function HomePage() {
                 <div className="overflow-y-auto">
                     {subtitles.length > 0 ? (
                         <>
-                        <SubtitleList subtitles={subtitles} />
+                            <SubtitleList subtitles={subtitles} />
                         </>
                     ) : (
                         <>

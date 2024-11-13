@@ -1,5 +1,5 @@
 // App.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from "react-router-dom";
 import { HomePage } from "@/pages/home-page";
 import { SearchPage } from "@/pages/search-page";
@@ -25,7 +25,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
-import { ScrollArea } from "./components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useGlobal } from "@/GlobalContext";
 
 const pathNames = {
   "/": "Transcribe",
@@ -141,6 +142,14 @@ function NavigationAside() {
   const location = useLocation();
   const currentPath = location.pathname;
   const [open, setOpen] = useState(false)
+  const [openErrorDialog, setOpenErrorDialog] = useState(false)
+  const {error, setError} = useGlobal();
+
+  useEffect(() => {
+    if (error !== "") {
+      setOpenErrorDialog(true);
+    }
+  }, [error])
 
   return (
     <>
@@ -217,14 +226,14 @@ function NavigationAside() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/animate">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
-                  aria-label="Animate"
-                >
-                  <PenTool className="size-5" />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
+                    aria-label="Animate"
+                  >
+                    <PenTool className="size-5" />
+                  </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
@@ -275,40 +284,59 @@ function NavigationAside() {
         </nav>
       </aside>
       <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Quick Tutorial</DialogTitle>
-          <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="mt-2 max-h-[60vh] pr-4">
-          <div className="space-y-6">
-            {tutorialSections.map((section, index) => (
-              <section key={index} className="space-y-3">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
-                    {index + 1}
-                  </span>
-                  {section.title}
-                </h2>
-                <ul className="space-y-2">
-                  {section.items.map((item, itemIndex) => (
-                    <li key={itemIndex} className="flex items-start">
-                      <ChevronRight className="mr-2 h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </ScrollArea>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Close</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Quick Tutorial</DialogTitle>
+            <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+            <div className="space-y-6">
+              {tutorialSections.map((section, index) => (
+                <section key={index} className="space-y-3">
+                  <h2 className="text-lg font-semibold flex items-center">
+                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                      {index + 1}
+                    </span>
+                    {section.title}
+                  </h2>
+                  <ul className="space-y-2">
+                    {section.items.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start">
+                        <ChevronRight className="mr-2 h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={openErrorDialog} onOpenChange={setOpenErrorDialog}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+            <div className="space-y-6">
+              <span className="text-s">{error}</span>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" onClick={() => setError("")}>Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </>
   );

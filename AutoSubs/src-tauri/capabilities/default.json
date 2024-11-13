@@ -32,8 +32,10 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "name": "transcripts_path",
-          "path": "$DOCUMENT/AutoSubs/Transcripts/*"
+          "path": "$DOCUMENT/AutoSubs-Storage/*"
+        },
+        {
+          "path": "$DOCUMENT/"
         }
       ]
     },
@@ -41,13 +43,29 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [
         {
-          "path": "$DESKTOP/*"
+          "path": "$DESKTOP/**"
         },
         {
-          "path": "$DOCUMENT/*"
+          "path": "$DOCUMENT/**"
         },
         {
-          "path": "$DOWNLOAD/*"
+          "path": "$DOWNLOAD/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        {
+          "path": "$DOCUMENT/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "$DOCUMENT/**"
         }
       ]
     },
