@@ -7,3 +7,5 @@ Transcribe-Server-Mac/build
 Transcribe-Server-Mac/dist
 .DS_Store
 *.wav
+/Mac-Server/build
+/Mac-Server/dist

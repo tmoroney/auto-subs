@@ -13,7 +13,8 @@ import {
     Share,
     Worm,
     Loader2,
-    Speech
+    Speech,
+    ChevronRight
 } from "lucide-react"
 
 import {
@@ -62,8 +63,9 @@ import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-const validateAPI = "http://localhost:8000/validate/";
+const validateAPI = "http://localhost:55000/validate/";
 
 const languages = [
     { label: "Detect Automatically", value: "auto" },
@@ -182,6 +184,8 @@ export function HomePage() {
         processingStep,
         isLoading,
         model,
+        maxWords,
+        maxChars,
         setTemplate,
         setLanguage,
         setTrack,
@@ -209,6 +213,7 @@ export function HomePage() {
 
 
     async function checkDiarizeAvailable(checked: boolean) {
+        if (isLoading) return;
         setDiarize(checked);
         if (checked == true && isDiarizeAvailable == false) {
             // check with server if model is available and HF token is correct
@@ -273,7 +278,7 @@ export function HomePage() {
                                             role="combobox"
                                             aria-expanded={openTemplates}
                                             className="justify-between font-normal"
-                                            onClick={() => getTemplates()}
+                                            onClick={async () => await getTemplates()}
                                         >
                                             {currentTemplate && templateList.length > 0
                                                 ? templateList.find((template) => template.value === currentTemplate)?.label
@@ -319,7 +324,7 @@ export function HomePage() {
                                             variant="outline"
                                             role="combobox"
                                             className="justify-between font-normal"
-                                            onClick={() => getTracks()}
+                                            onClick={async () => await getTracks()}
                                         >
                                             {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
@@ -419,25 +424,26 @@ export function HomePage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="gap-1.5 text-sm w-full"
-                                onClick={async () => await fetchTranscription()}
-                            >
-
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="size-4 animate-spin cursor-progress" />
-                                        {processingStep}
-                                    </>
-                                ) : (
-                                    <>
-                                        <CirclePlay className="size-4" />
-                                        Generate
-                                    </>
-                                )}
-                            </Button>
+                            {isLoading ? (
+                                <Button disabled
+                                    type="button"
+                                    size="sm"
+                                    className="gap-1.5 text-sm w-full"
+                                >
+                                    <Loader2 className="size-4 animate-spin cursor-progress" />
+                                    {processingStep}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="gap-1.5 text-sm w-full"
+                                    onClick={async () => await fetchTranscription()}
+                                >
+                                    <CirclePlay className="size-4" />
+                                    Generate
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
 
@@ -449,7 +455,7 @@ export function HomePage() {
                         <CardContent className="grid gap-5">
                             <div className="grid gap-3">
                                 <Label htmlFor="model">Model</Label>
-                                <Select defaultValue={model} onValueChange={(value) => setModel(value)}>
+                                <Select value={model} onValueChange={(value) => setModel(value)}>
                                     <SelectTrigger
                                         id="model"
                                         className="[&_[data-description]]:hidden"
@@ -458,8 +464,8 @@ export function HomePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="tiny">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Worm className="size-5" />
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <Worm className="size-5 flex-shrink-0" />
                                                 <div className="grid gap-0.5">
                                                     <p>
                                                         Whisper{" "}
@@ -474,8 +480,8 @@ export function HomePage() {
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="base">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Rat className="size-5" />
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <Rat className="size-5 flex-shrink-0" />
                                                 <div className="grid gap-0.5">
                                                     <p>
                                                         Whisper{" "}
@@ -490,8 +496,8 @@ export function HomePage() {
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="small">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Rabbit className="size-5" />
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <Rabbit className="size-5 flex-shrink-0" />
                                                 <div className="grid gap-0.5">
                                                     <p>
                                                         Whisper{" "}
@@ -506,8 +512,8 @@ export function HomePage() {
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="medium">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Bird className="size-5" />
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <Bird className="size-5 flex-shrink-0" />
                                                 <div className="grid gap-0.5">
                                                     <p>
                                                         Whisper{" "}
@@ -522,8 +528,8 @@ export function HomePage() {
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="large">
-                                            <div className="flex items-start gap-3 text-muted-foreground">
-                                                <Turtle className="size-5" />
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <Turtle className="size-6 flex-shrink-0" />
                                                 <div className="grid gap-0.5">
                                                     <p>
                                                         Whisper{" "}
@@ -543,11 +549,11 @@ export function HomePage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
                                     <Label htmlFor="maxWords">Max words</Label>
-                                    <Input id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                    <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
                                 <div className="grid gap-3">
                                     <Label htmlFor="maxChars">Max characters</Label>
-                                    <Input id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                    <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
                             </div>
                             <div className=" flex items-center space-x-4 rounded-md border p-4">
@@ -606,52 +612,87 @@ export function HomePage() {
                     )}
                 </div>
             </div>
+
             <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Enable Diarization</DialogTitle>
-                        <DialogDescription>
-                            Follow the steps below to enable diarization.
-                        </DialogDescription>
+                        <DialogTitle>Diarization Setup</DialogTitle>
+                        <DialogDescription>Follow these steps to enable diarization for free.</DialogDescription>
                     </DialogHeader>
+                    <ScrollArea className="max-h-[60vh] pb-2">
+                        <div className="space-y-6">
+                            <section className="space-y-2">
+                                <h2 className="text-lg font-semibold flex items-center">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                                        1
+                                    </span>
+                                    Create Hugging Face account
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        If you don't already have one, create an account at{' '}
+                                        <a href="https://huggingface.co/join" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            Hugging Face
+                                        </a>
+                                        .
+                                    </p>
 
-                    <div className="grid gap-8 pt-2">
-                        {/* Step 1 */}
-                        <div className="grid gap-3">
-                            <Label>
-                                Step 1: Accept the user conditions for these models
-                            </Label>
-                            <div className="flex space-x-2">
-                                <a href="https://hf.co/pyannote/segmentation-3.0" target="_blank" rel="noopener noreferrer">
-                                    <Button variant="secondary" size="sm" className="w-full">
-                                        Segmentation 3.0 Page
-                                    </Button>
-                                </a>
-                                <a href="https://huggingface.co/pyannote/speaker-diarization-3.1/" target="_blank" rel="noopener noreferrer">
-                                    <Button variant="secondary" size="sm" className="w-full">
-                                        Speaker Diarization 3.1 Page
-                                    </Button>
-                                </a>
-                            </div>
+                                </div>
+                            </section>
+                            <section className="space-y-2">
+                                <h2 className="text-lg font-semibold flex items-center">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                                        2
+                                    </span>
+                                    Agree to Model Terms
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        Accept the user conditions for these two gated models:
+                                    </p>
+                                    <div className="flex space-x-2">
+                                        <a href="https://hf.co/pyannote/segmentation-3.0" target="_blank" rel="noopener noreferrer">
+                                            <Button variant="outline" size="sm" className="w-full">
+                                                Segmentation 3.0
+                                            </Button>
+                                        </a>
+                                        <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank" rel="noopener noreferrer">
+                                            <Button variant="outline" size="sm" className="w-full">
+                                                Speaker Diarization 3.1
+                                            </Button>
+                                        </a>
+                                    </div>
+                                </div>
+                            </section>
+                            <section className="space-y-2">
+                                <h2 className="text-lg font-semibold flex items-center">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                                        3
+                                    </span>
+                                    Create Access Token
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        Create a{' '}
+                                        <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            Hugging Face access token
+                                        </a>{' '}
+                                        with read permissions.
+                                    </p>
+                                    <div className="grid gap-1.5">
+                                        <Input
+                                            id="hf_token"
+                                            type="password"
+                                            placeholder="Enter your Hugging Face access token"
+                                            value={hfToken}
+                                            onChange={(e) => setHfToken(e.target.value)}
+                                        />
+                                    </div>
+                                    {hfMessage && <p className="text-sm text-red-500">{hfMessage}</p>}
+                                </div>
+                            </section>
                         </div>
-
-                        <div className="grid gap-3">
-                            <Label>
-                                Step 2: Create a <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary">Hugging Face access token</a> with read permissions
-                            </Label>
-                            <div className="flex space-x-2">
-                                <Input
-                                    id="hf_token"
-                                    type="password"
-                                    placeholder="Enter your Hugging Face access token"
-                                    value={hfToken}
-                                    onChange={({ currentTarget }) => setHfToken(currentTarget.value)}
-                                />
-                            </div>
-                            <p className="text-sm text-red-500">{hfMessage}</p>
-                        </div>
-                    </div>
-
+                    </ScrollArea>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button

@@ -32,7 +32,7 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "path": "$DOCUMENT/AutoSubs-Storage/*"
+          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
         },
         {
           "path": "$DOCUMENT/"
@@ -42,6 +42,9 @@
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [
+        {
+          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+        },
         {
           "path": "$DESKTOP/**"
         },
@@ -54,18 +57,10 @@
       ]
     },
     {
-      "identifier": "fs:allow-mkdir",
-      "allow": [
-        {
-          "path": "$DOCUMENT/**"
-        }
-      ]
-    },
-    {
       "identifier": "fs:allow-exists",
       "allow": [
         {
-          "path": "$DOCUMENT/**"
+          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
         }
       ]
     },
@@ -84,14 +79,21 @@
         }
       ]
     },
-    "store:default",
+    {
+      "identifier": "store:default",
+      "allow": [
+        {
+          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+        }
+      ]
+    },
     "shell:default",
     {
       "identifier": "shell:allow-spawn",
       "allow": [
         {
           "name": "transcription-server",
-          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/Transcription-Server/transcription-server"
+          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server"
         }
       ]
     },

@@ -1,10 +1,10 @@
 import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
-import { BaseDirectory, readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
-import { documentDir, join } from '@tauri-apps/api/path';
+import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces"
-import { load } from '@tauri-apps/plugin-store';
+import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { exit } from '@tauri-apps/plugin-process';
@@ -37,7 +37,7 @@ interface GlobalContextProps {
     setDiarize: (newDiarize: boolean) => void;
     setMaxWords: (newMaxWords: number) => void;
     setMaxChars: (newMaxChars: number) => void;
-    fetchTranscription: () => void;
+    fetchTranscription: () => Promise<void>;
     subtitles: Subtitle[];
 
     // edit page
@@ -45,9 +45,9 @@ interface GlobalContextProps {
     topSpeaker: TopSpeaker;
     setSpeakers: (newSpeakers: Speaker[]) => void;
     updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>
-    getTimelineInfo: () => void;
-    getTracks: () => void;
-    getTemplates: () => void;
+    getTimelineInfo: () => Promise<void>;
+    getTracks: () => Promise<void>;
+    getTemplates: () => Promise<void>;
     populateSubtitles: (timelineId: string) => Promise<void>;
     addSubtitles: (currentTemplate: string, currentTrack: string, filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
@@ -55,9 +55,11 @@ interface GlobalContextProps {
     jumpToTime: (start: number) => Promise<void>;
 }
 
-const resolveAPI = "http://localhost:5016/";
-const transcribeAPI = "http://localhost:8000/transcribe/";
-//const validateAPI = "http://localhost:8000/validate/";
+const resolveAPI = "http://localhost:55010/";
+const transcribeAPI = "http://localhost:55000/transcribe/";
+//const validateAPI = "http://localhost:55000/validate/";
+const transcriptsFolder = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/';
+let store: Store | null = null;
 
 interface Template {
     value: string;
@@ -77,9 +79,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [trackList, setTrackList] = useState<Track[]>([]);
     const [timeline, setTimeline] = useState<string>("");
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
-    const [isLoading, setIsLoading] = useState(false);
-    const [processingStep, setProcessingStep] = useState("");
-    const [error, setError] = useState("")
+    const [isLoading, setIsLoading] = useState(true);
+    const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
+    const [error, setError] = useState("");
+    const serverLoading = useRef(true);
 
     const [model, setModel] = useState("small");
     const [currentLanguage, setLanguage] = useState("english");
@@ -89,19 +92,17 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
     const [maxChars, setMaxChars] = useState(30);
-    const transcriptsFolder = 'AutoSubs-Storage';
-
-    async function getTranscriptStorageDir() {
-        return await join(await documentDir(), transcriptsFolder)
-    }
 
     async function getFullTranscriptPath() {
-        let filePath = await join(await getTranscriptStorageDir(), `${timeline}.json`);
+        let filePath = await join(transcriptsFolder, `${timeline}.json`);
         return filePath;
     }
 
     async function initializeStore() {
-        const store = await load('store.json', { autoSave: false });
+        if (!store) {
+            store = await load(await join(transcriptsFolder, 'autosubs-store.json'), { autoSave: false });
+        }
+
         const [
             storedModel,
             storedCurrentLanguage,
@@ -123,7 +124,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         ]);
 
         return {
-            store,
             storedModel,
             storedCurrentLanguage,
             storedCurrentTemplate,
@@ -135,17 +135,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         };
     }
 
-    let store: any; // Add a type if possible
-
-    // Initialize the store
-    initializeStore().then((result) => {
-        store = result.store;
-    }).catch((error) => {
-        console.error("Failed to initialize store:", error);
-    });
-
     useEffect(() => {
         initializeStore().then((result) => {
+            console.log('Stored model:', result.storedModel);
             setModel(result.storedModel || "small");
             setLanguage(result.storedCurrentLanguage || "english");
             setTemplate(result.storedCurrentTemplate || "");
@@ -162,7 +154,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     async function startTranscriptionServer() {
         try {
             // Create the command without using 'open' or shell-specific arguments
-            const command = Command.create('transcription-server');
+            const command = Command.create('transcription-server')
 
             // Set up event listeners for logging
             command.on('close', (data) => {
@@ -180,7 +172,27 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     let subtitle = { text: match[1], start: "", end: "", speaker: "" };
                     setSubtitles(prevSubtitles => [...prevSubtitles, subtitle]);
                 }
-                //console.log(`Transcription Server STDOUT: "${line}"`);
+
+                /*
+                if (line.includes('segmentation')) {
+                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
+                    const percentage = Number(match) / 100 * 25
+                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
+                } else if (line.includes('speaker_counting')) {
+                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
+                    const percentage = 25 + (Number(match) / 100 * 25)
+                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
+                } else if (line.includes('embeddings')) {
+                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
+                    const percentage = 50 + (Number(match) / 100 * 25)
+                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
+                } else if (line.includes('discrete_diarization')) {
+                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
+                    const percentage = 75 + (Number(match) / 100 * 25)
+                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
+                }
+                console.log(`Transcription Server STDOUT: "${line}"`);
+                */
             });
 
             command.stderr.on('data', (line) => {
@@ -188,11 +200,20 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 if (line == "" || line.length < 1) {
                     return;
                 }
+                if ((line.includes('address already in use') || line.includes('Uvicorn running')) && serverLoading.current) {
+                    setProcessingStep("");
+                    setIsLoading(false);
+                    serverLoading.current = false;
+                }
+
                 if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
-                    if (line.includes('speechbrain.utils.quirks')) {
-                        setProcessingStep("Diarizing speakers...")
+                    if (line.includes('speechbrain')) {
+                        setProcessingStep("Diarizing speakers...");
+                        setIsLoading(true);
                     }
-                    console.log(`Transcription Server INFO: "${line}"`);
+                    else {
+                        console.log(`Transcription Server INFO: "${line}"`);
+                    }
                 } else {
                     console.error(`Transcription Server STDERR: "${line}"`);
                 }
@@ -225,11 +246,13 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setSubtitles([]);
         setProcessingStep("Exporting Audio...")
         try {
+            // Export audio and set timeline
             let audioInfo = await exportAudio();
             setTimeline(audioInfo.timeline);
             console.log("Fetching transcription...");
-            setProcessingStep("Transcribing Audio...")
+            setProcessingStep("Transcribing Audio...");
 
+            // Make the POST request to the transcription API
             const response = await fetch(transcribeAPI, {
                 method: 'POST',
                 headers: {
@@ -237,7 +260,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 },
                 body: JSON.stringify({
                     file_path: audioInfo.path,
-                    output_dir: await getTranscriptStorageDir(),
+                    output_dir: transcriptsFolder,
                     timeline: audioInfo.timeline,
                     model: model,
                     language: currentLanguage,
@@ -248,22 +271,56 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 }),
             });
 
-            if (response.status !== 200) {
-                setError(response.statusText)
-                throw new Error(`HTTP error! status: ${response.status}`);
+            // Check if the response is not successful
+            if (!response.ok) {
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    // Attempt to parse the error message from the response
+                    const errorData = await response.json();
+                    if (errorData.detail) {
+                        errorMessage = errorData.detail;
+                    }
+                } catch (jsonError) {
+                    // If parsing fails, retain the default error message
+                    console.error("Failed to parse error response as JSON:", jsonError);
+                }
+                // Set the error state with the extracted or default message
+                setError(errorMessage);
+                // Throw an error to be caught in the catch block
+                throw new Error(errorMessage);
             }
 
-            const data = await response.json()
+            // If the response is successful, parse the JSON data
+            const data = await response.json();
             const filePath = data.result_file;
 
-            setProcessingStep("Populating timeline...")
+            // Proceed with processing the transcription result
+            setProcessingStep("Populating timeline...");
             setSubtitles([]);
             await populateSubtitles(audioInfo.timeline);
             await addSubtitles(currentTemplate, currentTrack, filePath);
-        } catch (error) {
+
+        } catch (error: unknown) { // Explicitly type 'error' as 'unknown'
+            // Handle any errors that occurred during the fetch or processing
             console.error("Error fetching transcription:", error);
-            setError(String(error));
+
+            // Initialize a default error message
+            let errorMessage = "An unexpected error occurred.";
+
+            // Type guard: Check if 'error' is an instance of Error
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                // If error is a string, use it directly
+                errorMessage = error;
+            }
+
+            // Update the error state with the appropriate message
+            setError(errorMessage);
+
         } finally {
+            // Ensure that the loading state is reset regardless of success or failure
+            console.log("Finished transcribing.");
             setIsLoading(false);
         }
     }
@@ -283,7 +340,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setTimeline(data.timelineId);
             return timelineId;
         } catch (error) {
-            console.error('Error fetching timeline info:', error);
+            console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
         }
     }
 
@@ -319,6 +376,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching tracks:', error);
+            setError('Error fetching tracks (failed to connect to AutoSubs Link in Resolve): ' + error)
         }
     }
 
@@ -337,6 +395,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching templates:', error);
+            setError('Error getting templates (failed to connect to AutoSubs Link in Resolve): ' + error)
         }
     }
 
@@ -353,12 +412,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             const fileExists = await exists(filePath, { baseDir: BaseDirectory.Document });
 
             if (!fileExists) {
-                let directoryExists = await exists(transcriptsFolder, { baseDir: BaseDirectory.Document })
-                if (!directoryExists) {
-                    console.log("Creating directory...")
-                    await mkdir(transcriptsFolder, { baseDir: BaseDirectory.Document })
-                    console.log("Directory created")
-                }
                 console.log("Transcript file does not exist for this timeline.");
                 return;
             }
@@ -391,7 +444,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             },
             body: JSON.stringify({
                 func: "ExportAudio",
-                outputDir: await join(await documentDir(), transcriptsFolder)
+                outputDir: transcriptsFolder
             }),
         });
 
@@ -524,16 +577,29 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     }
 
     async function saveState() {
-        await store.set('model', model);
-        await store.set('currentLanguage', currentLanguage);
-        await store.set('currentTemplate', currentTemplate);
-        await store.set('currentTrack', currentTrack);
-        await store.set('translate', translate);
-        await store.set('diarize', diarize);
-        await store.set('maxWords', maxWords);
-        await store.set('maxChars', maxChars);
-        await store.save();
-    };
+        if (!store) {
+            console.error('Store is not initialized.');
+            return;
+        }
+    
+        try {
+            await store.set('model', model);
+            await store.set('currentLanguage', currentLanguage);
+            await store.set('currentTemplate', currentTemplate);
+            await store.set('currentTrack', currentTrack);
+            await store.set('translate', translate);
+            await store.set('diarize', diarize);
+            await store.set('maxWords', maxWords);
+            await store.set('maxChars', maxChars);
+            await store.save(); // Persist changes
+        } catch (error) {
+            console.error('Error saving state:', error);
+        }
+    }
+
+    useEffect(() => {
+        saveState();
+    }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars])
 
     const hasInitialized = useRef(false);
 
@@ -545,7 +611,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         initialize();
 
         getCurrentWindow().once("tauri://close-requested", async () => {
-            await saveState();
             try {
                 console.log("Stopping transcription server...");
                 await stopTranscriptionServer();
