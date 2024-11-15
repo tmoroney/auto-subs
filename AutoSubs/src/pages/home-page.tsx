@@ -13,8 +13,7 @@ import {
     Share,
     Worm,
     Loader2,
-    Speech,
-    ChevronRight
+    Speech
 } from "lucide-react"
 
 import {
@@ -614,7 +613,7 @@ export function HomePage() {
             </div>
 
             <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[540px]">
                     <DialogHeader>
                         <DialogTitle>Diarization Setup</DialogTitle>
                         <DialogDescription>Follow these steps to enable diarization for free.</DialogDescription>
@@ -630,13 +629,12 @@ export function HomePage() {
                                 </h2>
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
-                                        If you don't already have one, create an account at{' '}
+                                        Sign up at{' '}
                                         <a href="https://huggingface.co/join" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                            Hugging Face
+                                            Hugging Face{' '}
                                         </a>
-                                        .
+                                        if you don’t already have an account.
                                     </p>
-
                                 </div>
                             </section>
                             <section className="space-y-2">
@@ -648,7 +646,7 @@ export function HomePage() {
                                 </h2>
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
-                                        Accept the user conditions for these two gated models:
+                                        Agree to terms for these models (top of page):
                                     </p>
                                     <div className="flex space-x-2">
                                         <a href="https://hf.co/pyannote/segmentation-3.0" target="_blank" rel="noopener noreferrer">
@@ -673,11 +671,11 @@ export function HomePage() {
                                 </h2>
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
-                                        Create a{' '}
+                                        Generate a{' '}
                                         <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                            Hugging Face access token
+                                            Hugging Face token
                                         </a>{' '}
-                                        with read permissions.
+                                        with read permissions and enter it below:
                                     </p>
                                     <div className="grid gap-1.5">
                                         <Input

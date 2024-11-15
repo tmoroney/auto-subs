@@ -341,6 +341,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             return timelineId;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
+            setError("Failed to connect to Resolve via AutoSubs Link")
         }
     }
 
@@ -376,7 +377,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching tracks:', error);
-            setError('Error fetching tracks (failed to connect to AutoSubs Link in Resolve): ' + error)
+            setError("Failed to connect to Resolve via AutoSubs Link")
         }
     }
 
@@ -395,7 +396,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching templates:', error);
-            setError('Error getting templates (failed to connect to AutoSubs Link in Resolve): ' + error)
+            setError("Failed to connect to Davinci Resolve via AutoSubs Link")
         }
     }
 

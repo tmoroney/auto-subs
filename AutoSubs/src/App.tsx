@@ -160,48 +160,48 @@ function NavigationAside() {
               <TooltipTrigger asChild>
                 <Link to="/">
                   <Button variant="outline" size="icon" aria-label="Home">
-                  {useTheme().theme === 'dark' ? (
-                    <svg
-                      width="24"
-                      height="28"
-                      viewBox="0 0 411 746"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g filter="url(#filter0_d_104_2)">
-                        <path d="M162.773 172.6L305.333 90.1C320.293 81.3 333.493 80.2 344.933 86.8C356.813 93.4 362.753 105.5 362.753 123.1V545.5L305.333 578.5V446.5L162.773 529V661L105.353 694V271.6C105.353 259.72 107.993 247.4 113.273 234.64C118.553 221.44 125.593 209.34 134.393 198.34C143.193 186.9 152.653 178.32 162.773 172.6ZM305.333 380.5V156.1L162.773 238.6V463L305.333 380.5ZM305.333 446.5V578.5L247.913 545.5V413.5L305.333 446.5ZM305.333 156.1V380.5L247.913 347.5V123.1L305.333 156.1ZM305.333 380.5L162.773 463L105.353 430L247.913 347.5L305.333 380.5ZM345.593 86.8C333.713 80.2 320.293 81.3 305.333 90.1L162.773 172.6C152.653 178.32 143.193 186.9 134.393 198.34C125.593 209.34 118.553 221.44 113.273 234.64C107.993 247.4 105.353 259.72 105.353 271.6V694L47.9327 661V238.6C47.9327 226.72 50.5727 214.4 55.8527 201.64C61.1327 188.44 68.1727 176.34 76.9727 165.34C85.7727 153.9 95.2327 145.32 105.353 139.6L247.913 57.1C263.313 48.3 276.733 47.2 288.173 53.8L345.593 86.8Z" fill="white" />
-                      </g>
-                      <defs>
-                        <filter id="filter0_d_104_2" x="0.63274" y="0.599964" width="409.42" height="744.7" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-                          <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                          <feOffset dy="4" />
-                          <feGaussianBlur stdDeviation="23.65" />
-                          <feComposite in2="hardAlpha" operator="out" />
-                          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0" />
-                          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_104_2" />
-                          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_104_2" result="shape" />
-                        </filter>
-                      </defs>
-                    </svg>
-                  ) : (
-                    <svg width="26" height="28" viewBox="0 0 411 746" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <g filter="url(#filter0_d_110_2)">
-                        <path d="M162.773 172.6L305.333 90.1C320.293 81.3 333.493 80.2 344.933 86.8C356.813 93.4 362.753 105.5 362.753 123.1V545.5L305.333 578.5V446.5L162.773 529V661L105.353 694V271.6C105.353 259.72 107.993 247.4 113.273 234.64C118.553 221.44 125.593 209.34 134.393 198.34C143.193 186.9 152.653 178.32 162.773 172.6ZM305.333 380.5V156.1L162.773 238.6V463L305.333 380.5ZM305.333 446.5V578.5L247.913 545.5V413.5L305.333 446.5ZM305.333 156.1V380.5L247.913 347.5V123.1L305.333 156.1ZM305.333 380.5L162.773 463L105.353 430L247.913 347.5L305.333 380.5ZM345.593 86.8C333.713 80.2 320.293 81.3 305.333 90.1L162.773 172.6C152.653 178.32 143.193 186.9 134.393 198.34C125.593 209.34 118.553 221.44 113.273 234.64C107.993 247.4 105.353 259.72 105.353 271.6V694L47.9327 661V238.6C47.9327 226.72 50.5727 214.4 55.8527 201.64C61.1327 188.44 68.1727 176.34 76.9727 165.34C85.7727 153.9 95.2327 145.32 105.353 139.6L247.913 57.1C263.313 48.3 276.733 47.2 288.173 53.8L345.593 86.8Z" fill="black" />
-                      </g>
-                      <defs>
-                        <filter id="filter0_d_110_2" x="0.63274" y="0.599903" width="409.42" height="744.7" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-                          <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-                          <feOffset dy="4" />
-                          <feGaussianBlur stdDeviation="23.65" />
-                          <feComposite in2="hardAlpha" operator="out" />
-                          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0" />
-                          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_110_2" />
-                          <feBlend mode="normal" in="SourceGraphic" result="shape" />
-                        </filter>
-                      </defs>
-                    </svg>
-                  )}
+                    {useTheme().theme === 'dark' ? (
+                      <svg
+                        width="24"
+                        height="28"
+                        viewBox="0 0 411 746"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g filter="url(#filter0_d_104_2)">
+                          <path d="M162.773 172.6L305.333 90.1C320.293 81.3 333.493 80.2 344.933 86.8C356.813 93.4 362.753 105.5 362.753 123.1V545.5L305.333 578.5V446.5L162.773 529V661L105.353 694V271.6C105.353 259.72 107.993 247.4 113.273 234.64C118.553 221.44 125.593 209.34 134.393 198.34C143.193 186.9 152.653 178.32 162.773 172.6ZM305.333 380.5V156.1L162.773 238.6V463L305.333 380.5ZM305.333 446.5V578.5L247.913 545.5V413.5L305.333 446.5ZM305.333 156.1V380.5L247.913 347.5V123.1L305.333 156.1ZM305.333 380.5L162.773 463L105.353 430L247.913 347.5L305.333 380.5ZM345.593 86.8C333.713 80.2 320.293 81.3 305.333 90.1L162.773 172.6C152.653 178.32 143.193 186.9 134.393 198.34C125.593 209.34 118.553 221.44 113.273 234.64C107.993 247.4 105.353 259.72 105.353 271.6V694L47.9327 661V238.6C47.9327 226.72 50.5727 214.4 55.8527 201.64C61.1327 188.44 68.1727 176.34 76.9727 165.34C85.7727 153.9 95.2327 145.32 105.353 139.6L247.913 57.1C263.313 48.3 276.733 47.2 288.173 53.8L345.593 86.8Z" fill="white" />
+                        </g>
+                        <defs>
+                          <filter id="filter0_d_104_2" x="0.63274" y="0.599964" width="409.42" height="744.7" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                            <feFlood flood-opacity="0" result="BackgroundImageFix" />
+                            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                            <feOffset dy="4" />
+                            <feGaussianBlur stdDeviation="23.65" />
+                            <feComposite in2="hardAlpha" operator="out" />
+                            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0" />
+                            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_104_2" />
+                            <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_104_2" result="shape" />
+                          </filter>
+                        </defs>
+                      </svg>
+                    ) : (
+                      <svg width="26" height="28" viewBox="0 0 411 746" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#filter0_d_110_2)">
+                          <path d="M162.773 172.6L305.333 90.1C320.293 81.3 333.493 80.2 344.933 86.8C356.813 93.4 362.753 105.5 362.753 123.1V545.5L305.333 578.5V446.5L162.773 529V661L105.353 694V271.6C105.353 259.72 107.993 247.4 113.273 234.64C118.553 221.44 125.593 209.34 134.393 198.34C143.193 186.9 152.653 178.32 162.773 172.6ZM305.333 380.5V156.1L162.773 238.6V463L305.333 380.5ZM305.333 446.5V578.5L247.913 545.5V413.5L305.333 446.5ZM305.333 156.1V380.5L247.913 347.5V123.1L305.333 156.1ZM305.333 380.5L162.773 463L105.353 430L247.913 347.5L305.333 380.5ZM345.593 86.8C333.713 80.2 320.293 81.3 305.333 90.1L162.773 172.6C152.653 178.32 143.193 186.9 134.393 198.34C125.593 209.34 118.553 221.44 113.273 234.64C107.993 247.4 105.353 259.72 105.353 271.6V694L47.9327 661V238.6C47.9327 226.72 50.5727 214.4 55.8527 201.64C61.1327 188.44 68.1727 176.34 76.9727 165.34C85.7727 153.9 95.2327 145.32 105.353 139.6L247.913 57.1C263.313 48.3 276.733 47.2 288.173 53.8L345.593 86.8Z" fill="black" />
+                        </g>
+                        <defs>
+                          <filter id="filter0_d_110_2" x="0.63274" y="0.599903" width="409.42" height="744.7" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                            <feFlood flood-opacity="0" result="BackgroundImageFix" />
+                            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                            <feOffset dy="4" />
+                            <feGaussianBlur stdDeviation="23.65" />
+                            <feComposite in2="hardAlpha" operator="out" />
+                            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0" />
+                            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_110_2" />
+                            <feBlend mode="normal" in="SourceGraphic" result="shape" />
+                          </filter>
+                        </defs>
+                      </svg>
+                    )}
                   </Button>
                 </Link>
               </TooltipTrigger>
@@ -361,12 +361,31 @@ function NavigationAside() {
       </Dialog>
 
       <Dialog open={openErrorDialog} onOpenChange={setOpenErrorDialog}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Error</DialogTitle>
-            <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>
+            <DialogDescription>
+              An error has occurred. Please help us resolve it by reporting the issue on our{' '}
+              <a
+                href="https://discord.com/invite/TBFUfGWegm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Discord server {' '}
+              </a>
+              or by creating an issue on{' '}
+              <a
+                href="https://github.com/tmoroney/auto-subs/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                GitHub
+              </a>.
+            </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+          <ScrollArea className="mt-2 mb-4 max-h-[60vh] pr-4">
             <div className="space-y-6">
               <span className="text-s">{error}</span>
             </div>
