@@ -13,8 +13,11 @@ import {
     Share,
     Worm,
     Loader2,
-    Speech
+    Speech,
+    HelpCircle,
 } from "lucide-react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 import {
     Dialog,
@@ -63,6 +66,9 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { link } from "fs"
 
 const validateAPI = "http://localhost:55000/validate/";
 
@@ -206,6 +212,7 @@ export function HomePage() {
     const [openTemplates, setOpenTemplates] = useState(false);
     const [openTracks, setOpenTracks] = useState(false);
     const [openTokenMenu, setOpenTokenMenu] = useState(false);
+    const [tooltipOpen, setTooltipOpen] = useState(false)
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
     const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
@@ -614,9 +621,26 @@ export function HomePage() {
 
             <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>
                 <DialogContent className="sm:max-w-[540px]">
-                    <DialogHeader>
-                        <DialogTitle>Diarization Setup</DialogTitle>
-                        <DialogDescription>Follow these steps to enable diarization for free.</DialogDescription>
+                    <DialogHeader className="space-y-2">
+                        <DialogTitle className="text-2xl">Diarization Setup</DialogTitle>
+                        <DialogDescription className="flex items-center">
+                            <span>Follow these steps to enable diarization for free.</span>
+                            <TooltipProvider>
+                                <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="link" size="sm" className="ml-1 p-0 h-auto font-normal" onClick={() => setTooltipOpen(!tooltipOpen)}>
+                                            Learn more
+                                            <span className="sr-only">about diarization setup</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" align="center" className="max-w-[300px]">
+                                        <p>
+                                            Pyannote provides their speaker diarization model for free but asks for basic details to support their research and secure funding for improvements.
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="max-h-[60vh] pb-2">
                         <div className="space-y-6">
@@ -630,7 +654,7 @@ export function HomePage() {
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
                                         Sign up at{' '}
-                                        <a href="https://huggingface.co/join" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                        <a href="https://huggingface.co/join?next=%2Fpyannote%2Fspeaker-diarization-3.1" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                                             Hugging Face{' '}
                                         </a>
                                         if you don’t already have an account.
@@ -726,6 +750,6 @@ export function HomePage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </main>
+        </main >
     )
 }
