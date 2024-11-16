@@ -31,7 +31,7 @@ import { useGlobal } from "@/GlobalContext";
 const pathNames = {
   "/": "Transcribe",
   "/search": "Text Search",
-  "/diarize": "Edit Speakers",
+  "/diarize": "Diarized Speakers",
   "/animate": "Animate Subtitles",
   "/chat": "Chat",
 };

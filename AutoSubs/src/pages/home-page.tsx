@@ -667,10 +667,27 @@ export function HomePage() {
                                         2
                                     </span>
                                     Agree to Model Terms
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-0 hover:bg-transparent">
+                                                    <HelpCircle className="h-4 w-4" />
+                                                    <span className="sr-only">See example of model terms form</span>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="bottom" align="center" className="max-w-[600px] px-2">
+                                                <img
+                                                    src="https://raw.githubusercontent.com/tmoroney/auto-subs/refs/heads/AutoSubsV2-Dev/Diarization-Form.png"
+                                                    alt="Example of model terms form"
+                                                    className="w-full h-auto rounded-md mt-1"
+                                                />
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </h2>
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
-                                        Agree to terms for these models (top of page):
+                                        Agree to the terms for these models (top of page):
                                     </p>
                                     <div className="flex space-x-2">
                                         <a href="https://hf.co/pyannote/segmentation-3.0" target="_blank" rel="noopener noreferrer">
