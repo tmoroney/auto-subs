@@ -495,7 +495,7 @@ while not itm.ExitButton.Checked do
     elseif err ~= "timeout" then
         error(err)
     end
-    sleep(0.05)
+    sleep(0.1)
 end
 
 
