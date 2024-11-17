@@ -1,0 +1,8 @@
+torch
+torchaudio
+huggingface-hub
+fastapi
+uvicorn
+mlx_whisper
+stable-ts-whisperless
+pyannote.audio

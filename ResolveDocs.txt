@@ -1,26 +1,23 @@
-Updated as of 18 December 2023
+Last Updated: 20 September 2024
 ----------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
 
 From v16.2.0 onwards, the nodeIndex parameters accepted by SetLUT() and SetCDL() are 1-based instead of 0-based, i.e. 1 <= nodeIndex <= total number of nodes.
 
-
 Overview
 --------
-As with Blackmagic Design Fusion scripts, user scripts written in Lua and Python programming languages are supported. By default, scripts can be invoked from the Console window in the Fusion page,
+As with Blackmagic Fusion scripts, user scripts written in Lua and Python programming languages are supported. By default, scripts can be invoked from the Console window in the Fusion page,
 or via command line. This permission can be changed in Resolve Preferences, to be only from Console, or to be invoked from the local network. Please be aware of the security implications when
 allowing scripting access from outside of the Resolve application.
-
 
 Prerequisites
 -------------
 DaVinci Resolve scripting requires one of the following to be installed (for all users):
 
     Lua 5.1
-    Python 2.7 64-bit
     Python >= 3.6 64-bit
-
+    Python 2.7 64-bit
 
 Using a script
 --------------
@@ -64,6 +61,7 @@ The interactive Console window allows for an easy way to execute simple scriptin
 and Lua and evaluates and executes them immediately. For more information on how to use the Console, please refer to the DaVinci Resolve User Manual.
 
 This example Python script creates a simple project:
+
     #!/usr/bin/env python
     import DaVinciResolveScript as dvr_script
     resolve = dvr_script.scriptapp("Resolve")
@@ -80,9 +78,8 @@ Running DaVinci Resolve in headless mode
 DaVinci Resolve can be launched in a headless mode without the user interface using the -nogui command line option. When DaVinci Resolve is launched using this option, the user interface is disabled.
 However, the various scripting APIs will continue to work as expected.
 
-
-Basic Resolve API
------------------
+DaVinci Resolve API
+-------------------
 Some commonly used API functions are described below (*). As with the resolve object, each object is inspectable for properties and functions.
 
 Resolve
@@ -105,6 +102,8 @@ Resolve
   ExportRenderPreset(presetName, exportPath)      --> Bool               # Export a preset to a given path (string) if presetName(string) exists.
   ImportBurnInPreset(presetPath)                  --> Bool               # Import a data burn in preset from a given presetPath (string)
   ExportBurnInPreset(presetName, exportPath)      --> Bool               # Export a data burn in preset to a given path (string) if presetName (string) exists.
+  GetKeyframeMode()                               --> keyframeMode       # Returns the currently set keyframe mode (int). Refer to section 'Keyframe Mode information' below for details.
+  SetKeyframeMode(keyframeMode)                   --> Bool               # Returns True when 'keyframeMode'(enum) is successfully set. Refer to section 'Keyframe Mode information' below for details.
 
 ProjectManager
   ArchiveProject(projectName,
@@ -187,6 +186,9 @@ Project
           startOffsetInSamples, durationInSamples)
   LoadBurnInPreset(presetName)                    --> Bool               # Loads user defined data burn in preset for project when supplied presetName (string). Returns true if successful.
   ExportCurrentFrameAsStill(filePath)             --> Bool               # Exports current frame as still to supplied filePath. filePath must end in valid export file format. Returns True if succssful, False otherwise.
+  GetColorGroupsList()                            --> [ColorGroups...]   # Returns a list of all group objects in the timeline.
+  AddColorGroup(groupName)                        --> ColorGroup         # Creates a new ColorGroup. groupName must be a unique string.
+  DeleteColorGroup(colorGroup)                    --> Bool               # Deletes the given color group and sets clips to ungrouped.
 
 MediaStorage
   GetMountedVolumeList()                          --> [paths...]         # Returns list of folder paths corresponding to mounted volumes displayed in Resolve’s Media Storage.
@@ -206,10 +208,10 @@ MediaPool
   CreateEmptyTimeline(name)                       --> Timeline           # Adds new timeline with given name.
   AppendToTimeline(clip1, clip2, ...)             --> [TimelineItem]     # Appends specified MediaPoolItem objects in the current timeline. Returns the list of appended timelineItems.
   AppendToTimeline([clips])                       --> [TimelineItem]     # Appends specified MediaPoolItem objects in the current timeline. Returns the list of appended timelineItems.
-  AppendToTimeline([{clipInfo}, ...])             --> [TimelineItem]     # Appends list of clipInfos specified as dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), (optional) "mediaType" (int; 1 - Video only, 2 - Audio only), "trackIndex" (int) and "recordFrame" (int). Returns the list of appended timelineItems.
+  AppendToTimeline([{clipInfo}, ...])             --> [TimelineItem]     # Appends list of clipInfos specified as dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), (optional) "mediaType" (int; 1 - Video only, 2 - Audio only), "trackIndex" (int) and "recordFrame" (int/float). Returns the list of appended timelineItems.
   CreateTimelineFromClips(name, clip1, clip2,...) --> Timeline           # Creates new timeline with specified name, and appends the specified MediaPoolItem objects.
   CreateTimelineFromClips(name, [clips])          --> Timeline           # Creates new timeline with specified name, and appends the specified MediaPoolItem objects.
-  CreateTimelineFromClips(name, [{clipInfo}])     --> Timeline           # Creates new timeline with specified name, appending the list of clipInfos specified as a dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), "recordFrame" (int).
+  CreateTimelineFromClips(name, [{clipInfo}])     --> Timeline           # Creates new timeline with specified name, appending the list of clipInfos specified as a dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), "recordFrame" (int/float).
   ImportTimelineFromFile(filePath, {importOptions}) --> Timeline         # Creates timeline based on parameters within given file (AAF/EDL/XML/FCPXML/DRT/ADL/OTIO) and optional importOptions dict, with support for the keys:
                                                                          # "timelineName": string, specifies the name of the timeline to be created. Not valid for DRT import
                                                                          # "importSourceClips": Bool, specifies whether source clips should be imported, True by default. Not valid for DRT import
@@ -239,6 +241,8 @@ MediaPool
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool
   CreateStereoClip(LeftMediaPoolItem,
                    RightMediaPoolItem)            --> MediaPoolItem      # Takes in two existing media pool items and creates a new 3D stereoscopic media pool entry replacing the input media in the media pool.
+  GetSelectedClips()                              --> [MediaPoolItems]   # Returns the current selected MediaPoolItems
+  SetSelectedClip(MediaPoolItem)                  --> Bool               # Sets the selected MediaPoolItem to the given MediaPoolItem
 
 Folder
   GetClipList()                                   --> [clips...]         # Returns a list of clips (items) within the folder.
@@ -256,6 +260,10 @@ MediaPoolItem
                                                                          # If no argument is specified, a dict of all set metadata properties is returned.
   SetMetadata(metadataType, metadataValue)        --> Bool               # Sets the given metadata to metadataValue (string). Returns True if successful.
   SetMetadata({metadata})                         --> Bool               # Sets the item metadata with specified 'metadata' dict. Returns True if successful.
+  GetThirdPartyMetadata(metadataType=None)        --> string|dict        # Returns the third party metadata value for the key 'metadataType'.
+                                                                         # If no argument is specified, a dict of all set third parth metadata properties is returned.
+  SetThirdPartyMetadata(metadataType, metadataValue) --> Bool            # Sets/Add the given third party metadata to metadataValue (string). Returns True if successful.
+  SetThirdPartyMetadata({metadata})               --> Bool               # Sets/Add the item third party metadata with specified 'metadata' dict. Returns True if successful.
   GetMediaId()                                    --> string             # Returns the unique ID for the MediaPoolItem.
   AddMarker(frameId, color, name, note, duration, --> Bool               # Creates a new marker at given frameId position and with given marker information. 'customData' is optional and helps to attach user specific data to the marker.
             customData)
@@ -284,6 +292,8 @@ MediaPoolItem
   TranscribeAudio()                               --> Bool               # Transcribes audio of the MediaPoolItem. Returns True if successful; False otherwise
   ClearTranscription()                            --> Bool               # Clears audio transcription of the MediaPoolItem. Returns True if successful; False otherwise.
 
+  GetAudioMapping()                               --> json formatted string # Returns a string with MediaPoolItem's audio mapping information. Check 'Audio Mapping' section below for more information.
+
 Timeline
   GetName()                                       --> string             # Returns the timeline name.
   SetName(timelineName)                           --> Bool               # Sets the timeline name if timelineName (string) is unique. Returns True if successful.
@@ -292,9 +302,17 @@ Timeline
   SetStartTimecode(timecode)                      --> Bool               # Set the start timecode of the timeline to the string 'timecode'. Returns true when the change is successful, false otherwise.
   GetStartTimecode()                              --> string             # Returns the start timecode for the timeline.
   GetTrackCount(trackType)                        --> int                # Returns the number of tracks for the given track type ("audio", "video" or "subtitle").
-  AddTrack(trackType, optionalSubTrackType)       --> Bool               # Adds track of trackType ("video", "subtitle", "audio"). Second argument optionalSubTrackType is required for "audio"
-                                                                         # optionalSubTrackType can be one of {"mono", "stereo", "5.1", "5.1film", "7.1", "7.1film", "adaptive1", ... , "adaptive24"}
+  AddTrack(trackType, subTrackType)               --> Bool               # Adds track of trackType ("video", "subtitle", "audio"). Optional argument subTrackType is used for "audio" trackType.
+                                                                         # subTrackType can be one of {"mono", "stereo", "5.1", "5.1film", "7.1", "7.1film", "adaptive1", ... , "adaptive24"}
+                                                                         # subTrackType defaults to 'mono' if skipped and track type is ‘audio’.
+  AddTrack(trackType, newTrackOptions)            --> Bool               # Adds track of trackType ("video", "subtitle", "audio"). Optional newTrackOptions = {'audioType': same as subTrackType above, 'index': 1 <= index <= GetTrackCount(trackType))
+                                                                         # 'audiotype' defaults to 'mono' if arg skipped and track type is ‘audio’.
+                                                                         # 'index' if skipped (or if value not in bounds) appends track.
   DeleteTrack(trackType, trackIndex)              --> Bool               # Deletes track of trackType ("video", "subtitle", "audio") and given trackIndex. 1 <= trackIndex <= GetTrackCount(trackType).
+  GetTrackSubType(trackType, trackIndex)          --> string             # Returns an audio track's format.
+                                                                         # the return value is one of {"mono", "stereo", "5.1", "5.1film", "7.1", "7.1film", "adaptive1", ... , "adaptive24"} and matches the parameters 'subTrackType' and 'audioType' in timeline.AddTrack.
+                                                                         # returns a blank string for non audio tracks
+
   SetTrackEnable(trackType, trackIndex, Bool)     --> Bool               # Enables/Disables track with given trackType and trackIndex
                                                                          # trackType is one of {"audio", "video", "subtitle"}
                                                                          # 1 <= trackIndex <= GetTrackCount(trackType).
@@ -361,18 +379,26 @@ Timeline
                                                                          # Returns True on success, False otherwise.
   DetectSceneCuts()                               --> Bool               # Detects and makes scene cuts along the timeline. Returns True if successful, False otherwise.
   ConvertTimelineToStereo()                       --> Bool               # Converts timeline to stereo. Returns True if successful; False otherwise.
+  GetNodeGraph()                                  --> Graph              # Returns the timeline's node graph object.
+  AnalyzeDolbyVision([timelineItems]=[],          --> Bool               # Analyzes Dolby Vision on clips present on the timeline. Returns True if analysis start is successful; False otherwise.
+                     analysisType=NONE)                                  # if [timelineItems] is empty, analysis performed on all items. Else, analysis performed on [timelineItems] only.
+                                                                         # set analysisType to resolve.DLB_BLEND_SHOTS for blend setting
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
-  GetDuration()                                   --> int                # Returns the item duration.
-  GetEnd()                                        --> int                # Returns the end frame position on the timeline.
+  GetDuration(subframe_precision)                 --> int/float          # Returns the item duration. Returns fractional frames if subframe_precision is True
+  GetEnd(subframe_precision)                      --> int/float          # Returns the end frame position on the timeline. Returns fractional frames if subframe_precision is True
+  GetSourceEndFrame()                             --> int                # Returns the end frame position of the media pool clip in the timeline clip.
+  GetSourceEndTime()                              --> float              # Returns the end time position of the media pool clip in the timeline clip.
   GetFusionCompCount()                            --> int                # Returns number of Fusion compositions associated with the timeline item.
   GetFusionCompByIndex(compIndex)                 --> fusionComp         # Returns the Fusion composition object based on given index. 1 <= compIndex <= timelineItem.GetFusionCompCount()
   GetFusionCompNameList()                         --> [names...]         # Returns a list of Fusion composition names associated with the timeline item.
   GetFusionCompByName(compName)                   --> fusionComp         # Returns the Fusion composition object based on given name.
-  GetLeftOffset()                                 --> int                # Returns the maximum extension by frame for clip from left side.
-  GetRightOffset()                                --> int                # Returns the maximum extension by frame for clip from right side.
-  GetStart()                                      --> int                # Returns the start frame position on the timeline.
+  GetLeftOffset(subframe_precision)               --> int/float          # Returns the maximum extension by frame for clip from left side. Returns fractional frames if subframe_precision is True
+  GetRightOffset(subframe_precision)              --> int/float          # Returns the maximum extension by frame for clip from right side. Returns fractional frames if subframe_precision is True
+  GetStart(subframe_precision)                    --> int/float          # Returns the start frame position on the timeline. Returns fractional frames if subframe_precision is True
+  GetSourceStartFrame()                           --> int                # Returns the start frame position of the media pool clip in the timeline clip.
+  GetSourceStartTime()                            --> float              # Returns the start time position of the media pool clip in the timeline clip.
   SetProperty(propertyKey, propertyValue)         --> Bool               # Sets the value of property "propertyKey" to value "propertyValue"
                                                                          # Refer to "Looking up Timeline item properties" for more information
   GetProperty(propertyKey)                        --> int/[key:value]    # returns the value of the specified key
@@ -409,12 +435,7 @@ TimelineItem
   GetStereoConvergenceValues()                    --> {keyframes...}     # Returns a dict (offset -> value) of keyframe offsets and respective convergence values.
   GetStereoLeftFloatingWindowParams()             --> {keyframes...}     # For the LEFT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
   GetStereoRightFloatingWindowParams()            --> {keyframes...}     # For the RIGHT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
-  GetNumNodes()                                   --> int                # Returns the number of nodes in the current graph for the timeline item
   ApplyArriCdlLut()                               --> Bool               # Applies ARRI CDL and LUT. Returns True if successful, False otherwise.
-  SetLUT(nodeIndex, lutPath)                      --> Bool               # Sets LUT on the node mapping the node index provided, 1 <= nodeIndex <= total number of nodes.
-                                                                         # The lutPath can be an absolute path, or a relative path (based off custom LUT paths or the master LUT path).
-                                                                         # The operation is successful for valid lut paths that Resolve has already discovered (see Project.RefreshLUTList).
-  GetLUT(nodeIndex)                               --> String             # Gets relative LUT path based on the node index provided, 1 <= nodeIndex <= total number of nodes.
   SetCDL([CDL map])                               --> Bool               # Keys of map are: "NodeIndex", "Slope", "Offset", "Power", "Saturation", where 1 <= NodeIndex <= total number of nodes.
                                                                          # Example python code - SetCDL({"NodeIndex" : "1", "Slope" : "0.5 0.4 0.2", "Offset" : "0.4 0.3 0.2", "Power" : "0.6 0.7 0.8", "Saturation" : "0.65"})
   AddTake(mediaPoolItem, startFrame, endFrame)    --> Bool               # Adds mediaPoolItem as a new take. Initializes a take selector for the timeline item if needed. By default, the full clip extents is added. startFrame (int) and endFrame (int) are optional arguments used to specify the extents.
@@ -424,17 +445,28 @@ TimelineItem
   DeleteTakeByIndex(idx)                          --> Bool               # Deletes a take by index, 1 <= idx <= number of takes.
   SelectTakeByIndex(idx)                          --> Bool               # Selects a take by index, 1 <= idx <= number of takes.
   FinalizeTake()                                  --> Bool               # Finalizes take selection.
-  CopyGrades([tgtTimelineItems])                  --> Bool               # Copies the current grade to all the items in tgtTimelineItems list. Returns True on success and False if any error occurred.
+  CopyGrades([tgtTimelineItems])                  --> Bool               # Copies the current node stack layer grade to the same layer for each item in tgtTimelineItems. Returns True if successful.
   SetClipEnabled(Bool)                            --> Bool               # Sets clip enabled based on argument.
   GetClipEnabled()                                --> Bool               # Gets clip enabled status.
   UpdateSidecar()                                 --> Bool               # Updates sidecar file for BRAW clips or RMD file for R3D clips.
   GetUniqueId()                                   --> string             # Returns a unique ID for the timeline item
   LoadBurnInPreset(presetName)                    --> Bool               # Loads user defined data burn in preset for clip when supplied presetName (string). Returns true if successful.
-  GetNodeLabel(nodeIndex)                         --> string             # Returns the label of the node at nodeIndex.
   CreateMagicMask(mode)                           --> Bool               # Returns True if magic mask was created successfully, False otherwise. mode can "F" (forward), "B" (backward), or "BI" (bidirection)
   RegenerateMagicMask()                           --> Bool               # Returns True if magic mask was regenerated successfully, False otherwise.
   Stabilize()                                     --> Bool               # Returns True if stabilization was successful, False otherwise
   SmartReframe()                                  --> Bool               # Performs Smart Reframe. Returns True if successful, False otherwise.
+  GetNodeGraph(layerIdx)                          --> Graph              # Returns the clip's node graph object at layerIdx (int, optional). Returns the first layer if layerIdx is skipped. 1 <= layerIdx <= project.GetSetting("nodeStackLayers").
+  GetColorGroup()                                 --> ColorGroup         # Returns the clip's color group if one exists.
+  AssignToColorGroup(ColorGroup)                  --> Bool               # Returns True if TiItem to successfully assigned to given ColorGroup. ColorGroup must be an existing group in the current project.
+  RemoveFromColorGroup()                          --> Bool               # Returns True if the TiItem is successfully removed from the ColorGroup it is in.
+  ExportLUT(exportType, path)                     --> Bool               # Exports LUTs from tiItem referring to value passed in 'exportType' (enum) for LUT size. Refer to. 'ExportLUT notes' section for possible values.
+                                                                         # Saves generated LUT in the provided 'path' (string). 'path' should include the intended file name.
+                                                                         # If an empty or incorrect extension is provided, the appropriate extension (.cube/.vlt) will be appended at the end of the path.
+  GetLinkedItems()                                --> [TimelineItems]    # Returns a list of linked timeline items.
+  GetTrackTypeAndIndex()                          --> [trackType, trackIndex] # Returns a list of two values that correspond to the TimelineItem's trackType (string) and trackIndex (int) respectively.
+                                                                           # trackType is one of {"audio", "video", "subtitle"}
+                                                                           # 1 <= trackIndex <= Timeline.GetTrackCount(trackType)
+  GetSourceAudioChannelMapping()                 --> json formatted string # Returns a string with TimelineItem's audio mapping information. Check 'Audio Mapping' section below for more information.
 
 Gallery
   GetAlbumName(galleryStillAlbum)                 --> string             # Returns the name of the GalleryStillAlbum object 'galleryStillAlbum'.
@@ -453,11 +485,40 @@ GalleryStillAlbum
 
 GalleryStill                                                             # This class does not provide any API functions but the object type is used by functions in other classes.
 
+Graph
+  GetNumNodes()                                   --> int                # Returns the number of nodes in the graph
+  SetLUT(nodeIndex, lutPath)                      --> Bool               # Sets LUT on the node mapping the node index provided, 1 <= nodeIndex <= self.GetNumNodes().
+                                                                         # The lutPath can be an absolute path, or a relative path (based off custom LUT paths or the master LUT path).
+                                                                         # The operation is successful for valid lut paths that Resolve has already discovered (see Project.RefreshLUTList).
+  GetLUT(nodeIndex)                               --> String             # Gets relative LUT path based on the node index provided, 1 <= nodeIndex <= total number of nodes.
+  GetNodeLabel(nodeIndex)                         --> string             # Returns the label of the node at nodeIndex.
+  GetToolsInNode(nodeIndex)                       --> [toolsList]        # Returns toolsList (list of strings) of the tools used in the node indicated by given nodeIndex (int).
+  SetNodeEnabled(nodeIndex, isEnabled)            --> Bool               # Sets the node at the given nodeIndex (int) to isEnabled (bool).
+                                                                         # 1 <= nodeIndex <= self.GetNumNodes().
+
+ColorGroup
+  GetName()                                       --> String             # Returns the name (string) of the ColorGroup.
+  SetName(groupName)                              --> Bool               # Renames ColorGroup to groupName (string).
+  GetClipsInTimeline(Timeline=CurrTimeline)       --> [TimelineItem]     # Returns a list of TimelineItem that are in colorGroup in the given Timeline. Timeline is Current Timeline by default.
+  GetPreClipNodeGraph()                           --> Graph              # Returns the ColorGroup Pre-clip graph.
+  GetPostClipNodeGraph()                          --> Graph              # Returns the ColorGroup Post-clip graph.
+
 List and Dict Data Structures
 -----------------------------
 Beside primitive data types, Resolve's Python API mainly uses list and dict data structures. Lists are denoted by [ ... ] and dicts are denoted by { ... } above.
 As Lua does not support list and dict data structures, the Lua API implements "list" as a table with indices, e.g. { [1] = listValue1, [2] = listValue2, ... }.
 Similarly the Lua API implements "dict" as a table with the dictionary key as first element, e.g. { [dictKey1] = dictValue1, [dictKey2] = dictValue2, ... }.
+
+Keyframe Mode information
+-------------------------
+This section covers additional notes for the functions Resolve.GetKeyframeMode() and Resolve.SetKeyframeMode(keyframeMode).
+
+'keyframeMode' can be one of the following enums:
+    - resolve.KEYFRAME_MODE_ALL     == 0
+    - resolve.KEYFRAME_MODE_COLOR   == 1
+    - resolve.KEYFRAME_MODE_SIZING  == 2
+
+Integer values returned by Resolve.GetKeyframeMode() will correspond to the enums above.
 
 Cloud Projects Settings
 --------------------------------------
@@ -515,6 +576,68 @@ The following Clip properties have specifically enumerated values:
 Affects:
 • x = MediaPoolItem:GetClipProperty('Super Scale') and MediaPoolItem:SetClipProperty('Super Scale', x)
 • for '2x Enhanced' --> MediaPoolItem:SetClipProperty('Super Scale', 2, sharpnessValue, noiseReductionValue), where sharpnessValue is a float in the range [0.0, 1.0] and noiseReductionValue is a float in the range [0.0, 1.0]
+
+"Cloud Sync" = the property value is an enumerated integer that will correspond to one of the following enums:
+* resolve.CLOUD_SYNC_DEFAULT                == -1
+* resolve.CLOUD_SYNC_DOWNLOAD_IN_QUEUE      == 0
+* resolve.CLOUD_SYNC_DOWNLOAD_IN_PROGRESS   == 1
+* resolve.CLOUD_SYNC_DOWNLOAD_SUCCESS       == 2
+* resolve.CLOUD_SYNC_DOWNLOAD_FAIL          == 3
+* resolve.CLOUD_SYNC_DOWNLOAD_NOT_FOUND     == 4
+
+* resolve.CLOUD_SYNC_UPLOAD_IN_QUEUE        == 5
+* resolve.CLOUD_SYNC_UPLOAD_IN_PROGRESS     == 6
+* resolve.CLOUD_SYNC_UPLOAD_SUCCESS         == 7
+* resolve.CLOUD_SYNC_UPLOAD_FAIL            == 8
+* resolve.CLOUD_SYNC_UPLOAD_NOT_FOUND       == 9
+
+* resolve.CLOUD_SYNC_SUCCESS                == 10
+
+Audio Mapping
+---------------
+This section covers the output for mpItem.GetAudioMapping() and timelineItem.GetSourceAudioChannelMapping()
+Mapping format (json result) is similar for mpItem and timelineItem.
+
+This section will follow an example of an mpItem that has audio from its embedded source, and from two other clips that are linked to it.
+The audio clip attributes of this mpItem will show 3 tracks.
+
+Assume that (A) the embedded track is of format/type 'stereo' (2 channels),
+            (B) linked clip 1 track is of format/type '7.1' (8 channels),
+            (C) linked clip 2 track is '5.1' (6 channels)
+and assume that the format/type was not changed further.
+
+mpItem.GetAudioMapping() returns a string of the form:
+    {
+      "embedded_audio_channels": 2,                 # Total number of embedded channels across all tracks
+      "linked_audio": {                             # A list of only linked audio information
+        "1": {                                      # Same as (B) above
+          "channels": 8,
+          "path": FILE_PATH
+        },
+        "2": {                                      # Same as (C) above
+          "channels": 6,
+          "path": FILE_PATH
+        }
+      },
+      "track_mapping": {                            # Listing of all the tracks. Output here will match what is seen in the audio clip attributes menu on the UI.
+        "1": {
+          "channel_idx": [1, 3],                    # In this case, channel index '1' corresponds to first channel of (A), channel index '3' will correspond to the first channel of (B)
+          "mute": true,                             # Mute 'true' indicates track is muted. Valid value is true/false.
+          "type": "Stereo"                          # The length of the 'channel_idx' list will always correspond to the number of channels the format specified in 'type' will allow.
+                                                    # In this case, 'Stereo' allows 2 channels and so the length of the 'channel_idx' list is 2.
+        },
+        "2": {
+          "channel_idx": [3, 4, 5, 6, 7, 8, 9, 10], # Channel indices here are following the default for (B)
+          "mute": true,
+          "type": "7.1"
+        },
+        "3": {
+          "channel_idx": [1, 1, 1, 1, 15, 16],      # The first four channels for this track correspond to the first channel of (A), and the final 2 follow the default for (C)
+          "mute": false,
+          "type": "5.1"
+        }
+      }
+    }
 
 Auto Caption Settings
 ----------------------
@@ -612,6 +735,8 @@ exportType can be one of the following constants:
     - resolve.EXPORT_DOLBY_VISION_VER_4_0
     - resolve.EXPORT_DOLBY_VISION_VER_5_1
     - resolve.EXPORT_OTIO
+    - resolve.EXPORT_ALE
+    - resolve.EXPORT_ALE_CDL
 exportSubtype can be one of the following enums:
     - resolve.EXPORT_NONE
     - resolve.EXPORT_AAF_NEW
@@ -708,7 +833,8 @@ The supported keys with their accepted values are:
      - MOTION_EST_STANDARD_BETTER
      - MOTION_EST_ENHANCED_FASTER
      - MOTION_EST_ENHANCED_BETTER
-     - MOTION_EST_SPEED_WRAP
+     - MOTION_EST_SPEED_WARP_BETTER
+     - MOTION_EST_SPEED_WARP_FASTER
   "Scaling" : A value from the following constants
      - SCALE_USE_PROJECT = 0
      - SCALE_CROP
@@ -739,6 +865,16 @@ The arguments can be passed as a key and value pair or they can be grouped toget
 as a single argument.
 
 Getting the values for the keys that uses constants will return the number which is in the constant
+
+ExportLUT notes
+---------------
+The following section covers additional notes for TimelineItem.ExportLUT(exportType, path).
+
+Supported values for 'exportType' (enum) are:
+    - resolve.EXPORT_LUT_17PTCUBE
+    - resolve.EXPORT_LUT_33PTCUBE
+    - resolve.EXPORT_LUT_65PTCUBE
+    - resolve.EXPORT_LUT_PANASONICVLUT
 
 Deprecated Resolve API Functions
 --------------------------------
@@ -774,7 +910,12 @@ TimelineItem
   GetFusionCompNames()                            --> {names...}         # Returns a dict of Fusion composition names associated with the timeline item.
   GetFlags()                                      --> {colors...}        # Returns a dict of flag colors assigned to the item.
   GetVersionNames(versionType)                    --> {names...}         # Returns a dict of version names by provided versionType: 0 - local, 1 - remote.
-
+  GetNumNodes()                                   --> int                # Returns the number of nodes in the current graph for the timeline item
+  SetLUT(nodeIndex, lutPath)                      --> Bool               # Sets LUT on the node mapping the node index provided, 1 <= nodeIndex <= total number of nodes.
+                                                                         # The lutPath can be an absolute path, or a relative path (based off custom LUT paths or the master LUT path).
+                                                                         # The operation is successful for valid lut paths that Resolve has already discovered (see Project.RefreshLUTList).
+  GetLUT(nodeIndex)                               --> String             # Gets relative LUT path based on the node index provided, 1 <= nodeIndex <= total number of nodes.
+  GetNodeLabel(nodeIndex)                         --> string             # Returns the label of the node at nodeIndex.
 
 Unsupported Resolve API Functions
 ---------------------------------
