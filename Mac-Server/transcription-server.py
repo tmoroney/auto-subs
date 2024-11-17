@@ -73,7 +73,7 @@ models = {
     "base": "mlx-community/whisper-base-mlx-q4",
     "small": "mlx-community/whisper-small-mlx",
     "medium": "mlx-community/whisper-medium-mlx",
-    "large": "mlx-community/distil-whisper-large-v3",
+    "large": "mlx-community/whisper-large-v3-turbo",
 }
 
 english_models = {
@@ -81,7 +81,7 @@ english_models = {
     "base": "mlx-community/whisper-base.en-mlx",
     "small": "mlx-community/whisper-small.en-mlx",
     "medium": "mlx-community/whisper-medium.en-mlx",
-    "large": "mlx-community/distil-whisper-large-v3",
+    "large": "mlx-community/whisper-large-v3-turbo",
 }
 
 def is_model_cached_locally(model_id, revision=None):
@@ -330,6 +330,8 @@ class TranscriptionRequest(BaseModel):
     diarize: bool
     max_words: int
     max_chars: int
+    mark_in: int
+    mark_out: int
 
 @app.post("/transcribe/")
 async def transcribe(request: TranscriptionRequest):
@@ -375,6 +377,8 @@ async def transcribe(request: TranscriptionRequest):
             result = await process_audio(
                 file_path, kwargs, max_words, max_chars, device, request.diarize
             )
+            result["mark_in"] = request.mark_in
+            result["mark_out"] = request.mark_out
         except Exception as e:
             print(f"Error during audio processing: {e}")
             raise HTTPException(

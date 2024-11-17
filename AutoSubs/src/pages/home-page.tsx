@@ -15,9 +15,7 @@ import {
     Loader2,
     Speech,
     HelpCircle,
-} from "lucide-react"
-
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+} from "lucide-react";
 
 import {
     Dialog,
@@ -66,9 +64,7 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { link } from "fs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const validateAPI = "http://localhost:55000/validate/";
 
@@ -480,7 +476,7 @@ export function HomePage() {
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
-                                                        Lightning fast, but less accurate.
+                                                        Super fast, lower accuracy.
                                                     </p>
                                                 </div>
                                             </div>
@@ -496,7 +492,7 @@ export function HomePage() {
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
-                                                        Fastest model for general use cases.
+                                                        Fast and reliable for general use.
                                                     </p>
                                                 </div>
                                             </div>
@@ -512,7 +508,7 @@ export function HomePage() {
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
-                                                        Good balance of speed and accuracy.
+                                                        Balanced speed and accuracy.
                                                     </p>
                                                 </div>
                                             </div>
@@ -528,7 +524,7 @@ export function HomePage() {
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
-                                                        Great accuracy and moderate speed.
+                                                        Great accuracy, moderate speed.
                                                     </p>
                                                 </div>
                                             </div>
@@ -544,7 +540,7 @@ export function HomePage() {
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
-                                                        Most accurate / slowest (best for non-english).
+                                                        Most accurate, but slower.
                                                     </p>
                                                 </div>
                                             </div>

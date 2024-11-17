@@ -36,11 +36,26 @@ datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
 
 # Exclude unnecessary modules to reduce size and startup time
 excludes = [
-    'tkinter',
-    'matplotlib.tests',
-    'numpy.tests',
-    'scipy.spatial.cKDTree',
-    'pyinstaller',
+    # Development tools
+    'jupyter', 'IPython', 'notebook', 'pytest',
+
+    # GUI-related modules
+    'tkinter', 'PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'wx', 'pyglet', 'pycairo', 'pygobject', 'pyopengl',
+
+    # Scientific libraries and test suites
+    'matplotlib.tests', 'numpy.tests', 'scipy.spatial.cKDTree', 'scipy.tests',
+
+    # Unused data and legacy components
+    'torchvision',
+
+    # Large/unused packages
+    'cv2', 'Pillow', 'geopy', 'cryptography',
+
+    # PyInstaller-related
+    'pyinstaller', 'PyInstaller.utils', 'PyInstaller.compat',
+
+    # Common third-party libraries
+    'aiohttp', 'flask', 'django', 'sqlalchemy', 'psycopg2', 'pymysql', 'redis', 'celery', 'rq',
 ]
 
 a = Analysis(

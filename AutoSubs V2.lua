@@ -127,10 +127,10 @@ end
 -- DaVinci Resolve API functions
 
 -- input of time in seconds
-function JumpToTime(time)
+function JumpToTime(time, markIn)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    local frames = SecondsToFrames(time, frameRate) + timeline:GetStartFrame()
+    local frames = SecondsToFrames(time, frameRate) + markIn
     local timecode = FramesToTimecode(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -288,7 +288,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
     print("Adding subtitles to timeline")
     resolve:OpenPage("edit")
     local timeline = project:GetCurrentTimeline()
-    local timeline_start_frame = timeline:GetStartFrame()
+    local timeline_start_frame = data["mark_in"]
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local rootFolder = mediaPool:GetRootFolder()
@@ -460,7 +460,7 @@ while not itm.ExitButton.Checked do
             elseif data.func == "JumpToTime" then
                 print("[AutoSubs Server] Jumping to time...")
                 itm.Message.Text = "Jumping to time..."
-                JumpToTime(data.start)
+                JumpToTime(data.start, data.markIn)
                 body = json.encode({ message = "Jumped to time" })
             elseif data.func == "ExportAudio" then
                 print("[AutoSubs Server] Exporting audio...")

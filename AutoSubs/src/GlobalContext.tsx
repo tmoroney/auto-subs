@@ -61,6 +61,9 @@ const transcribeAPI = "http://localhost:55000/transcribe/";
 const transcriptsFolder = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/';
 let store: Store | null = null;
 
+const subtitleRegex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
+const downloadRegex = /^Fetching \d+ files:/;
+
 interface Template {
     value: string;
     label: string;
@@ -92,6 +95,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
     const [maxChars, setMaxChars] = useState(30);
+    const [markIn, setMarkIn] = useState(0);
 
     async function getFullTranscriptPath() {
         let filePath = await join(transcriptsFolder, `${timeline}.json`);
@@ -166,11 +170,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
 
             command.stdout.on('data', (line) => {
-                const regex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
-                const match = line.match(regex);
+                const match = line.match(subtitleRegex);
                 if (match && match[1]) {
                     let subtitle = { text: match[1], start: "", end: "", speaker: "" };
                     setSubtitles(prevSubtitles => [...prevSubtitles, subtitle]);
+                    setProcessingStep("Transcribing Audio...");
                 }
 
                 /*
@@ -204,14 +208,13 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
-                }
-
-                if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
+                } else if (line.trim().match(downloadRegex)) {
+                    setProcessingStep(`Downloading Model...`);
+                } else if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
                     if (line.includes('speechbrain')) {
                         setProcessingStep("Diarizing speakers...");
                         setIsLoading(true);
-                    }
-                    else {
+                    } else {
                         console.log(`Transcription Server INFO: "${line}"`);
                     }
                 } else {
@@ -250,7 +253,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             let audioInfo = await exportAudio();
             setTimeline(audioInfo.timeline);
             console.log("Fetching transcription...");
-            setProcessingStep("Transcribing Audio...");
+            setProcessingStep("Preparing to transcribe...");
 
             // Make the POST request to the transcription API
             const response = await fetch(transcribeAPI, {
@@ -268,6 +271,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     diarize: diarize,
                     max_words: maxWords,
                     max_chars: maxChars,
+                    mark_in: audioInfo.markIn,
+                    mark_out: audioInfo.markOut
                 }),
             });
 
@@ -350,7 +355,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             const response = await fetch(resolveAPI, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ func: "JumpToTime", start }),
+                body: JSON.stringify({ func: "JumpToTime", start, markIn }),
             });
 
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -430,6 +435,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     async function populateSubtitles(timelineId: string) {
         let transcript = await readTranscript(timelineId);
         if (transcript) {
+            setMarkIn(transcript.mark_in)
             setSubtitles(transcript.segments);
             setSpeakers(transcript.speakers);
             setTopSpeaker(transcript.top_speaker);
@@ -578,23 +584,20 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     }
 
     async function saveState() {
-        if (!store) {
-            console.error('Store is not initialized.');
-            return;
-        }
-    
-        try {
-            await store.set('model', model);
-            await store.set('currentLanguage', currentLanguage);
-            await store.set('currentTemplate', currentTemplate);
-            await store.set('currentTrack', currentTrack);
-            await store.set('translate', translate);
-            await store.set('diarize', diarize);
-            await store.set('maxWords', maxWords);
-            await store.set('maxChars', maxChars);
-            await store.save(); // Persist changes
-        } catch (error) {
-            console.error('Error saving state:', error);
+        if (store) {
+            try {
+                await store.set('model', model);
+                await store.set('currentLanguage', currentLanguage);
+                await store.set('currentTemplate', currentTemplate);
+                await store.set('currentTrack', currentTrack);
+                await store.set('translate', translate);
+                await store.set('diarize', diarize);
+                await store.set('maxWords', maxWords);
+                await store.set('maxChars', maxChars);
+                await store.save(); // Persist changes
+            } catch (error) {
+                console.error('Error saving state:', error);
+            }
         }
     }
 

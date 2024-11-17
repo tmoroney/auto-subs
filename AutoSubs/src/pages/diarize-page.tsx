@@ -217,7 +217,7 @@ export function DiarizePage() {
                     <Card>
                         <CardHeader className="pb-4">
                             <CardTitle>Update Subtitles</CardTitle>
-                            <CardDescription>Apply the latest style options to the subtitles on the timeline</CardDescription>
+                            <CardDescription>Apply latest style selections to timeline</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
 
