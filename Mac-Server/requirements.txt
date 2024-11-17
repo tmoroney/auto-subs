@@ -6,3 +6,5 @@ uvicorn
 mlx_whisper
 stable-ts-whisperless
 pyannote.audio
+appdirs
+pyinstaller
