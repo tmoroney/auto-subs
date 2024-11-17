@@ -1,6 +1,6 @@
 # Davinci Resolve AI Subtitles
 > [!NOTE]
-> AutoSubs V2 will be rolling out over the next week or so, with around 2x efficiency improvement in addition to Speaker Diarization, a fresh new user interface, and a 1-click installer. The Mac version will be released first, and the Windows version will be released some time before the 24th of November.
+> AutoSubs V2 will be rolling out over the next week or so. It includes a 2x efficiency improvement, in addition to Speaker Diarization, a fresh new user interface, and a 1-click installer. The Mac version will be released first, and the Windows version will be released some time before the 24th of November.
 
 Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
 - Generate subtitles in your own **custom style**.
