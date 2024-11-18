@@ -22,33 +22,6 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
-ui = fusion.UIManager
-dispatcher = bmd.UIDispatcher(ui)
-local width, height = 300, 100
-
-win = dispatcher:AddWindow({
-    ID = 'MyWin',
-    WindowTitle = 'AutoSubs Link',
-    Geometry = { 100, 200, width, height },
-    Spacing = 10,
-
-    ui:VGroup {
-        ID = 'root',
-
-        -- Add your GUI elements here:
-        ui:Label { ID = 'Message', Text = 'Starting AutoSubs...', Alignment = { AlignHCenter = true, AlignVCenter = true }, Font = ui.Font({ PixelSize = 14 }) },
-        ui:Button { ID = 'ExitButton', Text = "Stop AutoSubs", Alignment = { AlignRight = true, AlignTop = true }, Checkable = true}
-    },
-})
-
--- Add your GUI element based event functions here:
-itm = win:GetItems()
-
--- Show the UI window
-win:Show()
-
-
-
 -- Server
 local port = 55010
 
@@ -417,8 +390,8 @@ elseif os_name == "OSX" then
 end
 
 print("AutoSubs server is listening on port: ", port)
-itm.Message.Text = "Waiting for Task"
-while not itm.ExitButton.Checked do
+local quitServer = false
+while not quitServer do
     -- Server loop to handle client connections
     local client, err = server:accept()
     if client then
@@ -442,39 +415,33 @@ while not itm.ExitButton.Checked do
                 print("Invalid JSON data")
             elseif data.func == "GetTimelineInfo" then
                 print("[AutoSubs Server] Retrieving Timeline Info...")
-                itm.Message.Text = "Retrieving Timeline Info..."
                 local timelineInfo = GetTimelineInfo()
                 body = json.encode(timelineInfo)
             elseif data.func == "GetTemplates" then
                 print("[AutoSubs Server] Retrieving Text+ Templates...")
-                itm.Message.Text = "Retrieving Text+ Templates..."
                 local templateList = GetTemplates()
                 dump(templateList)
                 body = json.encode(templateList)
             elseif data.func == "GetTracks" then
                 print("[AutoSubs Server] Retrieving Timeline Tracks...")
-                itm.Message.Text = "Retrieving Timeline Tracks..."
                 local trackList = GetTracks()
                 dump(trackList)
                 body = json.encode(trackList)
             elseif data.func == "JumpToTime" then
                 print("[AutoSubs Server] Jumping to time...")
-                itm.Message.Text = "Jumping to time..."
                 JumpToTime(data.start, data.markIn)
                 body = json.encode({ message = "Jumped to time" })
             elseif data.func == "ExportAudio" then
                 print("[AutoSubs Server] Exporting audio...")
-                itm.Message.Text = "Exporting timeline audio..."
                 local audioInfo = ExportAudio(data.outputDir)
                 body = json.encode(audioInfo)
             elseif data.func == "AddSubtitles" then
                 print("[AutoSubs Server] Adding subtitles to timeline...")
-                itm.Message.Text = "Adding subtitles to timeline..."
                 AddSubtitles(data.filePath, data.trackIndex, data.templateName)
                 body = json.encode({ message = "Job completed" })
             elseif data.func == "Exit" then
                 body = json.encode({ message = "Server shutting down" })
-                itm.ExitButton.Checked = true
+                quitServer = true
             else
                 print("Invalid function name")
             end
@@ -486,7 +453,6 @@ while not itm.ExitButton.Checked do
             assert(client:send(response))
             -- Close connection
             client:close()
-            itm.Message.Text = "Waiting for Task"
         elseif err == "closed" then
             client:close()
         elseif err ~= "timeout" then
@@ -499,10 +465,8 @@ while not itm.ExitButton.Checked do
 end
 
 
-print("Shutting down AutoSubs server...")
-itm.Message.Text = "Shutting down..."
+print("Shutting down AutoSubs Link server...")
 server:close()
-win:Hide()
 
 if os_name == "Windows" then
     -- Windows-specific code
