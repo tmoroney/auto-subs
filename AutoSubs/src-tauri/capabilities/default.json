@@ -104,6 +104,7 @@
     {
       "identifier": "core:window:allow-close"
     },
-    "process:default"
+    "process:default",
+    "shell:default"
   ]
 }

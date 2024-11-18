@@ -19,7 +19,6 @@ tauri-build = { version = "2.0.0", features = [] }
 
 [dependencies]
 tauri = { version = "2.0.0", features = ["protocol-asset"] }
-tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-http = "2"
@@ -27,4 +26,10 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-process = "2"
+tauri-plugin-shell = "2"
+
+reqwest = { version = "0.11", features = ["json"] }
+
+# Add tokio for asynchronous runtime
+tokio = { version = "1", features = ["full"] }
 
