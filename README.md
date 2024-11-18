@@ -1,6 +1,6 @@
 # Davinci Resolve AI Subtitles
 > [!NOTE]
-> **AutoSubs V2 delayed** - It is functionally complete but I have had many issues in the past few days related to code signing on Mac which is preventing me from releasing it. Official Installer + many other improvements are coming and it should hopefully be released for Mac by the 17th of November and for Windows a few days after that (before 24th).
+> AutoSubs V2 will be rolling out over the next week or so. It includes a 2x efficiency improvement, in addition to Speaker Diarization, a fresh new user interface, and a 1-click installer. The Mac version will be released first, and the Windows version will be released some time before the 24th of November.
 
 Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
 - Generate subtitles in your own **custom style**.
@@ -61,7 +61,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper)
 3. Install [`FFMPEG`](https://ffmpeg.org/) (used by Whisper for audio processing)
 4. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
-5. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
+5. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/AutoSubs%20V1.py) to Fusion Scripts folder.
 
 ### Setup Guides:
 <details>
@@ -136,7 +136,7 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
        # if previous command does not work
        pip3 install -U stable-ts
 
-9. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs-light.py)** and place it in one of the following directories:
+9. Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/AutoSubsV1/auto-subs-light.py)** and place it in one of the following directories:
     - All users: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
     - Specific user: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
 
