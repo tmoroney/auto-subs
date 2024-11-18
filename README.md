@@ -7,7 +7,7 @@
 
 Upgrade now and experience the future of fast, seamless transcription! 🎉
 
-[![View Release Page](https://img.shields.io/badge/View%20Release%20Page-blue?style=for-the-badge)](https://github.com/tmoroney/auto-subs/releases/tag/V2.0)
+[![📥 Download AutoSubs V2](https://img.shields.io/badge/📥%20Download%20AutoSubs%20V2-blue?style=for-the-badge)](https://github.com/tmoroney/auto-subs/releases/tag/V2.0)
 
 # AutoSubs V1
 Automatically transcribe your editing timeline and generate subtitles in your own custom style.
