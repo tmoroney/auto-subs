@@ -75,7 +75,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 <summary>Windows Setup</summary>
        
 ### Step 1: Install Python
-Download [Python 3.12](https://www.python.org/downloads/) (or any version > 3.8) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
+Download [Python 3.12](https://www.python.org/downloads/) (or any version between 3.8 and 3.12) and run the installer. Make sure to tick `"Add python.exe to PATH"` during installation. <br><br> <img alt="Python Installer" src="https://github.com/tmoroney/auto-subs/assets/72154813/0a47e465-f1d6-4955-90d5-dfa211d9ba01" width="500">
 
 ### Step 2: Install Whisper
 From the [Whisper setup guide](https://github.com/openai/whisper/tree/main#readme) - Run the following command to install OpenAI Whisper for your OS.
