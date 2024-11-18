@@ -1,27 +1,16 @@
-# AutoSubs V2 out now for Mac OS 15
-> [!IMPORTANT] 
-> **Currently only available for arm based macs with Mac OS 15 Sequoia (M series macs)**
+# AutoSubs V2 is out now for MacOS 15! 🚀
+Experience faster transcription, a sleek new interface, and powerful new features:
+- ⚡ Blazing Fast Speeds: Transcribe audio over 2x faster.
+- 🎨 Modern UI: A stylish, streamlined interface for seamless workflows.
+- 📦 One-Click Installer: Apple-approved for quick, hassle-free setup.
+- 🗣️ Speaker Diarization: Auto-detect speakers and color-code subtitles effortlessly.
 
-🌟 More than 2x speed improvement
+Upgrade now and experience the future of fast, seamless transcription! 🎉
 
-🗣️ Speaker Diarization
+[![View Release Page](https://img.shields.io/badge/View%20Release%20Page-blue?style=for-the-badge)](https://github.com/tmoroney/auto-subs/releases/tag/V2.0)
 
-🎨 Refreshed, Sleek UI
-
-📦 Simple One-Click Installer
-
-**Upgrade now to unlock these powerful new features!** AutoSubs V2 will be rolling out for Mac OS 14 and Windows over the next week or so, hopefully before the 24th of November.
-
-Generate Subtitles with AI |  Automatic Speaker Labeling
-:-------------------------:|:-------------------------:
-<img width="500" alt="Transcription Page" src="https://github.com/user-attachments/assets/27c28c7c-eadf-4689-b0e7-1f1b908931e1"> | <img width="600" alt="Diarized Speakers Page" src="https://github.com/user-attachments/assets/c1cedbb4-4e86-4fa0-86f6-bb77169c4fda">
-
-# Davinci Resolve AI Subtitles
-> [!NOTE]
-> AutoSubs V2 will be rolling out over the next week or so. It includes a 2x efficiency improvement, in addition to Speaker Diarization, a fresh new user interface, and a 1-click installer. The Mac version will be released first, and the Windows version will be released some time before the 24th of November.
-
-Automatically transcribes your editing timeline using [`OpenAI Whisper`](https://openai.com/research/whisper) and [`Stable-TS`](https://github.com/jianfch/stable-ts) for extreme accuracy.
-- Generate subtitles in your own **custom style**.
+# AutoSubs V1
+Automatically transcribe your editing timeline and generate subtitles in your own custom style.
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
 - Supported on both **Free** and **Studio** versions of Resolve.
