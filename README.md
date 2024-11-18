@@ -19,7 +19,7 @@ Automatically transcribe your editing timeline and generate subtitles in your ow
 - **NEW!! - Translate from any language to English.**
 
 > [!TIP]
-> **Setup and Usage Guides: [AutoSubs Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) or
+> **Setup and Usage Guides: [AutoSubs Video Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
 > [Spanish Tutorial](https://youtu.be/cBllp0xjAck?si=KoX7OLGIa6b4lBjh)**
 
 ## Table of Contents
