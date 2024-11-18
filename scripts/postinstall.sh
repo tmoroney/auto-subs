@@ -1,11 +1,15 @@
 #!/bin/bash
-UNINSTALLER="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs-Uninstaller.sh"
-cat <<EOF > "$UNINSTALLER"
-#!/bin/bash
-echo "Removing AutoSubs files..."
-rm -rf "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs"
-echo "AutoSubs uninstalled successfully!"
-EOF
-chmod +x "$UNINSTALLER"
-echo "Uninstaller created at: $UNINSTALLER"
+
+# Path to the uninstaller script
+UNINSTALLER_SCRIPT="/tmp/uninstaller.sh"
+
+# Copy the uninstaller script to a temporary location
+cp "${PWD}/uninstaller.sh" "$UNINSTALLER_SCRIPT"
+
+# Execute the uninstaller script
+bash "$UNINSTALLER_SCRIPT"
+
+# Clean up
+rm -f "$UNINSTALLER_SCRIPT"
+
 exit 0
