@@ -8,6 +8,8 @@
 Upgrade now and experience the future of fast, seamless transcription! 🎉
 
 [![📥 Download AutoSubs V2](https://img.shields.io/badge/📥%20Download%20AutoSubs%20V2-blue?style=for-the-badge)](https://github.com/tmoroney/auto-subs/releases/tag/V2.0)
+### Support AutoSubs development:
+<a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 # AutoSubs V1
 Automatically transcribe your editing timeline and generate subtitles in your own custom style.
@@ -20,9 +22,6 @@ Automatically transcribe your editing timeline and generate subtitles in your ow
 > [!TIP]
 > **Setup and Usage Guides: [AutoSubs Video Tutorial](https://youtu.be/Q-Ud4ZAWH6o?si=EbS32gBrZt6uDF1a) or
 > [Spanish Tutorial](https://youtu.be/cBllp0xjAck?si=KoX7OLGIa6b4lBjh)**
-
-### Support AutoSubs development:
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
@@ -226,7 +225,7 @@ Download **[`auto-subs-light.py`](https://github.com/tmoroney/auto-subs/blob/mai
 - Thanks to everyone who has supported this project ❤️
 - If you have any issues, get in touch on my [Discord server](https://discord.com/invite/TBFUfGWegm) for support 📲
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tmoroney)
+<a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 # FAQ
 ### 1. Auto-Subs not opening
