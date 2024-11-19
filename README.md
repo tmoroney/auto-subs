@@ -25,7 +25,8 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 
 > [!TIP]
 > **Video Tutorials: [English Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
-> [Spanish Tutorial](https://youtu.be/cBllp0xjAck?si=KoX7OLGIa6b4lBjh)**
+> [Spanish Tutorial](https://youtu.be/cBllp0xjAck?si=KoX7OLGIa6b4lBjh)**</br></br>
+> ![](https://dcbadge.limes.pink/api/server/https://discord.com/invite/TBFUfGWegm)
 
 ## Table of Contents
 #### 1. [📋 Usage Guide](#usage-guide)
