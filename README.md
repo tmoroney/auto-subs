@@ -22,7 +22,7 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 - **NEW!! - Translate from any language to English.**
 
 > [!TIP]
-> **Setup Guides: [English Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
+> **Video Tutorials: [English Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
 > [Spanish Tutorial](https://youtu.be/cBllp0xjAck?si=KoX7OLGIa6b4lBjh)**
 
 ## Table of Contents
