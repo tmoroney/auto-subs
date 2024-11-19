@@ -11,15 +11,15 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 
 # AutoSubs V1
->[!Caution]
->Blackmagic has removed the built in UI manager from Davinci Resolve 19 **Free**. It is now required to have **Resolve Free before 19**, or **Resolve Studio** for AutoSubs v1 to work.
-
 **Automatic transcription for your editing timeline. Generate subtitles in your own custom style.**
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
 - Supported on both **Free** and **Studio** versions of Resolve.
 - Jump to positions on the timeline using the Subtitle Navigator.
 - **NEW!! - Translate from any language to English.**
+
+>[!Caution]
+>**AutoSubs V1 Broken on Resolve 19 Free -** Blackmagic has decided to remove the built in UI manager from the free version of Resolve. It works on **Resolve 18 Free**, so you may need to downgrade. (Resolve Studio is unaffected by this change)
 
 > [!TIP]
 > **Video Tutorials: [English Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
