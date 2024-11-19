@@ -12,6 +12,7 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 
 # AutoSubs V1
 ⚠️ Blackmagic have removed the built in UI, so AutoSubs V1 will only work on versions before 19 for Resolve Free (Resolve Studio is unaffected by this) ⚠️
+
 Automatically transcribe your editing timeline and generate subtitles in your own custom style.
 - **Completely free** and runs locally within Davinci Resolve.
 - Works on Mac, Linux, and Windows.
