@@ -2,7 +2,7 @@
 **Experience faster transcription, a sleek new interface, and powerful new features:**
 - ⚡ **Blazing Fast Speeds:** Transcribe audio over 2x faster (optimised for Mac and Windows).
 - 🗣️ **Speaker Diarization:** Auto-detect speakers and color-code subtitles effortlessly.
-- 🌏 **Translate to English:** Speak in your native language and get subtitles in English (if enabled).
+- 🌏 **English Translation:** Speak in your native language and get subtitles in English (if enabled).
 - 🎨 **Modern UI:** A stylish, streamlined interface for seamless workflows.
 - 📦 **One-Click Installer:** Apple-approved for quick, hassle-free setup.
 
