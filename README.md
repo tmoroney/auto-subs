@@ -12,7 +12,8 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 
 # AutoSubs V1
-**Automatic transcription for your editing timeline. Generate subtitles in your own custom style.**
+**Automatic transcription for your editing timeline using OpenAI Whisper (running locally).**
+- 🎨 Generate subtitles in your own custom style
 - 🌐 Translate from any language to English.
 - 🕹️ Jump to positions on the timeline using the Subtitle Navigator.
 - 🎁 Completely free and runs locally within Davinci Resolve.
