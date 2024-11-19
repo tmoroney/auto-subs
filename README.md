@@ -1,6 +1,6 @@
 # AutoSubs V2 - out now for MacOS 15! 🚀
 **Experience faster transcription, a sleek new interface, and powerful new features:**
-- ⚡ **Blazing Fast Speeds:** Transcribe audio over 2x faster (now optimised for Mac).
+- ⚡ **Blazing Fast Speeds:** Transcribe audio over 2x faster (optimised for Mac and Windows).
 - 🗣️ **Speaker Diarization:** Auto-detect speakers and color-code subtitles effortlessly.
 - 🌏 **Translate to English:** Speak in your native language and get subtitles in English (if enabled).
 - 🎨 **Modern UI:** A stylish, streamlined interface for seamless workflows.
