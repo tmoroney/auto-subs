@@ -72,7 +72,7 @@ Click **`"Generate Subtitles"`** to transcribe the selected timeline area.
 2. Install [`OpenAI Whisper`](https://github.com/openai/whisper)
 3. Install [`FFMPEG`](https://ffmpeg.org/) (used by Whisper for audio processing)
 4. Install [`Stable-TS`](https://github.com/jianfch/stable-ts) (improves subtitles)
-5. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/AutoSubs%20V1.py) to Fusion Scripts folder.
+5. Download + copy [`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py) to Fusion Scripts folder.
 
 ### Setup Guides:
 <details>
