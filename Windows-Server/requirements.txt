@@ -1,0 +1,9 @@
+torch
+torchaudio
+huggingface-hub
+fastapi
+uvicorn
+stable-ts[fw]
+pyannote.audio
+appdirs
+pyinstaller
