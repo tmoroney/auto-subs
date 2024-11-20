@@ -21,7 +21,7 @@ Upgrade now and experience the future of fast, seamless transcription! 🎉
 - 🎥 Supported on both **Free** and **Studio** versions of Resolve.
 
 >[!Caution]
->**AutoSubs V1 Broken on Resolve 19 Free -** Blackmagic has decided to remove the built in UI manager from the free version of Resolve. It is now required to have Resolve 18, unless on Studio, so you may need to downgrade. (Resolve Studio is unaffected)
+>**AutoSubs V1 Broken on Resolve 19.1 Free -** Blackmagic has decided to remove the built in UI manager from the free version of Resolve. It is now required to have Resolve **19.0.3** or below, unless on Studio, so you may need to downgrade. (Resolve Studio is unaffected)
 
 > [!TIP]
 > **Video Tutorials: [English Tutorial](https://www.youtube.com/watch?v=ieur1BJc65k) or
