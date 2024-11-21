@@ -96,6 +96,21 @@ function FramesToTimecode(frames, frameRate)
     return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, frames)
 end
 
+-- Table containing the names of a Fusion Title in all languages that Resolve supports
+fusionTitles = {
+    ["Fusion Title"] = true,
+    ["Fusion标题"] = true,
+    ["Titre Fusion"] = true,
+    ["Fusion Titel"] = true,
+    ["Titolo Fusion"] = true,
+    ["Fusionタイトル"] = true,
+    ["퓨전 타이틀"] = true,
+    ["Título Fusion"] = true,
+    ["Титры на стр. Fusion"] = true,
+    ["Título – Fusion"] = true,
+    ["Fusion Titles"] = true,
+    ["Tiêu đề Fusion"] = true
+}
 
 -- DaVinci Resolve API functions
 
@@ -119,7 +134,7 @@ function FindAllTemplates(folder)
 
     -- Get clips in the current folder and add them to the templates list
     for _, clip in ipairs(folder:GetClipList()) do
-        if clip:GetClipProperty()["Type"] == "Fusion Title" then
+        if fusionTitles[clip:GetClipProperty()["Type"]] then
             local clipName = clip:GetClipProperty()["Clip Name"]
             local newTemplate = {
                 label = clipName,
@@ -377,7 +392,7 @@ elseif os_name == "OSX" then
     -- Call the system function to open the app
     local result_open = ffi.C.system(command_open)
     --local result_open = 0
-    
+
     --local result_open = os.execute(command_open)
 
     -- Check if the app opened successfully
@@ -475,7 +490,7 @@ elseif os_name == "OSX" then
     -- Command to close the Transcription Server app using pkill
     local command_close = "pkill -f " .. mainApp
     ffi.C.system(command_close)
-    
+
     command_close = "pkill -f " .. transcriptionServer
     ffi.C.system(command_close)
 end
