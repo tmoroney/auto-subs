@@ -1,0 +1,135 @@
+name: Package Tauri App and Python Server for MacOS
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout AutoSubs Repo Code
+      uses: actions/checkout@v4
+
+    - name: Import Apple Certificates
+      env:
+        APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE }}
+        APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE }}
+        INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        # Define paths
+        APP_CERT_PATH=$RUNNER_TEMP/app_certificate.p12
+        INSTALLER_CERT_PATH=$RUNNER_TEMP/installer_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # Decode and save certificates
+        echo "$APP_CERTIFICATE_BASE64" | base64 --decode > $APP_CERT_PATH
+        echo "$INSTALLER_CERTIFICATE_BASE64" | base64 --decode > $INSTALLER_CERT_PATH
+
+        # Create and configure temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security list-keychains -s $KEYCHAIN_PATH
+
+        # Import Application certificate
+        security import $APP_CERT_PATH -P "$APP_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # Import Installer certificate
+        security import $INSTALLER_CERT_PATH -P "$INSTALLER_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 23
+      
+    - name: Install Dependencies
+      run: |
+        cd AutoSubs-App
+        npm install
+
+    - name: Build App
+      run: |
+        cd AutoSubs-App
+        export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
+        npm run tauri build -- --bundles app
+
+    - name: Package Python Server
+      run: |
+        cd Mac-Server
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+        pyinstaller transcription-server.spec --noconfirm
+        deactivate
+
+    - name: Code Sign Python Server
+      run: |
+        cd Mac-Server
+        # Define variables
+        IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
+        ENTITLEMENTS="$(pwd)/entitlements.plist"  # Ensure entitlements.plist is in the repository
+        APP_DIR="$(pwd)/Mac-Server/dist/Transcription-Server"
+
+        # Function to sign a single file
+        sign_file() {
+            local file="$1"
+            echo "Signing $file..."
+            codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$file"
+        }
+
+        export -f sign_file  # Export the function so it's available in subshells
+        export IDENTITY       # Export IDENTITY so it's available in subshells
+        export ENTITLEMENTS   # Export ENTITLEMENTS so it's available in subshells
+
+        # Sign the main executable
+        sign_file "$APP_DIR/transcription-server"
+
+        # Sign all embedded binaries and executables in the _internal directory
+        find "$APP_DIR/_internal" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.exe" -o -name "*.bin" -o -name "ffmpeg*" \) -exec bash -c 'sign_file "$0"' {} \;
+
+        # Sign any other executables in the main app directory
+        find "$APP_DIR" -type f -perm +111 -exec bash -c 'sign_file "$0"' {} \;
+
+    - name: Move Python Server and App to Output Folder
+      run: |
+        mv AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Output/AutoSubs/
+        mv Mac-Server/dist/Transcription-Server/* Output/AutoSubs/Transcription-Server/
+
+    - name: Create PKG Installer
+      run: |
+        pkgbuild --root "Output" \
+         --identifier "com.tom-moroney.autosubs" \
+         --version "2.0" \
+         --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/" \
+         "AutoSubs-unsigned.pkg"
+
+    - name: Sign PKG Installer
+      run: |
+        productsign --sign "Developer ID Installer: ${{ secrets.APPLE_IDENTITY }}" \
+          --timestamp \
+          "AutoSubs-unsigned.pkg" \
+          "AutoSubs-Installer.pkg"
+
+    - name: Get Latest Release Upload URL
+      id: get_upload_url
+      run: |
+        response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/releases/latest)
+        echo "upload_url=$(echo $response | jq -r .upload_url | sed -e 's/{?name,label}//')" >> $GITHUB_ENV
+
+    - name: Upload to Latest Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ env.upload_url }}
+        asset_path: AutoSubs-Installer.pkg
+        asset_name: AutoSubs-Installer.pkg
+        asset_content_type: application/octet-stream
