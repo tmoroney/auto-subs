@@ -103,6 +103,7 @@ Install Stable-TS by running this command in the terminal:
 
 ### Step 5: Download the Python Script
 Download **[`auto-subs.py`](https://github.com/tmoroney/auto-subs/blob/main/auto-subs.py)** and place it in one of the following directories:
+**If you don't see the Scripts or Utility folder, create it manually and place the file there**
 - All users: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Utility`
 - Specific user: `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility`
 
