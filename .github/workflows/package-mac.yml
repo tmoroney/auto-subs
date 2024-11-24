@@ -78,7 +78,6 @@ jobs:
 
     - name: Code Sign Python Server
       run: |
-        cd Mac-Server
         # Define variables
         IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
         ENTITLEMENTS="$(pwd)/entitlements.plist"  # Ensure entitlements.plist is in the repository
