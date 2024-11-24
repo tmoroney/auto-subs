@@ -106,7 +106,7 @@ jobs:
     - name: Move Python Server and App to Output Folder
       run: |
         mv AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Output/AutoSubs/
-        mv Mac-Server/dist/Transcription-Server/* Output/AutoSubs/Transcription-Server/
+        mv Mac-Server/dist/Transcription-Server Output/AutoSubs/
 
     - name: Create PKG Installer
       run: |
