@@ -80,7 +80,7 @@ jobs:
       run: |
         # Define variables
         IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        ENTITLEMENTS="$(pwd)/entitlements.plist"  # Ensure entitlements.plist is in the repository
+        ENTITLEMENTS="$(pwd)/Mac-Server/entitlements.plist"
         APP_DIR="$(pwd)/Mac-Server/dist/Transcription-Server"
 
         # Function to sign a single file
