@@ -1,4 +1,4 @@
-name: Package Tauri App and Python Server for MacOS
+name: Package AutoSubs for MacOS
 on:
   push:
     branches:
@@ -32,6 +32,10 @@ jobs:
         INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE }}
         INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        APPLE_NOTARIZE_KEY: ${{ secrets.APPLE_NOTARIZE_KEY }}
+        APPLE_NOTARIZE_ID: ${{ secrets.APPLE_NOTARIZE_ID }}
+        APPLE_ISSUER: ${{ secrets.APPLE_ISSUER }}
+
       run: |
         # Define paths
         APP_CERT_PATH=$RUNNER_TEMP/app_certificate.p12
@@ -55,6 +59,13 @@ jobs:
         # Import Installer certificate
         security import $INSTALLER_CERT_PATH -P "$INSTALLER_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # Import Notarization credentials
+        echo "$APPLE_NOTARIZE_KEY" | base64 --decode > Notarization_AuthKey.p8
+        xcrun notarytool store-credentials "AC_PASSWORD" \
+          --key "Notarization_AuthKey.p8" \
+          --key-id "$APPLE_NOTARIZE_ID" \
+          --issuer "$APPLE_ISSUER"
       
     - name: Install Dependencies
       run: |
@@ -105,8 +116,8 @@ jobs:
 
     - name: Move Python Server and App to Output Folder
       run: |
-        mv AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Output/AutoSubs/
-        mv Mac-Server/dist/Transcription-Server Output/AutoSubs/
+        mv "AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app" "Output/AutoSubs"
+        mv "Mac-Server/dist/Transcription-Server" "Output/AutoSubs"
 
     - name: Create PKG Installer
       run: |
@@ -122,6 +133,16 @@ jobs:
           --timestamp \
           "AutoSubs-unsigned.pkg" \
           "AutoSubs-Installer.pkg"
+
+    - name: Notarize PKG Installer
+      run: |
+        # Submit for notarization
+        xcrun notarytool submit "AutoSubs-Installer.pkg" \
+            --keychain-profile "AC_PASSWORD" \
+            --wait
+
+        # Staple the ticket to the installer
+        xcrun stapler staple "AutoSubs-Installer.pkg"
 
     - name: Get Latest Release Tag
       id: get_latest_release
