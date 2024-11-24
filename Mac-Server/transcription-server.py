@@ -33,6 +33,9 @@ print(f"Matplotlib cache directory created at: {matplotlib_cache_dir}")
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
+    # Suppress the torch.load warning
+    os.environ["PYTHONWARNINGS"] = "default"
+    os.environ["TORCH_LOAD_IGNORE_POSSIBLE_SECURITY_RISK"] = "1"
 else:
     base_path = os.path.dirname(__file__)
 
@@ -164,9 +167,7 @@ def diarize_audio(audio_file, device):
     print("Starting diarization...")
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
     pipeline.to(device)
-    waveform, sample_rate = torchaudio.load(audio_file)
-    audio_data = {"waveform": waveform.to(device), "sample_rate": sample_rate}
-    return pipeline(audio_data)
+    return pipeline(audio_file)
 
 def merge_diarisation(transcript, diarization):
     # Array of colors to choose from
