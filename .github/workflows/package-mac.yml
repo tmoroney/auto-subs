@@ -1,8 +1,5 @@
 name: Package AutoSubs for MacOS
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -72,7 +69,7 @@ jobs:
         cd AutoSubs-App
         npm install
 
-    - name: Build App
+    - name: Bundle Tauri App
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
