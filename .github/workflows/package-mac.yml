@@ -136,3 +136,4 @@ jobs:
       with:
         tag_name: ${{ env.LATEST_TAG }}
         files: AutoSubs-Installer.pkg
+        token: ${{ secrets.GH_TOKEN }}
