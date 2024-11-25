@@ -3,6 +3,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -118,10 +121,15 @@ jobs:
 
     - name: Create PKG Installer
       run: |
+        # Give permissions to the scripts
+        chmod +x ./scripts
+
+        # Create the package
         pkgbuild --root "Output" \
          --identifier "com.tom-moroney.autosubs" \
          --version "2.0" \
-         --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/" \
+         --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs" \
+         --scripts ./scripts \
          "AutoSubs-unsigned.pkg"
 
     - name: Sign PKG Installer
@@ -129,17 +137,17 @@ jobs:
         productsign --sign "Developer ID Installer: ${{ secrets.APPLE_IDENTITY }}" \
           --timestamp \
           "AutoSubs-unsigned.pkg" \
-          "AutoSubs-Installer.pkg"
+          "AutoSubs-Installer-Mac-ARM.pkg"
 
     - name: Notarize PKG Installer
       run: |
         # Submit for notarization
-        xcrun notarytool submit "AutoSubs-Installer.pkg" \
+        xcrun notarytool submit "AutoSubs-Installer-Mac-ARM.pkg" \
             --keychain-profile "AC_PASSWORD" \
             --wait
 
         # Staple the ticket to the installer
-        xcrun stapler staple "AutoSubs-Installer.pkg"
+        xcrun stapler staple "AutoSubs-Installer-Mac-ARM.pkg"
 
     - name: Get Latest Release Tag
       id: get_latest_release
@@ -153,5 +161,5 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.LATEST_TAG }}
-        files: AutoSubs-Installer.pkg
+        files: AutoSubs-Installer-Mac-ARM.pkg
         token: ${{ secrets.GH_TOKEN }}
