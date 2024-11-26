@@ -22,6 +22,8 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
+local defaultTemplateExists = false;
+
 -- Server
 local port = 55010
 
@@ -109,7 +111,6 @@ function JumpToTime(time, markIn)
 end
 
 -- Recursive search for all Text+ templates in the media pool
-local defaultTemplateExists = false;
 local templates = {}
 function FindAllTemplates(folder)
     -- Get subfolders and recursively process them
@@ -141,7 +142,7 @@ function GetTemplates()
     FindAllTemplates(rootFolder)
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
-        mediaPool:ImportFolderFromFile("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Subtitles.drb")
+        mediaPool:ImportFolderFromFile(storagePath .. "Subtitles.drb")
         local clipName = "Default Template"
         local newTemplate = {
             label = clipName,
