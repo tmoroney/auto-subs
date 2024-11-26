@@ -158,7 +158,7 @@ def inference(audio, **kwargs) -> dict:
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     print("Starting transcription...")
-    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, only_voice_freq=True, force_order=True)
+    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
     whisperResult.split_by_length(max_words=max_words, max_chars=max_chars)
     return whisperResult.to_dict()
 
