@@ -2,6 +2,8 @@ import asyncio
 import sys
 import os
 import appdirs
+import certifi
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 class Unbuffered(object):
    def __init__(self, stream):
@@ -158,7 +160,7 @@ def inference(audio, **kwargs) -> dict:
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     print("Starting transcription...")
-    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
+    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True)
     whisperResult.split_by_length(max_words=max_words, max_chars=max_chars)
     return whisperResult.to_dict()
 
