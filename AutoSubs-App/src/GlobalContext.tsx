@@ -94,7 +94,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [translate, setTranslate] = useState(false);
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
-    const [maxChars, setMaxChars] = useState(30);
+    const [maxChars, setMaxChars] = useState(25);
     const [markIn, setMarkIn] = useState(0);
 
     async function getFullTranscriptPath() {
@@ -149,7 +149,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setTranslate(result.storedTranslate || false);
             setDiarize(result.storedDiarize || false);
             setMaxWords(result.storedMaxWords || 6);
-            setMaxChars(result.storedMaxChars || 30);
+            setMaxChars(result.storedMaxChars || 25);
         }).catch((error) => {
             console.error("Error initializing state:", error);
         });

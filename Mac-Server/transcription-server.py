@@ -76,7 +76,7 @@ models = {
     "base": "mlx-community/whisper-base-mlx-q4",
     "small": "mlx-community/whisper-small-mlx",
     "medium": "mlx-community/whisper-medium-mlx",
-    "large": "mlx-community/whisper-large-v3-turbo",
+    "large": "mlx-community/distil-whisper-large-v3",
 }
 
 english_models = {
@@ -84,7 +84,7 @@ english_models = {
     "base": "mlx-community/whisper-base.en-mlx",
     "small": "mlx-community/whisper-small.en-mlx",
     "medium": "mlx-community/whisper-medium.en-mlx",
-    "large": "mlx-community/whisper-large-v3-turbo",
+    "large": "mlx-community/distil-whisper-large-v3",
 }
 
 def is_model_cached_locally(model_id, revision=None):
@@ -152,14 +152,13 @@ def inference(audio, **kwargs) -> dict:
             language=kwargs["language"],
             verbose=True,
             task=kwargs["task"]
+
         )
-    # Ensure segments are sorted
-    output["segments"] = sorted(output["segments"], key=lambda x: x["start"])
     return output
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     print("Starting transcription...")
-    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=False)
+    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, only_voice_freq=True, force_order=True)
     whisperResult.split_by_length(max_words=max_words, max_chars=max_chars)
     return whisperResult.to_dict()
 
