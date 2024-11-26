@@ -154,7 +154,6 @@ def inference(audio, **kwargs) -> dict:
             language=kwargs["language"],
             verbose=True,
             task=kwargs["task"]
-
         )
     return output
 

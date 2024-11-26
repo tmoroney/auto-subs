@@ -1,5 +1,3 @@
----@diagnostic disable: need-check-nil
-
 local storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
 
 -- Append the module path to package.path
@@ -16,6 +14,17 @@ local transcriptionServer = '/Library/Application\\ Support/Blackmagic\\ Design/
 -- Detect the operating system
 local os_name = ffi.os
 print("Operating System: " .. os_name)
+
+-- Pause execution for a specified number of seconds (platform-independent)
+function sleep(n)
+    if os_name == "Windows" then
+        -- Windows
+        os.execute("ping -n " .. tonumber(n + 1) .. " localhost > NUL")
+    else
+        -- Unix-based (Linux, macOS)
+        os.execute("sleep " .. tonumber(n))
+    end
+end
 
 -- Load common DaVinci Resolve API utilities
 local projectManager = resolve:GetProjectManager()
@@ -37,8 +46,19 @@ assert(server:set_option("nodelay", true, "tcp"))
 assert(server:set_option("reuseaddr", true))
 
 -- Bind and listen
-assert(server:bind(info))
-assert(server:listen())
+local success, err = pcall(function()
+    assert(server:bind(info))
+    assert(server:listen())
+end)
+
+if not success then
+    print("Failed to bind or listen on the server. Error: ", err)
+    os.execute('curl --request POST --url http://localhost:55010/ --header "Content-Type: application/json" --data \'{"func":"Exit"}\'')
+    sleep(0.5)
+    -- Try again
+    assert(server:bind(info))
+    assert(server:listen())
+end
 
 function CreateResponse(body)
     local header =
@@ -70,17 +90,6 @@ function hexToRgb(hex)
         }
     else
         return nil
-    end
-end
-
--- Pause execution for a specified number of seconds (platform-independent)
-function sleep(n)
-    if os_name == "Windows" then
-        -- Windows
-        os.execute("ping -n " .. tonumber(n + 1) .. " localhost > NUL")
-    else
-        -- Unix-based (Linux, macOS)
-        os.execute("sleep " .. tonumber(n))
     end
 end
 
@@ -199,9 +208,14 @@ function ExportAudio(outputDir)
     }
 
     project:StartRendering(pid)
-    while project:IsRenderingInProgress() do
-        print("Rendering...")
-        sleep(0.5) -- Check every 500 milliseconds
+    local success, err = pcall(function()
+        while project:IsRenderingInProgress() do
+            print("Rendering...")
+            sleep(0.5) -- Check every 500 milliseconds
+        end
+    end)
+    if not success then
+        print("Error during rendering check:", err)
     end
 
     return audioInfo
@@ -435,6 +449,7 @@ while not quitServer do
             elseif data.func == "ExportAudio" then
                 print("[AutoSubs Server] Exporting audio...")
                 local audioInfo = ExportAudio(data.outputDir)
+                dump(audioInfo)
                 body = json.encode(audioInfo)
             elseif data.func == "AddSubtitles" then
                 print("[AutoSubs Server] Adding subtitles to timeline...")
