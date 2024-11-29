@@ -1,21 +1,53 @@
----@diagnostic disable: need-check-nil
-
-local storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
-
--- Append the module path to package.path
-local module_path = storagePath .. "modules/"
-package.path = package.path .. ";" .. module_path .. "?.lua"
-
-local socket = require("ljsocket")
-local json = require("dkjson")
 local ffi = require("ffi")
-
-local mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
-local transcriptionServer = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
 
 -- Detect the operating system
 local os_name = ffi.os
 print("Operating System: " .. os_name)
+
+local storagePath = ""
+local module_path = ""
+local mainApp = ""
+local transcriptionServer = ""
+local command_open = ""
+local command_close = ""
+local command_kill_server = ""
+
+if os_name == "Windows" then
+    storagePath = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\"
+    mainApp = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\AutoSubs.exe"
+    transcriptionServer = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\Transcription-Server\\transcription-server.exe"
+    local module_path = storagePath .. "modules\\"
+
+    -- Use the C system function to execute shell commands
+    ffi.cdef[[int system(const char *command);]]
+
+    -- Windows commands to open and close apps using PowerShell
+    command_open = 'start "" "' .. mainApp .. '"'
+    command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
+    command_kill_server = 'powershell -Command "Get-Process transcription-server | Stop-Process -Force"'
+
+elseif os_name == "OSX" then
+    storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
+    mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
+    transcriptionServer = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
+    module_path = storagePath .. "modules/"
+
+    -- Use the C system function to execute shell commands on macOS
+    ffi.cdef[[int system(const char *command);]]
+
+    -- MacOS commands to open and close
+    command_open = 'open ' ..  mainApp
+    command_close = "pkill -f " .. mainApp
+    command_kill_server = "pkill -f " .. transcriptionServer
+else then
+    print("Unsupported OS")
+    return
+end
+
+-- Import Lua modules
+package.path = package.path .. ";" .. module_path .. "?.lua"
+local socket = require("ljsocket")
+local json = require("dkjson")
 
 -- Load common DaVinci Resolve API utilities
 local projectManager = resolve:GetProjectManager()
@@ -362,31 +394,13 @@ local function set_cors_headers(client)
     client:send("\r\n")
 end
 
-if os_name == "Windows" then
-    -- Windows-specific code
-    print("Windows-specific code")
-elseif os_name == "OSX" then
-    -- Use the C system function to execute shell commands on macOS
-    ffi.cdef[[
-    int system(const char *command);
-    ]]
-
-    -- Command to open the main app on macOS
-    local command_open = 'open ' ..  mainApp
-
-    -- Call the system function to open the app
-    local result_open = ffi.C.system(command_open)
-    --local result_open = 0
-    
-    --local result_open = os.execute(command_open)
-
-    -- Check if the app opened successfully
-    if result_open == 0 then
-        print("Success: AutoSubs app opened.")
-    else
-        print("Error: Failed to open AutoSubs app.")
-        return
-    end
+-- Start AutoSubs Main App
+local result_open = ffi.C.system(command_open)
+if result_open == 0 then
+    print("Success: AutoSubs app opened.")
+else
+    print("Error: Failed to open AutoSubs app.")
+    return
 end
 
 print("AutoSubs server is listening on port: ", port)
@@ -468,16 +482,7 @@ end
 print("Shutting down AutoSubs Link server...")
 server:close()
 
-if os_name == "Windows" then
-    -- Windows-specific code
-    print("Windows-specific code")
-elseif os_name == "OSX" then
-    -- Command to close the Transcription Server app using pkill
-    local command_close = "pkill -f " .. mainApp
-    ffi.C.system(command_close)
-    
-    command_close = "pkill -f " .. transcriptionServer
-    ffi.C.system(command_close)
-end
+-- Kill transcription server if necessary
+ffi.C.system(command_close)
 
 print("Server shut down.")
