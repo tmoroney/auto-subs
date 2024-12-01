@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Define the installation directory
+INSTALL_DIR="/Applications/AutoSubs"
+
+# Copy the Lua script
+cp "${INSTALL_DIR}/AutoSubs V2.lua" "${INSTALL_DIR}/Scripts/Utility"
+
+# Set ownership and permissions
+USER=$(whoami)
+chown -R "$USER":staff "${INSTALL_DIR}"
+chmod -R 755 "${INSTALL_DIR}"
+
+exit 0

@@ -2,6 +2,8 @@ import asyncio
 import sys
 import os
 import appdirs
+import certifi
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 class Unbuffered(object):
    def __init__(self, stream):
@@ -33,6 +35,9 @@ print(f"Matplotlib cache directory created at: {matplotlib_cache_dir}")
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
+    # Suppress the torch.load warning
+    os.environ["PYTHONWARNINGS"] = "default"
+    os.environ["TORCH_LOAD_IGNORE_POSSIBLE_SECURITY_RISK"] = "1"
 else:
     base_path = os.path.dirname(__file__)
 
@@ -73,7 +78,7 @@ models = {
     "base": "mlx-community/whisper-base-mlx-q4",
     "small": "mlx-community/whisper-small-mlx",
     "medium": "mlx-community/whisper-medium-mlx",
-    "large": "mlx-community/whisper-large-v3-turbo",
+    "large": "mlx-community/distil-whisper-large-v3",
 }
 
 english_models = {
@@ -81,7 +86,7 @@ english_models = {
     "base": "mlx-community/whisper-base.en-mlx",
     "small": "mlx-community/whisper-small.en-mlx",
     "medium": "mlx-community/whisper-medium.en-mlx",
-    "large": "mlx-community/whisper-large-v3-turbo",
+    "large": "mlx-community/distil-whisper-large-v3",
 }
 
 def is_model_cached_locally(model_id, revision=None):
@@ -150,13 +155,11 @@ def inference(audio, **kwargs) -> dict:
             verbose=True,
             task=kwargs["task"]
         )
-    # Ensure segments are sorted
-    output["segments"] = sorted(output["segments"], key=lambda x: x["start"])
     return output
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     print("Starting transcription...")
-    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=False)
+    whisperResult = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True)
     whisperResult.split_by_length(max_words=max_words, max_chars=max_chars)
     return whisperResult.to_dict()
 
@@ -164,9 +167,7 @@ def diarize_audio(audio_file, device):
     print("Starting diarization...")
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
     pipeline.to(device)
-    waveform, sample_rate = torchaudio.load(audio_file)
-    audio_data = {"waveform": waveform.to(device), "sample_rate": sample_rate}
-    return pipeline(audio_data)
+    return pipeline(audio_file)
 
 def merge_diarisation(transcript, diarization):
     # Array of colors to choose from

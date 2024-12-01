@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cp '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/AutoSubs V2.lua' '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility'
