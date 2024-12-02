@@ -624,10 +624,10 @@ export function HomePage() {
                             <TooltipProvider>
                                 <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
                                     <TooltipTrigger asChild>
-                                        <Button variant="link" size="sm" className="ml-1 p-0 h-auto font-normal" onClick={() => setTooltipOpen(!tooltipOpen)}>
+                                        <span className="ml-1 p-0 h-auto font-normal cursor-pointer text-primary hover:underline" onClick={() => setTooltipOpen(!tooltipOpen)}>
                                             Learn more
                                             <span className="sr-only">about diarization setup</span>
-                                        </Button>
+                                        </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" align="center" className="max-w-[300px]">
                                         <p>
@@ -666,10 +666,10 @@ export function HomePage() {
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-0 hover:bg-transparent">
+                                                <span className="h-4 w-8 ml-2 hover:bg-transparent hover:cursor-pointer">
                                                     <HelpCircle className="h-4 w-4" />
                                                     <span className="sr-only">See example of model terms form</span>
-                                                </Button>
+                                                </span>
                                             </TooltipTrigger>
                                             <TooltipContent side="bottom" align="center" className="max-w-[600px] px-2">
                                                 <img

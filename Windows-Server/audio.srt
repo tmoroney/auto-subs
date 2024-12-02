@@ -1,0 +1,107 @@
+1
+00:00:00,120 --> 00:00:00,240
+<font color="#00ff00">Me</font> encanta,
+
+2
+00:00:00,240 --> 00:00:00,540
+Me <font color="#00ff00">encanta,</font>
+
+3
+00:00:01,820 --> 00:00:01,960
+<font color="#00ff00">me</font> gusta mucho,
+
+4
+00:00:01,960 --> 00:00:02,260
+me <font color="#00ff00">gusta</font> mucho,
+
+5
+00:00:02,260 --> 00:00:02,660
+me gusta <font color="#00ff00">mucho,</font>
+
+6
+00:00:03,700 --> 00:00:03,800
+<font color="#00ff00">me</font> gusta,
+
+7
+00:00:03,800 --> 00:00:04,240
+me <font color="#00ff00">gusta,</font>
+
+8
+00:00:05,620 --> 00:00:05,800
+<font color="#00ff00">no</font> me gusta,
+
+9
+00:00:05,800 --> 00:00:05,920
+no <font color="#00ff00">me</font> gusta,
+
+10
+00:00:05,920 --> 00:00:06,280
+no me <font color="#00ff00">gusta,</font>
+
+11
+00:00:07,400 --> 00:00:07,560
+<font color="#00ff00">no</font> me gusta nada,
+
+12
+00:00:07,560 --> 00:00:07,700
+no <font color="#00ff00">me</font> gusta nada,
+
+13
+00:00:07,700 --> 00:00:08,020
+no me <font color="#00ff00">gusta</font> nada,
+
+14
+00:00:08,020 --> 00:00:08,380
+no me gusta <font color="#00ff00">nada,</font>
+
+15
+00:00:08,920 --> 00:00:09,640
+<font color="#00ff00">odio.</font>
+
+16
+00:00:11,920 --> 00:00:12,040
+<font color="#00ff00">Me</font> encantan,
+
+17
+00:00:12,040 --> 00:00:12,920
+Me <font color="#00ff00">encantan,</font>
+
+18
+00:00:14,260 --> 00:00:14,400
+<font color="#00ff00">me</font> gustan,
+
+19
+00:00:14,400 --> 00:00:15,040
+me <font color="#00ff00">gustan,</font>
+
+20
+00:00:16,300 --> 00:00:16,440
+<font color="#00ff00">no</font> me gustan,
+
+21
+00:00:16,440 --> 00:00:16,560
+no <font color="#00ff00">me</font> gustan,
+
+22
+00:00:16,560 --> 00:00:17,080
+no me <font color="#00ff00">gustan,</font>
+
+23
+00:00:17,940 --> 00:00:18,100
+<font color="#00ff00">no</font> me gustan nada,
+
+24
+00:00:18,100 --> 00:00:18,240
+no <font color="#00ff00">me</font> gustan nada,
+
+25
+00:00:18,240 --> 00:00:18,600
+no me <font color="#00ff00">gustan</font> nada,
+
+26
+00:00:18,600 --> 00:00:19,040
+no me gustan <font color="#00ff00">nada,</font>
+
+27
+00:00:19,800 --> 00:00:20,140
+<font color="#00ff00">odio.</font>

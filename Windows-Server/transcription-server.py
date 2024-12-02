@@ -1,34 +1,43 @@
+from fastapi.middleware.cors import CORSMiddleware
+from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
+from huggingface_hub import HfApi, HfFolder, login, snapshot_download
+import json
+import torchaudio
+import torch
+from pyannote.audio import Pipeline
+import stable_whisper
+import random
+import uvicorn
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status
 import asyncio
 import sys
 import os
 import appdirs
 import time
-import json
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel
-import uvicorn
-import random
-from huggingface_hub import HfApi, HfFolder, login, snapshot_download
-from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
-from fastapi.middleware.cors import CORSMiddleware
+
+start_time = time.time()
+
 
 class Unbuffered(object):
-   def __init__(self, stream):
-       self.stream = stream
-   def write(self, data):
-       self.stream.write(data)
-       self.stream.flush()
-   def writelines(self, datas):
-       self.stream.writelines(datas)
-       self.stream.flush()
-   def __getattr__(self, attr):
-       return getattr(self.stream, attr)
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
 
 # Ensure stdout and stderr are line-buffered
 sys.stdout = Unbuffered(sys.stdout)
 sys.stderr = Unbuffered(sys.stderr)
-
-start_time = time.time()
 
 # Set MPLCONFIGDIR using appdirs for cross-platform compatibility
 cache_dir = appdirs.user_cache_dir("AutoSubs", "AutoSubs")
@@ -40,6 +49,9 @@ print(f"Matplotlib cache directory created at: {matplotlib_cache_dir}")
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
+    # Suppress the torch.load warning
+    os.environ["PYTHONWARNINGS"] = "default"
+    os.environ["TORCH_LOAD_IGNORE_POSSIBLE_SECURITY_RISK"] = "1"
 else:
     base_path = os.path.dirname(__file__)
 
@@ -47,11 +59,6 @@ else:
 ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin')
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
 
-import mlx_whisper
-import stable_whisper
-from pyannote.audio import Pipeline
-import torch
-import torchaudio
 
 end_time = time.time()
 print(f"Initialization time: {end_time - start_time} seconds")
@@ -61,7 +68,8 @@ app = FastAPI()
 # Add CORS middleware to allow requests from your frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to your frontend's domain or "*" for all
+    # Adjust this to your frontend's domain or "*" for all
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allow all headers
@@ -70,24 +78,25 @@ app.add_middleware(
 models = {
     "tiny": "tiny",
     "base": "base",
-    "small": "small",
-    "medium": "medium",
-    "large": "large-v3",
+    "small": "distil-small",
+    "medium": "distil-medium",
+    "large": "distil-large-v3",
 }
 
 english_models = {
     "tiny": "tiny.en",
     "base": "base.en",
-    "small": "small.en",
-    "medium": "medium.en",
-    "large": "large-v3",
+    "small": "distil-small.en",
+    "medium": "distil-medium.en",
+    "large": "distil-large-v3",
 }
+
 
 def is_model_cached_locally(model_id, revision=None):
     try:
         snapshot_download(
             repo_id=model_id,
-            revision=revision, # Model version - use the latest revision if not specified
+            revision=revision,  # Model version - use the latest revision if not specified
             local_files_only=True,
             allow_patterns=["*"],
         )
@@ -95,13 +104,15 @@ def is_model_cached_locally(model_id, revision=None):
     except Exception:
         return False
 
+
 def is_model_accessible(model_id, token=None, revision=None):
     # First, check if the model is cached locally
     if is_model_cached_locally(model_id, revision=revision):
         print(f"Model '{model_id}' is cached locally.")
         return True  # Model is cached locally and accessible
 
-    print(f"Model '{model_id}' is not cached locally. Checking online access...")
+    print(
+        f"Model '{model_id}' is not cached locally. Checking online access...")
 
     try:
         # Attempt to download a small file from the model repo to check access
@@ -109,7 +120,8 @@ def is_model_accessible(model_id, token=None, revision=None):
             repo_id=model_id,
             revision=revision,  # Use the latest revision if not specified
             token=token,
-            allow_patterns=["config.yaml"],  # Adjust to download a minimal set of files
+            # Adjust to download a minimal set of files
+            allow_patterns=["config.yaml"],
             resume_download=False,  # Force download to check access
             local_files_only=False,
         )
@@ -119,7 +131,8 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{
+                  model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
@@ -129,27 +142,46 @@ def is_model_accessible(model_id, token=None, revision=None):
         print(f"An unexpected error occurred: {e}")
         return False
 
+
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
-    print("Starting transcription...")
-    stable_whisper.load_faster_whisper(kwargs.model)
-    whisperResult = stable_whisper.transcribe_stable(audio_file, verbose=True, language=kwargs.language, task=kwargs.task)
-    whisperResult.split_by_length(max_words=max_words, max_chars=max_chars)
-    return whisperResult.to_dict()
+    print("Kwargs", kwargs)
+    model = stable_whisper.load_faster_whisper(
+        kwargs["model"], device=kwargs["device"], compute_type="int8")
+
+    try:
+        result = model.transcribe_stable(audio_file, language=kwargs["language"], vad_filter=True, condition_on_previous_text=False)
+        model.align_words(audio_file, result, kwargs["language"])
+    except Exception as e:
+        print(f"Error during transcription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during transcription: {e}"
+        )
+
+    (
+        result
+        .clamp_max()
+        .split_by_punctuation([(',', ' '), '，'])
+        .split_by_gap(.3)
+        .merge_by_gap(.2, max_words=2)
+        .split_by_punctuation([('.', ' '), '。', '?', '？'])
+        .split_by_length(max_words=max_words, max_chars=max_chars)
+    )
+
+    return result.to_dict()
+
 
 def diarize_audio(audio_file, device):
     print("Starting diarization...")
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
     pipeline.to(device)
-    waveform, sample_rate = torchaudio.load(audio_file)
-    audio_data = {"waveform": waveform.to(device), "sample_rate": sample_rate}
-    return pipeline(audio_data)
+    return pipeline(audio_file)
+
 
 def merge_diarisation(transcript, diarization):
     # Array of colors to choose from
-    colors = [
-        "#e11d48", "#1d4ae1", "#e1a11d", "#1de148", "#e11de1",
-        "#11e1e1", "#e1e11d", "#e14d1d", "#4de11d", "#1d1de1"
-    ]
+    colors = ['#f2afd1', '#1d3248', '#e1a11d', '#9ce8ff', '#e11de1',
+              '#11e1e1', '#e1e11d', '#7e65d8', '#0e7e90', '#788973']
 
     # Dictionary to store speaker information
     speakers_info = {}
@@ -176,7 +208,8 @@ def merge_diarisation(transcript, diarization):
             i += 1
         else:
             # Overlapping segment
-            speaker_label = f"Speaker {speaker_counter}" if speaker not in speakers_info else speakers_info[speaker]["label"]
+            speaker_label = f"Speaker {
+                speaker_counter}" if speaker not in speakers_info else speakers_info[speaker]["label"]
             new_segment = {
                 "start": segment_start,
                 "end": segment_end,
@@ -250,7 +283,8 @@ def merge_diarisation(transcript, diarization):
 
     # Convert speakers_info dict to a list
     speakers_list = list(speakers_info.values())
-    top_speaker = max(speakers_list, key=lambda speaker: speaker["subtitle_lines"])
+    top_speaker = max(
+        speakers_list, key=lambda speaker: speaker["subtitle_lines"])
 
     # Add speakers list to the result
     result = {
@@ -266,9 +300,11 @@ def merge_diarisation(transcript, diarization):
     }
     return result
 
+
 async def async_transcribe_audio(file_path, kwargs, max_words, max_chars):
     """Asynchronous transcription function."""
     return transcribe_audio(file_path, kwargs, max_words, max_chars)
+
 
 async def async_diarize_audio(file_path, device):
     """Asynchronous diarization function."""
@@ -277,6 +313,7 @@ async def async_diarize_audio(file_path, device):
     pipeline.to(device)
     diarization = pipeline(file_path)
     return diarization
+
 
 async def process_audio(file_path, kwargs, max_words, max_chars, device, diarize_enabled):
     """Process audio: transcription and diarization concurrently."""
@@ -296,6 +333,7 @@ async def process_audio(file_path, kwargs, max_words, max_chars, device, diarize
 
     return result
 
+
 class TranscriptionRequest(BaseModel):
     file_path: str
     output_dir: str
@@ -308,6 +346,7 @@ class TranscriptionRequest(BaseModel):
     max_chars: int
     mark_in: int
     mark_out: int
+
 
 @app.post("/transcribe/")
 async def transcribe(request: TranscriptionRequest):
@@ -336,17 +375,20 @@ async def transcribe(request: TranscriptionRequest):
         else:
             print(f"Processing file: {file_path}")
 
+        kwargs = {"model": model, "language": language, "task": task}
+
         # Select device
         if torch.cuda.is_available():
             device = torch.device("cuda")
+            kwargs["device"] = "cuda"
         elif torch.backends.mps.is_available():
             device = torch.device("mps")
+            kwargs["device"] = "mps"
         else:
             device = torch.device("cpu")
+            kwargs["device"] = "cpu"
 
         print(f"Using device: {device}")
-
-        kwargs = {"model": model, "language": language, "task": task}
 
         # Process audio (transcription and optionally diarization)
         try:
@@ -361,7 +403,7 @@ async def transcribe(request: TranscriptionRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error during audio processing: {e}"
             )
-        
+
         # Save the transcription to a JSON file
         json_filename = f"{timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
@@ -390,9 +432,9 @@ async def transcribe(request: TranscriptionRequest):
         )
 
 
-
 class ValidateRequest(BaseModel):
     token: str
+
 
 @app.post("/validate/")
 async def validate_model(request: ValidateRequest):
@@ -408,13 +450,14 @@ async def validate_model(request: ValidateRequest):
             login(token)
         except Exception as e:
             return {"isAvailable": False, "message": "Hugging Face token is incorrect or expired."}
-        
-    required_models = ["pyannote/speaker-diarization-3.1", "pyannote/segmentation-3.0"]
+
+    required_models = ["pyannote/speaker-diarization-3.1",
+                       "pyannote/segmentation-3.0"]
     if not is_model_accessible(required_models[0], token=token):
         return {"isAvailable": False, "message": f"Please accept the terms for model '{required_models[0]}' and provide a valid Hugging Face access token."}
     if not is_model_accessible(required_models[1], token=token):
         return {"isAvailable": False, "message": f"Please accept the terms for model '{required_models[1]}' and provide a valid Hugging Face access token."}
-    
+
     return {"isAvailable": True, "message": "All required models are available"}
 
 if __name__ == "__main__":

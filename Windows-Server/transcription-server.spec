@@ -2,6 +2,7 @@
 
 import os
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
+import certifi
 
 # Initialize variables if not already defined
 hiddenimports = []
@@ -17,8 +18,8 @@ datas += speechbrain_datas
 binaries += speechbrain_binaries
 
 # Include other packages as before
-hiddenimports += collect_submodules('mlx')
-hiddenimports += collect_submodules('mlx_whisper')
+hiddenimports += collect_submodules('stable_whisper')
+hiddenimports += collect_submodules('faster_whisper')
 hiddenimports += collect_submodules('pytorch_lightning')
 hiddenimports += collect_submodules('pyannote')
 hiddenimports += collect_submodules('torch')
@@ -33,6 +34,10 @@ datas += collect_data_files('pytorch_lightning')
 datas += collect_data_files('lightning_fabric')
 datas += collect_data_files('pyannote')
 datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
+
+# Add certifi certificate bundle
+certifi_data = [(certifi.where(), "certifi")]
+datas += certifi_data
 
 # Exclude unnecessary modules to reduce size and startup time
 excludes = [
@@ -49,13 +54,13 @@ excludes = [
     'torchvision',
 
     # Large/unused packages
-    'cv2', 'Pillow', 'geopy', 'cryptography',
+    'cv2', 'Pillow', 'geopy',
 
     # PyInstaller-related
     'pyinstaller', 'PyInstaller.utils', 'PyInstaller.compat',
 
     # Common third-party libraries
-    'aiohttp', 'flask', 'django', 'sqlalchemy', 'psycopg2', 'pymysql', 'redis', 'celery', 'rq',
+    'sqlalchemy', 'psycopg2', 'pymysql', 'redis', 'celery', 'rq',
 ]
 
 a = Analysis(

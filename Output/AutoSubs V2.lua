@@ -15,11 +15,16 @@ local command_kill_server = ""
 if os_name == "Windows" then
     storagePath = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\"
     mainApp = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\AutoSubs.exe"
-    transcriptionServer = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\Transcription-Server\\transcription-server.exe"
-    local module_path = storagePath .. "modules\\"
+    transcriptionServer =
+        "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\Transcription-Server\\transcription-server.exe"
+    module_path = storagePath .. "modules\\"
 
     -- Use the C system function to execute shell commands
-    ffi.cdef[[int system(const char *command);]]
+    ffi.cdef [[ int __cdecl system(const char *command); ]]
+
+    ffi.cdef [[
+        void Sleep(unsigned int ms);
+    ]]
 
     -- Windows commands to open and close apps using PowerShell
     command_open = 'start "" "' .. mainApp .. '"'
@@ -29,17 +34,18 @@ if os_name == "Windows" then
 elseif os_name == "OSX" then
     storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
     mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
-    transcriptionServer = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
+    transcriptionServer =
+        '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
     module_path = storagePath .. "modules/"
 
     -- Use the C system function to execute shell commands on macOS
-    ffi.cdef[[int system(const char *command);]]
+    ffi.cdef [[ int system(const char *command); ]]
 
     -- MacOS commands to open and close
-    command_open = 'open ' ..  mainApp
+    command_open = 'open ' .. mainApp
     command_close = "pkill -f " .. mainApp
     command_kill_server = "pkill -f " .. transcriptionServer
-else then
+else
     print("Unsupported OS")
     return
 end
@@ -54,30 +60,9 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
--- Server
-local port = 55010
-
--- Set up server socket configuration
-local info = socket.find_first_address("*", port)
-local server = assert(socket.create(info.family, info.socket_type, info.protocol))
-
--- Set socket options
-server:set_blocking(false)
-assert(server:set_option("nodelay", true, "tcp"))
-assert(server:set_option("reuseaddr", true))
-
--- Bind and listen
-assert(server:bind(info))
-assert(server:listen())
-
 function CreateResponse(body)
-    local header =
-        "HTTP/1.1 200 OK\r\n" ..
-        "Server: ljsocket/0.1\r\n" ..
-        "Content-Type: application/json\r\n" ..
-        "Content-Length: " .. #body .. "\r\n" ..
-        "Connection: close\r\n" ..
-        "\r\n"
+    local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
+                       "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
 
     local response = header .. body
     return response
@@ -107,7 +92,7 @@ end
 function sleep(n)
     if os_name == "Windows" then
         -- Windows
-        os.execute("ping -n " .. tonumber(n + 1) .. " localhost > NUL")
+        ffi.C.Sleep(n * 1000)
     else
         -- Unix-based (Linux, macOS)
         os.execute("sleep " .. tonumber(n))
@@ -127,7 +112,6 @@ function FramesToTimecode(frames, frameRate)
     local frames = frames % frameRate
     return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, frames)
 end
-
 
 -- DaVinci Resolve API functions
 
@@ -155,7 +139,7 @@ function FindAllTemplates(folder)
             local clipName = clip:GetClipProperty()["Clip Name"]
             local newTemplate = {
                 label = clipName,
-                value = clipName,
+                value = clipName
             }
             table.insert(templates, newTemplate)
 
@@ -173,11 +157,12 @@ function GetTemplates()
     FindAllTemplates(rootFolder)
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
-        mediaPool:ImportFolderFromFile("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Subtitles.drb")
+        mediaPool:ImportFolderFromFile(
+            "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Subtitles.drb")
         local clipName = "Default Template"
         local newTemplate = {
             label = clipName,
-            value = clipName,
+            value = clipName
         }
         table.insert(templates, newTemplate)
         defaultTemplateExists = true
@@ -215,10 +200,14 @@ function GetTracks()
 end
 
 function ExportAudio(outputDir)
-    resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
+    --resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
     project:LoadRenderPreset('render-audio-only')
-    project:SetRenderSettings({ TargetDir = outputDir })
+    project:SetRenderSettings("TargetDir", outputDir)
     local pid = project:AddRenderJob()
+    print("PID: ", pid)
+
+    project:StartRendering(pid)
+
     local renderJobList = project:GetRenderJobList()
     local renderSettings = renderJobList[#renderJobList]
 
@@ -226,10 +215,9 @@ function ExportAudio(outputDir)
         timeline = project:GetCurrentTimeline():GetUniqueId(),
         path = renderSettings["TargetDir"] .. "/" .. renderSettings["OutputFilename"],
         markIn = renderSettings["MarkIn"],
-        markOut = renderSettings["MarkOut"],
+        markOut = renderSettings["MarkOut"]
     }
 
-    project:StartRendering(pid)
     while project:IsRenderingInProgress() do
         print("Rendering...")
         sleep(0.5) -- Check every 500 milliseconds
@@ -258,8 +246,8 @@ end
 -- Function to read a JSON file
 local function read_json_file(file_path)
     local file = assert(io.open(file_path, "r")) -- Open file for reading
-    local content = file:read("*a")              -- Read the entire file content
-    file:close()                                 -- Close the file
+    local content = file:read("*a") -- Read the entire file content
+    file:close() -- Close the file
 
     -- Parse the JSON content
     local data, pos, err = json.decode(content, 1, nil)
@@ -324,7 +312,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
     for i, subtitle in ipairs(subtitles) do
         local success, err = pcall(function()
-            --print("Adding subtitle: ", subtitle["text"])
+            -- print("Adding subtitle: ", subtitle["text"])
             local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
             local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
 
@@ -350,7 +338,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
             --     print(k .. ": " .. tostring(v))
             -- end
 
-            local timelineItem = mediaPool:AppendToTimeline({ newClip })[1]
+            local timelineItem = mediaPool:AppendToTimeline({newClip})[1]
 
             -- Skip if text is not compatible
             if timelineItem:GetFusionCompCount() > 0 then
@@ -361,9 +349,9 @@ function AddSubtitles(filePath, trackIndex, templateName)
                 -- Set text colors if available
                 if speakersExist then
                     local speaker = speakers[subtitle["speaker"]]
-                    --dump(speaker)
+                    -- dump(speaker)
                     local color = hexToRgb(speaker.color)
-                    --print("Color: ", color.r, color.g, color.b)
+                    -- print("Color: ", color.r, color.g, color.b)
                     if speaker.style == "Fill" then
                         text_plus_tools[1]:SetInput("Red1", color.r)
                         text_plus_tools[1]:SetInput("Green1", color.g)
@@ -394,8 +382,25 @@ local function set_cors_headers(client)
     client:send("\r\n")
 end
 
+-- Server
+local port = 55010
+
+-- Set up server socket configuration
+local info = assert(socket.find_first_address("127.0.0.1", port))
+local server = assert(socket.create(info.family, info.socket_type, info.protocol))
+
+-- Set socket options
+server:set_blocking(false)
+assert(server:set_option("nodelay", true, "tcp"))
+assert(server:set_option("reuseaddr", true))
+
+-- Bind and listen
+assert(server:bind(info))
+assert(server:listen())
+
 -- Start AutoSubs Main App
-local result_open = ffi.C.system(command_open)
+-- local result_open = ffi.C.system(command_open)
+local result_open = 0
 if result_open == 0 then
     print("Success: AutoSubs app opened.")
 else
@@ -409,80 +414,88 @@ while not quitServer do
     -- Server loop to handle client connections
     local client, err = server:accept()
     if client then
-        -- Set client to non-blocking
-        assert(client:set_blocking(false))
-        --print("Client connected: ", client)
-        -- Try to receive data (example HTTP request)
-        local str, err = client:receive()
-        if str then
-            --print("Received request:", str)
-            -- Split the request by the double newline
-            local header_body_separator = "\r\n\r\n"
-            local _, _, content = string.find(str, header_body_separator .. "(.*)")
-            print("Received request:", content)
+        local peername, peer_err = client:get_peer_name()
+        if peername then
+                assert(client:set_blocking(false))
+                -- Try to receive data (example HTTP request)
+                local str, err = client:receive()
+                if str then
+                    -- print("Received request:", str)
+                    -- Split the request by the double newline
+                    local header_body_separator = "\r\n\r\n"
+                    local _, _, content = string.find(str, header_body_separator .. "(.*)")
+                    print("Received request:", content)
 
-            -- Parse the JSON content
-            local data, pos, err = json.decode(content, 1, nil)
-            local body = json.encode({ message = "Job failed" })
-            if data == nil then
-                --set_cors_headers(client)
-                print("Invalid JSON data")
-            elseif data.func == "GetTimelineInfo" then
-                print("[AutoSubs Server] Retrieving Timeline Info...")
-                local timelineInfo = GetTimelineInfo()
-                body = json.encode(timelineInfo)
-            elseif data.func == "GetTemplates" then
-                print("[AutoSubs Server] Retrieving Text+ Templates...")
-                local templateList = GetTemplates()
-                dump(templateList)
-                body = json.encode(templateList)
-            elseif data.func == "GetTracks" then
-                print("[AutoSubs Server] Retrieving Timeline Tracks...")
-                local trackList = GetTracks()
-                dump(trackList)
-                body = json.encode(trackList)
-            elseif data.func == "JumpToTime" then
-                print("[AutoSubs Server] Jumping to time...")
-                JumpToTime(data.start, data.markIn)
-                body = json.encode({ message = "Jumped to time" })
-            elseif data.func == "ExportAudio" then
-                print("[AutoSubs Server] Exporting audio...")
-                local audioInfo = ExportAudio(data.outputDir)
-                body = json.encode(audioInfo)
-            elseif data.func == "AddSubtitles" then
-                print("[AutoSubs Server] Adding subtitles to timeline...")
-                AddSubtitles(data.filePath, data.trackIndex, data.templateName)
-                body = json.encode({ message = "Job completed" })
-            elseif data.func == "Exit" then
-                body = json.encode({ message = "Server shutting down" })
-                quitServer = true
-            else
-                print("Invalid function name")
+                    -- Parse the JSON content
+                    local data, pos, err = json.decode(content, 1, nil)
+                    local body = json.encode({
+                        message = "Job failed"
+                    })
+                    if data == nil then
+                        -- set_cors_headers(client)
+                        print("Invalid JSON data")
+                    elseif data.func == "GetTimelineInfo" then
+                        print("[AutoSubs Server] Retrieving Timeline Info...")
+                        local timelineInfo = GetTimelineInfo()
+                        body = json.encode(timelineInfo)
+                    elseif data.func == "GetTemplates" then
+                        print("[AutoSubs Server] Retrieving Text+ Templates...")
+                        local templateList = GetTemplates()
+                        dump(templateList)
+                        body = json.encode(templateList)
+                    elseif data.func == "GetTracks" then
+                        print("[AutoSubs Server] Retrieving Timeline Tracks...")
+                        local trackList = GetTracks()
+                        dump(trackList)
+                        body = json.encode(trackList)
+                    elseif data.func == "JumpToTime" then
+                        print("[AutoSubs Server] Jumping to time...")
+                        JumpToTime(data.start, data.markIn)
+                        body = json.encode({
+                            message = "Jumped to time"
+                        })
+                    elseif data.func == "ExportAudio" then
+                        print("[AutoSubs Server] Exporting audio...")
+                        local audioInfo = ExportAudio(data.outputDir)
+                        body = json.encode(audioInfo)
+                    elseif data.func == "AddSubtitles" then
+                        print("[AutoSubs Server] Adding subtitles to timeline...")
+                        AddSubtitles(data.filePath, data.trackIndex, data.templateName)
+                        body = json.encode({
+                            message = "Job completed"
+                        })
+                    elseif data.func == "Exit" then
+                        body = json.encode({
+                            message = "Server shutting down"
+                        })
+                        quitServer = true
+                    else
+                        print("Invalid function name")
+                    end
+                    -- Send HTTP response content
+                    local response = CreateResponse(body)
+                    -- Set CORS headers
+                    -- set_cors_headers(client)
+                    -- print("Sending response:", response)
+                    assert(client:send(response))
+                    -- Close connection
+                    client:close()
+                elseif err == "closed" then
+                    client:close()
+                elseif err ~= "timeout" then
+                    error(err)
+                end
             end
-            -- Send HTTP response content
-            local response = CreateResponse(body)
-            -- Set CORS headers
-            --set_cors_headers(client)
-            --print("Sending response:", response)
-            assert(client:send(response))
-            -- Close connection
-            client:close()
-        elseif err == "closed" then
-            client:close()
-        elseif err ~= "timeout" then
-            error(err)
-        end
     elseif err ~= "timeout" then
         error(err)
     end
     sleep(0.1)
 end
 
-
 print("Shutting down AutoSubs Link server...")
 server:close()
 
 -- Kill transcription server if necessary
-ffi.C.system(command_close)
+--ffi.C.system(command_close)
 
 print("Server shut down.")

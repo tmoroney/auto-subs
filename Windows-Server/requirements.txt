@@ -3,7 +3,8 @@ torchaudio
 huggingface-hub
 fastapi
 uvicorn
-stable-ts[fw]
+git+https://github.com/jianfch/stable-ts.git
+faster-whisper
 pyannote.audio
 appdirs
 pyinstaller

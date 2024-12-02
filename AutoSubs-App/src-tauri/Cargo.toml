@@ -32,4 +32,5 @@ reqwest = { version = "0.11", features = ["json"] }
 
 # Add tokio for asynchronous runtime
 tokio = { version = "1", features = ["full"] }
+tauri-plugin-os = "2"
 
