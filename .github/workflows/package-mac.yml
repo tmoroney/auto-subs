@@ -66,17 +66,6 @@ jobs:
           --key "Notarization_AuthKey.p8" \
           --key-id "$APPLE_NOTARIZE_ID" \
           --issuer "$APPLE_ISSUER"
-      
-    - name: Install Dependencies
-      run: |
-        cd AutoSubs-App
-        npm install
-
-    - name: Bundle Tauri App
-      run: |
-        cd AutoSubs-App
-        export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        npm run tauri build -- --bundles app
 
     - name: Package Python Server
       run: |
@@ -114,10 +103,20 @@ jobs:
         # Sign any other executables in the main app directory
         find "$APP_DIR" -type f -perm +111 -exec bash -c 'sign_file "$0"' {} \;
 
-    - name: Move Python Server and App to Output Folder
+    - name: Move Python Server to resources folder
       run: |
-        mv "AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app" "Output"
-        mv "Mac-Server/dist/Transcription-Server" "Output"
+        mv "Transcription-Server/dist/Transcription-Server" "AutoSubs-App/src-tauri/resources"
+      
+    - name: Install Dependencies
+      run: |
+        cd AutoSubs-App
+        npm install
+
+    - name: Bundle Tauri App
+      run: |
+        cd AutoSubs-App
+        export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
+        npm run tauri build -- --bundles app
 
     - name: Create PKG Installer
       run: |

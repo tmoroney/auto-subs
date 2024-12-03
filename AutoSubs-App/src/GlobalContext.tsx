@@ -3,11 +3,12 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { join, documentDir } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
-import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces"
+import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { exit } from '@tauri-apps/plugin-process';
+import { platform } from '@tauri-apps/plugin-os';
 
 let transcriptionProcess: Child | null = null;
 
@@ -84,7 +85,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [trackList, setTrackList] = useState<Track[]>([]);
     const [timeline, setTimeline] = useState<string>("");
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
     const [error, setError] = useState("");
     const serverLoading = useRef(true);
@@ -102,7 +103,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     async function setTranscriptsFolder() {
         storageDir = await join(await documentDir(), "AutoSubs");
         // create directory
-        await mkdir(storageDir, { baseDir: BaseDirectory.Document });
+        const dirExists = await exists(storageDir, { baseDir: BaseDirectory.Document });
+        if (!dirExists) {
+            await mkdir(storageDir, { baseDir: BaseDirectory.Document, recursive: true });
+        }
     }
 
     async function getFullTranscriptPath() {
@@ -150,7 +154,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     async function startTranscriptionServer() {
         try {
             // Create the command without using 'open' or shell-specific arguments
-            const command = Command.create('transcription-server')
+            let command;
+            if (platform() === 'windows') {
+                command = Command.create('transcription-server-win');
+            } else if (platform() === 'macos')
+                command = Command.create('transcription-server-mac')
+            else {
+                return;
+            }
 
             // Set up event listeners for logging
             command.on('close', (data) => {
@@ -168,27 +179,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     setSubtitles(prevSubtitles => [...prevSubtitles, subtitle]);
                     setProcessingStep("Transcribing Audio...");
                 }
-
-                /*
-                if (line.includes('segmentation')) {
-                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
-                    const percentage = Number(match) / 100 * 25
-                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
-                } else if (line.includes('speaker_counting')) {
-                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
-                    const percentage = 25 + (Number(match) / 100 * 25)
-                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
-                } else if (line.includes('embeddings')) {
-                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
-                    const percentage = 50 + (Number(match) / 100 * 25)
-                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
-                } else if (line.includes('discrete_diarization')) {
-                    const match = line.match(/(\w+)\s+.*?(\d+)%/);
-                    const percentage = 75 + (Number(match) / 100 * 25)
-                    setProcessingStep(`Diarizing speakers... (${Math.round(percentage)}%)`)
-                }
-                console.log(`Transcription Server STDOUT: "${line}"`);
-                */
             });
 
             command.stderr.on('data', (line) => {
@@ -196,7 +186,21 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 if (line == "" || line.length < 1) {
                     return;
                 }
-                if ((line.includes('address already in use') || line.includes('Uvicorn running')) && serverLoading.current) {
+
+                if (line.includes('Transcribe:')) {
+                    const percentageMatch = line.match(/(\d+)%/);
+                    if (percentageMatch && percentageMatch[1]) {
+                        const percentage = parseInt(percentageMatch[1], 10);
+                        setProcessingStep(`Transcribing Audio... ${percentage}%`); // Update the state
+                    }
+                } else if (line.includes('Adjustment:') || line.includes('Aligning:')) {
+                    const percentageMatch = line.match(/(\d+)%/);
+                    if (percentageMatch && percentageMatch[1]) {
+                        const percentage = parseInt(percentageMatch[1], 10);
+                        setProcessingStep(`Adjusting Timing... ${percentage}%`); // Update the state
+                    }
+                }
+                else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket'))  && serverLoading.current) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
@@ -616,9 +620,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     useEffect(() => {
         setTranscriptsFolder();
         
-        //startTranscriptionServer();
-        if (hasInitialized.current) return; // Prevents the effect from running again
-        hasInitialized.current = true;
+        // Prevents the effect from running again on subsequent renders
+        if (!hasInitialized.current) {
+            startTranscriptionServer();
+            hasInitialized.current = true;
+        } 
 
         initializeStore().then((result) => {
             setModel(result.storedModel || "small");

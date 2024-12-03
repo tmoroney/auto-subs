@@ -83,17 +83,20 @@
       "identifier": "store:default",
       "allow": [
         {
-          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+          "path": "$DOCUMENT/**"
         }
       ]
     },
-    "shell:default",
     {
       "identifier": "shell:allow-spawn",
       "allow": [
         {
-          "name": "transcription-server",
-          "cmd": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server"
+          "name": "transcription-server-mac",
+          "cmd": "resources/Transcription-Server/transcription-server"
+        },
+        {
+          "name": "transcription-server-win",
+          "cmd": "resources\\Transcription-Server\\transcription-server.exe"
         }
       ]
     },

@@ -1,44 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import os
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
-import certifi
-
-# Initialize variables if not already defined
-hiddenimports = []
-datas = []
-binaries = []
-
-# Collect all data files, binaries, and hiddenimports for 'speechbrain'
-speechbrain_datas, speechbrain_binaries, speechbrain_hiddenimports = collect_all('speechbrain')
-
-# Include 'speechbrain' components
-hiddenimports += speechbrain_hiddenimports
-datas += speechbrain_datas
-binaries += speechbrain_binaries
-
-# Include other packages as before
-hiddenimports += collect_submodules('stable_whisper')
-hiddenimports += collect_submodules('faster_whisper')
-hiddenimports += collect_submodules('pytorch_lightning')
-hiddenimports += collect_submodules('pyannote')
-hiddenimports += collect_submodules('torch')
-hiddenimports += collect_submodules('torchaudio')
-hiddenimports += collect_submodules('transformers')
-hiddenimports += collect_submodules('huggingface_hub')
-
-# Collect data files
-datas += collect_data_files('mlx')
-datas += collect_data_files('mlx_whisper')
-datas += collect_data_files('pytorch_lightning')
-datas += collect_data_files('lightning_fabric')
-datas += collect_data_files('pyannote')
-datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
-
-# Add certifi certificate bundle
-certifi_data = [(certifi.where(), "certifi")]
-datas += certifi_data
-
 # Exclude unnecessary modules to reduce size and startup time
 excludes = [
     # Development tools
@@ -63,8 +24,57 @@ excludes = [
     'sqlalchemy', 'psycopg2', 'pymysql', 'redis', 'celery', 'rq',
 ]
 
+import os
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
+import certifi
+
+# Initialize variables if not already defined
+hiddenimports = []
+datas = []
+binaries = []
+
+# Collect all data files, binaries, and hiddenimports for 'speechbrain'
+speechbrain_datas, speechbrain_binaries, speechbrain_hiddenimports = collect_all('speechbrain')
+
+# Include 'speechbrain' components
+hiddenimports += speechbrain_hiddenimports
+datas += speechbrain_datas
+binaries += speechbrain_binaries
+
+# Include other packages as before
+import platform
+
+if platform.system() == 'Windows':
+    hiddenimports += collect_submodules('faster_whisper')
+    datas += collect_data_files('faster_whisper')
+else:
+    hiddenimports += collect_submodules('mlx')
+    hiddenimports += collect_submodules('mlx_whisper') 
+    datas += collect_data_files('mlx')
+    datas += collect_data_files('mlx_whisper')
+    excludes.append('openai-whisper')
+
+# Include other packages
+hiddenimports += collect_submodules('stable_whisper')
+hiddenimports += collect_submodules('pytorch_lightning')
+hiddenimports += collect_submodules('pyannote')
+hiddenimports += collect_submodules('torch')
+hiddenimports += collect_submodules('torchaudio')
+hiddenimports += collect_submodules('transformers')
+hiddenimports += collect_submodules('huggingface_hub')
+
+# Collect other data files
+datas += collect_data_files('pytorch_lightning')
+datas += collect_data_files('lightning_fabric')
+datas += collect_data_files('pyannote')
+datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
+
+# Add certifi certificate bundle
+certifi_data = [(certifi.where(), "certifi")]
+datas += certifi_data
+
 a = Analysis(
-    ['transcription-server.py'],
+    ['server.py'],
     pathex=[],
     binaries=binaries,   # Include collected binaries
     datas=datas,
@@ -88,7 +98,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,              # Set strip to False for debugging
     upx=False,                # Disable UPX compression
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
 )
 

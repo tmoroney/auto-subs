@@ -2,7 +2,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 import json
-import torchaudio
 import torch
 from pyannote.audio import Pipeline
 import stable_whisper
@@ -15,21 +14,23 @@ import sys
 import os
 import appdirs
 import time
+import platform
 
 start_time = time.time()
-
 
 class Unbuffered(object):
     def __init__(self, stream):
         self.stream = stream
 
     def write(self, data):
-        self.stream.write(data)
-        self.stream.flush()
+        if self.stream:
+            self.stream.write(data)
+            self.stream.flush()
 
     def writelines(self, datas):
-        self.stream.writelines(datas)
-        self.stream.flush()
+        if self.stream:
+            self.stream.writelines(datas)
+            self.stream.flush()
 
     def __getattr__(self, attr):
         return getattr(self.stream, attr)
@@ -58,7 +59,6 @@ else:
 # Add FFmpeg binaries to PATH
 ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin')
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
-
 
 end_time = time.time()
 print(f"Initialization time: {end_time - start_time} seconds")
@@ -142,21 +142,35 @@ def is_model_accessible(model_id, token=None, revision=None):
         print(f"An unexpected error occurred: {e}")
         return False
 
+# Function for transcribing the audio
+def inference(audio, **kwargs) -> dict:
+    import mlx_whisper
+    if kwargs["language"] == "auto":
+        output = mlx_whisper.transcribe(
+            audio,
+            path_or_hf_repo=kwargs["model"],
+            word_timestamps=True,
+            verbose=True,
+            task=kwargs["task"]
+        )
+    else:
+        output = mlx_whisper.transcribe(
+            audio,
+            path_or_hf_repo=kwargs["model"],
+            word_timestamps=True,
+            language=kwargs["language"],
+            verbose=True,
+            task=kwargs["task"]
+        )
+    return output
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
-    print("Kwargs", kwargs)
-    model = stable_whisper.load_faster_whisper(
-        kwargs["model"], device=kwargs["device"], compute_type="int8")
-
-    try:
+    if (platform.system() == 'Windows'):
+        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type="int8")
         result = model.transcribe_stable(audio_file, language=kwargs["language"], vad_filter=True, condition_on_previous_text=False)
         model.align_words(audio_file, result, kwargs["language"])
-    except Exception as e:
-        print(f"Error during transcription: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error during transcription: {e}"
-        )
+    else:
+        result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
 
     (
         result

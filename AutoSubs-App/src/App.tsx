@@ -386,7 +386,7 @@ function NavigationAside() {
         </nav>
       </aside >
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[430px] md:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>Quick Tutorial</DialogTitle>
             <DialogDescription>Learn how to use our subtitle generation tool</DialogDescription>

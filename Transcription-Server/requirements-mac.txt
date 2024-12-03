@@ -1,0 +1,10 @@
+torch==2.5.1
+torchaudio==2.5.1
+huggingface-hub
+fastapi
+uvicorn
+git+https://github.com/jianfch/stable-ts.git
+mlx_whisper
+pyannote.audio
+appdirs
+pyinstaller

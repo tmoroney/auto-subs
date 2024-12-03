@@ -15,3 +15,8 @@ sign.sh
 *.pkg
 /AutoSubs/src-tauri/target
 .env
+/Windows-Server/build
+/Windows-Server/dist
+/AutoSubs-App/src-tauri/resources/Transcription-Server
+/Transcription-Server/dist
+/Transcription-Server/build

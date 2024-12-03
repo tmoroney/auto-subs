@@ -575,7 +575,7 @@ export function HomePage() {
                     </Card>
                 </div>
             </div>
-            <div className="relative hidden flex md:flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-1">
+            <div className="sticky top-0 hidden md:flex h-[calc(100vh-5.5rem)] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-1">
                 <div className="flex flex-row w-full gap-2 pb-4">
                     <Button
                         variant="outline"
@@ -596,7 +596,7 @@ export function HomePage() {
                         Export
                     </Button>
                 </div>
-                <div className="overflow-y-auto">
+                <div className="overflow-y-auto flex-1">
                     {subtitles.length > 0 ? (
                         <>
                             <SubtitleList subtitles={subtitles} />
