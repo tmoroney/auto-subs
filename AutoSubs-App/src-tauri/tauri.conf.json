@@ -43,6 +43,11 @@
     ],
     "resources": [
       "resources/"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsi"
+      }
+    }
   }
 }
