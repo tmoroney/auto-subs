@@ -1,4 +1,6 @@
 local ffi = require("ffi")
+local socket = require("ljsocket")
+local json = require("dkjson")
 
 -- Detect the operating system
 local os_name = ffi.os
@@ -17,7 +19,6 @@ if os_name == "Windows" then
     mainApp = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\AutoSubs.exe"
     transcriptionServer =
         "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\Transcription-Server\\transcription-server.exe"
-    module_path = storagePath .. "modules\\"
 
     -- Use the C system function to execute shell commands
     ffi.cdef [[ int __cdecl system(const char *command); ]]
@@ -36,7 +37,6 @@ elseif os_name == "OSX" then
     mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
     transcriptionServer =
         '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
-    module_path = storagePath .. "modules/"
 
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
@@ -49,11 +49,6 @@ else
     print("Unsupported OS")
     return
 end
-
--- Import Lua modules
-package.path = package.path .. ";" .. module_path .. "?.lua"
-local socket = require("ljsocket")
-local json = require("dkjson")
 
 -- Load common DaVinci Resolve API utilities
 local projectManager = resolve:GetProjectManager()
@@ -107,10 +102,10 @@ end
 -- convert seconds to timecode in format HH:MM:SS:FF
 function FramesToTimecode(frames, frameRate)
     local hours = math.floor(frames / (frameRate * 60 * 60))
-    local minutes = math.floor(frames / (frameRate * 60)) % 60
-    local seconds = math.floor(frames / frameRate) % 60
-    local frames = frames % frameRate
-    return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, frames)
+    local minutes = math.floor((frames / (frameRate * 60)) % 60)
+    local seconds = math.floor((frames / frameRate) % 60)
+    local remainingFrames = frames % frameRate
+    return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, remainingFrames)
 end
 
 -- DaVinci Resolve API functions
@@ -200,6 +195,7 @@ function GetTracks()
 end
 
 function ExportAudio(outputDir)
+    -- resolve:OpenPage("deliver")
     -- resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
     project:LoadRenderPreset('render-audio-only')
     project:SetRenderSettings({

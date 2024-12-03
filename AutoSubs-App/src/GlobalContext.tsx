@@ -116,7 +116,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     async function initializeStore() {
         if (!store) {
-            store = await load(await join(storageDir, 'autosubs-store.json'), { autoSave: false });
+            store = await load('autosubs-store.json', { autoSave: false });
         }
 
         const [

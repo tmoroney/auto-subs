@@ -46,13 +46,7 @@
           "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
         },
         {
-          "path": "$DESKTOP/**"
-        },
-        {
-          "path": "$DOCUMENT/**"
-        },
-        {
-          "path": "$DOWNLOAD/**"
+          "path": "$DOCUMENT/AutoSubs/**"
         }
       ]
     },
@@ -79,14 +73,7 @@
         }
       ]
     },
-    {
-      "identifier": "store:default",
-      "allow": [
-        {
-          "path": "$DOCUMENT/**"
-        }
-      ]
-    },
+    "store:default",
     {
       "identifier": "shell:allow-spawn",
       "allow": [
