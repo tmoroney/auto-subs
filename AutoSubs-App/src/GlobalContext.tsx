@@ -200,7 +200,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                         setProcessingStep(`Adjusting Timing... ${percentage}%`); // Update the state
                     }
                 }
-                else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket'))  && serverLoading.current) {
+                else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket')) && serverLoading.current) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
@@ -250,20 +250,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setTimeline(audioInfo.timeline);
             console.log("Fetching transcription...");
             setProcessingStep("Preparing to transcribe...");
-
-            console.log(JSON.stringify({
-                file_path: audioInfo.path,
-                output_dir: storageDir,
-                timeline: audioInfo.timeline,
-                model: model,
-                language: currentLanguage,
-                task: translate ? "translate" : "transcribe",
-                diarize: diarize,
-                max_words: maxWords,
-                max_chars: maxChars,
-                mark_in: audioInfo.markIn,
-                mark_out: audioInfo.markOut
-            }));
 
             // Make the POST request to the transcription API
             const response = await fetch(transcribeAPI, {
@@ -356,7 +342,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             return timelineId;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
-            setError("Failed to connect to Resolve via AutoSubs Link")
+            setError("Failed to connect to Resolve - Please open AutoSubs in Davinci Resolve via the Workspace -> Scripts menu.")
         }
     }
 
@@ -374,6 +360,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error jumping to time:', error);
+            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
         }
     }
 
@@ -392,7 +379,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching tracks:', error);
-            setError("Failed to connect to Resolve via AutoSubs Link")
+            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
         }
     }
 
@@ -411,7 +398,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching templates:', error);
-            setError("Failed to connect to Davinci Resolve via AutoSubs Link")
+            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
         }
     }
 
@@ -453,21 +440,26 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     }
 
     async function exportAudio() {
-        // send request to Lua server (Resolve)
-        const response = await fetch(resolveAPI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                func: "ExportAudio",
-                outputDir: storageDir
-            }),
-        });
+        try {
+            // send request to Lua server (Resolve)
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    func: "ExportAudio",
+                    outputDir: storageDir
+                }),
+            });
 
-        const data = await response.json();
-        setTimeline(data.timelineId);
-        return data;
+            const data = await response.json();
+            setTimeline(data.timelineId);
+            return data;
+        } catch (error) {
+            console.error('Error exporting audio:', error);
+            setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
+        }
     };
 
     async function addSubtitles(currentTemplate: string, currentTrack: string, filePath?: string) {
@@ -493,6 +485,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error adding subtitles:', error);
+            setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
         }
     }
 
@@ -619,12 +612,12 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     useEffect(() => {
         setTranscriptsFolder();
-        
+
         // Prevents the effect from running again on subsequent renders
         if (!hasInitialized.current) {
             startTranscriptionServer();
             hasInitialized.current = true;
-        } 
+        }
 
         initializeStore().then((result) => {
             setModel(result.storedModel || "small");

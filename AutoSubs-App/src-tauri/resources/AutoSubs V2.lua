@@ -15,6 +15,7 @@ local command_close = ""
 local command_kill_server = ""
 
 if os_name == "Windows" then
+    local appDataPath = os.getenv("APPDATA")
     storagePath = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\"
     mainApp = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\AutoSubs.exe"
     transcriptionServer =

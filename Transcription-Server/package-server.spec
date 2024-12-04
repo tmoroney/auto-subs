@@ -47,12 +47,16 @@ import platform
 if platform.system() == 'Windows':
     hiddenimports += collect_submodules('faster_whisper')
     datas += collect_data_files('faster_whisper')
+    version_file = 'version-win.txt'
+    plist = None
 else:
     hiddenimports += collect_submodules('mlx')
     hiddenimports += collect_submodules('mlx_whisper') 
     datas += collect_data_files('mlx')
     datas += collect_data_files('mlx_whisper')
     excludes.append('openai-whisper')
+    version_file = None
+    plist = 'version-mac.plist'
 
 # Include other packages
 hiddenimports += collect_submodules('stable_whisper')
@@ -100,6 +104,8 @@ exe = EXE(
     upx=False,                # Disable UPX compression
     console=True,
     disable_windowed_traceback=False,
+    version=version_file,     # Add version file for Windows (None for macOS)
+    info_plist=plist          # Add version file for macOS (None for Windows)
 )
 
 coll = COLLECT(
