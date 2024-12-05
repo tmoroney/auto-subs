@@ -32,13 +32,11 @@ if os_name == "Windows" then
     -- Windows paths
     storagePath = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
 
-    local pathData = read_json_file(storagePath .. "install_path.json")
-    if pathData == nil then
-        print("Error reading install path")
-        return
-    end
+    local file = assert(io.open(storagePath .. "install_path.txt", "r"))
+    local install_path = file:read("*l")
+    file:close()
 
-    mainApp = pathData.install_path .. "/AutoSubs.exe"
+    mainApp = install_path .. "/AutoSubs.exe"
 
     -- Use the C system function to execute shell commands
     ffi.cdef [[ int __cdecl system(const char *command); ]]
@@ -51,8 +49,13 @@ if os_name == "Windows" then
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
 
 elseif os_name == "OSX" then
-    storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
-    mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
+    storagePath = os.getenv("HOME") .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
+    
+    local file = assert(io.open(storagePath .. "install_path.txt", "r"))
+    local install_path = file:read("*l")
+    file:close()
+
+    mainApp = install_path .. "/AutoSubs.exe"
 
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
