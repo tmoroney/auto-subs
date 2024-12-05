@@ -47,7 +47,7 @@ if os_name == "Windows" then
     ffi.cdef [[ void Sleep(unsigned int ms); ]]
 
     -- Windows commands to open and close apps using PowerShell
-    command_open = 'start "" "' .. mainApp .. '"'
+    command_open = 'start "" /B "' .. mainApp .. '"'
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
 
 elseif os_name == "OSX" then
