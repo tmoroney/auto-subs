@@ -26,7 +26,8 @@
           "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**",
           "$DESKTOP/**",
           "$DOCUMENT/**",
-          "$DOWNLOAD/**"
+          "$DOWNLOAD/**",
+          "$RESOURCE/**"
         ]
       }
     }
@@ -45,7 +46,8 @@
       "resources/"
     ],
     "macOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "14.0",
+      "entitlements": "macos/entitlements.plist"
     },
     "windows": {
       "nsis": {

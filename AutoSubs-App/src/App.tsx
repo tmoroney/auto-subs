@@ -146,7 +146,7 @@ function NavigationAside() {
   const { error, setError } = useGlobal();
 
   useEffect(() => {
-    if (error !== "") {
+    if (error?.title !== "") {
       setOpenErrorDialog(true);
     }
   }, [error])
@@ -424,18 +424,18 @@ function NavigationAside() {
       <Dialog open={openErrorDialog} onOpenChange={setOpenErrorDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Error</DialogTitle>
+            <DialogTitle>{error?.title}</DialogTitle>
             <DialogDescription>
-              An error has occurred. Please help us resolve it by reporting the issue on our{' '}
+              Please report this on{' '}
               <a
-                href="https://discord.com/invite/TBFUfGWegm"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
+              href="https://discord.com/invite/TBFUfGWegm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
               >
-                Discord server {' '}
+              Discord{' '}
               </a>
-              or by creating an issue on{' '}
+              or create an issue on {' '}
               <a
                 href="https://github.com/tmoroney/auto-subs/issues"
                 target="_blank"
@@ -448,12 +448,15 @@ function NavigationAside() {
           </DialogHeader>
           <ScrollArea className="mt-2 mb-4 max-h-[60vh] pr-4">
             <div className="space-y-6">
-              <span className="text-s">{error}</span>
+              <span className="text-s">{error?.desc}</span>
             </div>
           </ScrollArea>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" onClick={() => setError("")}>Close</Button>
+              <Button variant="outline" onClick={() => setError({
+                title: "",
+                desc: ""
+              })}>Close</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>

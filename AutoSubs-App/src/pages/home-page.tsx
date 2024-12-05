@@ -65,6 +65,8 @@ import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+//import { resolveResource } from "@tauri-apps/api/path";
+//import { convertFileSrc } from '@tauri-apps/api/core';
 
 const validateAPI = "http://localhost:55000/validate/";
 
@@ -212,7 +214,23 @@ export function HomePage() {
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
     const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
+    /*
+    const [diarizeFormImg, setDiarizeFormImg] = useState<string>("");
+    useEffect(() => {
+        const fetchImagePath = async () => {
+            try {
+                const path = await resolveResource("Diarization-Form.png");
+                const assetUrl = convertFileSrc(path);
+                setDiarizeFormImg(assetUrl);
+                console.log("Diarization form image path: ", assetUrl);
+            } catch (error) {
+                console.error("Error resolving resource path:", error);
+            }
+        };
 
+        fetchImagePath();
+    }, []);
+    */
 
     async function checkDiarizeAvailable(checked: boolean) {
         if (isLoading) return;
@@ -253,7 +271,10 @@ export function HomePage() {
 
                 }
             } catch (error) {
-                setError(String(error));
+                setError({
+                    title: "Error",
+                    desc: String(error),
+                });
             }
         }
     }

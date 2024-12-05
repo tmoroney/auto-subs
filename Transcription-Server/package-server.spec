@@ -49,6 +49,7 @@ if platform.system() == 'Windows':
     datas += collect_data_files('faster_whisper')
     version_file = 'version-win.txt'
     plist = None
+    ffmpeg_dir = 'ffmpeg_bin_win'
 else:
     hiddenimports += collect_submodules('mlx')
     hiddenimports += collect_submodules('mlx_whisper') 
@@ -57,6 +58,7 @@ else:
     excludes.append('openai-whisper')
     version_file = None
     plist = 'version-mac.plist'
+    ffmpeg_dir = 'ffmpeg_bin_mac'
 
 # Include other packages
 hiddenimports += collect_submodules('stable_whisper')
@@ -71,7 +73,7 @@ hiddenimports += collect_submodules('huggingface_hub')
 datas += collect_data_files('pytorch_lightning')
 datas += collect_data_files('lightning_fabric')
 datas += collect_data_files('pyannote')
-datas += [(os.path.abspath('ffmpeg_bin'), 'ffmpeg_bin')]
+datas += [(os.path.abspath(ffmpeg_dir), ffmpeg_dir)]
 
 # Add certifi certificate bundle
 certifi_data = [(certifi.where(), "certifi")]

@@ -20,3 +20,4 @@ sign.sh
 /AutoSubs-App/src-tauri/resources/Transcription-Server
 /Transcription-Server/dist
 /Transcription-Server/build
+AutoSubs-App/package-lock.json

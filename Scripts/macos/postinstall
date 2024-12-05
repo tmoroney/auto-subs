@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Define paths
+APP_PATH="/Applications/AutoSubs.app"
+RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
+DEST_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+MODULES_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Modules/Lua"
+JSON_FILE="$DEST_PATH/AutoSubs/install_path.json"
+
+# Copy Lua file
+cp "$RESOURCES_PATH/AutoSubs V2.lua" "$DEST_PATH"
+cp "$RESOURCES_PATH/AutoSubs" "$DEST_PATH"
+cp "$RESOURCES_PATH/modules/"* "$MODULES_PATH"
+
+# Write JSON file with installation path
+echo '{ "install_path": "'"$APP_PATH"'" }' > "$JSON_FILE"

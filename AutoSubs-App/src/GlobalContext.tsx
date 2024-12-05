@@ -27,8 +27,8 @@ interface GlobalContextProps {
     maxChars: number;
     processingStep: string;
     isLoading: boolean;
-    error: string;
-    setError: (errorMsg: string) => void
+    error: ErrorMsg | undefined;
+    setError: (errorMsg: ErrorMsg | undefined) => void
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
     setLanguage: (newLanguage: string) => void;
@@ -75,6 +75,10 @@ interface Track {
     value: string;
     label: string;
 }
+interface ErrorMsg {
+    title: string;
+    desc: string;
+}
 
 const GlobalContext = createContext<GlobalContextProps | undefined>(undefined);
 
@@ -87,7 +91,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
     const [isLoading, setIsLoading] = useState(true);
     const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
-    const [error, setError] = useState("");
+    const [error, setError] = useState<ErrorMsg>();
     const serverLoading = useRef(true);
 
     const [model, setModel] = useState("small");
@@ -286,7 +290,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     console.error("Failed to parse error response as JSON:", jsonError);
                 }
                 // Set the error state with the extracted or default message
-                setError(errorMessage);
+                setError({
+                    title: "Transcription Error",
+                    desc: errorMessage
+                });
                 // Throw an error to be caught in the catch block
                 throw new Error(errorMessage);
             }
@@ -317,7 +324,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             }
 
             // Update the error state with the appropriate message
-            setError(errorMessage);
+            setError({
+                title: "Transcription Error",
+                desc: errorMessage
+            });
 
         } finally {
             // Ensure that the loading state is reset regardless of success or failure
@@ -342,7 +352,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             return timelineId;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
-            setError("Failed to connect to Resolve - Please open AutoSubs in Davinci Resolve via the Workspace -> Scripts menu.")
+            setError({
+                title: "Failed to connect to Resolve",
+                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
+            });
         }
     }
 
@@ -360,7 +373,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error jumping to time:', error);
-            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
+            //setError("Failed to connect to Resolve. Open AutoSubs via the Workspace -> Scripts menu inside Resolve.")
+            setError({
+                title: "Failed to connect to Resolve",
+                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
+            });
         }
     }
 
@@ -379,7 +396,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching tracks:', error);
-            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
+            setError({
+                title: "Failed to connect to Resolve",
+                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
+            });
         }
     }
 
@@ -398,7 +418,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error fetching templates:', error);
-            setError("Failed to connect to Davinci Resolve - Please open AutoSubs via the Workspace -> Scripts menu in Resolve.")
+            setError({
+                title: "Failed to connect to Resolve",
+                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
+            });
         }
     }
 
@@ -425,7 +448,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             let transcript = JSON.parse(contents);
             return transcript;
         } catch (error) {
-            setError(String(error))
+            setError({
+                title: "Error reading transcript",
+                desc: "Failed to read the transcript file. Please try again."
+            })
         }
     }
 
@@ -458,7 +484,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             return data;
         } catch (error) {
             console.error('Error exporting audio:', error);
-            setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
+            //setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
+            setError({
+                title: "Error Exporting Audio",
+                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
+            });
         }
     };
 
@@ -485,7 +515,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error adding subtitles:', error);
-            setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
+            //setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
+            setError({
+                title: "Error Adding Subtitles",
+                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
+            });
         }
     }
 

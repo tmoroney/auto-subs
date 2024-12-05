@@ -39,6 +39,7 @@
         }
       ]
     },
+    "fs:allow-resource-read-recursive",
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [
@@ -79,11 +80,11 @@
       "allow": [
         {
           "name": "transcription-server-mac",
-          "cmd": "resources/Transcription-Server/transcription-server"
+          "cmd": "$RESOURCE/resources/Transcription-Server/transcription-server"
         },
         {
           "name": "transcription-server-win",
-          "cmd": "resources\\Transcription-Server\\transcription-server.exe"
+          "cmd": "$RESOURCE\\resources\\Transcription-Server\\transcription-server.exe"
         }
       ]
     },

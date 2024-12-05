@@ -57,7 +57,11 @@ else:
     base_path = os.path.dirname(__file__)
 
 # Add FFmpeg binaries to PATH
-ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin')
+if platform.system() == 'Windows':
+    ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_win')
+else:
+    ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac')
+    
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
 
 end_time = time.time()
