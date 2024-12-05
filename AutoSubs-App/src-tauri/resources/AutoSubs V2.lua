@@ -403,8 +403,7 @@ assert(server:bind(info))
 assert(server:listen())
 
 -- Start AutoSubs Main App
--- local result_open = ffi.C.system(command_open)
-local result_open = 0
+local result_open = ffi.C.system(command_open)
 if result_open == 0 then
     print("Success: AutoSubs app opened.")
 else
