@@ -6,38 +6,53 @@ local json = require("dkjson")
 local os_name = ffi.os
 print("Operating System: " .. os_name)
 
-local storagePath = ""
-local module_path = ""
-local mainApp = ""
-local transcriptionServer = ""
-local command_open = ""
-local command_close = ""
-local command_kill_server = ""
+-- Function to read a JSON file
+local function read_json_file(file_path)
+    local file = assert(io.open(file_path, "r")) -- Open file for reading
+    local content = file:read("*a") -- Read the entire file content
+    file:close() -- Close the file
+
+    -- Parse the JSON content
+    local data, pos, err = json.decode(content, 1, nil)
+
+    if err then
+        print("Error:", err)
+        return nil
+    end
+
+    return data -- Return the decoded Lua table
+end
+
+local storagePath
+local mainApp
+local command_open
+local command_close
 
 if os_name == "Windows" then
-    local appDataPath = os.getenv("APPDATA")
-    storagePath = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\"
-    mainApp = "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\AutoSubs.exe"
-    transcriptionServer =
-        "C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Fusion\\AutoSubs\\Transcription-Server\\transcription-server.exe"
+    -- Windows paths
+    storagePath = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
+
+    local pathData = read_json_file(storagePath .. "install_path.json")
+    if pathData == nil then
+        print("Error reading install path")
+        return
+    end
+
+    mainApp = pathData.install_path .. "/AutoSubs.exe"
 
     -- Use the C system function to execute shell commands
     ffi.cdef [[ int __cdecl system(const char *command); ]]
 
-    ffi.cdef [[
-        void Sleep(unsigned int ms);
-    ]]
+    -- Windows sleep function (no terminal by using ffi instead of os.execute)
+    ffi.cdef [[ void Sleep(unsigned int ms); ]]
 
     -- Windows commands to open and close apps using PowerShell
     command_open = 'start "" "' .. mainApp .. '"'
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
-    command_kill_server = 'powershell -Command "Get-Process transcription-server | Stop-Process -Force"'
 
 elseif os_name == "OSX" then
     storagePath = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs/"
     mainApp = '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/AutoSubs.app'
-    transcriptionServer =
-        '/Library/Application\\ Support/Blackmagic\\ Design/DaVinci\\ Resolve/Fusion/AutoSubs/Transcription-Server/transcription-server'
 
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
@@ -45,7 +60,6 @@ elseif os_name == "OSX" then
     -- MacOS commands to open and close
     command_open = 'open ' .. mainApp
     command_close = "pkill -f " .. mainApp
-    command_kill_server = "pkill -f " .. transcriptionServer
 else
     print("Unsupported OS")
     return
@@ -153,8 +167,7 @@ function GetTemplates()
     FindAllTemplates(rootFolder)
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
-        mediaPool:ImportFolderFromFile(
-            "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubsV2/Subtitles.drb")
+        mediaPool:ImportFolderFromFile(storagePath .. "subtitle-template.drb")
         local clipName = "Default Template"
         local newTemplate = {
             label = clipName,
@@ -197,7 +210,7 @@ end
 
 function ExportAudio(outputDir)
     -- resolve:OpenPage("deliver")
-    -- resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
+    resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
     project:LoadRenderPreset('render-audio-only')
     project:SetRenderSettings({
         TargetDir = outputDir
@@ -240,23 +253,6 @@ function GetTemplateItem(folder, templateName)
             return clip
         end
     end
-end
-
--- Function to read a JSON file
-local function read_json_file(file_path)
-    local file = assert(io.open(file_path, "r")) -- Open file for reading
-    local content = file:read("*a") -- Read the entire file content
-    file:close() -- Close the file
-
-    -- Parse the JSON content
-    local data, pos, err = json.decode(content, 1, nil)
-
-    if err then
-        print("Error:", err)
-        return nil
-    end
-
-    return data -- Return the decoded Lua table
 end
 
 -- Add subtitles to the timeline using the specified template
