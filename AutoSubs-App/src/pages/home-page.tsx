@@ -624,7 +624,7 @@ export function HomePage() {
                         </>
                     ) : (
                         <>
-                            <Label className="text-center">No subtitles found for this timeline</Label>
+                            <Label className="flex justify-center items-center text-center opacity-70 py-2">No subtitles found for this timeline</Label>
                             <div className="space-y-2 pt-4 px-2">
                                 <Skeleton className="h-4 w-full" />
                                 <Skeleton className="h-4 w-[80%]" />

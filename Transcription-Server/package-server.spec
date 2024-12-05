@@ -26,7 +26,6 @@ excludes = [
 
 import os
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
-import certifi
 
 # Initialize variables if not already defined
 hiddenimports = []
@@ -75,10 +74,6 @@ datas += collect_data_files('lightning_fabric')
 datas += collect_data_files('pyannote')
 datas += [(os.path.abspath(ffmpeg_dir), ffmpeg_dir)]
 
-# Add certifi certificate bundle
-certifi_data = [(certifi.where(), "certifi")]
-datas += certifi_data
-
 a = Analysis(
     ['server.py'],
     pathex=[],
@@ -90,7 +85,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=excludes,
     noarchive=False,     # Include PYZ
-    optimize=0,
+    optimize=2,          # Apply maximum bytecode optimization
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None, optimize=2)
@@ -100,12 +95,11 @@ exe = EXE(
     a.scripts,
     exclude_binaries=True,    # Exclude binaries from EXE
     name='transcription-server',  # Use consistent naming
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,              # Set strip to False for debugging
-    upx=False,                # Disable UPX compression
-    console=True,
-    disable_windowed_traceback=False,
+    debug=False,              # Ensure debug is off
+    strip=True,               # Strip unnecessary symbols
+    upx=True,                 # Enable UPX compression
+    console=True,             # Use a windowed app if applicable
+    disable_windowed_traceback=True,
     version=version_file,     # Add version file for Windows (None for macOS)
     info_plist=plist          # Add version file for macOS (None for Windows)
 )

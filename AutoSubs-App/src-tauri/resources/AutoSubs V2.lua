@@ -10,7 +10,7 @@ print("Operating System: " .. os_name)
 local function read_json_file(file_path)
     local file = assert(io.open(file_path, "r")) -- Open file for reading
     local content = file:read("*a") -- Read the entire file content
-    file:close() -- Close the file
+    file:close()
 
     -- Parse the JSON content
     local data, pos, err = json.decode(content, 1, nil)
@@ -36,21 +36,23 @@ if os_name == "Windows" then
     local install_path = file:read("*l")
     file:close()
 
+    -- Get path to the main AutoSubs app
+    install_path = string.gsub(install_path, "\\", "/")
     mainApp = install_path .. "/AutoSubs.exe"
-
-    -- Use the C system function to execute shell commands
-    ffi.cdef [[ int __cdecl system(const char *command); ]]
 
     -- Windows sleep function (no terminal by using ffi instead of os.execute)
     ffi.cdef [[ void Sleep(unsigned int ms); ]]
 
-    -- Windows commands to open and close apps using PowerShell
-    command_open = 'start "" /B "' .. mainApp .. '"'
+    -- Windows ShellExecuteA function from Shell32.dll (prevents terminal window from opening)
+    ffi.cdef [[ int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd); ]]
+
+    -- Windows commands to open and close app using terminal commands
+    command_open = 'start "" "' .. mainApp .. '"'
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
 
 elseif os_name == "OSX" then
     storagePath = os.getenv("HOME") .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
-    
+
     local file = assert(io.open(storagePath .. "install_path.txt", "r"))
     local install_path = file:read("*l")
     file:close()
@@ -87,6 +89,7 @@ function lstrip(str)
     return string.gsub(str, "^%s+", "")
 end
 
+-- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
 function hexToRgb(hex)
     local result = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
     if result then
@@ -125,8 +128,6 @@ function FramesToTimecode(frames, frameRate)
     local remainingFrames = frames % frameRate
     return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, remainingFrames)
 end
-
--- DaVinci Resolve API functions
 
 -- input of time in seconds
 function JumpToTime(time, markIn)
@@ -401,13 +402,31 @@ assert(server:set_option("reuseaddr", true))
 assert(server:bind(info))
 assert(server:listen())
 
--- Start AutoSubs Main App
-local result_open = ffi.C.system(command_open)
-if result_open == 0 then
-    print("Success: AutoSubs app opened.")
+-- Start AutoSubs app
+if os_name == "Windows" then
+    -- Windows
+    local SW_SHOW = 5          -- Show the window
+
+    -- Call ShellExecuteA from Shell32.dll
+    local shell32 = ffi.load("Shell32")
+    local result_open = shell32.ShellExecuteA(nil, "open", mainApp, nil, nil, SW_SHOW)
+
+    if result_open > 32 then
+        print("AutoSubs launched successfully.")
+    else
+        print("Failed to launch AutoSubs. Error code:", result_open)
+        return
+    end
 else
-    print("Error: Failed to open AutoSubs app.")
-    return
+    -- MacOS
+    local result_open = ffi.C.system(command_open)
+
+    if result_open == 0 then
+        print("AutoSubs launched successfully.")
+    else
+        print("Failed to launch AutoSubs. Error code:", result_open)
+        return
+    end
 end
 
 print("AutoSubs server is listening on port: ", port)

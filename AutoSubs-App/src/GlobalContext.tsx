@@ -27,8 +27,8 @@ interface GlobalContextProps {
     maxChars: number;
     processingStep: string;
     isLoading: boolean;
-    error: ErrorMsg | undefined;
-    setError: (errorMsg: ErrorMsg | undefined) => void
+    error: ErrorMsg;
+    setError: (errorMsg: ErrorMsg) => void
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
     setLanguage: (newLanguage: string) => void;
@@ -91,7 +91,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
     const [isLoading, setIsLoading] = useState(true);
     const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
-    const [error, setError] = useState<ErrorMsg>();
+    const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
     const serverLoading = useRef(true);
 
     const [model, setModel] = useState("small");
