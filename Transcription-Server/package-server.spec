@@ -109,8 +109,8 @@ coll = COLLECT(
     a.binaries,               # Include binaries here
     a.zipfiles,
     a.datas,                  # Include data files
-    strip=False,
-    upx=False,
+    strip=True,
+    upx=True,
     upx_exclude=[],
     name='Transcription-Server',  # Use consistent naming
 )

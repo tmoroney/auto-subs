@@ -2,9 +2,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 import json
-import torch
-from pyannote.audio import Pipeline
-import stable_whisper
 import random
 import uvicorn
 from pydantic import BaseModel
@@ -79,20 +76,30 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-models = {
+win_models = {
     "tiny": "tiny",
     "base": "base",
     "small": "distil-small",
     "medium": "distil-medium",
     "large": "distil-large-v3",
+    "tiny.en": "tiny.en",
+    "base.en": "base.en",
+    "small.en": "distil-small.en",
+    "medium.en": "distil-medium.en",
+    "large.en": "distil-large-v3",
 }
 
-english_models = {
-    "tiny": "tiny.en",
-    "base": "base.en",
-    "small": "distil-small.en",
-    "medium": "distil-medium.en",
-    "large": "distil-large-v3",
+mac_models = {
+    "tiny": "mlx-community/whisper-tiny-mlx",
+    "base": "mlx-community/whisper-base-mlx-q4",
+    "small": "mlx-community/whisper-small-mlx",
+    "medium": "mlx-community/whisper-medium-mlx",
+    "large": "mlx-community/distil-whisper-large-v3",
+    "tiny.en": "mlx-community/whisper-tiny.en-mlx",
+    "base.en": "mlx-community/whisper-base.en-mlx",
+    "small.en": "mlx-community/whisper-small.en-mlx",
+    "medium.en": "mlx-community/whisper-medium.en-mlx",
+    "large.en": "mlx-community/distil-whisper-large-v3",
 }
 
 
@@ -169,6 +176,7 @@ def inference(audio, **kwargs) -> dict:
     return output
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
+    import stable_whisper
     if (platform.system() == 'Windows'):
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type="int8")
         result = model.transcribe_stable(audio_file, language=kwargs["language"], vad_filter=True, condition_on_previous_text=False)
@@ -190,6 +198,7 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars):
 
 
 def diarize_audio(audio_file, device):
+    from pyannote.audio import Pipeline
     print("Starting diarization...")
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
     pipeline.to(device)
@@ -326,11 +335,7 @@ async def async_transcribe_audio(file_path, kwargs, max_words, max_chars):
 
 async def async_diarize_audio(file_path, device):
     """Asynchronous diarization function."""
-    print("Starting diarization...")
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
-    pipeline.to(device)
-    diarization = pipeline(file_path)
-    return diarization
+    return diarize_audio(file_path, device)
 
 
 async def process_audio(file_path, kwargs, max_words, max_chars, device, diarize_enabled):
@@ -370,11 +375,15 @@ class TranscriptionRequest(BaseModel):
 async def transcribe(request: TranscriptionRequest):
     try:
         if request.language == "english":
-            model = english_models[request.model]
+            request.model = request.model + ".en"
             task = "transcribe"
         else:
-            model = models[request.model]
             task = request.task
+
+        if platform.system() == 'Windows':
+            model = win_models[request.model]
+        else:
+            model = mac_models[request.model]
 
         print(model)
 
@@ -396,6 +405,7 @@ async def transcribe(request: TranscriptionRequest):
         kwargs = {"model": model, "language": language, "task": task}
 
         # Select device
+        import torch
         if torch.cuda.is_available():
             device = torch.device("cuda")
             kwargs["device"] = "cuda"
