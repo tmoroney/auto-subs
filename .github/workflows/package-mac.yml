@@ -72,16 +72,16 @@ jobs:
         cd Mac-Server
         python3 -m venv venv
         source venv/bin/activate
-        pip install -r requirements.txt
-        pyinstaller transcription-server.spec --noconfirm
+        pip install -r requirements-mac.txt
+        pyinstaller package-server.spec --noconfirm
         deactivate
 
     - name: Code Sign Python Server
       run: |
         # Define variables
         IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        ENTITLEMENTS="$(pwd)/Mac-Server/entitlements.plist"
-        APP_DIR="$(pwd)/Mac-Server/dist/Transcription-Server"
+        ENTITLEMENTS="$(pwd)/Signing/entitlements.plist"
+        APP_DIR="$(pwd)/Transcription-Server/dist/Transcription-Server"
 
         # Function to sign a single file
         sign_file() {
@@ -116,37 +116,45 @@ jobs:
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        npm run tauri build -- --bundles app
+        npm run tauri build
+
+    - name: Create Mac Package
+      run: |
+        # Create the package directory
+        mkdir Mac-Package/Payload
+
+        # Copy the app to the package
+        cp -r AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Mac-Package/Payload
 
     - name: Create PKG Installer
       run: |
         # Give permissions to the scripts
-        chmod +x ./scripts
+        chmod +x Mac-Package/Scripts/*
 
         # Create the package
-        pkgbuild --root "Output" \
-         --identifier "com.tom-moroney.autosubs" \
-         --version "2.0" \
-         --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/AutoSubs" \
-         --scripts ./scripts \
-         "AutoSubs-unsigned.pkg"
+        pkgbuild --identifier com.tom-moroney.autosubs \
+          --version 2.0 \
+          --install-location "/Applications" \
+          --root Mac-Package/Payload \
+          --scripts Mac-Package/Scripts \
+          AutoSubs-unsigned.pkg
 
     - name: Sign PKG Installer
       run: |
         productsign --sign "Developer ID Installer: ${{ secrets.APPLE_IDENTITY }}" \
           --timestamp \
           "AutoSubs-unsigned.pkg" \
-          "AutoSubs-Installer-Mac-ARM.pkg"
+          "AutoSubs-Mac-ARM.pkg"
 
     - name: Notarize PKG Installer
       run: |
         # Submit for notarization
-        xcrun notarytool submit "AutoSubs-Installer-Mac-ARM.pkg" \
+        xcrun notarytool submit "AutoSubs-Mac-ARM.pkg" \
             --keychain-profile "AC_PASSWORD" \
             --wait
 
         # Staple the ticket to the installer
-        xcrun stapler staple "AutoSubs-Installer-Mac-ARM.pkg"
+        xcrun stapler staple "AutoSubs-Mac-ARM.pkg"
 
     - name: Get Latest Release Tag
       id: get_latest_release

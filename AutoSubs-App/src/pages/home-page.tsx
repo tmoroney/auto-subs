@@ -15,8 +15,19 @@ import {
     Loader2,
     Speech,
     HelpCircle,
+    Signature,
+    CaseUpper,
+    CaseLower,
+    PencilOff,
+    Download, History
 } from "lucide-react";
-
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
     Dialog,
     DialogContent,
@@ -189,6 +200,9 @@ export function HomePage() {
         model,
         maxWords,
         maxChars,
+        textFormat,
+        removePunctuation,
+        audioPath,
         setTemplate,
         setLanguage,
         setTrack,
@@ -197,6 +211,8 @@ export function HomePage() {
         setModel,
         setMaxWords,
         setMaxChars,
+        setTextFormat,
+        setRemovePunctuation,
         setIsLoading,
         setError,
         fetchTranscription,
@@ -214,6 +230,7 @@ export function HomePage() {
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
     const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
+
     /*
     const [diarizeFormImg, setDiarizeFormImg] = useState<string>("");
     useEffect(() => {
@@ -440,7 +457,7 @@ export function HomePage() {
                                         Speaker Diarization
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Distinguish and style subtitles by speaker.
+                                        Labels different speakers using AI
                                     </p>
                                 </div>
                                 <Switch checked={diarize} onCheckedChange={async (checked) => checkDiarizeAvailable(checked)} />
@@ -457,15 +474,40 @@ export function HomePage() {
                                     {processingStep}
                                 </Button>
                             ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 text-sm w-full"
-                                    onClick={async () => await fetchTranscription()}
-                                >
-                                    <CirclePlay className="size-4" />
-                                    Generate
-                                </Button>
+                                audioPath.length > 0 ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                className="gap-1.5 text-sm w-full"
+                                            >
+                                                <CirclePlay className="size-4" />
+                                                Generate
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-full">
+                                            <DropdownMenuItem onClick={async () => await fetchTranscription("")}>
+                                                <Download className="mr-2 h-4 w-4" />
+                                                <span>Export Latest Audio</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={async () => await fetchTranscription(audioPath)}>
+                                                <History className="mr-2 h-4 w-4" />
+                                                <span>Use Audio from Previous Job</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="gap-1.5 text-sm w-full"
+                                        onClick={async () => await fetchTranscription("")}
+                                    >
+                                        <CirclePlay className="size-4" />
+                                        Generate
+                                    </Button>
+                                )
                             )}
                         </CardFooter>
                     </Card>
@@ -569,6 +611,58 @@ export function HomePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className=" flex items-center space-x-4 rounded-md border p-4">
+                                <Languages className="w-5" />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Translate to English
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Any Language to English
+                                    </p>
+                                </div>
+                                <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
+                            </div>
+                            <div className="grid gap-3">
+                                <Label htmlFor="textFormat">Text Formatting</Label>
+                                <ToggleGroup
+                                    type="single"
+                                    value={textFormat}
+                                    onValueChange={(value) => value && setTextFormat(value)}
+                                    className="grid grid-cols-3 gap-3 h-20"
+                                >
+                                    <ToggleGroupItem
+                                        value="normal"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'normal' ? 'bg-card border-card-foreground' : ''}`}
+                                    >
+                                        <PencilOff />
+                                        <span className="text-xs">None</span>
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem
+                                        value="lowercase"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'lowercase' ? 'bg-card border-card-foreground' : ''}`}
+                                    >
+                                        <CaseLower />
+                                        <span className="text-xs">Lower</span>
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem
+                                        value="uppercase"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'uppercase' ? 'bg-card border-card-foreground' : ''}`}
+                                    >
+                                        <CaseUpper />
+                                        <span className="text-xs">Upper</span>
+                                    </ToggleGroupItem>
+                                </ToggleGroup>
+                            </div>
+                            <div className="flex items-center space-x-4 rounded-md border p-4">
+                                <Signature className="w-5" />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Remove Punctuation
+                                    </p>
+                                </div>
+                                <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
                                     <Label htmlFor="maxWords">Max words</Label>
@@ -578,18 +672,6 @@ export function HomePage() {
                                     <Label htmlFor="maxChars">Max characters</Label>
                                     <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
-                            </div>
-                            <div className=" flex items-center space-x-4 rounded-md border p-4">
-                                <Languages />
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        Translate to English
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        From any language to English.
-                                    </p>
-                                </div>
-                                <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
                             </div>
 
                         </CardContent>
@@ -640,26 +722,25 @@ export function HomePage() {
                 <DialogContent className="sm:max-w-[540px]">
                     <DialogHeader className="space-y-2">
                         <DialogTitle className="text-2xl">Diarization Setup</DialogTitle>
-                        <DialogDescription className="flex items-center">
-                            <span>Follow these steps to enable diarization for free.</span>
+                        <DialogDescription className="flex flex-col items-start">
+                            <span>Follow these steps to enable speaker diarization for free.</span>
                             <TooltipProvider>
                                 <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
                                     <TooltipTrigger asChild>
-                                        <span className="ml-1 p-0 h-auto font-normal cursor-pointer text-primary hover:underline" onClick={() => setTooltipOpen(!tooltipOpen)}>
-                                            Learn more
-                                            <span className="sr-only">about diarization setup</span>
+                                        <span className="mt-1 p-0 h-auto font-normal cursor-pointer text-primary hover:underline" onClick={() => setTooltipOpen(!tooltipOpen)}>
+                                            Why do I need to do this?
                                         </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" align="center" className="max-w-[300px]">
                                         <p>
-                                            Pyannote provides their speaker diarization model for free but asks for basic details to support their research and secure funding for improvements.
+                                            This is a one-time setup process to allow the AI model to be downloaded.<br /><br /> <b>Pyannote</b> provides their Diarization model for free but asks for basic details to support their research and secure funding for improvements and other projects.
                                         </p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[60vh] pb-2">
+                    <ScrollArea className="max-h-[60vh] pb-2 pt-1">
                         <div className="space-y-6">
                             <section className="space-y-2">
                                 <h2 className="text-lg font-semibold flex items-center">
@@ -733,7 +814,7 @@ export function HomePage() {
                                         <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                                             Hugging Face token
                                         </a>{' '}
-                                        with read permissions and enter it below:
+                                        with <b>read</b> permissions and enter it below:
                                     </p>
                                     <div className="grid gap-1.5">
                                         <Input

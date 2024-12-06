@@ -13,8 +13,6 @@ import appdirs
 import time
 import platform
 
-start_time = time.time()
-
 class Unbuffered(object):
     def __init__(self, stream):
         self.stream = stream
@@ -60,9 +58,6 @@ else:
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac')
     
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
-
-end_time = time.time()
-print(f"Initialization time: {end_time - start_time} seconds")
 
 app = FastAPI()
 
@@ -142,8 +137,7 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{
-                  model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
@@ -177,21 +171,24 @@ def inference(audio, **kwargs) -> dict:
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     import stable_whisper
+
     if (platform.system() == 'Windows'):
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type="int8")
         result = model.transcribe_stable(audio_file, language=kwargs["language"], vad_filter=True, condition_on_previous_text=False)
-        model.align_words(audio_file, result, kwargs["language"])
+        model.align(audio_file, result, kwargs["language"])
     else:
         result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
 
     (
         result
+        .ignore_special_periods()
         .clamp_max()
         .split_by_punctuation([(',', ' '), '，'])
         .split_by_gap(.3)
         .merge_by_gap(.2, max_words=2)
         .split_by_punctuation([('.', ' '), '。', '?', '？'])
         .split_by_length(max_words=max_words, max_chars=max_chars)
+        .adjust_gaps()
     )
 
     return result.to_dict()
@@ -368,12 +365,12 @@ class TranscriptionRequest(BaseModel):
     max_words: int
     max_chars: int
     mark_in: int
-    mark_out: int
 
 
 @app.post("/transcribe/")
 async def transcribe(request: TranscriptionRequest):
     try:
+        start_time = time.time()
         if request.language == "english":
             request.model = request.model + ".en"
             task = "transcribe"
@@ -424,7 +421,6 @@ async def transcribe(request: TranscriptionRequest):
                 file_path, kwargs, max_words, max_chars, device, request.diarize
             )
             result["mark_in"] = request.mark_in
-            result["mark_out"] = request.mark_out
         except Exception as e:
             print(f"Error during audio processing: {e}")
             raise HTTPException(
@@ -445,6 +441,10 @@ async def transcribe(request: TranscriptionRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error saving JSON file: {e}"
             )
+        
+        end_time = time.time()
+        print(f"Initialization time: {end_time - start_time} seconds")
+
         # Return the path to the JSON file
         return {"result_file": json_filepath}
 

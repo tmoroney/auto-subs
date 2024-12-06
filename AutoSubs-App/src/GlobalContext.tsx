@@ -25,9 +25,12 @@ interface GlobalContextProps {
     diarize: boolean;
     maxWords: number;
     maxChars: number;
+    textFormat: string;
+    removePunctuation: boolean;
     processingStep: string;
     isLoading: boolean;
     error: ErrorMsg;
+    audioPath: string;
     setError: (errorMsg: ErrorMsg) => void
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
@@ -38,7 +41,9 @@ interface GlobalContextProps {
     setDiarize: (newDiarize: boolean) => void;
     setMaxWords: (newMaxWords: number) => void;
     setMaxChars: (newMaxChars: number) => void;
-    fetchTranscription: () => Promise<void>;
+    setTextFormat: (newTextFormat: string) => void;
+    setRemovePunctuation: (newRemovePunctuation: boolean) => void;
+    fetchTranscription: (audioPath: string) => Promise<void>;
     subtitles: Subtitle[];
 
     // edit page
@@ -50,7 +55,7 @@ interface GlobalContextProps {
     getTracks: () => Promise<void>;
     getTemplates: () => Promise<void>;
     populateSubtitles: (timelineId: string) => Promise<void>;
-    addSubtitles: (currentTemplate: string, currentTrack: string, filePath?: string) => Promise<void>;
+    addSubtitles: (filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
     initialize: () => void;
     jumpToTime: (start: number) => Promise<void>;
@@ -64,7 +69,8 @@ let storageDir = '';
 
 let store: Store | null = null;
 
-const subtitleRegex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
+const subtitleRegexMac = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
+const subtitleRegexWin = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\] "(.*?)"/;
 const downloadRegex = /^Fetching \d+ files:/;
 
 interface Template {
@@ -92,6 +98,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [isLoading, setIsLoading] = useState(true);
     const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
     const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
+    const [audioPath, setAudioPath] = useState("");
     const serverLoading = useRef(true);
 
     const [model, setModel] = useState("small");
@@ -102,6 +109,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [diarize, setDiarize] = useState(false);
     const [maxWords, setMaxWords] = useState(6);
     const [maxChars, setMaxChars] = useState(25);
+    const [textFormat, setTextFormat] = useState("normal");
+    const [removePunctuation, setRemovePunctuation] = useState(false);
     const [markIn, setMarkIn] = useState(0);
 
     async function setTranscriptsFolder() {
@@ -123,37 +132,45 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             store = await load('autosubs-store.json', { autoSave: false });
         }
 
-        const [
-            storedModel,
-            storedCurrentLanguage,
-            storedCurrentTemplate,
-            storedCurrentTrack,
-            storedTranslate,
-            storedDiarize,
-            storedMaxWords,
-            storedMaxChars
-        ] = await Promise.all([
-            store.get<string>('model'),
-            store.get<string>('currentLanguage'),
-            store.get<string>('currentTemplate'),
-            store.get<string>('currentTrack'),
-            store.get<boolean>('translate'),
-            store.get<boolean>('diarize'),
-            store.get<number>('maxWords'),
-            store.get<number>('maxChars'),
-        ]);
-
-        return {
-            storedModel,
-            storedCurrentLanguage,
-            storedCurrentTemplate,
-            storedCurrentTrack,
-            storedTranslate,
-            storedDiarize,
-            storedMaxWords,
-            storedMaxChars,
-        };
+        try {
+            setModel(await store.get<string>('model') || "small");
+            setLanguage(await store.get<string>('currentLanguage') || "english");
+            setTemplate(await store.get<string>('currentTemplate') || "");
+            setTrack(await store.get<string>('currentTrack') || "");
+            setTranslate(await store.get<boolean>('translate') || false);
+            setDiarize(await store.get<boolean>('diarize') || false);
+            setMaxWords(await store.get<number>('maxWords') || 6);
+            setMaxChars(await store.get<number>('maxChars') || 25);
+            setTextFormat(await store.get<string>('textFormat') || "normal");
+            setRemovePunctuation(await store.get<boolean>('removePunctuation') || false);
+        } catch (error) {
+            console.error('Error initializing store:', error);
+        }
     }
+
+    async function saveState() {
+        if (store) {
+            try {
+                await store.set('model', model);
+                await store.set('currentLanguage', currentLanguage);
+                await store.set('currentTemplate', currentTemplate);
+                await store.set('currentTrack', currentTrack);
+                await store.set('translate', translate);
+                await store.set('diarize', diarize);
+                await store.set('maxWords', maxWords);
+                await store.set('maxChars', maxChars);
+                await store.set('textFormat', textFormat);
+                await store.set('removePunctuation', removePunctuation);
+                await store.save(); // Persist changes
+            } catch (error) {
+                console.error('Error saving state:', error);
+            }
+        }
+    }
+
+    useEffect(() => {
+        saveState();
+    }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars, textFormat, removePunctuation]);
 
     async function startTranscriptionServer() {
         try {
@@ -177,10 +194,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
 
             command.stdout.on('data', (line) => {
-                const match = line.match(subtitleRegex);
+                const match = line.match(subtitleRegexMac) || line.match(subtitleRegexWin);
                 if (match && match[1]) {
-                    let subtitle = { text: match[1], start: "", end: "", speaker: "" };
-                    setSubtitles(prevSubtitles => [...prevSubtitles, subtitle]);
+                    let subtitle = { text: match[1].trim(), start: "", end: "", speaker: "" };
+                    setSubtitles(prevSubtitles => [subtitle, ...prevSubtitles]);
                     setProcessingStep("Transcribing Audio...");
                 }
             });
@@ -244,16 +261,30 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function fetchTranscription() {
+    async function fetchTranscription(audioPath: string) {
         setIsLoading(true);
         setSubtitles([]);
-        setProcessingStep("Exporting Audio...")
         try {
-            // Export audio and set timeline
-            let audioInfo = await exportAudio();
-            setTimeline(audioInfo.timeline);
+            let audioInfo = await exportAudio(audioPath);
             console.log("Fetching transcription...");
             setProcessingStep("Preparing to transcribe...");
+
+            console.log("Audio Path: ", audioInfo.path);
+
+            let body = {
+                file_path: audioInfo.path,
+                output_dir: storageDir,
+                timeline: audioInfo.timeline,
+                model: model,
+                language: currentLanguage,
+                task: translate ? "translate" : "transcribe",
+                diarize: diarize,
+                max_words: maxWords,
+                max_chars: maxChars,
+                mark_in: audioInfo.markIn
+            };
+
+            console.log(body);
 
             // Make the POST request to the transcription API
             const response = await fetch(transcribeAPI, {
@@ -261,19 +292,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    file_path: audioInfo.path,
-                    output_dir: storageDir,
-                    timeline: audioInfo.timeline,
-                    model: model,
-                    language: currentLanguage,
-                    task: translate ? "translate" : "transcribe",
-                    diarize: diarize,
-                    max_words: maxWords,
-                    max_chars: maxChars,
-                    mark_in: audioInfo.markIn,
-                    mark_out: audioInfo.markOut
-                }),
+                body: JSON.stringify(body),
             });
 
             // Check if the response is not successful
@@ -305,8 +324,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             // Proceed with processing the transcription result
             setProcessingStep("Populating timeline...");
             setSubtitles([]);
-            await populateSubtitles(audioInfo.timeline);
-            await addSubtitles(currentTemplate, currentTrack, filePath);
+            await populateSubtitles(timeline);
+            await addSubtitles(filePath);
 
         } catch (error: unknown) { // Explicitly type 'error' as 'unknown'
             // Handle any errors that occurred during the fetch or processing
@@ -333,6 +352,76 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             // Ensure that the loading state is reset regardless of success or failure
             console.log("Finished transcribing.");
             setIsLoading(false);
+        }
+    }
+
+    async function exportAudio(prevAudioPath: string) {
+        if (prevAudioPath !== "") {
+            return {
+                path: audioPath,
+                timeline: timeline,
+                markIn: markIn
+            };
+        }
+        try {
+            // send request to Lua server (Resolve)
+            setProcessingStep("Exporting Audio...");
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    func: "ExportAudio",
+                    outputDir: storageDir
+                }),
+            });
+
+            const data = await response.json();
+            setTimeline(data.timeline);
+            setAudioPath(data.path);
+            setMarkIn(data.markIn);
+            return data;
+        } catch (error) {
+            console.error('Error exporting audio:', error);
+            //setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
+            setError({
+                title: "Error Exporting Audio",
+                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
+            });
+        }
+    };
+
+    async function addSubtitles(filePath?: string) {
+        if (!filePath) {
+            await updateTranscript(speakers);
+            filePath = await getFullTranscriptPath();
+        }
+        try {
+            const response = await fetch(resolveAPI, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    func: "AddSubtitles",
+                    filePath,
+                    templateName: currentTemplate,
+                    trackIndex: currentTrack,
+                    removePunctuation,
+                    textFormat
+                }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const data = await response.json();
+            console.log(data);
+        } catch (error) {
+            console.error('Error adding subtitles:', error);
+            //setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
+            setError({
+                title: "Error Adding Subtitles",
+                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
+            });
         }
     }
 
@@ -465,64 +554,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function exportAudio() {
-        try {
-            // send request to Lua server (Resolve)
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    func: "ExportAudio",
-                    outputDir: storageDir
-                }),
-            });
-
-            const data = await response.json();
-            setTimeline(data.timelineId);
-            return data;
-        } catch (error) {
-            console.error('Error exporting audio:', error);
-            //setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
-            setError({
-                title: "Error Exporting Audio",
-                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
-            });
-        }
-    };
-
-    async function addSubtitles(currentTemplate: string, currentTrack: string, filePath?: string) {
-        if (!filePath) {
-            await updateTranscript(speakers);
-            filePath = await getFullTranscriptPath();
-        }
-        try {
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    func: "AddSubtitles",
-                    filePath,
-                    templateName: currentTemplate,
-                    trackIndex: currentTrack,
-                }),
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const data = await response.json();
-            console.log(data);
-        } catch (error) {
-            console.error('Error adding subtitles:', error);
-            //setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
-            setError({
-                title: "Error Adding Subtitles",
-                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
-            });
-        }
-    }
-
     /**
     * Converts seconds to SRT timecode format (HH:mm:ss,SSS).
     * @param seconds Time in seconds to be converted.
@@ -620,28 +651,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         await getTemplates();
     }
 
-    async function saveState() {
-        if (store) {
-            try {
-                await store.set('model', model);
-                await store.set('currentLanguage', currentLanguage);
-                await store.set('currentTemplate', currentTemplate);
-                await store.set('currentTrack', currentTrack);
-                await store.set('translate', translate);
-                await store.set('diarize', diarize);
-                await store.set('maxWords', maxWords);
-                await store.set('maxChars', maxChars);
-                await store.save(); // Persist changes
-            } catch (error) {
-                console.error('Error saving state:', error);
-            }
-        }
-    }
-
-    useEffect(() => {
-        saveState();
-    }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars])
-
     const hasInitialized = useRef(false);
 
     useEffect(() => {
@@ -653,18 +662,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             hasInitialized.current = true;
         }
 
-        initializeStore().then((result) => {
-            setModel(result.storedModel || "small");
-            setLanguage(result.storedCurrentLanguage || "english");
-            setTemplate(result.storedCurrentTemplate || "");
-            setTrack(result.storedCurrentTrack || "");
-            setTranslate(result.storedTranslate || false);
-            setDiarize(result.storedDiarize || false);
-            setMaxWords(result.storedMaxWords || 6);
-            setMaxChars(result.storedMaxChars || 25);
-        }).catch((error) => {
-            console.error("Error initializing state:", error);
-        });
+        initializeStore();
 
         initialize();
 
@@ -709,9 +707,12 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 diarize,
                 maxWords,
                 maxChars,
+                textFormat,
+                removePunctuation,
                 processingStep,
                 isLoading,
                 error,
+                audioPath,
                 setError,
                 setIsLoading,
                 setModel,
@@ -719,6 +720,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 setDiarize,
                 setMaxWords,
                 setMaxChars,
+                setTextFormat,
+                setRemovePunctuation,
                 setTemplate,
                 setLanguage,
                 setTrack,

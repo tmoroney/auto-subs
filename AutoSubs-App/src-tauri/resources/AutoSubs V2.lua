@@ -57,7 +57,7 @@ elseif os_name == "OSX" then
     local install_path = file:read("*l")
     file:close()
 
-    mainApp = install_path .. "/AutoSubs.exe"
+    mainApp = install_path .. "/AutoSubs.app"
 
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
@@ -260,7 +260,7 @@ function GetTemplateItem(folder, templateName)
 end
 
 -- Add subtitles to the timeline using the specified template
-function AddSubtitles(filePath, trackIndex, templateName)
+function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation)
     local timeline = project:GetCurrentTimeline()
 
     if trackIndex == "0" or trackIndex == "" then
@@ -342,13 +342,28 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
             local timelineItem = mediaPool:AppendToTimeline({newClip})[1]
 
-            subtitle = subtitles[i]
+            local subtitle = subtitles[i]
+            local subtitleText = subtitle["text"]
+
+            -- Remove punctuation if specified
+            if removePunctuation then
+                subtitleText = subtitleText:gsub("[%p%c]", "")
+            end
+
+            -- Apply text formatting
+            if textFormat == "uppercase" then
+                subtitleText = string.upper(subtitleText)
+            end
+            
+            if textFormat == "lowercase" then
+                subtitleText = string.lower(subtitleText)
+            end
 
             -- Skip if text is not compatible
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local text_plus_tools = comp:GetToolList(false, "TextPlus")
-                text_plus_tools[1]:SetInput("StyledText", lstrip(subtitle["text"]))
+                text_plus_tools[1]:SetInput("StyledText", lstrip(subtitleText))
 
                 -- Set text colors if available
                 if speakersExist then
@@ -481,7 +496,7 @@ while not quitServer do
                     body = json.encode(audioInfo)
                 elseif data.func == "AddSubtitles" then
                     print("[AutoSubs Server] Adding subtitles to timeline...")
-                    AddSubtitles(data.filePath, data.trackIndex, data.templateName)
+                    AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat, data.removePunctuation)
                     body = json.encode({
                         message = "Job completed"
                     })

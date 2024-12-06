@@ -46,18 +46,18 @@ import platform
 if platform.system() == 'Windows':
     hiddenimports += collect_submodules('faster_whisper')
     datas += collect_data_files('faster_whisper')
+    ffmpeg_dir = 'ffmpeg_bin_win'
     version_file = 'version-win.txt'
     plist = None
-    ffmpeg_dir = 'ffmpeg_bin_win'
 else:
     hiddenimports += collect_submodules('mlx')
     hiddenimports += collect_submodules('mlx_whisper') 
     datas += collect_data_files('mlx')
     datas += collect_data_files('mlx_whisper')
     excludes.append('openai-whisper')
-    version_file = None
-    plist = 'version-mac.plist'
     ffmpeg_dir = 'ffmpeg_bin_mac'
+    version_file = None
+    plist = 'Info.plist'
 
 # Include other packages
 hiddenimports += collect_submodules('stable_whisper')
@@ -77,14 +77,14 @@ datas += [(os.path.abspath(ffmpeg_dir), ffmpeg_dir)]
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries,   # Include collected binaries
+    binaries=binaries,   # Include necessary binaries
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=excludes,
-    noarchive=False,     # Include PYZ
+    noarchive=False,
     optimize=2,          # Apply maximum bytecode optimization
 )
 
@@ -93,15 +93,14 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None, optimize=2)
 exe = EXE(
     pyz,
     a.scripts,
-    exclude_binaries=True,    # Exclude binaries from EXE
-    name='transcription-server',  # Use consistent naming
+    exclude_binaries=True,    # Exclude unnecessary binaries from EXE
+    name='transcription-server', 
     debug=False,              # Ensure debug is off
     strip=True,               # Strip unnecessary symbols
-    upx=True,                 # Enable UPX compression
+    upx=True,                 
     console=True,             # Use a windowed app if applicable
     disable_windowed_traceback=True,
-    version=version_file,     # Add version file for Windows (None for macOS)
-    info_plist=plist          # Add version file for macOS (None for Windows)
+    version=version_file,     # Add version file for Windows
 )
 
 coll = COLLECT(
@@ -112,5 +111,5 @@ coll = COLLECT(
     strip=True,
     upx=True,
     upx_exclude=[],
-    name='Transcription-Server',  # Use consistent naming
+    name='Transcription-Server', 
 )

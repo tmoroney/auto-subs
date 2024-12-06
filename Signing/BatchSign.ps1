@@ -10,7 +10,7 @@ Write-Output "Certificate thumbprint: $CertThumbprint"
 $TimestampServer = "http://time.certum.pl"
 
 # Define the target directory
-$TargetDirectory = "..\..\AutoSubs-App\src-tauri\resources\Transcription-Server"
+$TargetDirectory = "..\AutoSubs-App\src-tauri\resources\Transcription-Server"
 
 $FullPath = Resolve-Path $TargetDirectory
 Write-Output "Full path: $FullPath"

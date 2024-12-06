@@ -7,6 +7,10 @@ import {
     RefreshCw,
     Speech,
     UserPen,
+    CaseUpper,
+    CaseLower,
+    PencilOff,
+    Signature,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { SpeakerChart } from "@/components/speaker-chart"
@@ -18,6 +22,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
     Command,
     CommandEmpty,
@@ -53,6 +58,7 @@ import {
 } from "@/components/ui/select"
 import { useGlobal } from "@/GlobalContext"
 import { cn } from "@/lib/utils"
+import { Switch } from "@/components/ui/switch"
 
 var colors = [{ value: '#e11d48', label: '' }, { value: '#db2777', label: '' }, { value: '#c026d3', label: '' }, { value: '#9333ea', label: '' }, { value: '#4f46e5', label: '' }, { value: '#0284c7', label: '' }, { value: '#0d9488', label: '' }, { value: '#059669', label: '' }, { value: '#16a34a', label: '' }, { value: '#ca8a04', label: '' }, { value: '#ea580c', label: '' }, { value: '#dc2626', label: '' }, { value: '#000000', label: '' }, { value: '#ffffff', label: '' }];
 
@@ -64,8 +70,12 @@ export function DiarizePage() {
         trackList,
         currentTemplate,
         currentTrack,
+        textFormat,
+        removePunctuation,
         setTemplate,
         setTrack,
+        setTextFormat,
+        setRemovePunctuation,
         addSubtitles,
         updateSpeaker,
         getTemplates,
@@ -314,6 +324,46 @@ export function DiarizePage() {
                                     </PopoverContent>
                                 </Popover>
                             </div>
+                            <div className="grid gap-3">
+                                <Label htmlFor="textFormat">Text Formatting</Label>
+                                <ToggleGroup
+                                    type="single"
+                                    value={textFormat}
+                                    onValueChange={(value) => value && setTextFormat(value)}
+                                    className="grid grid-cols-3 gap-3 h-20"
+                                >
+                                    <ToggleGroupItem
+                                        value="normal"
+                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                    >
+                                        <PencilOff />
+                                        <span className="text-xs">None</span>
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem
+                                        value="lowercase"
+                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                    >
+                                        <CaseLower />
+                                        <span className="text-xs">Lower</span>
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem
+                                        value="uppercase"
+                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                    >
+                                        <CaseUpper />
+                                        <span className="text-xs">Upper</span>
+                                    </ToggleGroupItem>
+                                </ToggleGroup>
+                            </div>
+                            <div className="flex items-center space-x-4 rounded-md border p-4">
+                                <Signature className="w-5" />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Remove Punctuation
+                                    </p>
+                                </div>
+                                <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                            </div>
 
                             {/* <div className="grid gap-3">
 
@@ -334,7 +384,7 @@ export function DiarizePage() {
                                 type="button"
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
-                                onClick={async () => { addSubtitles(currentTemplate, currentTrack) }}
+                                onClick={async () => { addSubtitles() }}
                             >
                                 <RefreshCw className="size-4" />
                                 Update Subtitles
