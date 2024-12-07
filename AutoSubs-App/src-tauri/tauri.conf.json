@@ -54,7 +54,7 @@
         "installerHooks": "./windows/hooks.nsi",
         "installerIcon": "icons/icon.ico"
       },
-      "certificateThumbprint": "$CERT_THUMBPRINT",
+      "certificateThumbprint": "$env:CERT_THUMBPRINT",
       "timestampUrl": "http://time.certum.pl",
       "digestAlgorithm": "sha256"
     }

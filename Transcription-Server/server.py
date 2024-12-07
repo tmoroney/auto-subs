@@ -174,7 +174,7 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars):
 
     if (platform.system() == 'Windows'):
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type="int8")
-        result = model.transcribe_stable(audio_file, language=kwargs["language"], vad_filter=True, condition_on_previous_text=False)
+        result = model.transcribe_stable(audio_file, language=kwargs["language"], verbose=True, vad_filter=True, condition_on_previous_text=False)
         model.align(audio_file, result, kwargs["language"])
     else:
         result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)

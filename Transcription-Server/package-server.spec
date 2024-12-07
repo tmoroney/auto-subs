@@ -85,7 +85,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=excludes,
     noarchive=False,
-    optimize=2,          # Apply maximum bytecode optimization
+    optimize=1,          # Apply maximum bytecode optimization
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None, optimize=2)

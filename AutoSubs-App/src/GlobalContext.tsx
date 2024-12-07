@@ -69,8 +69,7 @@ let storageDir = '';
 
 let store: Store | null = null;
 
-const subtitleRegexMac = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
-const subtitleRegexWin = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\] "(.*?)"/;
+const subtitleRegex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
 const downloadRegex = /^Fetching \d+ files:/;
 
 interface Template {
@@ -194,9 +193,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
 
             command.stdout.on('data', (line) => {
-                const match = line.match(subtitleRegexMac) || line.match(subtitleRegexWin);
+                const match = line.match(subtitleRegex);
                 if (match && match[1]) {
-                    let subtitle = { text: match[1].trim(), start: "", end: "", speaker: "" };
+                    let result = match[1].replace(/"/g, '').trim()
+                    let subtitle = { text: result, start: "", end: "", speaker: "" };
                     setSubtitles(prevSubtitles => [subtitle, ...prevSubtitles]);
                     setProcessingStep("Transcribing Audio...");
                 }
