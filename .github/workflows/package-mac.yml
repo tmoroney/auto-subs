@@ -2,7 +2,7 @@ name: Package AutoSubs for MacOS
 on:
   push:
     branches:
-      - main
+      - AutoSubsV1
 
 jobs:
   build:
