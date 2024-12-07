@@ -82,34 +82,54 @@ jobs:
         IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
         ENTITLEMENTS="$(pwd)/Signing/entitlements.plist"
         APP_DIR="$(pwd)/Transcription-Server/dist/Transcription-Server"
+        FRAMEWORK_DIR="$APP_DIR/_internal/Python.framework"
+        ACTUAL_BINARY="$APP_DIR/_internal/Python.framework/Versions/3.12/Python"
     
-        # Function to sign a single file
+        # Function to sign a single file with entitlements
         sign_file() {
             local file="$1"
-            echo "Signing $file..."
+            echo "Signing $file with entitlements..."
             codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$file"
         }
     
+        # Function to sign a file without entitlements (for testing framework issues)
+        sign_file_no_entitlements() {
+            local file="$1"
+            echo "Signing $file without entitlements..."
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$file"
+        }
+    
         export -f sign_file
+        export -f sign_file_no_entitlements
         export IDENTITY
         export ENTITLEMENTS
     
         # Sign the main executable
         sign_file "$APP_DIR/transcription-server"
     
-        # Sign known extensions in _internal
-        find "$APP_DIR/_internal" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.exe" -o -name "*.bin" -o -name "ffmpeg*" \) -exec bash -c 'sign_file "$0"' {} \;
+        # Sign known-extension binaries in _internal
+        find "$APP_DIR/_internal" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.exe" -o -name "*.bin" -o -name "ffmpeg*" \) \
+            -exec bash -c 'sign_file "$0"' {} \;
     
-        # Sign the entire Python framework
-        FRAMEWORK_DIR="$APP_DIR/_internal/Python.framework"
+        # Clear extended attributes on the framework to avoid conflicts
         if [ -d "$FRAMEWORK_DIR" ]; then
-            echo "Signing framework at $FRAMEWORK_DIR..."
-            codesign --force --deep --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$FRAMEWORK_DIR"
+          echo "Clearing extended attributes from $FRAMEWORK_DIR..."
+          xattr -cr "$FRAMEWORK_DIR"
+          
+          # If the actual binary exists, sign it directly without entitlements first
+          if [ -f "$ACTUAL_BINARY" ]; then
+            echo "Signing the actual Python binary at $ACTUAL_BINARY..."
+            sign_file_no_entitlements "$ACTUAL_BINARY"
+          fi
+    
+          # Now sign the entire framework directory without entitlements to see if that helps
+          echo "Signing framework at $FRAMEWORK_DIR without entitlements..."
+          sign_file_no_entitlements "$FRAMEWORK_DIR"
         fi
     
-        # Sign any other executables (user-executable)
+        # Sign any other executables in the main app directory (user-executable)
+        # Using -perm -100 to find files where the owner has execute permission
         find "$APP_DIR" -type f -perm -100 -exec bash -c 'sign_file "$0"' {} \;
-
 
     - name: Move Python Server to resources folder
       run: |
