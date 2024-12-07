@@ -87,18 +87,26 @@ jobs:
             codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$file"
         }
 
-        export -f sign_file  # Export the function so it's available in subshells
+        export -f sign_file   # Export the function so it's available in subshells
         export IDENTITY       # Export IDENTITY so it's available in subshells
         export ENTITLEMENTS   # Export ENTITLEMENTS so it's available in subshells
 
         # Sign the main executable
         sign_file "$APP_DIR/transcription-server"
 
-        # Sign all embedded binaries and executables in the _internal directory
+        # Sign all embedded binaries and executables in the _internal directory based on known extensions
         find "$APP_DIR/_internal" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.exe" -o -name "*.bin" -o -name "ffmpeg*" \) -exec bash -c 'sign_file "$0"' {} \;
 
+        # Sign the entire Python framework directory (recursively) to ensure the actual binary is signed
+        FRAMEWORK_DIR="$APP_DIR/_internal/Python.framework"
+        if [ -d "$FRAMEWORK_DIR" ]; then
+            echo "Signing framework at $FRAMEWORK_DIR..."
+            codesign --force --deep --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$FRAMEWORK_DIR"
+        fi
+
         # Sign any other executables in the main app directory
-        find "$APP_DIR" -type f -perm +111 -exec bash -c 'sign_file "$0"' {} \;
+        # Use -perm /111 to match executables on macOS/BSD
+        find "$APP_DIR" -type f -perm /111 -exec bash -c 'sign_file "$0"' {} \;
 
     - name: Move Python Server to resources folder
       run: |
