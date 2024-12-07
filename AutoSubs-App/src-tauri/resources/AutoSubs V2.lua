@@ -139,6 +139,33 @@ function JumpToTime(time, markIn)
     timeline:SetCurrentTimecode(timecode)
 end
 
+-- List of title strings to search for
+local titleStrings = {
+    "Título – Fusion", -- Spanish
+    "Título Fusion", -- Portuguese
+    "Generator", -- English (older versions)
+    "Fusion Title", -- English
+    "Titre Fusion", -- French
+    "Титры на стр. Fusion", -- Russian
+    "Fusion Titel", -- German
+    "Titolo Fusion", -- Italian
+    "Fusionタイトル", -- Japanese
+    "Fusion标题", -- Chinese
+    "퓨전 타이틀", -- Korean
+    "Tiêu đề Fusion", -- Vietnamese
+    "Fusion Titles" -- Thai
+}
+
+-- Helper function to check if a string is in the titleStrings list
+local function isMatchingTitle(title)
+    for _, validTitle in ipairs(titleStrings) do
+        if title == validTitle then
+            return true
+        end
+    end
+    return false
+end
+
 -- Recursive search for all Text+ templates in the media pool
 local defaultTemplateExists = false;
 local templates = {}
@@ -150,7 +177,8 @@ function FindAllTemplates(folder)
 
     -- Get clips in the current folder and add them to the templates list
     for _, clip in ipairs(folder:GetClipList()) do
-        if clip:GetClipProperty()["Type"] == "Fusion Title" then
+        local clipType = clip:GetClipProperty()["Type"]
+        if isMatchingTitle(clipType) then
             local clipName = clip:GetClipProperty()["Clip Name"]
             local newTemplate = {
                 label = clipName,
