@@ -1,4 +1,4 @@
-# AutoSubs V2 - out now for arm based MacOS! 🚀
+# AutoSubs V2 - out now for Mac and Windows! 🚀
 **Experience faster transcription, a sleek new interface, and powerful new features:**
 - ⚡ **Blazing Fast Speeds:** Transcribe audio over 2x faster (optimised for Mac and Windows).
 - 🗣️ **Speaker Diarization:** Auto-detect speakers and color-code subtitles effortlessly.
@@ -6,7 +6,7 @@
 - 🎨 **Modern UI:** A stylish, streamlined interface for seamless workflows.
 - 📦 **One-Click Installer:** Apple-approved for quick, hassle-free setup.
 
-### ✨ **[Explore AutoSubs v2](https://github.com/tmoroney/auto-subs/releases/tag/V2.0)** ✨
+### ✨ **[Explore AutoSubs v2](https://github.com/tmoroney/auto-subs/releases/tag/V2.1)** ✨
 Upgrade now and experience the future of fast, seamless transcription! 🎉
 
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
