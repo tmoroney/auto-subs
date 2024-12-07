@@ -70,7 +70,6 @@ let storageDir = '';
 let store: Store | null = null;
 
 const subtitleRegex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
-const downloadRegex = /^Fetching \d+ files:/;
 
 interface Template {
     value: string;
@@ -199,6 +198,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     let subtitle = { text: result, start: "", end: "", speaker: "" };
                     setSubtitles(prevSubtitles => [subtitle, ...prevSubtitles]);
                     setProcessingStep("Transcribing Audio...");
+                } else if (line.includes('Progress:')) {
+                    const percentageMatch = line.match(/(\d+)%/);
+                    if (percentageMatch && percentageMatch[1]) {
+                        const percentage = parseInt(percentageMatch[1], 10);
+                        setProcessingStep(`Transcribing Audio... ${percentage}%`); // Update the state
+                    }
+                } else {
+                    console.log(`Transcription Server STDOUT: "${line}"`);
                 }
             });
 
@@ -207,36 +214,32 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 if (line == "" || line.length < 1) {
                     return;
                 }
-
-                if (line.includes('Transcribe:')) {
-                    const percentageMatch = line.match(/(\d+)%/);
-                    if (percentageMatch && percentageMatch[1]) {
-                        const percentage = parseInt(percentageMatch[1], 10);
-                        setProcessingStep(`Transcribing Audio... ${percentage}%`); // Update the state
-                    }
-                } else if (line.includes('Adjustment:') || line.includes('Aligning:')) {
-                    const percentageMatch = line.match(/(\d+)%/);
-                    if (percentageMatch && percentageMatch[1]) {
-                        const percentage = parseInt(percentageMatch[1], 10);
-                        setProcessingStep(`Adjusting Timing... ${percentage}%`); // Update the state
-                    }
+                else if (line.includes('Adjustment:') || line.includes('Aligning:')) {
+                    setProcessingStep(`Adjusting Timing...`); // Update the state
                 }
                 else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket')) && serverLoading.current) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
-                } else if (line.trim().match(downloadRegex)) {
-                    setProcessingStep(`Downloading Model...`);
-                } else if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
+                } 
+                else if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
                     if (line.includes('speechbrain')) {
                         setProcessingStep("Diarizing speakers...");
                         setIsLoading(true);
                     } else {
                         console.log(`Transcription Server INFO: "${line}"`);
                     }
+                } else if (line.includes("model.bin:")) {
+                    const percentageMatch = line.match(/(\d+)%/);
+                    if (percentageMatch && percentageMatch[1]) {
+                        const percentage = parseInt(percentageMatch[1], 10);
+                        setProcessingStep(`Downloading Model... ${percentage}%`); // Update the state
+                    }
+                } else if (line.includes("download")) {
+                    setProcessingStep("Downloading Model..."); // Update the state
                 } else {
                     console.error(`Transcription Server STDERR: "${line}"`);
-                }
+                } 
             });
 
             console.log('Starting transcription server...');
@@ -331,15 +334,12 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             // Handle any errors that occurred during the fetch or processing
             console.error("Error fetching transcription:", error);
 
-            // Initialize a default error message
-            let errorMessage = "An unexpected error occurred.";
-
+            let errorMessage: string;
             // Type guard: Check if 'error' is an instance of Error
             if (error instanceof Error) {
                 errorMessage = error.message;
-            } else if (typeof error === 'string') {
-                // If error is a string, use it directly
-                errorMessage = error;
+            } else {
+                errorMessage = String(error);
             }
 
             // Update the error state with the appropriate message
@@ -363,33 +363,29 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 markIn: markIn
             };
         }
-        try {
-            // send request to Lua server (Resolve)
-            setProcessingStep("Exporting Audio...");
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    func: "ExportAudio",
-                    outputDir: storageDir
-                }),
-            });
+        // send request to Lua server (Resolve)
+        setProcessingStep("Exporting Audio...");
+        const response = await fetch(resolveAPI, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                func: "ExportAudio",
+                outputDir: storageDir
+            }),
+        });
 
-            const data = await response.json();
-            setTimeline(data.timeline);
-            setAudioPath(data.path);
-            setMarkIn(data.markIn);
-            return data;
-        } catch (error) {
-            console.error('Error exporting audio:', error);
-            //setError("Error exporting audio - Open the console in Resolve to see the error message (Workspace -> Console).");
-            setError({
-                title: "Error Exporting Audio",
-                desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
-            });
+        const data = await response.json();
+
+        if (data.timeline == "") {
+            throw new Error("You need to open a timeline in Resolve to start transcribing.");
         }
+
+        setTimeline(data.timeline);
+        setAudioPath(data.path);
+        setMarkIn(data.markIn);
+        return data;
     };
 
     async function addSubtitles(filePath?: string) {
@@ -439,7 +435,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             if (data.timelineId == "") {
                 setError({
                     title: "No Timeline Detected",
-                    desc: "No timeline was detected. Please open a timeline in Resolve to start transcribing."
+                    desc: "You need to open a timeline in Resolve to start transcribing."
                 });
                 return;
             }

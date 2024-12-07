@@ -226,31 +226,33 @@ function GetTracks()
 end
 
 function ExportAudio(outputDir)
-    -- resolve:OpenPage("deliver")
-    resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
-    project:LoadRenderPreset('render-audio-only')
-    project:SetRenderSettings({
-        TargetDir = outputDir
-    })
-    local pid = project:AddRenderJob()
-    print("PID: ", pid)
-
-    project:StartRendering(pid)
-
-    local renderJobList = project:GetRenderJobList()
-    local renderSettings = renderJobList[#renderJobList]
-
     local audioInfo = {
-        timeline = project:GetCurrentTimeline():GetUniqueId(),
-        path = renderSettings["TargetDir"] .. "/" .. renderSettings["OutputFilename"],
-        markIn = renderSettings["MarkIn"],
-        markOut = renderSettings["MarkOut"]
+        timeline = ""
     }
+    local success, err = pcall(function()
+        resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
+        project:LoadRenderPreset('render-audio-only')
+        project:SetRenderSettings({
+            TargetDir = outputDir
+        })
+        local pid = project:AddRenderJob()
+        project:StartRendering(pid)
 
-    while project:IsRenderingInProgress() do
-        print("Rendering...")
-        sleep(0.5) -- Check every 500 milliseconds
-    end
+        local renderJobList = project:GetRenderJobList()
+        local renderSettings = renderJobList[#renderJobList]
+
+        audioInfo = {
+            timeline = project:GetCurrentTimeline():GetUniqueId(),
+            path = renderSettings["TargetDir"] .. "/" .. renderSettings["OutputFilename"],
+            markIn = renderSettings["MarkIn"],
+            markOut = renderSettings["MarkOut"]
+        }
+
+        while project:IsRenderingInProgress() do
+            print("Rendering...")
+            sleep(0.5) -- Check every 500 milliseconds
+        end
+    end)
 
     return audioInfo
 end
@@ -478,10 +480,12 @@ while not quitServer do
                 -- Parse the JSON content
                 local data, pos, err = json.decode(content, 1, nil)
                 local body = ""
-                
+
                 local success, err = pcall(function()
                     if data == nil then
-                        body = json.encode({ message = "Invalid JSON data" })
+                        body = json.encode({
+                            message = "Invalid JSON data"
+                        })
                         print("Invalid JSON data")
                     elseif data.func == "GetTimelineInfo" then
                         print("[AutoSubs Server] Retrieving Timeline Info...")
@@ -523,7 +527,7 @@ while not quitServer do
                         print("Invalid function name")
                     end
                 end)
-                
+
                 if not success then
                     body = json.encode({
                         message = "Job failed with error: " .. err

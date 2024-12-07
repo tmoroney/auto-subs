@@ -426,7 +426,7 @@ function NavigationAside() {
           <DialogHeader>
             <DialogTitle>{error?.title}</DialogTitle>
             <DialogDescription>
-              Please report this on{' '}
+              Report any bugs on{' '}
               <a
               href="https://discord.com/invite/TBFUfGWegm"
               target="_blank"

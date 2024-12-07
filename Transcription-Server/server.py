@@ -1,6 +1,4 @@
 from fastapi.middleware.cors import CORSMiddleware
-from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
-from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 import json
 import random
 import uvicorn
@@ -12,6 +10,32 @@ import os
 import appdirs
 import time
 import platform
+
+# Define a base cache directory using appdirs
+cache_dir = appdirs.user_cache_dir("AutoSubs", "")  # Empty string for appauthor
+
+# Matplotlib cache directory
+matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')
+os.makedirs(matplotlib_cache_dir, exist_ok=True)
+os.environ['MPLCONFIGDIR'] = matplotlib_cache_dir
+
+# Hugging Face cache directory
+huggingface_cache_dir = os.path.join(cache_dir, 'hf_cache')
+os.makedirs(huggingface_cache_dir, exist_ok=True)
+os.environ['HF_HUB_CACHE'] = huggingface_cache_dir
+
+# Torch cache directory
+pyannote_cache_dir = os.path.join(cache_dir, 'pyannote_cache')
+os.makedirs(pyannote_cache_dir, exist_ok=True)
+os.environ['PYANNOTE_CACHE'] = pyannote_cache_dir
+
+# Print paths to verify
+print(f"Matplotlib cache directory: {matplotlib_cache_dir}")
+print(f"Hugging Face cache directory: {huggingface_cache_dir}")
+print(f"Torch cache directory: {pyannote_cache_dir}")
+
+from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
+from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 
 class Unbuffered(object):
     def __init__(self, stream):
@@ -35,19 +59,12 @@ class Unbuffered(object):
 sys.stdout = Unbuffered(sys.stdout)
 sys.stderr = Unbuffered(sys.stderr)
 
-# Set MPLCONFIGDIR using appdirs for cross-platform compatibility
-cache_dir = appdirs.user_cache_dir("AutoSubs", "AutoSubs")
-matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')
-os.makedirs(matplotlib_cache_dir, exist_ok=True)
-os.environ['MPLCONFIGDIR'] = matplotlib_cache_dir
-
-print(f"Matplotlib cache directory created at: {matplotlib_cache_dir}")
-
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
     # Suppress the torch.load warning
     os.environ["PYTHONWARNINGS"] = "default"
     os.environ["TORCH_LOAD_IGNORE_POSSIBLE_SECURITY_RISK"] = "1"
+    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 else:
     base_path = os.path.dirname(__file__)
 
@@ -76,12 +93,12 @@ win_models = {
     "base": "base",
     "small": "small",
     "medium": "medium",
-    "large": "large-v3-turbo",
+    "large": "large-v3",
     "tiny.en": "tiny.en",
     "base.en": "base.en",
     "small.en": "distil-small.en",
-    "medium.en": "distil-medium.en",
-    "large.en": "large-v3-turbo",
+    "medium.en": "medium.en",
+    "large.en": "large-v3",
 }
 
 mac_models = {
@@ -169,13 +186,21 @@ def inference(audio, **kwargs) -> dict:
         )
     return output
 
+def log_progress(seek, total_duration):
+    # print progress as percentage
+    print(f"Progress: {seek/total_duration*100:.0f}%")
+
 def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     import stable_whisper
 
     if (platform.system() == 'Windows'):
-        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type="int8")
-        result = model.transcribe_stable(audio_file, language=kwargs["language"], verbose=True, vad_filter=True, condition_on_previous_text=False)
-        model.align(audio_file, result, kwargs["language"])
+        compute_type = "int16" if kwargs["device"] == "cuda" else "int8"
+        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
+        if kwargs["language"] == "auto":
+            result = model.transcribe_stable(audio_file, task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+        else:
+            result = model.transcribe_stable(audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+            model.align(audio_file, result, kwargs["language"])
     else:
         result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
 
@@ -204,8 +229,8 @@ def diarize_audio(audio_file, device):
 
 def merge_diarisation(transcript, diarization):
     # Array of colors to choose from
-    colors = ['#f2afd1', '#1d3248', '#e1a11d', '#9ce8ff', '#e11de1',
-              '#11e1e1', '#e1e11d', '#7e65d8', '#0e7e90', '#788973']
+    colors = ['#0062ec', '#ed63d4', '#8b5eed', '#1a8bed', '#308800',
+              '#886d4e', '#cb0000', '#6cb18c', '#d57312', '#000000']
 
     # Dictionary to store speaker information
     speakers_info = {}
@@ -371,7 +396,7 @@ class TranscriptionRequest(BaseModel):
 async def transcribe(request: TranscriptionRequest):
     try:
         start_time = time.time()
-        if request.language == "english":
+        if request.language == "en":
             request.model = request.model + ".en"
             task = "transcribe"
         else:
@@ -443,7 +468,7 @@ async def transcribe(request: TranscriptionRequest):
             )
         
         end_time = time.time()
-        print(f"Initialization time: {end_time - start_time} seconds")
+        print(f"Transcription time: {end_time - start_time} seconds")
 
         # Return the path to the JSON file
         return {"result_file": json_filepath}
