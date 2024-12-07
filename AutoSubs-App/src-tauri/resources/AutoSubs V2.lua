@@ -51,7 +51,8 @@ if os_name == "Windows" then
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
 
 elseif os_name == "OSX" then
-    storagePath = os.getenv("HOME") .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
+    storagePath = os.getenv("HOME") ..
+                      "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
 
     local file = assert(io.open(storagePath .. "install_path.txt", "r"))
     local install_path = file:read("*l")
@@ -184,31 +185,43 @@ function GetTemplates()
 end
 
 function GetTimelineInfo()
-    local timeline = project:GetCurrentTimeline()
-    local timelineInfo = {
-        name = timeline:GetName(),
-        timelineId = timeline:GetUniqueId()
-    }
-    print("Timeline Name: ", timelineInfo.timelineId)
+    local timelineInfo = {}
+    local success, err = pcall(function()
+        local timeline = project:GetCurrentTimeline()
+        timelineInfo = {
+            name = timeline:GetName(),
+            timelineId = timeline:GetUniqueId()
+        }
+    end)
+    if not success then
+        print("Error retrieving timeline info:", err)
+        timelineInfo = {
+            timelineId = "",
+            name = "No timeline selected"
+        }
+    end
     return timelineInfo
 end
 
 function GetTracks()
-    local timeline = project:GetCurrentTimeline()
-    local trackCount = timeline:GetTrackCount("video")
     local tracks = {}
     local createNewTrack = {
         value = "0",
         label = "Add to New Track"
     }
     table.insert(tracks, createNewTrack)
-    for i = 1, trackCount do
-        local track = {
-            value = tostring(i),
-            label = timeline:GetTrackName("video", i)
-        }
-        table.insert(tracks, track)
-    end
+
+    local success, err = pcall(function()
+        local timeline = project:GetCurrentTimeline()
+        local trackCount = timeline:GetTrackCount("video")
+        for i = 1, trackCount do
+            local track = {
+                value = tostring(i),
+                label = timeline:GetTrackName("video", i)
+            }
+            table.insert(tracks, track)
+        end
+    end)
     return tracks
 end
 
@@ -354,7 +367,7 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
             if textFormat == "uppercase" then
                 subtitleText = string.upper(subtitleText)
             end
-            
+
             if textFormat == "lowercase" then
                 subtitleText = string.lower(subtitleText)
             end
@@ -420,7 +433,7 @@ assert(server:listen())
 -- Start AutoSubs app
 if os_name == "Windows" then
     -- Windows
-    local SW_SHOW = 5          -- Show the window
+    local SW_SHOW = 5 -- Show the window
 
     -- Call ShellExecuteA from Shell32.dll
     local shell32 = ffi.load("Shell32")
@@ -464,56 +477,64 @@ while not quitServer do
 
                 -- Parse the JSON content
                 local data, pos, err = json.decode(content, 1, nil)
-                local body = json.encode({
-                    message = "Job failed"
-                })
-                if data == nil then
-                    -- set_cors_headers(client)
-                    print("Invalid JSON data")
-                elseif data.func == "GetTimelineInfo" then
-                    print("[AutoSubs Server] Retrieving Timeline Info...")
-                    local timelineInfo = GetTimelineInfo()
-                    body = json.encode(timelineInfo)
-                elseif data.func == "GetTemplates" then
-                    print("[AutoSubs Server] Retrieving Text+ Templates...")
-                    local templateList = GetTemplates()
-                    dump(templateList)
-                    body = json.encode(templateList)
-                elseif data.func == "GetTracks" then
-                    print("[AutoSubs Server] Retrieving Timeline Tracks...")
-                    local trackList = GetTracks()
-                    dump(trackList)
-                    body = json.encode(trackList)
-                elseif data.func == "JumpToTime" then
-                    print("[AutoSubs Server] Jumping to time...")
-                    JumpToTime(data.start, data.markIn)
+                local body = ""
+                
+                local success, err = pcall(function()
+                    if data == nil then
+                        body = json.encode({ message = "Invalid JSON data" })
+                        print("Invalid JSON data")
+                    elseif data.func == "GetTimelineInfo" then
+                        print("[AutoSubs Server] Retrieving Timeline Info...")
+                        local timelineInfo = GetTimelineInfo()
+                        body = json.encode(timelineInfo)
+                    elseif data.func == "GetTemplates" then
+                        print("[AutoSubs Server] Retrieving Text+ Templates...")
+                        local templateList = GetTemplates()
+                        dump(templateList)
+                        body = json.encode(templateList)
+                    elseif data.func == "GetTracks" then
+                        print("[AutoSubs Server] Retrieving Timeline Tracks...")
+                        local trackList = GetTracks()
+                        dump(trackList)
+                        body = json.encode(trackList)
+                    elseif data.func == "JumpToTime" then
+                        print("[AutoSubs Server] Jumping to time...")
+                        JumpToTime(data.start, data.markIn)
+                        body = json.encode({
+                            message = "Jumped to time"
+                        })
+                    elseif data.func == "ExportAudio" then
+                        print("[AutoSubs Server] Exporting audio...")
+                        local audioInfo = ExportAudio(data.outputDir)
+                        body = json.encode(audioInfo)
+                    elseif data.func == "AddSubtitles" then
+                        print("[AutoSubs Server] Adding subtitles to timeline...")
+                        AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
+                            data.removePunctuation)
+                        body = json.encode({
+                            message = "Job completed"
+                        })
+                    elseif data.func == "Exit" then
+                        body = json.encode({
+                            message = "Server shutting down"
+                        })
+                        quitServer = true
+                    else
+                        print("Invalid function name")
+                    end
+                end)
+                
+                if not success then
                     body = json.encode({
-                        message = "Jumped to time"
+                        message = "Job failed with error: " .. err
                     })
-                elseif data.func == "ExportAudio" then
-                    print("[AutoSubs Server] Exporting audio...")
-                    local audioInfo = ExportAudio(data.outputDir)
-                    body = json.encode(audioInfo)
-                elseif data.func == "AddSubtitles" then
-                    print("[AutoSubs Server] Adding subtitles to timeline...")
-                    AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat, data.removePunctuation)
-                    body = json.encode({
-                        message = "Job completed"
-                    })
-                elseif data.func == "Exit" then
-                    body = json.encode({
-                        message = "Server shutting down"
-                    })
-                    quitServer = true
-                else
-                    print("Invalid function name")
+                    print("Error:", err)
                 end
+
                 -- Send HTTP response content
                 local response = CreateResponse(body)
-                -- Set CORS headers
-                -- set_cors_headers(client)
-                -- print("Sending response:", response)
                 assert(client:send(response))
+
                 -- Close connection
                 client:close()
             elseif err == "closed" then

@@ -101,7 +101,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const serverLoading = useRef(true);
 
     const [model, setModel] = useState("small");
-    const [currentLanguage, setLanguage] = useState("english");
+    const [currentLanguage, setLanguage] = useState("en");
     const [currentTemplate, setTemplate] = useState("");
     const [currentTrack, setTrack] = useState("");
     const [translate, setTranslate] = useState(false);
@@ -133,7 +133,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
         try {
             setModel(await store.get<string>('model') || "small");
-            setLanguage(await store.get<string>('currentLanguage') || "english");
+            setLanguage(await store.get<string>('currentLanguage') || "en");
             setTemplate(await store.get<string>('currentTemplate') || "");
             setTrack(await store.get<string>('currentTrack') || "");
             setTranslate(await store.get<boolean>('translate') || false);
@@ -436,6 +436,13 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const data = await response.json();
+            if (data.timelineId == "") {
+                setError({
+                    title: "No Timeline Detected",
+                    desc: "No timeline was detected. Please open a timeline in Resolve to start transcribing."
+                });
+                return;
+            }
             let timelineId = data.timelineId;
             setTimeline(data.timelineId);
             return timelineId;
@@ -481,6 +488,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const data = await response.json();
+            console.log(data);
             setTrackList(data);
             console.log(data);
         } catch (error) {

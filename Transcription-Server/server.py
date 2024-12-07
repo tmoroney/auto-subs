@@ -74,14 +74,14 @@ app.add_middleware(
 win_models = {
     "tiny": "tiny",
     "base": "base",
-    "small": "distil-small",
-    "medium": "distil-medium",
-    "large": "distil-large-v3",
+    "small": "small",
+    "medium": "medium",
+    "large": "large-v3-turbo",
     "tiny.en": "tiny.en",
     "base.en": "base.en",
     "small.en": "distil-small.en",
     "medium.en": "distil-medium.en",
-    "large.en": "distil-large-v3",
+    "large.en": "large-v3-turbo",
 }
 
 mac_models = {
