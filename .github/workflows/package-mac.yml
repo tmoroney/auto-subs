@@ -2,7 +2,7 @@ name: Package AutoSubs for MacOS
 on:
   push:
     branches:
-      - AutoSubsV1
+      - main
 
 jobs:
   build:
@@ -165,5 +165,5 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.LATEST_TAG }}
-        files: AutoSubs-Installer-Mac-ARM.pkg
+        files: AutoSubs-Mac-ARM.pkg
         token: ${{ secrets.GH_TOKEN }}

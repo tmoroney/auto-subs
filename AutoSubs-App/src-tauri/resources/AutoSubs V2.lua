@@ -172,13 +172,15 @@ function GetTemplates()
     FindAllTemplates(rootFolder)
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
-        mediaPool:ImportFolderFromFile(storagePath .. "subtitle-template.drb")
-        local clipName = "Default Template"
-        local newTemplate = {
-            label = clipName,
-            value = clipName
-        }
-        table.insert(templates, newTemplate)
+        local success, err = pcall(function()
+            mediaPool:ImportFolderFromFile(storagePath .. "subtitle-template.drb")
+            local clipName = "Default Template"
+            local newTemplate = {
+                label = clipName,
+                value = clipName
+            }
+            table.insert(templates, newTemplate)
+        end)
         defaultTemplateExists = true
     end
     return templates
