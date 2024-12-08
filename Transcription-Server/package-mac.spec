@@ -60,7 +60,7 @@ excludes = [
 ]
 
 a = Analysis(
-    ['transcription-server.py'],
+    ['server.py'],
     pathex=[],
     binaries=binaries,   # Include collected binaries
     datas=datas,
