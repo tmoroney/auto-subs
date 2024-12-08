@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.autosubs.transcription-server</string>
+    <string>com.tom-moroney.autosubs</string>
     <key>CFBundleName</key>
-    <string>Transcription Server</string>
+    <string>AutoSubs Transcription Server</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleExecutable</key>
