@@ -49,6 +49,8 @@ if platform.system() == 'Windows':
     ffmpeg_dir = 'ffmpeg_bin_win'
     version_file = 'version-win.txt'
     plist = None
+    enable_upx = True
+    enable_stripping = True
 else:
     hiddenimports += collect_submodules('mlx')
     hiddenimports += collect_submodules('mlx_whisper') 
@@ -58,6 +60,8 @@ else:
     ffmpeg_dir = 'ffmpeg_bin_mac'
     version_file = None
     plist = 'Info.plist'
+    enable_upx = False
+    enable_stripping = False
 
 # Include other packages
 hiddenimports += collect_submodules('stable_whisper')
@@ -96,8 +100,8 @@ exe = EXE(
     exclude_binaries=True,    # Exclude unnecessary binaries from EXE
     name='transcription-server', 
     debug=False,              # Ensure debug is off
-    strip=True,               # Strip unnecessary symbols
-    upx=True,                 
+    strip=enable_stripping,
+    upx=enable_upx,              
     console=True,             # Use a windowed app if applicable
     disable_windowed_traceback=True,
     version=version_file,     # Add version file for Windows
@@ -108,8 +112,8 @@ coll = COLLECT(
     a.binaries,               # Include binaries here
     a.zipfiles,
     a.datas,                  # Include data files
-    strip=True,
-    upx=True,
+    strip=enable_stripping,
+    upx=enable_upx,
     upx_exclude=[],
     name='Transcription-Server', 
 )
