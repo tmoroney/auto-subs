@@ -16,7 +16,8 @@ import stable_whisper
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # Define a base cache directory using appdirs
-cache_dir = appdirs.user_cache_dir("AutoSubs", "")  # Empty string for appauthor
+cache_dir = appdirs.user_cache_dir(
+    "AutoSubs", "")  # Empty string for appauthor
 
 # Matplotlib cache directory
 matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')
@@ -39,8 +40,8 @@ print(f"Matplotlib cache directory: {matplotlib_cache_dir}")
 print(f"Hugging Face cache directory: {huggingface_cache_dir}")
 print(f"Torch cache directory: {pyannote_cache_dir}")
 
-from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 from huggingface_hub import HfApi, HfFolder, login, snapshot_download
+from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 
 class Unbuffered(object):
     def __init__(self, stream):
@@ -78,7 +79,7 @@ if platform.system() == 'Windows':
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_win')
 else:
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac')
-    
+
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
 
 app = FastAPI()
@@ -101,7 +102,7 @@ win_models = {
     "large": "large-v3",
     "tiny.en": "tiny.en",
     "base.en": "base.en",
-    "small.en": "distil-small.en",
+    "small.en": "small.en",
     "medium.en": "medium.en",
     "large.en": "large-v3",
 }
@@ -159,7 +160,8 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{
+                  model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
@@ -170,6 +172,8 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
 
 # Function for transcribing the audio
+
+
 def inference(audio, **kwargs) -> dict:
     import mlx_whisper
     if kwargs["language"] == "auto":
@@ -191,24 +195,30 @@ def inference(audio, **kwargs) -> dict:
         )
     return output
 
+
 def log_progress(seek, total_duration):
     # print progress as percentage
     print(f"Progress: {seek/total_duration*100:.0f}%")
 
+
 def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     if (platform.system() == 'Windows'):
-        compute_type = "int16" if kwargs["device"] == "cuda" else "int8"
-        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
+        compute_type = "int8_float16" if kwargs["device"] == "cuda" else "int8"
+        model = stable_whisper.load_faster_whisper(
+            kwargs["model"], device=kwargs["device"], compute_type=compute_type)
         if kwargs["language"] == "auto":
-            result = model.transcribe_stable(audio_file, task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+            result = model.transcribe_stable(
+                audio_file, task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
         else:
-            result = model.transcribe_stable(audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+            result = model.transcribe_stable(
+                audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
             model.align(audio_file, result, kwargs["language"])
             if kwargs["align_words"]:
                 model.align_words(audio_file, result, kwargs["language"])
 
     else:
-        result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
+        result = stable_whisper.transcribe_any(
+            inference, audio_file, inference_kwargs=kwargs, vad=True, force_order=True)
 
     result = modify_result(result, max_words, max_chars, sensitive_words)
 
@@ -335,7 +345,8 @@ def merge_diarisation(transcript, diarization):
 
     # Convert speakers_info dict to a list
     speakers_list = list(speakers_info.values())
-    top_speaker = max(speakers_list, key=lambda speaker: speaker["subtitle_lines"])
+    top_speaker = max(
+        speakers_list, key=lambda speaker: speaker["subtitle_lines"])
 
     # Add speakers list to the result
     result = {
@@ -368,7 +379,8 @@ async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words
     if diarize_enabled:
         # Run transcription and diarization concurrently
         transcript, diarization = await asyncio.gather(
-            async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words),
+            async_transcribe_audio(
+                file_path, kwargs, max_words, max_chars, sensitive_words),
             async_diarize_audio(file_path, device)
         )
         # Merge diarization with transcription
@@ -431,9 +443,9 @@ async def transcribe(request: TranscriptionRequest):
 
         import torch
         kwargs = {
-            "model": model, 
-            "task": task, 
-            "language": request.language, 
+            "model": model,
+            "task": task,
+            "language": request.language,
             "align_words": request.align_words,
             "device": "cuda" if torch.cuda.is_available() else "cpu"
         }
@@ -474,7 +486,7 @@ async def transcribe(request: TranscriptionRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error saving JSON file: {e}"
             )
-        
+
         end_time = time.time()
         print(f"Transcription time: {end_time - start_time} seconds")
 
@@ -506,6 +518,7 @@ async def transcribe(request: TranscriptionRequest):
 #     whisperResult = result.to_dict()
 #     return {"complete": True}
 
+
 def modify_result(result, max_words, max_chars, sensitive_words):
     # matching function to identify sensitive words
     def is_sensitive(word, sensitive_words):
@@ -515,7 +528,8 @@ def modify_result(result, max_words, max_chars, sensitive_words):
     def censor_word(result, seg_index, word_index):
         word = result[seg_index][word_index]
         match = word.word.strip()
-        word.word = word.word.replace(match, '*' * len(word.word.strip()))  # Replace each character with an asterisk
+        # Replace each character with an asterisk
+        word.word = word.word.replace(match, '*' * len(word.word.strip()))
 
     # Apply the custom_operation to censor sensitive words
     if len(sensitive_words) > 0:
@@ -527,24 +541,20 @@ def modify_result(result, max_words, max_chars, sensitive_words):
             word_level=True              # Operate at the word level
         )
 
-    # Apply the following post-processing steps to the result
     (
         result
-        .ignore_special_periods()
-        .clamp_max()
-        .split_by_punctuation([(',', ' '), '，'])
-        .split_by_gap(.3)
-        .merge_by_gap(.2, max_words=2)
-        .split_by_punctuation([('.', ' '), '。', '?', '？'])
+        .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+        .split_by_gap(0.4)
+        .merge_by_gap(0.1, max_words=3)
         .split_by_length(max_words=max_words, max_chars=max_chars)
-        .adjust_gaps()
     )
 
     return result
-    
+
 
 class ValidateRequest(BaseModel):
     token: str
+
 
 @app.post("/validate/")
 async def validate_model(request: ValidateRequest):
