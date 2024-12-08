@@ -283,6 +283,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setProcessingStep("Preparing to transcribe...");
 
             console.log("Audio Path: ", audioInfo.path);
+            let sensitiveWordsList: string[] = [];
+            if (sensitiveWords !== "") {
+                sensitiveWordsList = sensitiveWords.split(',').map((word: string) => word.trim().toLowerCase());
+            }
 
             let body = {
                 file_path: audioInfo.path,
@@ -295,6 +299,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 align_words: alignWords,
                 max_words: maxWords,
                 max_chars: maxChars,
+                sensitive_words: sensitiveWordsList,
                 mark_in: audioInfo.markIn
             };
 
@@ -404,10 +409,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             await updateTranscript(speakers);
             filePath = await getFullTranscriptPath();
         }
-        let sensitiveWordsList: string[] = [];
-        if (sensitiveWords !== "") {
-            sensitiveWordsList = sensitiveWords.split(',').map((word: string) => word.trim().toLowerCase());
-        }
+
         try {
             const response = await fetch(resolveAPI, {
                 method: 'POST',
@@ -419,7 +421,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     trackIndex: currentTrack,
                     removePunctuation,
                     textFormat,
-                    sensitiveWords: sensitiveWordsList,
                 }),
             });
 

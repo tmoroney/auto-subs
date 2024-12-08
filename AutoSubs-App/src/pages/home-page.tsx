@@ -204,7 +204,7 @@ export function HomePage() {
         maxChars,
         textFormat,
         removePunctuation,
-        //sensitiveWords,
+        sensitiveWords,
         alignWords,
         audioPath,
         setTemplate,
@@ -217,7 +217,7 @@ export function HomePage() {
         setMaxChars,
         setTextFormat,
         setRemovePunctuation,
-        // setSensitiveWords,
+        setSensitiveWords,
         setAlignWords,
         setIsLoading,
         setError,
@@ -669,10 +669,10 @@ export function HomePage() {
                                 </div>
                                 <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                             </div>
-                            {/* <div className="grid gap-3">
+                            <div className="grid gap-3">
                                 <Label htmlFor="sensitiveWords">Sensored Words</Label>
                                 <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
-                            </div> */}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
                                     <Label htmlFor="maxWords">Max words</Label>

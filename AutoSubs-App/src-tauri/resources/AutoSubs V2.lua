@@ -304,25 +304,8 @@ function GetTemplateItem(folder, templateName)
     end
 end
 
--- remove sensitive words from the text and replace some letters with asterisks
-local function RemoveSensitiveWords(input_string, censor_list)
-    -- Iterate through the list of words to censor
-    for _, word in ipairs(censor_list) do
-        -- Create a pattern to match the word (case-insensitive)
-        local pattern = word:gsub("(%W)", "%%%1") -- Escape special characters
-        pattern = utf8.lower(pattern) -- Ensure the pattern matches in lower case
-        pattern = "%f[%a]" .. pattern .. "%f[%A]" -- Match whole words only
-        
-        -- Replace the word with asterisks
-        input_string = utf8.gsub(input_string, pattern, function(match)
-            return string.rep("*", utf8.len(match))
-        end)
-    end
-    return input_string
-end
-
 -- Add subtitles to the timeline using the specified template
-function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation, sensitiveWords)
+function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation)
     local timeline = project:GetCurrentTimeline()
 
     if trackIndex == "0" or trackIndex == "" then
@@ -409,7 +392,13 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
 
             -- Remove punctuation if specified
             if removePunctuation then
-                subtitleText = utf8.gsub(subtitleText, "[%p%c]", "")
+                subtitleText = utf8.gsub(subtitleText, "[%p%c]", function(c)
+                    if c == "*" then
+                        return c
+                    else
+                        return ""
+                    end
+                end)
             end
 
             -- Apply text formatting
@@ -420,10 +409,6 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
             if textFormat == "lowercase" then
                 subtitleText = utf8.lower(subtitleText)
             end
-
-            -- if #sensitiveWords > 0 then
-            --     subtitleText = RemoveSensitiveWords(subtitleText, sensitiveWords)
-            -- end
 
             -- Skip if text is not compatible
             if timelineItem:GetFusionCompCount() > 0 then
@@ -565,7 +550,7 @@ while not quitServer do
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
                         AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
-                            data.removePunctuation, data.sensitiveWords)
+                            data.removePunctuation)
                         body = json.encode({
                             message = "Job completed"
                         })

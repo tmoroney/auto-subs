@@ -46,8 +46,7 @@
       "resources/"
     ],
     "macOS": {
-      "minimumSystemVersion": "14.0",
-      "entitlements": "macos/entitlements.plist"
+      "minimumSystemVersion": "14.0"
     },
     "windows": {
       "nsis": {

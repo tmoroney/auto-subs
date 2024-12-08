@@ -10,6 +10,7 @@ import os
 import appdirs
 import time
 import platform
+import stable_whisper
 
 # Set the default encoding to UTF-8
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -194,9 +195,7 @@ def log_progress(seek, total_duration):
     # print progress as percentage
     print(f"Progress: {seek/total_duration*100:.0f}%")
 
-def transcribe_audio(audio_file, kwargs, max_words, max_chars):
-    import stable_whisper
-
+def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     if (platform.system() == 'Windows'):
         compute_type = "int16" if kwargs["device"] == "cuda" else "int8"
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
@@ -211,17 +210,7 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars):
     else:
         result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
 
-    (
-        result
-        .ignore_special_periods()
-        .clamp_max()
-        .split_by_punctuation([(',', ' '), '，'])
-        .split_by_gap(.3)
-        .merge_by_gap(.2, max_words=2)
-        .split_by_punctuation([('.', ' '), '。', '?', '？'])
-        .split_by_length(max_words=max_words, max_chars=max_chars)
-        .adjust_gaps()
-    )
+    result = modify_result(result, max_words, max_chars, sensitive_words)
 
     return result.to_dict()
 
@@ -247,6 +236,7 @@ def merge_diarisation(transcript, diarization):
     new_segments = []
     transcript_segments = transcript["segments"]
     diarization_turns = list(diarization.itertracks(yield_label=True))
+    diarization_segments = []
 
     i, j = 0, 0
     while i < len(transcript_segments) and j < len(diarization_turns):
@@ -274,6 +264,12 @@ def merge_diarisation(transcript, diarization):
                 "words": segment["words"]
             }
             new_segments.append(new_segment)
+
+            diarization_segments.append({
+                "speaker": speaker_label,
+                "start": diar_start,
+                "end": diar_end
+            })
 
             # Add speaker info if not already present
             if speaker not in speakers_info:
@@ -339,8 +335,7 @@ def merge_diarisation(transcript, diarization):
 
     # Convert speakers_info dict to a list
     speakers_list = list(speakers_info.values())
-    top_speaker = max(
-        speakers_list, key=lambda speaker: speaker["subtitle_lines"])
+    top_speaker = max(speakers_list, key=lambda speaker: speaker["subtitle_lines"])
 
     # Add speakers list to the result
     result = {
@@ -352,14 +347,15 @@ def merge_diarisation(transcript, diarization):
             "id": top_speaker["id"],
             "percentage": round((top_speaker["subtitle_lines"] / len(transcript_segments)) * 100)
         },
-        "segments": new_segments
+        "segments": new_segments,
+        "diarization": diarization_segments
     }
     return result
 
 
-async def async_transcribe_audio(file_path, kwargs, max_words, max_chars):
+async def async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words):
     """Asynchronous transcription function."""
-    return transcribe_audio(file_path, kwargs, max_words, max_chars)
+    return transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
 
 
 async def async_diarize_audio(file_path, device):
@@ -367,19 +363,19 @@ async def async_diarize_audio(file_path, device):
     return diarize_audio(file_path, device)
 
 
-async def process_audio(file_path, kwargs, max_words, max_chars, device, diarize_enabled):
+async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words, device, diarize_enabled):
     """Process audio: transcription and diarization concurrently."""
     if diarize_enabled:
         # Run transcription and diarization concurrently
         transcript, diarization = await asyncio.gather(
-            async_transcribe_audio(file_path, kwargs, max_words, max_chars),
+            async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words),
             async_diarize_audio(file_path, device)
         )
         # Merge diarization with transcription
         result = merge_diarisation(transcript, diarization)
     else:
         # Run transcription only
-        transcript = await async_transcribe_audio(file_path, kwargs, max_words, max_chars)
+        transcript = await async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
         transcript["speakers"] = []
         result = transcript
 
@@ -397,6 +393,7 @@ class TranscriptionRequest(BaseModel):
     align_words: bool
     max_words: int
     max_chars: int
+    sensitive_words: list
     mark_in: int
 
 
@@ -421,6 +418,7 @@ async def transcribe(request: TranscriptionRequest):
         timeline = request.timeline
         max_words = request.max_words
         max_chars = request.max_chars
+        sensitive_words = request.sensitive_words
 
         # Check if the file exists
         if not os.path.exists(file_path):
@@ -453,7 +451,7 @@ async def transcribe(request: TranscriptionRequest):
         # Process audio (transcription and optionally diarization)
         try:
             result = await process_audio(
-                file_path, kwargs, max_words, max_chars, device, request.diarize,
+                file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize,
             )
             result["mark_in"] = request.mark_in
         except Exception as e:
@@ -467,8 +465,8 @@ async def transcribe(request: TranscriptionRequest):
         json_filename = f"{timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
         try:
-            with open(json_filepath, 'w') as f:
-                json.dump(result, f, indent=4)
+            with open(json_filepath, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=4, ensure_ascii=False)
             print(f"Transcription saved to: {json_filepath}")
         except Exception as e:
             print(f"Error saving JSON file: {e}")
@@ -494,10 +492,59 @@ async def transcribe(request: TranscriptionRequest):
             detail=f"Unexpected error: {e}"
         )
 
+# class ModifyRequest(BaseModel):
+#     file_path: str
+#     max_words: int
+#     max_chars: int
+#     sensitive_words: list
+
+# @app.post("/modify/")
+# async def modify(request: ModifyRequest):
+#     result = stable_whisper.WhisperResult(request.file_path)
+#     result.reset()
+#     result = modify_result(result, request.max_words, request.max_chars, request.sensitive_words)
+#     whisperResult = result.to_dict()
+#     return {"complete": True}
+
+def modify_result(result, max_words, max_chars, sensitive_words):
+    # matching function to identify sensitive words
+    def is_sensitive(word, sensitive_words):
+        return word.word.lower().strip() in [w.lower() for w in sensitive_words]
+
+    # replacement function to censor the sensitive words
+    def censor_word(result, seg_index, word_index):
+        word = result[seg_index][word_index]
+        match = word.word.strip()
+        word.word = word.word.replace(match, '*' * len(word.word.strip()))  # Replace each character with an asterisk
+
+    # Apply the custom_operation to censor sensitive words
+    if len(sensitive_words) > 0:
+        result.custom_operation(
+            key='',                      # Empty string to use the word object directly
+            operator=is_sensitive,       # Use the is_sensitive function as the operator
+            value=sensitive_words,       # Pass the sensitive_words list as the value
+            method=censor_word,          # Use the censor_word function to perform the replacement
+            word_level=True              # Operate at the word level
+        )
+
+    # Apply the following post-processing steps to the result
+    (
+        result
+        .ignore_special_periods()
+        .clamp_max()
+        .split_by_punctuation([(',', ' '), '，'])
+        .split_by_gap(.3)
+        .merge_by_gap(.2, max_words=2)
+        .split_by_punctuation([('.', ' '), '。', '?', '？'])
+        .split_by_length(max_words=max_words, max_chars=max_chars)
+        .adjust_gaps()
+    )
+
+    return result
+    
 
 class ValidateRequest(BaseModel):
     token: str
-
 
 @app.post("/validate/")
 async def validate_model(request: ValidateRequest):
