@@ -27,6 +27,8 @@ interface GlobalContextProps {
     maxChars: number;
     textFormat: string;
     removePunctuation: boolean;
+    sensitiveWords: string;
+    alignWords: boolean;
     processingStep: string;
     isLoading: boolean;
     error: ErrorMsg;
@@ -43,6 +45,8 @@ interface GlobalContextProps {
     setMaxChars: (newMaxChars: number) => void;
     setTextFormat: (newTextFormat: string) => void;
     setRemovePunctuation: (newRemovePunctuation: boolean) => void;
+    setSensitiveWords: (newSensitiveWords: string) => void;
+    setAlignWords: (newAlignWords: boolean) => void;
     fetchTranscription: (audioPath: string) => Promise<void>;
     subtitles: Subtitle[];
 
@@ -99,6 +103,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [audioPath, setAudioPath] = useState("");
     const serverLoading = useRef(true);
 
+    const [markIn, setMarkIn] = useState(0);
     const [model, setModel] = useState("small");
     const [currentLanguage, setLanguage] = useState("en");
     const [currentTemplate, setTemplate] = useState("");
@@ -109,7 +114,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [maxChars, setMaxChars] = useState(25);
     const [textFormat, setTextFormat] = useState("normal");
     const [removePunctuation, setRemovePunctuation] = useState(false);
-    const [markIn, setMarkIn] = useState(0);
+    const [sensitiveWords, setSensitiveWords] = useState<string>("");
+    const [alignWords, setAlignWords] = useState(false);
 
     async function setTranscriptsFolder() {
         storageDir = await join(await documentDir(), "AutoSubs");
@@ -141,6 +147,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setMaxChars(await store.get<number>('maxChars') || 25);
             setTextFormat(await store.get<string>('textFormat') || "normal");
             setRemovePunctuation(await store.get<boolean>('removePunctuation') || false);
+            setSensitiveWords(await store.get<string>('sensitiveWords') || "");
+            setAlignWords(await store.get<boolean>('alignWords') || false);
         } catch (error) {
             console.error('Error initializing store:', error);
         }
@@ -159,6 +167,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 await store.set('maxChars', maxChars);
                 await store.set('textFormat', textFormat);
                 await store.set('removePunctuation', removePunctuation);
+                await store.set('sensitiveWords', sensitiveWords);
+                await store.set('alignWords', alignWords);
                 await store.save(); // Persist changes
             } catch (error) {
                 console.error('Error saving state:', error);
@@ -282,6 +292,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 language: currentLanguage,
                 task: translate ? "translate" : "transcribe",
                 diarize: diarize,
+                align_words: alignWords,
                 max_words: maxWords,
                 max_chars: maxChars,
                 mark_in: audioInfo.markIn
@@ -393,6 +404,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             await updateTranscript(speakers);
             filePath = await getFullTranscriptPath();
         }
+        let sensitiveWordsList: string[] = [];
+        if (sensitiveWords !== "") {
+            sensitiveWordsList = sensitiveWords.split(',').map((word: string) => word.trim().toLowerCase());
+        }
         try {
             const response = await fetch(resolveAPI, {
                 method: 'POST',
@@ -403,7 +418,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     templateName: currentTemplate,
                     trackIndex: currentTrack,
                     removePunctuation,
-                    textFormat
+                    textFormat,
+                    sensitiveWords: sensitiveWordsList,
                 }),
             });
 
@@ -714,6 +730,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 textFormat,
                 removePunctuation,
                 processingStep,
+                sensitiveWords,
+                alignWords,
                 isLoading,
                 error,
                 audioPath,
@@ -726,6 +744,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 setMaxChars,
                 setTextFormat,
                 setRemovePunctuation,
+                setSensitiveWords,
+                setAlignWords,
                 setTemplate,
                 setLanguage,
                 setTrack,

@@ -72,10 +72,12 @@ export function DiarizePage() {
         currentTrack,
         textFormat,
         removePunctuation,
+        // sensitiveWords,
         setTemplate,
         setTrack,
         setTextFormat,
         setRemovePunctuation,
+        // setSensitiveWords,
         addSubtitles,
         updateSpeaker,
         getTemplates,
@@ -364,6 +366,10 @@ export function DiarizePage() {
                                 </div>
                                 <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                             </div>
+                            {/* <div className="grid gap-3">
+                                <Label htmlFor="sensitiveWords">Sensored Words</Label>
+                                <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                            </div> */}
 
                             {/* <div className="grid gap-3">
 

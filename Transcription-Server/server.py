@@ -11,6 +11,9 @@ import appdirs
 import time
 import platform
 
+# Set the default encoding to UTF-8
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
 # Define a base cache directory using appdirs
 cache_dir = appdirs.user_cache_dir("AutoSubs", "")  # Empty string for appauthor
 
@@ -23,6 +26,7 @@ os.environ['MPLCONFIGDIR'] = matplotlib_cache_dir
 huggingface_cache_dir = os.path.join(cache_dir, 'hf_cache')
 os.makedirs(huggingface_cache_dir, exist_ok=True)
 os.environ['HF_HUB_CACHE'] = huggingface_cache_dir
+os.environ['HF_HOME'] = huggingface_cache_dir
 
 # Torch cache directory
 pyannote_cache_dir = os.path.join(cache_dir, 'pyannote_cache')
@@ -201,6 +205,9 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars):
         else:
             result = model.transcribe_stable(audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
             model.align(audio_file, result, kwargs["language"])
+            if kwargs["align_words"]:
+                model.align_words(audio_file, result, kwargs["language"])
+
     else:
         result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
 
@@ -387,6 +394,7 @@ class TranscriptionRequest(BaseModel):
     language: str
     task: str
     diarize: bool
+    align_words: bool
     max_words: int
     max_chars: int
     mark_in: int
@@ -411,7 +419,6 @@ async def transcribe(request: TranscriptionRequest):
 
         file_path = request.file_path
         timeline = request.timeline
-        language = request.language
         max_words = request.max_words
         max_chars = request.max_chars
 
@@ -424,26 +431,29 @@ async def transcribe(request: TranscriptionRequest):
         else:
             print(f"Processing file: {file_path}")
 
-        kwargs = {"model": model, "language": language, "task": task}
+        import torch
+        kwargs = {
+            "model": model, 
+            "task": task, 
+            "language": request.language, 
+            "align_words": request.align_words,
+            "device": "cuda" if torch.cuda.is_available() else "cpu"
+        }
 
         # Select device
-        import torch
         if torch.cuda.is_available():
             device = torch.device("cuda")
-            kwargs["device"] = "cuda"
         elif torch.backends.mps.is_available():
             device = torch.device("mps")
-            kwargs["device"] = "mps"
         else:
             device = torch.device("cpu")
-            kwargs["device"] = "cpu"
 
         print(f"Using device: {device}")
 
         # Process audio (transcription and optionally diarization)
         try:
             result = await process_audio(
-                file_path, kwargs, max_words, max_chars, device, request.diarize
+                file_path, kwargs, max_words, max_chars, device, request.diarize,
             )
             result["mark_in"] = request.mark_in
         except Exception as e:

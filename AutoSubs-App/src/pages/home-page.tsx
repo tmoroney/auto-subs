@@ -19,7 +19,8 @@ import {
     CaseUpper,
     CaseLower,
     PencilOff,
-    Download, History
+    Download, History,
+    Pickaxe
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -203,6 +204,8 @@ export function HomePage() {
         maxChars,
         textFormat,
         removePunctuation,
+        //sensitiveWords,
+        alignWords,
         audioPath,
         setTemplate,
         setLanguage,
@@ -214,6 +217,8 @@ export function HomePage() {
         setMaxChars,
         setTextFormat,
         setRemovePunctuation,
+        // setSensitiveWords,
+        setAlignWords,
         setIsLoading,
         setError,
         fetchTranscription,
@@ -634,21 +639,21 @@ export function HomePage() {
                                 >
                                     <ToggleGroupItem
                                         value="normal"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'normal' ? 'border-primary' : ''}`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
                                     >
                                         <PencilOff />
                                         <span className="text-xs">None</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="lowercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'lowercase' ? 'border-primary' : ''}`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
                                     >
                                         <CaseLower />
                                         <span className="text-xs">Lower</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="uppercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground ${textFormat === 'uppercase' ? 'border-primary' : ''}`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
                                     >
                                         <CaseUpper />
                                         <span className="text-xs">Upper</span>
@@ -664,6 +669,10 @@ export function HomePage() {
                                 </div>
                                 <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                             </div>
+                            {/* <div className="grid gap-3">
+                                <Label htmlFor="sensitiveWords">Sensored Words</Label>
+                                <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                            </div> */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-3">
                                     <Label htmlFor="maxWords">Max words</Label>
@@ -673,6 +682,18 @@ export function HomePage() {
                                     <Label htmlFor="maxChars">Max characters</Label>
                                     <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
+                            </div>
+                            <div className="flex items-center space-x-4 rounded-md border p-4">
+                                <Pickaxe className="w-5" />
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">
+                                        Force Align Words
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Warning: May be unstable
+                                    </p>
+                                </div>
+                                <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
                             </div>
 
                         </CardContent>
