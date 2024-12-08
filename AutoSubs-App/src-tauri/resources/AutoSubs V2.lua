@@ -86,9 +86,8 @@ function CreateResponse(body)
 end
 
 -- UTILS
-
 function lstrip(str)
-    return utf8.gsub(str, "^%s+", "")
+    return str:gsub("^%s*(.-)%s*$", "%1")
 end
 
 -- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
@@ -422,9 +421,9 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
                 subtitleText = utf8.lower(subtitleText)
             end
 
-            if #sensitiveWords > 0 then
-                subtitleText = RemoveSensitiveWords(subtitleText, sensitiveWords)
-            end
+            -- if #sensitiveWords > 0 then
+            --     subtitleText = RemoveSensitiveWords(subtitleText, sensitiveWords)
+            -- end
 
             -- Skip if text is not compatible
             if timelineItem:GetFusionCompCount() > 0 then
