@@ -6,10 +6,22 @@
 - 🎨 **Modern UI:** A stylish, streamlined interface for seamless workflows.
 - 📦 **One-Click Installer:** Apple-approved for quick, hassle-free setup.
 
-### ✨ **[Explore AutoSubs v2](https://github.com/tmoroney/auto-subs/releases/tag/V2.1)** ✨
-Upgrade now and experience the future of fast, seamless transcription! 🎉
+### Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs_2.0.0_x64-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs-Mac-ARM.pkg)
 
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
+
+> [!Note]
+> **For Windows Users:**
+> Smart screen or Windows Defender may pop up when you open the installer. This is because my code signing certificate hasn't gained enough reputation yet. This screen will eventually go away as more people download it.
+
+## Setup:
+1. Download the installer above and open it.
+2. Follow the instructions on screen.
+3. Open Davinci Resolve and click **"Workspace"** in the top menu bar, and then **"Scripts"** and select **AutoSubs V2**.
+
+Generate Subtitles & Label Speakers |  Advanced Settings
+:-------------------------:|:-------------------------:
+<img width="550" alt="Transcription Page" src="https://github.com/user-attachments/assets/59803d26-cda0-4b44-ac54-3eb46438f7a6"> | <img width="600" alt="Advanced Settings" src="https://github.com/user-attachments/assets/d136f300-89be-4f0c-a330-57372fd71041">
 
 # AutoSubs V1
 **Automatic transcription for your editing timeline using OpenAI Whisper (running locally).**
