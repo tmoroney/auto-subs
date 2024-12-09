@@ -1,0 +1,48 @@
+{
+    "name": "Davinchi OIL",
+    "version": "0.1",
+    "manifest_version": 3,
+    "description": "Send content to Davinchi Resolve BIN",
+    "permissions": ["storage","notifications", "tabs", "activeTab","scripting","contextMenus","downloads"],
+    "icons":{
+        "128": "./images/icon-128x128.png"
+    },
+    "background":{
+        "service_worker": "./background.js"
+    },
+    "action":{
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "./images/icon-16x16.png",
+            "32": "./images/icon-32x32.png",
+            "128": "./images/icon-128x128.png"
+        }
+    },
+    "host_permissions": [
+        "http://localhost:55000/*",
+        "<all_urls>"
+    ],"commands": {
+    "open-screen-captue": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Run \"screen-captue\" on the current page."
+        },
+        "end-screen-captue": {
+            "suggested_key": {
+              "default": "Ctrl+Shift+Q",
+              "mac": "Command+Shift+Q"
+            },
+            "description": "INCOMEPLETE:Run \"screen-captue\" on the current page."
+              },
+        "_execute_action": {
+          "suggested_key": {
+            "windows": "Ctrl+Shift+E",
+            "mac": "Command+Shift+E",
+            "chromeos": "Ctrl+Shift+E",
+            "linux": "Ctrl+Shift+E"
+          }
+        }
+    }        
+}

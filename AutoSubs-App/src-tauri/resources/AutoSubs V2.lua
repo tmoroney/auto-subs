@@ -444,6 +444,13 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
     end
 end
 
+
+-- Add subtitles to the timeline using the specified template
+function AddMediaToBin(filePath)
+    local mediaStorage = resolve:GetMediaStorage()
+    mediaStorage:AddItemListToMediaPool(filePath)
+end
+
 local function set_cors_headers(client)
     client:send("HTTP/1.1 200 OK\r\n")
     client:send("Access-Control-Allow-Origin: *\r\n")
@@ -551,6 +558,23 @@ while not quitServer do
                         print("[AutoSubs Server] Adding subtitles to timeline...")
                         AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
                             data.removePunctuation)
+                        body = json.encode({
+                            message = "Job completed"
+                        })
+                    elseif data.func == "GetTimelineStoragePath" then -- this is how davinchi knows what to do.   Localhost:55010
+                        print("[AutoSubs Server] Cooked With OIL")
+                        
+                        print("Mounted Volume List: ", mountedVolumeList[1])
+                        print("Current Project: ", currentProject)
+                        -- above is where files collected using OIL are stored  mountedVolumeList[1]+currentProject
+                        -- Prepare the body for the API request
+                        
+                        body = json.encode({
+                            message = "Job completed",
+                            filePath =  mountedVolumeList[1] .. '/' .. currentProject
+                        })
+                    elseif data.func == "AddMediaToBin" then -- this is h
+                        AddMediaToBin(data.filePath)
                         body = json.encode({
                             message = "Job completed"
                         })

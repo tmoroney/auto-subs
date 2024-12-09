@@ -8,3 +8,6 @@ faster-whisper
 pyannote.audio
 appdirs
 pyinstaller
+urllib
+mimetypes
+requests
