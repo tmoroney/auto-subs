@@ -277,10 +277,16 @@ function ExportAudio(outputDir)
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"]
         }
-
+        local renderingLoops = 0
         while project:IsRenderingInProgress() do
             print("Rendering...")
             sleep(0.5) -- Check every 500 milliseconds
+            renderingLoops = renderingLoops + 1
+            if renderingLoops > 3 then
+                print("Render Status")
+                print(project:GetRenderStatus(pid))
+                renderingLoops = 0
+            end
         end
     end)
 
