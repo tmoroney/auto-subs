@@ -225,7 +225,7 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
 
     else:
         result = stable_whisper.transcribe_any(
-            inference, audio_file, inference_kwargs=kwargs, vad=True, force_order=True)
+            inference, audio_file, inference_kwargs=kwargs, vad=False)
 
     result = modify_result(result, max_words, max_chars, sensitive_words)
 
