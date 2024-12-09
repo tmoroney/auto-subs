@@ -16,8 +16,10 @@ import stable_whisper
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # Define a base cache directory using appdirs
-cache_dir = appdirs.user_cache_dir(
-    "AutoSubs", "")  # Empty string for appauthor
+if platform.system() == 'Windows':
+    cache_dir = appdirs.user_cache_dir("AutoSubs-Cache", "")
+else:
+    cache_dir = appdirs.user_cache_dir("AutoSubs", "")
 
 # Matplotlib cache directory
 matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')

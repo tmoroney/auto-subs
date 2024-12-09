@@ -92,7 +92,7 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install -r requirements-mac.txt
-        pyinstaller package-mac.spec --noconfirm
+        pyinstaller package-server.spec --noconfirm
         deactivate
 
     - name: Move Python Server to resources folder
