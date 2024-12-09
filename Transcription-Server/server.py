@@ -1,3 +1,35 @@
+import sys
+import os
+
+# Set the default encoding to UTF-8
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['PYTHONUTF8'] = '1'
+
+class Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        if self.stream:
+            self.stream.write(data)
+            self.stream.flush()
+
+    def writelines(self, datas):
+        if self.stream:
+            self.stream.writelines(datas)
+            self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+# Reconfigure stdout and stderr to use UTF-8 encoding before wrapping
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
+# Ensure stdout and stderr are line-buffered after reconfiguration
+sys.stdout = Unbuffered(sys.stdout)
+sys.stderr = Unbuffered(sys.stderr)
+
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import random
@@ -5,15 +37,10 @@ import uvicorn
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, status
 import asyncio
-import sys
-import os
 import appdirs
 import time
 import platform
 import stable_whisper
-
-# Set the default encoding to UTF-8
-os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # Define a base cache directory using appdirs
 if platform.system() == 'Windows':
@@ -44,28 +71,6 @@ print(f"Torch cache directory: {pyannote_cache_dir}")
 
 from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
-
-class Unbuffered(object):
-    def __init__(self, stream):
-        self.stream = stream
-
-    def write(self, data):
-        if self.stream:
-            self.stream.write(data)
-            self.stream.flush()
-
-    def writelines(self, datas):
-        if self.stream:
-            self.stream.writelines(datas)
-            self.stream.flush()
-
-    def __getattr__(self, attr):
-        return getattr(self.stream, attr)
-
-
-# Ensure stdout and stderr are line-buffered
-sys.stdout = Unbuffered(sys.stdout)
-sys.stderr = Unbuffered(sys.stderr)
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
