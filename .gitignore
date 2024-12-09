@@ -21,3 +21,4 @@ sign.sh
 /Transcription-Server/dist
 /Transcription-Server/build
 AutoSubs-App/package-lock.json
+/Mac-Package/Payload
