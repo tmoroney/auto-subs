@@ -10,14 +10,14 @@
 
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 
-> [!Note]
-> **For Windows Users:**
-> Smart screen or Windows Defender may pop up when you open the installer. This is because my code signing certificate hasn't gained enough reputation yet. This screen will eventually go away as more people download it.
-
 ## Setup:
 1. Download the installer above and open it.
 2. Follow the instructions on screen.
 3. Open Davinci Resolve and click **"Workspace"** in the top menu bar, and then **"Scripts"** and select **AutoSubs V2**.
+
+> [!Note]
+> **For Windows Users:**
+> Smart screen or Windows Defender may pop up when you open the installer. This is because my code signing certificate hasn't gained enough reputation yet. This screen will eventually go away as more people download it.
 
 Generate Subtitles & Label Speakers |  Advanced Settings
 :-------------------------:|:-------------------------:
