@@ -1,48 +1,9 @@
-from fastapi.middleware.cors import CORSMiddleware
-import json
-import random
-import uvicorn
-from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException, status,Request
-from fastapi.responses import JSONResponse
-import asyncio
 import sys
 import os
-import appdirs
-import time 
-import platform
-import requests
-import mimetypes
-from urllib.parse import urlparse, urlunparse
-import re
 
-
-
-# Define a base cache directory using appdirs
-cache_dir = appdirs.user_cache_dir("AutoSubs", "")  # Empty string for appauthor
-
-# Matplotlib cache directory
-matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')
-os.makedirs(matplotlib_cache_dir, exist_ok=True)
-os.environ['MPLCONFIGDIR'] = matplotlib_cache_dir
-
-# Hugging Face cache directory
-huggingface_cache_dir = os.path.join(cache_dir, 'hf_cache')
-os.makedirs(huggingface_cache_dir, exist_ok=True)
-os.environ['HF_HUB_CACHE'] = huggingface_cache_dir
-
-# Torch cache directory
-pyannote_cache_dir = os.path.join(cache_dir, 'pyannote_cache')
-os.makedirs(pyannote_cache_dir, exist_ok=True)
-os.environ['PYANNOTE_CACHE'] = pyannote_cache_dir
-
-# Print paths to verify
-print(f"Matplotlib cache directory: {matplotlib_cache_dir}")
-print(f"Hugging Face cache directory: {huggingface_cache_dir}")
-print(f"Torch cache directory: {pyannote_cache_dir}")
-
-from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
-from huggingface_hub import HfApi, HfFolder, login, snapshot_download
+# Set the default encoding to UTF-8
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['PYTHONUTF8'] = '1'
 
 class Unbuffered(object):
     def __init__(self, stream):
@@ -61,10 +22,63 @@ class Unbuffered(object):
     def __getattr__(self, attr):
         return getattr(self.stream, attr)
 
+# Reconfigure stdout and stderr to use UTF-8 encoding before wrapping
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
 
-# Ensure stdout and stderr are line-buffered
+# Ensure stdout and stderr are line-buffered after reconfiguration
 sys.stdout = Unbuffered(sys.stdout)
 sys.stderr = Unbuffered(sys.stderr)
+
+from fastapi.middleware.cors import CORSMiddleware
+import json
+import random
+import uvicorn
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status, Request
+import asyncio
+import appdirs
+import time
+import platform
+import stable_whisper
+from fastapi.responses import JSONResponse
+import sys
+import os
+import requests
+import mimetypes
+from urllib.parse import urlparse, urlunparse
+import re
+
+
+# Define a base cache directory using appdirs
+if platform.system() == 'Windows':
+    cache_dir = appdirs.user_cache_dir("AutoSubs-Cache", "")
+else:
+    cache_dir = appdirs.user_cache_dir("AutoSubs", "")
+
+# Matplotlib cache directory
+matplotlib_cache_dir = os.path.join(cache_dir, 'matplotlib_cachedir')
+os.makedirs(matplotlib_cache_dir, exist_ok=True)
+os.environ['MPLCONFIGDIR'] = matplotlib_cache_dir
+
+# Hugging Face cache directory
+huggingface_cache_dir = os.path.join(cache_dir, 'hf_cache')
+os.makedirs(huggingface_cache_dir, exist_ok=True)
+os.environ['HF_HUB_CACHE'] = huggingface_cache_dir
+os.environ['HF_HOME'] = huggingface_cache_dir
+
+# Torch cache directory
+pyannote_cache_dir = os.path.join(cache_dir, 'pyannote_cache')
+os.makedirs(pyannote_cache_dir, exist_ok=True)
+os.environ['PYANNOTE_CACHE'] = pyannote_cache_dir
+
+# Print paths to verify
+print(f"Matplotlib cache directory: {matplotlib_cache_dir}")
+print(f"Hugging Face cache directory: {huggingface_cache_dir}")
+print(f"Torch cache directory: {pyannote_cache_dir}")
+
+from huggingface_hub import HfApi, HfFolder, login, snapshot_download
+from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
@@ -80,7 +94,7 @@ if platform.system() == 'Windows':
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_win')
 else:
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac')
-    
+
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
 
 app = FastAPI()
@@ -103,7 +117,7 @@ win_models = {
     "large": "large-v3",
     "tiny.en": "tiny.en",
     "base.en": "base.en",
-    "small.en": "distil-small.en",
+    "small.en": "small.en",
     "medium.en": "medium.en",
     "large.en": "large-v3",
 }
@@ -161,7 +175,8 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{
+                  model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
@@ -172,6 +187,8 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
 
 # Function for transcribing the audio
+
+
 def inference(audio, **kwargs) -> dict:
     import mlx_whisper
     if kwargs["language"] == "auto":
@@ -193,35 +210,32 @@ def inference(audio, **kwargs) -> dict:
         )
     return output
 
+
 def log_progress(seek, total_duration):
     # print progress as percentage
     print(f"Progress: {seek/total_duration*100:.0f}%")
 
-def transcribe_audio(audio_file, kwargs, max_words, max_chars):
-    import stable_whisper
 
+def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     if (platform.system() == 'Windows'):
-        compute_type = "int16" if kwargs["device"] == "cuda" else "int8"
-        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
+        compute_type = "int8_float16" if kwargs["device"] == "cuda" else "int8"
+        model = stable_whisper.load_faster_whisper(
+            kwargs["model"], device=kwargs["device"], compute_type=compute_type)
         if kwargs["language"] == "auto":
-            result = model.transcribe_stable(audio_file, task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+            result = model.transcribe_stable(
+                audio_file, task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
         else:
-            result = model.transcribe_stable(audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, condition_on_previous_text=False, progress_callback=log_progress)
+            result = model.transcribe_stable(
+                audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
             model.align(audio_file, result, kwargs["language"])
-    else:
-        result = stable_whisper.transcribe_any(inference, audio_file, inference_kwargs = kwargs, vad=True, force_order=True)
+            if kwargs["align_words"]:
+                model.align_words(audio_file, result, kwargs["language"])
 
-    (
-        result
-        .ignore_special_periods()
-        .clamp_max()
-        .split_by_punctuation([(',', ' '), '，'])
-        .split_by_gap(.3)
-        .merge_by_gap(.2, max_words=2)
-        .split_by_punctuation([('.', ' '), '。', '?', '？'])
-        .split_by_length(max_words=max_words, max_chars=max_chars)
-        .adjust_gaps()
-    )
+    else:
+        result = stable_whisper.transcribe_any(
+            inference, audio_file, inference_kwargs=kwargs, vad=False)
+
+    result = modify_result(result, max_words, max_chars, sensitive_words)
 
     return result.to_dict()
 
@@ -247,6 +261,7 @@ def merge_diarisation(transcript, diarization):
     new_segments = []
     transcript_segments = transcript["segments"]
     diarization_turns = list(diarization.itertracks(yield_label=True))
+    diarization_segments = []
 
     i, j = 0, 0
     while i < len(transcript_segments) and j < len(diarization_turns):
@@ -274,6 +289,12 @@ def merge_diarisation(transcript, diarization):
                 "words": segment["words"]
             }
             new_segments.append(new_segment)
+
+            diarization_segments.append({
+                "speaker": speaker_label,
+                "start": diar_start,
+                "end": diar_end
+            })
 
             # Add speaker info if not already present
             if speaker not in speakers_info:
@@ -352,14 +373,15 @@ def merge_diarisation(transcript, diarization):
             "id": top_speaker["id"],
             "percentage": round((top_speaker["subtitle_lines"] / len(transcript_segments)) * 100)
         },
-        "segments": new_segments
+        "segments": new_segments,
+        "diarization": diarization_segments
     }
     return result
 
 
-async def async_transcribe_audio(file_path, kwargs, max_words, max_chars):
+async def async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words):
     """Asynchronous transcription function."""
-    return transcribe_audio(file_path, kwargs, max_words, max_chars)
+    return transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
 
 
 async def async_diarize_audio(file_path, device):
@@ -367,19 +389,20 @@ async def async_diarize_audio(file_path, device):
     return diarize_audio(file_path, device)
 
 
-async def process_audio(file_path, kwargs, max_words, max_chars, device, diarize_enabled):
+async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words, device, diarize_enabled):
     """Process audio: transcription and diarization concurrently."""
     if diarize_enabled:
         # Run transcription and diarization concurrently
         transcript, diarization = await asyncio.gather(
-            async_transcribe_audio(file_path, kwargs, max_words, max_chars),
+            async_transcribe_audio(
+                file_path, kwargs, max_words, max_chars, sensitive_words),
             async_diarize_audio(file_path, device)
         )
         # Merge diarization with transcription
         result = merge_diarisation(transcript, diarization)
     else:
         # Run transcription only
-        transcript = await async_transcribe_audio(file_path, kwargs, max_words, max_chars)
+        transcript = await async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
         transcript["speakers"] = []
         result = transcript
 
@@ -394,9 +417,12 @@ class TranscriptionRequest(BaseModel):
     language: str
     task: str
     diarize: bool
+    align_words: bool
     max_words: int
     max_chars: int
+    sensitive_words: list
     mark_in: int
+
 
 @app.post("/transcribe/")
 async def transcribe(request: TranscriptionRequest):
@@ -417,9 +443,9 @@ async def transcribe(request: TranscriptionRequest):
 
         file_path = request.file_path
         timeline = request.timeline
-        language = request.language
         max_words = request.max_words
         max_chars = request.max_chars
+        sensitive_words = request.sensitive_words
 
         # Check if the file exists
         if not os.path.exists(file_path):
@@ -430,26 +456,29 @@ async def transcribe(request: TranscriptionRequest):
         else:
             print(f"Processing file: {file_path}")
 
-        kwargs = {"model": model, "language": language, "task": task}
+        import torch
+        kwargs = {
+            "model": model,
+            "task": task,
+            "language": request.language,
+            "align_words": request.align_words,
+            "device": "cuda" if torch.cuda.is_available() else "cpu"
+        }
 
         # Select device
-        import torch
         if torch.cuda.is_available():
             device = torch.device("cuda")
-            kwargs["device"] = "cuda"
         elif torch.backends.mps.is_available():
             device = torch.device("mps")
-            kwargs["device"] = "mps"
         else:
             device = torch.device("cpu")
-            kwargs["device"] = "cpu"
 
         print(f"Using device: {device}")
 
         # Process audio (transcription and optionally diarization)
         try:
             result = await process_audio(
-                file_path, kwargs, max_words, max_chars, device, request.diarize
+                file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize,
             )
             result["mark_in"] = request.mark_in
         except Exception as e:
@@ -463,8 +492,8 @@ async def transcribe(request: TranscriptionRequest):
         json_filename = f"{timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
         try:
-            with open(json_filepath, 'w') as f:
-                json.dump(result, f, indent=4)
+            with open(json_filepath, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=4, ensure_ascii=False)
             print(f"Transcription saved to: {json_filepath}")
         except Exception as e:
             print(f"Error saving JSON file: {e}")
@@ -472,7 +501,7 @@ async def transcribe(request: TranscriptionRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error saving JSON file: {e}"
             )
-        
+
         end_time = time.time()
         print(f"Transcription time: {end_time - start_time} seconds")
 
@@ -489,6 +518,53 @@ async def transcribe(request: TranscriptionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {e}"
         )
+
+# class ModifyRequest(BaseModel):
+#     file_path: str
+#     max_words: int
+#     max_chars: int
+#     sensitive_words: list
+
+# @app.post("/modify/")
+# async def modify(request: ModifyRequest):
+#     result = stable_whisper.WhisperResult(request.file_path)
+#     result.reset()
+#     result = modify_result(result, request.max_words, request.max_chars, request.sensitive_words)
+#     whisperResult = result.to_dict()
+#     return {"complete": True}
+
+
+def modify_result(result, max_words, max_chars, sensitive_words):
+    # matching function to identify sensitive words
+    def is_sensitive(word, sensitive_words):
+        return word.word.lower().strip() in [w.lower() for w in sensitive_words]
+
+    # replacement function to censor the sensitive words
+    def censor_word(result, seg_index, word_index):
+        word = result[seg_index][word_index]
+        match = word.word.strip()
+        # Replace each character with an asterisk
+        word.word = word.word.replace(match, '*' * len(word.word.strip()))
+
+    # Apply the custom_operation to censor sensitive words
+    if len(sensitive_words) > 0:
+        result.custom_operation(
+            key='',                      # Empty string to use the word object directly
+            operator=is_sensitive,       # Use the is_sensitive function as the operator
+            value=sensitive_words,       # Pass the sensitive_words list as the value
+            method=censor_word,          # Use the censor_word function to perform the replacement
+            word_level=True              # Operate at the word level
+        )
+
+    (
+        result
+        .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+        .split_by_gap(0.4)
+        .merge_by_gap(0.1, max_words=3)
+        .split_by_length(max_words=max_words, max_chars=max_chars)
+    )
+
+    return result
 
 
 class ValidateRequest(BaseModel):
@@ -518,9 +594,6 @@ async def validate_model(request: ValidateRequest):
         return {"isAvailable": False, "message": f"Please accept the terms for model '{required_models[1]}' and provide a valid Hugging Face access token."}
 
     return {"isAvailable": True, "message": "All required models are available"}
-
-
-
 
 @app.route('/save_image/', methods=['POST'])
 async def receive_text(request:Request):
