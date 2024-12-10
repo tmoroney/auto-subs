@@ -288,10 +288,10 @@ export default function Component() {
                   Meet the Developer
                 </h2>
                 <p className="text-lg text-gray-600">
-                  Hi, I&apos;m Tom, the solo developer behind AutoSubs. As a passionate coder and video enthusiast, I created AutoSubs to solve a problem I faced in my own projects: the time-consuming task of generating accurate subtitles.
+                  Hi, I&apos;m Tom, the creator of AutoSubs. As a passionate coder and video enthusiast, I developed AutoSubs to address a challenge I encountered: the tedious and time-consuming task of manually crafting subtitles with custom designs.
                 </p>
                 <p className="text-lg text-gray-600">
-                  My goal is to remove as many creative blockers in video creation process as possible, so I&apos;ve dedicated my time to making AutoSubs a powerful, user-friendly tool that can benefit content creators worldwide.
+                  My mission is to eliminate creative roadblocks in the video creation process. That&apos;s why I&apos;ve dedicated myself to building AutoSubs — a powerful, intuitive tool designed to make life easier for content creators around the globe.
                 </p>
                 <div className="flex gap-4">
                   <a href="https://github.com/tmoroney/">
