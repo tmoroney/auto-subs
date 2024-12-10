@@ -10,7 +10,7 @@ print("Operating System: " .. os_name)
 -- Function to read a JSON file
 local function read_json_file(file_path)
     local file = assert(io.open(file_path, "r")) -- Open file for reading
-    local content = file:read("*a") -- Read the entire file content
+    local content = file:read("*a")              -- Read the entire file content
     file:close()
 
     -- Parse the JSON content
@@ -50,10 +50,9 @@ if os_name == "Windows" then
     -- Windows commands to open and close app using terminal commands
     command_open = 'start "" "' .. mainApp .. '"'
     command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
-
 elseif os_name == "OSX" then
     storagePath = os.getenv("HOME") ..
-                      "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
+        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
 
     local file = assert(io.open(storagePath .. "install_path.txt", "r"))
     local install_path = file:read("*l")
@@ -79,7 +78,7 @@ local mediaPool = project:GetMediaPool()
 
 function CreateResponse(body)
     local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
-                       "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
+        "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
 
     local response = header .. body
     return response
@@ -262,9 +261,23 @@ function ExportAudio(outputDir)
     local success, err = pcall(function()
         resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
         project:LoadRenderPreset('render-audio-only')
+        project:SetRenderSettings({ TargetDir = outputDir })
+    end)
+
+    if not success then
+        project:LoadRenderPreset('Audio Only')
         project:SetRenderSettings({
-            TargetDir = outputDir
+            TargetDir = outputDir,
+            CustomName = "autosubs-exported-audio",
+            RenderMode = "Single clip",
+            IsExportVideo = false,
+            IsExportAudio = true,
+            AudioBitDepth = 24,
+            AudioSampleRate = 44100
         })
+    end
+
+    pcall(function()
         local pid = project:AddRenderJob()
         project:StartRendering(pid)
 
@@ -385,7 +398,7 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
                 end
             end
 
-            local timelineItem = mediaPool:AppendToTimeline({newClip})[1]
+            local timelineItem = mediaPool:AppendToTimeline({ newClip })[1]
 
             local subtitle = subtitles[i]
             local subtitleText = subtitle["text"]
@@ -439,7 +452,7 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
         end)
 
         if not success then
-            print("Error adding subtitle:", err)
+            print("Attempted to add subtitle on top of existing timeline item. Please select an empty track.")
         end
     end
 end
@@ -465,7 +478,24 @@ assert(server:set_option("nodelay", true, "tcp"))
 assert(server:set_option("reuseaddr", true))
 
 -- Bind and listen
-assert(server:bind(info))
+local success, err = pcall(function()
+    assert(server:bind(info))
+end)
+
+if not success then
+    os.execute([[
+        curl --request POST \
+            --url http://localhost:55010/ \
+            --header 'Content-Type: application/json' \
+            --header 'content-type: application/json' \
+            --data '{
+            "func":"Exit"
+        }'
+    ]])
+    sleep(0.5)
+    assert(server:bind(info))
+end
+
 assert(server:listen())
 
 -- Start AutoSubs app

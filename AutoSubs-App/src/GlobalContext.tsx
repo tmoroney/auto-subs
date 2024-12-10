@@ -1,7 +1,7 @@
 import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
-import { BaseDirectory, readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
-import { join, documentDir } from '@tauri-apps/api/path';
+import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
+import { join, documentDir, downloadDir } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
@@ -105,7 +105,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     const [markIn, setMarkIn] = useState(0);
     const [model, setModel] = useState("small");
-    const [currentLanguage, setLanguage] = useState("en");
+    const [currentLanguage, setLanguage] = useState("");
     const [currentTemplate, setTemplate] = useState("");
     const [currentTrack, setTrack] = useState("");
     const [translate, setTranslate] = useState(false);
@@ -119,11 +119,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     async function setTranscriptsFolder() {
         storageDir = await join(await documentDir(), "AutoSubs");
-        // create directory
-        const dirExists = await exists(storageDir, { baseDir: BaseDirectory.Document });
-        if (!dirExists) {
-            await mkdir(storageDir, { baseDir: BaseDirectory.Document, recursive: true });
-        }
     }
 
     async function getFullTranscriptPath() {
@@ -138,7 +133,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
         try {
             setModel(await store.get<string>('model') || "small");
-            setLanguage(await store.get<string>('currentLanguage') || "en");
+            setLanguage(await store.get<string>('currentLanguage') || "");
             setTemplate(await store.get<string>('currentTemplate') || "");
             setTrack(await store.get<string>('currentTrack') || "");
             setTranslate(await store.get<boolean>('translate') || false);
@@ -388,14 +383,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             },
             body: JSON.stringify({
                 func: "ExportAudio",
-                outputDir: storageDir
+                outputDir: await downloadDir(),
             }),
         });
 
         const data = await response.json();
 
         if (data.timeline == "") {
-            throw new Error("You need to open a timeline in Resolve to start transcribing.");
+            throw new Error("Failed to export audio. You must have a timeline open in Resolve to start transcribing.");
         }
 
         setTimeline(data.timeline);
