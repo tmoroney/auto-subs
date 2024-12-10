@@ -147,7 +147,7 @@ export default function Component() {
         </section>
       </div >
       <main className="flex-1">
-        <section id="how-it-works" className="w-full py-20 md:py-32 bg-gray-50">
+        <section id="how-it-works" className="w-full pt-20 pb-32 bg-gray-50">
           <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-center mb-16 text-gray-900">
               How It Works
