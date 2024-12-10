@@ -243,7 +243,7 @@ export default function Component() {
                   <Star className="h-16 w-16 text-yellow-400 mb-6" />
                   <h3 className="text-2xl font-semibold mb-4 text-gray-900">Star on GitHub</h3>
                   <p className="text-gray-600 mb-6">Can&apos;t donate? Give us a star on GitHub to help others discover AutoSubs.</p>
-                  <a href="https://www.buymeacoffee.com/tmoroney">
+                  <a href="https://github.com/tmoroney/auto-subs">
                     <Button className="bg-yellow-500 text-white hover:bg-yellow-600 font-semibold px-8 py-6 text-lg btn-hover-effect">
                       Give a Star
                     </Button>
