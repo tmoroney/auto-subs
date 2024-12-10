@@ -64,11 +64,11 @@ export default function Component() {
                 <span className="ml-2 text-2xl font-semibold text-gray-900 font-['Poppins']">AutoSubs</span>
               </a>
               <nav className="ml-auto flex gap-6 sm:gap-8">
-                <a className="hidden sm:block text-sm font-medium hover:text-blue-600 text-gray-700" href="#features" onClick={(e) => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }); }}>
-                  Features
-                </a>
                 <a className="hidden md:block text-sm font-medium hover:text-blue-600 text-gray-700" href="#how-it-works" onClick={(e) => { e.preventDefault(); document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }}>
                   How It Works
+                </a>
+                <a className="hidden sm:block text-sm font-medium hover:text-blue-600 text-gray-700" href="#features" onClick={(e) => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }); }}>
+                  Features
                 </a>
                 <a className="text-sm font-medium hover:text-blue-600 text-gray-700" href="#support" onClick={(e) => { e.preventDefault(); document.querySelector('#support')?.scrollIntoView({ behavior: 'smooth' }); }}>
                   Donate
@@ -199,7 +199,7 @@ export default function Component() {
           </div>
         </section>
         <section id="features" className="w-full py-20 md:py-32 bg-white">
-          <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
+          <div className="container mx-auto px-6 lg:px-10 max-w-6xl mb-10">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-center mb-16 text-gray-900">
               Key Features
             </h2>
