@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { useEffect, useState } from 'react';
 
 
-import { Github, Download, Zap, Type, Globe, Sparkles, Heart, MessageCircle, Paintbrush, Star, Speech } from 'lucide-react'
+import { Github, Download, Zap, Type, Globe, Heart, MessageCircle, Paintbrush, Star, Speech } from 'lucide-react'
 import Image from 'next/image'
 
 
@@ -242,7 +242,7 @@ export default function Component() {
                 <div className="flex flex-col items-center bg-white rounded-lg px-10 py-10 shadow-sm text-gray-900">
                   <Star className="h-16 w-16 text-yellow-400 mb-6" />
                   <h3 className="text-2xl font-semibold mb-4 text-gray-900">Star on GitHub</h3>
-                  <p className="text-gray-600 mb-6">Can't donate? Give us a star on GitHub to help others discover AutoSubs.</p>
+                  <p className="text-gray-600 mb-6">Can&apos;t donate? Give us a star on GitHub to help others discover AutoSubs.</p>
                   <a href="https://www.buymeacoffee.com/tmoroney">
                     <Button className="bg-yellow-500 text-white hover:bg-yellow-600 font-semibold px-8 py-6 text-lg btn-hover-effect">
                       Give a Star
