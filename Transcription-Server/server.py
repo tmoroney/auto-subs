@@ -175,8 +175,7 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{
-                  model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
