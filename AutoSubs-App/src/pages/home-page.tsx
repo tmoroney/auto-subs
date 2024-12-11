@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState } from "react";
+import { platform } from '@tauri-apps/plugin-os';
 import { cn } from "@/lib/utils"
 import {
     Bird,
@@ -605,7 +606,7 @@ export function HomePage() {
                                                     <p>
                                                         Whisper{" "}
                                                         <span className="font-medium text-foreground">
-                                                            Large-V3
+                                                            Large
                                                         </span>
                                                     </p>
                                                     <p className="text-xs" data-description>
@@ -683,18 +684,21 @@ export function HomePage() {
                                     <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-4 rounded-md border p-4">
-                                <Pickaxe className="w-5" />
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        Force Align Words
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Improve word level timing
-                                    </p>
+
+                            {platform() === 'windows' && (
+                                <div className="flex items-center space-x-4 rounded-md border p-4">
+                                    <Pickaxe className="w-5" />
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            Force Align Words
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Improve word level timing
+                                        </p>
+                                    </div>
+                                    <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
                                 </div>
-                                <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
-                            </div>
+                            )}
 
                         </CardContent>
                     </Card>

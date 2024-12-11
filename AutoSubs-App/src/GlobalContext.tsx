@@ -234,7 +234,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     } else {
                         console.log(`Transcription Server INFO: "${line}"`);
                     }
-                } else if (line.includes("model.bin:")) {
+                } else if (line.includes("model.bin:") || line.includes("weights.safetensors:")) {
                     const percentageMatch = line.match(/(\d+)%/);
                     if (percentageMatch && percentageMatch[1]) {
                         const percentage = parseInt(percentageMatch[1], 10);

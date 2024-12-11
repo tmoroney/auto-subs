@@ -71,6 +71,7 @@ print(f"Torch cache directory: {pyannote_cache_dir}")
 
 from huggingface_hub import HfApi, HfFolder, login, snapshot_download
 from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
+import torch
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
@@ -106,12 +107,12 @@ win_models = {
     "base": "base",
     "small": "small",
     "medium": "medium",
-    "large": "large-v3",
+    "large": "large-v3-turbo",
     "tiny.en": "tiny.en",
     "base.en": "base.en",
     "small.en": "small.en",
     "medium.en": "medium.en",
-    "large.en": "large-v3",
+    "large.en": "large-v3-turbo",
 }
 
 mac_models = {
@@ -119,14 +120,21 @@ mac_models = {
     "base": "mlx-community/whisper-base-mlx-q4",
     "small": "mlx-community/whisper-small-mlx",
     "medium": "mlx-community/whisper-medium-mlx",
-    "large": "mlx-community/distil-whisper-large-v3",
+    "large": "mlx-community/whisper-large-v3-turbo",
     "tiny.en": "mlx-community/whisper-tiny.en-mlx",
     "base.en": "mlx-community/whisper-base.en-mlx",
     "small.en": "mlx-community/whisper-small.en-mlx",
     "medium.en": "mlx-community/whisper-medium.en-mlx",
-    "large.en": "mlx-community/distil-whisper-large-v3",
+    "large.en": "mlx-community/whisper-large-v3-turbo",
+    "large.de": "mlx-community/whisper-large-v3-turbo-german-f16",
 }
 
+def sanitize_result(result):
+    # Convert the result to a JSON string
+    result_json = json.dumps(result, default=lambda o: None)
+    # Parse the JSON string back to a dictionary
+    sanitized_result = json.loads(result_json)
+    return sanitized_result
 
 def is_model_cached_locally(model_id, revision=None):
     try:
@@ -227,7 +235,6 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     else:
         result = stable_whisper.transcribe_any(
             inference, audio_file, inference_kwargs=kwargs, vad=False, regroup=True)
-        result.pad()
 
     result = modify_result(result, max_words, max_chars, sensitive_words)
 
@@ -429,18 +436,6 @@ class TranscriptionRequest(BaseModel):
 async def transcribe(request: TranscriptionRequest):
     try:
         start_time = time.time()
-        if request.language == "en":
-            request.model = request.model + ".en"
-            task = "transcribe"
-        else:
-            task = request.task
-
-        if platform.system() == 'Windows':
-            model = win_models[request.model]
-        else:
-            model = mac_models[request.model]
-
-        print(model)
 
         file_path = request.file_path
         timeline = request.timeline
@@ -457,15 +452,6 @@ async def transcribe(request: TranscriptionRequest):
         else:
             print(f"Processing file: {file_path}")
 
-        import torch
-        kwargs = {
-            "model": model,
-            "task": task,
-            "language": request.language,
-            "align_words": request.align_words,
-            "device": "cuda" if torch.cuda.is_available() else "cpu"
-        }
-
         # Select device
         if torch.cuda.is_available():
             device = torch.device("cuda")
@@ -475,6 +461,29 @@ async def transcribe(request: TranscriptionRequest):
             device = torch.device("cpu")
 
         print(f"Using device: {device}")
+
+        if request.language == "en":
+            request.model = request.model + ".en"
+            task = "transcribe"
+        elif request.language == "de" and request.model == "large" and platform.system() != 'Windows':
+            request.model = request.model + ".de"
+        else:
+            task = request.task
+
+        if platform.system() == 'Windows':
+            model = win_models[request.model]
+        else:
+            model = mac_models[request.model]
+
+        print(model)
+
+        kwargs = {
+            "model": model,
+            "task": task,
+            "language": request.language,
+            "align_words": request.align_words,
+            "device": "cuda" if torch.cuda.is_available() else "cpu"
+        }
 
         # Process audio (transcription and optionally diarization)
         try:
@@ -498,7 +507,7 @@ async def transcribe(request: TranscriptionRequest):
             
             # Save the transcription to a JSON file
             with open(json_filepath, 'w', encoding='utf-8') as f:
-                json.dump(result, f, indent=4, ensure_ascii=False)
+                json.dump(sanitize_result(result), f, indent=4, ensure_ascii=False)
 
             print(f"Transcription saved to: {json_filepath}")
         except Exception as e:
