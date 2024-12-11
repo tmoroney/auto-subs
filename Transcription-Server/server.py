@@ -223,17 +223,19 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
             kwargs["model"], device=kwargs["device"], compute_type=compute_type)
         if kwargs["language"] == "auto":
             result = model.transcribe_stable(
-                audio_file, task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
+                audio_file, task=kwargs["task"], regroup=True, verbose=True, vad_filter=True, progress_callback=log_progress)
         else:
             result = model.transcribe_stable(
-                audio_file, language=kwargs["language"], task=kwargs["task"], verbose=True, vad_filter=True, progress_callback=log_progress)
+                audio_file, language=kwargs["language"], task=kwargs["task"], regroup=True, verbose=True, vad_filter=True, progress_callback=log_progress)
             model.align(audio_file, result, kwargs["language"])
             if kwargs["align_words"]:
                 model.align_words(audio_file, result, kwargs["language"])
+                result.pad()
 
     else:
         result = stable_whisper.transcribe_any(
-            inference, audio_file, inference_kwargs=kwargs, vad=False)
+            inference, audio_file, inference_kwargs=kwargs, vad=False, regroup=True)
+        result.pad()
 
     result = modify_result(result, max_words, max_chars, sensitive_words)
 
@@ -243,10 +245,17 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
 def diarize_audio(audio_file, device):
     from pyannote.audio import Pipeline
     print("Starting diarization...")
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
-    pipeline.to(device)
-    return pipeline(audio_file)
-
+    try:
+        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
+        pipeline.to(device)
+        return pipeline(audio_file)
+    except Exception as e:
+        error_message = f"failed to load diarization model. {e}"
+        print(error_message)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message
+        )
 
 def merge_diarisation(transcript, diarization):
     # Array of colors to choose from
@@ -492,8 +501,13 @@ async def transcribe(request: TranscriptionRequest):
         json_filename = f"{timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
         try:
+            # Create the directory if it doesn't exist
+            os.makedirs(request.output_dir, exist_ok=True)
+            
+            # Save the transcription to a JSON file
             with open(json_filepath, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=4, ensure_ascii=False)
+
             print(f"Transcription saved to: {json_filepath}")
         except Exception as e:
             print(f"Error saving JSON file: {e}")
@@ -558,10 +572,10 @@ def modify_result(result, max_words, max_chars, sensitive_words):
 
     (
         result
-        .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-        .split_by_gap(0.4)
-        .merge_by_gap(0.1, max_words=3)
         .split_by_length(max_words=max_words, max_chars=max_chars)
+        # .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+        # .split_by_gap(0.4)
+        # .merge_by_gap(0.1, max_words=3)
     )
 
     return result

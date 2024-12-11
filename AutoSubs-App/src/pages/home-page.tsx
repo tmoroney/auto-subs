@@ -634,7 +634,7 @@ export function HomePage() {
                                 <ToggleGroup
                                     type="single"
                                     value={textFormat}
-                                    onValueChange={(value) => value && setTextFormat(value)}
+                                    onValueChange={(value: string) => value && setTextFormat(value)}
                                     className="grid grid-cols-3 gap-3 h-20"
                                 >
                                     <ToggleGroupItem
@@ -670,7 +670,7 @@ export function HomePage() {
                                 <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                             </div>
                             <div className="grid gap-3">
-                                <Label htmlFor="sensitiveWords">Sensored Words</Label>
+                                <Label htmlFor="sensitiveWords">Censored Words</Label>
                                 <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -690,7 +690,7 @@ export function HomePage() {
                                         Force Align Words
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                        Warning: May be unstable
+                                        Improve word level timing
                                     </p>
                                 </div>
                                 <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />

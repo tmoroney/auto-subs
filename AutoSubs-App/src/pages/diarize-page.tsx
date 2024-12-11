@@ -331,7 +331,7 @@ export function DiarizePage() {
                                 <ToggleGroup
                                     type="single"
                                     value={textFormat}
-                                    onValueChange={(value) => value && setTextFormat(value)}
+                                    onValueChange={(value: string) => value && setTextFormat(value)}
                                     className="grid grid-cols-3 gap-3 h-20"
                                 >
                                     <ToggleGroupItem
