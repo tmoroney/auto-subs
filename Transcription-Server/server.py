@@ -631,32 +631,27 @@ def sanitize_filename(filename):
     return re.sub(r'[^\w\-_\. ]', '_', filename)
 
 
-def downloadfile( url,type):
-    print("url",url)    
-    print(url)
-    sanitized_url = sanitize_filename(url)
+def OIL_LUA_call(func, otherDataName = 'Null', otherData = 'Null'):
     resolveAPI = "http://localhost:55010/"
-
     # Define the headers
     headers = {
         'Content-Type': 'application/json',
     }
-
     # Define the JSON payload
     data = {
-        "func": "GetTimelineStoragePath",
-         # Replace with your actual storage directory
+        "func": func,
+        otherDataName: otherDataName
     }
-
     # Send the POST request with JSON data
     response = requests.post(resolveAPI, headers=headers, json=data)
-
     # Print the response
-    print("Status Code:", response.status_code)
-    print("Response JSON:", response.json())
+
+def downloadfile( url,type):
+
+    response = OIL_LUA_call("GetTimelineStoragePath")
     jsondata = response.json()
     getfilepath = jsondata['filePath']   
-    print("getfilepath",getfilepath)
+    
     
     # Create the directory if it doesn't exist
     if not os.path.exists(getfilepath):
@@ -667,41 +662,28 @@ def downloadfile( url,type):
         file_extension = mimetypes.guess_extension(response.headers['Content-Type'])
         if not file_extension:
             file_extension = '.mp4'  # Default to .mp4 if Content-Type is not available
-        print(len(sanitized_url))
         if len(sanitized_url) > 50:
             sanitized_url = sanitized_url[:50]
         file_path = f"{getfilepath}/{sanitized_url.replace(".","")}{file_extension}"
-        print("file_path",file_path)
         with open(file_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=1024):
                 if chunk:
                     f.write(chunk)
-        print("Done vid")   
     elif type == "image":
         response = requests.get(url)
-        print("fileformat",mimetypes.guess_extension(response.headers['Content-Type']))
         fileformat = mimetypes.guess_extension(response.headers['Content-Type'])
-        print("responseURL",url)
         file_path = f"{getfilepath}/{sanitized_url.replace(".","")}"
         with open(file_path+fileformat, 'wb') as f:
             f.write(response.content)
         file_path = file_path+fileformat
-        print("Done img")
-    
-    # Define the headers
-    headers = {
-        'Content-Type': 'application/json',
-    }
-    # Define the JSON payload
-    data = {
-        "func": "AddMediaToBin",
-        "filePath": file_path
-    }
-    # Send the POST request with JSON data
-    response = requests.post(resolveAPI, headers=headers, json=data)
+
+
+    response=OIL_LUA_call("AddMediaToBin", "filePath", file_path)
+   
     # Print the response
     print("Status Code:", response.status_code)
     print("Response JSON:", response.json())
+
 
     
 if __name__ == "__main__":

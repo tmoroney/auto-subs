@@ -22,3 +22,4 @@ sign.sh
 /Transcription-Server/build
 AutoSubs-App/package-lock.json
 /Mac-Package/Payload
+*.pem
