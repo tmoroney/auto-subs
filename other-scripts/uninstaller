@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Define the installation directory
-
 # Paths to remove
 AUTOSUBS_DIR="${APPDATA}/Blackmagic Design/DaVinci Resolve/Support/Fusion/"
 LUA_SCRIPT="${APPDATA}/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs V2.lua"
