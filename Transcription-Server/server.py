@@ -218,9 +218,8 @@ def log_progress(seek, total_duration):
 
 def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     if (platform.system() == 'Windows'):
-        compute_type = "int8_float16" if kwargs["device"] == "cuda" else "int8"
-        model = stable_whisper.load_faster_whisper(
-            kwargs["model"], device=kwargs["device"], compute_type=compute_type)
+        compute_type = "float16" if kwargs["device"] == "cuda" else "int8"
+        model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
         if kwargs["language"] == "auto":
             result = model.transcribe_stable(
                 audio_file, task=kwargs["task"], regroup=True, verbose=True, vad_filter=True, progress_callback=log_progress)

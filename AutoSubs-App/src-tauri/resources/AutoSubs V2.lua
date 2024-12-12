@@ -363,10 +363,9 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
         end
     end
 
-    -- If within 1 second, join the subtitles
+    -- If within threshold, join the subtitles
     local clipList = {}
-    local joinThreshold = frame_rate
-    local subtitlesCount = #subtitles
+    local joinThreshold = frame_rate * 4
 
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])
