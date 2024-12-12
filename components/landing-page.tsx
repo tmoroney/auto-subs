@@ -107,7 +107,7 @@ export default function Component() {
                   <span className="text-yellow-300">for DaVinci Resolve</span>
                 </h1>
                 <p className="mx-auto lg:mx-0 max-w-[800px] text-lg md:text-xl lg:text-2xl text-blue-100">
-                  Automatically generate accurate subtitles right on your editing timeline.
+                  Generate and style subtitles directly on your editing timeline to match your brand.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                   <a href={downloadLink} download>
