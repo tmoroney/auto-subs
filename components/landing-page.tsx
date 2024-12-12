@@ -27,9 +27,9 @@ export default function Component() {
   useEffect(() => {
     const userAgent = window.navigator.userAgent;
     if (userAgent.indexOf('Win') !== -1) {
-      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs-Win-setup.exe');
+      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe');
     } else if (userAgent.indexOf('Mac') !== -1) {
-      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs-Mac-ARM.pkg');
+      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg');
     } else {
       setDownloadLink('https://github.com/tmoroney/auto-subs/releases');
     }
