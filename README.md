@@ -6,7 +6,7 @@
 - 🎨 **Modern UI:** A stylish, streamlined interface for seamless workflows.
 - 📦 **One-Click Installer:** Apple-approved for quick, hassle-free setup.
 
-### Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs-Win-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/download/V2.1/AutoSubs-Mac-ARM.pkg)
+### Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg)
 
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 

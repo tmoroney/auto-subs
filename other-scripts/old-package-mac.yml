@@ -1,8 +1,11 @@
 name: Package AutoSubs for MacOS
 on:
-  release:
-    types:
-      - created
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -157,9 +160,17 @@ jobs:
         # Staple the ticket to the installer
         xcrun stapler staple "AutoSubs-Mac-ARM.pkg"
 
+    - name: Get Latest Release Tag
+      id: get_latest_release
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: |
+        latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+        echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
+
     - name: Upload Asset to Release
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ env.LATEST_TAG }}
         files: AutoSubs-Mac-ARM.pkg
         token: ${{ secrets.GH_TOKEN }}
-        tag_name: ${{ github.event.release.tag_name }}
