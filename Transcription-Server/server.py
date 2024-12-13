@@ -466,6 +466,7 @@ async def transcribe(request: TranscriptionRequest):
             task = "transcribe"
         elif request.language == "de" and request.model == "large" and platform.system() != 'Windows':
             request.model = request.model + ".de"
+            task = request.task
         else:
             task = request.task
 
@@ -491,10 +492,10 @@ async def transcribe(request: TranscriptionRequest):
             )
             result["mark_in"] = request.mark_in
         except Exception as e:
-            print(f"Error during audio processing: {e}")
+            print(f"Error during transcription: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error during audio processing: {e}"
+                detail=f"Error during transcription: {e}"
             )
 
         # Save the transcription to a JSON file
