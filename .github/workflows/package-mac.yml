@@ -149,13 +149,22 @@ jobs:
 
     - name: Notarize PKG Installer
       run: |
-        # Submit for notarization
-        xcrun notarytool submit "AutoSubs-Mac-ARM.pkg" \
+        # Function to notarize and staple the package
+        notarize_and_staple() {
+          xcrun notarytool submit "AutoSubs-Mac-ARM.pkg" \
             --keychain-profile "AC_PASSWORD" \
             --wait
-
-        # Staple the ticket to the installer
-        xcrun stapler staple "AutoSubs-Mac-ARM.pkg"
+        
+          xcrun stapler staple "AutoSubs-Mac-ARM.pkg"
+        }
+        
+        # Try notarization up to 3 times in case of bus error
+        for i in {1..3}; do
+          notarize_and_staple && break || {
+            echo "Notarization attempt $i failed. Retrying..."
+            sleep 10
+          }
+        done
 
     - name: Upload Asset to Release
       uses: softprops/action-gh-release@v2
