@@ -7,6 +7,7 @@
 - 📦 **One-Click Installer:** Apple-approved for quick, hassle-free setup.
 
 ### Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg)
+AutoSubs V2 has already surpassed **2,000** downloads in just 3 weeks!
 
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 
