@@ -331,12 +331,59 @@ export function HomePage() {
                 className="relative flex-col items-start gap-8 md:flex"
             >
                 <div className="grid w-full items-start gap-4">
-                    <Card>
+                    <Card className="overflow-hidden">
                         <CardHeader className="pb-5">
-                            <CardTitle>Transcription Flow</CardTitle>
+                            <CardTitle className="flex items-center justify-between"><span>Transcription Flow</span> <Button variant="ghost" className="m-0"><History className="w-5 h-5"/></Button></CardTitle>
                             <CardDescription>Configure and run your transcription process</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
+                            <div className="grid gap-2.5">
+                                <Label htmlFor="template">Subtitle Template</Label>
+                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openTemplates}
+                                            className="justify-between font-normal"
+                                            onClick={async () => await getTemplates()}
+                                        >
+                                            {currentTemplate && templateList.length > 0
+                                                ? templateList.find((template) => template.value === currentTemplate)?.label
+                                                : "Select Template..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search MediaPool for Text+" />
+                                            <CommandList>
+                                                <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {templateList.map((template) => (
+                                                        <CommandItem
+                                                            key={template.value}
+                                                            value={template.value}
+                                                            onSelect={(currentValue) => {
+                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
+                                                                setOpenTemplates(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {template.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                             <div className="grid gap-2.5">
                                 <Label>Output Track (Video)</Label>
                                 <Popover open={openTracks} onOpenChange={setOpenTracks}>
@@ -349,7 +396,7 @@ export function HomePage() {
                                         >
                                             {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
-                                                : "Select Output Track..."}
+                                                : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -429,8 +476,11 @@ export function HomePage() {
                                     </Button>
                                 )
                             )}
-                            <Progress value={10} />
+                            <Progress value={20} />
                         </CardContent>
+                        {/* <CardFooter className="p-0">
+                            <Progress value={20} className="rounded-b-md rounded-t-none h-3"/>
+                        </CardFooter> */}
                     </Card>
                     <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
                         <DialogTrigger asChild>
@@ -483,7 +533,7 @@ export function HomePage() {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-lg">Audio Source</h3>
-                                        <p className="text-sm text-muted-foreground">Select input audio track and language</p>
+                                        <p className="text-sm text-muted-foreground">Select input track and language</p>
                                     </div>
                                 </div>
                                 <Button
@@ -496,7 +546,7 @@ export function HomePage() {
                             </div>
                             <div className="grid gap-4">
                                 <div className="grid gap-2.5">
-                                    <Label htmlFor="sensitiveWords">Input Audio Track</Label>
+                                    <Label htmlFor="sensitiveWords">Input Track (Audio)</Label>
                                     <Popover open={openTracks} onOpenChange={setOpenTracks}>
                                         <PopoverTrigger asChild>
                                             <Button
@@ -612,7 +662,7 @@ export function HomePage() {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-lg">Transcribe</h3>
-                                        <p className="text-sm text-muted-foreground">Select a model to use for transcription</p>
+                                        <p className="text-sm text-muted-foreground">Select an AI transcription model</p>
                                     </div>
                                 </div>
                                 <Button
@@ -623,7 +673,7 @@ export function HomePage() {
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="grid gap-3">
+                            <div className="grid gap-4">
                                 <Select value={model} onValueChange={(value) => setModel(value)}>
                                     <SelectTrigger
                                         id="model"
@@ -715,6 +765,16 @@ export function HomePage() {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid gap-2.5">
+                                        <Label htmlFor="maxWords">Words per line</Label>
+                                        <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                    </div>
+                                    <div className="grid gap-2.5">
+                                        <Label htmlFor="maxChars">Characters per line</Label>
+                                        <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                    </div>
+                                </div>
                                 <div className=" flex items-center space-x-4 rounded-md border p-4">
                                     <Languages className="w-5" />
                                     <div className="flex-1 space-y-1">
@@ -747,49 +807,6 @@ export function HomePage() {
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                     <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <Speech className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Diarize Speakers</h3>
-                                        <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxWords">Min speakers</Label>
-                                    <Input value={maxWords} id="maxWords" type="number" placeholder="2" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxChars">Max speakers</Label>
-                                    <Input value={maxChars} id="maxChars" type="number" placeholder="2" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
-                        </CardFooter>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2.5 bg-primary/10 rounded-full">
                                         <Type className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
@@ -806,14 +823,9 @@ export function HomePage() {
                                 </Button>
                             </div>
                             <div className="grid gap-4">
-                                <div className="flex items-center space-x-4 rounded-md border p-4">
-                                    <Signature className="w-5" />
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium leading-none">
-                                            Remove Punctuation
-                                        </p>
-                                    </div>
-                                    <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="sensitiveWords">Censored Words</Label>
+                                    <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
                                 </div>
                                 <ToggleGroup
                                     type="single"
@@ -823,39 +835,34 @@ export function HomePage() {
                                 >
                                     <ToggleGroupItem
                                         value="normal"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <PencilOff />
                                         <span className="text-xs">None</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="lowercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <CaseLower />
                                         <span className="text-xs">Lower</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="uppercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <CaseUpper />
                                         <span className="text-xs">Upper</span>
                                     </ToggleGroupItem>
                                 </ToggleGroup>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2.5">
-                                        <Label htmlFor="maxWords">Max words</Label>
-                                        <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                <div className="flex items-center space-x-4 rounded-md border p-4">
+                                    <Signature className="w-5" />
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            Remove Punctuation
+                                        </p>
                                     </div>
-                                    <div className="grid gap-2.5">
-                                        <Label htmlFor="maxChars">Max characters</Label>
-                                        <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
-                                    </div>
-                                </div>
-                                <div className="grid gap-2.5">
-                                    <Label htmlFor="sensitiveWords">Censored Words</Label>
-                                    <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                                    <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                                 </div>
 
                             </div>
@@ -925,11 +932,11 @@ export function HomePage() {
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                     <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <Palette className="h-5 w-5 text-primary" />
+                                        <Speech className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-lg">Timeline Output</h3>
-                                        <p className="text-sm text-muted-foreground">Customise Text+ output on timeline </p>
+                                        <h3 className="font-semibold text-lg">Diarize Speakers</h3>
+                                        <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
                                     </div>
                                 </div>
                                 <Button
@@ -940,53 +947,14 @@ export function HomePage() {
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2.5">
-                                    <Label htmlFor="template">Subtitle Template</Label>
-                                    <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={openTemplates}
-                                                className="justify-between font-normal"
-                                                onClick={async () => await getTemplates()}
-                                            >
-                                                {currentTemplate && templateList.length > 0
-                                                    ? templateList.find((template) => template.value === currentTemplate)?.label
-                                                    : "Select template..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search MediaPool for Text+" />
-                                                <CommandList>
-                                                    <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {templateList.map((template) => (
-                                                            <CommandItem
-                                                                key={template.value}
-                                                                value={template.value}
-                                                                onSelect={(currentValue) => {
-                                                                    setTemplate(currentValue === currentTemplate ? "" : currentValue)
-                                                                    setOpenTemplates(false)
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        currentTemplate === template.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {template.label}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-3">
+                                    <Label htmlFor="maxWords">Min speakers</Label>
+                                    <Input value={maxWords} id="maxWords" type="number" placeholder="2" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                </div>
+                                <div className="grid gap-3">
+                                    <Label htmlFor="maxChars">Max speakers</Label>
+                                    <Input value={maxChars} id="maxChars" type="number" placeholder="2" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
                                 </div>
                             </div>
                         </CardContent>
