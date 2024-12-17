@@ -23,7 +23,8 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**",
+          "$APPCACHE/transcripts/**",
+          "$CACHE/transcripts/**",
           "$DESKTOP/**",
           "$DOCUMENT/**",
           "$DOWNLOAD/**",

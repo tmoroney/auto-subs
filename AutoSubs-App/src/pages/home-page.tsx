@@ -312,7 +312,7 @@ export function HomePage() {
                 <div className="grid w-full items-start gap-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Subtitle Generation</CardTitle>
+                            <CardTitle className="text-xl">Subtitle Generation</CardTitle>
                             <CardDescription>Generate subtitles on the current timeline</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">

@@ -501,10 +501,10 @@ async def transcribe(request: TranscriptionRequest):
         # Save the transcription to a JSON file
         json_filename = f"{timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
-        try:
-            # Create the directory if it doesn't exist
-            os.makedirs(request.output_dir, exist_ok=True)
-            
+        try:            
+            if not os.path.exists(request.output_dir):
+                os.makedirs(request.output_dir, exist_ok=True)
+
             # Save the transcription to a JSON file
             with open(json_filepath, 'w', encoding='utf-8') as f:
                 json.dump(sanitize_result(result), f, indent=4, ensure_ascii=False)

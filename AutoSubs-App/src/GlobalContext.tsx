@@ -1,7 +1,7 @@
 import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
-import { join, documentDir, downloadDir } from '@tauri-apps/api/path';
+import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
@@ -118,7 +118,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [alignWords, setAlignWords] = useState(false);
 
     async function setTranscriptsFolder() {
-        storageDir = await join(await documentDir(), "AutoSubs");
+        if (platform() === 'windows') {
+            storageDir = await join(await cacheDir(), "AutoSubs-Cache/Cache/transcripts");
+        } else {
+            storageDir = await join(await appCacheDir(), "transcripts");
+        }
     }
 
     async function getFullTranscriptPath() {
@@ -226,7 +230,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
-                } 
+                }
                 else if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
                     if (line.includes('speechbrain')) {
                         setProcessingStep("Diarizing speakers...");
@@ -244,7 +248,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     setProcessingStep("Downloading Model..."); // Update the state
                 } else {
                     console.error(`Transcription Server STDERR: "${line}"`);
-                } 
+                }
             });
 
             console.log('Starting transcription server...');

@@ -1,11 +1,121 @@
-local ffi = require("ffi")
+-- Detect the operating system
+local os_name = ffi.os
+print("Operating System: " .. os_name)
+
+-- Helper to convert a UTF-8 string to a wide-character (WCHAR) string
+local function to_wide_string(str)
+    local len = #str + 1 -- Include null terminator
+    local buffer = ffi.new("WCHAR[?]", len)
+    local bytes_written = ffi.C.MultiByteToWideChar(65001, 0, str, -1, buffer, len)
+    if bytes_written == 0 then
+        error("Failed to convert string to wide string: " .. str)
+    end
+    return buffer
+end
+
+-- Function to read the content of a file using _wfopen
+local function read_file(file_path)
+    if (os_name == "OSX") then
+        local file = assert(io.open(file_path, "r")) -- Open file for reading
+        local content = file:read("*a")              -- Read the entire file content
+        file:close()
+        return content
+    end
+
+    local wide_path = to_wide_string(file_path)
+    local mode = to_wide_string("rb")
+    local f = ffi.C._wfopen(wide_path, mode)
+    if f == nil then
+        error("Failed to open file: " .. file_path)
+    end
+
+    local buffer = {}
+    local temp_buffer = ffi.new("char[4096]") -- 4KB buffer for reading
+    while true do
+        local read_bytes = ffi.C.fread(temp_buffer, 1, 4096, f)
+        if read_bytes == 0 then
+            break
+        end
+        buffer[#buffer + 1] = ffi.string(temp_buffer, read_bytes)
+    end
+    ffi.C.fclose(f)
+
+    return table.concat(buffer)
+end
+
+-- OS SPECIFIC CONFIGURATION
+local storage_path
+local modules_path
+local main_app
+local command_open
+local command_close
+
+if os_name == "Windows" then
+    -- Define the necessary Windows API functions using FFI
+    -- Note: Sleep and ShellExecuteA are used to prevent terminal from opening (replaces os.execute)
+    ffi.cdef [[
+        typedef wchar_t WCHAR;
+
+        int MultiByteToWideChar(
+            unsigned int CodePage, 
+            unsigned long dwFlags, 
+            const char* lpMultiByteStr, 
+            int cbMultiByte, 
+            WCHAR* lpWideCharStr, 
+            int cchWideChar);
+
+        void* _wfopen(const WCHAR* filename, const WCHAR* mode);
+        size_t fread(void* buffer, size_t size, size_t count, void* stream);
+        int fclose(void* stream);
+        void Sleep(unsigned int ms);
+        int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
+    ]]
+
+    -- Get the storage path for the files used by the script
+    storage_path = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
+
+    -- Get path to the main AutoSubs app and modules
+    local install_path = assert(read_file(storage_path .. "install_path.txt", "r"))
+    install_path = string.gsub(install_path, "\\", "/")
+    main_app = install_path .. "/AutoSubs.exe"
+    modules_path = install_path .. "/resources/modules/"
+
+    -- Windows commands to open and close main app
+    command_open = 'start "" "' .. main_app .. '"'
+    command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
+elseif os_name == "OSX" then
+    -- Use the C system function to execute shell commands on macOS
+    ffi.cdef [[ int system(const char *command); ]]
+
+    storage_path = os.getenv("HOME") ..
+        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
+
+    -- Get path to the main AutoSubs app and modules
+    local install_path = assert(read_file(storage_path .. "install_path.txt", "r"))
+    main_app = install_path .. "/AutoSubs.app"
+    modules_path = install_path .. "/AutoSubs.app/Contents/Resources/resources/modules/"
+
+    -- MacOS commands to open and close main app
+    command_open = 'open ' .. main_app
+    command_close = "pkill -f " .. main_app
+else
+    print("Unsupported OS")
+    return
+end
+
+
+-- Add custom modules path for Lua require
+package.path = package.path .. ";" .. modules_path .. "?.lua"
+
+-- Import modules
 local socket = require("ljsocket")
 local json = require("dkjson")
 local utf8 = require("utf8")
 
--- Detect the operating system
-local os_name = ffi.os
-print("Operating System: " .. os_name)
+-- Load common DaVinci Resolve API utilities
+local projectManager = resolve:GetProjectManager()
+local project = projectManager:GetCurrentProject()
+local mediaPool = project:GetMediaPool()
 
 -- Function to read a JSON file
 local function read_json_file(file_path)
@@ -23,58 +133,6 @@ local function read_json_file(file_path)
 
     return data -- Return the decoded Lua table
 end
-
-local storagePath
-local mainApp
-local command_open
-local command_close
-
-if os_name == "Windows" then
-    -- Windows paths
-    storagePath = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
-
-    local file = assert(io.open(storagePath .. "install_path.txt", "r"))
-    local install_path = file:read("*l")
-    file:close()
-
-    -- Get path to the main AutoSubs app
-    install_path = string.gsub(install_path, "\\", "/")
-    mainApp = install_path .. "/AutoSubs.exe"
-
-    -- Windows sleep function (no terminal by using ffi instead of os.execute)
-    ffi.cdef [[ void Sleep(unsigned int ms); ]]
-
-    -- Windows ShellExecuteA function from Shell32.dll (prevents terminal window from opening)
-    ffi.cdef [[ int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd); ]]
-
-    -- Windows commands to open and close app using terminal commands
-    command_open = 'start "" "' .. mainApp .. '"'
-    command_close = 'powershell -Command "Get-Process AutoSubs | Stop-Process -Force"'
-elseif os_name == "OSX" then
-    storagePath = os.getenv("HOME") ..
-        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
-
-    local file = assert(io.open(storagePath .. "install_path.txt", "r"))
-    local install_path = file:read("*l")
-    file:close()
-
-    mainApp = install_path .. "/AutoSubs.app"
-
-    -- Use the C system function to execute shell commands on macOS
-    ffi.cdef [[ int system(const char *command); ]]
-
-    -- MacOS commands to open and close
-    command_open = 'open ' .. mainApp
-    command_close = "pkill -f " .. mainApp
-else
-    print("Unsupported OS")
-    return
-end
-
--- Load common DaVinci Resolve API utilities
-local projectManager = resolve:GetProjectManager()
-local project = projectManager:GetCurrentProject()
-local mediaPool = project:GetMediaPool()
 
 function CreateResponse(body)
     local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
@@ -200,7 +258,7 @@ function GetTemplates()
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
         local success, err = pcall(function()
-            mediaPool:ImportFolderFromFile(storagePath .. "subtitle-template.drb")
+            mediaPool:ImportFolderFromFile(storage_path .. "subtitle-template.drb")
             local clipName = "Default Template"
             local newTemplate = {
                 label = clipName,
@@ -259,7 +317,7 @@ function ExportAudio(outputDir)
         timeline = ""
     }
     local success, err = pcall(function()
-        resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
+        resolve:ImportRenderPreset(storage_path .. "render-audio-only.xml")
         project:LoadRenderPreset('render-audio-only')
         project:SetRenderSettings({ TargetDir = outputDir })
     end)
@@ -363,9 +421,10 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
         end
     end
 
-    -- If within threshold, join the subtitles
+    -- If within 1 second, join the subtitles
     local clipList = {}
-    local joinThreshold = frame_rate * 4
+    local joinThreshold = frame_rate
+    local subtitlesCount = #subtitles
 
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])
@@ -504,7 +563,7 @@ if os_name == "Windows" then
 
     -- Call ShellExecuteA from Shell32.dll
     local shell32 = ffi.load("Shell32")
-    local result_open = shell32.ShellExecuteA(nil, "open", mainApp, nil, nil, SW_SHOW)
+    local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
 
     if result_open > 32 then
         print("AutoSubs launched successfully.")

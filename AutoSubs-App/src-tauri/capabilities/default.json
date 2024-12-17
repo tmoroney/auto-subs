@@ -32,10 +32,10 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+          "path": "$APPCACHE/transcripts/**"
         },
         {
-          "path": "$DOCUMENT/**"
+          "path": "$CACHE/transcripts/**"
         }
       ]
     },
@@ -44,10 +44,10 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [
         {
-          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+          "path": "$APPCACHE/transcripts/**"
         },
         {
-          "path": "$DOCUMENT/AutoSubs/**"
+          "path": "$CACHE/transcripts/**"
         }
       ]
     },
@@ -55,7 +55,10 @@
       "identifier": "fs:allow-exists",
       "allow": [
         {
-          "path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/**"
+          "path": "$APPCACHE/transcripts/**"
+        },
+        {
+          "path": "$CACHE/transcripts/**"
         }
       ]
     },
