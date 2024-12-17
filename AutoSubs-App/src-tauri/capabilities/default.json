@@ -15,9 +15,6 @@
           "url": "https://*.tauri.app"
         },
         {
-          "url": "http://localhost:8000/transcribe/"
-        },
-        {
           "url": "http://localhost:*"
         }
       ],
