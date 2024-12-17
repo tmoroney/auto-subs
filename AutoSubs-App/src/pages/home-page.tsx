@@ -20,8 +20,16 @@ import {
     CaseUpper,
     CaseLower,
     PencilOff,
-    Download, History,
-    Pickaxe
+    Pickaxe,
+    AudioLines,
+    Trash2,
+    PencilLine,
+    Type,
+    Plus,
+    Shield,
+    Palette,
+    Download,
+    History
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -38,6 +46,7 @@ import {
     DialogTitle,
     DialogFooter,
     DialogClose,
+    DialogTrigger,
 } from "@/components/ui/dialog"
 
 import { Switch } from "@/components/ui/switch"
@@ -78,13 +87,14 @@ import { useGlobal } from '@/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 //import { resolveResource } from "@tauri-apps/api/path";
 //import { convertFileSrc } from '@tauri-apps/api/core';
 
 const validateAPI = "http://localhost:55000/validate/";
 
 const languages = [
-    { label: "Detect Automatically", value: "auto" },
+    { label: "Detect Language Automatically", value: "auto" },
     { label: "English", value: "en" },
     { label: "Chinese", value: "zh" },
     { label: "German", value: "de" },
@@ -237,6 +247,7 @@ export function HomePage() {
     const [hfToken, setHfToken] = useState("");
     const [hfMessage, setHfMessage] = useState("");
     const [isDiarizeAvailable, setIsDiarizeAvailable] = useState(false);
+    const [isAddStepOpen, setIsAddStepOpen] = useState(false);
 
     /*
     const [diarizeFormImg, setDiarizeFormImg] = useState<string>("");
@@ -303,6 +314,16 @@ export function HomePage() {
         }
     }
 
+    function getStatusColor(index: number, progress: number) {
+        if (progress === 100) {
+            return "bg-green-500";
+        } else if (progress > 0) {
+            return "bg-yellow-500";
+        } else {
+            return "bg-gray-500";
+        }
+    }
+
     return (
 
         <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-2">
@@ -311,60 +332,13 @@ export function HomePage() {
             >
                 <div className="grid w-full items-start gap-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-xl">Subtitle Generation</CardTitle>
-                            <CardDescription>Generate subtitles on the current timeline</CardDescription>
+                        <CardHeader className="pb-5">
+                            <CardTitle>Transcription Flow</CardTitle>
+                            <CardDescription>Configure and run your transcription process</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
-                            <div className="grid gap-3">
-                                <Label htmlFor="template">Subtitle Template</Label>
-                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openTemplates}
-                                            className="justify-between font-normal"
-                                            onClick={async () => await getTemplates()}
-                                        >
-                                            {currentTemplate && templateList.length > 0
-                                                ? templateList.find((template) => template.value === currentTemplate)?.label
-                                                : "Select template..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search MediaPool for Text+" />
-                                            <CommandList>
-                                                <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {templateList.map((template) => (
-                                                        <CommandItem
-                                                            key={template.value}
-                                                            value={template.value}
-                                                            onSelect={(currentValue) => {
-                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
-                                                                setOpenTemplates(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {template.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="grid gap-3">
-                                <Label>Output Track</Label>
+                            <div className="grid gap-2.5">
+                                <Label>Output Track (Video)</Label>
                                 <Popover open={openTracks} onOpenChange={setOpenTracks}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -375,7 +349,7 @@ export function HomePage() {
                                         >
                                             {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
-                                                : "Select Track..."}
+                                                : "Select Output Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -409,68 +383,7 @@ export function HomePage() {
                                     </PopoverContent>
                                 </Popover>
                             </div>
-                            <div className="grid gap-3">
-                                <Label>Language</Label>
-                                <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openLanguages}
-                                            className="justify-between font-normal"
-                                        >
-                                            {currentLanguage
-                                                ? languages.find((language) => language.value === currentLanguage)?.label
-                                                : "Select language..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search languages..." />
-                                            <CommandList className="max-h-[220px]">
-                                                <CommandEmpty>No language found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {languages.map((language) => (
-                                                        <CommandItem
-                                                            value={language.label}
-                                                            key={language.value}
-                                                            onSelect={() => {
-                                                                setLanguage(language.value)
-                                                                setOpenLanguages(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    language.value === currentLanguage
-                                                                        ? "opacity-100"
-                                                                        : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {language.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className=" flex items-center space-x-4 rounded-md border p-4">
-                                <Speech />
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        Speaker Diarization
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Labels different speakers using AI
-                                    </p>
-                                </div>
-                                <Switch checked={diarize} onCheckedChange={async (checked) => checkDiarizeAvailable(checked)} />
-                            </div>
-                        </CardContent>
-                        <CardFooter className="flex items-center gap-2">
+
                             {isLoading ? (
                                 <Button disabled
                                     type="button"
@@ -490,7 +403,7 @@ export function HomePage() {
                                                 className="gap-1.5 text-sm w-full"
                                             >
                                                 <CirclePlay className="size-4" />
-                                                Generate
+                                                Start Process
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-full">
@@ -512,21 +425,205 @@ export function HomePage() {
                                         onClick={async () => await fetchTranscription("")}
                                     >
                                         <CirclePlay className="size-4" />
-                                        Generate
+                                        Start Process
                                     </Button>
                                 )
                             )}
+                            <Progress value={10} />
+                        </CardContent>
+                    </Card>
+                    <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="w-full border-2 border-dashed hover:border-solid hover:bg-accent"
+                            >
+                                <Plus className="mr-2 h-5 w-5" />
+                                Add Processing Step
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Processing Step</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                {/* {additionalSteps.map((step) => (
+                                    <Card
+                                        key={step.id}
+                                        className="cursor-pointer hover:bg-accent transition-colors"
+                                        onClick={() => handleAddStep({
+                                            id: (state.steps.length + 1).toString(),
+                                            title: step.title,
+                                            description: step.description,
+                                            options: { [step.id]: 'default' },
+                                            progress: 0,
+                                            isDefault: false,
+                                            icon: step.icon
+                                        })}
+                                    >
+                                        <CardContent className="flex items-center p-6">
+                                            <step.icon className="h-10 w-10 mr-4" />
+                                            <div>
+                                                <CardTitle>{step.title}</CardTitle>
+                                                <CardDescription>{step.description}</CardDescription>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))} */}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                    <Card>
+                        <CardContent className="p-5 grid gap-1 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-primary/10 rounded-full">
+                                        <AudioLines className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Audio Source</h3>
+                                        <p className="text-sm text-muted-foreground">Select input audio track and language</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div className="grid gap-4">
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="sensitiveWords">Input Audio Track</Label>
+                                    <Popover open={openTracks} onOpenChange={setOpenTracks}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className="justify-between font-normal"
+                                                onClick={async () => await getTracks()}
+                                            >
+                                                {currentTrack && trackList.length > 0
+                                                    ? trackList.find((track) => track.value === currentTrack)?.label
+                                                    : "Select Audio Track..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Select track to place subtitles" />
+                                                <CommandList>
+                                                    <CommandEmpty>No tracks found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {trackList.map((track) => (
+                                                            <CommandItem
+                                                                key={track.value}
+                                                                value={track.value}
+                                                                onSelect={(currentValue) => {
+                                                                    setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                    setOpenTracks(false)
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {track.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="sensitiveWords">Language Spoken</Label>
+                                    <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={openLanguages}
+                                                className="justify-between font-normal"
+                                            >
+                                                {currentLanguage
+                                                    ? languages.find((language) => language.value === currentLanguage)?.label
+                                                    : "Select Audio Language..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search languages..." />
+                                                <CommandList className="max-h-[220px]">
+                                                    <CommandEmpty>No language found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {languages.map((language) => (
+                                                            <CommandItem
+                                                                value={language.label}
+                                                                key={language.value}
+                                                                onSelect={() => {
+                                                                    setLanguage(language.value)
+                                                                    setOpenLanguages(false)
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        language.value === currentLanguage
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {language.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
                         </CardFooter>
                     </Card>
-
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Advanced Settings</CardTitle>
-                            <CardDescription>Customize subtitle generation parameters</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-5">
+                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2.5 bg-primary/10 rounded-full">
+                                        <PencilLine className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Transcribe</h3>
+                                        <p className="text-sm text-muted-foreground">Select a model to use for transcription</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                             <div className="grid gap-3">
-                                <Label htmlFor="model">Model</Label>
                                 <Select value={model} onValueChange={(value) => setModel(value)}>
                                     <SelectTrigger
                                         id="model"
@@ -590,8 +687,9 @@ export function HomePage() {
                                                     <p>
                                                         Whisper{" "}
                                                         <span className="font-medium text-foreground">
-                                                            Medium
+                                                            Medium{" "}
                                                         </span>
+                                                        (recommended)
                                                     </p>
                                                     <p className="text-xs" data-description>
                                                         Great accuracy, moderate speed.
@@ -617,74 +715,184 @@ export function HomePage() {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
-                            <div className=" flex items-center space-x-4 rounded-md border p-4">
-                                <Languages className="w-5" />
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        Translate to English
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Any Language to English
-                                    </p>
+                                <div className=" flex items-center space-x-4 rounded-md border p-4">
+                                    <Languages className="w-5" />
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            Translate to English
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Supports any language
+                                        </p>
+                                    </div>
+                                    <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
                                 </div>
-                                <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
                             </div>
-                            <div className="grid gap-3">
-                                <Label htmlFor="textFormat">Text Formatting</Label>
+                        </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
+                        </CardFooter>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2.5 bg-primary/10 rounded-full">
+                                        <Speech className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Diarize Speakers</h3>
+                                        <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-3">
+                                    <Label htmlFor="maxWords">Min speakers</Label>
+                                    <Input value={maxWords} id="maxWords" type="number" placeholder="2" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                </div>
+                                <div className="grid gap-3">
+                                    <Label htmlFor="maxChars">Max speakers</Label>
+                                    <Input value={maxChars} id="maxChars" type="number" placeholder="2" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
+                        </CardFooter>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2.5 bg-primary/10 rounded-full">
+                                        <Type className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Text Formatting</h3>
+                                        <p className="text-sm text-muted-foreground">Customise format of subtitle text</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div className="grid gap-4">
+                                <div className="flex items-center space-x-4 rounded-md border p-4">
+                                    <Signature className="w-5" />
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            Remove Punctuation
+                                        </p>
+                                    </div>
+                                    <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                                </div>
                                 <ToggleGroup
                                     type="single"
                                     value={textFormat}
                                     onValueChange={(value: string) => value && setTextFormat(value)}
-                                    className="grid grid-cols-3 gap-3 h-20"
+                                    className="grid grid-cols-3 gap-3 h-24"
                                 >
                                     <ToggleGroupItem
                                         value="normal"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
                                     >
                                         <PencilOff />
                                         <span className="text-xs">None</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="lowercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
                                     >
                                         <CaseLower />
                                         <span className="text-xs">Lower</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="uppercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground`}
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary`}
                                     >
                                         <CaseUpper />
                                         <span className="text-xs">Upper</span>
                                     </ToggleGroupItem>
                                 </ToggleGroup>
-                            </div>
-                            <div className="flex items-center space-x-4 rounded-md border p-4">
-                                <Signature className="w-5" />
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">
-                                        Remove Punctuation
-                                    </p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid gap-2.5">
+                                        <Label htmlFor="maxWords">Max words</Label>
+                                        <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                    </div>
+                                    <div className="grid gap-2.5">
+                                        <Label htmlFor="maxChars">Max characters</Label>
+                                        <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                    </div>
                                 </div>
-                                <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
-                            </div>
-                            <div className="grid gap-3">
-                                <Label htmlFor="sensitiveWords">Censored Words</Label>
-                                <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxWords">Max words</Label>
-                                    <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="sensitiveWords">Censored Words</Label>
+                                    <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
                                 </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxChars">Max characters</Label>
-                                    <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
-                                </div>
-                            </div>
 
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
+                        </CardFooter>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2.5 bg-primary/10 rounded-full">
+                                        <Shield className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Advanced Settings</h3>
+                                        <p className="text-sm text-muted-foreground">Fine-tune additional options</p>
+
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                             {platform() === 'windows' && (
                                 <div className="flex items-center space-x-4 rounded-md border p-4">
                                     <Pickaxe className="w-5" />
@@ -699,8 +907,100 @@ export function HomePage() {
                                     <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
                                 </div>
                             )}
-
                         </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
+                        </CardFooter>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2.5 bg-primary/10 rounded-full">
+                                        <Palette className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Timeline Output</h3>
+                                        <p className="text-sm text-muted-foreground">Customise Text+ output on timeline </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div className="grid gap-4">
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="template">Subtitle Template</Label>
+                                    <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={openTemplates}
+                                                className="justify-between font-normal"
+                                                onClick={async () => await getTemplates()}
+                                            >
+                                                {currentTemplate && templateList.length > 0
+                                                    ? templateList.find((template) => template.value === currentTemplate)?.label
+                                                    : "Select template..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search MediaPool for Text+" />
+                                                <CommandList>
+                                                    <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {templateList.map((template) => (
+                                                            <CommandItem
+                                                                key={template.value}
+                                                                value={template.value}
+                                                                onSelect={(currentValue) => {
+                                                                    setTemplate(currentValue === currentTemplate ? "" : currentValue)
+                                                                    setOpenTemplates(false)
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        currentTemplate === template.value ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {template.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pb-5">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
+                                <span className="text-sm text-muted-foreground">
+                                    Pending
+                                    {/* {step.progress === 0 ? 'Pending' :
+                                        step.progress === 100 ? 'Complete' :
+                                            `${step.progress}%`} */}
+                                </span>
+                            </div>
+                        </CardFooter>
                     </Card>
                 </div>
             </div>

@@ -29,7 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useGlobal } from "@/GlobalContext";
 
 const pathNames = {
-  "/": "Transcribe",
+  "/": "Generate Subtitles",
   "/search": "Text Search",
   "/diarize": "Diarized Speakers",
   "/animate": "Animate Subtitles",
