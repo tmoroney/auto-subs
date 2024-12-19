@@ -187,18 +187,24 @@ local function read_json_file(file_path)
 
     return data -- Return the decoded Lua table
 end
-
+function checkiftrac
 -- Add subtitles to the timeline using the specified template
 function AddSubtitles(filePath, trackIndex, templateName)
     local projectManager = resolve:GetProjectManager()
     local project = projectManager:GetCurrentProject()
     local mediaPool = project:GetMediaPool()
     local timeline = project:GetCurrentTimeline()
-
+    
     if trackIndex == "" then
         trackIndex = timeline:GetTrackCount("video") + 1
-    else
-        trackIndex = tonumber(trackIndex)
+
+    trackIndex = tonumber(trackIndex)
+    local trackCount = timeline:GetItemListInTrack("video", trackIndex)
+            
+    if trackCount != nil:
+        --make new track and select that track
+        timeline:AddTrack('video')
+        trackIndex=(timeline:GetTrackCount('video'))
     end
 
     local data = read_json_file(filePath)
@@ -306,6 +312,7 @@ while not itm.ExitButton.Checked do
                 print("[AutoSubs Server] Exporting audio...")
                 itm.Message.Text = "Exporting timeline audio..."
                 local audioInfo = ExportAudio()
+                local boolCheckForEmptyTrack = false 
                 body = json.encode(audioInfo)
             elseif data.func == "AddSubtitles" then
                 print("[AutoSubs Server] Adding subtitles to timeline...")
