@@ -216,7 +216,7 @@ def log_progress(seek, total_duration):
     print(f"Progress: {seek/total_duration*100:.0f}%")
 
 
-def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
+async def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     if (platform.system() == 'Windows'):
         compute_type = "float16" if kwargs["device"] == "cuda" else "int8"
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
@@ -240,13 +240,16 @@ def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
     return result.to_dict()
 
 
-def diarize_audio(audio_file, device):
+async def diarize_audio(audio_file, device, speaker_count):
     from pyannote.audio import Pipeline
     print("Starting diarization...")
     try:
         pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
         pipeline.to(device)
-        return pipeline(audio_file)
+        if speaker_count > 0:
+            return pipeline(audio_file, num_speakers=speaker_count)
+        else:
+            return pipeline(audio_file)
     except Exception as e:
         error_message = f"failed to load diarization model. {e}"
         print(error_message)
@@ -386,30 +389,20 @@ def merge_diarisation(transcript, diarization):
     return result
 
 
-async def async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words):
-    """Asynchronous transcription function."""
-    return transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
-
-
-async def async_diarize_audio(file_path, device):
-    """Asynchronous diarization function."""
-    return diarize_audio(file_path, device)
-
-
-async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words, device, diarize_enabled):
+async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words, device, diarize_enabled, speaker_count):
     """Process audio: transcription and diarization concurrently."""
     if diarize_enabled:
         # Run transcription and diarization concurrently
         transcript, diarization = await asyncio.gather(
-            async_transcribe_audio(
+            transcribe_audio(
                 file_path, kwargs, max_words, max_chars, sensitive_words),
-            async_diarize_audio(file_path, device)
+            diarize_audio(file_path, device, speaker_count)
         )
         # Merge diarization with transcription
         result = merge_diarisation(transcript, diarization)
     else:
         # Run transcription only
-        transcript = await async_transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
+        transcript = await transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
         transcript["speakers"] = []
         result = transcript
 
@@ -424,6 +417,7 @@ class TranscriptionRequest(BaseModel):
     language: str
     task: str
     diarize: bool
+    diarize_speaker_count: int
     align_words: bool
     max_words: int
     max_chars: int
@@ -488,7 +482,7 @@ async def transcribe(request: TranscriptionRequest):
         # Process audio (transcription and optionally diarization)
         try:
             result = await process_audio(
-                file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize,
+                file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize, request.diarize_speaker_count
             )
             result["mark_in"] = request.mark_in
         except Exception as e:

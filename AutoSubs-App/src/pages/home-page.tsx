@@ -22,14 +22,12 @@ import {
     PencilOff,
     Pickaxe,
     AudioLines,
-    Trash2,
     PencilLine,
     Type,
     Plus,
     Shield,
-    Palette,
     Download,
-    History
+    History,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -53,6 +51,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import {
     Select,
     SelectContent,
@@ -206,7 +205,11 @@ export function HomePage() {
         currentTemplate,
         currentLanguage,
         currentTrack,
-        diarize,
+        enabledSteps,
+        currentStep,
+        progress,
+        diarizeMode,
+        diarizeSpeakerCount,
         translate,
         processingStep,
         isLoading,
@@ -221,7 +224,9 @@ export function HomePage() {
         setTemplate,
         setLanguage,
         setTrack,
-        setDiarize,
+        setEnabledSteps,
+        setDiarizeSpeakerCount,
+        setDiarizeMode,
         setTranslate,
         setModel,
         setMaxWords,
@@ -237,6 +242,7 @@ export function HomePage() {
         populateSubtitles,
         getTemplates,
         getTracks,
+        resetSettings,
     } = useGlobal();
 
     const [openLanguages, setOpenLanguages] = useState(false);
@@ -269,7 +275,10 @@ export function HomePage() {
 
     async function checkDiarizeAvailable(checked: boolean) {
         if (isLoading) return;
-        setDiarize(checked);
+        setEnabledSteps({
+            ...enabledSteps,
+            diarize: checked,
+        });
         if (checked == true && isDiarizeAvailable == false) {
             // check with server if model is available and HF token is correct
             try {
@@ -293,12 +302,14 @@ export function HomePage() {
                 console.log(data);
 
                 if (isAvailable) {
-                    setDiarize(true);
                     setOpenTokenMenu(false);
                     setIsDiarizeAvailable(true);
                     console.log("Diarization enabled");
                 } else {
-                    setDiarize(false);
+                    setEnabledSteps({
+                        ...enabledSteps,
+                        diarize: false,
+                    });
                     console.log(message);
                     // open menu with instructions
                     setHfMessage(message);
@@ -314,14 +325,8 @@ export function HomePage() {
         }
     }
 
-    function getStatusColor(index: number, progress: number) {
-        if (progress === 100) {
-            return "bg-green-500";
-        } else if (progress > 0) {
-            return "bg-yellow-500";
-        } else {
-            return "bg-gray-500";
-        }
+    function getStatusColor(step: number) {
+        return currentStep === step ? "bg-yellow-500" : currentStep < step ? "bg-sky-500" : "bg-green-500";
     }
 
     return (
@@ -333,8 +338,22 @@ export function HomePage() {
                 <div className="grid w-full items-start gap-4">
                     <Card className="overflow-hidden">
                         <CardHeader className="pb-5">
-                            <CardTitle className="flex items-center justify-between"><span>Transcription Flow</span> <Button variant="ghost" className="m-0"><History className="w-5 h-5"/></Button></CardTitle>
-                            <CardDescription>Configure and run your transcription process</CardDescription>
+                            <CardTitle className="flex items-center justify-between">
+                                <span>Transcription Flow</span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <Button variant="ghost" className="m-0" onClick={() => resetSettings()}>
+                                                <History className="w-5 h-5 p-0" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Reset settings to default values
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </CardTitle>
+                            <CardDescription>Configure and run transcription process</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-5">
                             <div className="grid gap-2.5">
@@ -385,7 +404,7 @@ export function HomePage() {
                                 </Popover>
                             </div>
                             <div className="grid gap-2.5">
-                                <Label>Output Track (Video)</Label>
+                                <Label htmlFor="track">Track to Place Subtitles</Label>
                                 <Popover open={openTracks} onOpenChange={setOpenTracks}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -396,7 +415,7 @@ export function HomePage() {
                                         >
                                             {currentTrack && trackList.length > 0
                                                 ? trackList.find((track) => track.value === currentTrack)?.label
-                                                : "Select Track..."}
+                                                : "Select Video Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -476,11 +495,11 @@ export function HomePage() {
                                     </Button>
                                 )
                             )}
-                            <Progress value={20} />
+                            {/* <Progress value={20} /> */}
                         </CardContent>
-                        {/* <CardFooter className="p-0">
-                            <Progress value={20} className="rounded-b-md rounded-t-none h-3"/>
-                        </CardFooter> */}
+                        <CardFooter className="p-0">
+                            <Progress value={progress} className="rounded-b-md rounded-t-none h-3" />
+                        </CardFooter>
                     </Card>
                     <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
                         <DialogTrigger asChild>
@@ -498,34 +517,76 @@ export function HomePage() {
                                 <DialogTitle>Add New Processing Step</DialogTitle>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                                {/* {additionalSteps.map((step) => (
+                                <Card
+                                    key="1"
+                                    className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.diarize && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
+                                    onClick={() => {
+                                        setEnabledSteps({ ...enabledSteps, diarize: !enabledSteps.diarize })
+                                        toast((enabledSteps.diarize ? "Disabled" : "Enabled") + " Speaker Diarization", {
+                                            description: enabledSteps.diarize ? "Removed from processing steps." : "Added to processing steps.",
+                                        })
+                                    }}
+                                    style={{ userSelect: 'none' }}
+                                >
+                                    <CardContent className="flex items-center p-6">
+                                        <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
+                                            <Speech className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg ">Diarize Speakers</CardTitle>
+                                            <CardDescription>Label different speakers with AI</CardDescription>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card
+                                    key="2"
+                                    className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.textFormat && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
+                                    onClick={() => {
+                                        setEnabledSteps({ ...enabledSteps, textFormat: !enabledSteps.textFormat })
+                                        toast((enabledSteps.textFormat ? "Disabled" : "Enabled") + " Text Formatting", {
+                                            description: enabledSteps.textFormat ? "Removed from processing steps." : "Added to processing steps.",
+                                        })
+                                    }}
+                                    style={{ userSelect: 'none' }}
+                                >
+                                    <CardContent className="flex items-center p-6">
+                                        <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
+                                            <Type className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Text Formatting</CardTitle>
+                                            <CardDescription>Customise format of subtitle text</CardDescription>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                {platform() === 'windows' && (
                                     <Card
-                                        key={step.id}
-                                        className="cursor-pointer hover:bg-accent transition-colors"
-                                        onClick={() => handleAddStep({
-                                            id: (state.steps.length + 1).toString(),
-                                            title: step.title,
-                                            description: step.description,
-                                            options: { [step.id]: 'default' },
-                                            progress: 0,
-                                            isDefault: false,
-                                            icon: step.icon
-                                        })}
+                                        key="3"
+                                        className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.advancedOptions && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
+                                        onClick={() => {
+                                            setEnabledSteps({ ...enabledSteps, advancedOptions: !enabledSteps.advancedOptions })
+                                            toast((enabledSteps.advancedOptions ? "Disabled" : "Enabled") + " Advanced Options", {
+                                                description: enabledSteps.advancedOptions ? "Removed from processing steps." : "Added to processing steps.",
+                                            })
+                                        }}
+                                        style={{ userSelect: 'none' }}
                                     >
                                         <CardContent className="flex items-center p-6">
-                                            <step.icon className="h-10 w-10 mr-4" />
+                                            <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
+                                                <Shield className="h-6 w-6 text-primary" />
+                                            </div>
                                             <div>
-                                                <CardTitle>{step.title}</CardTitle>
-                                                <CardDescription>{step.description}</CardDescription>
+                                                <CardTitle className="text-lg">Advanced Options</CardTitle>
+                                                <CardDescription>Fine-tune with additional options</CardDescription>
                                             </div>
                                         </CardContent>
                                     </Card>
-                                ))} */}
+                                )}
                             </div>
                         </DialogContent>
                     </Dialog>
                     <Card>
-                        <CardContent className="p-5 grid gap-1 pb-3.5">
+                        <CardContent className="p-5 grid gap-1 pb-4">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                     <div className="p-2 bg-primary/10 rounded-full">
@@ -536,13 +597,6 @@ export function HomePage() {
                                         <p className="text-sm text-muted-foreground">Select input track and language</p>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
                             </div>
                             <div className="grid gap-4">
                                 <div className="grid gap-2.5">
@@ -641,16 +695,18 @@ export function HomePage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
+                        <CardFooter className="pb-5 flex justify-between pr-5">
+                            {(() => {
+                                let step = 1;
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                        <span className="text-sm text-muted-foreground">
+                                            {currentStep === step ? "Exporting Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </CardFooter>
                     </Card>
                     <Card>
@@ -665,13 +721,6 @@ export function HomePage() {
                                         <p className="text-sm text-muted-foreground">Select an AI transcription model</p>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
                             </div>
                             <div className="grid gap-4">
                                 <Select value={model} onValueChange={(value) => setModel(value)}>
@@ -790,117 +839,174 @@ export function HomePage() {
                             </div>
                         </CardContent>
                         <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
+                            {(() => {
+                                let step = 2;
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                        <span className="text-sm text-muted-foreground">
+                                            {currentStep === step ? "Transcribing Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </CardFooter>
                     </Card>
-
-                    <Card>
-                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <Type className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Text Formatting</h3>
-                                        <p className="text-sm text-muted-foreground">Customise format of subtitle text</p>
+                    {enabledSteps.diarize && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-5 pb-4">
+                                <div className="flex items-start justify-between mb-0">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <Speech className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Diarize Speakers</h3>
+                                            <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            <div className="grid gap-4">
+
                                 <div className="grid gap-2.5">
-                                    <Label htmlFor="sensitiveWords">Censored Words</Label>
-                                    <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                                    <Label htmlFor="numSpeakers">Find Speakers</Label>
+                                    <Select value={diarizeMode} onValueChange={(value) => setDiarizeMode(value)}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select an option" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="auto">Auto-detect number of speakers</SelectItem>
+                                            <SelectItem value="specific">Specify exact number of speakers</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                                <ToggleGroup
-                                    type="single"
-                                    value={textFormat}
-                                    onValueChange={(value: string) => value && setTextFormat(value)}
-                                    className="grid grid-cols-3 gap-3 h-24"
-                                >
-                                    <ToggleGroupItem
-                                        value="normal"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
-                                    >
-                                        <PencilOff />
-                                        <span className="text-xs">None</span>
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem
-                                        value="lowercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
-                                    >
-                                        <CaseLower />
-                                        <span className="text-xs">Lower</span>
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem
-                                        value="uppercase"
-                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
-                                    >
-                                        <CaseUpper />
-                                        <span className="text-xs">Upper</span>
-                                    </ToggleGroupItem>
-                                </ToggleGroup>
-                                <div className="flex items-center space-x-4 rounded-md border p-4">
-                                    <Signature className="w-5" />
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium leading-none">
-                                            Remove Punctuation
-                                        </p>
+                                {diarizeMode !== "auto" && (
+                                    <div className="grid gap-3">
+                                        <Label htmlFor="speakerCount">Specify speaker count</Label>
+                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="2" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
                                     </div>
-                                    <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
-                                </div>
-
-                            </div>
-                        </CardContent>
-                        <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
-                        </CardFooter>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <Shield className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Advanced Settings</h3>
-                                        <p className="text-sm text-muted-foreground">Fine-tune additional options</p>
-
-                                    </div>
-                                </div>
+                                )}
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 3;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Diarizing Speakers..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                                 <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, diarize: false })}
                                 >
-                                    <Trash2 className="h-4 w-4" />
+                                    Disable
                                 </Button>
-                            </div>
-                            {platform() === 'windows' && (
+                            </CardFooter>
+                        </Card>
+                    )}
+                    {enabledSteps.textFormat && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <Type className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Text Formatting</h3>
+                                            <p className="text-sm text-muted-foreground">Customise format of subtitle text</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid gap-4">
+                                    <div className="grid gap-2.5">
+                                        <Label htmlFor="sensitiveWords">Censored Words</Label>
+                                        <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                                    </div>
+                                    <ToggleGroup
+                                        type="single"
+                                        value={textFormat}
+                                        onValueChange={(value: string) => value && setTextFormat(value)}
+                                        className="grid grid-cols-3 gap-3 h-20"
+                                    >
+                                        <ToggleGroupItem
+                                            value="normal"
+                                            className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
+                                        >
+                                            <PencilOff />
+                                            <span className="text-xs">None</span>
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                            value="lowercase"
+                                            className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
+                                        >
+                                            <CaseLower />
+                                            <span className="text-xs">Lower</span>
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                            value="uppercase"
+                                            className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
+                                        >
+                                            <CaseUpper />
+                                            <span className="text-xs">Upper</span>
+                                        </ToggleGroupItem>
+                                    </ToggleGroup>
+                                    <div className="flex items-center space-x-4 rounded-md border p-4">
+                                        <Signature className="w-5" />
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm font-medium leading-none">
+                                                Remove Punctuation
+                                            </p>
+                                        </div>
+                                        <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                                    </div>
+
+                                </div>
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 4;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Formatting Text..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, textFormat: false })}
+                                >
+
+                                    Disable
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )}
+                    {enabledSteps.advancedOptions && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <Shield className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Advanced Settings</h3>
+                                            <p className="text-sm text-muted-foreground">Fine-tune additional options</p>
+
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="flex items-center space-x-4 rounded-md border p-4">
                                     <Pickaxe className="w-5" />
                                     <div className="flex-1 space-y-1">
@@ -913,63 +1019,31 @@ export function HomePage() {
                                     </div>
                                     <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
                                 </div>
-                            )}
-                        </CardContent>
-                        <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
-                        </CardFooter>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <Speech className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Diarize Speakers</h3>
-                                        <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
-                                    </div>
-                                </div>
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 5;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                                 <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, advancedOptions: false })}
                                 >
-                                    <Trash2 className="h-4 w-4" />
+
+                                    Disable
                                 </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxWords">Min speakers</Label>
-                                    <Input value={maxWords} id="maxWords" type="number" placeholder="2" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="maxChars">Max speakers</Label>
-                                    <Input value={maxChars} id="maxChars" type="number" placeholder="2" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="pb-5">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full bg-sky-500`} />
-                                <span className="text-sm text-muted-foreground">
-                                    Pending
-                                    {/* {step.progress === 0 ? 'Pending' :
-                                        step.progress === 100 ? 'Complete' :
-                                            `${step.progress}%`} */}
-                                </span>
-                            </div>
-                        </CardFooter>
-                    </Card>
+                            </CardFooter>
+                        </Card>
+                    )}
                 </div>
             </div>
             <div className="sticky top-0 hidden md:flex h-[calc(100vh-5.5rem)] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-1">
@@ -1011,6 +1085,10 @@ export function HomePage() {
                     )}
                 </div>
             </div>
+
+
+
+
 
             <Dialog open={openTokenMenu} onOpenChange={setOpenTokenMenu}>
                 <DialogContent className="sm:max-w-[540px]">

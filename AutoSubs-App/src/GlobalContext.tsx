@@ -3,17 +3,37 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
-import { Subtitle, Speaker, TopSpeaker } from "@/types/interfaces";
+import { Subtitle, Speaker, TopSpeaker, StepInfo, EnabeledSteps } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { exit } from '@tauri-apps/plugin-process';
 import { platform } from '@tauri-apps/plugin-os';
 
+const DEFAULT_SETTINGS = {
+    model: "small",
+    language: "auto",
+    translate: false,
+    maxWords: 6,
+    maxChars: 25,
+    textFormat: "normal",
+    removePunctuation: false,
+    sensitiveWords: "",
+    alignWords: false,
+    diarizeSpeakerCount: 0,
+    diarizeMode: "auto",
+    enabledSteps: {
+        exportAudio: true,
+        transcribe: true,
+        textFormat: false,
+        advancedOptions: false,
+        diarize: false
+    }
+};
+
 let transcriptionProcess: Child | null = null;
 
 interface GlobalContextProps {
-    // home page
     timeline: string;
     trackList: Track[];
     templateList: Template[];
@@ -22,7 +42,9 @@ interface GlobalContextProps {
     currentLanguage: string;
     model: string;
     translate: boolean;
-    diarize: boolean;
+    enabledSteps: EnabeledSteps;
+    diarizeSpeakerCount: number;
+    diarizeMode: string;
     maxWords: number;
     maxChars: number;
     textFormat: string;
@@ -33,6 +55,9 @@ interface GlobalContextProps {
     isLoading: boolean;
     error: ErrorMsg;
     audioPath: string;
+    currentStep: number;
+    progress: number;
+    subtitles: Subtitle[];
     setError: (errorMsg: ErrorMsg) => void
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
@@ -40,17 +65,19 @@ interface GlobalContextProps {
     setTrack: (newTrack: string) => void;
     setModel: (newModel: string) => void;
     setTranslate: (newTranslate: boolean) => void;
-    setDiarize: (newDiarize: boolean) => void;
+    setDiarizeSpeakerCount: (newDiarizeSpeakerCount: number) => void;
+    setDiarizeMode: (newDiarizeMode: string) => void;
     setMaxWords: (newMaxWords: number) => void;
     setMaxChars: (newMaxChars: number) => void;
     setTextFormat: (newTextFormat: string) => void;
     setRemovePunctuation: (newRemovePunctuation: boolean) => void;
     setSensitiveWords: (newSensitiveWords: string) => void;
     setAlignWords: (newAlignWords: boolean) => void;
+    setEnabledSteps: (newEnabledSteps: EnabeledSteps) => void;
     fetchTranscription: (audioPath: string) => Promise<void>;
-    subtitles: Subtitle[];
+    resetSettings: () => void;
+    setProgress: (newProgress: number) => void;
 
-    // edit page
     speakers: Speaker[];
     topSpeaker: TopSpeaker;
     setSpeakers: (newSpeakers: Speaker[]) => void;
@@ -102,20 +129,25 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
     const [audioPath, setAudioPath] = useState("");
     const serverLoading = useRef(true);
+    const [progress, setProgress] = useState(0);
 
     const [markIn, setMarkIn] = useState(0);
-    const [model, setModel] = useState("small");
-    const [currentLanguage, setLanguage] = useState("");
+    const [model, setModel] = useState(DEFAULT_SETTINGS.model);
+    const [currentLanguage, setLanguage] = useState(DEFAULT_SETTINGS.language);
     const [currentTemplate, setTemplate] = useState("");
     const [currentTrack, setTrack] = useState("");
-    const [translate, setTranslate] = useState(false);
-    const [diarize, setDiarize] = useState(false);
-    const [maxWords, setMaxWords] = useState(6);
-    const [maxChars, setMaxChars] = useState(25);
-    const [textFormat, setTextFormat] = useState("normal");
-    const [removePunctuation, setRemovePunctuation] = useState(false);
-    const [sensitiveWords, setSensitiveWords] = useState<string>("");
-    const [alignWords, setAlignWords] = useState(false);
+    const [translate, setTranslate] = useState(DEFAULT_SETTINGS.translate);
+    const [diarizeSpeakerCount, setDiarizeSpeakerCount] = useState(DEFAULT_SETTINGS.diarizeSpeakerCount);
+    const [diarizeMode, setDiarizeMode] = useState(DEFAULT_SETTINGS.diarizeMode);
+    const [maxWords, setMaxWords] = useState(DEFAULT_SETTINGS.maxWords);
+    const [maxChars, setMaxChars] = useState(DEFAULT_SETTINGS.maxChars);
+    const [textFormat, setTextFormat] = useState(DEFAULT_SETTINGS.textFormat);
+    const [removePunctuation, setRemovePunctuation] = useState(DEFAULT_SETTINGS.removePunctuation);
+    const [sensitiveWords, setSensitiveWords] = useState<string>(DEFAULT_SETTINGS.sensitiveWords);
+    const [alignWords, setAlignWords] = useState(DEFAULT_SETTINGS.alignWords);
+
+    const [currentStep, setCurrentStep] = useState<number>(0);
+    const [enabledSteps, setEnabledSteps] = useState<EnabeledSteps>(DEFAULT_SETTINGS.enabledSteps);
 
     async function setTranscriptsFolder() {
         if (platform() === 'windows') {
@@ -130,24 +162,44 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         return filePath;
     }
 
+    function resetSettings() {
+        store?.reset();
+        setModel(DEFAULT_SETTINGS.model);
+        setLanguage(DEFAULT_SETTINGS.language);
+        setTemplate("");
+        setTrack("");
+        setTranslate(DEFAULT_SETTINGS.translate);
+        setMaxWords(DEFAULT_SETTINGS.maxWords);
+        setMaxChars(DEFAULT_SETTINGS.maxChars);
+        setTextFormat(DEFAULT_SETTINGS.textFormat);
+        setRemovePunctuation(DEFAULT_SETTINGS.removePunctuation);
+        setSensitiveWords(DEFAULT_SETTINGS.sensitiveWords);
+        setAlignWords(DEFAULT_SETTINGS.alignWords);
+        setEnabledSteps(DEFAULT_SETTINGS.enabledSteps);
+        setDiarizeSpeakerCount(DEFAULT_SETTINGS.diarizeSpeakerCount);
+        setDiarizeMode(DEFAULT_SETTINGS.diarizeMode);
+    }
+
     async function initializeStore() {
         if (!store) {
             store = await load('autosubs-store.json', { autoSave: false });
         }
 
         try {
-            setModel(await store.get<string>('model') || "small");
-            setLanguage(await store.get<string>('currentLanguage') || "");
+            setModel(await store.get<string>('model') || DEFAULT_SETTINGS.model);
+            setLanguage(await store.get<string>('currentLanguage') || DEFAULT_SETTINGS.language);
             setTemplate(await store.get<string>('currentTemplate') || "");
             setTrack(await store.get<string>('currentTrack') || "");
-            setTranslate(await store.get<boolean>('translate') || false);
-            setDiarize(await store.get<boolean>('diarize') || false);
-            setMaxWords(await store.get<number>('maxWords') || 6);
-            setMaxChars(await store.get<number>('maxChars') || 25);
-            setTextFormat(await store.get<string>('textFormat') || "normal");
-            setRemovePunctuation(await store.get<boolean>('removePunctuation') || false);
-            setSensitiveWords(await store.get<string>('sensitiveWords') || "");
-            setAlignWords(await store.get<boolean>('alignWords') || false);
+            setTranslate(await store.get<boolean>('translate') || DEFAULT_SETTINGS.translate);
+            setMaxWords(await store.get<number>('maxWords') || DEFAULT_SETTINGS.maxWords);
+            setMaxChars(await store.get<number>('maxChars') || DEFAULT_SETTINGS.maxChars);
+            setTextFormat(await store.get<string>('textFormat') || DEFAULT_SETTINGS.textFormat);
+            setRemovePunctuation(await store.get<boolean>('removePunctuation') || DEFAULT_SETTINGS.removePunctuation);
+            setSensitiveWords(await store.get<string>('sensitiveWords') || DEFAULT_SETTINGS.sensitiveWords);
+            setAlignWords(await store.get<boolean>('alignWords') || DEFAULT_SETTINGS.alignWords);
+            setEnabledSteps(await store.get<EnabeledSteps>('enabledSteps') || DEFAULT_SETTINGS.enabledSteps);
+            setDiarizeSpeakerCount(await store.get<number>('diarizeSpeakerCount') || DEFAULT_SETTINGS.diarizeSpeakerCount);
+            setDiarizeMode(await store.get<string>('diarizeMode') || DEFAULT_SETTINGS.diarizeMode);
         } catch (error) {
             console.error('Error initializing store:', error);
         }
@@ -161,13 +213,15 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 await store.set('currentTemplate', currentTemplate);
                 await store.set('currentTrack', currentTrack);
                 await store.set('translate', translate);
-                await store.set('diarize', diarize);
                 await store.set('maxWords', maxWords);
                 await store.set('maxChars', maxChars);
                 await store.set('textFormat', textFormat);
                 await store.set('removePunctuation', removePunctuation);
                 await store.set('sensitiveWords', sensitiveWords);
                 await store.set('alignWords', alignWords);
+                await store.set('enabledSteps', enabledSteps);
+                await store.set('diarizeSpeakerCount', diarizeSpeakerCount);
+                await store.set('diarizeMode', diarizeMode);
                 await store.save(); // Persist changes
             } catch (error) {
                 console.error('Error saving state:', error);
@@ -177,7 +231,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     useEffect(() => {
         saveState();
-    }, [model, currentLanguage, currentTemplate, currentTrack, translate, diarize, maxWords, maxChars, textFormat, removePunctuation]);
+    }, [model, currentLanguage, currentTemplate, currentTrack, translate, maxWords, maxChars, textFormat, removePunctuation, sensitiveWords, alignWords, enabledSteps, diarizeSpeakerCount, diarizeMode]);
 
     async function startTranscriptionServer() {
         try {
@@ -211,6 +265,12 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     const percentageMatch = line.match(/(\d+)%/);
                     if (percentageMatch && percentageMatch[1]) {
                         const percentage = parseInt(percentageMatch[1], 10);
+                        if (enabledSteps.diarize) {
+                            setProgress(30 + (percentage / 100 * 30));
+                        }
+                        else {
+                            setProgress(30 + (percentage / 100 * 60));
+                        }
                         setProcessingStep(`Transcribing Audio... ${percentage}%`); // Update the state
                     }
                 } else {
@@ -234,6 +294,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 else if (line.includes('INFO:') || line.includes('VAD') || line.includes('Adjustment')) {
                     if (line.includes('speechbrain')) {
                         setProcessingStep("Diarizing speakers...");
+                        setCurrentStep(3);
+                        setProgress(60);
                         setIsLoading(true);
                     } else {
                         console.log(`Transcription Server INFO: "${line}"`);
@@ -243,6 +305,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     if (percentageMatch && percentageMatch[1]) {
                         const percentage = parseInt(percentageMatch[1], 10);
                         setProcessingStep(`Downloading Model... ${percentage}%`); // Update the state
+                        setCurrentStep(2);
+                        setProgress(20 + (percentage / 100 * 10));
                     }
                 } else if (line.includes("download")) {
                     setProcessingStep("Downloading Model..."); // Update the state
@@ -277,13 +341,17 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setIsLoading(true);
         setSubtitles([]);
         try {
+            setProgress(5);
+            setCurrentStep(1);
             let audioInfo = await exportAudio(audioPath);
+            setProgress(20);
             console.log("Fetching transcription...");
             setProcessingStep("Preparing to transcribe...");
+            setCurrentStep(2);
 
             console.log("Audio Path: ", audioInfo.path);
             let sensitiveWordsList: string[] = [];
-            if (sensitiveWords !== "") {
+            if (sensitiveWords !== "" && enabledSteps.textFormat) {
                 sensitiveWordsList = sensitiveWords.split(',').map((word: string) => word.trim().toLowerCase());
             }
 
@@ -294,8 +362,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 model: model,
                 language: currentLanguage,
                 task: translate ? "translate" : "transcribe",
-                diarize: diarize,
-                align_words: alignWords,
+                diarize: enabledSteps.diarize,
+                diarize_speaker_count: diarizeSpeakerCount,
+                align_words: enabledSteps.advancedOptions && alignWords,
                 max_words: maxWords,
                 max_chars: maxChars,
                 sensitive_words: sensitiveWordsList,
@@ -335,6 +404,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 throw new Error(errorMessage);
             }
 
+            setProgress(90);
+            setCurrentStep(5);
+
             // If the response is successful, parse the JSON data
             const data = await response.json();
             const filePath = data.result_file;
@@ -344,6 +416,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setSubtitles([]);
             await populateSubtitles(timeline);
             await addSubtitles(filePath);
+            setProgress(100);
 
         } catch (error: unknown) { // Explicitly type 'error' as 'unknown'
             // Handle any errors that occurred during the fetch or processing
@@ -400,6 +473,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setTimeline(data.timeline);
         setAudioPath(data.path);
         setMarkIn(data.markIn);
+
         return data;
     };
 
@@ -418,8 +492,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     filePath,
                     templateName: currentTemplate,
                     trackIndex: currentTrack,
-                    removePunctuation,
-                    textFormat,
+                    removePunctuation: enabledSteps.textFormat && removePunctuation,
+                    textFormat: enabledSteps.textFormat && textFormat,
                 }),
             });
 
@@ -457,6 +531,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             }
             let timelineId = data.timelineId;
             setTimeline(data.timelineId);
+            setTrackList(data.tracks);
+            setTemplateList(data.templates);
             return timelineId;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
@@ -666,9 +742,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
 
     async function initialize() {
-        await populateSubtitles("");
-        await getTracks();
-        await getTemplates();
+        let timelineId = await getTimelineInfo();
+        await populateSubtitles(timelineId);
     }
 
     const hasInitialized = useRef(false);
@@ -724,7 +799,10 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 currentLanguage,
                 model,
                 translate,
-                diarize,
+                currentStep,
+                enabledSteps,
+                diarizeSpeakerCount,
+                diarizeMode,
                 maxWords,
                 maxChars,
                 textFormat,
@@ -735,11 +813,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 isLoading,
                 error,
                 audioPath,
+                progress,
                 setError,
                 setIsLoading,
                 setModel,
                 setTranslate,
-                setDiarize,
+                setEnabledSteps,
+                setDiarizeSpeakerCount,
+                setDiarizeMode,
                 setMaxWords,
                 setMaxChars,
                 setTextFormat,
@@ -759,7 +840,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 populateSubtitles,
                 addSubtitles,
                 exportSubtitles,
-                jumpToTime
+                jumpToTime,
+                resetSettings,
+                setProgress
             }}
         >
             {children}

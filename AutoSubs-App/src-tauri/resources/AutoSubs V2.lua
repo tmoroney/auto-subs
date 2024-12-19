@@ -286,6 +286,9 @@ function GetTimelineInfo()
             timelineId = "",
             name = "No timeline selected"
         }
+    else -- get tracks and templates
+        timelineInfo["tracks"] = GetTracks()
+        timelineInfo["templates"] = GetTemplates()
     end
     return timelineInfo
 end
@@ -312,28 +315,55 @@ function GetTracks()
     return tracks
 end
 
+function GetAudioTracks()
+    local tracks = {}
+    local success, err = pcall(function()
+        local timeline = project:GetCurrentTimeline()
+        local trackCount = timeline:GetTrackCount("audio")
+        for i = 1, trackCount do
+            local track = {
+                value = tostring(i),
+                label = timeline:GetTrackName("audio", i)
+            }
+            table.insert(tracks, track)
+        end
+    end)
+    return tracks
+end
+
+function CheckTrackEmpty(trackIndex, markIn, markOut)
+    local timeline = project:GetCurrentTimeline()
+    local trackItems = timeline:GetItemsInTrack("video", trackIndex)
+    for i, item in ipairs(trackItems) do
+        local itemStart = item:GetStart()
+        local itemEnd = item:GetEnd()
+        if (itemStart <= markIn and itemEnd >= markIn) or (itemStart <= markOut and itemEnd >= markOut) then
+            return false
+        end
+    end
+    return #trackItems == 0
+end
+
 function ExportAudio(outputDir)
     local audioInfo = {
         timeline = ""
     }
-    local success, err = pcall(function()
-        resolve:ImportRenderPreset(storage_path .. "render-audio-only.xml")
-        project:LoadRenderPreset('render-audio-only')
-        project:SetRenderSettings({ TargetDir = outputDir })
-    end)
+    -- local success, err = pcall(function()
+    --     resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
+    --     project:LoadRenderPreset('render-audio-only')
+    --     project:SetRenderSettings({ TargetDir = outputDir })
+    -- end)
 
-    if not success then
-        project:LoadRenderPreset('Audio Only')
-        project:SetRenderSettings({
-            TargetDir = outputDir,
-            CustomName = "autosubs-exported-audio",
-            RenderMode = "Single clip",
-            IsExportVideo = false,
-            IsExportAudio = true,
-            AudioBitDepth = 24,
-            AudioSampleRate = 44100
-        })
-    end
+    project:LoadRenderPreset('Audio Only')
+    project:SetRenderSettings({
+        TargetDir = outputDir,
+        CustomName = "autosubs-exported-audio",
+        RenderMode = "Single clip",
+        IsExportVideo = false,
+        IsExportAudio = true,
+        AudioBitDepth = 24,
+        AudioSampleRate = 44100
+    })
 
     pcall(function()
         local pid = project:AddRenderJob()
@@ -633,7 +663,7 @@ while not quitServer do
                         })
                     elseif data.func == "ExportAudio" then
                         print("[AutoSubs Server] Exporting audio...")
-                        local audioInfo = ExportAudio(data.outputDir)
+                        local audioInfo = ExportAudio(data.outputDir, data.inputTrack)
                         body = json.encode(audioInfo)
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
