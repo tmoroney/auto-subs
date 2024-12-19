@@ -201,7 +201,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
     trackIndex = tonumber(trackIndex)
     local trackCount = timeline:GetItemListInTrack("video", trackIndex)
             
-    if trackCount != nil:
+    if trackCount[0] != nil:
         --make new track and select that track
         timeline:AddTrack('video')
         trackIndex=(timeline:GetTrackCount('video'))
