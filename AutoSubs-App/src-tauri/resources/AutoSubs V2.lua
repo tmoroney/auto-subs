@@ -57,11 +57,11 @@ if os_name == "Windows" then
         typedef wchar_t WCHAR;
 
         int MultiByteToWideChar(
-            unsigned int CodePage, 
-            unsigned long dwFlags, 
-            const char* lpMultiByteStr, 
-            int cbMultiByte, 
-            WCHAR* lpWideCharStr, 
+            unsigned int CodePage,
+            unsigned long dwFlags,
+            const char* lpMultiByteStr,
+            int cbMultiByte,
+            WCHAR* lpWideCharStr,
             int cchWideChar);
 
         void* _wfopen(const WCHAR* filename, const WCHAR* mode);
@@ -287,13 +287,15 @@ function GetTimelineInfo()
             name = "No timeline selected"
         }
     else -- get tracks and templates
-        timelineInfo["tracks"] = GetTracks()
+        timelineInfo["outputTracks"] = GetVideoTracks()
+        timelineInfo["inputTracks"] = GetAudioTracks()
         timelineInfo["templates"] = GetTemplates()
     end
     return timelineInfo
 end
 
-function GetTracks()
+-- Get a list of possible output tracks for subtitles
+function GetVideoTracks()
     local tracks = {}
     local createNewTrack = {
         value = "0",
@@ -317,6 +319,12 @@ end
 
 function GetAudioTracks()
     local tracks = {}
+    local allTracks = {
+        value = "0",
+        label = "All Audio Tracks"
+    }
+    table.insert(tracks, allTracks)
+
     local success, err = pcall(function()
         local timeline = project:GetCurrentTimeline()
         local trackCount = timeline:GetTrackCount("audio")
@@ -340,11 +348,14 @@ function CheckTrackEmpty(trackIndex, markIn, markOut)
         if (itemStart <= markIn and itemEnd >= markIn) or (itemStart <= markOut and itemEnd >= markOut) then
             return false
         end
+        if itemStart > markOut then
+            break
+        end
     end
     return #trackItems == 0
 end
 
-function ExportAudio(outputDir)
+function ExportAudio(outputDir, inputTrack)
     local audioInfo = {
         timeline = ""
     }
@@ -353,6 +364,26 @@ function ExportAudio(outputDir)
     --     project:LoadRenderPreset('render-audio-only')
     --     project:SetRenderSettings({ TargetDir = outputDir })
     -- end)
+
+    local trackStates = {}
+    local timeline;
+    local audioTracks;
+    if inputTrack ~= "0" and inputTrack ~= "" then
+        -- mute all tracks except the selected one
+        timeline = project:GetCurrentTimeline()
+        audioTracks = timeline:GetTrackCount("audio")
+        for i = 1, audioTracks do
+            local state = timeline:GetIsTrackEnabled("audio", i)
+            trackStates[i] = state
+            if i == tonumber(inputTrack) then
+                timeline:SetTrackEnable("audio", i, true)
+            else
+                timeline:SetTrackEnable("audio", i, false)
+            end
+        end
+    end
+
+    resolve:OpenPage("deliver")
 
     project:LoadRenderPreset('Audio Only')
     project:SetRenderSettings({
@@ -385,6 +416,15 @@ function ExportAudio(outputDir)
         end
     end)
 
+    resolve:OpenPage("edit")
+
+    -- unmute all tracks
+    if inputTrack ~= "0" and inputTrack ~= "" then
+        for i = 1, audioTracks do
+            timeline:SetTrackEnable("audio", i, trackStates[i])
+        end
+    end
+
     return audioInfo
 end
 
@@ -406,10 +446,10 @@ function GetTemplateItem(folder, templateName)
 end
 
 -- Add subtitles to the timeline using the specified template
-function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation)
+function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation, markIn, markOut)
     local timeline = project:GetCurrentTimeline()
 
-    if trackIndex == "0" or trackIndex == "" then
+    if trackIndex == "0" or trackIndex == "" or not CheckTrackEmpty(trackIndex, markIn, markOut) then
         trackIndex = timeline:GetTrackCount("video") + 1
     else
         trackIndex = tonumber(trackIndex)
@@ -645,16 +685,6 @@ while not quitServer do
                         print("[AutoSubs Server] Retrieving Timeline Info...")
                         local timelineInfo = GetTimelineInfo()
                         body = json.encode(timelineInfo)
-                    elseif data.func == "GetTemplates" then
-                        print("[AutoSubs Server] Retrieving Text+ Templates...")
-                        local templateList = GetTemplates()
-                        dump(templateList)
-                        body = json.encode(templateList)
-                    elseif data.func == "GetTracks" then
-                        print("[AutoSubs Server] Retrieving Timeline Tracks...")
-                        local trackList = GetTracks()
-                        dump(trackList)
-                        body = json.encode(trackList)
                     elseif data.func == "JumpToTime" then
                         print("[AutoSubs Server] Jumping to time...")
                         JumpToTime(data.start, data.markIn)
@@ -668,7 +698,7 @@ while not quitServer do
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
                         AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
-                            data.removePunctuation)
+                            data.removePunctuation, data.markIn, data.markOut)
                         body = json.encode({
                             message = "Job completed"
                         })

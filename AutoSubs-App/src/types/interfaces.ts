@@ -1,5 +1,3 @@
-import { info } from "console";
-
 export interface Speaker {
     label: string;
     id: string;
@@ -35,18 +33,33 @@ export interface SubtitleListProps {
     subtitles: Subtitle[];
 }
 
-export interface StepInfo {
-    exportAudio: string;
-    transcribe: string;
-    textFormat: string;
-    advancedOptions: string;
-    diarize: string;
-}
-
 export interface EnabeledSteps {
     exportAudio: boolean;
     transcribe: boolean;
     textFormat: boolean;
     advancedOptions: boolean;
     diarize: boolean;
+}
+
+interface Template {
+    value: string;
+    label: string;
+}
+interface Track {
+    value: string;
+    label: string;
+}
+
+export interface TimelineInfo {
+    name: string;
+    timelineId: string;
+    templates: Template[];
+    inputTracks: Track[];
+    outputTracks: Track[];
+}
+
+
+export interface ErrorMsg {
+    title: string;
+    desc: string;
 }

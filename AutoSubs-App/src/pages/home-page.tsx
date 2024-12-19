@@ -198,13 +198,12 @@ const languages = [
 
 export function HomePage() {
     const {
-        timeline,
-        trackList,
-        templateList,
+        timelineInfo,
         subtitles,
         currentTemplate,
         currentLanguage,
-        currentTrack,
+        outputTrack,
+        inputTrack,
         enabledSteps,
         currentStep,
         progress,
@@ -223,7 +222,8 @@ export function HomePage() {
         audioPath,
         setTemplate,
         setLanguage,
-        setTrack,
+        setInputTrack,
+        setOutputTrack,
         setEnabledSteps,
         setDiarizeSpeakerCount,
         setDiarizeMode,
@@ -240,8 +240,7 @@ export function HomePage() {
         fetchTranscription,
         exportSubtitles,
         populateSubtitles,
-        getTemplates,
-        getTracks,
+        getTimelineInfo,
         resetSettings,
     } = useGlobal();
 
@@ -304,7 +303,9 @@ export function HomePage() {
                 if (isAvailable) {
                     setOpenTokenMenu(false);
                     setIsDiarizeAvailable(true);
-                    console.log("Diarization enabled");
+                    toast((enabledSteps.diarize ? "Disabled" : "Enabled") + " Speaker Diarization", {
+                        description: enabledSteps.diarize ? "Removed from processing steps." : "Added to processing steps.",
+                    })
                 } else {
                     setEnabledSteps({
                         ...enabledSteps,
@@ -365,10 +366,10 @@ export function HomePage() {
                                             role="combobox"
                                             aria-expanded={openTemplates}
                                             className="justify-between font-normal"
-                                            onClick={async () => await getTemplates()}
+                                            onClick={async () => await getTimelineInfo()}
                                         >
-                                            {currentTemplate && templateList.length > 0
-                                                ? templateList.find((template) => template.value === currentTemplate)?.label
+                                            {currentTemplate && timelineInfo.templates.length > 0
+                                                ? timelineInfo.templates.find((template) => template.value === currentTemplate)?.label
                                                 : "Select Template..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -379,7 +380,7 @@ export function HomePage() {
                                             <CommandList>
                                                 <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {templateList.map((template) => (
+                                                    {timelineInfo.templates.map((template) => (
                                                         <CommandItem
                                                             key={template.value}
                                                             value={template.value}
@@ -411,10 +412,10 @@ export function HomePage() {
                                             variant="outline"
                                             role="combobox"
                                             className="justify-between font-normal"
-                                            onClick={async () => await getTracks()}
+                                            onClick={async () => await getTimelineInfo()}
                                         >
-                                            {currentTrack && trackList.length > 0
-                                                ? trackList.find((track) => track.value === currentTrack)?.label
+                                            {outputTrack && timelineInfo.outputTracks.length > 0
+                                                ? timelineInfo.outputTracks.find((track) => track.value === outputTrack)?.label
                                                 : "Select Video Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -425,19 +426,19 @@ export function HomePage() {
                                             <CommandList>
                                                 <CommandEmpty>No tracks found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {trackList.map((track) => (
+                                                    {timelineInfo.outputTracks.map((track) => (
                                                         <CommandItem
                                                             key={track.value}
                                                             value={track.value}
                                                             onSelect={(currentValue) => {
-                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                setOutputTrack(currentValue === outputTrack ? "" : currentValue)
                                                                 setOpenTracks(false)
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                    outputTrack === track.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
                                                             {track.label}
@@ -521,10 +522,7 @@ export function HomePage() {
                                     key="1"
                                     className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.diarize && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
                                     onClick={() => {
-                                        setEnabledSteps({ ...enabledSteps, diarize: !enabledSteps.diarize })
-                                        toast((enabledSteps.diarize ? "Disabled" : "Enabled") + " Speaker Diarization", {
-                                            description: enabledSteps.diarize ? "Removed from processing steps." : "Added to processing steps.",
-                                        })
+                                        checkDiarizeAvailable(!enabledSteps.diarize);
                                     }}
                                     style={{ userSelect: 'none' }}
                                 >
@@ -607,10 +605,10 @@ export function HomePage() {
                                                 variant="outline"
                                                 role="combobox"
                                                 className="justify-between font-normal"
-                                                onClick={async () => await getTracks()}
+                                                onClick={async () => await getTimelineInfo()}
                                             >
-                                                {currentTrack && trackList.length > 0
-                                                    ? trackList.find((track) => track.value === currentTrack)?.label
+                                                {inputTrack && timelineInfo.inputTracks.length > 0
+                                                    ? timelineInfo.inputTracks.find((track) => track.value === inputTrack)?.label
                                                     : "Select Audio Track..."}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
@@ -621,19 +619,19 @@ export function HomePage() {
                                                 <CommandList>
                                                     <CommandEmpty>No tracks found.</CommandEmpty>
                                                     <CommandGroup>
-                                                        {trackList.map((track) => (
+                                                        {timelineInfo.inputTracks.map((track) => (
                                                             <CommandItem
                                                                 key={track.value}
                                                                 value={track.value}
                                                                 onSelect={(currentValue) => {
-                                                                    setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                    setInputTrack(currentValue === inputTrack ? "" : currentValue)
                                                                     setOpenTracks(false)
                                                                 }}
                                                             >
                                                                 <Check
                                                                     className={cn(
                                                                         "mr-2 h-4 w-4",
-                                                                        currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                        inputTrack === track.value ? "opacity-100" : "opacity-0"
                                                                     )}
                                                                 />
                                                                 {track.label}
@@ -1052,7 +1050,7 @@ export function HomePage() {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
-                        onClick={async () => populateSubtitles(timeline)}
+                        onClick={async () => populateSubtitles()}
                     >
                         <RefreshCw className="size-3.5" />
                         Refresh

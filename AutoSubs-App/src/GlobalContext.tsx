@@ -3,7 +3,7 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
-import { Subtitle, Speaker, TopSpeaker, StepInfo, EnabeledSteps } from "@/types/interfaces";
+import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
     removePunctuation: false,
     sensitiveWords: "",
     alignWords: false,
-    diarizeSpeakerCount: 0,
+    diarizeSpeakerCount: 2,
     diarizeMode: "auto",
     enabledSteps: {
         exportAudio: true,
@@ -34,10 +34,9 @@ const DEFAULT_SETTINGS = {
 let transcriptionProcess: Child | null = null;
 
 interface GlobalContextProps {
-    timeline: string;
-    trackList: Track[];
-    templateList: Template[];
-    currentTrack: string;
+    timelineInfo: TimelineInfo;
+    inputTrack: string;
+    outputTrack: string;
     currentTemplate: string;
     currentLanguage: string;
     model: string;
@@ -62,7 +61,8 @@ interface GlobalContextProps {
     setIsLoading: (newIsLoading: boolean) => void;
     setTemplate: (newTemplate: string) => void;
     setLanguage: (newLanguage: string) => void;
-    setTrack: (newTrack: string) => void;
+    setInputTrack: (newTrack: string) => void;
+    setOutputTrack: (newTrack: string) => void;
     setModel: (newModel: string) => void;
     setTranslate: (newTranslate: boolean) => void;
     setDiarizeSpeakerCount: (newDiarizeSpeakerCount: number) => void;
@@ -83,9 +83,7 @@ interface GlobalContextProps {
     setSpeakers: (newSpeakers: Speaker[]) => void;
     updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>
     getTimelineInfo: () => Promise<void>;
-    getTracks: () => Promise<void>;
-    getTemplates: () => Promise<void>;
-    populateSubtitles: (timelineId: string) => Promise<void>;
+    populateSubtitles: () => Promise<void>;
     addSubtitles: (filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
     initialize: () => void;
@@ -102,27 +100,11 @@ let store: Store | null = null;
 
 const subtitleRegex = /\[\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3}\]\s+(.*)/;
 
-interface Template {
-    value: string;
-    label: string;
-}
-interface Track {
-    value: string;
-    label: string;
-}
-interface ErrorMsg {
-    title: string;
-    desc: string;
-}
-
 const GlobalContext = createContext<GlobalContextProps | undefined>(undefined);
 
 export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
     const [speakers, setSpeakers] = useState<Speaker[]>([]);
-    const [templateList, setTemplateList] = useState<Template[]>([]);
-    const [trackList, setTrackList] = useState<Track[]>([]);
-    const [timeline, setTimeline] = useState<string>("");
     const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
     const [isLoading, setIsLoading] = useState(true);
     const [processingStep, setProcessingStep] = useState("Starting Transcription Server...");
@@ -132,10 +114,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     const [progress, setProgress] = useState(0);
 
     const [markIn, setMarkIn] = useState(0);
+    const [markOut, setMarkOut] = useState(0);
+    const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
+    const [currentTemplate, setTemplate] = useState("");
+    const [outputTrack, setOutputTrack] = useState("");
+    const [inputTrack, setInputTrack] = useState("");
+
     const [model, setModel] = useState(DEFAULT_SETTINGS.model);
     const [currentLanguage, setLanguage] = useState(DEFAULT_SETTINGS.language);
-    const [currentTemplate, setTemplate] = useState("");
-    const [currentTrack, setTrack] = useState("");
     const [translate, setTranslate] = useState(DEFAULT_SETTINGS.translate);
     const [diarizeSpeakerCount, setDiarizeSpeakerCount] = useState(DEFAULT_SETTINGS.diarizeSpeakerCount);
     const [diarizeMode, setDiarizeMode] = useState(DEFAULT_SETTINGS.diarizeMode);
@@ -158,7 +144,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     }
 
     async function getFullTranscriptPath() {
-        let filePath = await join(storageDir, `${timeline}.json`);
+        let filePath = await join(storageDir, `${timelineInfo.timelineId}.json`);
         return filePath;
     }
 
@@ -167,7 +153,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setModel(DEFAULT_SETTINGS.model);
         setLanguage(DEFAULT_SETTINGS.language);
         setTemplate("");
-        setTrack("");
+        setOutputTrack("");
+        setInputTrack("");
         setTranslate(DEFAULT_SETTINGS.translate);
         setMaxWords(DEFAULT_SETTINGS.maxWords);
         setMaxChars(DEFAULT_SETTINGS.maxChars);
@@ -189,7 +176,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setModel(await store.get<string>('model') || DEFAULT_SETTINGS.model);
             setLanguage(await store.get<string>('currentLanguage') || DEFAULT_SETTINGS.language);
             setTemplate(await store.get<string>('currentTemplate') || "");
-            setTrack(await store.get<string>('currentTrack') || "");
+            setOutputTrack(await store.get<string>('currentTrack') || "");
             setTranslate(await store.get<boolean>('translate') || DEFAULT_SETTINGS.translate);
             setMaxWords(await store.get<number>('maxWords') || DEFAULT_SETTINGS.maxWords);
             setMaxChars(await store.get<number>('maxChars') || DEFAULT_SETTINGS.maxChars);
@@ -211,7 +198,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 await store.set('model', model);
                 await store.set('currentLanguage', currentLanguage);
                 await store.set('currentTemplate', currentTemplate);
-                await store.set('currentTrack', currentTrack);
+                await store.set('outputTrack', outputTrack);
+                await store.set('inputTrack', inputTrack);
                 await store.set('translate', translate);
                 await store.set('maxWords', maxWords);
                 await store.set('maxChars', maxChars);
@@ -231,7 +219,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
     useEffect(() => {
         saveState();
-    }, [model, currentLanguage, currentTemplate, currentTrack, translate, maxWords, maxChars, textFormat, removePunctuation, sensitiveWords, alignWords, enabledSteps, diarizeSpeakerCount, diarizeMode]);
+    }, [model, currentLanguage, currentTemplate, inputTrack, outputTrack, translate, maxWords, maxChars, textFormat, removePunctuation, sensitiveWords, alignWords, enabledSteps, diarizeSpeakerCount, diarizeMode]);
 
     async function startTranscriptionServer() {
         try {
@@ -358,7 +346,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             let body = {
                 file_path: audioInfo.path,
                 output_dir: storageDir,
-                timeline: audioInfo.timeline,
+                timeline: timelineInfo.timelineId,
                 model: model,
                 language: currentLanguage,
                 task: translate ? "translate" : "transcribe",
@@ -414,7 +402,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             // Proceed with processing the transcription result
             setProcessingStep("Populating timeline...");
             setSubtitles([]);
-            await populateSubtitles(timeline);
+            await populateSubtitles();
             await addSubtitles(filePath);
             setProgress(100);
 
@@ -447,8 +435,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         if (prevAudioPath !== "") {
             return {
                 path: audioPath,
-                timeline: timeline,
-                markIn: markIn
+                markIn: markIn,
+                markOut: markOut
             };
         }
         // send request to Lua server (Resolve)
@@ -461,6 +449,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             body: JSON.stringify({
                 func: "ExportAudio",
                 outputDir: await downloadDir(),
+                inputTrack: inputTrack,
             }),
         });
 
@@ -470,9 +459,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             throw new Error("Failed to export audio. You must have a timeline open in Resolve to start transcribing.");
         }
 
-        setTimeline(data.timeline);
         setAudioPath(data.path);
         setMarkIn(data.markIn);
+        setMarkOut(data.markOut);
 
         return data;
     };
@@ -491,9 +480,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     func: "AddSubtitles",
                     filePath,
                     templateName: currentTemplate,
-                    trackIndex: currentTrack,
+                    trackIndex: outputTrack,
                     removePunctuation: enabledSteps.textFormat && removePunctuation,
                     textFormat: enabledSteps.textFormat && textFormat,
+                    markIn,
+                    markOut,
                 }),
             });
 
@@ -529,11 +520,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 });
                 return;
             }
-            let timelineId = data.timelineId;
-            setTimeline(data.timelineId);
-            setTrackList(data.tracks);
-            setTemplateList(data.templates);
-            return timelineId;
+            setTimelineInfo(data);
+            return data;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
             setError({
@@ -565,58 +553,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function getTracks() {
-        try {
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ func: "GetTracks" }),
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const data = await response.json();
-            console.log(data);
-            setTrackList(data);
-            console.log(data);
-        } catch (error) {
-            console.error('Error fetching tracks:', error);
-            setError({
-                title: "Failed to connect to Resolve",
-                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
-            });
-        }
-    }
-
-    async function getTemplates() {
-        try {
-            const response = await fetch(resolveAPI, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ func: "GetTemplates" }),
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const data = await response.json();
-            setTemplateList(data);
-            console.log(data);
-        } catch (error) {
-            console.error('Error fetching templates:', error);
-            setError({
-                title: "Failed to connect to Resolve",
-                desc: "Make sure to open AutoSubs via the Workspace -> Scripts menu inside Resolve."
-            });
-        }
-    }
-
-    async function readTranscript(timelineId: string) {
-        if (timelineId == "") {
-            timelineId = await getTimelineInfo();
-            if (timelineId == "" || timelineId == undefined) return
-        }
-
-        const filePath = await join(storageDir, `${timelineId}.json`);
+    async function readTranscript() {
+        const filePath = await join(storageDir, `${timelineInfo.timelineId}.json`);
 
         try {
             // Check if the file exists
@@ -640,8 +578,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function populateSubtitles(timelineId: string) {
-        let transcript = await readTranscript(timelineId);
+    async function populateSubtitles() {
+        let transcript = await readTranscript();
         if (transcript) {
             setMarkIn(transcript.mark_in)
             setSubtitles(transcript.segments);
@@ -706,7 +644,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             return;
         }
         // read current file
-        let transcript = await readTranscript(timeline);
+        let transcript = await readTranscript();
         if (topSpeaker) {
             transcript.top_speaker = topSpeaker;
         }
@@ -718,7 +656,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
 
         // write to file
-        const filePath = await join(storageDir, `${timeline}.json`);
+        const filePath = await join(storageDir, `${timelineInfo.timelineId}.json`);
         return await writeTextFile(filePath, JSON.stringify(transcript, null, 2), {
             baseDir: BaseDirectory.Document,
         });
@@ -742,8 +680,9 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
 
     async function initialize() {
-        let timelineId = await getTimelineInfo();
-        await populateSubtitles(timelineId);
+        await getTimelineInfo().then(async () => {
+            await populateSubtitles();
+        });
     }
 
     const hasInitialized = useRef(false);
@@ -788,13 +727,12 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     return (
         <GlobalContext.Provider
             value={{
-                timeline,
-                trackList,
-                templateList,
+                timelineInfo,
                 subtitles,
                 speakers,
                 topSpeaker,
-                currentTrack,
+                inputTrack,
+                outputTrack,
                 currentTemplate,
                 currentLanguage,
                 model,
@@ -829,14 +767,13 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 setAlignWords,
                 setTemplate,
                 setLanguage,
-                setTrack,
+                setInputTrack,
+                setOutputTrack,
                 initialize,
                 fetchTranscription,
                 setSpeakers,
                 updateSpeaker,
                 getTimelineInfo,
-                getTracks,
-                getTemplates,
                 populateSubtitles,
                 addSubtitles,
                 exportSubtitles,
