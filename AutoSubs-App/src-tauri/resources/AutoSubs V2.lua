@@ -75,7 +75,7 @@ if os_name == "Windows" then
     storage_path = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
 
     -- Get path to the main AutoSubs app and modules
-    local install_path = assert(read_file(storage_path .. "install_path.txt", "r"))
+    local install_path = assert(read_file(storage_path .. "install_path.txt"))
     install_path = string.gsub(install_path, "\\", "/")
     main_app = install_path .. "/AutoSubs.exe"
     modules_path = install_path .. "/resources/modules/"
@@ -91,10 +91,11 @@ elseif os_name == "OSX" then
         "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
 
     -- Get path to the main AutoSubs app and modules
-    local install_path = assert(read_file(storage_path .. "install_path.txt", "r"))
-    main_app = install_path .. "/AutoSubs.app"
+    local install_path = assert(read_file(storage_path .. "install_path.txt"))
+    main_app = string.gsub(install_path, "\n", "") .. "/AutoSubs.app"
     modules_path = install_path .. "/AutoSubs.app/Contents/Resources/resources/modules/"
 
+    print("Main App Path: ", main_app)
     -- MacOS commands to open and close main app
     command_open = 'open ' .. main_app
     command_close = "pkill -f " .. main_app
@@ -340,8 +341,9 @@ function GetAudioTracks()
 end
 
 function CheckTrackEmpty(trackIndex, markIn, markOut)
+    trackIndex = tonumber(trackIndex)
     local timeline = project:GetCurrentTimeline()
-    local trackItems = timeline:GetItemsInTrack("video", trackIndex)
+    local trackItems = timeline:GetItemListInTrack("video", trackIndex)
     for i, item in ipairs(trackItems) do
         local itemStart = item:GetStart()
         local itemEnd = item:GetEnd()

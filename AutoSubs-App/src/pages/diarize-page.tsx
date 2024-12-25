@@ -66,22 +66,20 @@ export function DiarizePage() {
     const {
         topSpeaker,
         speakers,
-        templateList,
-        trackList,
+        timelineInfo,
         currentTemplate,
-        currentTrack,
         textFormat,
         removePunctuation,
         // sensitiveWords,
         setTemplate,
-        setTrack,
+        outputTrack,
+        setOutputTrack,
         setTextFormat,
         setRemovePunctuation,
         // setSensitiveWords,
         addSubtitles,
+        getTimelineInfo,
         updateSpeaker,
-        getTemplates,
-        getTracks,
         jumpToTime
     } = useGlobal();
 
@@ -242,10 +240,10 @@ export function DiarizePage() {
                                             role="combobox"
                                             aria-expanded={openTemplates}
                                             className="justify-between font-normal"
-                                            onClick={() => getTemplates()}
+                                            onClick={() => getTimelineInfo()}
                                         >
-                                            {currentTemplate && templateList.length > 0
-                                                ? templateList.find((template) => template.value === currentTemplate)?.label
+                                            {currentTemplate && timelineInfo.templates.length > 0
+                                                ? timelineInfo.templates.find((template) => template.value === currentTemplate)?.label
                                                 : "Select Template..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -256,7 +254,7 @@ export function DiarizePage() {
                                             <CommandList>
                                                 <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {templateList.map((template) => (
+                                                    {timelineInfo.templates.map((template) => (
                                                         <CommandItem
                                                             key={template.value}
                                                             value={template.value}
@@ -288,10 +286,10 @@ export function DiarizePage() {
                                             variant="outline"
                                             role="combobox"
                                             className="justify-between font-normal"
-                                            onClick={() => getTracks()}
+                                            onClick={() => getTimelineInfo()}
                                         >
-                                            {currentTrack && trackList.length > 0
-                                                ? trackList.find((track) => track.value === currentTrack)?.label
+                                            {outputTrack && timelineInfo.outputTracks.length > 0
+                                                ? timelineInfo.outputTracks.find((track) => track.value === outputTrack)?.label
                                                 : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -302,19 +300,19 @@ export function DiarizePage() {
                                             <CommandList>
                                                 <CommandEmpty>No tracks found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {trackList.map((track) => (
+                                                    {timelineInfo.outputTracks.map((track) => (
                                                         <CommandItem
                                                             key={track.value}
                                                             value={track.value}
                                                             onSelect={(currentValue) => {
-                                                                setTrack(currentValue === currentTrack ? "" : currentValue)
+                                                                setOutputTrack(currentValue === outputTrack ? "" : currentValue)
                                                                 setOpenTracks(false)
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    currentTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                    outputTrack === track.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
                                                             {track.label}

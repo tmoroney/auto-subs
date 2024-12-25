@@ -2,7 +2,7 @@ import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
-import { save } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
     enabledSteps: {
         exportAudio: true,
         transcribe: true,
+        customSRT: false,
         textFormat: false,
         advancedOptions: false,
         diarize: false
@@ -83,7 +84,7 @@ interface GlobalContextProps {
     setSpeakers: (newSpeakers: Speaker[]) => void;
     updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>
     getTimelineInfo: () => Promise<void>;
-    populateSubtitles: () => Promise<void>;
+    populateSubtitles: (timelineId: string) => Promise<void>;
     addSubtitles: (filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
     initialize: () => void;
@@ -176,6 +177,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setModel(await store.get<string>('model') || DEFAULT_SETTINGS.model);
             setLanguage(await store.get<string>('currentLanguage') || DEFAULT_SETTINGS.language);
             setTemplate(await store.get<string>('currentTemplate') || "");
+            setInputTrack(await store.get<string>('inputTrack') || "all");
             setOutputTrack(await store.get<string>('currentTrack') || "");
             setTranslate(await store.get<boolean>('translate') || DEFAULT_SETTINGS.translate);
             setMaxWords(await store.get<number>('maxWords') || DEFAULT_SETTINGS.maxWords);
@@ -274,7 +276,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 else if (line.includes('Adjustment:') || line.includes('Aligning:')) {
                     setProcessingStep(`Adjusting Timing...`); // Update the state
                 }
-                else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket')) && serverLoading.current) {
+                else if ((line.includes('address already in use') || line.includes('Uvicorn running') || line.includes('one usage of each socket') || line.includes("Failed to load Python shared library")) && serverLoading.current) {
                     setProcessingStep("");
                     setIsLoading(false);
                     serverLoading.current = false;
@@ -402,7 +404,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             // Proceed with processing the transcription result
             setProcessingStep("Populating timeline...");
             setSubtitles([]);
-            await populateSubtitles();
+            await populateSubtitles(timelineInfo.timelineId);
             await addSubtitles(filePath);
             setProgress(100);
 
@@ -521,7 +523,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 return;
             }
             setTimelineInfo(data);
-            return data;
+            return data.timelineId;
         } catch (error) {
             console.error('Error fetching timeline info (failed to connect to AutoSubs Link in Resolve):', error);
             setError({
@@ -553,8 +555,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function readTranscript() {
-        const filePath = await join(storageDir, `${timelineInfo.timelineId}.json`);
+    async function readTranscript(timeLineId: string) {
+        const filePath = await join(storageDir, `${timeLineId}.json`);
 
         try {
             // Check if the file exists
@@ -578,8 +580,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function populateSubtitles() {
-        let transcript = await readTranscript();
+    async function populateSubtitles(timeLineId: string) {
+        let transcript = await readTranscript(timeLineId);
         if (transcript) {
             setMarkIn(transcript.mark_in)
             setSubtitles(transcript.segments);
@@ -638,13 +640,74 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.error('Failed to save file', error);
         }
     }
+    
+    async function importSubtitles() {
+        try {
+            const transcriptPath = await open({
+                multiple: false,
+                directory: false,
+                filters: [{
+                    name: 'SRT Files',
+                    extensions: ['srt']
+                }],
+                defaultPath: await downloadDir()
+            });
+
+            if (!transcriptPath) {
+                console.log('Open was canceled');
+                return;
+            }
+
+            // read srt file and convert to json
+            const srtData = await readTextFile(transcriptPath);
+            const srtLines = srtData.split('\n');
+            let subtitles: Subtitle[] = [];
+
+            // convert srt to [{start, end, text}]
+            for (let i = 0; i < srtLines.length; i++) {
+                if (srtLines[i].match(/\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/)) {
+                    let start = srtLines[i].split(' --> ')[0];
+                    let end = srtLines[i].split(' --> ')[1];
+                    let text = srtLines[i + 1];
+
+                    const [startHours, startMinutes, startSeconds] = start.split(':');
+                    const [startSecs, startMillis] = startSeconds.split(',');
+                    const startInSeconds = parseInt(startHours) * 3600 + parseInt(startMinutes) * 60 + parseInt(startSecs) + parseInt(startMillis) / 1000;
+
+                    const [endHours, endMinutes, endSeconds] = end.split(':');
+                    const [endSecs, endMillis] = endSeconds.split(',');
+                    const endInSeconds = parseInt(endHours) * 3600 + parseInt(endMinutes) * 60 + parseInt(endSecs) + parseInt(endMillis) / 1000;
+
+                    let subtitle = { start: startInSeconds.toString(), end: endInSeconds.toString(), text, speaker: "" };
+                    subtitles.push(subtitle);
+                }
+            }
+
+            setSubtitles(subtitles);
+
+            let transcript = {
+                "segments": subtitles,
+                "speakers": speakers,
+                "top_speaker": topSpeaker
+            }
+
+            // write to json file
+            await writeTextFile(await join(storageDir, `${timelineInfo.timelineId}.json`), JSON.stringify(transcript, null, 2));
+        } catch (error) {
+            console.error('Failed to open file', error);
+            setError({
+                title: "Error Opening SRT File",
+                desc: "Failed to open the SRT file. Please try again."
+            });
+        }
+    }
 
     async function updateTranscript(speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
         if (!speakers && !subtitles) {
             return;
         }
         // read current file
-        let transcript = await readTranscript();
+        let transcript = await readTranscript(timelineInfo.timelineId);
         if (topSpeaker) {
             transcript.top_speaker = topSpeaker;
         }
@@ -657,9 +720,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
         // write to file
         const filePath = await join(storageDir, `${timelineInfo.timelineId}.json`);
-        return await writeTextFile(filePath, JSON.stringify(transcript, null, 2), {
-            baseDir: BaseDirectory.Document,
-        });
+        return await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
     }
 
     async function updateSpeaker(index: number, label: string, color: string, style: string) {
@@ -680,9 +741,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
 
     async function initialize() {
-        await getTimelineInfo().then(async () => {
-            await populateSubtitles();
-        });
+        let timelineId = await getTimelineInfo()
+        await populateSubtitles(timelineId);
     }
 
     const hasInitialized = useRef(false);

@@ -246,7 +246,8 @@ export function HomePage() {
 
     const [openLanguages, setOpenLanguages] = useState(false);
     const [openTemplates, setOpenTemplates] = useState(false);
-    const [openTracks, setOpenTracks] = useState(false);
+    const [openInputTracks, setOpenInputTracks] = useState(false);
+    const [openOutputTracks, setOpenOutputTracks] = useState(false);
     const [openTokenMenu, setOpenTokenMenu] = useState(false);
     const [tooltipOpen, setTooltipOpen] = useState(false)
     const [hfToken, setHfToken] = useState("");
@@ -406,7 +407,7 @@ export function HomePage() {
                             </div>
                             <div className="grid gap-2.5">
                                 <Label htmlFor="track">Track to Place Subtitles</Label>
-                                <Popover open={openTracks} onOpenChange={setOpenTracks}>
+                                <Popover open={openOutputTracks} onOpenChange={setOpenOutputTracks}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
@@ -432,7 +433,7 @@ export function HomePage() {
                                                             value={track.value}
                                                             onSelect={(currentValue) => {
                                                                 setOutputTrack(currentValue === outputTrack ? "" : currentValue)
-                                                                setOpenTracks(false)
+                                                                setOpenOutputTracks(false)
                                                             }}
                                                         >
                                                             <Check
@@ -598,8 +599,8 @@ export function HomePage() {
                             </div>
                             <div className="grid gap-4">
                                 <div className="grid gap-2.5">
-                                    <Label htmlFor="sensitiveWords">Input Track (Audio)</Label>
-                                    <Popover open={openTracks} onOpenChange={setOpenTracks}>
+                                    <Label htmlFor="inputTrack">Input Track (Audio)</Label>
+                                    <Popover open={openInputTracks} onOpenChange={setOpenInputTracks}>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
@@ -625,7 +626,7 @@ export function HomePage() {
                                                                 value={track.value}
                                                                 onSelect={(currentValue) => {
                                                                     setInputTrack(currentValue === inputTrack ? "" : currentValue)
-                                                                    setOpenTracks(false)
+                                                                    setOpenInputTracks(false)
                                                                 }}
                                                             >
                                                                 <Check
@@ -1050,7 +1051,6 @@ export function HomePage() {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
-                        onClick={async () => populateSubtitles()}
                     >
                         <RefreshCw className="size-3.5" />
                         Refresh
