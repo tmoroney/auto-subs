@@ -32,7 +32,7 @@
           "path": "$APPCACHE/transcripts/**"
         },
         {
-          "path": "$CACHE/transcripts/**"
+          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
         }
       ]
     },
@@ -44,7 +44,7 @@
           "path": "$APPCACHE/transcripts/**"
         },
         {
-          "path": "$CACHE/transcripts/**"
+          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
         }
       ]
     },
@@ -55,7 +55,7 @@
           "path": "$APPCACHE/transcripts/**"
         },
         {
-          "path": "$CACHE/transcripts/**"
+          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
         }
       ]
     },

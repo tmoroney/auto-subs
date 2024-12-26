@@ -867,21 +867,21 @@ export function HomePage() {
                                 </div>
 
                                 <div className="grid gap-2.5">
-                                    <Label htmlFor="numSpeakers">Find Speakers</Label>
+                                    <Label htmlFor="numSpeakers">Speaker Detection Mode</Label>
                                     <Select value={diarizeMode} onValueChange={(value) => setDiarizeMode(value)}>
                                         <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select an option" />
+                                            <SelectValue placeholder="Choose detection mode" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="auto">Auto-detect number of speakers</SelectItem>
-                                            <SelectItem value="specific">Specify exact number of speakers</SelectItem>
+                                            <SelectItem value="auto">Auto detect speakers</SelectItem>
+                                            <SelectItem value="specific">Specify number of speakers</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 {diarizeMode !== "auto" && (
                                     <div className="grid gap-3">
-                                        <Label htmlFor="speakerCount">Specify speaker count</Label>
-                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="2" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
+                                        <Label htmlFor="speakerCount">Number of Speakers</Label>
+                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="Enter number of speakers" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
                                     </div>
                                 )}
                             </CardContent>

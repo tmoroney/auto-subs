@@ -212,7 +212,7 @@ export function DiarizePage() {
                                                         type="button"
                                                         size="sm"
                                                         className="gap-1.5 text-sm"
-                                                        onClick={async() => await updateSpeaker(index, currentLabel, currentColor, currentStyle)}
+                                                        onClick={async () => await updateSpeaker(index, currentLabel, currentColor, currentStyle)}
                                                     >
                                                         Save Changes
                                                     </Button>
@@ -223,7 +223,20 @@ export function DiarizePage() {
                                 </div>
                             ))}
                         </CardContent>
+                        <CardFooter>
+                            <Button
+                                type="button"
+                                variant={"secondary"}
+                                size="sm"
+                                className="gap-1.5 text-sm w-full"
+                                onClick={async () => { addSubtitles() }}
+                            >
+                                <RefreshCw className="size-4" />
+                                Update Speakers
+                            </Button>
+                        </CardFooter>
                     </Card>
+
                     <Card>
                         <CardHeader className="pb-4">
                             <CardTitle>Update Subtitles</CardTitle>
@@ -334,21 +347,21 @@ export function DiarizePage() {
                                 >
                                     <ToggleGroupItem
                                         value="normal"
-                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <PencilOff />
                                         <span className="text-xs">None</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="lowercase"
-                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <CaseLower />
                                         <span className="text-xs">Lower</span>
                                     </ToggleGroupItem>
                                     <ToggleGroupItem
                                         value="uppercase"
-                                        className="h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground"
+                                        className={`h-full flex flex-col items-center justify-center border-2 bg-transparent hover:text-accent-foreground data-[state=on]:border-primary data-[state=on]:bg-card`}
                                     >
                                         <CaseUpper />
                                         <span className="text-xs">Upper</span>
@@ -364,24 +377,6 @@ export function DiarizePage() {
                                 </div>
                                 <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
                             </div>
-                            {/* <div className="grid gap-3">
-                                <Label htmlFor="sensitiveWords">Sensored Words</Label>
-                                <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
-                            </div> */}
-
-                            {/* <div className="grid gap-3">
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="top-p">Min speakers</Label>
-                                        <Input id="top-p" type="number" placeholder="1" />
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="top-k">Max speakers</Label>
-                                        <Input id="top-k" type="number" placeholder="3" />
-                                    </div>
-                                </div>
-                            </div> */}
                         </CardContent>
                         <CardFooter>
                             <Button
@@ -394,7 +389,7 @@ export function DiarizePage() {
                                 Update Subtitles
                             </Button>
                         </CardFooter>
-                    </Card>
+                    </Card> 
 
                 </div>
             </div>

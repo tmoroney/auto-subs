@@ -1,6 +1,6 @@
 import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
-import { BaseDirectory, readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo } from "@/types/interfaces";
@@ -11,10 +11,12 @@ import { exit } from '@tauri-apps/plugin-process';
 import { platform } from '@tauri-apps/plugin-os';
 
 const DEFAULT_SETTINGS = {
+    inputTrack: "0",
+    outputTrack: "0",
     model: "small",
     language: "auto",
     translate: false,
-    maxWords: 6,
+    maxWords: 5,
     maxChars: 25,
     textFormat: "normal",
     removePunctuation: false,
@@ -87,7 +89,6 @@ interface GlobalContextProps {
     populateSubtitles: (timelineId: string) => Promise<void>;
     addSubtitles: (filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
-    initialize: () => void;
     jumpToTime: (start: number) => Promise<void>;
 }
 
@@ -154,8 +155,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         setModel(DEFAULT_SETTINGS.model);
         setLanguage(DEFAULT_SETTINGS.language);
         setTemplate("");
-        setOutputTrack("");
-        setInputTrack("");
+        setInputTrack(DEFAULT_SETTINGS.inputTrack);
+        setOutputTrack(DEFAULT_SETTINGS.outputTrack);
         setTranslate(DEFAULT_SETTINGS.translate);
         setMaxWords(DEFAULT_SETTINGS.maxWords);
         setMaxChars(DEFAULT_SETTINGS.maxChars);
@@ -177,8 +178,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             setModel(await store.get<string>('model') || DEFAULT_SETTINGS.model);
             setLanguage(await store.get<string>('currentLanguage') || DEFAULT_SETTINGS.language);
             setTemplate(await store.get<string>('currentTemplate') || "");
-            setInputTrack(await store.get<string>('inputTrack') || "all");
-            setOutputTrack(await store.get<string>('currentTrack') || "");
+            setInputTrack(await store.get<string>('inputTrack') || DEFAULT_SETTINGS.inputTrack);
+            setOutputTrack(await store.get<string>('outputTrack') || DEFAULT_SETTINGS.outputTrack);
             setTranslate(await store.get<boolean>('translate') || DEFAULT_SETTINGS.translate);
             setMaxWords(await store.get<number>('maxWords') || DEFAULT_SETTINGS.maxWords);
             setMaxChars(await store.get<number>('maxChars') || DEFAULT_SETTINGS.maxChars);
@@ -395,7 +396,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             }
 
             setProgress(90);
-            setCurrentStep(5);
+            setCurrentStep(6);
 
             // If the response is successful, parse the JSON data
             const data = await response.json();
@@ -560,7 +561,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
         try {
             // Check if the file exists
-            const fileExists = await exists(filePath, { baseDir: BaseDirectory.Document });
+            const fileExists = await exists(filePath);
 
             if (!fileExists) {
                 console.log("Transcript file does not exist for this timeline.");
@@ -569,19 +570,20 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
             // Read JSON file
             console.log("Reading json file...");
-            const contents = await readTextFile(filePath, { baseDir: BaseDirectory.Document });
+            const contents = await readTextFile(filePath);
             let transcript = JSON.parse(contents);
             return transcript;
         } catch (error) {
             setError({
                 title: "Error reading transcript",
-                desc: "Failed to read the transcript file. Please try again."
+                desc: "Failed to read the transcript file:" + error
             })
         }
     }
 
-    async function populateSubtitles(timeLineId: string) {
-        let transcript = await readTranscript(timeLineId);
+    async function populateSubtitles(timelineId: string) {
+        console.log("Populating subtitles...", timelineId);
+        let transcript = await readTranscript(timelineId);
         if (transcript) {
             setMarkIn(transcript.mark_in)
             setSubtitles(transcript.segments);
@@ -739,11 +741,11 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         await updateTranscript(newSpeakers, newTopSpeaker); // Use updated newTopSpeaker
     }
 
-
-    async function initialize() {
-        let timelineId = await getTimelineInfo()
-        await populateSubtitles(timelineId);
-    }
+    useEffect(() => {
+        if (timelineInfo.timelineId !== "" && timelineInfo.timelineId !== undefined) {
+            populateSubtitles(timelineInfo.timelineId);
+        }
+    }, [timelineInfo]);
 
     const hasInitialized = useRef(false);
 
@@ -758,7 +760,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
         initializeStore();
 
-        initialize();
+        getTimelineInfo();
 
         getCurrentWindow().once("tauri://close-requested", async () => {
             try {
@@ -829,7 +831,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 setLanguage,
                 setInputTrack,
                 setOutputTrack,
-                initialize,
                 fetchTranscription,
                 setSpeakers,
                 updateSpeaker,
