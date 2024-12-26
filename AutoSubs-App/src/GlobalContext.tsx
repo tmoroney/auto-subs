@@ -2,7 +2,7 @@ import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
-import { open, save } from '@tauri-apps/plugin-dialog';
+import { save } from '@tauri-apps/plugin-dialog';
 import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
@@ -643,6 +643,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
     
+    /*
     async function importSubtitles() {
         try {
             const transcriptPath = await open({
@@ -703,6 +704,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
         }
     }
+    */
 
     async function updateTranscript(speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
         if (!speakers && !subtitles) {

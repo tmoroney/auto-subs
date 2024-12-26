@@ -239,7 +239,6 @@ export function HomePage() {
         setError,
         fetchTranscription,
         exportSubtitles,
-        populateSubtitles,
         getTimelineInfo,
         resetSettings,
     } = useGlobal();
