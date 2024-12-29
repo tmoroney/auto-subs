@@ -87,13 +87,11 @@ elseif os_name == "OSX" then
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
 
-    storage_path = os.getenv("HOME") ..
-        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
-
     -- Get path to the main AutoSubs app and modules
-    local install_path = assert(read_file(storage_path .. "install_path.txt"))
-    main_app = string.gsub(install_path, "\n", "") .. "/AutoSubs.app"
-    modules_path = install_path .. "/AutoSubs.app/Contents/Resources/resources/modules/"
+    local install_path = "/Applications"
+    main_app = install_path .. "/AutoSubs.app"
+    modules_path = main_app .. "/Contents/Resources/resources/modules/"
+    storage_path = main_app .. "/Contents/Resources/resources/AutoSubs/"
 
     print("Main App Path: ", main_app)
     -- MacOS commands to open and close main app
