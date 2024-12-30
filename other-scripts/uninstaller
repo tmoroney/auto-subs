@@ -1,21 +1,16 @@
 #!/bin/bash
 
-# Define the installation directory
-INSTALL_DIR="/Applications/AutoSubs"
-
-echo "Uninstalling AutoSubs..."
-
 # Paths to remove
-AUTOSUBS_DIR="${INSTALL_DIR}"
-LUA_SCRIPT="${INSTALL_DIR}/Scripts/Utility/AutoSubs V2.lua"
+echo "Uninstalling AutoSubs..."
+files="${APPDATA}/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/"
 
-# Remove the AutoSubs directory
-if [ -d "$AUTOSUBS_DIR" ]; then
-    rm -rf "$AUTOSUBS_DIR"
-    echo "Removed directory: $AUTOSUBS_DIR"
-else
-    echo "Directory not found: $AUTOSUBS_DIR"
-fi
+# Loop through each file in the directory
+for item in "${files}"*; do
+    if [[ "$item" == *AutoSub* ]]; then
+        rm -rf "$item"
+        echo "Removed: $item"
+    fi
+done
 
 echo "Uninstallation complete."
 exit 0
