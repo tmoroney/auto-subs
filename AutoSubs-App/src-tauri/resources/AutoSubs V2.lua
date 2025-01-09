@@ -425,6 +425,11 @@ function ExportAudio(outputDir, inputTrack)
         end
     end
 
+    -- check if audio file exists
+    if not io.open(audioInfo.path, "r") then
+        sleep(1)
+    end
+
     return audioInfo
 end
 
@@ -494,7 +499,7 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
     -- If within 1 second, join the subtitles
     local clipList = {}
     local joinThreshold = frame_rate
-    local subtitlesCount = #subtitles
+    --local subtitlesCount = #subtitles
 
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])

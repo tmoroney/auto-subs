@@ -20,6 +20,8 @@ export interface TopSpeaker {
 export interface AudioInfo {
     timeline: string;
     path: string;
+    markIn: number;
+    markOut: number;
 }
 
 export interface Subtitle {
@@ -36,6 +38,7 @@ export interface SubtitleListProps {
 export interface EnabeledSteps {
     exportAudio: boolean;
     transcribe: boolean;
+    customSrt: boolean;
     textFormat: boolean;
     advancedOptions: boolean;
     diarize: boolean;

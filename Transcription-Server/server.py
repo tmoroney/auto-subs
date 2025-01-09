@@ -41,6 +41,7 @@ import appdirs
 import time
 import platform
 import stable_whisper
+from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 
 # Define a base cache directory using appdirs
 if platform.system() == 'Windows':
@@ -287,6 +288,8 @@ def merge_diarisation(transcript, diarization):
             j += 1
         elif segment_end <= diar_start:
             i += 1
+        elif segment_end - diar_end >= diar_end - segment_start and j < len(diarization_turns):
+            j += 1
         else:
             # Overlapping segment
             speaker_label = f"Speaker {
@@ -408,6 +411,29 @@ async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words
 
     return result
 
+class SpeechSegmentsRequest(BaseModel):
+    audio_file: str
+
+@app.post("/non_speech_segments/")
+async def get_speech_segments(request: SpeechSegmentsRequest):
+    model = load_silero_vad()
+    wav = read_audio(request.audio_file)
+    speech_timestamps = get_speech_timestamps(
+        wav,
+        model,
+        return_seconds=True,  # Return speech timestamps in seconds (default is samples)
+    )
+
+    # Calculate non-speech segments
+    non_speech_timestamps = []
+    prev_end = 0
+    for segment in speech_timestamps:
+        start, end = segment['start'], segment['end']
+        if start > prev_end:
+            non_speech_timestamps.append({'start': prev_end, 'end': start})
+        prev_end = end
+    
+    return non_speech_timestamps
 
 class TranscriptionRequest(BaseModel):
     file_path: str
@@ -528,19 +554,20 @@ async def transcribe(request: TranscriptionRequest):
             detail=f"Unexpected error: {e}"
         )
 
-# class ModifyRequest(BaseModel):
-#     file_path: str
-#     max_words: int
-#     max_chars: int
-#     sensitive_words: list
+class ModifyRequest(BaseModel):
+    file_path: str
+    max_words: int
+    max_chars: int
+    sensitive_words: list
 
-# @app.post("/modify/")
-# async def modify(request: ModifyRequest):
-#     result = stable_whisper.WhisperResult(request.file_path)
-#     result.reset()
-#     result = modify_result(result, request.max_words, request.max_chars, request.sensitive_words)
-#     whisperResult = result.to_dict()
-#     return {"complete": True}
+@app.post("/modify/")
+async def modify(request: ModifyRequest):
+    result = stable_whisper.WhisperResult(request.file_path)
+    result.reset()
+    result = modify_result(result, request.max_words, request.max_chars, request.sensitive_words)
+    whisperResult = result.to_dict()
+    
+    return {"complete": True}
 
 
 def modify_result(result, max_words, max_chars, sensitive_words):

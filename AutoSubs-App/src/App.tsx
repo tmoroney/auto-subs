@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Type, Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, PenTool } from "lucide-react";
+import { Type, Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, PenTool, DraftingCompass, PocketKnife, PencilRuler, Drill, Brush, Pickaxe, Paintbrush, SwatchBook, House, ScanSearch } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ const pathNames = {
   "/": "Generate Subtitles",
   "/search": "Text Search",
   "/diarize": "Diarized Speakers",
-  "/animate": "Animate Subtitles",
+  "/animate": "Design Subtitles",
   "/chat": "Chat",
 };
 
@@ -283,29 +283,29 @@ function NavigationAside() {
                     className={`rounded-lg ${currentPath === "/" ? "bg-muted" : ""}`}
                     aria-label="Playground"
                   >
-                    <Type className="size-5" />
+                    <House className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
-                Subtitles
+                Generate Subtitles
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/search">
+                <Link to="/animate">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-lg ${currentPath === "/search" ? "bg-muted" : ""}`}
-                    aria-label="Text Search"
+                    className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
+                    aria-label="Animate"
                   >
-                    <Search className="size-5" />
+                    <Paintbrush className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
-                Text Search
+                Design Subtitles
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -327,19 +327,36 @@ function NavigationAside() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/animate">
+                <Link to="/chat">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
-                    aria-label="Animate"
+                    className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
+                    aria-label="Chat"
                   >
-                    <PenTool className="size-5" />
+                    <SwatchBook className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
-                Animate
+                Toolbox
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/search">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`rounded-lg ${currentPath === "/search" ? "bg-muted" : ""}`}
+                    aria-label="Text Search"
+                  >
+                    <Search className="size-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={5}>
+                Text Search
               </TooltipContent>
             </Tooltip>
             {/*

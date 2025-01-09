@@ -2,8 +2,8 @@ import { useEffect, createContext, useState, useContext, useRef } from 'react';
 import { fetch } from '@tauri-apps/plugin-http';
 import { readTextFile, exists, writeTextFile } from '@tauri-apps/plugin-fs';
 import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
-import { save } from '@tauri-apps/plugin-dialog';
-import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo } from "@/types/interfaces";
+import { open, save } from '@tauri-apps/plugin-dialog';
+import { Subtitle, Speaker, TopSpeaker, EnabeledSteps, ErrorMsg, TimelineInfo, AudioInfo } from "@/types/interfaces";
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -27,10 +27,10 @@ const DEFAULT_SETTINGS = {
     enabledSteps: {
         exportAudio: true,
         transcribe: true,
-        customSRT: false,
+        customSrt: false,
         textFormat: false,
         advancedOptions: false,
-        diarize: false
+        diarize: false,
     }
 };
 
@@ -77,7 +77,7 @@ interface GlobalContextProps {
     setSensitiveWords: (newSensitiveWords: string) => void;
     setAlignWords: (newAlignWords: boolean) => void;
     setEnabledSteps: (newEnabledSteps: EnabeledSteps) => void;
-    fetchTranscription: (audioPath: string) => Promise<void>;
+    runSteps: (useCachedAudio: boolean) => Promise<void>;
     resetSettings: () => void;
     setProgress: (newProgress: number) => void;
 
@@ -89,6 +89,7 @@ interface GlobalContextProps {
     populateSubtitles: (timelineId: string) => Promise<void>;
     addSubtitles: (filePath?: string) => Promise<void>;
     exportSubtitles: () => Promise<void>;
+    importSubtitles: () => Promise<void>;
     jumpToTime: (start: number) => Promise<void>;
 }
 
@@ -328,120 +329,46 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
     }
 
-    async function fetchTranscription(audioPath: string) {
+    async function runSteps(useCachedAudio: boolean) {
+        // To-do: Add ability to re-run specific step - not only cached audio
         setIsLoading(true);
         setSubtitles([]);
-        try {
-            setProgress(5);
+        setProgress(5);
+
+        let audioInfo: AudioInfo = {
+            timeline: timelineInfo.timelineId,
+            path: audioPath,
+            markIn: markIn,
+            markOut: markOut
+        };
+
+        if (enabledSteps.exportAudio && !useCachedAudio) {
             setCurrentStep(1);
-            let audioInfo = await exportAudio(audioPath);
-            setProgress(20);
-            console.log("Fetching transcription...");
-            setProcessingStep("Preparing to transcribe...");
-            setCurrentStep(2);
-
-            console.log("Audio Path: ", audioInfo.path);
-            let sensitiveWordsList: string[] = [];
-            if (sensitiveWords !== "" && enabledSteps.textFormat) {
-                sensitiveWordsList = sensitiveWords.split(',').map((word: string) => word.trim().toLowerCase());
-            }
-
-            let body = {
-                file_path: audioInfo.path,
-                output_dir: storageDir,
-                timeline: timelineInfo.timelineId,
-                model: model,
-                language: currentLanguage,
-                task: translate ? "translate" : "transcribe",
-                diarize: enabledSteps.diarize,
-                diarize_speaker_count: diarizeSpeakerCount,
-                align_words: enabledSteps.advancedOptions && alignWords,
-                max_words: maxWords,
-                max_chars: maxChars,
-                sensitive_words: sensitiveWordsList,
-                mark_in: audioInfo.markIn
-            };
-
-            console.log(body);
-
-            // Make the POST request to the transcription API
-            const response = await fetch(transcribeAPI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            });
-
-            // Check if the response is not successful
-            if (!response.ok) {
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    // Attempt to parse the error message from the response
-                    const errorData = await response.json();
-                    if (errorData.detail) {
-                        errorMessage = errorData.detail;
-                    }
-                } catch (jsonError) {
-                    // If parsing fails, retain the default error message
-                    console.error("Failed to parse error response as JSON:", jsonError);
-                }
-                // Set the error state with the extracted or default message
-                setError({
-                    title: "Transcription Error",
-                    desc: errorMessage
-                });
-                // Throw an error to be caught in the catch block
-                throw new Error(errorMessage);
-            }
-
-            setProgress(90);
-            setCurrentStep(6);
-
-            // If the response is successful, parse the JSON data
-            const data = await response.json();
-            const filePath = data.result_file;
-
-            // Proceed with processing the transcription result
-            setProcessingStep("Populating timeline...");
-            setSubtitles([]);
-            await populateSubtitles(timelineInfo.timelineId);
-            await addSubtitles(filePath);
-            setProgress(100);
-
-        } catch (error: unknown) { // Explicitly type 'error' as 'unknown'
-            // Handle any errors that occurred during the fetch or processing
-            console.error("Error fetching transcription:", error);
-
-            let errorMessage: string;
-            // Type guard: Check if 'error' is an instance of Error
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            } else {
-                errorMessage = String(error);
-            }
-
-            // Update the error state with the appropriate message
-            setError({
-                title: "Transcription Error",
-                desc: errorMessage
-            });
-
-        } finally {
-            // Ensure that the loading state is reset regardless of success or failure
-            console.log("Finished transcribing.");
-            setIsLoading(false);
+            audioInfo = await exportAudio();
         }
+
+        setProgress(20);
+        let filePath;
+        if (enabledSteps.transcribe) {
+            setCurrentStep(2);
+            filePath = await fetchTranscription(audioInfo);
+        }
+
+        // TODO: skip transcription if custom srt is enabled
+        // TODO: send request to modify subtitles if only text format is re-run
+
+        setProgress(90);
+        setCurrentStep(6);
+
+        setProcessingStep("Populating timeline...");
+        await populateSubtitles(timelineInfo.timelineId);
+        await addSubtitles(filePath);
+
+        setProgress(100);
+        setIsLoading(false);
     }
 
-    async function exportAudio(prevAudioPath: string) {
-        if (prevAudioPath !== "") {
-            return {
-                path: audioPath,
-                markIn: markIn,
-                markOut: markOut
-            };
-        }
+    async function exportAudio() {
         // send request to Lua server (Resolve)
         setProcessingStep("Exporting Audio...");
         const response = await fetch(resolveAPI, {
@@ -456,18 +383,57 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             }),
         });
 
-        const data = await response.json();
-
+        const data: AudioInfo = await response.json();
         if (data.timeline == "") {
             throw new Error("Failed to export audio. You must have a timeline open in Resolve to start transcribing.");
         }
 
-        setAudioPath(data.path);
+        setAudioPath(await join(await downloadDir(), "autosubs-exported-audio.wav"));
         setMarkIn(data.markIn);
         setMarkOut(data.markOut);
 
         return data;
     };
+
+    async function fetchTranscription(audioInfo: AudioInfo) {
+        try {
+            const sensitiveWordsList = sensitiveWords && enabledSteps.textFormat
+                ? sensitiveWords.split(',').map(word => word.trim().toLowerCase())
+                : [];
+
+            const body = {
+                file_path: await join(await downloadDir(), "autosubs-exported-audio.wav"),
+                output_dir: storageDir,
+                timeline: timelineInfo.timelineId,
+                model,
+                language: currentLanguage,
+                task: translate ? "translate" : "transcribe",
+                diarize: enabledSteps.diarize,
+                diarize_speaker_count: diarizeSpeakerCount,
+                align_words: enabledSteps.advancedOptions && alignWords,
+                max_words: maxWords,
+                max_chars: maxChars,
+                sensitive_words: sensitiveWordsList,
+                mark_in: audioInfo.markIn
+            };
+
+            const response = await fetch(transcribeAPI, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+                throw new Error((await response.json().catch(() => ({}))).detail || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            setError({ title: "Transcription Error", desc: errorMessage });
+            console.error("Error fetching transcription:", errorMessage);
+        }
+    }
 
     async function addSubtitles(filePath?: string) {
         if (!filePath) {
@@ -497,7 +463,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.log(data);
         } catch (error) {
             console.error('Error adding subtitles:', error);
-            //setError("Error adding subtitles - Open the console in Resolve to see the error message (Workspace -> Console).");
             setError({
                 title: "Error Adding Subtitles",
                 desc: "Open the console in Resolve to see the error message (Workspace -> Console)."
@@ -642,8 +607,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             console.error('Failed to save file', error);
         }
     }
-    
-    /*
+
     async function importSubtitles() {
         try {
             const transcriptPath = await open({
@@ -690,8 +654,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
 
             let transcript = {
                 "segments": subtitles,
-                "speakers": speakers,
-                "top_speaker": topSpeaker
+                "speakers": [],
             }
 
             // write to json file
@@ -704,7 +667,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             });
         }
     }
-    */
 
     async function updateTranscript(speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
         if (!speakers && !subtitles) {
@@ -833,13 +795,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 setLanguage,
                 setInputTrack,
                 setOutputTrack,
-                fetchTranscription,
+                runSteps,
                 setSpeakers,
                 updateSpeaker,
                 getTimelineInfo,
                 populateSubtitles,
                 addSubtitles,
                 exportSubtitles,
+                importSubtitles,
                 jumpToTime,
                 resetSettings,
                 setProgress

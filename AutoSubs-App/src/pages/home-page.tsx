@@ -237,8 +237,9 @@ export function HomePage() {
         setAlignWords,
         setIsLoading,
         setError,
-        fetchTranscription,
+        runSteps,
         exportSubtitles,
+        importSubtitles,
         getTimelineInfo,
         resetSettings,
     } = useGlobal();
@@ -318,6 +319,10 @@ export function HomePage() {
 
                 }
             } catch (error) {
+                setEnabledSteps({
+                    ...enabledSteps,
+                    diarize: false,
+                });
                 setError({
                     title: "Error",
                     desc: String(error),
@@ -474,11 +479,11 @@ export function HomePage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-full">
-                                            <DropdownMenuItem onClick={async () => await fetchTranscription("")}>
+                                            <DropdownMenuItem onClick={async () => await runSteps(false)}>
                                                 <Download className="mr-2 h-4 w-4" />
                                                 <span>Export Latest Audio</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={async () => await fetchTranscription(audioPath)}>
+                                            <DropdownMenuItem onClick={async () => await runSteps(true)}>
                                                 <History className="mr-2 h-4 w-4" />
                                                 <span>Use Audio from Previous Job</span>
                                             </DropdownMenuItem>
@@ -489,7 +494,7 @@ export function HomePage() {
                                         type="button"
                                         size="sm"
                                         className="gap-1.5 text-sm w-full"
-                                        onClick={async () => await fetchTranscription("")}
+                                        onClick={async () => await runSteps(false)}
                                     >
                                         <CirclePlay className="size-4" />
                                         Start Process
@@ -583,273 +588,319 @@ export function HomePage() {
                             </div>
                         </DialogContent>
                     </Dialog>
-                    <Card>
-                        <CardContent className="p-5 grid gap-1 pb-4">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2 bg-primary/10 rounded-full">
-                                        <AudioLines className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Audio Source</h3>
-                                        <p className="text-sm text-muted-foreground">Select input track and language</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2.5">
-                                    <Label htmlFor="inputTrack">Input Track (Audio)</Label>
-                                    <Popover open={openInputTracks} onOpenChange={setOpenInputTracks}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className="justify-between font-normal"
-                                                onClick={async () => await getTimelineInfo()}
-                                            >
-                                                {inputTrack && timelineInfo.inputTracks.length > 0
-                                                    ? timelineInfo.inputTracks.find((track) => track.value === inputTrack)?.label
-                                                    : "Select Audio Track..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Select track to place subtitles" />
-                                                <CommandList>
-                                                    <CommandEmpty>No tracks found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {timelineInfo.inputTracks.map((track) => (
-                                                            <CommandItem
-                                                                key={track.value}
-                                                                value={track.value}
-                                                                onSelect={(currentValue) => {
-                                                                    setInputTrack(currentValue === inputTrack ? "" : currentValue)
-                                                                    setOpenInputTracks(false)
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        inputTrack === track.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {track.label}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                                <div className="grid gap-2.5">
-                                    <Label htmlFor="sensitiveWords">Language Spoken</Label>
-                                    <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={openLanguages}
-                                                className="justify-between font-normal"
-                                            >
-                                                {currentLanguage
-                                                    ? languages.find((language) => language.value === currentLanguage)?.label
-                                                    : "Select Audio Language..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search languages..." />
-                                                <CommandList className="max-h-[220px]">
-                                                    <CommandEmpty>No language found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {languages.map((language) => (
-                                                            <CommandItem
-                                                                value={language.label}
-                                                                key={language.value}
-                                                                onSelect={() => {
-                                                                    setLanguage(language.value)
-                                                                    setOpenLanguages(false)
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        language.value === currentLanguage
-                                                                            ? "opacity-100"
-                                                                            : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {language.label}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="pb-5 flex justify-between pr-5">
-                            {(() => {
-                                let step = 1;
-                                return (
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
-                                        <span className="text-sm text-muted-foreground">
-                                            {currentStep === step ? "Exporting Audio..." : currentStep < step ? "Pending" : "Complete"}
-                                        </span>
-                                    </div>
-                                );
-                            })()}
-                        </CardFooter>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2.5 bg-primary/10 rounded-full">
-                                        <PencilLine className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Transcribe</h3>
-                                        <p className="text-sm text-muted-foreground">Select an AI transcription model</p>
+                    {enabledSteps.customSrt && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <Shield className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Import Subtitles</h3>
+                                            <p className="text-sm text-muted-foreground">Use your own SRT file</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="grid gap-4">
-                                <Select value={model} onValueChange={(value) => setModel(value)}>
-                                    <SelectTrigger
-                                        id="model"
-                                        className="[&_[data-description]]:hidden"
-                                    >
-                                        <SelectValue placeholder="Select a model..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="tiny">
-                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                <Worm className="size-5 flex-shrink-0" />
-                                                <div className="grid gap-0.5">
-                                                    <p>
-                                                        Whisper{" "}
-                                                        <span className="font-medium text-foreground">
-                                                            Tiny
-                                                        </span>
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Super fast, lower accuracy.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="base">
-                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                <Rat className="size-5 flex-shrink-0" />
-                                                <div className="grid gap-0.5">
-                                                    <p>
-                                                        Whisper{" "}
-                                                        <span className="font-medium text-foreground">
-                                                            Base
-                                                        </span>
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Fast and reliable for general use.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="small">
-                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                <Rabbit className="size-5 flex-shrink-0" />
-                                                <div className="grid gap-0.5">
-                                                    <p>
-                                                        Whisper{" "}
-                                                        <span className="font-medium text-foreground">
-                                                            Small
-                                                        </span>
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Balanced speed and accuracy.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="medium">
-                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                <Bird className="size-5 flex-shrink-0" />
-                                                <div className="grid gap-0.5">
-                                                    <p>
-                                                        Whisper{" "}
-                                                        <span className="font-medium text-foreground">
-                                                            Medium{" "}
-                                                        </span>
-                                                        (recommended)
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Great accuracy, moderate speed.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="large">
-                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                <Turtle className="size-6 flex-shrink-0" />
-                                                <div className="grid gap-0.5">
-                                                    <p>
-                                                        Whisper{" "}
-                                                        <span className="font-medium text-foreground">
-                                                            Large
-                                                        </span>
-                                                    </p>
-                                                    <p className="text-xs" data-description>
-                                                        Most accurate, but slower.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="grid grid-cols-2 gap-4">
+                                <Button onClick={() => importSubtitles}>
+                                    Import Subtitles
+                                </Button>
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 5;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, advancedOptions: false })}
+                                >
+
+                                    Disable
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )}
+                    {enabledSteps.exportAudio && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-1 pb-4">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-primary/10 rounded-full">
+                                            <AudioLines className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Audio Source</h3>
+                                            <p className="text-sm text-muted-foreground">Select input track and language</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid gap-4">
                                     <div className="grid gap-2.5">
-                                        <Label htmlFor="maxWords">Words per line</Label>
-                                        <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                        <Label htmlFor="inputTrack">Input Track (Audio)</Label>
+                                        <Popover open={openInputTracks} onOpenChange={setOpenInputTracks}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="justify-between font-normal"
+                                                    onClick={async () => await getTimelineInfo()}
+                                                >
+                                                    {inputTrack && timelineInfo.inputTracks.length > 0
+                                                        ? timelineInfo.inputTracks.find((track) => track.value === inputTrack)?.label
+                                                        : "Select Audio Track..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Select track to place subtitles" />
+                                                    <CommandList>
+                                                        <CommandEmpty>No tracks found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {timelineInfo.inputTracks.map((track) => (
+                                                                <CommandItem
+                                                                    key={track.value}
+                                                                    value={track.value}
+                                                                    onSelect={(currentValue) => {
+                                                                        setInputTrack(currentValue === inputTrack ? "" : currentValue)
+                                                                        setOpenInputTracks(false)
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            inputTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    {track.label}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                     <div className="grid gap-2.5">
-                                        <Label htmlFor="maxChars">Characters per line</Label>
-                                        <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                        <Label htmlFor="sensitiveWords">Language Spoken</Label>
+                                        <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openLanguages}
+                                                    className="justify-between font-normal"
+                                                >
+                                                    {currentLanguage
+                                                        ? languages.find((language) => language.value === currentLanguage)?.label
+                                                        : "Select Audio Language..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Search languages..." />
+                                                    <CommandList className="max-h-[220px]">
+                                                        <CommandEmpty>No language found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {languages.map((language) => (
+                                                                <CommandItem
+                                                                    value={language.label}
+                                                                    key={language.value}
+                                                                    onSelect={() => {
+                                                                        setLanguage(language.value)
+                                                                        setOpenLanguages(false)
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            language.value === currentLanguage
+                                                                                ? "opacity-100"
+                                                                                : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    {language.label}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </div>
-                                <div className=" flex items-center space-x-4 rounded-md border p-4">
-                                    <Languages className="w-5" />
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium leading-none">
-                                            Translate to English
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Supports any language
-                                        </p>
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 1;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Exporting Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                            </CardFooter>
+                        </Card>
+                    )}
+                    {enabledSteps.transcribe && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <PencilLine className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Transcribe</h3>
+                                            <p className="text-sm text-muted-foreground">Select an AI transcription model</p>
+                                        </div>
                                     </div>
-                                    <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
                                 </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="pb-5">
-                            {(() => {
-                                let step = 2;
-                                return (
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
-                                        <span className="text-sm text-muted-foreground">
-                                            {currentStep === step ? "Transcribing Audio..." : currentStep < step ? "Pending" : "Complete"}
-                                        </span>
+                                <div className="grid gap-4">
+                                    <Select value={model} onValueChange={(value) => setModel(value)}>
+                                        <SelectTrigger
+                                            id="model"
+                                            className="[&_[data-description]]:hidden"
+                                        >
+                                            <SelectValue placeholder="Select a model..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="tiny">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Worm className="size-5 flex-shrink-0" />
+                                                    <div className="grid gap-0.5">
+                                                        <p>
+                                                            Whisper{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                Tiny
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs" data-description>
+                                                            Super fast, lower accuracy.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="base">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Rat className="size-5 flex-shrink-0" />
+                                                    <div className="grid gap-0.5">
+                                                        <p>
+                                                            Whisper{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                Base
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs" data-description>
+                                                            Fast and reliable for general use.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="small">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Rabbit className="size-5 flex-shrink-0" />
+                                                    <div className="grid gap-0.5">
+                                                        <p>
+                                                            Whisper{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                Small
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs" data-description>
+                                                            Balanced speed and accuracy.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="medium">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Bird className="size-5 flex-shrink-0" />
+                                                    <div className="grid gap-0.5">
+                                                        <p>
+                                                            Whisper{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                Medium{" "}
+                                                            </span>
+                                                            (recommended)
+                                                        </p>
+                                                        <p className="text-xs" data-description>
+                                                            Great accuracy, moderate speed.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="large">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Turtle className="size-6 flex-shrink-0" />
+                                                    <div className="grid gap-0.5">
+                                                        <p>
+                                                            Whisper{" "}
+                                                            <span className="font-medium text-foreground">
+                                                                Large
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs" data-description>
+                                                            Most accurate, but slower.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2.5">
+                                            <Label htmlFor="maxWords">Words per line</Label>
+                                            <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                        </div>
+                                        <div className="grid gap-2.5">
+                                            <Label htmlFor="maxChars">Characters per line</Label>
+                                            <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                        </div>
                                     </div>
-                                );
-                            })()}
-                        </CardFooter>
-                    </Card>
+                                    <div className=" flex items-center space-x-4 rounded-md border p-4">
+                                        <Languages className="w-5" />
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm font-medium leading-none">
+                                                Translate to English
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Supports any language
+                                            </p>
+                                        </div>
+                                        <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
+                                    </div>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="pb-5">
+                                {(() => {
+                                    let step = 2;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Transcribing Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                            </CardFooter>
+                        </Card>
+                    )}
                     {enabledSteps.diarize && (
                         <Card>
                             <CardContent className="p-5 grid gap-5 pb-4">
