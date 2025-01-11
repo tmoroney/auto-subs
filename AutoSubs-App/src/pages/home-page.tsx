@@ -28,6 +28,7 @@ import {
     Shield,
     Download,
     History,
+    FileUp,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -523,113 +524,78 @@ export function HomePage() {
                                 <DialogTitle>Add New Processing Step</DialogTitle>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                                <Card
-                                    key="1"
-                                    className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.diarize && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
-                                    onClick={() => {
-                                        checkDiarizeAvailable(!enabledSteps.diarize);
-                                    }}
-                                    style={{ userSelect: 'none' }}
-                                >
-                                    <CardContent className="flex items-center p-6">
-                                        <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
-                                            <Speech className="h-6 w-6 text-primary" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg ">Diarize Speakers</CardTitle>
-                                            <CardDescription>Label different speakers with AI</CardDescription>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card
-                                    key="2"
-                                    className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.textFormat && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
-                                    onClick={() => {
-                                        setEnabledSteps({ ...enabledSteps, textFormat: !enabledSteps.textFormat })
-                                        toast((enabledSteps.textFormat ? "Disabled" : "Enabled") + " Text Formatting", {
-                                            description: enabledSteps.textFormat ? "Removed from processing steps." : "Added to processing steps.",
-                                        })
-                                    }}
-                                    style={{ userSelect: 'none' }}
-                                >
-                                    <CardContent className="flex items-center p-6">
-                                        <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
-                                            <Type className="h-6 w-6 text-primary" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg">Text Formatting</CardTitle>
-                                            <CardDescription>Customise format of subtitle text</CardDescription>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                {platform() === 'windows' && (
+                                {[
+                                    {
+                                        key: "1",
+                                        enabled: enabledSteps.diarize,
+                                        onClick: () => checkDiarizeAvailable(!enabledSteps.diarize),
+                                        icon: <Speech className="h-6 w-6 text-primary" />,
+                                        title: "Diarize Speakers",
+                                        description: "Label different speakers with AI"
+                                    },
+                                    {
+                                        key: "2",
+                                        enabled: enabledSteps.textFormat,
+                                        onClick: () => {
+                                            const newStatus = !enabledSteps.textFormat;
+                                            setEnabledSteps({ ...enabledSteps, textFormat: newStatus });
+                                            toast((newStatus ? "Enabled": "Disabled") + " Text Formatting", {
+                                                description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
+                                            });
+                                        },
+                                        icon: <Type className="h-6 w-6 text-primary" />,
+                                        title: "Text Formatting",
+                                        description: "Customise format of subtitle text"
+                                    },
+                                    platform() === 'windows' ? {
+                                        key: "3",
+                                        enabled: enabledSteps.advancedOptions,
+                                        onClick: () => {
+                                            const newStatus = !enabledSteps.advancedOptions;
+                                            setEnabledSteps({ ...enabledSteps, advancedOptions: newStatus });
+                                            toast((newStatus ? "Disabled" : "Enabled") + " Advanced Options", {
+                                                description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
+                                            });
+                                        },
+                                        icon: <Shield className="h-6 w-6 text-primary" />,
+                                        title: "Advanced Options",
+                                        description: "Fine-tune with additional options"
+                                    } : null,
+                                    {
+                                        key: "4",
+                                        enabled: enabledSteps.customSrt,
+                                        onClick: () => {
+                                            const newStatus = !enabledSteps.customSrt;
+                                            setEnabledSteps({ ...enabledSteps, customSrt: newStatus, exportAudio: !newStatus, transcribe: !newStatus, diarize: newStatus ? false : enabledSteps.diarize });
+                                            toast(`${newStatus ? "Enabled" : "Disabled"} Custom SRT`, {
+                                                description: newStatus ? "Added to processing steps." : "Removed from processing steps.",
+                                            });
+                                        },
+                                        icon: <FileUp className="h-6 w-6 text-primary" />,
+                                        title: "Custom SRT",
+                                        description: "Import your own subtitles file"
+                                    }
+                                ].filter((item) => item !== null).map(({ key, enabled, onClick, icon, title, description }) => (
                                     <Card
-                                        key="3"
-                                        className={`cursor-pointer transition-colors hover:bg-accent ${enabledSteps.advancedOptions && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
-                                        onClick={() => {
-                                            setEnabledSteps({ ...enabledSteps, advancedOptions: !enabledSteps.advancedOptions })
-                                            toast((enabledSteps.advancedOptions ? "Disabled" : "Enabled") + " Advanced Options", {
-                                                description: enabledSteps.advancedOptions ? "Removed from processing steps." : "Added to processing steps.",
-                                            })
-                                        }}
+                                        key={key}
+                                        className={`cursor-pointer transition-colors hover:bg-accent ${enabled && 'border-primary bg-primary/10 hover:bg-primary/10'}`}
+                                        onClick={onClick}
                                         style={{ userSelect: 'none' }}
                                     >
                                         <CardContent className="flex items-center p-6">
                                             <div className="p-3 bg-primary/10 rounded-full mr-4 hover:animate-spin">
-                                                <Shield className="h-6 w-6 text-primary" />
+                                                {icon}
                                             </div>
                                             <div>
-                                                <CardTitle className="text-lg">Advanced Options</CardTitle>
-                                                <CardDescription>Fine-tune with additional options</CardDescription>
+                                                <CardTitle className="text-lg">{title}</CardTitle>
+                                                <CardDescription>{description}</CardDescription>
                                             </div>
                                         </CardContent>
                                     </Card>
-                                )}
+                                ))}
                             </div>
                         </DialogContent>
                     </Dialog>
-                    {enabledSteps.customSrt && (
-                        <Card>
-                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="p-2.5 bg-primary/10 rounded-full">
-                                            <Shield className="h-5 w-5 text-primary" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-lg">Import Subtitles</h3>
-                                            <p className="text-sm text-muted-foreground">Use your own SRT file</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Button onClick={() => importSubtitles}>
-                                    Import Subtitles
-                                </Button>
-                            </CardContent>
-                            <CardFooter className="pb-5 flex justify-between pr-5">
-                                {(() => {
-                                    let step = 5;
-                                    return (
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
-                                            <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, advancedOptions: false })}
-                                >
-
-                                    Disable
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    )}
                     {enabledSteps.exportAudio && (
                         <Card>
                             <CardContent className="p-5 grid gap-1 pb-4">
@@ -901,39 +867,33 @@ export function HomePage() {
                             </CardFooter>
                         </Card>
                     )}
-                    {enabledSteps.diarize && (
+                    {enabledSteps.advancedOptions && (
                         <Card>
-                            <CardContent className="p-5 grid gap-5 pb-4">
-                                <div className="flex items-start justify-between mb-0">
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center space-x-3">
                                         <div className="p-2.5 bg-primary/10 rounded-full">
-                                            <Speech className="h-5 w-5 text-primary" />
+                                            <Shield className="h-5 w-5 text-primary" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-lg">Diarize Speakers</h3>
-                                            <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
+                                            <h3 className="font-semibold text-lg">Advanced Settings</h3>
+                                            <p className="text-sm text-muted-foreground">Fine-tune additional options</p>
+
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="grid gap-2.5">
-                                    <Label htmlFor="numSpeakers">Speaker Detection Mode</Label>
-                                    <Select value={diarizeMode} onValueChange={(value) => setDiarizeMode(value)}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Choose detection mode" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="auto">Auto detect speakers</SelectItem>
-                                            <SelectItem value="specific">Specify number of speakers</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {diarizeMode !== "auto" && (
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="speakerCount">Number of Speakers</Label>
-                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="Enter number of speakers" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
+                                <div className="flex items-center space-x-4 rounded-md border p-4">
+                                    <Pickaxe className="w-5" />
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            Force Align Words
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Improve word level timing
+                                        </p>
                                     </div>
-                                )}
+                                    <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
+                                </div>
                             </CardContent>
                             <CardFooter className="pb-5 flex justify-between pr-5">
                                 {(() => {
@@ -942,7 +902,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Diarizing Speakers..." : currentStep < step ? "Pending" : "Complete"}
+                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -950,9 +910,51 @@ export function HomePage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, diarize: false })}
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, advancedOptions: false })}
                                 >
+                                    Disable
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )}
+                    {enabledSteps.customSrt && (
+                        <Card>
+                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 bg-primary/10 rounded-full">
+                                            <FileUp className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">Custom SRT</h3>
+                                            <p className="text-sm text-muted-foreground">Import your own subtitles file</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button onClick={() => importSubtitles()}>
+                                    Import Subtitles
+                                </Button>
+                            </CardContent>
+                            <CardFooter className="pb-5 flex justify-between pr-5">
+                                {(() => {
+                                    let step = 4;
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, customSrt: false, exportAudio: true, transcribe: true })}
+                                >
+
                                     Disable
                                 </Button>
                             </CardFooter>
@@ -1019,7 +1021,7 @@ export function HomePage() {
                             </CardContent>
                             <CardFooter className="pb-5 flex justify-between pr-5">
                                 {(() => {
-                                    let step = 4;
+                                    let step = 5;
                                     return (
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
@@ -1032,7 +1034,7 @@ export function HomePage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
                                     onClick={() => setEnabledSteps({ ...enabledSteps, textFormat: false })}
                                 >
 
@@ -1041,42 +1043,48 @@ export function HomePage() {
                             </CardFooter>
                         </Card>
                     )}
-                    {enabledSteps.advancedOptions && (
+                    {enabledSteps.diarize && (
                         <Card>
-                            <CardContent className="p-5 grid gap-0.5 pb-3.5">
-                                <div className="flex items-start justify-between mb-4">
+                            <CardContent className="p-5 grid gap-5 pb-4">
+                                <div className="flex items-start justify-between mb-0">
                                     <div className="flex items-center space-x-3">
                                         <div className="p-2.5 bg-primary/10 rounded-full">
-                                            <Shield className="h-5 w-5 text-primary" />
+                                            <Speech className="h-5 w-5 text-primary" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-lg">Advanced Settings</h3>
-                                            <p className="text-sm text-muted-foreground">Fine-tune additional options</p>
-
+                                            <h3 className="font-semibold text-lg">Diarize Speakers</h3>
+                                            <p className="text-sm text-muted-foreground">Label different speakers with AI</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-4 rounded-md border p-4">
-                                    <Pickaxe className="w-5" />
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium leading-none">
-                                            Force Align Words
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Improve word level timing
-                                        </p>
-                                    </div>
-                                    <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
+
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="numSpeakers">Speaker Detection Mode</Label>
+                                    <Select value={diarizeMode} onValueChange={(value) => setDiarizeMode(value)}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Choose detection mode" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="auto">Auto detect speakers</SelectItem>
+                                            <SelectItem value="specific">Specify number of speakers</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+                                {diarizeMode !== "auto" && (
+                                    <div className="grid gap-3">
+                                        <Label htmlFor="speakerCount">Number of Speakers</Label>
+                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="Enter number of speakers" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
+                                    </div>
+                                )}
                             </CardContent>
                             <CardFooter className="pb-5 flex justify-between pr-5">
                                 {(() => {
-                                    let step = 5;
+                                    let step = 6;
                                     return (
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                                {currentStep === step ? "Diarizing Speakers..." : currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -1084,10 +1092,9 @@ export function HomePage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, advancedOptions: false })}
+                                    className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
+                                    onClick={() => setEnabledSteps({ ...enabledSteps, diarize: false })}
                                 >
-
                                     Disable
                                 </Button>
                             </CardFooter>

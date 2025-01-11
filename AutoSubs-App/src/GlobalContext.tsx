@@ -342,14 +342,14 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
             markOut: markOut
         };
 
-        if (enabledSteps.exportAudio && !useCachedAudio) {
+        if (enabledSteps.exportAudio && !useCachedAudio && !enabledSteps.customSrt) {
             setCurrentStep(1);
             audioInfo = await exportAudio();
         }
 
         setProgress(20);
         let filePath;
-        if (enabledSteps.transcribe) {
+        if (enabledSteps.transcribe && !enabledSteps.customSrt) {
             setCurrentStep(2);
             filePath = await fetchTranscription(audioInfo);
         }
@@ -358,7 +358,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         // TODO: send request to modify subtitles if only text format is re-run
 
         setProgress(90);
-        setCurrentStep(6);
+        setCurrentStep(7);
 
         setProcessingStep("Populating timeline...");
         await populateSubtitles(timelineInfo.timelineId);
@@ -414,7 +414,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 max_words: maxWords,
                 max_chars: maxChars,
                 sensitive_words: sensitiveWordsList,
-                mark_in: audioInfo.markIn
+                mark_in: audioInfo.markIn,
+                mark_out: audioInfo.markOut,
             };
 
             const response = await fetch(transcribeAPI, {
@@ -427,7 +428,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 throw new Error((await response.json().catch(() => ({}))).detail || `HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            let data = await response.json();
+            return data.result_file;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             setError({ title: "Transcription Error", desc: errorMessage });
@@ -452,8 +454,6 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                     trackIndex: outputTrack,
                     removePunctuation: enabledSteps.textFormat && removePunctuation,
                     textFormat: enabledSteps.textFormat && textFormat,
-                    markIn,
-                    markOut,
                 }),
             });
 

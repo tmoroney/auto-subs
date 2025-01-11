@@ -449,7 +449,7 @@ class TranscriptionRequest(BaseModel):
     max_chars: int
     sensitive_words: list
     mark_in: int
-
+    mark_out: int
 
 @app.post("/transcribe/")
 async def transcribe(request: TranscriptionRequest):
@@ -511,6 +511,7 @@ async def transcribe(request: TranscriptionRequest):
                 file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize, request.diarize_speaker_count
             )
             result["mark_in"] = request.mark_in
+
         except Exception as e:
             print(f"Error during transcription: {e}")
             raise HTTPException(

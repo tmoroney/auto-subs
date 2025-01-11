@@ -169,15 +169,14 @@ export function DiarizePage() {
                                                 </div>
                                                 <div className="grid grid-cols-4 items-center gap-4">
                                                     <Label className="text-left">
-                                                        Customise
+                                                        Color
                                                     </Label>
                                                     <div className="col-span-3">
-                                                        <ColorPicker
-                                                            value={speaker.color}
-                                                            onChange={(color) => {
-                                                                setCurrentColor(color);
-                                                            }}
-                                                            items={colors}
+                                                        <Input
+                                                            id="font-color"
+                                                            type="color"
+                                                            value={currentColor}
+                                                            onChange={(e) => setCurrentColor(e.target.value)}
                                                         />
                                                     </div>
                                                 </div>
