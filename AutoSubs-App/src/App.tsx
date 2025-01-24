@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House } from "lucide-react";
+import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House, Download } from "lucide-react";
 // import { Paintbrush, SwatchBook } from "lucide-react";
 import {
   Dialog,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useGlobal } from "@/GlobalContext";
+import { platform } from '@tauri-apps/plugin-os';
 
 const pathNames = {
   "/": "Generate Subtitles",
@@ -66,6 +67,7 @@ const tutorialSections = [
 ];
 
 function App() {
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Router>
@@ -89,6 +91,21 @@ function App() {
 
 function NavigationHeader() {
 
+  const { checkForUpdates } = useGlobal();
+  const [updateInfo, setUpdateInfo] = useState<string[]>([]);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchUpdateInfo() {
+      let info = await checkForUpdates();
+      if (info != null) {
+        let changes = info.split('\r\n').map(change => change.split("- ")[1]);
+        setUpdateInfo(changes);
+      }
+    }
+    fetchUpdateInfo();
+  }, []);
+
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -96,6 +113,7 @@ function NavigationHeader() {
     <>
       <header className="sticky top-0 z-10 flex min-h-[57px] items-center gap-1 border-b bg-background px-4">
         <h1 className="text-xl font-semibold">{pathNames[currentPath as keyof typeof pathNames]}</h1>
+
         <a href="https://www.buymeacoffee.com/tmoroney" target="_blank" rel="noopener noreferrer" className="ml-auto">
           <Button
             variant="link"
@@ -106,16 +124,27 @@ function NavigationHeader() {
             Support AutoSubs
           </Button>
         </a>
-        <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
+        {updateInfo.length > 0 ? (
           <Button
             variant="outline"
             size="sm"
             className="gap-1.5 text-sm hidden sm:flex"
-          >
-            <Github className="size-4" />
-            GitHub
+            onClick={() => setUpdateDialogOpen(true)}>
+            <Download className="size-4" />
+            New Update Available
           </Button>
-        </a>
+        ) : (
+          <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-sm hidden sm:flex"
+            >
+              <Github className="size-4" />
+              GitHub
+            </Button>
+          </a>
+        )}
         {/* <div className="min-w-[190px]">
         <Select onValueChange={(value) => setTrack(value)} >
             <SelectTrigger>
@@ -134,6 +163,43 @@ function NavigationHeader() {
           </Select>
           </div> */}
       </header>
+
+      <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+        <DialogContent className="sm:max-w-[430px] md:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>New Update Available</DialogTitle>
+            <DialogDescription>Here are the changes in the latest update</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+            <div className="space-y-6">
+              {updateInfo.map((changeInfo, index) => (
+                <section key={index} className="space-y-3">
+                  <h2 className="text-md font-medium flex items-center">
+                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                      {index + 1}
+                    </span>
+                    {changeInfo}
+                  </h2>
+                </section>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter className="pt-4">
+            <a href={platform() == "windows" ? "https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe" : "https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg"} target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="default"
+                className="gap-1.5 text-sm hidden sm:flex"
+              >
+                <Download className="size-4" />
+                Download Update
+              </Button>
+            </a>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -446,12 +512,12 @@ function NavigationAside() {
             <DialogDescription>
               Report any bugs on{' '}
               <a
-              href="https://discord.com/invite/TBFUfGWegm"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
+                href="https://discord.com/invite/TBFUfGWegm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
               >
-              Discord{' '}
+                Discord{' '}
               </a>
               or create an issue on {' '}
               <a

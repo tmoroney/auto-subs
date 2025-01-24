@@ -16,6 +16,9 @@
         },
         {
           "url": "http://localhost:*"
+        },
+        {
+          "url": "https://api.github.com/repos/tmoroney/auto-subs/releases/latest"
         }
       ],
       "deny": [

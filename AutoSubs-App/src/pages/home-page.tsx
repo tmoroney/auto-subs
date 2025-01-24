@@ -539,7 +539,7 @@ export function HomePage() {
                                         onClick: () => {
                                             const newStatus = !enabledSteps.textFormat;
                                             setEnabledSteps({ ...enabledSteps, textFormat: newStatus });
-                                            toast((newStatus ? "Enabled": "Disabled") + " Text Formatting", {
+                                            toast((newStatus ? "Enabled" : "Disabled") + " Text Formatting", {
                                                 description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
                                             });
                                         },
@@ -679,26 +679,34 @@ export function HomePage() {
                                                     <CommandList className="max-h-[220px]">
                                                         <CommandEmpty>No language found.</CommandEmpty>
                                                         <CommandGroup>
-                                                            {languages.map((language) => (
-                                                                <CommandItem
-                                                                    value={language.label}
-                                                                    key={language.value}
-                                                                    onSelect={() => {
-                                                                        setLanguage(language.value)
-                                                                        setOpenLanguages(false)
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            language.value === currentLanguage
-                                                                                ? "opacity-100"
-                                                                                : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    {language.label}
-                                                                </CommandItem>
-                                                            ))}
+                                                            {languages
+                                                                .slice() // Create a shallow copy of the languages array
+                                                                .sort((a, b) => {
+                                                                    // Keep the first language at the top and sort the rest alphabetically
+                                                                    if (a === languages[0]) return -1;
+                                                                    if (b === languages[0]) return 1;
+                                                                    return a.label.localeCompare(b.label);
+                                                                })
+                                                                .map((language) => (
+                                                                    <CommandItem
+                                                                        value={language.label}
+                                                                        key={language.value}
+                                                                        onSelect={() => {
+                                                                            setLanguage(language.value);
+                                                                            setOpenLanguages(false);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                language.value === currentLanguage
+                                                                                    ? "opacity-100"
+                                                                                    : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {language.label}
+                                                                    </CommandItem>
+                                                                ))}
                                                         </CommandGroup>
                                                     </CommandList>
                                                 </Command>

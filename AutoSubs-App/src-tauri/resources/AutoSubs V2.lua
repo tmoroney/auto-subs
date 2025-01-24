@@ -71,14 +71,13 @@ if os_name == "Windows" then
         int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
     ]]
 
-    -- Get the storage path for the files used by the script
-    storage_path = os.getenv("APPDATA") .. "/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility/AutoSubs/"
-
     -- Get path to the main AutoSubs app and modules
-    local install_path = assert(read_file(storage_path .. "install_path.txt"))
-    install_path = string.gsub(install_path, "\\", "/")
-    main_app = install_path .. "/AutoSubs.exe"
-    modules_path = install_path .. "/resources/modules/"
+    local install_path = assert(os.getenv("AUTOSUBS_INSTALL_PATH"), "Environment variable AUTOSUBS_INSTALL_PATH not set")
+    -- Convert the install path to a wide-character string (handle Unicode characters)
+    install_path = to_wide_string(install_path)
+    main_app = install_path .. "\\AutoSubs.exe"
+    storage_path = install_path .. "\\resources\\AutoSubs\\"
+    modules_path = install_path .. "\\resources\\modules\\"
 
     -- Windows commands to open and close main app
     command_open = 'start "" "' .. main_app .. '"'
@@ -459,12 +458,24 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
     end
 
     local timeline = project:GetCurrentTimeline()
-    local markInOut = timeline:GetMarkInOut()
     local timelineStart = timeline:GetStartFrame()
     local timelineEnd = timeline:GetEndFrame()
 
-    local markIn = data["mark_in"] or (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
-    local markOut = data["mark_out"] or (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
+    local markIn = data["mark_in"]
+    local markOut = data["mark_out"]
+
+    if not markIn or not markOut then
+        local success, err = pcall(function()
+            local markInOut = timeline:GetMarkInOut()
+            markIn = (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
+            markOut = (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
+        end)
+
+        if not success then
+            markIn = timelineStart
+            markOut = timelineEnd
+        end
+    end
 
     if trackIndex == "0" or trackIndex == "" or not CheckTrackEmpty(trackIndex, markIn, markOut) then
         trackIndex = timeline:GetTrackCount("video") + 1

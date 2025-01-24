@@ -9,6 +9,7 @@ import { Child, Command } from '@tauri-apps/plugin-shell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { exit } from '@tauri-apps/plugin-process';
 import { platform } from '@tauri-apps/plugin-os';
+import { getVersion } from '@tauri-apps/api/app';
 
 const DEFAULT_SETTINGS = {
     inputTrack: "0",
@@ -80,6 +81,7 @@ interface GlobalContextProps {
     runSteps: (useCachedAudio: boolean) => Promise<void>;
     resetSettings: () => void;
     setProgress: (newProgress: number) => void;
+    checkForUpdates: () => Promise<string | null>;
 
     speakers: Speaker[];
     topSpeaker: TopSpeaker;
@@ -326,6 +328,27 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
         }
         catch (error) {
             console.error("Failed to stop the transcription server:", error);
+        }
+    }
+
+    async function checkForUpdates() {
+        try {
+            // fetch latest release from GitHub
+            const response = await fetch('https://api.github.com/repos/tmoroney/auto-subs/releases/latest');
+            const data = await response.json();
+
+            const latestVersion = data.tag_name.replace('V', '');
+
+            // compare with current version
+            const currentVersion = await getVersion();
+
+            if (latestVersion !== currentVersion) {
+                return data.body;
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to check for updates:", error);
+            return null;
         }
     }
 
@@ -805,7 +828,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 importSubtitles,
                 jumpToTime,
                 resetSettings,
-                setProgress
+                setProgress,
+                checkForUpdates
             }}
         >
             {children}
