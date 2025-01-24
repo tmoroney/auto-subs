@@ -631,4 +631,4 @@ async def validate_model(request: ValidateRequest):
     return {"isAvailable": True, "message": "All required models are available"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=55000, log_level="info")
+    uvicorn.run(app, host="localhost", port=56001, log_level="info")

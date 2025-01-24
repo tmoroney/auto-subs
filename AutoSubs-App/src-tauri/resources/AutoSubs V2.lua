@@ -603,7 +603,7 @@ local function set_cors_headers(client)
 end
 
 -- Server
-local port = 55010
+local port = 56002
 
 -- Set up server socket configuration
 local info = assert(socket.find_first_address("127.0.0.1", port))

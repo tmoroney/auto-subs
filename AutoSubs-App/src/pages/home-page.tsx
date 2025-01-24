@@ -91,7 +91,7 @@ import { Progress } from "@/components/ui/progress";
 //import { resolveResource } from "@tauri-apps/api/path";
 //import { convertFileSrc } from '@tauri-apps/api/core';
 
-const validateAPI = "http://localhost:55000/validate/";
+const validateAPI = "http://localhost:56001/validate/";
 
 const languages = [
     { label: "Detect Language Automatically", value: "auto" },

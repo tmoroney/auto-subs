@@ -93,9 +93,9 @@ interface GlobalContextProps {
     jumpToTime: (start: number) => Promise<void>;
 }
 
-const resolveAPI = "http://localhost:55010/";
-const transcribeAPI = "http://localhost:55000/transcribe/";
-//const validateAPI = "http://localhost:55000/validate/";
+const transcribeAPI = "http://localhost:56001/transcribe/";
+//const validateAPI = "http://localhost:56001/validate/";
+const resolveAPI = "http://localhost:56002/";
 
 let storageDir = '';
 
