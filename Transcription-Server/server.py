@@ -1,10 +1,6 @@
 import sys
 import os
 
-import mlx_whisper.tokenizer
-import mlx_whisper.tokenizer
-import mlx_whisper.whisper
-
 # Set the default encoding to UTF-8
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 os.environ['PYTHONUTF8'] = '1'
@@ -45,7 +41,6 @@ import appdirs
 import time
 import platform
 import stable_whisper
-from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 
 # Define a base cache directory using appdirs
 if platform.system() == 'Windows':
@@ -566,29 +561,30 @@ async def transcribe(request: TranscriptionRequest):
             detail=f"Unexpected error: {e}"
         )
     
-class SpeechSegmentsRequest(BaseModel):
-    audio_file: str
+# class SpeechSegmentsRequest(BaseModel):
+#     audio_file: str
 
-@app.post("/non_speech_segments/")
-async def get_speech_segments(request: SpeechSegmentsRequest):
-    model = load_silero_vad()
-    wav = read_audio(request.audio_file)
-    speech_timestamps = get_speech_timestamps(
-        wav,
-        model,
-        return_seconds=True,  # Return speech timestamps in seconds (default is samples)
-    )
+# @app.post("/non_speech_segments/")
+# async def get_speech_segments(request: SpeechSegmentsRequest):
+#     from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
+#     model = load_silero_vad()
+#     wav = read_audio(request.audio_file)
+#     speech_timestamps = get_speech_timestamps(
+#         wav,
+#         model,
+#         return_seconds=True,  # Return speech timestamps in seconds (default is samples)
+#     )
 
-    # Calculate non-speech segments
-    non_speech_timestamps = []
-    prev_end = 0
-    for segment in speech_timestamps:
-        start, end = segment['start'], segment['end']
-        if start > prev_end:
-            non_speech_timestamps.append({'start': prev_end, 'end': start})
-        prev_end = end
+#     # Calculate non-speech segments
+#     non_speech_timestamps = []
+#     prev_end = 0
+#     for segment in speech_timestamps:
+#         start, end = segment['start'], segment['end']
+#         if start > prev_end:
+#             non_speech_timestamps.append({'start': prev_end, 'end': start})
+#         prev_end = end
     
-    return non_speech_timestamps
+#     return non_speech_timestamps
 
 class ModifyRequest(BaseModel):
     file_path: str
