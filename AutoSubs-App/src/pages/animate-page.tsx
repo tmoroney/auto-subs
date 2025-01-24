@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Blend, CircleFadingPlusIcon, Highlighter, Minus, PencilOff, WholeWord, ZoomIn } from "lucide-react";
+import { Blend, Highlighter, Minus, WholeWord, ZoomIn } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
