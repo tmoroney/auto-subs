@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Type, Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, PenTool, DraftingCompass, PocketKnife, PencilRuler, Drill, Brush, Pickaxe, Paintbrush, SwatchBook, House, ScanSearch } from "lucide-react";
+import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House } from "lucide-react";
+// import { Paintbrush, SwatchBook } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -291,7 +292,7 @@ function NavigationAside() {
                 Generate Subtitles
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
+            {/* <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/animate">
                   <Button
@@ -307,7 +308,7 @@ function NavigationAside() {
               <TooltipContent side="right" sideOffset={5}>
                 Design Subtitles
               </TooltipContent>
-            </Tooltip>
+            </Tooltip> */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/diarize">
@@ -325,7 +326,7 @@ function NavigationAside() {
                 Edit Speakers
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
+            {/* <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/chat">
                   <Button
@@ -341,7 +342,7 @@ function NavigationAside() {
               <TooltipContent side="right" sideOffset={5}>
                 Toolbox
               </TooltipContent>
-            </Tooltip>
+            </Tooltip> */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/search">

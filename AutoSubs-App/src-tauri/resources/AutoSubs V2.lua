@@ -87,7 +87,6 @@ elseif os_name == "OSX" then
     -- Use the C system function to execute shell commands on macOS
     ffi.cdef [[ int system(const char *command); ]]
 
-    -- Get path to the main AutoSubs app and modules
     local install_path = "/Applications"
     main_app = install_path .. "/AutoSubs.app"
     modules_path = main_app .. "/Contents/Resources/resources/modules/"
@@ -451,8 +450,21 @@ function GetTemplateItem(folder, templateName)
 end
 
 -- Add subtitles to the timeline using the specified template
-function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation, markIn, markOut)
+function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation)
+    resolve:OpenPage("edit")
+    local data = read_json_file(filePath)
+    if data == nil then
+        print("Error reading JSON file")
+        return false
+    end
+
     local timeline = project:GetCurrentTimeline()
+    local markInOut = timeline:GetMarkInOut()
+    local timelineStart = timeline:GetStartFrame()
+    local timelineEnd = timeline:GetEndFrame()
+
+    local markIn = data["mark_in"] or (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
+    local markOut = data["mark_out"] or (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
 
     if trackIndex == "0" or trackIndex == "" or not CheckTrackEmpty(trackIndex, markIn, markOut) then
         trackIndex = timeline:GetTrackCount("video") + 1
@@ -460,18 +472,10 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
         trackIndex = tonumber(trackIndex)
     end
 
-    local data = read_json_file(filePath)
-    if data == nil then
-        print("Error reading JSON file")
-        return false
-    end
-
     local subtitles = data["segments"]
 
     print("Adding subtitles to timeline")
-    resolve:OpenPage("edit")
-    local timeline = project:GetCurrentTimeline()
-    local timeline_start_frame = data["mark_in"]
+    
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local rootFolder = mediaPool:GetRootFolder()
@@ -507,14 +511,14 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
 
         local duration = end_frame - start_frame
-        local newClip = {}
-
-        newClip["mediaPoolItem"] = text_clip
-        newClip["mediaType"] = 1
-        newClip["startFrame"] = 0
-        newClip["endFrame"] = duration
-        newClip["recordFrame"] = start_frame + timeline_start_frame
-        newClip["trackIndex"] = trackIndex
+        local newClip = {
+            mediaPoolItem = text_clip,
+            mediaType = 1,
+            startFrame = 0,
+            endFrame = duration,
+            recordFrame = start_frame + markIn,
+            trackIndex = trackIndex
+        }
 
         table.insert(clipList, newClip)
     end
@@ -703,7 +707,7 @@ while not quitServer do
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
                         AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
-                            data.removePunctuation, data.markIn, data.markOut)
+                            data.removePunctuation)
                         body = json.encode({
                             message = "Job completed"
                         })

@@ -1,6 +1,10 @@
 import sys
 import os
 
+import mlx_whisper.tokenizer
+import mlx_whisper.tokenizer
+import mlx_whisper.whisper
+
 # Set the default encoding to UTF-8
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 os.environ['PYTHONUTF8'] = '1'
@@ -209,7 +213,7 @@ def inference(audio, **kwargs) -> dict:
             verbose=True,
             task=kwargs["task"]
         )
-    return output
+    return stable_whisper.result.WhisperResult(result=output, force_order=True)
 
 
 def log_progress(seek, total_duration):
@@ -230,9 +234,7 @@ async def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_w
             model.align(audio_file, result, kwargs["language"])
             if kwargs["align_words"]:
                 model.align_words(audio_file, result, kwargs["language"])
-                result.pad()
-
-    else:
+    else: # Use Whisper MLX on MacOS
         result = stable_whisper.transcribe_any(
             inference, audio_file, inference_kwargs=kwargs, vad=False, regroup=True)
 
@@ -411,29 +413,38 @@ async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words
 
     return result
 
-class SpeechSegmentsRequest(BaseModel):
-    audio_file: str
+def modify_result(result, max_words, max_chars, sensitive_words):
+    result.pad()
+    # matching function to identify sensitive words
+    def is_sensitive(word, sensitive_words):
+        return word.word.lower().strip() in [w.lower() for w in sensitive_words]
 
-@app.post("/non_speech_segments/")
-async def get_speech_segments(request: SpeechSegmentsRequest):
-    model = load_silero_vad()
-    wav = read_audio(request.audio_file)
-    speech_timestamps = get_speech_timestamps(
-        wav,
-        model,
-        return_seconds=True,  # Return speech timestamps in seconds (default is samples)
+    # replacement function to censor the sensitive words
+    def censor_word(result, seg_index, word_index):
+        word = result[seg_index][word_index]
+        match = word.word.strip()
+        # Replace each character with an asterisk
+        word.word = word.word.replace(match, '*' * len(word.word.strip()))
+
+    # Apply the custom_operation to censor sensitive words
+    if len(sensitive_words) > 0:
+        result.custom_operation(
+            key='',                      # Empty string to use the word object directly
+            operator=is_sensitive,       # Use the is_sensitive function as the operator
+            value=sensitive_words,       # Pass the sensitive_words list as the value
+            method=censor_word,          # Use the censor_word function to perform the replacement
+            word_level=True              # Operate at the word level
+        )
+
+    (
+        result
+        .split_by_length(max_words=max_words, max_chars=max_chars)
+        # .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+        # .split_by_gap(0.4)
+        # .merge_by_gap(0.1, max_words=3)
     )
 
-    # Calculate non-speech segments
-    non_speech_timestamps = []
-    prev_end = 0
-    for segment in speech_timestamps:
-        start, end = segment['start'], segment['end']
-        if start > prev_end:
-            non_speech_timestamps.append({'start': prev_end, 'end': start})
-        prev_end = end
-    
-    return non_speech_timestamps
+    return result
 
 class TranscriptionRequest(BaseModel):
     file_path: str
@@ -554,6 +565,30 @@ async def transcribe(request: TranscriptionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {e}"
         )
+    
+class SpeechSegmentsRequest(BaseModel):
+    audio_file: str
+
+@app.post("/non_speech_segments/")
+async def get_speech_segments(request: SpeechSegmentsRequest):
+    model = load_silero_vad()
+    wav = read_audio(request.audio_file)
+    speech_timestamps = get_speech_timestamps(
+        wav,
+        model,
+        return_seconds=True,  # Return speech timestamps in seconds (default is samples)
+    )
+
+    # Calculate non-speech segments
+    non_speech_timestamps = []
+    prev_end = 0
+    for segment in speech_timestamps:
+        start, end = segment['start'], segment['end']
+        if start > prev_end:
+            non_speech_timestamps.append({'start': prev_end, 'end': start})
+        prev_end = end
+    
+    return non_speech_timestamps
 
 class ModifyRequest(BaseModel):
     file_path: str
@@ -569,39 +604,6 @@ async def modify(request: ModifyRequest):
     whisperResult = result.to_dict()
     
     return {"complete": True}
-
-
-def modify_result(result, max_words, max_chars, sensitive_words):
-    # matching function to identify sensitive words
-    def is_sensitive(word, sensitive_words):
-        return word.word.lower().strip() in [w.lower() for w in sensitive_words]
-
-    # replacement function to censor the sensitive words
-    def censor_word(result, seg_index, word_index):
-        word = result[seg_index][word_index]
-        match = word.word.strip()
-        # Replace each character with an asterisk
-        word.word = word.word.replace(match, '*' * len(word.word.strip()))
-
-    # Apply the custom_operation to censor sensitive words
-    if len(sensitive_words) > 0:
-        result.custom_operation(
-            key='',                      # Empty string to use the word object directly
-            operator=is_sensitive,       # Use the is_sensitive function as the operator
-            value=sensitive_words,       # Pass the sensitive_words list as the value
-            method=censor_word,          # Use the censor_word function to perform the replacement
-            word_level=True              # Operate at the word level
-        )
-
-    (
-        result
-        .split_by_length(max_words=max_words, max_chars=max_chars)
-        # .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-        # .split_by_gap(0.4)
-        # .merge_by_gap(0.1, max_words=3)
-    )
-
-    return result
 
 
 class ValidateRequest(BaseModel):

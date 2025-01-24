@@ -467,7 +467,7 @@ export function HomePage() {
                                     {processingStep}
                                 </Button>
                             ) : (
-                                audioPath.length > 0 ? (
+                                audioPath.length > 0 && !enabledSteps.customSrt ? (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
@@ -521,7 +521,7 @@ export function HomePage() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
-                                <DialogTitle>Add New Processing Step</DialogTitle>
+                                <DialogTitle>Add Processing Step</DialogTitle>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 {[
