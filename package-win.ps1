@@ -63,4 +63,5 @@ Write-Host "All files have been signed successfully."
 
 # Navigate to AutoSubs-App and build the Tauri app
 Set-Location -Path "./AutoSubs-App"
+npm install
 npm run tauri build

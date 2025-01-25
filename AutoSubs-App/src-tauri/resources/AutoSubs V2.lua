@@ -72,9 +72,8 @@ if os_name == "Windows" then
     ]]
 
     -- Get path to the main AutoSubs app and modules
-    local install_path = assert(os.getenv("AUTOSUBS_INSTALL_PATH"), "Environment variable AUTOSUBS_INSTALL_PATH not set")
-    -- Convert the install path to a wide-character string (handle Unicode characters)
-    install_path = to_wide_string(install_path)
+    storage_path = os.getenv("APPDATA") .. "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
+    local install_path = assert(read_file(storage_path .. "install_path.txt"))
     main_app = install_path .. "\\AutoSubs.exe"
     storage_path = install_path .. "\\resources\\AutoSubs\\"
     modules_path = install_path .. "\\resources\\modules\\"
@@ -254,16 +253,19 @@ function GetTemplates()
     FindAllTemplates(rootFolder)
     -- Add default template to mediapool if not available
     if defaultTemplateExists == false then
-        local success, err = pcall(function()
-            mediaPool:ImportFolderFromFile(storage_path .. "subtitle-template.drb")
-            local clipName = "Default Template"
-            local newTemplate = {
-                label = clipName,
-                value = clipName
-            }
-            table.insert(templates, newTemplate)
-        end)
-        defaultTemplateExists = true
+        if tonumber(resolve:GetVersion()[1]) >= 19 then
+            print("Default template not found. Importing default template...")
+            local success, err = pcall(function()
+                mediaPool:ImportFolderFromFile(storage_path .. "subtitle-template.drb")
+                local clipName = "Default Template"
+                local newTemplate = {
+                    label = clipName,
+                    value = clipName
+                }
+                table.insert(templates, newTemplate)
+            end)
+        end
+        defaultTemplateExists = true -- don't try to import again
     end
     return templates
 end
