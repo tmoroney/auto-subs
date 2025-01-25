@@ -53,7 +53,8 @@ if platform.system() == 'Windows':
     enable_stripping = True
 else:
     hiddenimports += collect_submodules('mlx')
-    hiddenimports += collect_submodules('mlx_whisper') 
+    hiddenimports += collect_submodules('mlx_whisper')
+    hiddenimports += collect_submodules('numba')
     datas += collect_data_files('mlx')
     datas += collect_data_files('mlx_whisper')
     excludes.append('openai-whisper')
