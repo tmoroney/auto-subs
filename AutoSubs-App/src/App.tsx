@@ -113,17 +113,17 @@ function NavigationHeader() {
     <>
       <header className="sticky top-0 z-10 flex min-h-[57px] items-center gap-1 border-b bg-background px-4">
         <h1 className="text-xl font-semibold">{pathNames[currentPath as keyof typeof pathNames]}</h1>
-
-        <a href="https://www.buymeacoffee.com/tmoroney" target="_blank" rel="noopener noreferrer" className="ml-auto">
-          <Button
-            variant="link"
-            size="sm"
-            className="gap-1.5 text-sm"
-          >
-            <HeartHandshake className="size-4" />
-            Support AutoSubs
-          </Button>
-        </a>
+        <Button
+          asChild
+          variant="link"
+          size="sm"
+          className="gap-1.5 text-sm"
+        >
+          <Link to="https://www.buymeacoffee.com/tmoroney" target="_blank" rel="noopener noreferrer" className="ml-auto">
+              <HeartHandshake className="size-4" />
+              Support AutoSubs
+          </Link>
+        </Button>
         {updateInfo.length > 0 ? (
           <Button
             variant="outline"
@@ -134,16 +134,17 @@ function NavigationHeader() {
             New Update Available
           </Button>
         ) : (
-          <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-sm hidden sm:flex"
-            >
+        <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-sm hidden sm:flex"
+          >
+            <Link to="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
               <Github className="size-4" />
               GitHub
-            </Button>
-          </a>
+            </Link>
+          </Button>
         )}
         {/* <div className="min-w-[190px]">
         <Select onValueChange={(value) => setTrack(value)} >
@@ -225,8 +226,8 @@ function NavigationAside() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/">
-                  <Button variant="outline" size="icon" aria-label="Home">
+                <Button asChild variant="outline" size="icon" aria-label="Home">
+                  <Link to="/">
                     {useTheme().theme === 'dark' ? (
                       <svg
                         width="24"
@@ -330,8 +331,8 @@ function NavigationAside() {
                         </defs>
                       </svg>
                     )}
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 AutoSubs
@@ -343,16 +344,17 @@ function NavigationAside() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/" ? "bg-muted" : ""}`}
-                    aria-label="Playground"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/" ? "bg-muted" : ""}`}
+                  aria-label="Playground"
+                >
+                  <Link to="/">
                     <House className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Generate Subtitles
@@ -360,16 +362,17 @@ function NavigationAside() {
             </Tooltip>
             {/* <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/animate">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
-                    aria-label="Animate"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
+                  aria-label="Animate"
+                >
+                  <Link to="/animate">
                     <Paintbrush className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Design Subtitles
@@ -377,16 +380,17 @@ function NavigationAside() {
             </Tooltip> */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/diarize">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/diarize" ? "bg-muted" : ""}`}
-                    aria-label="Edit Speakers"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/diarize" ? "bg-muted" : ""}`}
+                  aria-label="Edit Speakers"
+                >
+                  <Link to="/diarize">
                     <Speech className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Edit Speakers
@@ -394,16 +398,17 @@ function NavigationAside() {
             </Tooltip>
             {/* <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/chat">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
-                    aria-label="Chat"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
+                  aria-label="Chat"
+                >
+                  <Link to="/chat">
                     <SwatchBook className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Toolbox
@@ -411,16 +416,17 @@ function NavigationAside() {
             </Tooltip> */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/search">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/search" ? "bg-muted" : ""}`}
-                    aria-label="Text Search"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/search" ? "bg-muted" : ""}`}
+                  aria-label="Text Search"
+                >
+                  <Link to="/search">
                     <Search className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Text Search
@@ -429,16 +435,17 @@ function NavigationAside() {
             {/*
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/chat">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
-                    aria-label="Chat"
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
+                  aria-label="Chat"
+                >
+                  <Link to="/chat">
                     <Bot className="size-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Chat AI
