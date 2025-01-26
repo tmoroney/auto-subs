@@ -349,7 +349,7 @@ function NavigationAside() {
                   variant="ghost"
                   size="icon"
                   className={`rounded-lg ${currentPath === "/" ? "bg-muted" : ""}`}
-                  aria-label="Playground"
+                  aria-label="Generate Subtitles"
                 >
                   <Link to="/">
                     <House className="size-5" />
