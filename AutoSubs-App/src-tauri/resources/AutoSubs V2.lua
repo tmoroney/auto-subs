@@ -187,7 +187,7 @@ end
 function JumpToTime(time, markIn)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    local frames = SecondsToFrames(time, frameRate) + markIn
+    local frames = SecondsToFrames(time, frameRate) + markIn + 1
     local timecode = FramesToTimecode(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -552,26 +552,6 @@ function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunc
 
             local subtitle = subtitles[i]
             local subtitleText = subtitle["text"]
-
-            -- Remove punctuation if specified
-            if removePunctuation then
-                subtitleText = utf8.gsub(subtitleText, "[%p%c]", function(c)
-                    if c == "*" then
-                        return c
-                    else
-                        return ""
-                    end
-                end)
-            end
-
-            -- Apply text formatting
-            if textFormat == "uppercase" then
-                subtitleText = utf8.upper(subtitleText)
-            end
-
-            if textFormat == "lowercase" then
-                subtitleText = utf8.lower(subtitleText)
-            end
 
             -- Skip if text is not compatible
             if timelineItem:GetFusionCompCount() > 0 then

@@ -419,6 +419,7 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
     };
 
     async function fetchTranscription(audioInfo: AudioInfo) {
+        setProcessingStep("Transcribing Audio...");
         try {
             const sensitiveWordsList = sensitiveWords && enabledSteps.textFormat
                 ? sensitiveWords.split(',').map(word => word.trim().toLowerCase())
@@ -437,6 +438,8 @@ export function GlobalProvider({ children }: React.PropsWithChildren<{}>) {
                 max_words: maxWords,
                 max_chars: maxChars,
                 sensitive_words: sensitiveWordsList,
+                remove_punctuation: enabledSteps.textFormat && removePunctuation,
+                text_format: enabledSteps.textFormat ? textFormat : "normal",
                 mark_in: audioInfo.markIn,
                 mark_out: audioInfo.markOut,
             };

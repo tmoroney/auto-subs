@@ -216,7 +216,7 @@ def log_progress(seek, total_duration):
     print(f"Progress: {seek/total_duration*100:.0f}%")
 
 
-async def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_words):
+async def transcribe_audio(audio_file, kwargs, subtitle_settings):
     if (platform.system() == 'Windows'):
         compute_type = "float16" if kwargs["device"] == "cuda" else "int8"
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
@@ -233,7 +233,7 @@ async def transcribe_audio(audio_file, kwargs, max_words, max_chars, sensitive_w
         result = stable_whisper.transcribe_any(
             inference, audio_file, inference_kwargs=kwargs, vad=False, regroup=True)
 
-    result = modify_result(result, max_words, max_chars, sensitive_words)
+    result = modify_result(result, **subtitle_settings)
 
     return result.to_dict()
 
@@ -389,40 +389,79 @@ def merge_diarisation(transcript, diarization):
     return result
 
 
-async def process_audio(file_path, kwargs, max_words, max_chars, sensitive_words, device, diarize_enabled, speaker_count):
+async def process_audio(file_path, kwargs, device, diarize_enabled, speaker_count, subtitle_settings):
     """Process audio: transcription and diarization concurrently."""
     if diarize_enabled:
         # Run transcription and diarization concurrently
         transcript, diarization = await asyncio.gather(
             transcribe_audio(
-                file_path, kwargs, max_words, max_chars, sensitive_words),
+                file_path, kwargs, subtitle_settings),
             diarize_audio(file_path, device, speaker_count)
         )
         # Merge diarization with transcription
         result = merge_diarisation(transcript, diarization)
     else:
         # Run transcription only
-        transcript = await transcribe_audio(file_path, kwargs, max_words, max_chars, sensitive_words)
+        transcript = await transcribe_audio(file_path, kwargs, subtitle_settings)
         transcript["speakers"] = []
         result = transcript
 
     return result
 
-def modify_result(result, max_words, max_chars, sensitive_words):
-    result.pad()
+def modify_result(result, max_words, max_chars, sensitive_words, remove_punctuation, text_format):
+    (
+        result
+        .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
+        .split_by_gap(0.4)
+        .merge_by_gap(0.1, max_words=3)
+        .split_by_length(max_words=max_words, max_chars=max_chars)
+    )
+
+    if remove_punctuation:
+        def remove_punctuation_chars(result, seg_idx, word_idx):
+            word_obj = result[seg_idx][word_idx]
+            word_obj.word = word_obj.word.rstrip(r".,\,,?")
+
+        result.custom_operation(
+            key="word",                   # Attribute to evaluate
+            operator="end",               # Match words ending with punctuation
+            value=r"any=.,\,,?",    # Target punctuation characters
+            method=remove_punctuation_chars,  # Custom method
+            word_level=True               # Operate at the word level
+        )
+
+    if text_format == "lowercase":
+        result.custom_operation(
+            key='',  # Use the entire word object
+            operator=lambda word, _: True,  # Always match
+            value=None,  # Placeholder value
+            method=lambda result, seg_idx, word_idx: setattr(
+                result[seg_idx][word_idx], "word", result[seg_idx][word_idx].word.lower()
+            ),
+            word_level=True
+        )
+    elif text_format == "uppercase":
+        result.custom_operation(
+            key='',  # Use the entire word object
+            operator=lambda word, _: True,  # Always match
+            value=None,  # Placeholder value
+            method=lambda result, seg_idx, word_idx: setattr(
+                result[seg_idx][word_idx], "word", result[seg_idx][word_idx].word.upper()
+            ),
+            word_level=True
+        )
+
     # matching function to identify sensitive words
-    def is_sensitive(word, sensitive_words):
-        return word.word.lower().strip() in [w.lower() for w in sensitive_words]
-
-    # replacement function to censor the sensitive words
-    def censor_word(result, seg_index, word_index):
-        word = result[seg_index][word_index]
-        match = word.word.strip()
-        # Replace each character with an asterisk
-        word.word = word.word.replace(match, '*' * len(word.word.strip()))
-
-    # Apply the custom_operation to censor sensitive words
     if len(sensitive_words) > 0:
+        def is_sensitive(word, sensitive_words):
+            return word.word.lower().strip() in [w.lower() for w in sensitive_words]
+        
+        def censor_word(result, seg_index, word_index):
+            word = result[seg_index][word_index]
+            match = word.word.strip()
+            # Replace each character with an asterisk
+            word.word = word.word.replace(match, '*' * len(word.word.strip()))
+
         result.custom_operation(
             key='',                      # Empty string to use the word object directly
             operator=is_sensitive,       # Use the is_sensitive function as the operator
@@ -430,15 +469,7 @@ def modify_result(result, max_words, max_chars, sensitive_words):
             method=censor_word,          # Use the censor_word function to perform the replacement
             word_level=True              # Operate at the word level
         )
-
-    (
-        result
-        .split_by_length(max_words=max_words, max_chars=max_chars)
-        # .split_by_punctuation([('.', ' '), '。', '?', '？', ',', '，'])
-        # .split_by_gap(0.4)
-        # .merge_by_gap(0.1, max_words=3)
-    )
-
+        
     return result
 
 class TranscriptionRequest(BaseModel):
@@ -454,6 +485,8 @@ class TranscriptionRequest(BaseModel):
     max_words: int
     max_chars: int
     sensitive_words: list
+    remove_punctuation: bool
+    text_format: str
     mark_in: int
     mark_out: int
 
@@ -463,10 +496,6 @@ async def transcribe(request: TranscriptionRequest):
         start_time = time.time()
 
         file_path = request.file_path
-        timeline = request.timeline
-        max_words = request.max_words
-        max_chars = request.max_chars
-        sensitive_words = request.sensitive_words
 
         # Check if the file exists
         if not os.path.exists(file_path):
@@ -511,13 +540,26 @@ async def transcribe(request: TranscriptionRequest):
             "device": "cuda" if torch.cuda.is_available() else "cpu"
         }
 
+        subtitle_settings = {
+            "max_words": request.max_words,
+            "max_chars": request.max_chars,
+            "sensitive_words": request.sensitive_words,
+            "remove_punctuation": request.remove_punctuation,
+            "text_format": request.text_format
+        }
+
         # Process audio (transcription and optionally diarization)
         try:
             result = await process_audio(
-                file_path, kwargs, max_words, max_chars, sensitive_words, device, request.diarize, request.diarize_speaker_count
+                file_path,
+                kwargs,
+                device,
+                request.diarize,
+                request.diarize_speaker_count,
+                subtitle_settings
             )
             result["mark_in"] = request.mark_in
-
+            result["mark_out"] = request.mark_out
         except Exception as e:
             print(f"Error during transcription: {e}")
             raise HTTPException(
@@ -526,7 +568,7 @@ async def transcribe(request: TranscriptionRequest):
             )
 
         # Save the transcription to a JSON file
-        json_filename = f"{timeline}.json"
+        json_filename = f"{request.timeline}.json"
         json_filepath = os.path.join(request.output_dir, json_filename)
         try:            
             if not os.path.exists(request.output_dir):
