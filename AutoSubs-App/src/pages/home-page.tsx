@@ -349,7 +349,7 @@ export function HomePage() {
                                 <span>Transcription Flow</span>
                                 <TooltipProvider>
                                     <Tooltip>
-                                        <TooltipTrigger>
+                                        <TooltipTrigger asChild>
                                             <Button variant="ghost" className="m-0" onClick={() => resetSettings()}>
                                                 <History className="w-5 h-5 p-0" />
                                             </Button>
