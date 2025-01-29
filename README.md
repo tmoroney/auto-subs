@@ -45,12 +45,11 @@ If using the **free version**, you must be on **Resolve 19.0.3 or earlier**, as 
 If you would like to contribute to the development of AutoSubs, follow the steps below.
 ## Set Up for Development
 1. Clone this repository to whatever directory you wish.
-2. Navigate to this directory within the repo: `../AutoSubs-App/src-tauri/resources`
-3. Copy the `AutoSubs V2.lua` file.
-4. Navigate to one of the directories below and paste the `AutoSubs V2.lua` file so that Resolve can see it:
-  - Windows: `$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility`
+2. Copy the `AutoSubs V2.lua` file from the following directory within the repo: `auto-subs/AutoSubs-App/src-tauri/resources`
+4. Paste the `AutoSubs V2.lua` file inside one of the directories below so that Resolve can see it:
+  - Windows: `%appdata%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility`
   - Mac: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-3. Open the `AutoSubs V2.lua` and remove the section below from the code. This code opens the main Tauri application, but we will be starting the Tauri app manually while in development so we want to remove this to stop the Lua server from starting the Tauri app executable on launch.
+3. Open `AutoSubs V2.lua` and remove the section of code referenced below. This code opens the main Tauri application when the Lua script is started. Since we will be running the Tauri app in development mode we need to remove this code to stop the Lua script from starting the Tauri app executable automatically.
   ```lua
 -- Start AutoSubs app
 if os_name == "Windows" then
@@ -80,3 +79,30 @@ else
 end
 ```
 
+## Start Python Transcription Server
+Open a new terminal in the repository and run the following commands to start the python transcription server. This python server is responsible for anything machine learning related such as Transcribing audio and Speaker Diarization.
+
+### Mac (ARM)
+```bash
+cd Transcription-Server
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-mac.txt
+```
+### Windows
+```bash
+cd Transcription-Server
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements-win.txt
+```
+## Start Davinci Resolve Connection
+1. Open Resolve
+2. Navigate to Scripts and open AutoSubs V2
+
+## Start Tauri App (Frontend UI)
+```bash
+cd AutoSubs-App
+npm install
+npm run tauri dev
+```
