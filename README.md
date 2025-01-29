@@ -40,3 +40,43 @@ If your OS isn’t supported by **AutoSubs V2**, you can try **AutoSubs V1** usi
 If using the **free version**, you must be on **Resolve 19.0.3 or earlier**, as Blackmagic removed the built-in UI manager in v19.1.
 
 ### [AutoSubs V1 Install Guide](https://github.com/tmoroney/auto-subs/blob/a695224b66e46c62dc716f5336582795e7174f17/V1_README.md)
+
+# Contribute to AutoSubs
+If you would like to contribute to the development of AutoSubs, follow the steps below.
+## Set Up for Development
+1. Clone this repository to whatever directory you wish.
+2. Navigate to this directory within the repo: `../AutoSubs-App/src-tauri/resources`
+3. Copy the `AutoSubs V2.lua` file.
+4. Navigate to one of the directories below and paste the `AutoSubs V2.lua` file so that Resolve can see it:
+  - Windows: `$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility`
+  - Mac: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+3. Open the `AutoSubs V2.lua` and remove the section below from the code. This code opens the main Tauri application, but we will be starting the Tauri app manually while in development so we want to remove this to stop the Lua server from starting the Tauri app executable on launch.
+  ```lua
+-- Start AutoSubs app
+if os_name == "Windows" then
+    -- Windows
+    local SW_SHOW = 5 -- Show the window
+
+    -- Call ShellExecuteA from Shell32.dll
+    local shell32 = ffi.load("Shell32")
+    local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
+
+    if result_open > 32 then
+        print("AutoSubs launched successfully.")
+    else
+        print("Failed to launch AutoSubs. Error code:", result_open)
+        return
+    end
+else
+    -- MacOS
+    local result_open = ffi.C.system(command_open)
+
+    if result_open == 0 then
+        print("AutoSubs launched successfully.")
+    else
+        print("Failed to launch AutoSubs. Error code:", result_open)
+        return
+    end
+end
+```
+
