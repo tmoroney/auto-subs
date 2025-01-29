@@ -14,8 +14,8 @@ Helpful Tutorial: https://www.youtube.com/watch?v=U36KbpoAPxM
 <a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=tmoroney&button_colour=3562e3&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
 
 ## Setup:
-1. Download the installer above and open it.
-2. Follow the instructions on screen.
+1. Download the installer above.
+2. Run the installer and follow the on-screen instructions.
 3. Open Davinci Resolve and click **"Workspace"** in the top menu bar, and then **"Scripts"** and select **AutoSubs V2**.
 
 > [!Note]
