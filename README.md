@@ -1,6 +1,8 @@
 # AutoSubs V2 – Subtitles Made Simple
 Create high-quality subtitles effortlessly with **one click**. AutoSubs delivers **fast, accurate, and fully customisable** subtitles in a sleek, intuitive interface.
 
+### 📥 Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg)
+
 ## 🚀 Key Features
 **⚡ Blazing Fast:** Lightning-fast transcription in nearly any language.
 
@@ -11,8 +13,6 @@ Create high-quality subtitles effortlessly with **one click**. AutoSubs delivers
 **🎨 Modern UI:** A clean, user-friendly designed for creators.
 
 **📦 One-Click Installer:** One-click installer for Mac (ARM) & Windows. (Linux & Intel Mac support coming soon!)
-
-### 📥 Download: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg)
 
 **💡 14,000+ downloads in under 2 months!**
 
