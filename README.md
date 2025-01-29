@@ -37,6 +37,6 @@ Watch this helpful tutorial to get you started with AutoSubs: [Watch Now](https:
 # AutoSubs V1 (Legacy Version)
 If your OS isn’t supported by **AutoSubs V2**, you can try **AutoSubs V1** using manual installation. However, this requires basic experience with Python and the terminal, and this version is no longer supported so any errors you will have to fix yourself.
 >[!Warning]
-If using the free version, you must be on Resolve 19.0.3 or earlier, as Blackmagic removed the built-in UI manager in v19.1.
+If using the **free version**, you must be on **Resolve 19.0.3 or earlier**, as Blackmagic removed the built-in UI manager in v19.1.
 
 ### [AutoSubs V1 Install Guide](https://github.com/tmoroney/auto-subs/blob/a695224b66e46c62dc716f5336582795e7174f17/V1_README.md)
