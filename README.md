@@ -49,35 +49,7 @@ If you would like to contribute to the development of AutoSubs, follow the steps
 4. Paste the `AutoSubs V2.lua` file inside one of the directories below so that Resolve can see it:
   - Windows: `%appdata%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility`
   - Mac: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-3. Open `AutoSubs V2.lua` and remove the section of code referenced below. This code opens the main Tauri application when the Lua script is started. Since we will be running the Tauri app in development mode we need to remove this code to stop the Lua script from starting the Tauri app executable automatically.
-  ```lua
--- Start AutoSubs app
-if os_name == "Windows" then
-    -- Windows
-    local SW_SHOW = 5 -- Show the window
-
-    -- Call ShellExecuteA from Shell32.dll
-    local shell32 = ffi.load("Shell32")
-    local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
-
-    if result_open > 32 then
-        print("AutoSubs launched successfully.")
-    else
-        print("Failed to launch AutoSubs. Error code:", result_open)
-        return
-    end
-else
-    -- MacOS
-    local result_open = ffi.C.system(command_open)
-
-    if result_open == 0 then
-        print("AutoSubs launched successfully.")
-    else
-        print("Failed to launch AutoSubs. Error code:", result_open)
-        return
-    end
-end
-```
+3. Open `AutoSubs V2.lua` and set the variable `DEV_MODE` to true at the top of the file. Since we will be running the Tauri app in dev mode, we must turn on dev mode which will prevent the Lua server from opening the main Tauri application when the script it is started.
 
 ## Start Python Transcription Server
 Open a new terminal in the repository and run the following commands to start the python transcription server. This python server is responsible for anything machine learning related such as Transcribing audio and Speaker Diarization.
@@ -96,9 +68,12 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements-win.txt
 ```
-## Start Davinci Resolve Connection
+## Start LUA server
 1. Open Resolve
 2. Navigate to Scripts and open AutoSubs V2
+
+>[!Note]
+This is a LUA script that is constantly looping, waiting to recieve a request from the frontend Tauri app. This script is responsable for any interaction with Resolve, such as adding Text+ subtitles to the timeline and exporting the timeline audio.
 
 ## Start Tauri App (Frontend UI)
 ```bash

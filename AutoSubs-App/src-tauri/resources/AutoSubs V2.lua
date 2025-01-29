@@ -1,3 +1,5 @@
+local DEV_MODE = false
+
 -- Detect the operating system
 local os_name = ffi.os
 print("Operating System: " .. os_name)
@@ -629,29 +631,31 @@ end
 assert(server:listen())
 
 -- Start AutoSubs app
-if os_name == "Windows" then
-    -- Windows
-    local SW_SHOW = 5 -- Show the window
+if not DEV_MODE then
+    if os_name == "Windows" then
+        -- Windows
+        local SW_SHOW = 5 -- Show the window
 
-    -- Call ShellExecuteA from Shell32.dll
-    local shell32 = ffi.load("Shell32")
-    local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
+        -- Call ShellExecuteA from Shell32.dll
+        local shell32 = ffi.load("Shell32")
+        local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
 
-    if result_open > 32 then
-        print("AutoSubs launched successfully.")
+        if result_open > 32 then
+            print("AutoSubs launched successfully.")
+        else
+            print("Failed to launch AutoSubs. Error code:", result_open)
+            return
+        end
     else
-        print("Failed to launch AutoSubs. Error code:", result_open)
-        return
-    end
-else
-    -- MacOS
-    local result_open = ffi.C.system(command_open)
+        -- MacOS
+        local result_open = ffi.C.system(command_open)
 
-    if result_open == 0 then
-        print("AutoSubs launched successfully.")
-    else
-        print("Failed to launch AutoSubs. Error code:", result_open)
-        return
+        if result_open == 0 then
+            print("AutoSubs launched successfully.")
+        else
+            print("Failed to launch AutoSubs. Error code:", result_open)
+            return
+        end
     end
 end
 
