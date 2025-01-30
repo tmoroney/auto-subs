@@ -69,11 +69,9 @@ python -m venv .venv
 pip install -r requirements-win.txt
 ```
 ## Start LUA server
+This LUA script is a server that runs in the background and waits to recieve a request from the frontend Tauri app. This script is responsable for any interaction with Resolve, such as adding Text+ subtitles to the timeline and exporting the timeline audio.
 1. Open Resolve
 2. Navigate to Scripts and open AutoSubs V2
-
->[!Note]
-This is a LUA script that is constantly looping, waiting to recieve a request from the frontend Tauri app. This script is responsable for any interaction with Resolve, such as adding Text+ subtitles to the timeline and exporting the timeline audio.
 
 ## Start Tauri App (Frontend UI)
 ```bash
@@ -81,3 +79,8 @@ cd AutoSubs-App
 npm install
 npm run tauri dev
 ```
+
+# Libraries Used
+1. [Stable-TS](https://github.com/jianfch/stable-ts)
+2. [MLX-Whisper](https://pypi.org/project/mlx-whisper/)
+3. [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper)
