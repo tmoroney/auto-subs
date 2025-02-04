@@ -36,7 +36,7 @@ const pathNames = {
   "/search": "Text Search",
   "/diarize": "Diarized Speakers",
   "/animate": "Design Subtitles",
-  "/tools": "Subtitle Tools",
+  "/tools": "AutoSubs Tools",
   "/chat": "Chat",
 };
 
@@ -117,7 +117,7 @@ function NavigationHeader() {
       <header className="sticky top-0 z-10 flex min-h-[57px] items-center gap-1 border-b bg-background px-4">
         <h1 className="text-xl font-semibold">{pathNames[currentPath as keyof typeof pathNames]}</h1>
 
-        <a href="https://www.buymeacoffee.com/tmoroney" target="_blank" rel="noopener noreferrer" className="ml-auto">
+        <Link to="https://www.buymeacoffee.com/tmoroney" target="_blank" rel="noopener noreferrer" className="ml-auto">
           <Button
             variant="link"
             size="sm"
@@ -126,7 +126,7 @@ function NavigationHeader() {
             <HeartHandshake className="size-4" />
             Support AutoSubs
           </Button>
-        </a>
+        </Link>
         {updateInfo.length > 0 ? (
           <Button
             variant="outline"
@@ -137,16 +137,17 @@ function NavigationHeader() {
             New Update Available
           </Button>
         ) : (
-          <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
+          <Link to="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer" className="ml-auto">
             <Button
               variant="outline"
               size="sm"
               className="gap-1.5 text-sm hidden sm:flex"
             >
+
               <Github className="size-4" />
               GitHub
             </Button>
-          </a>
+          </Link>
         )}
         {/* <div className="min-w-[190px]">
         <Select onValueChange={(value) => setTrack(value)} >
@@ -165,7 +166,7 @@ function NavigationHeader() {
             </SelectContent>
           </Select>
           </div> */}
-      </header>
+      </header >
 
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
         <DialogContent className="sm:max-w-[430px] md:max-w-[550px]">
@@ -177,7 +178,7 @@ function NavigationHeader() {
             <div className="space-y-6">
               {updateInfo.map((changeInfo, index) => (
                 <section key={index} className="space-y-3">
-                  <h2 className="text-md font-medium flex items-center">
+                  <h2 className="font-medium flex items-center">
                     <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
                       {index + 1}
                     </span>

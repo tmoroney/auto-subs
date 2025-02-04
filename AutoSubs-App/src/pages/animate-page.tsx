@@ -83,13 +83,12 @@ export function AnimatePage() {
       <div className="relative flex-col items-start gap-4 md:flex">
         <div className="grid w-full items-start gap-4">
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-5">
               <CardTitle>Animation</CardTitle>
               <CardDescription>Customise the animation for your subtitles.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-3">
-                <Label htmlFor="wordLevel">Animation Style</Label>
                 <Select value={wordLevel.toString()} onValueChange={(value) => setWordLevel(value === "true")}>
                   <SelectTrigger
                     id="wordLevel"
@@ -125,7 +124,6 @@ export function AnimatePage() {
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="animationType">Animation Type</Label>
                 {renderToggleGroup(animationTypes, animationType, setAnimationType as (value: string) => void)}
               </div>
 
@@ -135,20 +133,19 @@ export function AnimatePage() {
       </div>
       <div className="relative flex-col items-start gap-8 md:flex">
         <Card className="w-full">
-          <CardHeader className="pb-4">
+          <CardHeader className="pb-5">
             <CardTitle>Word Highlighting</CardTitle>
             <CardDescription>Highlight words as they are spoken.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
-              <Label htmlFor="highlightType">Highlight Type</Label>
               {renderToggleGroup(highlightTypes, highlightType, setHighlightType as (value: string) => void)}
             </div>
             <div className="grid gap-3">
               <Card className="shadow-none">
-                <CardContent className="px-4 py-2">
+                <CardContent className="px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <Highlighter className="h-5 w-5" />
+                    <Highlighter className="h-5 w-5 ml-2" />
                     <Label htmlFor="fontColor" className="font-medium">Highlight Colour</Label>
                     <Input
                       id="fontColor"
