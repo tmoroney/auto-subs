@@ -42,6 +42,15 @@ import time
 import platform
 import stable_whisper
 
+architecture = platform.machine()
+
+if architecture.startswith("arm") or architecture.startswith("aarch"):
+    architecture = "arm"
+elif architecture in ["i386", "x86", "x86_64", "amd64"]:
+    architecture = "x86"
+else:
+    print(f"Unknown architecture: {architecture}")
+
 # Define a base cache directory using appdirs
 if platform.system() == 'Windows':
     cache_dir = appdirs.user_cache_dir("AutoSubs-Cache", "")
@@ -85,8 +94,10 @@ else:
 # Add FFmpeg binaries to PATH
 if platform.system() == 'Windows':
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_win')
-else:
+elif platform.system() == 'Darwin' and architecture == 'arm':
     ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac')
+else:
+    ffmpeg_path = os.path.join(base_path, 'ffmpeg_bin_mac_x86')
 
 os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
 
@@ -217,7 +228,7 @@ def log_progress(seek, total_duration):
 
 
 async def transcribe_audio(audio_file, kwargs, subtitle_settings):
-    if (platform.system() == 'Windows'):
+    if (architecture == 'x86'):
         compute_type = "float16" if kwargs["device"] == "cuda" else "int8"
         model = stable_whisper.load_faster_whisper(kwargs["model"], device=kwargs["device"], compute_type=compute_type)
         if kwargs["language"] == "auto":
@@ -519,13 +530,15 @@ async def transcribe(request: TranscriptionRequest):
         if request.language == "en":
             request.model = request.model + ".en"
             task = "transcribe"
-        elif request.language == "de" and request.model == "large" and platform.system() != 'Windows':
+        elif request.language == "de" and request.model == "large" and architecture == "x86":
+            # german model is exclusive to faster whisper (x86)
             request.model = request.model + ".de"
             task = request.task
         else:
             task = request.task
 
-        if platform.system() == 'Windows':
+        # windows, or on mac with intel architecture
+        if architecture == "x86":
             model = win_models[request.model]
         else:
             model = mac_models[request.model]

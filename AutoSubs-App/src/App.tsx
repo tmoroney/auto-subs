@@ -6,6 +6,7 @@ import { SearchPage } from "@/pages/search-page";
 import { ChatPage } from "@/pages/chat-page";
 import { DiarizePage } from "@/pages/diarize-page";
 import { AnimatePage } from "./pages/animate-page";
+import { ToolsPage } from "./pages/tools-page";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import {
   Tooltip,
@@ -15,8 +16,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House, Download } from "lucide-react";
-// import { Paintbrush, SwatchBook } from "lucide-react";
+import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House, Download, WandSparkles, Sparkles } from "lucide-react";
+import { Paintbrush, SwatchBook } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ const pathNames = {
   "/search": "Text Search",
   "/diarize": "Diarized Speakers",
   "/animate": "Design Subtitles",
+  "/tools": "Subtitle Tools",
   "/chat": "Chat",
 };
 
@@ -80,6 +82,7 @@ function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/diarize" element={<DiarizePage />} />
               <Route path="/animate" element={<AnimatePage />} />
+              <Route path="/tools" element={<ToolsPage />} />
               <Route path="/chat" element={<ChatPage />} />
             </Routes>
           </div>
@@ -358,7 +361,7 @@ function NavigationAside() {
                 Generate Subtitles
               </TooltipContent>
             </Tooltip>
-            {/* <Tooltip>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/animate">
                   <Button
@@ -374,7 +377,7 @@ function NavigationAside() {
               <TooltipContent side="right" sideOffset={5}>
                 Design Subtitles
               </TooltipContent>
-            </Tooltip> */}
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/diarize">
@@ -392,23 +395,23 @@ function NavigationAside() {
                 Edit Speakers
               </TooltipContent>
             </Tooltip>
-            {/* <Tooltip>
+            <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/chat">
+                <Link to="/tools">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-lg ${currentPath === "/chat" ? "bg-muted" : ""}`}
-                    aria-label="Chat"
+                    className={`rounded-lg ${currentPath === "/tools" ? "bg-muted" : ""}`}
+                    aria-label="Tools"
                   >
-                    <SwatchBook className="size-5" />
+                    <Sparkles className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Toolbox
               </TooltipContent>
-            </Tooltip> */}
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/search">

@@ -53,8 +53,11 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, items
                     </div>
                 )}
                 <Input
+                    id="fontColor"
+                    type="color"
                     value={color}
-                    onChange={({ currentTarget }) => handleOnChange(currentTarget.value)}
+                    onChange={(e) => handleOnChange(e.target.value)}
+                    className="h-14 hover:bg-muted transition-all"
                 />
             </PopoverContent>
         </Popover>

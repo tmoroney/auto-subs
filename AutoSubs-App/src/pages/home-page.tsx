@@ -197,6 +197,14 @@ const languages = [
     { label: "Cantonese", value: "yue" },
 ] as const;
 
+const models = [
+    { value: "tiny", label: "Tiny", description: "Ultra-fast", size: "75MB", ram: "1GB", icon: Worm },
+    { value: "base", label: "Base", description: "Fast & light", size: "140MB", ram: "1GB", icon: Rat },
+    { value: "small", label: "Small", description: "Balanced", size: "480MB", ram: "2GB", icon: Rabbit },
+    { value: "medium", label: "Medium", description: "High accuracy", size: "1.5GB", ram: "5GB", icon: Bird },
+    { value: "large", label: "Large", description: "Max accuracy", size: "1.6GB", ram: "10GB", icon: Turtle },
+] as const;
+
 export function HomePage() {
     const {
         timelineInfo,
@@ -460,7 +468,7 @@ export function HomePage() {
                             {isLoading ? (
                                 <Button disabled
                                     type="button"
-                                    size="sm"
+                                    size="default"
                                     className="gap-1.5 text-sm w-full"
                                 >
                                     <Loader2 className="size-4 animate-spin cursor-progress" />
@@ -472,7 +480,7 @@ export function HomePage() {
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 type="button"
-                                                size="sm"
+                                                size="default"
                                                 className="gap-1.5 text-sm w-full"
                                             >
                                                 <CirclePlay className="size-4" />
@@ -493,7 +501,7 @@ export function HomePage() {
                                 ) : (
                                     <Button
                                         type="button"
-                                        size="sm"
+                                        size="default"
                                         className="gap-1.5 text-sm w-full"
                                         onClick={async () => await runSteps(false)}
                                     >
@@ -753,87 +761,21 @@ export function HomePage() {
                                             <SelectValue placeholder="Select a model..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="tiny">
+                                        {models.map((m) => (
+                                            <SelectItem key={m.value} value={m.value}>
                                                 <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Worm className="size-5 flex-shrink-0" />
-                                                    <div className="grid gap-0.5">
-                                                        <p>
-                                                            Whisper{" "}
-                                                            <span className="font-medium text-foreground">
-                                                                Tiny
-                                                            </span>
+                                                    <m.icon className="size-5 flex-shrink-0 text-foreground" />
+                                                    <div className="grid gap-0.5 text-left">
+                                                        <p className="font-medium text-foreground">
+                                                            {m.label} <span className="text-muted-foreground">({m.description})</span>
                                                         </p>
                                                         <p className="text-xs" data-description>
-                                                            Super fast, lower accuracy.
+                                                        Size: {m.size}, RAM: {m.ram}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </SelectItem>
-                                            <SelectItem value="base">
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Rat className="size-5 flex-shrink-0" />
-                                                    <div className="grid gap-0.5">
-                                                        <p>
-                                                            Whisper{" "}
-                                                            <span className="font-medium text-foreground">
-                                                                Base
-                                                            </span>
-                                                        </p>
-                                                        <p className="text-xs" data-description>
-                                                            Fast and reliable for general use.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="small">
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Rabbit className="size-5 flex-shrink-0" />
-                                                    <div className="grid gap-0.5">
-                                                        <p>
-                                                            Whisper{" "}
-                                                            <span className="font-medium text-foreground">
-                                                                Small
-                                                            </span>
-                                                        </p>
-                                                        <p className="text-xs" data-description>
-                                                            Balanced speed and accuracy.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="medium">
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Bird className="size-5 flex-shrink-0" />
-                                                    <div className="grid gap-0.5">
-                                                        <p>
-                                                            Whisper{" "}
-                                                            <span className="font-medium text-foreground">
-                                                                Medium{" "}
-                                                            </span>
-                                                            (recommended)
-                                                        </p>
-                                                        <p className="text-xs" data-description>
-                                                            Great accuracy, moderate speed.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="large">
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Turtle className="size-6 flex-shrink-0" />
-                                                    <div className="grid gap-0.5">
-                                                        <p>
-                                                            Whisper{" "}
-                                                            <span className="font-medium text-foreground">
-                                                                Large
-                                                            </span>
-                                                        </p>
-                                                        <p className="text-xs" data-description>
-                                                            Most accurate, but slower.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </SelectItem>
+                                        ))}
                                         </SelectContent>
                                     </Select>
                                     <div className="grid grid-cols-2 gap-4">
