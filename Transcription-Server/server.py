@@ -35,12 +35,20 @@ import json
 import random
 import uvicorn
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 import asyncio
 import appdirs
 import time
 import platform
 import stable_whisper
+from fastapi.responses import JSONResponse
+import sys
+import os
+import requests
+import mimetypes
+from urllib.parse import urlparse, urlunparse
+import re
+
 
 architecture = platform.machine()
 
@@ -186,8 +194,7 @@ def is_model_accessible(model_id, token=None, revision=None):
         return False
     except HfHubHTTPError as e:
         if e.response.status_code == 403:
-            print(f"Access denied to model '{
-                  model_id}'. You may need to accept the model's terms or provide a valid token.")
+            print(f"Access denied to model '{model_id}'. You may need to accept the model's terms or provide a valid token.")
         elif e.response.status_code == 401:
             print(f"Unauthorized access. Please check your Hugging Face access token.")
         else:
@@ -685,5 +692,96 @@ async def validate_model(request: ValidateRequest):
 
     return {"isAvailable": True, "message": "All required models are available"}
 
+@app.route('/save_image/', methods=['POST'])
+async def receive_text(request:Request):
+    data = await request.json()
+    print("data",data)
+
+    relevent_string = data.get('releventString', '')
+    response = {
+        'releventString': relevent_string,
+        'message': 'url received successfully'
+    }
+    print(relevent_string)
+    print(response)
+    handle_url(response['releventString'])
+    return JSONResponse(content=response, status_code=200)
+
+def handle_url(url):
+    print("url",url)
+    parsed_url = urlparse(url)
+    clean_url = urlunparse(parsed_url._replace(query=''))
+    mime_type, _ = mimetypes.guess_type(clean_url)
+    if mime_type :
+        if mime_type.startswith('image'):
+            downloadfile(url, 'image')
+        elif mime_type.startswith('video') or mime_type.startswith('audio'):
+            downloadfile(url, 'video')
+        else:
+            print("Unsupported file type")
+    else:
+        print("Could not determine the file type,defualt to img")
+        downloadfile(url, 'image')
+    return "Downloaded"
+
+def sanitize_filename(filename):
+    return re.sub(r'[^\w\-_\. ]', '_', filename)
+
+
+def OIL_LUA_call(func, otherDataName = 'Null', otherData = 'Null'):
+    resolveAPI = "http://localhost:55010/"
+    # Define the headers
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    # Define the JSON payload
+    data = {
+        "func": func,
+        otherDataName: otherDataName
+    }
+    # Send the POST request with JSON data
+    response = requests.post(resolveAPI, headers=headers, json=data)
+    # Print the response
+
+def downloadfile( url,type):
+
+    response = OIL_LUA_call("GetTimelineStoragePath")
+    jsondata = response.json()
+    getfilepath = jsondata['filePath']   
+    
+    
+    # Create the directory if it doesn't exist
+    if not os.path.exists(getfilepath):
+        os.makedirs(getfilepath)
+    
+    if type == "video": # TODO: handle WEBM and other nom MP4 files (wav? if not supported already)
+        response = requests.get(url, stream=True)
+        file_extension = mimetypes.guess_extension(response.headers['Content-Type'])
+        if not file_extension:
+            file_extension = '.mp4'  # Default to .mp4 if Content-Type is not available
+        if len(sanitized_url) > 50:
+            sanitized_url = sanitized_url[:50]
+        file_path = f"{getfilepath}/{sanitized_url.replace(".","")}{file_extension}"
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    f.write(chunk)
+    elif type == "image":
+        response = requests.get(url)
+        fileformat = mimetypes.guess_extension(response.headers['Content-Type'])
+        file_path = f"{getfilepath}/{sanitized_url.replace(".","")}"
+        with open(file_path+fileformat, 'wb') as f:
+            f.write(response.content)
+        file_path = file_path+fileformat
+
+
+    response=OIL_LUA_call("AddMediaToBin", "filePath", file_path)
+   
+    # Print the response
+    print("Status Code:", response.status_code)
+    print("Response JSON:", response.json())
+
+
+    
 if __name__ == "__main__":
     uvicorn.run(app, host="localhost", port=56001, log_level="info")
