@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useGlobal } from "@/GlobalContext"
+import { useGlobal } from "@/contexts/GlobalContext"
 
 function formatSecondsToTime(seconds: number) {
   const hrs = Math.floor(seconds / 3600);

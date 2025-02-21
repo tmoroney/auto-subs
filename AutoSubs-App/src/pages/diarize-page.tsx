@@ -56,7 +56,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { useGlobal } from "@/GlobalContext"
+import { useGlobal } from "@/contexts/GlobalContext"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 
@@ -67,20 +67,12 @@ export function DiarizePage() {
         topSpeaker,
         speakers,
         timelineInfo,
-        currentTemplate,
-        textFormat,
-        removePunctuation,
-        // sensitiveWords,
-        setTemplate,
-        outputTrack,
-        setOutputTrack,
-        setTextFormat,
-        setRemovePunctuation,
-        // setSensitiveWords,
-        addSubtitles,
-        getTimelineInfo,
+        settings,
+        updateSetting,
+        addSubsToTimeline,
+        refresh,
         updateSpeaker,
-        jumpToTime
+        jumpToSpeaker,
     } = useGlobal();
 
     const [openTemplates, setOpenTemplates] = useState(false);
@@ -187,7 +179,7 @@ export function DiarizePage() {
                                                     <Button
                                                         variant="secondary"
                                                         className="col-span-3 gap-1.5 text-sm"
-                                                        onClick={async () => await jumpToTime(speaker.sample.start)}
+                                                        onClick={async () => await jumpToSpeaker(speaker.sample.start)}
                                                     >
                                                         <Speech className="size-4" />
                                                         Jump to speaker on timeline
@@ -228,7 +220,7 @@ export function DiarizePage() {
                                 variant={"secondary"}
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
-                                onClick={async () => { addSubtitles() }}
+                                onClick={async () => { addSubsToTimeline() }}
                             >
                                 <RefreshCw className="size-4" />
                                 Update Speakers
@@ -252,10 +244,10 @@ export function DiarizePage() {
                                             role="combobox"
                                             aria-expanded={openTemplates}
                                             className="justify-between font-normal"
-                                            onClick={() => getTimelineInfo()}
+                                            onClick={() => refresh()}
                                         >
-                                            {currentTemplate && timelineInfo.templates.length > 0
-                                                ? timelineInfo.templates.find((template) => template.value === currentTemplate)?.label
+                                            {settings.template && timelineInfo.templates.length > 0
+                                                ? timelineInfo.templates.find((template) => template.value === settings.template)?.label
                                                 : "Select Template..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -271,14 +263,14 @@ export function DiarizePage() {
                                                             key={template.value}
                                                             value={template.value}
                                                             onSelect={(currentValue) => {
-                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
+                                                                updateSetting("template", currentValue)
                                                                 setOpenTemplates(false)
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
+                                                                    settings.template === template.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
                                                             {template.label}
@@ -298,10 +290,10 @@ export function DiarizePage() {
                                             variant="outline"
                                             role="combobox"
                                             className="justify-between font-normal"
-                                            onClick={() => getTimelineInfo()}
+                                            onClick={() => refresh()}
                                         >
-                                            {outputTrack && timelineInfo.outputTracks.length > 0
-                                                ? timelineInfo.outputTracks.find((track) => track.value === outputTrack)?.label
+                                            {settings.outputTrack && timelineInfo.outputTracks.length > 0
+                                                ? timelineInfo.outputTracks.find((track) => track.value === settings.outputTrack)?.label
                                                 : "Select Track..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -317,14 +309,14 @@ export function DiarizePage() {
                                                             key={track.value}
                                                             value={track.value}
                                                             onSelect={(currentValue) => {
-                                                                setOutputTrack(currentValue === outputTrack ? "" : currentValue)
+                                                                updateSetting('outputTrack', currentValue)
                                                                 setOpenTracks(false)
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    outputTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                    settings.outputTrack === track.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
                                                             {track.label}
@@ -340,8 +332,8 @@ export function DiarizePage() {
                                 <Label htmlFor="textFormat">Text Formatting</Label>
                                 <ToggleGroup
                                     type="single"
-                                    value={textFormat}
-                                    onValueChange={(value: string) => value && setTextFormat(value)}
+                                    value={settings.textFormat}
+                                    onValueChange={(value: string) => value && updateSetting('textFormat', value)}
                                     className="grid grid-cols-3 gap-3 h-20"
                                 >
                                     <ToggleGroupItem
@@ -374,7 +366,7 @@ export function DiarizePage() {
                                         Remove Punctuation
                                     </p>
                                 </div>
-                                <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                                <Switch checked={settings.removePunctuation} onCheckedChange={(checked) => updateSetting('removePunctuation', checked)} />
                             </div>
                         </CardContent>
                         <CardFooter>
@@ -382,7 +374,7 @@ export function DiarizePage() {
                                 type="button"
                                 size="sm"
                                 className="gap-1.5 text-sm w-full"
-                                onClick={async () => { addSubtitles() }}
+                                onClick={async () => { addSubsToTimeline() }}
                             >
                                 <RefreshCw className="size-4" />
                                 Update Subtitles

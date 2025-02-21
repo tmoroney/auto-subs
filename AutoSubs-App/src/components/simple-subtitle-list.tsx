@@ -2,7 +2,7 @@ import { Subtitle, SubtitleListProps } from '@/types/interfaces';
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { useGlobal } from "@/GlobalContext"
+import { useGlobal } from "@/contexts/GlobalContext"
 import {
   Tooltip,
   TooltipContent,

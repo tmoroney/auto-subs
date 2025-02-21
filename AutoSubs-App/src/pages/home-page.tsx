@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { platform } from '@tauri-apps/plugin-os';
 import { cn } from "@/lib/utils"
 import {
@@ -20,15 +20,30 @@ import {
     CaseUpper,
     CaseLower,
     PencilOff,
-    Pickaxe,
     AudioLines,
     PencilLine,
     Type,
     Plus,
-    Shield,
     Download,
     History,
     FileUp,
+    Upload,
+    SparklesIcon,
+    Highlighter,
+    ArrowUpFromLine,
+    TypeOutline,
+    PaintRoller,
+    MessageCircle,
+    Keyboard,
+    ZoomIn,
+    Blend,
+    Text,
+    WholeWord,
+    Trash2,
+    AArrowDown,
+    AArrowUp,
+    Spline,
+    Sparkle,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -83,13 +98,12 @@ import {
 } from "@/components/ui/popover"
 import { SubtitleList } from "@/components/simple-subtitle-list"
 import { fetch } from '@tauri-apps/plugin-http';
-import { useGlobal } from '@/GlobalContext';
+import { useGlobal } from '@/contexts/GlobalContext';
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-//import { resolveResource } from "@tauri-apps/api/path";
-//import { convertFileSrc } from '@tauri-apps/api/core';
+import { Description } from "@radix-ui/react-dialog";
 
 const validateAPI = "http://localhost:56001/validate/";
 
@@ -207,49 +221,19 @@ const models = [
 
 export function HomePage() {
     const {
+        settings,
         timelineInfo,
         subtitles,
-        currentTemplate,
-        currentLanguage,
-        outputTrack,
-        inputTrack,
-        enabledSteps,
-        currentStep,
         progress,
-        diarizeMode,
-        diarizeSpeakerCount,
-        translate,
-        processingStep,
-        isLoading,
-        model,
-        maxWords,
-        maxChars,
-        textFormat,
-        removePunctuation,
-        sensitiveWords,
-        alignWords,
         audioPath,
-        setTemplate,
-        setLanguage,
-        setInputTrack,
-        setOutputTrack,
-        setEnabledSteps,
-        setDiarizeSpeakerCount,
-        setDiarizeMode,
-        setTranslate,
-        setModel,
-        setMaxWords,
-        setMaxChars,
-        setTextFormat,
-        setRemovePunctuation,
-        setSensitiveWords,
-        setAlignWords,
-        setIsLoading,
+        setProgress,
+        updateSetting,
+        enableStep,
         setError,
         runSteps,
         exportSubtitles,
         importSubtitles,
-        getTimelineInfo,
+        refresh,
         resetSettings,
     } = useGlobal();
 
@@ -283,11 +267,8 @@ export function HomePage() {
     */
 
     async function checkDiarizeAvailable(checked: boolean) {
-        if (isLoading) return;
-        setEnabledSteps({
-            ...enabledSteps,
-            diarize: checked,
-        });
+        if (progress.isLoading) return;
+        enableStep('diarize', checked);
         if (checked == true && isDiarizeAvailable == false) {
             // check with server if model is available and HF token is correct
             try {
@@ -313,14 +294,11 @@ export function HomePage() {
                 if (isAvailable) {
                     setOpenTokenMenu(false);
                     setIsDiarizeAvailable(true);
-                    toast((enabledSteps.diarize ? "Disabled" : "Enabled") + " Speaker Diarization", {
-                        description: enabledSteps.diarize ? "Removed from processing steps." : "Added to processing steps.",
+                    toast((settings.enabledSteps.diarize ? "Disabled" : "Enabled") + " Speaker Diarization", {
+                        description: settings.enabledSteps.diarize ? "Removed from processing steps." : "Added to processing steps.",
                     })
                 } else {
-                    setEnabledSteps({
-                        ...enabledSteps,
-                        diarize: false,
-                    });
+                    enableStep('diarize', false);
                     console.log(message);
                     // open menu with instructions
                     setHfMessage(message);
@@ -328,10 +306,7 @@ export function HomePage() {
 
                 }
             } catch (error) {
-                setEnabledSteps({
-                    ...enabledSteps,
-                    diarize: false,
-                });
+                enableStep('diarize', false);
                 setError({
                     title: "Error",
                     desc: String(error),
@@ -341,20 +316,18 @@ export function HomePage() {
     }
 
     function getStatusColor(step: number) {
-        return currentStep === step ? "bg-yellow-500" : currentStep < step ? "bg-sky-500" : "bg-green-500";
+        return progress.currentStep === step ? "bg-yellow-500" : progress.currentStep < step ? "bg-sky-500" : "bg-green-500";
     }
 
     return (
 
         <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-2">
-            <div
-                className="relative flex-col items-start gap-8 md:flex"
-            >
+            <div className="relative flex-col items-start gap-8 md:flex">
                 <div className="grid w-full items-start gap-4">
                     <Card className="overflow-hidden">
-                        <CardHeader className="pb-5">
+                        <CardHeader className="pb-4">
                             <CardTitle className="flex items-center justify-between">
-                                <span>Transcription Flow</span>
+                                <span>Workflow Options</span>
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger>
@@ -368,120 +341,128 @@ export function HomePage() {
                                     </Tooltip>
                                 </TooltipProvider>
                             </CardTitle>
-                            <CardDescription>Configure and run transcription process</CardDescription>
+                            <CardDescription>Generate subtitles on the current timeline.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-5">
-                            <div className="grid gap-2.5">
-                                <Label htmlFor="template">Subtitle Template</Label>
-                                <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openTemplates}
-                                            className="justify-between font-normal"
-                                            onClick={async () => await getTimelineInfo()}
-                                        >
-                                            {currentTemplate && timelineInfo.templates.length > 0
-                                                ? timelineInfo.templates.find((template) => template.value === currentTemplate)?.label
-                                                : "Select Template..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search MediaPool for Text+" />
-                                            <CommandList>
-                                                <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {timelineInfo.templates.map((template) => (
-                                                        <CommandItem
-                                                            key={template.value}
-                                                            value={template.value}
-                                                            onSelect={(currentValue) => {
-                                                                setTemplate(currentValue === currentTemplate ? "" : currentValue)
-                                                                setOpenTemplates(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    currentTemplate === template.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {template.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                        <CardContent className="grid gap-4">
+                            <div className="grid grid-cols-3 gap-4 mb-2">
+                                <AnimationOptions />
+                                <FormatOptions />
+                                <HighlightOptions />
                             </div>
-                            <div className="grid gap-2.5">
-                                <Label htmlFor="track">Track to Place Subtitles</Label>
-                                <Popover open={openOutputTracks} onOpenChange={setOpenOutputTracks}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className="justify-between font-normal"
-                                            onClick={async () => await getTimelineInfo()}
-                                        >
-                                            {outputTrack && timelineInfo.outputTracks.length > 0
-                                                ? timelineInfo.outputTracks.find((track) => track.value === outputTrack)?.label
-                                                : "Select Video Track..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Select track to place subtitles" />
-                                            <CommandList>
-                                                <CommandEmpty>No tracks found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {timelineInfo.outputTracks.map((track) => (
-                                                        <CommandItem
-                                                            key={track.value}
-                                                            value={track.value}
-                                                            onSelect={(currentValue) => {
-                                                                setOutputTrack(currentValue === outputTrack ? "" : currentValue)
-                                                                setOpenOutputTracks(false)
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    outputTrack === track.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {track.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                            <div className="grid gap-5 mb-2">
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="template">Subtitle Template</Label>
+                                    <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={openTemplates}
+                                                className="justify-between font-normal"
+                                                onClick={async () => await refresh()}
+                                            >
+                                                {settings.template && timelineInfo.templates.length > 0
+                                                    ? timelineInfo.templates.find((template) => template.value === settings.template)?.label
+                                                    : "Select Template..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search MediaPool for Text+" />
+                                                <CommandList>
+                                                    <CommandEmpty>No Text+ in the Media Pool.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {timelineInfo.templates.map((template) => (
+                                                            <CommandItem
+                                                                key={template.value}
+                                                                value={template.value}
+                                                                onSelect={(currentValue) => {
+                                                                    updateSetting('template', currentValue)
+                                                                    setOpenTemplates(false)
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        settings.template === template.value ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {template.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="grid gap-2.5">
+                                    <Label htmlFor="track">Track to Place Subtitles</Label>
+                                    <Popover open={openOutputTracks} onOpenChange={setOpenOutputTracks}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className="justify-between font-normal"
+                                                onClick={async () => await refresh()}
+                                            >
+                                                {settings.outputTrack && timelineInfo.outputTracks.length > 0
+                                                    ? timelineInfo.outputTracks.find((track) => track.value === settings.outputTrack)?.label
+                                                    : "Select Video Track..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Select track to place subtitles" />
+                                                <CommandList>
+                                                    <CommandEmpty>No tracks found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {timelineInfo.outputTracks.map((track) => (
+                                                            <CommandItem
+                                                                key={track.value}
+                                                                value={track.value}
+                                                                onSelect={(currentValue) => {
+                                                                    updateSetting('outputTrack', currentValue)
+                                                                    setOpenOutputTracks(false)
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        settings.outputTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {track.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
                             </div>
 
-                            {isLoading ? (
+
+                            {progress.isLoading ? (
                                 <Button disabled
                                     type="button"
                                     size="default"
-                                    className="gap-1.5 text-sm w-full"
+                                    className="gap-2 text-sm w-full"
                                 >
                                     <Loader2 className="size-4 animate-spin cursor-progress" />
-                                    {processingStep}
+                                    {progress.message}
                                 </Button>
                             ) : (
-                                audioPath.length > 0 && !enabledSteps.customSrt ? (
+                                audioPath.length > 0 && !settings.enabledSteps.customSrt ? (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 type="button"
                                                 size="default"
-                                                className="gap-1.5 text-sm w-full"
+                                                className="gap-2 text-sm w-full"
                                             >
                                                 <CirclePlay className="size-4" />
                                                 Start Process
@@ -502,7 +483,7 @@ export function HomePage() {
                                     <Button
                                         type="button"
                                         size="default"
-                                        className="gap-1.5 text-sm w-full"
+                                        className="gap-2 text-sm w-full"
                                         onClick={async () => await runSteps(false)}
                                     >
                                         <CirclePlay className="size-4" />
@@ -513,7 +494,7 @@ export function HomePage() {
                             {/* <Progress value={20} /> */}
                         </CardContent>
                         <CardFooter className="p-0">
-                            <Progress value={progress} className="rounded-b-md rounded-t-none h-3" />
+                            <Progress value={progress.value} className="rounded-b-md rounded-t-none h-3" />
                         </CardFooter>
                     </Card>
                     <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
@@ -535,46 +516,47 @@ export function HomePage() {
                                 {[
                                     {
                                         key: "1",
-                                        enabled: enabledSteps.diarize,
-                                        onClick: () => checkDiarizeAvailable(!enabledSteps.diarize),
+                                        enabled: settings.enabledSteps.diarize,
+                                        onClick: () => checkDiarizeAvailable(!settings.enabledSteps.diarize),
                                         icon: <Speech className="h-6 w-6 text-primary" />,
                                         title: "Diarize Speakers",
                                         description: "Label different speakers with AI"
                                     },
-                                    {
-                                        key: "2",
-                                        enabled: enabledSteps.textFormat,
-                                        onClick: () => {
-                                            const newStatus = !enabledSteps.textFormat;
-                                            setEnabledSteps({ ...enabledSteps, textFormat: newStatus });
-                                            toast((newStatus ? "Enabled" : "Disabled") + " Text Formatting", {
-                                                description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
-                                            });
-                                        },
-                                        icon: <Type className="h-6 w-6 text-primary" />,
-                                        title: "Text Formatting",
-                                        description: "Customise format of subtitle text"
-                                    },
-                                    platform() === 'windows' ? {
-                                        key: "3",
-                                        enabled: enabledSteps.advancedOptions,
-                                        onClick: () => {
-                                            const newStatus = !enabledSteps.advancedOptions;
-                                            setEnabledSteps({ ...enabledSteps, advancedOptions: newStatus });
-                                            toast((newStatus ? "Disabled" : "Enabled") + " Advanced Options", {
-                                                description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
-                                            });
-                                        },
-                                        icon: <Shield className="h-6 w-6 text-primary" />,
-                                        title: "Advanced Options",
-                                        description: "Fine-tune with additional options"
-                                    } : null,
+                                    // {
+                                    //     key: "2",
+                                    //     enabled: settings.enabledSteps.textFormat,
+                                    //     onClick: () => {
+                                    //         const newStatus = !settings.enabledSteps.textFormat;
+                                    //         setEnabledSteps({ ...settings.enabledSteps, textFormat: newStatus });
+                                    //         toast((newStatus ? "Enabled" : "Disabled") + " Text Formatting", {
+                                    //             description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
+                                    //         });
+                                    //     },
+                                    //     icon: <Type className="h-6 w-6 text-primary" />,
+                                    //     title: "Text Formatting",
+                                    //     description: "Customise format of subtitle text"
+                                    // },
+                                    // platform() === 'windows' ? {
+                                    //     key: "3",
+                                    //     enabled: settings.enabledSteps.advancedOptions,
+                                    //     onClick: () => {
+                                    //         const newStatus = !settings.enabledSteps.advancedOptions;
+                                    //         setEnabledSteps({ ...settings.enabledSteps, advancedOptions: newStatus });
+                                    //         toast((newStatus ? "Disabled" : "Enabled") + " Advanced Options", {
+                                    //             description: newStatus ? "Removed from processing steps." : "Added to processing steps.",
+                                    //         });
+                                    //     },
+                                    //     icon: <Shield className="h-6 w-6 text-primary" />,
+                                    //     title: "Advanced Options",
+                                    //     description: "Fine-tune with additional options"
+                                    // } : null,
                                     {
                                         key: "4",
-                                        enabled: enabledSteps.customSrt,
+                                        enabled: settings.enabledSteps.customSrt,
                                         onClick: () => {
-                                            const newStatus = !enabledSteps.customSrt;
-                                            setEnabledSteps({ ...enabledSteps, customSrt: newStatus, exportAudio: !newStatus, transcribe: !newStatus, diarize: newStatus ? false : enabledSteps.diarize });
+                                            const newStatus = !settings.enabledSteps.customSrt;
+                                            updateSetting('enabledSteps',
+                                                { ...settings.enabledSteps, customSrt: newStatus, exportAudio: !newStatus, transcribe: !newStatus, diarize: newStatus ? false : settings.enabledSteps.diarize })
                                             toast(`${newStatus ? "Enabled" : "Disabled"} Custom SRT`, {
                                                 description: newStatus ? "Added to processing steps." : "Removed from processing steps.",
                                             });
@@ -604,7 +586,7 @@ export function HomePage() {
                             </div>
                         </DialogContent>
                     </Dialog>
-                    {enabledSteps.exportAudio && (
+                    {settings.enabledSteps.exportAudio && (
                         <Card>
                             <CardContent className="p-5 grid gap-1 pb-4">
                                 <div className="flex items-start justify-between mb-4">
@@ -627,10 +609,10 @@ export function HomePage() {
                                                     variant="outline"
                                                     role="combobox"
                                                     className="justify-between font-normal"
-                                                    onClick={async () => await getTimelineInfo()}
+                                                    onClick={async () => await refresh()}
                                                 >
-                                                    {inputTrack && timelineInfo.inputTracks.length > 0
-                                                        ? timelineInfo.inputTracks.find((track) => track.value === inputTrack)?.label
+                                                    {settings.inputTrack && timelineInfo.inputTracks.length > 0
+                                                        ? timelineInfo.inputTracks.find((track) => track.value === settings.inputTrack)?.label
                                                         : "Select Audio Track..."}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
@@ -646,14 +628,14 @@ export function HomePage() {
                                                                     key={track.value}
                                                                     value={track.value}
                                                                     onSelect={(currentValue) => {
-                                                                        setInputTrack(currentValue === inputTrack ? "" : currentValue)
+                                                                        updateSetting('inputTrack', currentValue)
                                                                         setOpenInputTracks(false)
                                                                     }}
                                                                 >
                                                                     <Check
                                                                         className={cn(
                                                                             "mr-2 h-4 w-4",
-                                                                            inputTrack === track.value ? "opacity-100" : "opacity-0"
+                                                                            settings.inputTrack === track.value ? "opacity-100" : "opacity-0"
                                                                         )}
                                                                     />
                                                                     {track.label}
@@ -675,8 +657,8 @@ export function HomePage() {
                                                     aria-expanded={openLanguages}
                                                     className="justify-between font-normal"
                                                 >
-                                                    {currentLanguage
-                                                        ? languages.find((language) => language.value === currentLanguage)?.label
+                                                    {settings.language
+                                                        ? languages.find((language) => language.value === settings.language)?.label
                                                         : "Select Audio Language..."}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
@@ -700,14 +682,14 @@ export function HomePage() {
                                                                         value={language.label}
                                                                         key={language.value}
                                                                         onSelect={() => {
-                                                                            setLanguage(language.value);
+                                                                            updateSetting('language', language.value);
                                                                             setOpenLanguages(false);
                                                                         }}
                                                                     >
                                                                         <Check
                                                                             className={cn(
                                                                                 "mr-2 h-4 w-4",
-                                                                                language.value === currentLanguage
+                                                                                language.value === settings.language
                                                                                     ? "opacity-100"
                                                                                     : "opacity-0"
                                                                             )}
@@ -730,7 +712,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Exporting Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Exporting Audio..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -738,7 +720,7 @@ export function HomePage() {
                             </CardFooter>
                         </Card>
                     )}
-                    {enabledSteps.transcribe && (
+                    {settings.enabledSteps.transcribe && (
                         <Card>
                             <CardContent className="p-5 grid gap-0.5 pb-3.5">
                                 <div className="flex items-start justify-between mb-4">
@@ -753,7 +735,7 @@ export function HomePage() {
                                     </div>
                                 </div>
                                 <div className="grid gap-4">
-                                    <Select value={model} onValueChange={(value) => setModel(value)}>
+                                    <Select value={settings.model} onValueChange={(value) => updateSetting('model', value)}>
                                         <SelectTrigger
                                             id="model"
                                             className="[&_[data-description]]:hidden"
@@ -761,31 +743,31 @@ export function HomePage() {
                                             <SelectValue placeholder="Select a model..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                        {models.map((m) => (
-                                            <SelectItem key={m.value} value={m.value}>
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <m.icon className="size-5 flex-shrink-0 text-foreground" />
-                                                    <div className="grid gap-0.5 text-left">
-                                                        <p className="font-medium text-foreground">
-                                                            {m.label} <span className="text-muted-foreground">({m.description})</span>
-                                                        </p>
-                                                        <p className="text-xs" data-description>
-                                                        Size: {m.size}, RAM: {m.ram}
-                                                        </p>
+                                            {models.map((m) => (
+                                                <SelectItem key={m.value} value={m.value}>
+                                                    <div className="flex items-center gap-3 text-muted-foreground">
+                                                        <m.icon className="size-5 flex-shrink-0 text-foreground" />
+                                                        <div className="grid gap-0.5 text-left">
+                                                            <p className="font-medium text-foreground">
+                                                                {m.label} <span className="text-muted-foreground">({m.description})</span>
+                                                            </p>
+                                                            <p className="text-xs" data-description>
+                                                                Size: {m.size}, RAM: {m.ram}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid gap-2.5">
                                             <Label htmlFor="maxWords">Words per line</Label>
-                                            <Input value={maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => setMaxWords(Math.abs(Number.parseInt(e.target.value)))} />
+                                            <Input value={settings.maxWords} id="maxWords" type="number" placeholder="6" onChange={(e) => updateSetting('maxWords', Math.abs(Number.parseInt(e.target.value)))} />
                                         </div>
                                         <div className="grid gap-2.5">
                                             <Label htmlFor="maxChars">Characters per line</Label>
-                                            <Input value={maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => setMaxChars(Math.abs(Number.parseInt(e.target.value)))} />
+                                            <Input value={settings.maxChars} id="maxChars" type="number" placeholder="30" onChange={(e) => updateSetting('maxChars', Math.abs(Number.parseInt(e.target.value)))} />
                                         </div>
                                     </div>
                                     <div className=" flex items-center space-x-4 rounded-md border p-4">
@@ -798,7 +780,7 @@ export function HomePage() {
                                                 Supports any language
                                             </p>
                                         </div>
-                                        <Switch checked={translate} onCheckedChange={(checked) => setTranslate(checked)} />
+                                        <Switch checked={settings.translate} onCheckedChange={(checked) => updateSetting('translate', checked)} />
                                     </div>
                                 </div>
                             </CardContent>
@@ -809,7 +791,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Transcribing Audio..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Transcribing Audio..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -817,7 +799,7 @@ export function HomePage() {
                             </CardFooter>
                         </Card>
                     )}
-                    {enabledSteps.advancedOptions && (
+                    {/* {settings.enabledSteps.advancedOptions && (
                         <Card>
                             <CardContent className="p-5 grid gap-0.5 pb-3.5">
                                 <div className="flex items-start justify-between mb-4">
@@ -842,7 +824,7 @@ export function HomePage() {
                                             Improve word level timing
                                         </p>
                                     </div>
-                                    <Switch checked={alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
+                                    <Switch checked={settings.alignWords} onCheckedChange={(checked) => setAlignWords(checked)} />
                                 </div>
                             </CardContent>
                             <CardFooter className="pb-5 flex justify-between pr-5">
@@ -852,7 +834,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Finetuning subtitles..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -867,8 +849,8 @@ export function HomePage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    )}
-                    {enabledSteps.customSrt && (
+                    )} */}
+                    {settings.enabledSteps.customSrt && (
                         <Card>
                             <CardContent className="p-5 grid gap-0.5 pb-3.5">
                                 <div className="flex items-start justify-between mb-4">
@@ -882,7 +864,11 @@ export function HomePage() {
                                         </div>
                                     </div>
                                 </div>
-                                <Button onClick={() => importSubtitles()}>
+                                <Button
+                                    variant="outline"
+                                    size="default"
+                                    onClick={() => importSubtitles()}>
+                                    <Upload className="mr-2 h-4 w-4" />
                                     Import Subtitles
                                 </Button>
                             </CardContent>
@@ -893,7 +879,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Finetuning subtitles..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Finetuning subtitles..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -902,7 +888,7 @@ export function HomePage() {
                                     variant="outline"
                                     size="sm"
                                     className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, customSrt: false, exportAudio: true, transcribe: true })}
+                                    onClick={() => updateSetting('enabledSteps', { ...settings.enabledSteps, customSrt: false, exportAudio: true, transcribe: true })}
                                 >
 
                                     Disable
@@ -910,7 +896,7 @@ export function HomePage() {
                             </CardFooter>
                         </Card>
                     )}
-                    {enabledSteps.textFormat && (
+                    {/* {settings.enabledSteps.textFormat && (
                         <Card>
                             <CardContent className="p-5 grid gap-0.5 pb-3.5">
                                 <div className="flex items-start justify-between mb-4">
@@ -927,12 +913,12 @@ export function HomePage() {
                                 <div className="grid gap-4">
                                     <div className="grid gap-2.5">
                                         <Label htmlFor="sensitiveWords">Censored Words</Label>
-                                        <Input value={sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => setSensitiveWords(e.target.value)} />
+                                        <Input value={settings.sensitiveWords} id="sensitiveWords" type="string" placeholder="bomb, gun, kill" onChange={(e) => updateSetting('sensitiveWords', e.target.value)} />
                                     </div>
                                     <ToggleGroup
                                         type="single"
-                                        value={textFormat}
-                                        onValueChange={(value: string) => value && setTextFormat(value)}
+                                        value={settings.textFormat}
+                                        onValueChange={(value: string) => value && updateSetting('textFormat', value)}
                                         className="grid grid-cols-3 gap-3 h-20"
                                     >
                                         <ToggleGroupItem
@@ -964,7 +950,7 @@ export function HomePage() {
                                                 Remove Punctuation
                                             </p>
                                         </div>
-                                        <Switch checked={removePunctuation} onCheckedChange={(checked) => setRemovePunctuation(checked)} />
+                                        <Switch checked={settings.removePunctuation} onCheckedChange={(checked) => updateSetting('removePunctuation', checked)} />
                                     </div>
 
                                 </div>
@@ -976,7 +962,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Formatting Text..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Formatting Text..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -985,15 +971,15 @@ export function HomePage() {
                                     variant="outline"
                                     size="sm"
                                     className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, textFormat: false })}
+                                    onClick={() => enableStep('textFormat', false)}
                                 >
 
                                     Disable
                                 </Button>
                             </CardFooter>
                         </Card>
-                    )}
-                    {enabledSteps.diarize && (
+                    )} */}
+                    {settings.enabledSteps.diarize && (
                         <Card>
                             <CardContent className="p-5 grid gap-5 pb-4">
                                 <div className="flex items-start justify-between mb-0">
@@ -1010,7 +996,7 @@ export function HomePage() {
 
                                 <div className="grid gap-2.5">
                                     <Label htmlFor="numSpeakers">Speaker Detection Mode</Label>
-                                    <Select value={diarizeMode} onValueChange={(value) => setDiarizeMode(value)}>
+                                    <Select value={settings.diarizeMode} onValueChange={(value) => updateSetting('diarizeMode', value)}>
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Choose detection mode" />
                                         </SelectTrigger>
@@ -1020,10 +1006,10 @@ export function HomePage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {diarizeMode !== "auto" && (
+                                {settings.diarizeMode !== "auto" && (
                                     <div className="grid gap-3">
                                         <Label htmlFor="speakerCount">Number of Speakers</Label>
-                                        <Input value={diarizeSpeakerCount} id="speakerCount" type="number" placeholder="Enter number of speakers" onChange={(e) => setDiarizeSpeakerCount(Math.abs(Number.parseInt(e.target.value)))} />
+                                        <Input value={settings.diarizeSpeakerCount} id="speakerCount" type="number" placeholder="Enter number of speakers" onChange={(e) => updateSetting('diarizeSpeakerCount', Math.abs(Number.parseInt(e.target.value)))} />
                                     </div>
                                 )}
                             </CardContent>
@@ -1034,7 +1020,7 @@ export function HomePage() {
                                         <div className="flex items-center gap-2">
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(step)}`} />
                                             <span className="text-sm text-muted-foreground">
-                                                {currentStep === step ? "Diarizing Speakers..." : currentStep < step ? "Pending" : "Complete"}
+                                                {progress.currentStep === step ? "Diarizing Speakers..." : progress.currentStep < step ? "Pending" : "Complete"}
                                             </span>
                                         </div>
                                     );
@@ -1043,7 +1029,7 @@ export function HomePage() {
                                     variant="outline"
                                     size="sm"
                                     className="h-6 text-xs border border-red-500 text-red-500 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-950"
-                                    onClick={() => setEnabledSteps({ ...enabledSteps, diarize: false })}
+                                    onClick={() => enableStep('diarize', false)}
                                 >
                                     Disable
                                 </Button>
@@ -1058,6 +1044,7 @@ export function HomePage() {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-sm w-1/2"
+                        onClick={async () => await refresh()}
                     >
                         <RefreshCw className="size-3.5" />
                         Refresh
@@ -1225,12 +1212,12 @@ export function HomePage() {
                             size="sm"
                             className="gap-1.5 text-sm"
                             onClick={async () => {
-                                setIsLoading(true);
+                                setProgress({ ...progress, isLoading: true });
                                 await checkDiarizeAvailable(true);
-                                setIsLoading(false);
+                                setProgress({ ...progress, isLoading: false });
                             }}
                         >
-                            {isLoading ? (
+                            {progress.isLoading ? (
                                 <>
                                     <Loader2 className="size-4 animate-spin" />
                                     Checking...
@@ -1243,5 +1230,280 @@ export function HomePage() {
                 </DialogContent>
             </Dialog>
         </main >
+    )
+}
+
+const renderToggleGroup = (
+    items: typeof animationTypes | typeof highlightTypes | typeof formatTypes,
+    value: string,
+    onValueChange: (value: string) => void,
+) => (
+    <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(newValue) => {
+            onValueChange(newValue || "none");
+        }}
+        className="flex flex-wrap gap-2.5"
+    >
+        {items.map((m) => (
+            <ToggleGroupItem
+                key={m.value}
+                value={m.value}
+                className="flex items-center justify-center flex-grow basis-[calc(50%-0.5rem)] sm:basis-[calc(33.333%-0.5rem)] md:basis-auto p-6 h-12 hover:text-accent-foreground rounded-md border-2 border-accent data-[state=on]:border-primary"
+                aria-label={m.label}
+            >
+                <m.icon className="size-5 flex-shrink-0 text-foreground" />
+                <span className="text-sm">{m.label}</span>
+            </ToggleGroupItem>
+        ))}
+    </ToggleGroup>
+);
+
+const renderSelect = (
+    items: typeof formatTypes | typeof highlightTypes,
+    value: string,
+    onValueChange: (value: string) => void,
+) => (
+    <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger className="w-full h-12 [&_[data-description]]:hidden">
+            <SelectValue placeholder="Select format" />
+        </SelectTrigger>
+        <SelectContent>
+            {items.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                    <div className="flex items-center gap-4 text-muted-foreground">
+                        <m.icon className="size-5 flex-shrink-0 text-foreground ml-1" />
+                        <div className="grid gap-0.5 text-left">
+                            <p className="font-medium text-foreground">
+                                {m.label}
+                            </p>
+                            <p className="text-xs" data-description>
+                                {m.description}
+                            </p>
+                        </div>
+                    </div>
+                </SelectItem>
+            ))}
+        </SelectContent>
+    </Select>
+);
+
+const animationTypes = [
+    { value: "none", label: "None", description: "No Animation", icon: PencilOff },
+    { value: "pop-in", label: "Pop In", description: "Subtitle will bounce in", icon: ZoomIn },
+    { value: "fade-in", label: "Fade In", description: "Subtitle will fade in gradually", icon: Blend },
+    { value: "slide-in", label: "Slide Up", icon: ArrowUpFromLine, description: "Subtitle will slide in from the bottom" },
+    { value: "typewriter", label: "Typewriter", icon: Keyboard, description: "Subtitle will appear as if being typed" },
+] as const
+
+type AnimationType = (typeof animationTypes)[number]["value"]
+
+function AnimationOptions() {
+    const { settings, updateSetting } = useGlobal();
+    const [animationType, setAnimationType] = useState<AnimationType>(settings.animationType);
+    const [wordLevel, setWordLevel] = useState(false);
+
+    useEffect(() => {
+        updateSetting('animationType', animationType);
+        updateSetting('wordLevel', wordLevel);
+    }, [animationType, wordLevel]);
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="secondary" size="lg">
+                    <Sparkle className="size-5 text-red-500" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()} >
+                <DialogHeader>
+                    <DialogTitle>Animation Options</DialogTitle>
+                    <DialogDescription>
+                        Choose an animation for your subtitles.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4">
+                    <div className="grid gap-3">
+                        <Select value={wordLevel.toString()} onValueChange={(value) => setWordLevel(value === "true")}>
+                            <SelectTrigger id="wordLevel" className="[&_[data-description]]:hidden h-11">
+                                <SelectValue placeholder="Select animation type..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="false">
+                                    <div className="flex items-center gap-3 text-muted-foreground">
+                                        <Text className="size-5 flex-shrink-0 text-foreground" />
+                                        <div className="grid gap-0.5 text-left">
+                                            <p className="font-medium text-foreground">Segment Level</p>
+                                            <p className="text-xs" data-description>Entire subtitle will be animated at once</p>
+                                        </div>
+                                    </div>
+                                </SelectItem>
+                                <SelectItem value="true">
+                                    <div className="flex items-center gap-3 text-muted-foreground">
+                                        <WholeWord className="size-5 flex-shrink-0 text-foreground" />
+                                        <div className="grid gap-0.5 text-left">
+                                            <p className="font-medium text-foreground">Word Level</p>
+                                            <p className="text-xs" data-description>Each word will appear individually when spoken</p>
+                                        </div>
+                                    </div>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-3">
+                        {renderToggleGroup(animationTypes, animationType, setAnimationType as (value: string) => void)}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+const formatTypes = [
+    { value: "none", label: "No Formatting", description: "Keep the subtitle text unchanged.", icon: PencilOff },
+    { value: "lowercase", label: "Format to Lowercase", description: "Convert all subtitle text to lowercase.", icon: AArrowDown },
+    { value: "uppercase", label: "Format to Uppercase", description: "Convert all subtitle text to uppercase.", icon: AArrowUp },
+] as const
+
+type FormatType = (typeof formatTypes)[number]["value"]
+
+function FormatOptions() {
+    const { settings, updateSetting } = useGlobal();
+    const [textFormat, setTextFormat] = useState<FormatType>(settings.textFormat);
+
+    useEffect(() => {
+        updateSetting('textFormat', textFormat);
+    }, [textFormat]);
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="secondary" size="lg"><Type className="size-5 text-blue-500" /></Button>
+            </DialogTrigger>
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Text Formatting Options</DialogTitle>
+                    <DialogDescription>
+                        Customize the appearance and format of your subtitles.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3">
+                    <div className="grid gap-3">
+                        {renderSelect(formatTypes, textFormat, setTextFormat as (value: string) => void)}
+                    </div>
+                    <div className="flex items-center space-x-4 rounded-md border p-4">
+                        <Signature className="w-5" />
+                        <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium leading-none">
+                                Remove Punctuation
+                            </p>
+                        </div>
+                        <Switch checked={settings.removePunctuation} onCheckedChange={(checked) => updateSetting('removePunctuation', checked)} />
+                    </div>
+                    <Card>
+                        <CardHeader className="py-4">
+                            <CardTitle className="text-md">Censored Words</CardTitle>
+                            <CardDescription>Hide specific words when they appear in your subtitles.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-2 px-4">
+                            <ScrollArea className="max-h-[150px]">
+                                {settings.sensitiveWords.map((word: string, index: number) => (
+                                    <div key={index} className="flex items-center m-1 mb-2 mr-3">
+                                        <Input
+                                            value={word}
+                                            type="string"
+                                            placeholder="Enter word"
+                                            onChange={(e) => {
+                                                const newWords = [...settings.sensitiveWords];
+                                                newWords[index] = e.target.value;
+                                                updateSetting('sensitiveWords', newWords);
+                                            }}
+                                        />
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="ml-2"
+                                            onClick={() => {
+                                                const newWords = settings.sensitiveWords.filter((_, i) => i !== index);
+                                                updateSetting('sensitiveWords', newWords);
+                                            }}
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </ScrollArea>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="mx-1"
+                                onClick={() => updateSetting('sensitiveWords', [...settings.sensitiveWords, ""])}
+                            >
+                                Add Word
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+const highlightTypes = [
+    { value: "none", label: "None", description: "No highlighting.", icon: PencilOff },
+    { value: "outline", label: "Outline", description: "Adds a word outline.", icon: TypeOutline },
+    { value: "fill", label: "Fill", description: "Fills words with color.", icon: PaintRoller },
+    { value: "bubble", label: "Bubble", description: "Adds a rounded box.", icon: MessageCircle },
+] as const
+type HighlightType = (typeof highlightTypes)[number]["value"]
+
+function HighlightOptions() {
+    const { settings, updateSetting } = useGlobal();
+    const [highlightType, setHighlightType] = useState<HighlightType>(settings.highlightType);
+    const [fontColor, setFontColor] = useState("#000000");
+
+    useEffect(() => {
+        updateSetting('highlightType', highlightType);
+    }, [highlightType]);
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="secondary" size="lg"><Highlighter className="size-5 text-yellow-500" /></Button>
+            </DialogTrigger>
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Highlight Options</DialogTitle>
+                    <DialogDescription>
+                        Emphasize the currently spoken word with different highlight styles.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-5">
+                    <div className="grid gap-3">
+                        {renderSelect(highlightTypes, highlightType, setHighlightType as (value: string) => void)}
+                    </div>
+                    <div className="grid gap-3">
+                        <Card className="shadow-none">
+                            <CardContent className="px-3 py-2">
+                                <div className="flex items-center gap-3">
+                                    <Highlighter className="h-5 w-5 ml-2" />
+                                    <Label htmlFor="fontColor" className="font-medium">Highlight Colour</Label>
+                                    <Input
+                                        id="fontColor"
+                                        type="color"
+                                        value={fontColor}
+                                        onChange={(e) => setFontColor(e.target.value)}
+                                        className="w-14 h-12 transition-all hover:bg-muted rounded-md ml-auto cursor-pointer py-1 px-2"
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     )
 }

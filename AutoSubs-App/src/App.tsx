@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Search, LifeBuoy, HeartHandshake, Github, Speech, ChevronRight, House, Download, WandSparkles, Sparkles } from "lucide-react";
+import { Search, CircleHelp, HeartHandshake, Github, Speech, ChevronRight, House, Download, WandSparkles, Sparkles } from "lucide-react";
 import { Paintbrush, SwatchBook } from "lucide-react";
 import {
   Dialog,
@@ -28,7 +28,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useGlobal } from "@/GlobalContext";
+import { useGlobal } from "@/contexts/GlobalContext";
 import { platform } from '@tauri-apps/plugin-os';
 
 const pathNames = {
@@ -364,23 +364,6 @@ function NavigationAside() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/animate">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-lg ${currentPath === "/animate" ? "bg-muted" : ""}`}
-                    aria-label="Animate"
-                  >
-                    <Paintbrush className="size-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Design Subtitles
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
                 <Link to="/diarize">
                   <Button
                     variant="ghost"
@@ -405,7 +388,7 @@ function NavigationAside() {
                     className={`rounded-lg ${currentPath === "/tools" ? "bg-muted" : ""}`}
                     aria-label="Tools"
                   >
-                    <Sparkles className="size-5" />
+                    <SwatchBook className="size-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
@@ -462,7 +445,7 @@ function NavigationAside() {
                   aria-label="Help"
                   onClick={() => setOpen(true)}
                 >
-                  <LifeBuoy className="size-5" />
+                  <CircleHelp className="size-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
