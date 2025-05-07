@@ -2356,6 +2356,7 @@ local function classMatchGenerator(class, plain)
 				table.insert(ranges, {58, 64})
 				table.insert(ranges, {91, 96})
 				table.insert(ranges, {123, 126})
+				table.insert(codes, 161)
 			elseif c == 's' then -- %s: represents all space characters.
 				table.insert(ranges, {9, 13})
 				table.insert(codes, 32)
