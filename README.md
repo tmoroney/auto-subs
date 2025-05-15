@@ -27,7 +27,7 @@ Generate Subtitles & Label Speakers |  Advanced Settings
 - Open the installer and follow the on-screen instructions.
 
 ### 2. Launch AutoSubs in DaVinci Resolve
-- Open **DaVinci Resolve**.
+- Open **DaVinci Resolve**. *(If you're using MacOS, make sure you aren't using the App Store version of DaVinci Resolve.)*
 - In the top menu, go to **Workspace → Scripts → AutoSubs V2**.
 
 You’re all set! 🚀 AutoSubs V2 is now ready to generate subtitles effortlessly.
