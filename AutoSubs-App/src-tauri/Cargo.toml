@@ -34,3 +34,7 @@ reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-os = "2"
 
+# Add whisper-rs for speech-to-text
+whisper-rs = "0.14.2"
+
+hound = "3.5"

@@ -98,18 +98,18 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Initialization useEffect
   useEffect(() => {
     setTranscriptsFolder();
-    if (!hasInitialized.current) {
-      startTranscriptionServer({
-        setProgress: (value: number) => setProgress(prev => ({ ...prev, value: value })),
-        setIsLoading: (value: boolean) => setProgress(prev => ({ ...prev, isLoading: value })),
-        setCurrentStep: (value: number) => setProgress(prev => ({ ...prev, currentStep: value })),
-        setMessage: (message: string) => setProgress(prev => ({ ...prev, message: message })),
-        setSubtitles: (update: (prev: any[]) => any[]) => setSubtitles(prev => update(prev)),
-        enabledSteps: settings.enabledSteps,
-        serverLoadingRef: { current: false }
-      });
-      hasInitialized.current = true;
-    }
+    // if (!hasInitialized.current) {
+    //   startTranscriptionServer({
+    //     setProgress: (value: number) => setProgress(prev => ({ ...prev, value: value })),
+    //     setIsLoading: (value: boolean) => setProgress(prev => ({ ...prev, isLoading: value })),
+    //     setCurrentStep: (value: number) => setProgress(prev => ({ ...prev, currentStep: value })),
+    //     setMessage: (message: string) => setProgress(prev => ({ ...prev, message: message })),
+    //     setSubtitles: (update: (prev: any[]) => any[]) => setSubtitles(prev => update(prev)),
+    //     enabledSteps: settings.enabledSteps,
+    //     serverLoadingRef: { current: false }
+    //   });
+    //   hasInitialized.current = true;
+    // }
     initializeStore();
     setTranscriptsFolder();
     getTimelineInfo().then(info => info && setTimelineInfo(info));
@@ -326,7 +326,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
       setProgress(prev => ({ ...prev, currentStep: 2 }));
       let timelineId = await getFullTranscriptPath(timelineInfo.timelineId, storageDir);
-      filePath = await fetchTranscription(audioInfo, timelineId, settings);
+      filePath = await fetchTranscription(settings);
     }
 
     // TODO: skip transcription if custom srt is enabled
@@ -334,7 +334,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     setProgress(prev => ({ ...prev, currentStep: 7, progress: 90, message: "Populating timeline..." }));
     await populateSubtitles(timelineInfo.timelineId);
-    await addSubtitles(filePath, timelineInfo.timelineId, settings.outputTrack);
+    await addSubtitles("filepath", timelineInfo.timelineId, settings.outputTrack);
 
     setProgress(prev => ({ ...prev, progress: 100, isLoading: false }));
   }

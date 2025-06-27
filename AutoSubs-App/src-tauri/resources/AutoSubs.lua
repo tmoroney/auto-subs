@@ -453,7 +453,7 @@ function GetTemplateItem(folder, templateName)
 end
 
 -- Add subtitles to the timeline using the specified template
-function AddSubtitles(filePath, trackIndex, templateName, textFormat, removePunctuation)
+function AddSubtitles(filePath, trackIndex, templateName)
     resolve:OpenPage("edit")
     local data = read_json_file(filePath)
     if data == nil then
@@ -703,8 +703,7 @@ while not quitServer do
                         body = json.encode(audioInfo)
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
-                        AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.textFormat,
-                            data.removePunctuation)
+                        AddSubtitles(data.filePath, data.trackIndex, data.templateName)
                         body = json.encode({
                             message = "Job completed"
                         })

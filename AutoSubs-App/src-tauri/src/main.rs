@@ -5,6 +5,7 @@ use reqwest::Client;
 use serde_json::json;
 use std::thread;
 use tauri::RunEvent;
+use tauri::command;
 
 // Import plugins
 use tauri_plugin_dialog::init as dialog_plugin;
@@ -13,6 +14,17 @@ use tauri_plugin_http::init as http_plugin;
 use tauri_plugin_process::init as process_plugin;
 use tauri_plugin_shell::init as shell_plugin;
 use tauri_plugin_store::Builder as StoreBuilder;
+
+mod transcribe;
+
+#[command]
+fn transcribe_audio(
+    model_path: String,
+    wav_path: String,
+    language: String,
+) -> Result<Vec<(i32, i32, String)>, String> {
+    transcribe::transcribe_audio(model_path, wav_path, language)
+}
 
 fn main() {
     tauri::Builder::default()
@@ -28,6 +40,7 @@ fn main() {
             // Any additional setup logic if needed
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![transcribe_audio])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
         .run(|_app_handle, event| {
