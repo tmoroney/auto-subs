@@ -1,182 +1,64 @@
 import * as React from "react"
+import { Download } from "lucide-react"
 
-import { SearchForm } from "@/components/search-form"
-import { VersionSwitcher } from "@/components/version-switcher"
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
+  SidebarInput,
 } from "@/components/ui/sidebar"
-
-// This is sample data.
-const data = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
-  navMain: [
-    {
-      title: "Getting Started",
-      url: "#",
-      items: [
-        {
-          title: "Installation",
-          url: "#",
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Building Your Application",
-      url: "#",
-      items: [
-        {
-          title: "Routing",
-          url: "#",
-        },
-        {
-          title: "Data Fetching",
-          url: "#",
-          isActive: true,
-        },
-        {
-          title: "Rendering",
-          url: "#",
-        },
-        {
-          title: "Caching",
-          url: "#",
-        },
-        {
-          title: "Styling",
-          url: "#",
-        },
-        {
-          title: "Optimizing",
-          url: "#",
-        },
-        {
-          title: "Configuring",
-          url: "#",
-        },
-        {
-          title: "Testing",
-          url: "#",
-        },
-        {
-          title: "Authentication",
-          url: "#",
-        },
-        {
-          title: "Deploying",
-          url: "#",
-        },
-        {
-          title: "Upgrading",
-          url: "#",
-        },
-        {
-          title: "Examples",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "API Reference",
-      url: "#",
-      items: [
-        {
-          title: "Components",
-          url: "#",
-        },
-        {
-          title: "File Conventions",
-          url: "#",
-        },
-        {
-          title: "Functions",
-          url: "#",
-        },
-        {
-          title: "next.config.js Options",
-          url: "#",
-        },
-        {
-          title: "CLI",
-          url: "#",
-        },
-        {
-          title: "Edge Runtime",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Architecture",
-      url: "#",
-      items: [
-        {
-          title: "Accessibility",
-          url: "#",
-        },
-        {
-          title: "Fast Refresh",
-          url: "#",
-        },
-        {
-          title: "Next.js Compiler",
-          url: "#",
-        },
-        {
-          title: "Supported Browsers",
-          url: "#",
-        },
-        {
-          title: "Turbopack",
-          url: "#",
-        },
-      ],
-    },
-  ],
-}
+import { CaptionList } from "@/components/caption-list"
+import { captionData, filterCaptions, exportCaptions } from "@/data/captions"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [captions] = React.useState(captionData)
+  const [searchQuery, setSearchQuery] = React.useState("")
+
+  const filteredCaptions = React.useMemo(
+    () => filterCaptions(captions, searchQuery),
+    [captions, searchQuery]
+  )
+
+  const handleEditCaption = (id: number) => {
+    console.log("Edit caption:", id)
+    // Add edit functionality here
+  }
+
   return (
-    <Sidebar {...props}>
-      <SidebarHeader>
-        <VersionSwitcher
-          versions={data.versions}
-          defaultVersion={data.versions[0]}
+    <Sidebar side="right" className="border-l" {...props}>
+      <SidebarHeader className="gap-3.5 border-b p-4">
+        <div className="flex w-full items-center justify-between">
+          <div className="text-base font-medium text-foreground">Captions</div>
+          <Button 
+            onClick={() => exportCaptions(captions)} 
+            size="sm" 
+            variant="outline" 
+            className="h-8 gap-2 bg-transparent"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+        </div>
+        <SidebarInput
+          placeholder="Search captions..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <SearchForm />
       </SidebarHeader>
       <SidebarContent>
-        {/* We create a SidebarGroup for each parent. */}
-        {data.navMain.map((item) => (
-          <SidebarGroup key={item.title}>
-            <SidebarGroupLabel>{item.title}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {item.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={item.isActive}>
-                      <a href={item.url}>{item.title}</a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <SidebarGroup className="px-0">
+          <SidebarGroupContent>
+            <CaptionList 
+              captions={filteredCaptions}
+              onEditCaption={handleEditCaption}
+              itemClassName="hover:bg-sidebar-accent"
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarRail />
     </Sidebar>
   )
 }
