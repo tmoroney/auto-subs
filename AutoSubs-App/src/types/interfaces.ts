@@ -29,6 +29,12 @@ export interface Subtitle {
     end: string;
     text: string;
     speaker: string;
+    words?: Array<{
+        word: string;
+        start: number;
+        end: number;
+        probability?: number;
+    }>;
 }
 
 export interface SubtitleListProps {

@@ -27,6 +27,7 @@ interface GlobalContextType {
   error: ErrorMsg;
   audioPath: string;
   progress: Progress;
+  timelineId: string | null;
   updateSetting: (key: keyof Settings, value: any) => void
   enableStep: (step: keyof EnabeledSteps, state: boolean) => void;
   setError: (error: ErrorMsg) => void;
@@ -92,6 +93,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
   const [audioPath, setAudioPath] = useState("");
   const [markIn, setMarkIn] = useState(0);
+  const [timelineId, setTimelineId] = useState<string | null>(null);
   const [markOut, setMarkOut] = useState(0);
   const hasInitialized = useRef(false);
 
@@ -112,7 +114,64 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     // }
     initializeStore();
     setTranscriptsFolder();
-    getTimelineInfo().then(info => info && setTimelineInfo(info));
+    
+    // Initialize timeline info and load subtitles
+    async function initializeTimeline() {
+      try {
+        console.log('Fetching timeline info...');
+        const info = await getTimelineInfo().catch(() => {
+          console.log('Backend is offline, using example captions');
+          return null;
+        });
+
+        if (info && info.timelineId) {
+          console.log('Timeline info received:', info);
+          setTimelineInfo(info);
+          console.log('Populating subtitles for timeline:', info.timelineId);
+          await populateSubtitles(info.timelineId);
+        } else {
+          // Load example captions when backend is offline
+          console.log('Loading example captions...');
+          try {
+            const response = await fetch('/example-captions.json');
+            if (!response.ok) throw new Error('Failed to load example captions');
+            
+            const exampleCaptions = await response.json();
+            console.log('Example captions loaded:', exampleCaptions);
+            
+            // Transform example captions to match Subtitle type
+            const subtitles = exampleCaptions.map((caption: any) => {
+              const subtitle: any = {
+                id: caption.id.toString(),
+                start: caption.start,
+                end: caption.end,
+                text: caption.text.trim(),
+                words: caption.words || []
+              };
+              // Only add speaker if speaker_id exists in the original data
+              if (caption.speaker_id !== undefined) {
+                subtitle.speaker = `Speaker ${caption.speaker_id}`;
+              }
+              return subtitle;
+            });
+            
+            setSubtitles(subtitles);
+            console.log('Example subtitles set:', subtitles);
+          } catch (error) {
+            console.error('Error loading example captions:', error);
+            setError({
+              title: 'Backend Offline',
+              desc: 'Could not connect to the backend and failed to load example captions.'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing timeline:', error);
+      }
+    }
+    
+    initializeTimeline();
+    
     getCurrentWindow().once("tauri://close-requested", async () => {
       await stopTranscriptionServer();
       closeResolveLink();
@@ -176,19 +235,45 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }));
   };
 
-  async function populateSubtitles(timelineId: string) {
-    console.log("Populating subtitles...", timelineId);
-    let transcript = await readTranscript(timelineId, storageDir);
-    if (transcript) {
-      setMarkIn(transcript.mark_in)
-      setSubtitles(transcript.segments);
-      setSpeakers(transcript.speakers);
-      setTopSpeaker(transcript.top_speaker);
+  // Load subtitles when timelineId changes
+  useEffect(() => {
+    async function loadSubtitles() {
+      if (timelineId) {
+        console.log("Loading subtitles for timeline:", timelineId);
+        const transcript = await readTranscript(timelineId, storageDir);
+        if (transcript) {
+          console.log("Transcript loaded:", transcript);
+          setMarkIn(transcript.mark_in);
+          setSubtitles(transcript.segments || []);
+          setSpeakers(transcript.speakers || []);
+          setTopSpeaker(transcript.top_speaker || { name: '', count: 0 });
+          console.log("Subtitles set:", transcript.segments);
+        } else {
+          console.warn("No transcript found for timeline:", timelineId);
+          setSubtitles([]);
+        }
+      } else {
+        console.log("No timelineId, clearing subtitles");
+        setSubtitles([]);
+      }
     }
+    
+    loadSubtitles();
+  }, [timelineId]);
+
+  async function populateSubtitles(newTimelineId: string) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Setting timelineId to:", newTimelineId);
+    }
+    setTimelineId(newTimelineId);
   }
 
   async function exportSubtitles() {
     try {
+      if (!subtitles || subtitles.length === 0) {
+        throw new Error('No subtitles available to export');
+      }
+
       const filePath = await save({
         defaultPath: 'subtitles.srt',
         filters: [{ name: 'SRT Files', extensions: ['srt'] }],
@@ -199,9 +284,31 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         return;
       }
 
+      console.log('Generating SRT data from subtitles (first 3 items):', subtitles.slice(0, 3));
+      console.log('Subtitles array length:', subtitles.length);
+      
+      // Log the structure of the first subtitle if it exists
+      if (subtitles.length > 0) {
+        console.log('First subtitle structure:', {
+          keys: Object.keys(subtitles[0]),
+          values: Object.entries(subtitles[0]).map(([key, value]) => ({
+            key,
+            type: typeof value,
+            value: value
+          }))
+        });
+      }
+      
       let srtData = generateSrt(subtitles);
+      console.log('Generated SRT data (first 100 chars):', srtData.substring(0, 100));
+      
+      if (!srtData || srtData.trim() === '') {
+        console.error('Generated SRT data is empty');
+        throw new Error('Generated SRT data is empty');
+      }
+      
       await writeTextFile(filePath, srtData);
-      console.log('File saved to', filePath);
+      console.log('File saved successfully to', filePath);
     } catch (error) {
       console.error('Failed to save file', error);
     }
@@ -309,7 +416,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     setProgress(prev => ({ ...prev, isLoading: true, progress: 5 }));
     setSubtitles([]);
 
-    let audioInfo: AudioInfo = {
+    // Initialize audio info with timeline and path
+    const audioInfo: AudioInfo = {
       timeline: timelineInfo.timelineId,
       path: audioPath,
       markIn: markIn,
@@ -318,15 +426,17 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     if (settings.enabledSteps.exportAudio && !useCachedAudio && !settings.enabledSteps.customSrt) {
       setProgress(prev => ({ ...prev, currentStep: 1 }));
-      audioInfo = await exportAudio(settings.inputTrack);
+      // Update audio info with exported audio details
+      Object.assign(audioInfo, await exportAudio(settings.inputTrack));
     }
 
     setProgress(prev => ({ ...prev, progress: 20 }));
-    let filePath;
+    
     if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
       setProgress(prev => ({ ...prev, currentStep: 2 }));
-      let timelineId = await getFullTranscriptPath(timelineInfo.timelineId, storageDir);
-      filePath = await fetchTranscription(settings);
+      // Get the full transcript path and fetch transcription
+      await getFullTranscriptPath(timelineInfo.timelineId, storageDir);
+      await fetchTranscription(settings);
     }
 
     // TODO: skip transcription if custom srt is enabled
@@ -369,6 +479,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       error,
       audioPath,
       progress,
+      timelineId,
       updateSetting,
       enableStep,
       setError,

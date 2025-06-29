@@ -1,9 +1,9 @@
 export interface Caption {
-  id: number
-  speaker: string
-  timestamp: string
-  text: string
-  color: string
+  id: number;
+  speaker?: string;
+  timestamp: string;
+  text: string;
+  color?: string;
 }
 
 export const captionData: Caption[] = [
@@ -114,22 +114,24 @@ export const captionData: Caption[] = [
   },
 ]
 
-export const filterCaptions = (captions: Caption[], searchQuery: string): Caption[] => {
+export const searchCaptions = (captions: Caption[], searchQuery: string): Caption[] => {
   if (!searchQuery.trim()) return captions
-
+  const query = searchQuery.toLowerCase()
   return captions.filter(
     (caption) =>
-      caption.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      caption.speaker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      caption.text.toLowerCase().includes(query) ||
+      (caption.speaker && caption.speaker.toLowerCase().includes(query)) ||
       caption.timestamp.includes(searchQuery)
   )
 }
 
 export const exportCaptions = (captions: Caption[]) => {
   const exportText = captions
-    .map((caption) => `${caption.timestamp} - ${caption.speaker}: ${caption.text}`)
-    .join("\n\n")
-
+    .map((caption) => {
+      const speakerText = caption.speaker ? `${caption.speaker}: ` : ''
+      return `${caption.timestamp} - ${speakerText}${caption.text}`
+    })
+    .join('\n\n')
   const blob = new Blob([exportText], { type: "text/plain" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")

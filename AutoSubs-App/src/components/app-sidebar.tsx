@@ -1,30 +1,49 @@
 import * as React from "react"
 import { Download } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInput,
-} from "@/components/ui/sidebar"
-import { CaptionList } from "@/components/caption-list"
-import { captionData, filterCaptions, exportCaptions } from "@/data/captions"
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarInput } from "@/components/ui/sidebar"
+import { CaptionList, Caption } from "@/components/caption-list"
+import { useGlobal } from "@/contexts/GlobalContext"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [captions] = React.useState(captionData)
   const [searchQuery, setSearchQuery] = React.useState("")
+  const { exportSubtitles, subtitles } = useGlobal()
+  
+  // Helper function to format time in HH:MM:SS
+  const formatTime = React.useCallback((seconds: number | string): string => {
+    const date = new Date(0);
+    date.setSeconds(Number(seconds));
+    return date.toISOString().substr(11, 8);
+  }, []);
+  
+  // Convert GlobalContext subtitles to Caption format if needed
+  const captions = React.useMemo(() => {
+    if (!subtitles || subtitles.length === 0) return [];
+    return subtitles.map((sub, index) => ({
+      id: index,
+      speaker: sub.speaker || `Speaker ${index + 1}`,
+      timestamp: formatTime(sub.start),
+      text: sub.text,
+      color: `hsl(${(index * 137.5) % 360}, 70%, 60%)`
+    }));
+  }, [subtitles, formatTime])
 
-  const filteredCaptions = React.useMemo(
-    () => filterCaptions(captions, searchQuery),
-    [captions, searchQuery]
-  )
+  const handleExport = async () => {
+    try {
+      await exportSubtitles();
+    } catch (error) {
+      // Error is handled by the exportSubtitles function
+    }
+  }
 
-  const handleEditCaption = (id: number) => {
-    console.log("Edit caption:", id)
-    // Add edit functionality here
+  const handleEditCaption = (captionOrId: Caption | number) => {
+    const id = typeof captionOrId === 'number' ? captionOrId : captionOrId.id;
+    const caption = typeof captionOrId === 'number' 
+      ? captions.find(c => c.id === captionOrId)
+      : captionOrId;
+      
+    console.log("Edit caption:", id, "Full caption:", caption);
+    // Add edit functionality here using the full caption if available
   }
 
   return (
@@ -32,14 +51,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="gap-3.5 border-b p-4">
         <div className="flex w-full items-center justify-between">
           <div className="text-base font-medium text-foreground">Captions</div>
-          <Button 
-            onClick={() => exportCaptions(captions)} 
-            size="sm" 
-            variant="outline" 
+          <Button
+            onClick={handleExport}
+            size="sm"
+            variant="outline"
             className="h-8 gap-2 bg-transparent"
+            disabled={!subtitles || subtitles.length === 0}
           >
             <Download className="h-4 w-4" />
-            Export
+            Export SRT
           </Button>
         </div>
         <SidebarInput
@@ -51,11 +71,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="px-0">
           <SidebarGroupContent>
-            <CaptionList 
-              captions={filteredCaptions}
-              onEditCaption={handleEditCaption}
-              itemClassName="hover:bg-sidebar-accent"
-            />
+            <div className="h-full overflow-y-auto">
+              <CaptionList 
+                captions={captions}
+                onEditCaption={handleEditCaption}
+                itemClassName="hover:bg-sidebar-accent"
+              />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

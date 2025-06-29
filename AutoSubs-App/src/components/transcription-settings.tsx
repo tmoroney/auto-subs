@@ -24,6 +24,7 @@ import {
     AArrowUp,
     ShieldX,
     ChevronRight,
+    Captions,
 } from "lucide-react"
 
 import {
@@ -86,6 +87,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useGlobal } from "@/contexts/GlobalContext"
 
 const tutorialSections = [
     {
@@ -286,6 +288,9 @@ interface TranscriptionSettingsProps {
 }
 
 export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSettingsProps) => {
+    const { timelineInfo } = useGlobal()
+    const [openTemplates, setOpenTemplates] = React.useState(false)
+    const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
     const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
     const [selectedModel, setSelectedModel] = React.useState(models[1])
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
@@ -411,7 +416,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
 
     return (
         <>
-            <div className="flex flex-col sm:h-[calc(100vh-73px)] h-[calc(100vh-60px)] bg-background overflow-y-auto">
+            <div className="flex flex-col h-[calc(100vh-60px)] bg-background overflow-y-auto">
                 {/* Main Content */}
                 <div className="flex-1 p-4 space-y-6">
                     {/* Update Alert */}
@@ -438,7 +443,14 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                                 {isStandaloneMode ? "File Source" : "DaVinci Resolve"}
                             </h3>
-                            {!isStandaloneMode && <div className="w-2 h-2 bg-green-500 rounded-full" title="Connected" />}
+                            {!isStandaloneMode && (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" title="Connected" />
+                                    <span className="text-xs font-medium text-muted-foreground truncate max-w-[120px]" title={timelineInfo?.name || 'Current Timeline'}>
+                                        {timelineInfo?.name || 'Current Timeline'}
+                                    </span>
+                                </div>
+                            )}
                             <div className="flex-1 h-px bg-border ml-4"></div>
                         </div>
                         <div className="space-y-4">
@@ -470,7 +482,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <div className="flex items-center justify-between">
                                         <Label className="text-sm">Audio Track</Label>
                                         <Select defaultValue="1">
-                                            <SelectTrigger className="w-48">
+                                            <SelectTrigger className="w-[50%]">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -482,7 +494,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <div className="flex items-center justify-between">
                                         <Label className="text-sm">Caption Track</Label>
                                         <Select defaultValue="1">
-                                            <SelectTrigger className="w-48">
+                                            <SelectTrigger className="w-[50%]">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -491,15 +503,57 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                         </Select>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-sm">Caption Style</Label>
-                                        <Select defaultValue="default">
-                                            <SelectTrigger className="w-48">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="default">Default Text+</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label className="text-sm">Text+ Template</Label>
+                                        <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openTemplates}
+                                                    className="w-[50%] justify-between"
+                                                >
+                                                    {selectedTemplate?.label || "Select template..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-0 w-full">
+                                                <Command>
+                                                    <CommandInput placeholder="Search templates..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No templates found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {[
+                                                                { value: "default", label: "Default Text+" },
+                                                                { value: "minimal", label: "Minimal" },
+                                                                { value: "modern", label: "Modern" },
+                                                                { value: "classic", label: "Classic" },
+                                                                { value: "bold", label: "Bold" },
+                                                                { value: "elegant", label: "Elegant" },
+                                                                { value: "minimal-outline", label: "Minimal Outline" },
+                                                                { value: "modern-fill", label: "Modern Fill" },
+                                                            ].map((template) => (
+                                                                <CommandItem
+                                                                    key={template.value}
+                                                                    value={template.value}
+                                                                    onSelect={() => {
+                                                                        setSelectedTemplate(template)
+                                                                        setOpenTemplates(false)
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    {template.label}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </div>
                             )}
@@ -685,10 +739,10 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="p-0 w-[200px]">
+                                            <PopoverContent className="p-0 w-full">
                                                 <Command>
                                                     <CommandInput placeholder="Search languages..." />
-                                                    <CommandList className="max-h-[220px]">
+                                                    <CommandList>
                                                         <CommandEmpty>No language found.</CommandEmpty>
                                                         <CommandGroup>
                                                             {languages
@@ -1068,7 +1122,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                     {/* Mobile Caption Viewer Button */}
                     {isMobile && (
                         <Button onClick={() => setShowMobileCaptions(true)} variant="outline" className="w-full" size="lg">
-                            <MessageSquare className="h-4 w-4 mr-2" />
+                            <Captions className="h-5 w-5 mr-2" />
                             View Captions
                         </Button>
                     )}
