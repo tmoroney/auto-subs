@@ -6,8 +6,8 @@ export function CustomSidebarTrigger() {
   const { open, toggleSidebar } = useSidebar()
 
   return (
-    <Button onClick={toggleSidebar} variant="ghost" size="icon">
-      {open ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+    <Button onClick={toggleSidebar} variant="ghost" size="icon" className="h-10 w-10">
+      {open ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
     </Button>
   )
 }

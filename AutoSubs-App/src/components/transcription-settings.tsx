@@ -23,6 +23,7 @@ import {
     ALargeSmall,
     AArrowUp,
     ShieldX,
+    ChevronRight,
 } from "lucide-react"
 
 import {
@@ -80,8 +81,48 @@ const CarouselNext = (props: { onClick: () => void; className?: string }) => (
 );
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
-import { PopoverTrigger } from "@radix-ui/react-popover"
-import { Popover, PopoverContent } from "./ui/popover"
+import { useState } from "react"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const tutorialSections = [
+    {
+      title: "🚀 Quick Start",
+      items: [
+        "Select output track for subtitles",
+        "Pick a template (great default included)",
+        "Choose language and click Generate",
+        "Subtitles will appear on your editing timeline in Resolve"
+      ]
+    },
+    {
+      title: "🎙️ Models",
+      items: [
+        "Choose from multiple transcription models",
+        "Larger models are more accurate but slower and may require a lot of memory",
+        "Smaller models are faster and more lightweight but may be less accurate"
+      ]
+    },
+    {
+      title: "👥 Speakers",
+      items: [
+        "Auto-detects multiple speakers",
+        "Color-coded speaker labels",
+        "Customize labels & colors",
+        "Ideal for interviews & podcasts"
+      ]
+    },
+    {
+      title: "💡 Tips",
+      items: [
+        "Clear audio = Better results",
+        "Edit your captions in the preview window if words are incorrect",
+        "Modify speaker colors to make it easier to identify speakers in the timeline"
+      ]
+    }
+  ];
 
 const models = [
     {
@@ -136,11 +177,116 @@ const models = [
     },
 ]
 
+const languages = [
+    { label: "Auto (default)", value: "auto" },
+    { label: "English", value: "en" },
+    { label: "Chinese", value: "zh" },
+    { label: "German", value: "de" },
+    { label: "Spanish", value: "es" },
+    { label: "Russian", value: "ru" },
+    { label: "Korean", value: "ko" },
+    { label: "French", value: "fr" },
+    { label: "Japanese", value: "ja" },
+    { label: "Portuguese", value: "pt" },
+    { label: "Turkish", value: "tr" },
+    { label: "Polish", value: "pl" },
+    { label: "Catalan", value: "ca" },
+    { label: "Dutch", value: "nl" },
+    { label: "Arabic", value: "ar" },
+    { label: "Swedish", value: "sv" },
+    { label: "Italian", value: "it" },
+    { label: "Indonesian", value: "id" },
+    { label: "Hindi", value: "hi" },
+    { label: "Finnish", value: "fi" },
+    { label: "Vietnamese", value: "vi" },
+    { label: "Hebrew", value: "he" },
+    { label: "Ukrainian", value: "uk" },
+    { label: "Greek", value: "el" },
+    { label: "Malay", value: "ms" },
+    { label: "Czech", value: "cs" },
+    { label: "Romanian", value: "ro" },
+    { label: "Danish", value: "da" },
+    { label: "Hungarian", value: "hu" },
+    { label: "Tamil", value: "ta" },
+    { label: "Norwegian", value: "no" },
+    { label: "Thai", value: "th" },
+    { label: "Urdu", value: "ur" },
+    { label: "Croatian", value: "hr" },
+    { label: "Bulgarian", value: "bg" },
+    { label: "Lithuanian", value: "lt" },
+    { label: "Latin", value: "la" },
+    { label: "Maori", value: "mi" },
+    { label: "Malayalam", value: "ml" },
+    { label: "Welsh", value: "cy" },
+    { label: "Slovak", value: "sk" },
+    { label: "Telugu", value: "te" },
+    { label: "Persian", value: "fa" },
+    { label: "Latvian", value: "lv" },
+    { label: "Bengali", value: "bn" },
+    { label: "Serbian", value: "sr" },
+    { label: "Azerbaijani", value: "az" },
+    { label: "Slovenian", value: "sl" },
+    { label: "Kannada", value: "kn" },
+    { label: "Estonian", value: "et" },
+    { label: "Macedonian", value: "mk" },
+    { label: "Breton", value: "br" },
+    { label: "Basque", value: "eu" },
+    { label: "Icelandic", value: "is" },
+    { label: "Armenian", value: "hy" },
+    { label: "Nepali", value: "ne" },
+    { label: "Mongolian", value: "mn" },
+    { label: "Bosnian", value: "bs" },
+    { label: "Kazakh", value: "kk" },
+    { label: "Albanian", value: "sq" },
+    { label: "Swahili", value: "sw" },
+    { label: "Galician", value: "gl" },
+    { label: "Marathi", value: "mr" },
+    { label: "Punjabi", value: "pa" },
+    { label: "Sinhala", value: "si" },
+    { label: "Khmer", value: "km" },
+    { label: "Shona", value: "sn" },
+    { label: "Yoruba", value: "yo" },
+    { label: "Somali", value: "so" },
+    { label: "Afrikaans", value: "af" },
+    { label: "Occitan", value: "oc" },
+    { label: "Georgian", value: "ka" },
+    { label: "Belarusian", value: "be" },
+    { label: "Tajik", value: "tg" },
+    { label: "Sindhi", value: "sd" },
+    { label: "Gujarati", value: "gu" },
+    { label: "Amharic", value: "am" },
+    { label: "Yiddish", value: "yi" },
+    { label: "Lao", value: "lo" },
+    { label: "Uzbek", value: "uz" },
+    { label: "Faroese", value: "fo" },
+    { label: "Haitian Creole", value: "ht" },
+    { label: "Pashto", value: "ps" },
+    { label: "Turkmen", value: "tk" },
+    { label: "Nynorsk", value: "nn" },
+    { label: "Maltese", value: "mt" },
+    { label: "Sanskrit", value: "sa" },
+    { label: "Luxembourgish", value: "lb" },
+    { label: "Myanmar", value: "my" },
+    { label: "Tibetan", value: "bo" },
+    { label: "Tagalog", value: "tl" },
+    { label: "Malagasy", value: "mg" },
+    { label: "Assamese", value: "as" },
+    { label: "Tatar", value: "tt" },
+    { label: "Hawaiian", value: "haw" },
+    { label: "Lingala", value: "ln" },
+    { label: "Hausa", value: "ha" },
+    { label: "Bashkir", value: "ba" },
+    { label: "Javanese", value: "jw" },
+    { label: "Sundanese", value: "su" },
+    { label: "Cantonese", value: "yue" },
+] as const;
+
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
 }
 
-export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSettingsProps) {
+export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSettingsProps) => {
+    const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
     const [selectedModel, setSelectedModel] = React.useState(models[1])
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState(0)
@@ -376,7 +522,7 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                             )}
                             <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
                                 {modelsState.map((model) => (
-                                    <CarouselItem key={model.value} className="w-44 max-w-[11rem]">
+                                    <CarouselItem key={model.value} className="max-w-40">
                                         <div className="p-0.5 h-full">
                                             <Card
                                                 onClick={() => setSelectedModel(model)}
@@ -525,19 +671,58 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                                 <p className="text-xs text-muted-foreground">Language in audio</p>
                                             </div>
                                         </div>
-                                        <Select
-                                            value={settings.sourceLanguage}
-                                            onValueChange={(value) => updateSetting("sourceLanguage", value)}
-                                        >
-                                            <SelectTrigger className="w-32 sm:w-44">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="en">English</SelectItem>
-                                                <SelectItem value="es">Spanish</SelectItem>
-                                                <SelectItem value="fr">French</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openSourceLanguages}
+                                                    className="w-[45%] sm:w-[50%] justify-between font-normal"
+                                                >
+                                                    {settings.sourceLanguage
+                                                        ? languages.find((language) => language.value === settings.sourceLanguage)?.label
+                                                        : "Select language..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-0 w-[200px]">
+                                                <Command>
+                                                    <CommandInput placeholder="Search languages..." />
+                                                    <CommandList className="max-h-[220px]">
+                                                        <CommandEmpty>No language found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {languages
+                                                                .slice()
+                                                                .sort((a, b) => {
+                                                                    if (a.value === 'auto') return -1;
+                                                                    if (b.value === 'auto') return 1;
+                                                                    return a.label.localeCompare(b.label);
+                                                                })
+                                                                .map((language) => (
+                                                                    <CommandItem
+                                                                        value={language.label}
+                                                                        key={language.value}
+                                                                        onSelect={() => {
+                                                                            updateSetting('sourceLanguage', language.value);
+                                                                            setOpenSourceLanguages(false);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                language.value === settings.sourceLanguage
+                                                                                    ? "opacity-100"
+                                                                                    : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {language.label}
+                                                                    </CommandItem>
+                                                                ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                     {settings.sourceLanguage !== 'en' && (
                                         <div className="mt-3 pt-3 border-t flex items-center justify-between">
@@ -563,7 +748,25 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                     <div className="flex items-center gap-3">
                                         <Speech className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                                         <div>
-                                            <p className="text-sm font-medium">Speaker Labeling</p>
+                                            <div className="flex items-center gap-1">
+                                                <p className="text-sm font-medium">Speaker Labeling</p>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <button
+                                                            type="button"
+                                                            tabIndex={0}
+                                                            className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
+                                                        >
+                                                            <Info className="h-4 w-4" />
+                                                        </button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" align="start" className="w-56 p-3">
+                                                        <p className="text-xs text-left">
+                                                            Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
+                                                        </p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
                                             <p className="text-xs text-muted-foreground">
                                                 Unique captions for each speaker.
                                             </p>
@@ -574,14 +777,14 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                 {settings.diarize && (
                                     <div className="mt-3 pt-3 border-t">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1">
                                                 <Label className="text-sm">Auto-detect Speakers</Label>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <button
                                                             type="button"
                                                             tabIndex={0}
-                                                            className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                            className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
                                                         >
                                                             <Info className="h-4 w-4" />
                                                         </button>
@@ -703,9 +906,9 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                             <div className="flex items-center gap-3">
                                                 <ShieldX className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
                                                 <div>
-                                                    <p className="text-sm font-medium">Censored Words</p>
+                                                    <p className="text-sm font-medium">Censor Sensitive Words</p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Censor specific words in the transcription.
+                                                        Example: <span className="font-mono bg-muted px-1 rounded">kill</span> → <span className="font-mono bg-muted px-1 rounded">k*ll</span>
                                                     </p>
                                                 </div>
                                             </div>
@@ -715,31 +918,37 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                             <div className="mt-3 pt-3 border-t">
                                                 <div className="flex flex-col gap-2">
                                                     <ScrollArea className="max-h-[150px]">
-                                                        {settings.sensitiveWords.map((word: string, index: number) => (
-                                                            <div key={index} className="flex items-center m-1 mb-2 mr-3">
-                                                                <Input
-                                                                    value={word}
-                                                                    type="string"
-                                                                    placeholder="Enter word"
-                                                                    onChange={(e) => {
-                                                                        const newWords = [...settings.sensitiveWords];
-                                                                        newWords[index] = e.target.value;
-                                                                        updateSetting('sensitiveWords', newWords);
-                                                                    }}
-                                                                />
-                                                                <Button
-                                                                    variant="destructive"
-                                                                    size="sm"
-                                                                    className="ml-2"
-                                                                    onClick={() => {
-                                                                        const newWords = settings.sensitiveWords.filter((_, i) => i !== index);
-                                                                        updateSetting('sensitiveWords', newWords);
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="size-4" />
-                                                                </Button>
+                                                        {settings.sensitiveWords.length === 0 ? (
+                                                            <div className="text-xs text-muted-foreground p-4 text-center">
+                                                                No words selected to censor.
                                                             </div>
-                                                        ))}
+                                                        ) : (
+                                                            settings.sensitiveWords.map((word: string, index: number) => (
+                                                                <div key={index} className="flex items-center m-1 mb-2 mr-3">
+                                                                    <Input
+                                                                        value={word}
+                                                                        type="string"
+                                                                        placeholder="Enter word"
+                                                                        onChange={(e) => {
+                                                                            const newWords = [...settings.sensitiveWords];
+                                                                            newWords[index] = e.target.value;
+                                                                            updateSetting('sensitiveWords', newWords);
+                                                                        }}
+                                                                    />
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        size="sm"
+                                                                        className="ml-2"
+                                                                        onClick={() => {
+                                                                            const newWords = settings.sensitiveWords.filter((_, i) => i !== index);
+                                                                            updateSetting('sensitiveWords', newWords);
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 className="size-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            ))
+                                                        )}
                                                     </ScrollArea>
                                                     <Button
                                                         variant="secondary"
@@ -817,30 +1026,35 @@ export function TranscriptionSettings({ isStandaloneMode }: TranscriptionSetting
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Help & Hints</DialogTitle>
-                                            <DialogDescription className="space-y-4 text-sm">
-                                                <p>
-                                                    <strong>1. Select a Model:</strong> Choose a model from the carousel. Smaller models are
-                                                    faster, larger models are more accurate. You must download a model before use.
-                                                </p>
-                                                <p>
-                                                    <strong>2. Configure Settings:</strong> Adjust language, speaker labeling, and translation
-                                                    options to fit your needs.
-                                                </p>
-                                                <p>
-                                                    <strong>3. Link to Resolve:</strong> Ensure the app is connected to DaVinci Resolve and select
-                                                    the correct audio and caption tracks.
-                                                </p>
-                                                <p>
-                                                    <strong>4. Transcribe & Edit:</strong> Click "Start Transcription". You can edit the text in
-                                                    the editor panel as it appears.
-                                                </p>
-                                            </DialogDescription>
+                                            <DialogTitle>Quick Tutorial</DialogTitle>
+                                            <DialogDescription>Scroll down to learn how to use AutoSubs</DialogDescription>
                                         </DialogHeader>
+                                        <ScrollArea className="mt-2 max-h-[60vh] pr-4">
+                                            <div className="space-y-6">
+                                                {tutorialSections.map((section, index) => (
+                                                    <section key={index} className="space-y-3">
+                                                        <h2 className="text-lg font-semibold flex items-center">
+                                                            <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
+                                                                {index + 1}
+                                                            </span>
+                                                            {section.title}
+                                                        </h2>
+                                                        <ul className="space-y-2">
+                                                            {section.items.map((item, itemIndex) => (
+                                                                <li key={itemIndex} className="flex items-start">
+                                                                    <ChevronRight className="mr-2 h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                                                                    <span className="text-sm">{item}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </section>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
                                     </DialogContent>
                                 </Dialog>
                                 <Button variant="outline" className="w-full bg-transparent" asChild>
-                                    <a href="#" target="_blank" rel="noopener noreferrer">
+                                    <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
                                         <Github className="h-4 w-4 mr-2" />
                                         Source
                                     </a>

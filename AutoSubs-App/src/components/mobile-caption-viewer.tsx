@@ -1,5 +1,5 @@
 import * as React from "react"
-import { X, Download } from "lucide-react"
+import { Download, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CaptionList } from "@/components/caption-list"
@@ -29,21 +29,24 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">Captions</h2>
-          <Button 
-            onClick={() => exportCaptions(captions)} 
-            size="sm" 
-            variant="outline" 
-            className="h-8 gap-2 bg-transparent"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-        </div>
-        <Button onClick={onClose} variant="ghost" size="icon">
-          <X className="h-4 w-4" />
+      <div className="flex items-center justify-between p-2 border-b bg-background/80 backdrop-blur-sm shrink-0">
+        <Button 
+          onClick={() => exportCaptions(captions)} 
+          size="sm" 
+          variant="outline" 
+          className="h-9 gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
+        <Button 
+          onClick={onClose} 
+          variant="ghost" 
+          size="icon" 
+          className="h-9 w-9"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
         </Button>
       </div>
 
