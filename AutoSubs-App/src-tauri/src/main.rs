@@ -15,15 +15,14 @@ use tauri_plugin_process::init as process_plugin;
 use tauri_plugin_shell::init as shell_plugin;
 use tauri_plugin_store::Builder as StoreBuilder;
 
+mod config;
 mod transcribe;
+mod transcript;
+mod audio;
 
 #[command]
-fn transcribe_audio(
-    model_path: String,
-    wav_path: String,
-    language: String,
-) -> Result<Vec<(i32, i32, String)>, String> {
-    transcribe::transcribe_audio(model_path, wav_path, language)
+fn test_transcribe() {
+    transcribe::test_transcribe();
 }
 
 fn main() {
@@ -40,7 +39,7 @@ fn main() {
             // Any additional setup logic if needed
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![transcribe_audio])
+        .invoke_handler(tauri::generate_handler![test_transcribe])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
         .run(|_app_handle, event| {

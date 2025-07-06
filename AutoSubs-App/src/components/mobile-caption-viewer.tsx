@@ -120,7 +120,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
       </div>
 
       {/* Search */}
-      <div className="p-4 border-b shrink-0 sticky top-0 bg-background z-10">
+      <div className="p-2 border-b shrink-0 sticky top-0 bg-background z-10">
         <div className="relative">
           <Input 
             ref={searchInputRef}
@@ -144,7 +144,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4">
+      <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2">
         {filteredCaptions.length > 0 ? (
           <CaptionList
             captions={filteredCaptions}

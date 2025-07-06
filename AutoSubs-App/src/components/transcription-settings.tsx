@@ -1,7 +1,6 @@
 import * as React from "react"
 import {
     Languages,
-    Users,
     Download,
     HelpCircle,
     Heart,
@@ -10,17 +9,13 @@ import {
     Trash2,
     AlertTriangle,
     X,
-    MessageSquare,
     HardDrive,
     MemoryStick,
     Info,
     Globe,
-    RefreshCcw,
     ChevronDown as ChevronDownIcon,
     Speech,
-    Hash,
     Signature,
-    ALargeSmall,
     AArrowUp,
     ShieldX,
     ChevronRight,
@@ -34,7 +29,7 @@ import {
 } from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -295,6 +290,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const [selectedModel, setSelectedModel] = React.useState(models[1])
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState(0)
+    const [isUpdateAvailable, setIsUpdateAvailable] = React.useState(false)
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
     const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
@@ -420,7 +416,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                 {/* Main Content */}
                 <div className="flex-1 p-4 space-y-6">
                     {/* Update Alert */}
-                    {!isUpdateDismissed && (
+                    {!isUpdateDismissed && isUpdateAvailable && (
                         <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
                             <AlertTriangle className="h-4 w-4 text-green-600" />
                             <AlertDescription className="flex items-center justify-between">
@@ -445,9 +441,15 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             </h3>
                             {!isStandaloneMode && (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" title="Connected" />
-                                    <span className="text-xs font-medium text-muted-foreground truncate max-w-[120px]" title={timelineInfo?.name || 'Current Timeline'}>
-                                        {timelineInfo?.name || 'Current Timeline'}
+                                    <div
+                                        className={`w-2 h-2 rounded-full flex-shrink-0 ${!timelineInfo || !timelineInfo.timelineId ? 'bg-red-500' : 'bg-green-500'}`}
+                                        title={!timelineInfo || !timelineInfo.timelineId ? "Disconnected" : "Connected"}
+                                    />
+                                    <span
+                                        className="text-xs font-medium text-muted-foreground truncate max-w-[120px]"
+                                        title={!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : timelineInfo.name || 'Current Timeline'}
+                                    >
+                                        {!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : timelineInfo.name || 'Current Timeline'}
                                     </span>
                                 </div>
                             )}
@@ -569,10 +571,10 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         <div className="relative -mx-4 px-4">
                             {/* Gradient overlays */}
                             {canScrollPrev && (
-                                <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/80 to-transparent z-10 pointer-events-none" />
+                                <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
                             )}
                             {canScrollNext && (
-                                <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/80 to-transparent z-10 pointer-events-none" />
+                                <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
                             )}
                             <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
                                 {modelsState.map((model) => (

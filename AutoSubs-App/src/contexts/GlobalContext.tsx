@@ -12,7 +12,6 @@ import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, AudioInfo, Progress, Settings, EnabeledSteps } from "@/types/interfaces";
-import { startTranscriptionServer, stopTranscriptionServer } from '@/api/transcriptionServer';
 import { exportAudio, jumpToTime, getTimelineInfo, addSubtitles, closeResolveLink } from '@/api/resolveAPI';
 import { fetchTranscription } from '@/api/transcribeAPI';
 import { getFullTranscriptPath, readTranscript, updateTranscript } from '../utils/fileUtils';
@@ -95,23 +94,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [markIn, setMarkIn] = useState(0);
   const [timelineId, setTimelineId] = useState<string | null>(null);
   const [markOut, setMarkOut] = useState(0);
-  const hasInitialized = useRef(false);
 
   // Initialization useEffect
   useEffect(() => {
-    setTranscriptsFolder();
-    // if (!hasInitialized.current) {
-    //   startTranscriptionServer({
-    //     setProgress: (value: number) => setProgress(prev => ({ ...prev, value: value })),
-    //     setIsLoading: (value: boolean) => setProgress(prev => ({ ...prev, isLoading: value })),
-    //     setCurrentStep: (value: number) => setProgress(prev => ({ ...prev, currentStep: value })),
-    //     setMessage: (message: string) => setProgress(prev => ({ ...prev, message: message })),
-    //     setSubtitles: (update: (prev: any[]) => any[]) => setSubtitles(prev => update(prev)),
-    //     enabledSteps: settings.enabledSteps,
-    //     serverLoadingRef: { current: false }
-    //   });
-    //   hasInitialized.current = true;
-    // }
     initializeStore();
     setTranscriptsFolder();
     
@@ -173,7 +158,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     initializeTimeline();
     
     getCurrentWindow().once("tauri://close-requested", async () => {
-      await stopTranscriptionServer();
       closeResolveLink();
       exit(0);
     });

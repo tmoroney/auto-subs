@@ -14,7 +14,6 @@ interface WordData {
 }
 import { Button } from "@/components/ui/button"
 import { Edit2, XCircle as XCircleIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -61,7 +60,7 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
         <div className="relative group rounded-md cursor-pointer">
             <span
                 onClick={() => setIsEditing(true)}
-                className="px-1 py-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
+                className="px-0.5 py-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
             >
                 {word}
             </span>
@@ -159,7 +158,7 @@ const CaptionEditor = ({
 
     return (
         <>
-            <div className="flex flex-wrap items-center gap-2 p-4 border rounded-lg bg-muted/50">
+            <div className="flex flex-wrap items-center gap-1 p-4 border rounded-lg bg-muted/50">
                 {words.length > 0 ? (
                     words.map((wordData, index) => (
                         <Word
@@ -174,7 +173,7 @@ const CaptionEditor = ({
                 )}
             </div>
             {!hideButtons && (
-                <div className="flex justify-end gap-2 mt-4">
+                <div className="flex justify-end">
                     <Button variant="outline" onClick={onCancel}>
                         Cancel
                     </Button>
@@ -211,8 +210,6 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
-import { ArrowLeft, ArrowRight } from "lucide-react"
-import { Input } from "./ui/input"
 
 function CaptionListComponent({
     captions = [],
@@ -326,7 +323,7 @@ function CaptionListComponent({
                                             <Edit2 className="h-4 w-4" />
                                         </Button>
                                     </DialogTrigger>
-                                <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
+                                <DialogContent className="max-h-[90vh] overflow-y-auto">
                                     <DialogHeader>
                                         <DialogTitle>Edit Caption</DialogTitle>
                                         <DialogDescription>
@@ -356,7 +353,7 @@ function CaptionListComponent({
                                                     variant="outline"
                                                     type="button"
                                                     size="sm"
-                                                    className="gap-1.5 text-sm"
+                                                    className="text-sm mt-2 sm:mt-0"
                                                 >
                                                     Cancel
                                                 </Button>
@@ -365,7 +362,7 @@ function CaptionListComponent({
                                                 variant="default"
                                                 type="button"
                                                 size="sm"
-                                                className="gap-1.5 text-sm"
+                                                className="text-sm"
                                                 onClick={() => {
                                                     // Get all word input elements
                                                     const wordInputs = Array.from(document.querySelectorAll<HTMLInputElement>('.word-edit-input'));

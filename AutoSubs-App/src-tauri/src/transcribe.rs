@@ -1,44 +1,664 @@
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use crate::config::TranscribeOptions;
+use crate::audio::get_audio_duration;
+use crate::transcript::{Segment, Transcript};
+use crate::audio;
+use eyre::{bail, eyre, Context, OptionExt, Result};
+use hound::WavReader;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::Instant;
+pub use whisper_rs::SegmentCallbackData;
+pub use whisper_rs::WhisperContext;
+pub use whisper_rs::WhisperState;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
+use whisper_rs::DtwParameters;
+use whisper_rs::DtwMode;
+use whisper_rs::DtwModelPreset;
 
-pub fn transcribe_audio(
-    model_path: String,
-    wav_path: String,
-    language: String,
-) -> Result<Vec<(i32, i32, String)>, String> {
-    // Load audio samples
-    let samples: Vec<i16> = hound::WavReader::open(&wav_path)
-        .map_err(|e| format!("Failed to open wav: {}", e))?
-        .into_samples::<i16>()
-        .map(|x| x.unwrap())
-        .collect();
+type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
+static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
 
-    // Load whisper model
-    let ctx = WhisperContext::new_with_params(&model_path, WhisperContextParameters::default())
-        .map_err(|e| format!("Failed to load model: {:?}", e))?;
+fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
+    // Base memory: 16MB (for very short audio)
+    // Add ~4MB per second of audio
+    let base_mb = 16.0;
+    let mb_per_second = 4.0;
+    let estimated_mb = (base_mb + (audio_duration_secs * mb_per_second)).ceil() as usize;
+    
+    // Ensure we have at least the minimum required
+    let min_mb = 16;  // 16MB minimum
+    let max_mb = 1024; // 1GB maximum to prevent excessive memory usage
+    
+    // Convert to bytes and ensure it's a multiple of 4MB (alignment)
+    let bytes = (estimated_mb.max(min_mb).min(max_mb) * 1024 * 1024) & !0x3FFFFF;
+    bytes
+}
 
-    let mut state = ctx.create_state().map_err(|e| format!("{:?}", e))?;
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_language(Some(&language));
+pub fn create_context(
+    model_path: &Path, 
+    gpu_device: Option<i32>, 
+    use_gpu: Option<bool>, 
+    enable_dtw: Option<bool>,
+    audio_duration_secs: Option<f64>,
+) -> Result<WhisperContext> {
+    tracing::debug!("open model...");
+    if !model_path.exists() {
+        bail!("whisper file doesn't exist")
+    }
+    let mut ctx_params = WhisperContextParameters::default();
+    if let Some(use_gpu) = use_gpu {
+        ctx_params.use_gpu = use_gpu;
+    }
+    // set GPU device number from preference
+    if let Some(gpu_device) = gpu_device {
+        ctx_params.gpu_device = gpu_device;
+    }
+    if let Some(true) = enable_dtw {
+        let dtw_mem_size = match audio_duration_secs {
+            Some(duration) => {
+                let mem_size = calculate_dtw_mem_size(duration);
+                tracing::debug!(
+                    "Audio duration: {:.2}s, Allocating DTW memory: {:.2}MB",
+                    duration,
+                    mem_size as f64 / (1024.0 * 1024.0)
+                );
+                mem_size
+            }
+            None => {
+                // Fallback to default if duration is not provided
+                let default_mb = 64;
+                tracing::warn!(
+                    "No audio duration provided, using default DTW memory: {}MB",
+                    default_mb
+                );
+                default_mb * 1024 * 1024
+            }
+        };
+
+        ctx_params.flash_attn(false);  // DTW requires flash_attn off
+        ctx_params.dtw_parameters(DtwParameters {
+            mode: DtwMode::ModelPreset { model_preset: DtwModelPreset::SmallEn },
+            dtw_mem_size,
+        });
+    }
+    // Print actual DTW state from ctx_params
+    let dtw_enabled = enable_dtw.unwrap_or(false);
+    tracing::debug!("gpu device: {:?}", ctx_params.gpu_device);
+    tracing::debug!("use gpu: {:?}", ctx_params.use_gpu);
+    tracing::debug!("DTW enabled: {}", dtw_enabled);
+    // print as well
+    println!("gpu device: {:?}", ctx_params.gpu_device);
+    println!("use gpu: {:?}", ctx_params.use_gpu);
+    println!("DTW enabled: {}", dtw_enabled);
+    let model_path = model_path.to_str().ok_or_eyre("can't convert model option to str")?;
+    tracing::debug!("creating whisper context with model path {}", model_path);
+    let ctx_unwind_result = catch_unwind(AssertUnwindSafe(|| {
+        WhisperContext::new_with_params(model_path, ctx_params).context("failed to open model")
+    }));
+    match ctx_unwind_result {
+        Err(error) => {
+            bail!("create whisper context crash: {:?}", error)
+        }
+        Ok(ctx_result) => {
+            let ctx = ctx_result?;
+            tracing::debug!("created context successfuly");
+            Ok(ctx)
+        }
+    }
+}
+
+// Check if necessary to normalise the audio
+pub fn should_normalize(source: PathBuf) -> bool {
+    if source.extension().unwrap_or_default() == "wav" {
+        if let Ok(reader) = WavReader::open(source.clone()) {
+            let spec = reader.spec();
+            tracing::debug!("wav spec: {:?}", spec);
+            if spec.channels == 1 && spec.sample_rate == 16000 && spec.bits_per_sample == 16 {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+fn generate_cache_key(source: &Path, additional_ffmpeg_args: &Option<Vec<String>>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    source.hash(&mut hasher);
+
+    if let Some(args) = additional_ffmpeg_args {
+        for arg in args {
+            arg.hash(&mut hasher);
+        }
+    }
+
+    hasher.finish()
+}
+
+fn get_temp_folder() -> PathBuf {
+    std::env::temp_dir().join("whisper-testing")
+}
+
+pub fn create_normalized_audio(source: PathBuf, additional_ffmpeg_args: Option<Vec<String>>) -> Result<PathBuf> {
+    tracing::debug!("normalize {:?}", source.display());
+
+    let cache_key = generate_cache_key(&source, &additional_ffmpeg_args);
+    let out_path = get_temp_folder().join(format!("{:x}.wav", cache_key));
+    //if out_path.exists() {
+    //    tracing::info!("Using cached normalized audio: {}", out_path.display());
+    //   return Ok(out_path);
+    //}
+    // ^ TODO: should we use caching? what if we have two files with the same name?
+    audio::normalize(source, out_path.clone(), additional_ffmpeg_args)?;
+    Ok(out_path)
+}
+
+fn setup_params(options: &TranscribeOptions) -> FullParams {
+    let mut beam_size_or_best_of = options.sampling_bestof_or_beam_size.unwrap_or(5);
+    if beam_size_or_best_of < 1 {
+        beam_size_or_best_of = 5;
+    }
+
+    // Beam search by default
+    let mut sampling_strategy = SamplingStrategy::BeamSearch {
+        beam_size: beam_size_or_best_of,
+        patience: -1.0,
+    };
+    // ^ Experimental, idk if it will be slower/faster/accurate https://github.com/ggml-org/whisper.cpp/blob/8b92060a10a89cd3e8ec6b4bb22cdc1af67c5667/src/whisper.cpp#L4867-L4882
+    if options.sampling_strategy == Some("greedy".to_string()) {
+        sampling_strategy = SamplingStrategy::Greedy {
+            best_of: beam_size_or_best_of,
+        };
+    }
+    tracing::debug!("sampling strategy: {:?}", sampling_strategy);
+
+    let mut params = FullParams::new(sampling_strategy);
+    tracing::debug!("set language to {:?}", options.lang);
+
+    if let Some(true) = options.word_timestamps {
+        params.set_token_timestamps(true);
+        params.set_split_on_word(true);
+        //params.set_max_len(options.max_sentence_len.unwrap_or(1));
+    }
+
+    if let Some(true) = options.translate {
+        params.set_translate(true);
+    }
+    if options.lang.is_some() {
+        params.set_language(options.lang.as_deref());
+    }
+
     params.set_print_special(false);
-    params.set_print_progress(false);
+    params.set_print_progress(true);
     params.set_print_realtime(false);
     params.set_print_timestamps(false);
+    params.set_suppress_blank(true);
+    params.set_token_timestamps(true);
 
-    let mut inter_samples = vec![Default::default(); samples.len()];
-    whisper_rs::convert_integer_to_float_audio(&samples, &mut inter_samples)
-        .map_err(|e| format!("Failed to convert audio: {:?}", e))?;
-    let samples = whisper_rs::convert_stereo_to_mono_audio(&inter_samples)
-        .map_err(|e| format!("Failed to convert to mono: {:?}", e))?;
-
-    state.full(params, &samples[..]).map_err(|e| format!("{:?}", e))?;
-
-    let num_segments = state.full_n_segments().map_err(|e| format!("{:?}", e))?;
-    let mut results = Vec::new();
-    for i in 0..num_segments {
-        let segment = state.full_get_segment_text(i).map_err(|e| format!("{:?}", e))?;
-        let start = state.full_get_segment_t0(i).map_err(|e| format!("{:?}", e))?;
-        let end = state.full_get_segment_t1(i).map_err(|e| format!("{:?}", e))?;
-        results.push((start as i32, end as i32, segment));
+    if let Some(temperature) = options.temperature {
+        tracing::debug!("setting temperature to {temperature}");
+        params.set_temperature(temperature);
     }
-    Ok(results)
+
+    if let Some(max_text_ctx) = options.max_text_ctx {
+        tracing::debug!("setting n_max_text_ctx to {}", max_text_ctx);
+        params.set_n_max_text_ctx(max_text_ctx)
+    }
+
+    // handle args
+    if let Some(init_prompt) = options.init_prompt.to_owned() {
+        tracing::debug!("setting init prompt to {init_prompt}");
+        params.set_initial_prompt(&init_prompt);
+    }
+
+    if let Some(n_threads) = options.n_threads {
+        tracing::debug!("setting n threads to {n_threads}");
+        params.set_n_threads(n_threads);
+    }
+    params
+}
+
+fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: bool) -> Vec<crate::transcript::WordTimestamp> {
+    let ntok = state.full_n_tokens(seg).unwrap() as usize;
+    let mut word_timestamps = Vec::with_capacity(ntok);
+
+    let start_of_segment = state.full_get_segment_t0(seg).unwrap_or(0);
+    let end_of_segment = state.full_get_segment_t1(seg).unwrap_or(0);
+    let mut prev_end_frame = start_of_segment;
+    let mut current_word = String::new();
+    let mut start_frame = start_of_segment;
+
+    // Helper function to close the current word and add it to timestamps
+    let close_current_word = |word: &mut String, timestamps: &mut Vec<crate::transcript::WordTimestamp>, 
+                            _token_idx: i32, start: i64, end: i64, prob: f32| -> i64 {
+        if !word.is_empty() {
+            let end_frame = end.min(end_of_segment);
+            timestamps.push(crate::transcript::WordTimestamp {
+                word: word.clone(),
+                start: (start as f64) * 0.01,
+                end: (end_frame as f64) * 0.01,
+                probability: Some(prob),
+            });
+            word.clear();
+            end
+        } else {
+            start
+        }
+    };
+
+    for i in 0..ntok {
+        let token_text = state.full_get_token_text(seg, i as i32).unwrap();
+        let data = state.full_get_token_data(seg, i as i32).unwrap();
+        let is_special = token_text.starts_with('[') || token_text == "<|endoftext|>";
+        let is_last = i == ntok - 1;
+
+        // Handle special tokens
+        if is_special {
+            if is_last && !current_word.is_empty() {
+                let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+                start_frame = close_current_word(&mut current_word, &mut word_timestamps, 
+                                               i as i32, start_frame, prev_end_frame, prev_data.p);
+            }
+            continue;
+        }
+
+        // New word starts at tokens with leading space or if first token
+        if token_text.starts_with(' ') && !current_word.is_empty() {
+            let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+            start_frame = close_current_word(&mut current_word, &mut word_timestamps, 
+                                           i as i32, start_frame, prev_end_frame, prev_data.p);
+        }
+
+        current_word.push_str(&token_text);
+        prev_end_frame = if enable_dtw { data.t_dtw } else { data.t1 };
+
+        // If last token, push the final word
+        if is_last && !current_word.is_empty() {
+            close_current_word(&mut current_word, &mut word_timestamps, 
+                             i as i32, start_frame, prev_end_frame, data.p);
+        }
+    }
+
+    // Ensure the last word ends at the end of the segment
+    if let Some(last) = word_timestamps.last_mut() {
+        last.end = (end_of_segment as f64) * 0.01;
+    }
+    word_timestamps
+}
+
+#[derive(Debug, Clone)]
+pub struct DiarizeOptions {
+    pub segment_model_path: String,
+    pub embedding_model_path: String,
+    pub threshold: f32,
+    pub max_speakers: usize,
+}
+
+pub fn test_transcribe() {
+    let audio_path = "example.wav";
+    let audio_duration = get_audio_duration(audio_path).unwrap_or_else(|e| {
+        eprintln!("Warning: Could not get audio duration: {}. Using default memory allocation.", e);
+        0.0
+    });
+
+    // Enable DTW for more accurate word-level timestamps
+    let enable_dtw = true;
+    let enable_diarize = false;
+    
+    let ctx = create_context(
+        &PathBuf::from("./models/ggml-small.en.bin"), 
+        None, 
+        None, 
+        Some(enable_dtw), 
+        Some(audio_duration)
+    ).unwrap();
+    let transcribe_options = &crate::config::TranscribeOptions {
+        init_prompt: None,
+        lang: Some("en".into()),
+        max_sentence_len: None,
+        path: audio_path.into(),
+        verbose: None,
+        max_text_ctx: None,
+        n_threads: None,
+        temperature: None,
+        translate: None,
+        word_timestamps: Some(true),
+        sampling_bestof_or_beam_size: None,
+        sampling_strategy: None,
+    };
+    let diarize_options = DiarizeOptions {
+        segment_model_path: "./models/segmentation-3.0.onnx".into(),
+        embedding_model_path: "./models/wespeaker_en_voxceleb_CAM++.onnx".into(),
+        threshold: 0.5,
+        max_speakers: usize::MAX,
+    };
+    let start = Instant::now();
+    match transcribe(
+        &ctx, 
+        transcribe_options, 
+        None, 
+        None, 
+        None, 
+        Some(diarize_options), 
+        None,
+        enable_dtw,
+        enable_diarize
+    ) {
+        Ok(transcript) => {
+            // Save the transcript in the desired JSON format
+            let json_segments = transcript.to_json_segments();
+            let json_output = serde_json::to_string_pretty(&json_segments)
+                .expect("Failed to serialize transcript to JSON");
+            
+            // Save to a file
+            let output_path = "output/segments.json";
+            std::fs::create_dir_all("output").expect("Failed to create output directory");
+            std::fs::write(output_path, json_output).expect("Failed to write JSON output");
+            println!("Transcript saved to {}", output_path);
+            
+            println!("Transcription completed successfully!");
+            println!("Elapsed time: {:.2} seconds", Instant::now().duration_since(start).as_secs_f64());
+        },
+        Err(e) => {
+            eprintln!("Error during transcription: {}", e);
+        }
+    }
+}
+
+pub fn transcribe(
+    ctx: &WhisperContext,
+    options: &TranscribeOptions,
+    progress_callback: Option<Box<dyn Fn(i32) + Send + Sync>>,
+    new_segment_callback: Option<Box<dyn Fn(Segment)>>,
+    abort_callback: Option<Box<dyn Fn() -> bool>>,
+    diarize_options: Option<DiarizeOptions>,
+    additional_ffmpeg_args: Option<Vec<String>>,
+    enable_dtw: bool,
+    enable_diarize: bool,
+) -> Result<Transcript> {
+    tracing::debug!("Transcribe called with {:?}", options);
+
+    if !PathBuf::from(options.path.clone()).exists() {
+        bail!("audio file doesn't exist")
+    }
+
+    let out_path = if should_normalize(options.path.clone().into()) {
+        create_normalized_audio(options.path.clone().into(), additional_ffmpeg_args)?
+    } else {
+        println!("Skip normalize");
+        tracing::debug!("Skip normalize");
+        options.path.clone().into()
+    };
+    println!("out path is {}", out_path.display());
+    tracing::debug!("out path is {}", out_path.display());
+    let original_samples = audio::parse_wav_file(&out_path)?;
+
+    let mut state = ctx.create_state().context("failed to create key")?;
+
+    let mut params = setup_params(options);
+
+    let st = std::time::Instant::now();
+    let mut segments = Vec::new();
+    
+    // Enable word timestamps if requested
+    if options.word_timestamps.unwrap_or(false) {
+        params.set_token_timestamps(true);
+    } else {
+        // Ensure word timestamps are enabled if we're in DTW mode
+        if enable_dtw {
+            params.set_token_timestamps(true);
+        }
+    }
+    // Process with diarization if enabled
+    if enable_diarize {
+        let diarize_options = match diarize_options {
+            Some(opts) => opts,
+            None => return Err(eyre!("Diarization enabled but no diarization options provided")),
+        };
+        
+        tracing::debug!("Diarize enabled {:?}", diarize_options);
+        params.set_single_segment(true);
+        let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
+        let mut extractor =
+            pyannote_rs::EmbeddingExtractor::new(diarize_options.embedding_model_path)
+                .map_err(|e| eyre!("{:?}", e))?;
+
+        // Get speech segments as an iterator
+        let diarize_segments_iter = pyannote_rs::get_segments(
+            &original_samples,
+            16000,
+            diarize_options.segment_model_path,
+        )
+        .map_err(|e| eyre!("{:?}", e))?;
+
+        // Count total segments for progress reporting
+        let total_segments = original_samples.len() / (16000 * 10); // Rough estimate based on 10s windows
+        let mut processed_segments = 0;
+
+        for (i, diarize_segment_result) in diarize_segments_iter.enumerate() {
+            if let Some(ref abort_callback) = abort_callback {
+                if abort_callback() {
+                    break;
+                }
+            }
+
+            let diarize_segment = diarize_segment_result.map_err(|e| eyre!("Error processing segment: {:?}", e))?;
+
+            // whisper compatible. segment indices
+            tracing::trace!(
+                "diarize segment: {} - {}",
+                diarize_segment.start,
+                diarize_segment.end
+            );
+
+            // Pad with 1 second (16000 samples at 16kHz) of silence to avoid Whisper dropping last tokens
+            let mut padded_samples = diarize_segment.samples.clone();
+            padded_samples.extend(std::iter::repeat(0i16).take(16000)); // 1000 ms of silence
+            let mut samples = vec![0.0f32; padded_samples.len()];
+            whisper_rs::convert_integer_to_float_audio(&padded_samples, &mut samples)?;
+            state.full(params.clone(), &samples).context("failed to transcribe")?;
+
+            let num_segments = state
+                .full_n_segments()
+                .context("failed to get number of segments")?;
+            tracing::debug!("found {} sentence segments", num_segments);
+
+            tracing::debug!("looping segments...");
+
+            if num_segments > 0 {
+                let embedding_result: Vec<f32> = match extractor.compute(&diarize_segment.samples) {
+                    Ok(result) => result.collect(),
+                    Err(error) => {
+                        tracing::error!("error: {:?}", error);
+                        tracing::trace!(
+                            "start = {:.2}, end = {:.2}, speaker = ?",
+                            diarize_segment.start,
+                            diarize_segment.end
+                        );
+                        continue; // Skip to the next segment
+                    }
+                };
+
+                // Find the speaker
+                let speaker = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
+                    embedding_manager
+                        .get_best_speaker_match(embedding_result)
+                        .map(|r| r.to_string())
+                        .unwrap_or_else(|_| "?".to_string())
+                } else {
+                    embedding_manager
+                        .search_speaker(embedding_result, diarize_options.threshold)
+                        .map(|r| r.to_string())
+                        .unwrap_or_else(|| "?".to_string())
+                };
+
+                // Process all segments returned by Whisper for this diarization segment
+                for seg_idx in 0..num_segments {
+                    // Get the segment text
+                    let text = state
+                        .full_get_segment_text_lossy(seg_idx as i32)
+                        .context("failed to get segment")?;
+
+                    // Get word timestamps if DTW is enabled
+                    let words = if enable_dtw {
+                        let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+                        for word in &mut word_timestamps {
+                            word.start += diarize_segment.start as f64;
+                            word.end += diarize_segment.start as f64;
+                            if word.end > diarize_segment.end as f64 {
+                                word.end = diarize_segment.end as f64;
+                            }
+                            word.start = (word.start * 100.0).trunc() / 100.0;
+                            word.end = (word.end * 100.0).trunc() / 100.0;
+                        }
+                        Some(word_timestamps)
+                    } else {
+                        None
+                    };
+
+                    // Get segment-level timestamps and add diarization segment offset
+                    let (mut seg_start, mut seg_end) = {
+                        let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+                        let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+                        (
+                            t0 + diarize_segment.start as f64,
+                            t1 + diarize_segment.start as f64
+                        )
+                    };
+                    if seg_end > diarize_segment.end as f64 {
+                        seg_end = diarize_segment.end as f64;
+                    }
+                    seg_start = (seg_start * 100.0).trunc() / 100.0;
+                    seg_end = (seg_end * 100.0).trunc() / 100.0;
+
+                    let segment = Segment {
+                        speaker: Some(speaker.clone()),
+                        start: seg_start,
+                        end: seg_end,
+                        text,
+                        words,
+                    };
+                    segments.push(segment.clone());
+
+                    if let Some(ref new_segment_callback) = new_segment_callback {
+                        new_segment_callback(segment);
+                    }
+                }
+
+                // Update progress
+                processed_segments += 1;
+                if let Some(ref progress_callback) = progress_callback {
+                    let progress = if total_segments > 0 {
+                        ((processed_segments as f64 / total_segments as f64) * 100.0) as i32
+                    } else {
+                        // Fallback to segment count if we can't estimate total
+                        (i as f64 * 10.0) as i32 // Assuming ~10s per segment
+                    };
+                    progress_callback(progress);
+                }
+            }
+        }
+        
+        let transcript = Transcript {
+            processing_time_sec: st.elapsed().as_secs(),
+            segments,
+            word_timestamps: Some(false), // word-level timestamps not available in diarization mode
+        };
+        return Ok(transcript);
+    } else {
+        if let Some(callback) = progress_callback {
+            let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
+            let internal_progress_callback = move |progress: i32| callback(progress);
+            *guard = Some(Box::new(internal_progress_callback));
+        }
+        let mut samples = vec![0.0f32; original_samples.len()];
+
+        whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
+
+        if let Some(new_segment_callback) = new_segment_callback {
+            let internal_new_segmet_callback = move |segment: SegmentCallbackData| {
+                new_segment_callback(Segment {
+                    start: segment.start_timestamp as f64,
+                    end: segment.end_timestamp as f64,
+                    text: segment.text,
+                    speaker: None,  // No speaker info in non-diarized mode
+                    words: None,    // Word timestamps not available in diarization mode
+                });
+            };
+            params.set_segment_callback_safe_lossy(internal_new_segmet_callback);
+        }
+
+        if let Some(abort_callback) = abort_callback {
+            params.set_abort_callback_safe(abort_callback);
+        }
+
+        if PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?.as_ref().is_some() {
+            params.set_progress_callback_safe(|progress| {
+                if let Ok(mut cb) = PROGRESS_CALLBACK.lock() {
+                    if let Some(cb) = cb.as_mut() {
+                        cb(progress);
+                    }
+                }
+            });
+        }
+
+        tracing::debug!("set start time...");
+
+        tracing::debug!("setting state full...");
+        state.full(params, &samples).context("failed to transcribe")?;
+        let _et = std::time::Instant::now();
+
+        tracing::debug!("getting segments count...");
+        let num_segments = state.full_n_segments().context("failed to get number of segments")?;
+        if num_segments == 0 {
+            bail!("no segments found!")
+        }
+        tracing::debug!("found {} sentence segments", num_segments);
+        
+        // Process segments with or without diarization
+        let num_segments = state.full_n_segments()?;
+        tracing::debug!("found {} sentence segments", num_segments);
+
+        // Process each segment and collect word timestamps
+        let mut segments = Vec::with_capacity(num_segments as usize);
+    
+        for seg_idx in 0..num_segments {
+            // Get the segment text and ALL token timestamps
+            let word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+            let segment_text = state.full_get_segment_text_lossy(seg_idx)
+                .context("failed to get segment text")?;
+        
+            // Get segment-level timestamps
+            let (start, end) = {
+                let t0 = state.full_get_segment_t0(seg_idx).unwrap_or(0) as f64 * 0.01;
+                let t1 = state.full_get_segment_t1(seg_idx).unwrap_or(0) as f64 * 0.01;
+                (t0, t1)
+            };
+        
+            let has_words = !word_timestamps.is_empty();
+                
+            // Create the segment after we're done printing
+            let segment = Segment {
+                start,
+                end,
+                text: segment_text,
+                speaker: None,  // No speaker info in non-diarized mode
+                words: if has_words { 
+                    Some(word_timestamps) 
+                } else { None },
+            };
+            
+            segments.push(segment);
+        }
+
+        // Create and return the final transcript
+        let has_word_timestamps = enable_dtw && !segments.is_empty() && segments[0].words.is_some();
+        Ok(Transcript {
+            processing_time_sec: st.elapsed().as_secs(),
+            segments,
+            word_timestamps: Some(has_word_timestamps),
+        })
+    }
 }
