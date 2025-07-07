@@ -17,9 +17,173 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
 use whisper_rs::DtwParameters;
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
+use tauri::command;
+use serde::Deserialize;
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
+
+// --- Frontend Options Struct ---
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendTranscribeOptions {
+    pub audio_path: String,
+    pub model: String, // e.g., "tiny", "base", "small", "medium", "large"
+    pub lang: Option<String>,
+    pub enable_diarize: bool,
+    pub max_speakers: Option<usize>,
+}
+
+
+
+
+#[command]
+pub fn transcribe_audio(options: FrontendTranscribeOptions) -> Result<Transcript, String> {
+    let start_time = Instant::now();
+    println!("Starting transcription with options: {:?}", options);
+
+    let enable_dtw = true;
+
+    let model_path = crate::models::download_model_if_needed(&options.model, &options.lang)?;
+
+    let audio_duration = get_audio_duration(&options.audio_path)
+        .map_err(|e| format!("Failed to get audio duration: {}", e))?;
+
+    let ctx = create_context(
+        &PathBuf::from(model_path),
+        None,
+        None,
+        Some(enable_dtw),
+        Some(audio_duration),
+    )
+    .map_err(|e| format!("Failed to create Whisper context: {}", e))?;
+
+    let transcribe_options = TranscribeOptions {
+        path: options.audio_path.clone().into(),
+        lang: options.lang,
+        init_prompt: None,
+        max_sentence_len: None,
+        verbose: None,
+        max_text_ctx: None,
+        n_threads: None,
+        temperature: None,
+        translate: None,
+        word_timestamps: Some(true),
+        sampling_bestof_or_beam_size: None,
+        sampling_strategy: None,
+    };
+
+        let diarize_options = if options.enable_diarize {
+        println!("Diarization enabled, checking for models...");
+        let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
+        let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
+
+        let segment_model_path = crate::models::download_diarize_model_if_needed("segmentation-3.0.onnx", seg_url)?;
+        let embedding_model_path = crate::models::download_diarize_model_if_needed("wespeaker_en_voxceleb_CAM++.onnx", emb_url)?;
+
+        Some(DiarizeOptions {
+            segment_model_path,
+            embedding_model_path,
+            threshold: 0.5,
+            max_speakers: options.max_speakers.unwrap_or(usize::MAX),
+        })
+    } else {
+        None
+    };
+
+    match run_transcription_pipeline(
+        &ctx,
+        &transcribe_options,
+        None,
+        None,
+        None,
+        diarize_options,
+        None,
+        enable_dtw,
+        options.enable_diarize,
+    ) {
+        Ok(mut transcript) => {
+            transcript.processing_time_sec = start_time.elapsed().as_secs();
+            println!("Transcription successful in {:.2}s", transcript.processing_time_sec);
+            Ok(transcript)
+        }
+        Err(e) => {
+            eprintln!("Error during transcription pipeline: {}", e);
+            Err(format!("Transcription failed: {}", e))
+        }
+    }
+}
+
+pub fn test_transcribe() {
+    let audio_path = "example.wav";
+    let audio_duration = get_audio_duration(audio_path).unwrap_or_else(|e| {
+        eprintln!("Warning: Could not get audio duration: {}. Using default memory allocation.", e);
+        0.0
+    });
+
+    // Enable DTW for more accurate word-level timestamps
+    let enable_dtw = true;
+    let enable_diarize = false;
+    
+    let ctx = create_context(
+        &PathBuf::from("./models/ggml-small.en.bin"), 
+        None, 
+        None, 
+        Some(enable_dtw), 
+        Some(audio_duration)
+    ).unwrap();
+    let transcribe_options = &crate::config::TranscribeOptions {
+        init_prompt: None,
+        lang: Some("en".into()),
+        max_sentence_len: None,
+        path: audio_path.into(),
+        verbose: None,
+        max_text_ctx: None,
+        n_threads: None,
+        temperature: None,
+        translate: None,
+        word_timestamps: Some(true),
+        sampling_bestof_or_beam_size: None,
+        sampling_strategy: None,
+    };
+    let diarize_options = DiarizeOptions {
+        segment_model_path: "./models/segmentation-3.0.onnx".into(),
+        embedding_model_path: "./models/wespeaker_en_voxceleb_CAM++.onnx".into(),
+        threshold: 0.5,
+        max_speakers: usize::MAX,
+    };
+    let start = Instant::now();
+    match run_transcription_pipeline(
+        &ctx, 
+        transcribe_options, 
+        None, 
+        None, 
+        None, 
+        Some(diarize_options), 
+        None,
+        enable_dtw,
+        enable_diarize
+    ) {
+        Ok(transcript) => {
+            // Save the transcript in the desired JSON format
+            let json_segments = transcript.to_json_segments();
+            let json_output = serde_json::to_string_pretty(&json_segments)
+                .expect("Failed to serialize transcript to JSON");
+            
+            // Save to a file
+            let output_path = "output/segments.json";
+            std::fs::create_dir_all("output").expect("Failed to create output directory");
+            std::fs::write(output_path, json_output).expect("Failed to write JSON output");
+            println!("Transcript saved to {}", output_path);
+            
+            println!("Transcription completed successfully!");
+            println!("Elapsed time: {:.2} seconds", Instant::now().duration_since(start).as_secs_f64());
+        },
+        Err(e) => {
+            eprintln!("Error during transcription: {}", e);
+        }
+    }
+}
 
 fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
     // Base memory: 16MB (for very short audio)
@@ -296,78 +460,7 @@ pub struct DiarizeOptions {
     pub max_speakers: usize,
 }
 
-pub fn test_transcribe() {
-    let audio_path = "example.wav";
-    let audio_duration = get_audio_duration(audio_path).unwrap_or_else(|e| {
-        eprintln!("Warning: Could not get audio duration: {}. Using default memory allocation.", e);
-        0.0
-    });
-
-    // Enable DTW for more accurate word-level timestamps
-    let enable_dtw = true;
-    let enable_diarize = false;
-    
-    let ctx = create_context(
-        &PathBuf::from("./models/ggml-small.en.bin"), 
-        None, 
-        None, 
-        Some(enable_dtw), 
-        Some(audio_duration)
-    ).unwrap();
-    let transcribe_options = &crate::config::TranscribeOptions {
-        init_prompt: None,
-        lang: Some("en".into()),
-        max_sentence_len: None,
-        path: audio_path.into(),
-        verbose: None,
-        max_text_ctx: None,
-        n_threads: None,
-        temperature: None,
-        translate: None,
-        word_timestamps: Some(true),
-        sampling_bestof_or_beam_size: None,
-        sampling_strategy: None,
-    };
-    let diarize_options = DiarizeOptions {
-        segment_model_path: "./models/segmentation-3.0.onnx".into(),
-        embedding_model_path: "./models/wespeaker_en_voxceleb_CAM++.onnx".into(),
-        threshold: 0.5,
-        max_speakers: usize::MAX,
-    };
-    let start = Instant::now();
-    match transcribe(
-        &ctx, 
-        transcribe_options, 
-        None, 
-        None, 
-        None, 
-        Some(diarize_options), 
-        None,
-        enable_dtw,
-        enable_diarize
-    ) {
-        Ok(transcript) => {
-            // Save the transcript in the desired JSON format
-            let json_segments = transcript.to_json_segments();
-            let json_output = serde_json::to_string_pretty(&json_segments)
-                .expect("Failed to serialize transcript to JSON");
-            
-            // Save to a file
-            let output_path = "output/segments.json";
-            std::fs::create_dir_all("output").expect("Failed to create output directory");
-            std::fs::write(output_path, json_output).expect("Failed to write JSON output");
-            println!("Transcript saved to {}", output_path);
-            
-            println!("Transcription completed successfully!");
-            println!("Elapsed time: {:.2} seconds", Instant::now().duration_since(start).as_secs_f64());
-        },
-        Err(e) => {
-            eprintln!("Error during transcription: {}", e);
-        }
-    }
-}
-
-pub fn transcribe(
+pub fn run_transcription_pipeline(
     ctx: &WhisperContext,
     options: &TranscribeOptions,
     progress_callback: Option<Box<dyn Fn(i32) + Send + Sync>>,

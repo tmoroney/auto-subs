@@ -83,6 +83,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGlobal } from "@/contexts/GlobalContext"
+import { invoke } from "@tauri-apps/api/core"
 
 const tutorialSections = [
     {
@@ -376,6 +377,10 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const handleStartTranscription = () => {
         setIsTranscribing(true)
         setTranscriptionProgress(0)
+
+        invoke('test_transcribe').then(() => {
+            console.log('Transcription completed')
+        })
 
         // Simulate transcription progress
         const interval = setInterval(() => {
