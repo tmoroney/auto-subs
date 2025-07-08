@@ -20,6 +20,8 @@ import {
     ShieldX,
     ChevronRight,
     Captions,
+    Upload,
+    FileUp,
 } from "lucide-react"
 
 import {
@@ -84,43 +86,45 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
+import { open } from '@tauri-apps/plugin-dialog';
+import { downloadDir } from "@tauri-apps/api/path"
 
 const tutorialSections = [
     {
-      title: "🚀 Quick Start",
-      items: [
-        "Select output track for subtitles",
-        "Pick a template (great default included)",
-        "Choose language and click Generate",
-        "Subtitles will appear on your editing timeline in Resolve"
-      ]
+        title: "🚀 Quick Start",
+        items: [
+            "Select output track for subtitles",
+            "Pick a template (great default included)",
+            "Choose language and click Generate",
+            "Subtitles will appear on your editing timeline in Resolve"
+        ]
     },
     {
-      title: "🎙️ Models",
-      items: [
-        "Choose from multiple transcription models",
-        "Larger models are more accurate but slower and may require a lot of memory",
-        "Smaller models are faster and more lightweight but may be less accurate"
-      ]
+        title: "🎙️ Models",
+        items: [
+            "Choose from multiple transcription models",
+            "Larger models are more accurate but slower and may require a lot of memory",
+            "Smaller models are faster and more lightweight but may be less accurate"
+        ]
     },
     {
-      title: "👥 Speakers",
-      items: [
-        "Auto-detects multiple speakers",
-        "Color-coded speaker labels",
-        "Customize labels & colors",
-        "Ideal for interviews & podcasts"
-      ]
+        title: "👥 Speakers",
+        items: [
+            "Auto-detects multiple speakers",
+            "Color-coded speaker labels",
+            "Customize labels & colors",
+            "Ideal for interviews & podcasts"
+        ]
     },
     {
-      title: "💡 Tips",
-      items: [
-        "Clear audio = Better results",
-        "Edit your captions in the preview window if words are incorrect",
-        "Modify speaker colors to make it easier to identify speakers in the timeline"
-      ]
+        title: "💡 Tips",
+        items: [
+            "Clear audio = Better results",
+            "Edit your captions in the preview window if words are incorrect",
+            "Modify speaker colors to make it easier to identify speakers in the timeline"
+        ]
     }
-  ];
+];
 
 const models = [
     {
@@ -293,7 +297,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const [downloadProgress, setDownloadProgress] = React.useState(0)
     const [isUpdateAvailable, setIsUpdateAvailable] = React.useState(false)
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
-    const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+    const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
     const [modelsState, setModelsState] = React.useState(models)
@@ -368,35 +372,39 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
         }
     }
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setSelectedFile(e.target.files[0])
+    const handleStartTranscription = async () => {
+        if (!selectedFile) {
+            // Or show some error to the user
+            console.error("No file selected")
+            return
         }
-    }
 
-    const handleStartTranscription = () => {
         setIsTranscribing(true)
         setTranscriptionProgress(0)
 
-        invoke('test_transcribe').then(() => {
-            console.log('Transcription completed')
-        })
+        const options = {
+            // @ts-ignore
+            audioPath: selectedFile,
+            model: selectedModel.value,
+            lang: settings.sourceLanguage === "auto" ? null : settings.sourceLanguage,
+            enableDiarize: settings.diarize,
+            maxSpeakers: settings.diarize
+                ? (parseInt(settings.numSpeakers) === 0 ? null : parseInt(settings.numSpeakers))
+                : null,
+        }
 
-        // Simulate transcription progress
-        const interval = setInterval(() => {
-            setTranscriptionProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval)
-                    setTimeout(() => {
-                        setIsTranscribing(false)
-                        // Keep progress at 100% for a moment before hiding
-                        setTimeout(() => setTranscriptionProgress(0), 1000)
-                    }, 500)
-                    return 100
-                }
-                return prev + 10 // Increment by 10% each time
-            })
-        }, 500) // Update progress every 500ms
+        try {
+            console.log("Invoking transcribe_audio with options:", options)
+            const transcript = await invoke("transcribe_audio", { options })
+            console.log("Transcription successful:", transcript)
+            // Handle successful transcription, e.g., display the transcript
+        } catch (error) {
+            console.error("Transcription failed:", error)
+            // Handle error, e.g., show an error message to the user
+        } finally {
+            setIsTranscribing(false)
+            setTranscriptionProgress(0) // Reset progress
+        }
     }
 
     React.useEffect(() => {
@@ -463,26 +471,38 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         <div className="space-y-4">
                             {isStandaloneMode ? (
                                 <div>
-                                    <Label
-                                        htmlFor="file-upload"
-                                        className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                                    >
-                                        <Download className="h-8 w-8 text-muted-foreground mb-2" />
-                                        <p className="text-sm">
-                                            <span className="font-semibold">Click to upload</span> or drag and drop
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">Audio or Video file</p>
-                                        <Input
-                                            id="file-upload"
-                                            type="file"
-                                            className="sr-only"
-                                            onChange={handleFileChange}
-                                            accept="audio/*,video/*"
-                                        />
-                                    </Label>
-                                    {selectedFile && (
-                                        <p className="text-xs text-center text-muted-foreground mt-2">Selected: {selectedFile.name}</p>
-                                    )}
+                                    <Card className="p-4">
+                                        <CardContent className="p-0 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-sm font-medium">Transcribe Audio File</h3>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        const file = await open({
+                                                            multiple: false,
+                                                            directory: false,
+                                                            filters: [{
+                                                                name: 'Audio Files',
+                                                                extensions: ['wav', 'mp3']
+                                                            }],
+                                                            defaultPath: await downloadDir()
+                                                        })
+                                                        setSelectedFile(file)
+                                                    }}
+                                                >
+                                                    <Upload className="h-4 w-4 mr-2" />
+                                                    {selectedFile ? 'Change File' : 'Select File'}
+                                                </Button>
+                                            </div>
+                                            {selectedFile && (
+                                                <div className="text-sm text-muted-foreground truncate">
+                                                    <span className="font-medium">Selected: </span>
+                                                    {selectedFile.split('/').pop()}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -568,319 +588,336 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                     </div>
 
                     {/* Model Selection Carousel */}
-                    <div className="space-y-4">
+                    <Collapsible defaultOpen className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">Model</h3>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
+                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        Model
+                                    </h3>
+                                </Button>
+                            </CollapsibleTrigger>
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
-                        <div className="relative -mx-4 px-4">
-                            {/* Gradient overlays */}
-                            {canScrollPrev && (
-                                <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                            )}
-                            {canScrollNext && (
-                                <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                            )}
-                            <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
-                                {modelsState.map((model) => (
-                                    <CarouselItem key={model.value} className="max-w-40">
-                                        <div className="p-0.5 h-full">
-                                            <Card
-                                                onClick={() => setSelectedModel(model)}
-                                                className={`cursor-pointer h-full flex flex-col justify-between relative ${selectedModel.value === model.value
-                                                    ? "ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-700/50"
-                                                    : "hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                                    }`}
-                                            >
-                                                {model.isDownloaded && downloadingModel !== model.value && (
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="absolute top-2 right-2 h-6 w-6 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors z-10"
-                                                                title="Delete Model"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                            <div className="flex items-center gap-2">
-                                                                <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                                <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                            </div>
-                                                            <span className="text-sm text-muted-foreground">
-                                                                This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                            </span>
-                                                            <div className="flex justify-end gap-2">
-                                                                <DialogClose asChild>
-                                                                    <Button variant="ghost" size="sm">Cancel</Button>
-                                                                </DialogClose>
+                        <CollapsibleContent>
+                            <div className="relative -mx-4 px-4">
+                                {/* Gradient overlays */}
+                                {canScrollPrev && (
+                                    <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
+                                )}
+                                {canScrollNext && (
+                                    <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
+                                )}
+                                <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
+                                    {modelsState.map((model) => (
+                                        <CarouselItem key={model.value} className="max-w-40">
+                                            <div className="p-0.5 h-full">
+                                                <Card
+                                                    onClick={() => setSelectedModel(model)}
+                                                    className={`cursor-pointer h-full flex flex-col justify-between relative ${selectedModel.value === model.value
+                                                        ? "ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-700/50"
+                                                        : "hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+                                                        }`}
+                                                >
+                                                    {model.isDownloaded && downloadingModel !== model.value && (
+                                                        <Dialog>
+                                                            <DialogTrigger asChild>
                                                                 <Button
-                                                                    variant="destructive"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        handleDeleteModel(model.value)
-                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute top-2 right-2 h-6 w-6 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors z-10"
+                                                                    title="Delete Model"
                                                                 >
-                                                                    Delete
+                                                                    <Trash2 className="h-4 w-4" />
                                                                 </Button>
-                                                            </div>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                )}
-
-                                                <CardContent className="flex flex-col items-center text-center p-2 pb-0">
-                                                    <img src={model.image} alt={model.label + " icon"} className="w-full h-20 mt-2 mb-0 object-contain" />
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <h3 className="text-md font-bold text-slate-900 dark:text-white">{model.label}</h3>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button type="button" tabIndex={0} className="p-0.5 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                                                    <Info className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="top" align="center" className="w-[250px] p-3">
-                                                                <div className="flex flex-col gap-2 min-w-[100px] max-w-xs">
-                                                                    <p className="text-xs text-slate-700 dark:text-slate-200 text-left">
-                                                                        {model.details}
-                                                                    </p>
-                                                                    <div className="flex items-center gap-2 mt-1">
-                                                                        <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                            <HardDrive className="h-4 w-4 mr-0.5" />
-                                                                            <span className="font-medium">Model Size:</span>
-                                                                            <span>{model.size}</span>
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                            <MemoryStick className="h-4 w-4 mr-0.5" />
-                                                                            <span className="font-medium">Required RAM:</span>
-                                                                            <span>{model.ram}</span>
-                                                                        </span>
-                                                                    </div>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
+                                                                <div className="flex items-center gap-2">
+                                                                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                                    <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
                                                                 </div>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 h-8">{model.description}</p>
-                                                </CardContent>
-
-                                                <div className="h-[32px] flex items-center justify-center">
-                                                    {downloadingModel === model.value ? (
-                                                        <div className="w-full px-2">
-                                                            <Progress value={downloadProgress} className="h-2" />
-                                                            <p className="text-xs text-center mt-1 text-blue-600 dark:text-blue-400">
-                                                                {downloadProgress}%
-                                                            </p>
-                                                        </div>
-                                                    ) : model.isDownloaded ? (
-                                                        <div className="w-full text-center py-2 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-b-md">
-                                                            Downloaded
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDownload(model.value)
-                                                            }}
-                                                            className="w-full text-center py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 rounded-b-md transition-colors"
-                                                        >
-                                                            Download
-                                                        </button>
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
+                                                                </span>
+                                                                <div className="flex justify-end gap-2">
+                                                                    <DialogClose asChild>
+                                                                        <Button variant="ghost" size="sm">Cancel</Button>
+                                                                    </DialogClose>
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        size="sm"
+                                                                        onClick={() => {
+                                                                            handleDeleteModel(model.value)
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </Button>
+                                                                </div>
+                                                            </DialogContent>
+                                                        </Dialog>
                                                     )}
-                                                </div>
-                                            </Card>
-                                        </div>
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            {canScrollPrev && (
-                                <CarouselPrevious
-                                    onClick={() => handleScroll("prev")}
-                                    className="left-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                />
-                            )}
-                            {canScrollNext && (
-                                <CarouselNext
-                                    onClick={() => handleScroll("next")}
-                                    className="right-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                />
-                            )}
-                        </div>
-                    </div>
+
+                                                    <CardContent className="flex flex-col items-center text-center p-2 pb-0">
+                                                        <img src={model.image} alt={model.label + " icon"} className="w-full h-20 mt-2 mb-0 object-contain" />
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <h3 className="text-md font-bold text-slate-900 dark:text-white">{model.label}</h3>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button type="button" tabIndex={0} className="p-0.5 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                                                        <Info className="h-4 w-4" />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top" align="center" className="w-[250px] p-3">
+                                                                    <div className="flex flex-col gap-2 min-w-[100px] max-w-xs">
+                                                                        <p className="text-xs text-slate-700 dark:text-slate-200 text-left">
+                                                                            {model.details}
+                                                                        </p>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
+                                                                                <HardDrive className="h-4 w-4 mr-0.5" />
+                                                                                <span className="font-medium">Model Size:</span>
+                                                                                <span>{model.size}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
+                                                                                <MemoryStick className="h-4 w-4 mr-0.5" />
+                                                                                <span className="font-medium">Required RAM:</span>
+                                                                                <span>{model.ram}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 h-8">{model.description}</p>
+                                                    </CardContent>
+
+                                                    <div className="h-[32px] flex items-center justify-center">
+                                                        {downloadingModel === model.value ? (
+                                                            <div className="w-full px-2">
+                                                                <Progress value={downloadProgress} className="h-2" />
+                                                                <p className="text-xs text-center mt-1 text-blue-600 dark:text-blue-400">
+                                                                    {downloadProgress}%
+                                                                </p>
+                                                            </div>
+                                                        ) : model.isDownloaded ? (
+                                                            <div className="w-full text-center py-2 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-b-md">
+                                                                Downloaded
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleDownload(model.value)
+                                                                }}
+                                                                className="w-full text-center py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 rounded-b-md transition-colors"
+                                                            >
+                                                                Download
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </Card>
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {canScrollPrev && (
+                                    <CarouselPrevious
+                                        onClick={() => handleScroll("prev")}
+                                        className="left-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                    />
+                                )}
+                                {canScrollNext && (
+                                    <CarouselNext
+                                        onClick={() => handleScroll("next")}
+                                        className="right-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                    />
+                                )}
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
 
 
 
                     {/* Processing */}
-                    <div className="space-y-4">
+                    <Collapsible defaultOpen className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                Processing
-                            </h3>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
+                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        Processing
+                                    </h3>
+                                </Button>
+                            </CollapsibleTrigger>
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
-                        <div className="space-y-4">
-                            <div className="border rounded-lg overflow-hidden">
-                                <div className="p-3.5">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Globe className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                                            <div>
-                                                <p className="text-sm font-medium">Input Language</p>
-                                                <p className="text-xs text-muted-foreground">Language in audio</p>
-                                            </div>
-                                        </div>
-                                        <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={openSourceLanguages}
-                                                    className="w-[45%] sm:w-[50%] justify-between font-normal"
-                                                >
-                                                    {settings.sourceLanguage
-                                                        ? languages.find((language) => language.value === settings.sourceLanguage)?.label
-                                                        : "Select language..."}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="p-0 w-full">
-                                                <Command>
-                                                    <CommandInput placeholder="Search languages..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>No language found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {languages
-                                                                .slice()
-                                                                .sort((a, b) => {
-                                                                    if (a.value === 'auto') return -1;
-                                                                    if (b.value === 'auto') return 1;
-                                                                    return a.label.localeCompare(b.label);
-                                                                })
-                                                                .map((language) => (
-                                                                    <CommandItem
-                                                                        value={language.label}
-                                                                        key={language.value}
-                                                                        onSelect={() => {
-                                                                            updateSetting('sourceLanguage', language.value);
-                                                                            setOpenSourceLanguages(false);
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                language.value === settings.sourceLanguage
-                                                                                    ? "opacity-100"
-                                                                                    : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        {language.label}
-                                                                    </CommandItem>
-                                                                ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    {settings.sourceLanguage !== 'en' && (
-                                        <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <Languages className="h-5 w-5 text-amber-600 dark:text-amber-400 ml-1" />
-                                                <div>
-                                                    <p className="text-sm font-medium">Translate to English</p>
-                                                </div>
-                                            </div>
-                                            <Switch
-                                                checked={settings.translate}
-                                                onCheckedChange={(checked) => updateSetting("translate", checked)}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border rounded-lg overflow-hidden">
-                            <div className="p-3.5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Speech className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-                                        <div>
-                                            <div className="flex items-center gap-1">
-                                                <p className="text-sm font-medium">Speaker Labeling</p>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <button
-                                                            type="button"
-                                                            tabIndex={0}
-                                                            className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
-                                                        >
-                                                            <Info className="h-4 w-4" />
-                                                        </button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="bottom" align="start" className="w-56 p-3">
-                                                        <p className="text-xs text-left">
-                                                            Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
-                                                        </p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                Unique captions for each speaker.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Switch checked={settings.diarize} onCheckedChange={(checked) => updateSetting("diarize", checked)} />
-                                </div>
-                                {settings.diarize && (
-                                    <div className="mt-3 pt-3 border-t">
+                        <CollapsibleContent>
+                            <div className="space-y-4">
+                                <div className="border rounded-lg overflow-hidden">
+                                    <div className="p-3.5">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1">
-                                                <Label className="text-sm">Auto-detect Speakers</Label>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <button
-                                                            type="button"
-                                                            tabIndex={0}
-                                                            className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
-                                                        >
-                                                            <Info className="h-4 w-4" />
-                                                        </button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
-                                                        <p className="text-xs text-left text-slate-700 dark:text-slate-200">
-                                                            Auto-detecting speakers can be less accurate than specifying the exact number of speakers.
-                                                        </p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                            <Switch
-                                                checked={parseInt(settings.numSpeakers as string) === 0}
-                                                onCheckedChange={(checked) => updateSetting("numSpeakers", checked ? "0" : "2")}
-                                            />
-                                        </div>
-                                        {parseInt(settings.numSpeakers as string) > 0 && (
-                                            <div className="flex items-center justify-between mt-2">
-                                                <div className="flex items-center gap-3">
-                                                    <Label className="text-sm">No. of Speakers</Label>
+                                            <div className="flex items-center gap-3">
+                                                <Globe className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                                <div>
+                                                    <p className="text-sm font-medium">Input Language</p>
+                                                    <p className="text-xs text-muted-foreground">Language in audio</p>
                                                 </div>
-                                                <Input
-                                                    type="number"
-                                                    min="1"
-                                                    value={settings.numSpeakers}
-                                                    onChange={(e) => updateSetting("numSpeakers", e.target.value)}
-                                                    className="w-20"
+                                            </div>
+                                            <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openSourceLanguages}
+                                                        className="w-[45%] sm:w-[50%] justify-between font-normal"
+                                                    >
+                                                        {settings.sourceLanguage
+                                                            ? languages.find((language) => language.value === settings.sourceLanguage)?.label
+                                                            : "Select language..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="p-0 w-full">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search languages..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No language found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {languages
+                                                                    .slice()
+                                                                    .sort((a, b) => {
+                                                                        if (a.value === 'auto') return -1;
+                                                                        if (b.value === 'auto') return 1;
+                                                                        return a.label.localeCompare(b.label);
+                                                                    })
+                                                                    .map((language) => (
+                                                                        <CommandItem
+                                                                            value={language.label}
+                                                                            key={language.value}
+                                                                            onSelect={() => {
+                                                                                updateSetting('sourceLanguage', language.value);
+                                                                                setOpenSourceLanguages(false);
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    language.value === settings.sourceLanguage
+                                                                                        ? "opacity-100"
+                                                                                        : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {language.label}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        {settings.sourceLanguage !== 'en' && (
+                                            <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <Languages className="h-5 w-5 text-amber-600 dark:text-amber-400 ml-1" />
+                                                    <div>
+                                                        <p className="text-sm font-medium">Translate to English</p>
+                                                    </div>
+                                                </div>
+                                                <Switch
+                                                    checked={settings.translate}
+                                                    onCheckedChange={(checked) => updateSetting("translate", checked)}
                                                 />
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                                </div>
+
+                                <div className="border rounded-lg overflow-hidden">
+                                    <div className="p-3.5">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Speech className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                                                <div>
+                                                    <div className="flex items-center gap-1">
+                                                        <p className="text-sm font-medium">Speaker Labeling</p>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={0}
+                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
+                                                                >
+                                                                    <Info className="h-4 w-4" />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="bottom" align="start" className="w-56 p-3">
+                                                                <p className="text-xs text-left">
+                                                                    Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Unique captions for each speaker.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Switch checked={settings.diarize} onCheckedChange={(checked) => updateSetting("diarize", checked)} />
+                                        </div>
+                                        {settings.diarize && (
+                                            <div className="mt-3 pt-3 border-t">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-1">
+                                                        <Label className="text-sm">Auto-detect Speakers</Label>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={0}
+                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
+                                                                >
+                                                                    <Info className="h-4 w-4" />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
+                                                                <p className="text-xs text-left text-slate-700 dark:text-slate-200">
+                                                                    Auto-detecting speakers can be less accurate than specifying the exact number of speakers.
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                    <Switch
+                                                        checked={parseInt(settings.numSpeakers as string) === 0}
+                                                        onCheckedChange={(checked) => updateSetting("numSpeakers", checked ? "0" : "2")}
+                                                    />
+                                                </div>
+                                                {parseInt(settings.numSpeakers as string) > 0 && (
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <Label className="text-sm">No. of Speakers</Label>
+                                                        </div>
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            value={settings.numSpeakers}
+                                                            onChange={(e) => updateSetting("numSpeakers", e.target.value)}
+                                                            className="w-20"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                </div>
+
+                        </CollapsibleContent>
+                    </Collapsible>
 
                     {/* Text Formatting */}
                     <Collapsible defaultOpen className="space-y-4">

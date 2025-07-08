@@ -6,6 +6,7 @@ use serde_json::json;
 use std::thread;
 use tauri::RunEvent;
 use crate::transcribe::transcribe_audio;
+use whisper_rs;
 
 
 // Import plugins
@@ -23,6 +24,7 @@ mod audio;
 mod models;
 
 fn main() {
+    whisper_rs::install_logging_hooks();
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         // Register each plugin

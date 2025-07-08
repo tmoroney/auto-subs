@@ -46,6 +46,9 @@
     "resources": [
       "resources/"
     ],
+    "externalBin": [
+      "binaries/ffmpeg"
+    ],
     "macOS": {
       "minimumSystemVersion": "14.0"
     },
