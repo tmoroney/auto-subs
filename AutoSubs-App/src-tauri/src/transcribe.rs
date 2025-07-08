@@ -50,6 +50,8 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
 
     let ctx = create_context(
         &PathBuf::from(model_path),
+        &options.model,
+        &options.lang,
         None,
         None,
         Some(enable_dtw),
@@ -140,9 +142,11 @@ fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
 }
 
 pub fn create_context(
-    model_path: &Path, 
-    gpu_device: Option<i32>, 
-    use_gpu: Option<bool>, 
+    model_path: &Path,
+    model: &str,
+    lang: &Option<String>,
+    gpu_device: Option<i32>,
+    use_gpu: Option<bool>,
     enable_dtw: Option<bool>,
     audio_duration_secs: Option<f64>,
 ) -> Result<WhisperContext> {
@@ -181,8 +185,23 @@ pub fn create_context(
         };
 
         ctx_params.flash_attn(false);  // DTW requires flash_attn off
+        let is_en = lang.as_deref().map_or(false, |l| l == "en");
+        let model_preset = match (model, is_en) {
+            ("tiny", true) => DtwModelPreset::TinyEn,
+            ("tiny", false) => DtwModelPreset::Tiny,
+            ("base", true) => DtwModelPreset::BaseEn,
+            ("base", false) => DtwModelPreset::Base,
+            ("small", true) => DtwModelPreset::SmallEn,
+            ("small", false) => DtwModelPreset::Small,
+            ("medium", true) => DtwModelPreset::MediumEn,
+            ("medium", false) => DtwModelPreset::Medium,
+            ("large", _) => DtwModelPreset::LargeV3,
+            // Add a sensible default or handle other cases
+            _ => DtwModelPreset::SmallEn, // Defaulting to SmallEn
+        };
+
         ctx_params.dtw_parameters(DtwParameters {
-            mode: DtwMode::ModelPreset { model_preset: DtwModelPreset::SmallEn },
+            mode: DtwMode::ModelPreset { model_preset },
             dtw_mem_size,
         });
     }

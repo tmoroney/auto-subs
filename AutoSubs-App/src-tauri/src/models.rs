@@ -14,11 +14,12 @@ fn get_model_cache_dir() -> Result<PathBuf, String> {
 }
 
 fn get_filename(model: &str, lang: &Option<String>) -> String {
+    let model_name = if model == "large" { "large-v3" } else { model };
     let is_en = lang.as_deref().map_or(true, |l| l.eq_ignore_ascii_case("en"));
-    if is_en && model != "large" {
-        format!("ggml-{}.en.bin", model)
+    if is_en && model_name != "large-v3" {
+        format!("ggml-{}.en.bin", model_name)
     } else {
-        format!("ggml-{}.bin", model)
+        format!("ggml-{}.bin", model_name)
     }
 }
 
@@ -26,10 +27,14 @@ fn get_filename(model: &str, lang: &Option<String>) -> String {
 /// Returns the path to the model file in the cache.
 pub fn download_model_if_needed(model: &str, lang: &Option<String>) -> Result<PathBuf, String> {
     let filename = get_filename(model, lang);
+    let model_cache = get_model_cache_dir()?;
 
     println!("Checking for model '{}' in cache...", filename);
 
-    let api = Api::new().map_err(|e| e.to_string())?;
+    let api = hf_hub::api::sync::ApiBuilder::new()
+        .with_cache_dir(model_cache)
+        .build()
+        .map_err(|e| e.to_string())?;
     let repo = api.model("ggerganov/whisper.cpp".to_string());
 
     let model_path = repo.get(&filename).map_err(|e| e.to_string())?;
@@ -41,7 +46,7 @@ pub fn download_model_if_needed(model: &str, lang: &Option<String>) -> Result<Pa
 /// Returns the path to the app's diarize model cache directory, creating it if it doesn't exist.
 fn get_diarize_model_cache_dir() -> Result<PathBuf, String> {
     let cache_dir = dirs::cache_dir().ok_or_else(|| "Failed to get cache directory".to_string())?;
-    let model_dir = cache_dir.join("AutoSubs").join("diarize-models");
+    let model_dir = cache_dir.join("AutoSubs").join("models");
     if !model_dir.exists() {
         std::fs::create_dir_all(&model_dir)
             .map_err(|e| format!("Failed to create diarize model cache directory: {}", e))?;
