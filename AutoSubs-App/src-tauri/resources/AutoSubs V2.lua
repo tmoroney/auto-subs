@@ -599,33 +599,89 @@ end
 
 -- Server
 local port = 56002
+local server -- Declare server variable in outer scope for cleanup
+
+-- Cleanup function
+local function cleanup()
+    if server then
+        print("Cleaning up server...")
+        pcall(function() server:close() end)
+        server = nil
+    end
+end
+
+-- Set up signal handling for graceful shutdown
+if os_name == "OSX" then
+    -- Register cleanup on exit
+    local original_exit = os.exit
+    os.exit = function(code)
+        cleanup()
+        original_exit(code)
+    end
+end
 
 -- Set up server socket configuration
 local info = assert(socket.find_first_address("127.0.0.1", port))
-local server = assert(socket.create(info.family, info.socket_type, info.protocol))
+server = assert(socket.create(info.family, info.socket_type, info.protocol))
 
 -- Set socket options
 server:set_blocking(false)
 assert(server:set_option("nodelay", true, "tcp"))
 assert(server:set_option("reuseaddr", true))
 
--- Bind and listen
-local success, err = pcall(function()
-    assert(server:bind(info))
-end)
+-- Bind and listen with improved retry mechanism
+local bind_success = false
+local max_retries = 3
+local retry_count = 0
 
-if not success then
-    os.execute([[
-        curl --request POST \
-            --url http://localhost:55010/ \
-            --header 'Content-Type: application/json' \
-            --header 'content-type: application/json' \
-            --data '{
-            "func":"Exit"
-        }'
-    ]])
-    sleep(0.5)
-    assert(server:bind(info))
+while not bind_success and retry_count < max_retries do
+    local success, err = pcall(function()
+        assert(server:bind(info))
+    end)
+    
+    if success then
+        bind_success = true
+    else
+        retry_count = retry_count + 1
+        print("Bind attempt " .. retry_count .. " failed: " .. tostring(err))
+        
+        if retry_count < max_retries then
+            -- Try to shut down any existing server
+            print("Attempting to shut down existing server...")
+            os.execute([[
+                curl --request POST \
+                    --url http://localhost:56002/ \
+                    --header 'Content-Type: application/json' \
+                    --data '{
+                    "func":"Exit"
+                }'
+            ]])
+            
+            -- Also try the transcription server port
+            os.execute([[
+                curl --request POST \
+                    --url http://localhost:55010/ \
+                    --header 'Content-Type: application/json' \
+                    --data '{
+                    "func":"Exit"
+                }'
+            ]])
+            
+            -- Wait longer for socket to be released
+            sleep(1.0)
+            
+            -- Close and recreate socket
+            server:close()
+            server = assert(socket.create(info.family, info.socket_type, info.protocol))
+            server:set_blocking(false)
+            assert(server:set_option("nodelay", true, "tcp"))
+            assert(server:set_option("reuseaddr", true))
+        end
+    end
+end
+
+if not bind_success then
+    error("Failed to bind to port " .. port .. " after " .. max_retries .. " attempts. Please ensure no other instance is running.")
 end
 
 assert(server:listen())
@@ -744,7 +800,7 @@ while not quitServer do
 end
 
 print("Shutting down AutoSubs Link server...")
-server:close()
+cleanup()
 
 -- Kill transcription server if necessary
 -- ffi.C.system(command_close)
