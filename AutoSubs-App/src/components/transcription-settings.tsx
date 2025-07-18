@@ -18,11 +18,14 @@ import {
     AArrowUp,
     ShieldX,
     ChevronRight,
+
     Captions,
     Upload,
     FileUp,
     AudioLines,
     Tally5,
+    Brain,
+    Download,
 } from "lucide-react"
 
 import {
@@ -353,20 +356,20 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
             try {
                 const downloadedModels = await invoke("get_downloaded_models") as string[]
                 console.log("Downloaded models:", downloadedModels)
-                
+
                 // Update modelsState based on downloaded models
-                setModelsState(prevModels => 
+                setModelsState(prevModels =>
                     prevModels.map(model => ({
                         ...model,
-                        isDownloaded: downloadedModels.some(downloadedModel => 
+                        isDownloaded: downloadedModels.some(downloadedModel =>
                             downloadedModel.includes(model.value)
                         )
                     }))
                 )
-                
+
                 // Update selectedModel if it's in the downloaded models
                 setSelectedModel(prevSelected => {
-                    const isSelectedDownloaded = downloadedModels.some(downloadedModel => 
+                    const isSelectedDownloaded = downloadedModels.some(downloadedModel =>
                         downloadedModel.includes(prevSelected.value)
                     )
                     return {
@@ -378,7 +381,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                 console.error("Failed to check downloaded models:", error)
             }
         }
-        
+
         checkDownloadedModels()
     }, [])
 
@@ -591,7 +594,157 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             <div className="space-y-4">
 
                                 {/* Model */}
-                                
+                                <div className="border rounded-lg overflow-hidden dark:from-gray-900 dark:to-purple-950/20">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                    <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Transcription Model</p>
+                                                    <p className="text-xs text-muted-foreground">Choose the model for speech-to-text processing</p>
+                                                </div>
+                                            </div>
+                                            {downloadingModel === selectedModel.value ? (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                                                    <Progress value={downloadProgress} className="h-2 w-16" />
+                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                </div>
+                                            ) : selectedModel.isDownloaded ? (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 rounded-lg"
+                                                            title="Delete Model"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
+                                                        <div className="flex items-center gap-2">
+                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
+                                                        </span>
+                                                        <div className="flex justify-end gap-2">
+                                                            <DialogClose asChild>
+                                                                <Button variant="ghost" size="sm">Cancel</Button>
+                                                            </DialogClose>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    handleDeleteModel(selectedModel.value)
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            ) : null}
+                                        </div>
+
+                                        <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openModelSelector}
+                                                    className="w-full justify-between font-normal h-auto p-3.5 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/20"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative">
+                                                            <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-12 h-12 object-contain rounded-lg" />
+                                                        </div>
+                                                        <div className="flex flex-col items-start">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-semibold text-base">{selectedModel.label}</span>
+                                                                {selectedModel.isDownloaded ? (
+                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+                                                                        <Check className="h-3 w-3 inline" /> Cached
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
+                                                                        <Download className="h-3 w-3 inline" /> Not Cached
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                                                                    <HardDrive className="h-3 w-3" />
+                                                                    <span className="font-medium">{selectedModel.size}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                                                                    <MemoryStick className="h-3 w-3" />
+                                                                    <span className="font-medium">{selectedModel.ram} RAM</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronsUpDown className="mr-2 h-5 w-5 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-full p-2" align="start">
+                                                <div className="space-y-1">
+                                                    {modelsState.map((model) => (
+                                                        <div
+                                                            key={model.value}
+                                                            className={`flex items-center justify-between rounded-lg px-3 py-3 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors duration-150 ${selectedModel.value === model.value ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" : "border border-transparent"
+                                                                }`}
+                                                            onClick={() => {
+                                                                setSelectedModel(model)
+                                                                setOpenModelSelector(false)
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="relative">
+                                                                    <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
+                                                                    {model.isDownloaded && (
+                                                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{model.label}</span>
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <span>{model.size}</span>
+                                                                        <span>•</span>
+                                                                        <span>{model.description}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {downloadingModel === model.value ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                                    </div>
+                                                                ) : model.isDownloaded ? (
+                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                        Cached
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                                                        Available
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        <div className="mt-2 p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedModel.details}</p>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 {/* Language */}
                                 <div className="border rounded-lg overflow-hidden">
@@ -756,154 +909,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         </CollapsibleContent>
                     </Collapsible>
 
-                    {/* Model Selection Carousel */}
-                    <Collapsible defaultOpen className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        Model
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <div className="space-y-4">
-                                {/* Selected Model Details */}
-                                <div className="p-4 bg-muted/50 rounded-lg">
-                                    <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    role="combobox"
-                                                    aria-expanded={openModelSelector}
-                                                    className="flex items-center gap-2 p-0 h-auto hover:bg-transparent hover:opacity-80"
-                                                >
-                                                    <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-8 h-8 object-contain" />
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium">{selectedModel.label}</span>
-                                                        {selectedModel.isDownloaded ? (
-                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                Cached
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                                                                Not Cached
-                                                            </span>
-                                                        )}
-                                                        <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-50" />
-                                                    </div>
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <div className="flex-1"></div>
-                                            
-                                            {downloadingModel === selectedModel.value ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Progress value={downloadProgress} className="h-2 w-16" />
-                                                    <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                </div>
-                                            ) : selectedModel.isDownloaded ? (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 text-red-500 dark:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                                                            title="Delete Model"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                        <div className="flex items-center gap-2">
-                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                        </div>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                        </span>
-                                                        <div className="flex justify-end gap-2">
-                                                            <DialogClose asChild>
-                                                                <Button variant="ghost" size="sm">Cancel</Button>
-                                                            </DialogClose>
-                                                            <Button
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    handleDeleteModel(selectedModel.value)
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </Button>
-                                                        </div>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            ) : null}
-                                        </div>
-                                        
-                                        <PopoverContent className="w-full p-0" align="start">
-                                            <div className="p-2">
-                                                <div className="space-y-1">
-                                                    {modelsState.map((model) => (
-                                                        <div
-                                                            key={model.value}
-                                                            className={`flex items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer ${
-                                                                selectedModel.value === model.value ? "bg-accent text-accent-foreground" : ""
-                                                            }`}
-                                                            onClick={() => {
-                                                                setSelectedModel(model)
-                                                                setOpenModelSelector(false)
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center gap-3 mr-8">
-                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain" />
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium">{model.label}</span>
-                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                        <span>{model.size}</span>
-                                                                        <span>•</span>
-                                                                        <span>{model.description}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {downloadingModel === model.value ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
-                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                                    </div>
-                                                                ) : model.isDownloaded ? (
-                                                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                        Cached
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <p className="text-sm text-muted-foreground mb-4">{selectedModel.details}</p>
-                                    <div className="grid grid-cols-2 gap-4 text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <HardDrive className="h-4 w-4 text-muted-foreground" />
-                                            <span className="font-medium">Size:</span> 
-                                            <span>{selectedModel.size}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <MemoryStick className="h-4 w-4 text-muted-foreground" />
-                                            <span className="font-medium">RAM:</span> 
-                                            <span>{selectedModel.ram}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
+
 
                     {/* Text Formatting */}
                     <Collapsible defaultOpen className="space-y-4">
