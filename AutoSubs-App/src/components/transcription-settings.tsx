@@ -1,7 +1,6 @@
 import * as React from "react"
 import {
     Languages,
-    Download,
     HelpCircle,
     Heart,
     Github,
@@ -22,6 +21,8 @@ import {
     Captions,
     Upload,
     FileUp,
+    AudioLines,
+    Tally5,
 } from "lucide-react"
 
 import {
@@ -423,6 +424,41 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
         }
     }, [checkArrows])
 
+    // Check which models are downloaded when component mounts
+    React.useEffect(() => {
+        const checkDownloadedModels = async () => {
+            try {
+                const downloadedModels = await invoke("get_downloaded_models") as string[]
+                console.log("Downloaded models:", downloadedModels)
+                
+                // Update modelsState based on downloaded models
+                setModelsState(prevModels => 
+                    prevModels.map(model => ({
+                        ...model,
+                        isDownloaded: downloadedModels.some(downloadedModel => 
+                            downloadedModel.includes(model.value)
+                        )
+                    }))
+                )
+                
+                // Update selectedModel if it's in the downloaded models
+                setSelectedModel(prevSelected => {
+                    const isSelectedDownloaded = downloadedModels.some(downloadedModel => 
+                        downloadedModel.includes(prevSelected.value)
+                    )
+                    return {
+                        ...prevSelected,
+                        isDownloaded: isSelectedDownloaded
+                    }
+                })
+            } catch (error) {
+                console.error("Failed to check downloaded models:", error)
+            }
+        }
+        
+        checkDownloadedModels()
+    }, [])
+
     return (
         <>
             <div className="flex flex-col h-[calc(100vh-60px)] bg-background overflow-y-auto">
@@ -471,274 +507,147 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         <div className="space-y-4">
                             {isStandaloneMode ? (
                                 <div>
-                                    <Card className="p-4">
-                                        <CardContent className="p-0 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-medium">Transcribe Audio File</h3>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={async () => {
-                                                        const file = await open({
-                                                            multiple: false,
-                                                            directory: false,
-                                                            filters: [{
-                                                                name: 'Audio Files',
-                                                                extensions: ['wav', 'mp3']
-                                                            }],
-                                                            defaultPath: await downloadDir()
-                                                        })
-                                                        setSelectedFile(file)
-                                                    }}
-                                                >
-                                                    <Upload className="h-4 w-4 mr-2" />
-                                                    {selectedFile ? 'Change File' : 'Select File'}
-                                                </Button>
-                                            </div>
-                                            {selectedFile && (
-                                                <div className="text-sm text-muted-foreground truncate">
-                                                    <span className="font-medium">Selected: </span>
-                                                    {selectedFile.split('/').pop()}
+                                    <Card className="p-3.5 shadow-none">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <FileUp className="h-6 w-6 text-orange-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium">Audio File</p>
+                                                    <p className="text-xs text-muted-foreground">Select an audio file to transcribe</p>
                                                 </div>
-                                            )}
-                                        </CardContent>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="default"
+                                                onClick={async () => {
+                                                    const file = await open({
+                                                        multiple: false,
+                                                        directory: false,
+                                                        filters: [{
+                                                            name: 'Audio Files',
+                                                            extensions: ['wav', 'mp3']
+                                                        }],
+                                                        defaultPath: await downloadDir()
+                                                    })
+                                                    setSelectedFile(file)
+                                                }}
+                                            >
+                                                <Upload className="h-4 w-4 mr-2" />
+                                                {selectedFile ? 'Change File' : 'Select File'}
+                                            </Button>
+                                        </div>
+                                        {selectedFile && (
+                                            <div className="text-sm text-muted-foreground truncate mt-2">
+                                                <span className="font-medium">Selected: </span>
+                                                {selectedFile.split('/').pop()}
+                                            </div>
+                                        )}
                                     </Card>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm">Audio Track</Label>
-                                        <Select defaultValue="1">
-                                            <SelectTrigger className="w-[50%]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">All Tracks</SelectItem>
-                                                <SelectItem value="1">Track 1</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm">Caption Track</Label>
-                                        <Select defaultValue="1">
-                                            <SelectTrigger className="w-[50%]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="1">Video Track 1</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm">Text+ Template</Label>
-                                        <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={openTemplates}
-                                                    className="w-[50%] justify-between"
-                                                >
-                                                    {selectedTemplate?.label || "Select template..."}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="p-0 w-full">
-                                                <Command>
-                                                    <CommandInput placeholder="Search templates..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>No templates found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {[
-                                                                { value: "default", label: "Default Text+" },
-                                                                { value: "minimal", label: "Minimal" },
-                                                                { value: "modern", label: "Modern" },
-                                                                { value: "classic", label: "Classic" },
-                                                                { value: "bold", label: "Bold" },
-                                                                { value: "elegant", label: "Elegant" },
-                                                                { value: "minimal-outline", label: "Minimal Outline" },
-                                                                { value: "modern-fill", label: "Modern Fill" },
-                                                            ].map((template) => (
-                                                                <CommandItem
-                                                                    key={template.value}
-                                                                    value={template.value}
-                                                                    onSelect={() => {
-                                                                        setSelectedTemplate(template)
-                                                                        setOpenTemplates(false)
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    {template.label}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
+                                    <Card className="p-3.5 shadow-none">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <AudioLines className="h-6 w-6 text-orange-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium">Audio Input</p>
+                                                    <p className="text-xs text-muted-foreground">Select track to transcribe</p>
+                                                </div>
+                                            </div>
+                                            <Select defaultValue="1">
+                                                <SelectTrigger className="w-[45%]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Tracks</SelectItem>
+                                                    <SelectItem value="1">Track 1</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </Card>
+                                    <Card className="p-3.5 shadow-none">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Type className="h-6 w-6 text-blue-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium">Text+ Captions</p>
+                                                    <p className="text-xs text-muted-foreground">Select output track and style</p>
+                                                </div>
+                                            </div>
+                                            <Select defaultValue="1">
+                                                <SelectTrigger className="w-[45%]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="1">Video Track 1</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                {/* <TypeOutline className="h-6 w-6" /> */}
+                                                <div>
+                                                    <p className="text-sm font-medium">Base Text+ Template
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openTemplates}
+                                                        className="w-[55%] justify-between font-normal p-3"
+                                                    >
+                                                        {selectedTemplate?.label || "Select template..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="p-0 w-full">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search templates..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No templates found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {[
+                                                                    { value: "default", label: "Default Text+" },
+                                                                    { value: "minimal", label: "Minimal" },
+                                                                    { value: "modern", label: "Modern" },
+                                                                    { value: "classic", label: "Classic" },
+                                                                    { value: "bold", label: "Bold" },
+                                                                    { value: "elegant", label: "Elegant" },
+                                                                    { value: "minimal-outline", label: "Minimal Outline" },
+                                                                    { value: "modern-fill", label: "Modern Fill" },
+                                                                ].map((template) => (
+                                                                    <CommandItem
+                                                                        key={template.value}
+                                                                        value={template.value}
+                                                                        onSelect={() => {
+                                                                            setSelectedTemplate(template)
+                                                                            setOpenTemplates(false)
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {template.label}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                    </Card>
                                 </div>
                             )}
                         </div>
                     </div>
-
-                    {/* Model Selection Carousel */}
-                    <Collapsible defaultOpen className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        Model
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <div className="relative -mx-4 px-4">
-                                {/* Gradient overlays */}
-                                {canScrollPrev && (
-                                    <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                                )}
-                                {canScrollNext && (
-                                    <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                                )}
-                                <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
-                                    {modelsState.map((model) => (
-                                        <CarouselItem key={model.value} className="max-w-40">
-                                            <div className="p-0.5 h-full">
-                                                <Card
-                                                    onClick={() => setSelectedModel(model)}
-                                                    className={`cursor-pointer h-full flex flex-col justify-between relative ${selectedModel.value === model.value
-                                                        ? "ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-700/50"
-                                                        : "hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                                        }`}
-                                                >
-                                                    {model.isDownloaded && downloadingModel !== model.value && (
-                                                        <Dialog>
-                                                            <DialogTrigger asChild>
-                                                                <Button
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="absolute top-2 right-2 h-6 w-6 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors z-10"
-                                                                    title="Delete Model"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </DialogTrigger>
-                                                            <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                                    <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                                </div>
-                                                                <span className="text-sm text-muted-foreground">
-                                                                    This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                                </span>
-                                                                <div className="flex justify-end gap-2">
-                                                                    <DialogClose asChild>
-                                                                        <Button variant="ghost" size="sm">Cancel</Button>
-                                                                    </DialogClose>
-                                                                    <Button
-                                                                        variant="destructive"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            handleDeleteModel(model.value)
-                                                                        }}
-                                                                    >
-                                                                        Delete
-                                                                    </Button>
-                                                                </div>
-                                                            </DialogContent>
-                                                        </Dialog>
-                                                    )}
-
-                                                    <CardContent className="flex flex-col items-center text-center p-2 pb-0">
-                                                        <img src={model.image} alt={model.label + " icon"} className="w-full h-20 mt-2 mb-0 object-contain" />
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <h3 className="text-md font-bold text-slate-900 dark:text-white">{model.label}</h3>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <button type="button" tabIndex={0} className="p-0.5 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                                                        <Info className="h-4 w-4" />
-                                                                    </button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top" align="center" className="w-[250px] p-3">
-                                                                    <div className="flex flex-col gap-2 min-w-[100px] max-w-xs">
-                                                                        <p className="text-xs text-slate-700 dark:text-slate-200 text-left">
-                                                                            {model.details}
-                                                                        </p>
-                                                                        <div className="flex items-center gap-2 mt-1">
-                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                                <HardDrive className="h-4 w-4 mr-0.5" />
-                                                                                <span className="font-medium">Model Size:</span>
-                                                                                <span>{model.size}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                                <MemoryStick className="h-4 w-4 mr-0.5" />
-                                                                                <span className="font-medium">Required RAM:</span>
-                                                                                <span>{model.ram}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </div>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 h-8">{model.description}</p>
-                                                    </CardContent>
-
-                                                    <div className="h-[32px] flex items-center justify-center">
-                                                        {downloadingModel === model.value ? (
-                                                            <div className="w-full px-2">
-                                                                <Progress value={downloadProgress} className="h-2" />
-                                                                <p className="text-xs text-center mt-1 text-blue-600 dark:text-blue-400">
-                                                                    {downloadProgress}%
-                                                                </p>
-                                                            </div>
-                                                        ) : model.isDownloaded ? (
-                                                            <div className="w-full text-center py-2 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-b-md">
-                                                                Downloaded
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    handleDownload(model.value)
-                                                                }}
-                                                                className="w-full text-center py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 rounded-b-md transition-colors"
-                                                            >
-                                                                Download
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </Card>
-                                            </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                {canScrollPrev && (
-                                    <CarouselPrevious
-                                        onClick={() => handleScroll("prev")}
-                                        className="left-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                    />
-                                )}
-                                {canScrollNext && (
-                                    <CarouselNext
-                                        onClick={() => handleScroll("next")}
-                                        className="right-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                    />
-                                )}
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
 
 
 
@@ -914,8 +823,161 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                         )}
                                     </div>
                                 </div>
-                                </div>
+                            </div>
 
+                        </CollapsibleContent>
+                    </Collapsible>
+
+                    {/* Model Selection Carousel */}
+                    <Collapsible defaultOpen className="space-y-4">
+                        <div className="flex items-center gap-4">
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
+                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        Model
+                                    </h3>
+                                </Button>
+                            </CollapsibleTrigger>
+                            <div className="flex-1 h-px bg-border"></div>
+                        </div>
+                        <CollapsibleContent>
+                            <div className="relative -mx-4 px-4">
+                                {/* Gradient overlays */}
+                                {canScrollPrev && (
+                                    <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
+                                )}
+                                {canScrollNext && (
+                                    <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
+                                )}
+                                <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
+                                    {modelsState.map((model) => (
+                                        <CarouselItem key={model.value} className="max-w-40">
+                                            <div className="p-0.5 h-full">
+                                                <Card
+                                                    onClick={() => setSelectedModel(model)}
+                                                    className={`cursor-pointer h-full flex flex-col justify-between relative ${selectedModel.value === model.value
+                                                        ? "ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-700/50"
+                                                        : "hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+                                                        }`}
+                                                >
+                                                    {model.isDownloaded && downloadingModel !== model.value && (
+                                                        <Dialog>
+                                                            <DialogTrigger asChild>
+                                                                <Button
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute top-2 right-2 h-6 w-6 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors z-10"
+                                                                    title="Delete Model"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
+                                                                <div className="flex items-center gap-2">
+                                                                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                                    <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
+                                                                </div>
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
+                                                                </span>
+                                                                <div className="flex justify-end gap-2">
+                                                                    <DialogClose asChild>
+                                                                        <Button variant="ghost" size="sm">Cancel</Button>
+                                                                    </DialogClose>
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        size="sm"
+                                                                        onClick={() => {
+                                                                            handleDeleteModel(model.value)
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </Button>
+                                                                </div>
+                                                            </DialogContent>
+                                                        </Dialog>
+                                                    )}
+
+                                                    <CardContent className="flex flex-col items-center text-center p-2 pb-0">
+                                                        <img src={model.image} alt={model.label + " icon"} className="w-full h-20 mt-2 mb-0 object-contain" />
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <h3 className="text-md font-bold text-slate-900 dark:text-white">{model.label}</h3>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button type="button" tabIndex={0} className="p-0.5 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                                                        <Info className="h-4 w-4" />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top" align="center" className="w-[250px] p-3">
+                                                                    <div className="flex flex-col gap-2 min-w-[100px] max-w-xs">
+                                                                        <p className="text-xs text-slate-700 dark:text-slate-200 text-left">
+                                                                            {model.details}
+                                                                        </p>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
+                                                                                <HardDrive className="h-4 w-4 mr-0.5" />
+                                                                                <span className="font-medium">Model Size:</span>
+                                                                                <span>{model.size}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
+                                                                                <MemoryStick className="h-4 w-4 mr-0.5" />
+                                                                                <span className="font-medium">Required RAM:</span>
+                                                                                <span>{model.ram}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 h-8">{model.description}</p>
+                                                    </CardContent>
+
+                                                    <div className="h-[32px] flex items-center justify-center">
+                                                        {downloadingModel === model.value ? (
+                                                            <div className="w-full px-2">
+                                                                <Progress value={downloadProgress} className="h-2" />
+                                                                <p className="text-xs text-center mt-1 text-blue-600 dark:text-blue-400">
+                                                                    {downloadProgress}%
+                                                                </p>
+                                                            </div>
+                                                        ) : model.isDownloaded ? (
+                                                            <div className="w-full text-center py-2 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-b-md">
+                                                                Downloaded
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleDownload(model.value)
+                                                                }}
+                                                                className="w-full text-center py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 rounded-b-md transition-colors"
+                                                            >
+                                                                Download
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </Card>
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {canScrollPrev && (
+                                    <CarouselPrevious
+                                        onClick={() => handleScroll("prev")}
+                                        className="left-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                    />
+                                )}
+                                {canScrollNext && (
+                                    <CarouselNext
+                                        onClick={() => handleScroll("next")}
+                                        className="right-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                    />
+                                )}
+                            </div>
                         </CollapsibleContent>
                     </Collapsible>
 
@@ -937,7 +999,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                 {/* Max Words */}
                                 <div className="flex items-center justify-between p-3.5 border rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <Type className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                        <Tally5 className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
                                         <div>
                                             <p className="text-sm font-medium">Max Words</p>
                                             <p className="text-xs text-muted-foreground">Number of words per line</p>

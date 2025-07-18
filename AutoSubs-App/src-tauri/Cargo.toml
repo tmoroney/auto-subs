@@ -49,6 +49,7 @@ tracing-subscriber = "0.3.19"
 ort-sys = "=2.0.0-rc.9" # prevents error with pyannote-rs
 hf-hub = "0.4.3"
 dirs = "5.0"
+zip = "4.3.0"
 
 [features]
 default = ["mac-aarch"]
