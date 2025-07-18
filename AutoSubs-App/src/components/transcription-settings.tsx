@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -49,35 +49,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { CarouselContent, CarouselItem } from "@/components/carousel"
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-// Custom carousel controls with className support
-const CarouselButton = ({ onClick, className, children }: { onClick: () => void; className?: string; children: React.ReactNode }) => (
-    <button
-        onClick={onClick}
-        className={`absolute top-1/2 -translate-y-1/2 z-20 flex items-center justify-center ${className || ''}`}
-        aria-label={children === 'Previous' ? 'Previous slide' : 'Next slide'}
-    >
-        {children}
-    </button>
-);
 
-const CarouselPrevious = (props: { onClick: () => void; className?: string }) => (
-    <CarouselButton {...props}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6" />
-        </svg>
-    </CarouselButton>
-);
-
-const CarouselNext = (props: { onClick: () => void; className?: string }) => (
-    <CarouselButton {...props}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m9 18 6-6-6-6" />
-        </svg>
-    </CarouselButton>
-);
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useState } from "react"
@@ -293,6 +268,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const [openTemplates, setOpenTemplates] = React.useState(false)
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
     const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
+    const [openModelSelector, setOpenModelSelector] = React.useState(false)
     const [selectedModel, setSelectedModel] = React.useState(models[1])
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState(0)
@@ -305,9 +281,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
     const isMobile = useIsMobile()
 
-    const carouselContentRef = React.useRef<HTMLDivElement>(null)
-    const [canScrollPrev, setCanScrollPrev] = React.useState(false)
-    const [canScrollNext, setCanScrollNext] = React.useState(true)
+
 
     const [settings, setSettings] = React.useState({
         diarize: true,
@@ -325,46 +299,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
         setSettings((prev) => ({ ...prev, [key]: value }))
     }
 
-    const handleScroll = (direction: "next" | "prev") => {
-        const content = carouselContentRef.current
-        if (content) {
-            const itemWidth = content.firstElementChild?.clientWidth || 0
-            const scrollAmount = direction === "next" ? itemWidth : -itemWidth
-            content.scrollBy({ left: scrollAmount, behavior: "smooth" })
-        }
-    }
 
-    const checkArrows = React.useCallback(() => {
-        const content = carouselContentRef.current
-        if (content) {
-            const { scrollLeft, scrollWidth, clientWidth } = content
-            setCanScrollPrev(scrollLeft > 5)
-            setCanScrollNext(scrollLeft < scrollWidth - clientWidth - 5)
-        }
-    }, [])
 
-    const handleDownload = (modelValue: string) => {
-        if (downloadingModel) return
-        setDownloadingModel(modelValue)
-        setDownloadProgress(0)
 
-        const interval = setInterval(() => {
-            setDownloadProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval)
-                    setModelsState((prevModels) =>
-                        prevModels.map((m) => (m.value === modelValue ? { ...m, isDownloaded: true } : m)),
-                    )
-                    if (selectedModel.value === modelValue) {
-                        setSelectedModel((prev) => ({ ...prev, isDownloaded: true }))
-                    }
-                    setDownloadingModel(null)
-                    return 100
-                }
-                return prev + 10
-            })
-        }, 150)
-    }
 
     const handleDeleteModel = (modelValue: string) => {
         setModelsState((prevModels) => prevModels.map((m) => (m.value === modelValue ? { ...m, isDownloaded: false } : m)))
@@ -408,21 +345,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
         }
     }
 
-    React.useEffect(() => {
-        const content = carouselContentRef.current
-        if (content) {
-            const timer = setTimeout(() => checkArrows(), 100)
-            content.addEventListener("scroll", checkArrows)
-            window.addEventListener("resize", checkArrows)
-            return () => {
-                clearTimeout(timer)
-                if (content) {
-                    content.removeEventListener("scroll", checkArrows)
-                }
-                window.removeEventListener("resize", checkArrows)
-            }
-        }
-    }, [checkArrows])
+
 
     // Check which models are downloaded when component mounts
     React.useEffect(() => {
@@ -556,7 +479,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                 </div>
                                             </div>
                                             <Select defaultValue="1">
-                                                <SelectTrigger className="w-[45%]">
+                                                <SelectTrigger className="w-[50%]">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -576,7 +499,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                 </div>
                                             </div>
                                             <Select defaultValue="1">
-                                                <SelectTrigger className="w-[45%]">
+                                                <SelectTrigger className="w-[50%]">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -598,7 +521,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                         variant="outline"
                                                         role="combobox"
                                                         aria-expanded={openTemplates}
-                                                        className="w-[55%] justify-between font-normal p-3"
+                                                        className="w-[50%] justify-between font-normal p-3"
                                                     >
                                                         {selectedTemplate?.label || "Select template..."}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -666,6 +589,11 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         </div>
                         <CollapsibleContent>
                             <div className="space-y-4">
+
+                                {/* Model */}
+                                
+
+                                {/* Language */}
                                 <div className="border rounded-lg overflow-hidden">
                                     <div className="p-3.5">
                                         <div className="flex items-center justify-between">
@@ -682,7 +610,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                         variant="outline"
                                                         role="combobox"
                                                         aria-expanded={openSourceLanguages}
-                                                        className="w-[45%] sm:w-[50%] justify-between font-normal"
+                                                        className="w-[50%] sm:w-[50%] justify-between font-normal"
                                                     >
                                                         {settings.sourceLanguage
                                                             ? languages.find((language) => language.value === settings.sourceLanguage)?.label
@@ -842,141 +770,137 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
                         <CollapsibleContent>
-                            <div className="relative -mx-4 px-4">
-                                {/* Gradient overlays */}
-                                {canScrollPrev && (
-                                    <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                                )}
-                                {canScrollNext && (
-                                    <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background via-background/40 to-transparent z-10 pointer-events-none" />
-                                )}
-                                <CarouselContent ref={carouselContentRef} onScroll={checkArrows} className="relative -mx-0.5">
-                                    {modelsState.map((model) => (
-                                        <CarouselItem key={model.value} className="max-w-40">
-                                            <div className="p-0.5 h-full">
-                                                <Card
-                                                    onClick={() => setSelectedModel(model)}
-                                                    className={`cursor-pointer h-full flex flex-col justify-between relative ${selectedModel.value === model.value
-                                                        ? "ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-slate-700/50"
-                                                        : "hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                                        }`}
+                            <div className="space-y-4">
+                                {/* Selected Model Details */}
+                                <div className="p-4 bg-muted/50 rounded-lg">
+                                    <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    role="combobox"
+                                                    aria-expanded={openModelSelector}
+                                                    className="flex items-center gap-2 p-0 h-auto hover:bg-transparent hover:opacity-80"
                                                 >
-                                                    {model.isDownloaded && downloadingModel !== model.value && (
-                                                        <Dialog>
-                                                            <DialogTrigger asChild>
-                                                                <Button
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="absolute top-2 right-2 h-6 w-6 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors z-10"
-                                                                    title="Delete Model"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </DialogTrigger>
-                                                            <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                                    <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                                </div>
-                                                                <span className="text-sm text-muted-foreground">
-                                                                    This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                                </span>
-                                                                <div className="flex justify-end gap-2">
-                                                                    <DialogClose asChild>
-                                                                        <Button variant="ghost" size="sm">Cancel</Button>
-                                                                    </DialogClose>
-                                                                    <Button
-                                                                        variant="destructive"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            handleDeleteModel(model.value)
-                                                                        }}
-                                                                    >
-                                                                        Delete
-                                                                    </Button>
-                                                                </div>
-                                                            </DialogContent>
-                                                        </Dialog>
-                                                    )}
-
-                                                    <CardContent className="flex flex-col items-center text-center p-2 pb-0">
-                                                        <img src={model.image} alt={model.label + " icon"} className="w-full h-20 mt-2 mb-0 object-contain" />
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <h3 className="text-md font-bold text-slate-900 dark:text-white">{model.label}</h3>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <button type="button" tabIndex={0} className="p-0.5 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                                                        <Info className="h-4 w-4" />
-                                                                    </button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top" align="center" className="w-[250px] p-3">
-                                                                    <div className="flex flex-col gap-2 min-w-[100px] max-w-xs">
-                                                                        <p className="text-xs text-slate-700 dark:text-slate-200 text-left">
-                                                                            {model.details}
-                                                                        </p>
-                                                                        <div className="flex items-center gap-2 mt-1">
-                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                                <HardDrive className="h-4 w-4 mr-0.5" />
-                                                                                <span className="font-medium">Model Size:</span>
-                                                                                <span>{model.size}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="inline-flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
-                                                                                <MemoryStick className="h-4 w-4 mr-0.5" />
-                                                                                <span className="font-medium">Required RAM:</span>
-                                                                                <span>{model.ram}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </div>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 h-8">{model.description}</p>
-                                                    </CardContent>
-
-                                                    <div className="h-[32px] flex items-center justify-center">
-                                                        {downloadingModel === model.value ? (
-                                                            <div className="w-full px-2">
-                                                                <Progress value={downloadProgress} className="h-2" />
-                                                                <p className="text-xs text-center mt-1 text-blue-600 dark:text-blue-400">
-                                                                    {downloadProgress}%
-                                                                </p>
-                                                            </div>
-                                                        ) : model.isDownloaded ? (
-                                                            <div className="w-full text-center py-2 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-b-md">
-                                                                Downloaded
-                                                            </div>
+                                                    <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-8 h-8 object-contain" />
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium">{selectedModel.label}</span>
+                                                        {selectedModel.isDownloaded ? (
+                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                Cached
+                                                            </span>
                                                         ) : (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    handleDownload(model.value)
-                                                                }}
-                                                                className="w-full text-center py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 rounded-b-md transition-colors"
-                                                            >
-                                                                Download
-                                                            </button>
+                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                                                Not Cached
+                                                            </span>
                                                         )}
+                                                        <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-50" />
                                                     </div>
-                                                </Card>
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <div className="flex-1"></div>
+                                            
+                                            {downloadingModel === selectedModel.value ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Progress value={downloadProgress} className="h-2 w-16" />
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                </div>
+                                            ) : selectedModel.isDownloaded ? (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-red-500 dark:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                                                            title="Delete Model"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
+                                                        <div className="flex items-center gap-2">
+                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
+                                                        </span>
+                                                        <div className="flex justify-end gap-2">
+                                                            <DialogClose asChild>
+                                                                <Button variant="ghost" size="sm">Cancel</Button>
+                                                            </DialogClose>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    handleDeleteModel(selectedModel.value)
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            ) : null}
+                                        </div>
+                                        
+                                        <PopoverContent className="w-full p-0" align="start">
+                                            <div className="p-2">
+                                                <div className="space-y-1">
+                                                    {modelsState.map((model) => (
+                                                        <div
+                                                            key={model.value}
+                                                            className={`flex items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer ${
+                                                                selectedModel.value === model.value ? "bg-accent text-accent-foreground" : ""
+                                                            }`}
+                                                            onClick={() => {
+                                                                setSelectedModel(model)
+                                                                setOpenModelSelector(false)
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-3 mr-8">
+                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{model.label}</span>
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <span>{model.size}</span>
+                                                                        <span>•</span>
+                                                                        <span>{model.description}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {downloadingModel === model.value ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                                    </div>
+                                                                ) : model.isDownloaded ? (
+                                                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                        Cached
+                                                                    </span>
+                                                                ) : null}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                {canScrollPrev && (
-                                    <CarouselPrevious
-                                        onClick={() => handleScroll("prev")}
-                                        className="left-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                    />
-                                )}
-                                {canScrollNext && (
-                                    <CarouselNext
-                                        onClick={() => handleScroll("next")}
-                                        className="right-2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm shadow-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                    />
-                                )}
+                                        </PopoverContent>
+                                    </Popover>
+                                    <p className="text-sm text-muted-foreground mb-4">{selectedModel.details}</p>
+                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                        <div className="flex items-center gap-2">
+                                            <HardDrive className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium">Size:</span> 
+                                            <span>{selectedModel.size}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <MemoryStick className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium">RAM:</span> 
+                                            <span>{selectedModel.ram}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </CollapsibleContent>
                     </Collapsible>
