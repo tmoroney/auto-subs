@@ -26,6 +26,7 @@ import {
     Tally5,
     Brain,
     Download,
+    Film,
 } from "lucide-react"
 
 import {
@@ -436,7 +437,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <Card className="p-3.5 shadow-none">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <FileUp className="h-6 w-6 text-orange-500" />
+                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+    <FileUp className="h-5 w-5 text-blue-500" />
+</div>
                                                 <div>
                                                     <p className="text-sm font-medium">Audio File</p>
                                                     <p className="text-xs text-muted-foreground">Select an audio file to transcribe</p>
@@ -475,14 +478,16 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <Card className="p-3.5 shadow-none">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <AudioLines className="h-6 w-6 text-orange-500" />
+                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+    <AudioLines className="h-5 w-5 text-blue-500" />
+</div>
                                                 <div>
                                                     <p className="text-sm font-medium">Audio Input</p>
-                                                    <p className="text-xs text-muted-foreground">Select track to transcribe</p>
+                                                    <p className="text-xs text-muted-foreground">Transcribes this audio</p>
                                                 </div>
                                             </div>
                                             <Select defaultValue="1">
-                                                <SelectTrigger className="w-[50%]">
+                                                <SelectTrigger className="w-[46%]">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -495,14 +500,16 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <Card className="p-3.5 shadow-none">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <Type className="h-6 w-6 text-blue-500" />
+                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                                    <Film className="h-5 w-5 text-blue-500" />
+                                                </div>
                                                 <div>
-                                                    <p className="text-sm font-medium">Text+ Captions</p>
-                                                    <p className="text-xs text-muted-foreground">Select output track and style</p>
+                                                    <p className="text-sm font-medium">Captions Track</p>
+                                                    <p className="text-xs text-muted-foreground">Adds captions to this track</p>
                                                 </div>
                                             </div>
                                             <Select defaultValue="1">
-                                                <SelectTrigger className="w-[50%]">
+                                                <SelectTrigger className="w-[46%]">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -510,12 +517,16 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                    </Card>
+                                    <Card className="p-3.5 shadow-none">
+                                        <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                {/* <TypeOutline className="h-6 w-6" /> */}
+                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                                    <Type className="h-5 w-5 text-blue-500" />
+                                                </div>
                                                 <div>
-                                                    <p className="text-sm font-medium">Base Text+ Template
-                                                    </p>
+                                                    <p className="text-sm font-medium">Text+ Styling</p>
+                                                    <p className="text-xs text-muted-foreground">Select a template to apply</p>
                                                 </div>
                                             </div>
                                             <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
@@ -524,7 +535,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                         variant="outline"
                                                         role="combobox"
                                                         aria-expanded={openTemplates}
-                                                        className="w-[50%] justify-between font-normal p-3"
+                                                        className="w-[46%] justify-between font-normal p-3"
                                                     >
                                                         {selectedTemplate?.label || "Select template..."}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -593,165 +604,14 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         <CollapsibleContent>
                             <div className="space-y-4">
 
-                                {/* Model */}
-                                <div className="border rounded-lg overflow-hidden dark:from-gray-900 dark:to-purple-950/20">
-                                    <div className="p-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                    <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Transcription Model</p>
-                                                    <p className="text-xs text-muted-foreground">Choose the model for speech-to-text processing</p>
-                                                </div>
-                                            </div>
-                                            {downloadingModel === selectedModel.value ? (
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
-                                                    <Progress value={downloadProgress} className="h-2 w-16" />
-                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                </div>
-                                            ) : selectedModel.isDownloaded ? (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 rounded-lg"
-                                                            title="Delete Model"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                        <div className="flex items-center gap-2">
-                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                        </div>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                        </span>
-                                                        <div className="flex justify-end gap-2">
-                                                            <DialogClose asChild>
-                                                                <Button variant="ghost" size="sm">Cancel</Button>
-                                                            </DialogClose>
-                                                            <Button
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    handleDeleteModel(selectedModel.value)
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </Button>
-                                                        </div>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            ) : null}
-                                        </div>
-
-                                        <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={openModelSelector}
-                                                    className="w-full justify-between font-normal h-auto p-3.5 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/20"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative">
-                                                            <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-12 h-12 object-contain rounded-lg" />
-                                                        </div>
-                                                        <div className="flex flex-col items-start">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-semibold text-base">{selectedModel.label}</span>
-                                                                {selectedModel.isDownloaded ? (
-                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
-                                                                        <Check className="h-3 w-3 inline" /> Cached
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
-                                                                        <Download className="h-3 w-3 inline" /> Not Cached
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                                    <HardDrive className="h-3 w-3" />
-                                                                    <span className="font-medium">{selectedModel.size}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                                    <MemoryStick className="h-3 w-3" />
-                                                                    <span className="font-medium">{selectedModel.ram} RAM</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <ChevronsUpDown className="mr-2 h-5 w-5 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-full p-2" align="start">
-                                                <div className="space-y-1">
-                                                    {modelsState.map((model) => (
-                                                        <div
-                                                            key={model.value}
-                                                            className={`flex items-center justify-between rounded-lg px-3 py-3 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors duration-150 ${selectedModel.value === model.value ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" : "border border-transparent"
-                                                                }`}
-                                                            onClick={() => {
-                                                                setSelectedModel(model)
-                                                                setOpenModelSelector(false)
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="relative">
-                                                                    <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
-                                                                    {model.isDownloaded && (
-                                                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium">{model.label}</span>
-                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                        <span>{model.size}</span>
-                                                                        <span>•</span>
-                                                                        <span>{model.description}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {downloadingModel === model.value ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
-                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                                    </div>
-                                                                ) : model.isDownloaded ? (
-                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                        Cached
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                                                        Available
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-
-                                        <div className="mt-2 p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedModel.details}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* Language */}
                                 <div className="border rounded-lg overflow-hidden">
                                     <div className="p-3.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <Globe className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                    <Globe className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                </div>
                                                 <div>
                                                     <p className="text-sm font-medium">Input Language</p>
                                                     <p className="text-xs text-muted-foreground">Language in audio</p>
@@ -763,7 +623,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                         variant="outline"
                                                         role="combobox"
                                                         aria-expanded={openSourceLanguages}
-                                                        className="w-[50%] sm:w-[50%] justify-between font-normal"
+                                                        className="w-[46%] sm:w-[50%] justify-between font-normal"
                                                     >
                                                         {settings.sourceLanguage
                                                             ? languages.find((language) => language.value === settings.sourceLanguage)?.label
@@ -813,7 +673,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                         {settings.sourceLanguage !== 'en' && (
                                             <div className="mt-3 pt-3 border-t flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <Languages className="h-5 w-5 text-amber-600 dark:text-amber-400 ml-1" />
+                                                    <div className="ml-0 p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                        <Languages className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                    </div>
                                                     <div>
                                                         <p className="text-sm font-medium">Translate to English</p>
                                                     </div>
@@ -827,11 +689,14 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     </div>
                                 </div>
 
+                                {/* Diarize Speakers */}
                                 <div className="border rounded-lg overflow-hidden">
                                     <div className="p-3.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <Speech className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                    <Speech className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                </div>
                                                 <div>
                                                     <div className="flex items-center gap-1">
                                                         <p className="text-sm font-medium">Speaker Labeling</p>
@@ -904,6 +769,159 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Model */}
+                                <div className="border rounded-lg overflow-hidden dark:from-gray-900 dark:to-purple-950/20">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                    <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Transcription Model</p>
+                                                    <p className="text-xs text-muted-foreground">Choose a speech-to-text model</p>
+                                                </div>
+                                            </div>
+                                            {downloadingModel === selectedModel.value ? (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                                                    <Progress value={downloadProgress} className="h-2 w-16" />
+                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                </div>
+                                            ) : selectedModel.isDownloaded ? (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 rounded-lg"
+                                                            title="Delete Model"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
+                                                        <div className="flex items-center gap-2">
+                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
+                                                        </span>
+                                                        <div className="flex justify-end gap-2">
+                                                            <DialogClose asChild>
+                                                                <Button variant="ghost" size="sm">Cancel</Button>
+                                                            </DialogClose>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    handleDeleteModel(selectedModel.value)
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            ) : null}
+                                        </div>
+
+                                        <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openModelSelector}
+                                                    className="w-full justify-between font-normal h-auto p-3.5 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/20"
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative">
+                                                            <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-14 h-14 object-contain rounded-lg" />
+                                                        </div>
+                                                        <div className="flex flex-col items-start">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-semibold text-base">{selectedModel.label}</span>
+                                                                {selectedModel.isDownloaded ? (
+                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+                                                                        <Check className="h-3 w-3 inline" /> Cached
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                                                                        <Download className="h-3 w-3 inline" /> Not Cached
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                                                                    <HardDrive className="h-3 w-3" />
+                                                                    <span className="font-medium">{selectedModel.size}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                                                                    <MemoryStick className="h-3 w-3" />
+                                                                    <span className="font-medium">{selectedModel.ram} RAM</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronsUpDown className="mr-2 h-5 w-5 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-full p-2" align="start">
+                                                <div className="space-y-1">
+                                                    {modelsState.map((model) => (
+                                                        <div
+                                                            key={model.value}
+                                                            className={`flex items-center justify-between rounded-lg px-3 py-3 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors duration-150 ${selectedModel.value === model.value ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" : "border border-transparent"
+                                                                }`}
+                                                            onClick={() => {
+                                                                setSelectedModel(model)
+                                                                setOpenModelSelector(false)
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="relative">
+                                                                    <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
+                                                                    {model.isDownloaded && (
+                                                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{model.label}</span>
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <span>{model.size}</span>
+                                                                        <span>•</span>
+                                                                        <span>{model.description}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {downloadingModel === model.value ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                                    </div>
+                                                                ) : model.isDownloaded ? (
+                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                        Cached
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                                                        Available
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        <div className="mt-3 p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedModel.details}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                         </CollapsibleContent>
@@ -929,7 +947,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                 {/* Max Words */}
                                 <div className="flex items-center justify-between p-3.5 border rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <Tally5 className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                        <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+                                            <Tally5 className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                                        </div>
                                         <div>
                                             <p className="text-sm font-medium">Max Words</p>
                                             <p className="text-xs text-muted-foreground">Number of words per line</p>
@@ -949,7 +969,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <div className="p-3.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <AArrowUp className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+                                                    <AArrowUp className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                                                </div>
                                                 <div>
                                                     <p className="text-sm font-medium">Text Case</p>
                                                     <p className="text-xs text-muted-foreground">Set all text to specific case</p>
@@ -977,7 +999,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                 {/* Remove Punctuation Toggle */}
                                 <div className="flex items-center justify-between p-3.5 border rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <Signature className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                        <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+                                            <Signature className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                                        </div>
                                         <div>
                                             <p className="text-sm font-medium">Remove Punctuation</p>
                                             <p className="text-xs text-muted-foreground">Removes all commas, periods, etc.</p>
@@ -994,7 +1018,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <div className="p-3.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <ShieldX className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+                                                    <ShieldX className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                                                </div>
                                                 <div>
                                                     <p className="text-sm font-medium">Censor Sensitive Words</p>
                                                     <p className="text-xs text-muted-foreground">
