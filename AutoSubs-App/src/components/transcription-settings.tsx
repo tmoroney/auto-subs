@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -271,6 +272,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const { timelineInfo } = useGlobal()
     const [openTemplates, setOpenTemplates] = React.useState(false)
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
+    const [openHighlighter, setOpenHighlighter] = useState(false)
+    const [highlighterEnabled, setHighlighterEnabled] = useState(false)
+    const [highlighterColor, setHighlighterColor] = useState("#FFD700")
     const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
     const [selectedModel, setSelectedModel] = React.useState(models[1])
@@ -283,6 +287,8 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
     const [modelsState, setModelsState] = React.useState(models)
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
+    const [selectedTracks, setSelectedTracks] = React.useState<string[]>(['1']) // Default to Track 1 selected
+    const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
     const isMobile = useIsMobile()
 
 
@@ -412,7 +418,15 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                     {/* File Source / DaVinci Resolve */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                {!isStandaloneMode && (
+                                    <img
+                                        src="/davinci-resolve-logo.png"
+                                        alt="DaVinci Resolve Logo"
+                                        className="h-5 w-5 mr-0 inline-block"
+                                        style={{ verticalAlign: "middle" }}
+                                    />
+                                )}
                                 {isStandaloneMode ? "File Source" : "DaVinci Resolve"}
                             </h3>
                             {!isStandaloneMode && (
@@ -437,9 +451,9 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     <Card className="p-3.5 shadow-none">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-    <FileUp className="h-5 w-5 text-blue-500" />
-</div>
+                                                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                                    <FileUp className="h-5 w-5 text-red-500" />
+                                                </div>
                                                 <div>
                                                     <p className="text-sm font-medium">Audio File</p>
                                                     <p className="text-xs text-muted-foreground">Select an audio file to transcribe</p>
@@ -476,109 +490,196 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             ) : (
                                 <div className="space-y-4">
                                     <Card className="p-3.5 shadow-none">
-                                        <div className="flex items-center justify-between">
+                                        <div className="space-y-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-    <AudioLines className="h-5 w-5 text-blue-500" />
-</div>
+                                                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                                    <AudioLines className="h-5 w-5 text-red-500" />
+                                                </div>
                                                 <div>
                                                     <p className="text-sm font-medium">Audio Input</p>
-                                                    <p className="text-xs text-muted-foreground">Transcribes this audio</p>
+                                                    <p className="text-xs text-muted-foreground">Select tracks to be transcribed</p>
                                                 </div>
                                             </div>
-                                            <Select defaultValue="1">
-                                                <SelectTrigger className="w-[46%]">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Tracks</SelectItem>
-                                                    <SelectItem value="1">Track 1</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </Card>
-                                    <Card className="p-3.5 shadow-none">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                                    <Film className="h-5 w-5 text-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Captions Track</p>
-                                                    <p className="text-xs text-muted-foreground">Adds captions to this track</p>
-                                                </div>
-                                            </div>
-                                            <Select defaultValue="1">
-                                                <SelectTrigger className="w-[46%]">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="1">Video Track 1</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </Card>
-                                    <Card className="p-3.5 shadow-none">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                                    <Type className="h-5 w-5 text-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Text+ Styling</p>
-                                                    <p className="text-xs text-muted-foreground">Select a template to apply</p>
-                                                </div>
-                                            </div>
-                                            <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                            <Popover open={openTrackSelector} onOpenChange={setOpenTrackSelector}>
                                                 <PopoverTrigger asChild>
                                                     <Button
                                                         variant="outline"
                                                         role="combobox"
-                                                        aria-expanded={openTemplates}
-                                                        className="w-[46%] justify-between font-normal p-3"
+                                                        aria-expanded={openTrackSelector}
+                                                        className="w-full justify-between"
                                                     >
-                                                        {selectedTemplate?.label || "Select template..."}
+                                                        {selectedTracks.length === 0
+                                                            ? "Select tracks..."
+                                                            : selectedTracks.length === 1
+                                                                ? `Track ${selectedTracks[0]}`
+                                                                : `${selectedTracks.length} tracks selected`
+                                                        }
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="p-0 w-full">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search templates..." />
-                                                        <CommandList>
-                                                            <CommandEmpty>No templates found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {[
-                                                                    { value: "default", label: "Default Text+" },
-                                                                    { value: "minimal", label: "Minimal" },
-                                                                    { value: "modern", label: "Modern" },
-                                                                    { value: "classic", label: "Classic" },
-                                                                    { value: "bold", label: "Bold" },
-                                                                    { value: "elegant", label: "Elegant" },
-                                                                    { value: "minimal-outline", label: "Minimal Outline" },
-                                                                    { value: "modern-fill", label: "Modern Fill" },
-                                                                ].map((template) => (
-                                                                    <CommandItem
-                                                                        key={template.value}
-                                                                        value={template.value}
-                                                                        onSelect={() => {
-                                                                            setSelectedTemplate(template)
-                                                                            setOpenTemplates(false)
+                                                <PopoverContent className="min-w-[320px] p-0 overflow-hidden" align="start">
+                                                    <div className="px-4 py-3 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 border-b">
+                                                        <div className="flex items-center justify-between min-h-[28px]">
+                                                            <span className="text-sm text-muted-foreground">
+                                                                {selectedTracks.length > 0
+                                                                    ? (selectedTracks.length === 1
+                                                                        ? `Track ${selectedTracks[0]} selected`
+                                                                        : `${selectedTracks.length} tracks selected`)
+                                                                    : 'No tracks selected'}
+                                                            </span>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="text-xs h-7 px-2 hover:bg-white/80 dark:hover:bg-zinc-800/80"
+                                                                onClick={() => {
+                                                                    if (selectedTracks.length === 8) {
+                                                                        setSelectedTracks([]);
+                                                                    } else {
+                                                                        setSelectedTracks(['1', '2', '3', '4', '5', '6', '7', '8']);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {selectedTracks.length === 8 ? "Clear All" : "Select All"}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <ScrollArea className="h-[280px] w-full">
+                                                        <div className="flex flex-col gap-1 p-2">
+                                                            {[1, 2, 3, 4, 5, 6, 7, 8].map((trackNum) => {
+                                                                const trackId = trackNum.toString();
+                                                                const isChecked = selectedTracks.includes(trackId);
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={trackId}
+                                                                        tabIndex={0}
+                                                                        className={`group relative flex items-center gap-3 py-2 px-3 rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 w-full
+                                                                            ${isChecked
+                                                                                ? 'bg-gradient-to-br from-red-50 to-orange-50/70 dark:from-red-900/40 dark:to-orange-900/40 border-red-200 dark:border-red-800'
+                                                                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}
+                                                                        onClick={() => {
+                                                                            if (isChecked) {
+                                                                                setSelectedTracks(prev => prev.filter(id => id !== trackId));
+                                                                            } else {
+                                                                                setSelectedTracks(prev => [...prev, trackId]);
+                                                                            }
                                                                         }}
                                                                     >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
-                                                                            )}
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
+                                                                            ${isChecked
+                                                                                ? 'bg-red-100 dark:bg-red-900/50'
+                                                                                : 'bg-zinc-100 dark:bg-zinc-800'}`}
+                                                                        >
+                                                                            <AudioLines className={`h-4 w-4 ${isChecked ? 'text-red-600 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                                                                        </div>
+                                                                        <span className={`text-sm font-medium flex-1 text-left ${isChecked ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                                                            Track {trackNum}
+                                                                        </span>
+                                                                        <Checkbox
+                                                                            id={`track-${trackId}`}
+                                                                            checked={isChecked}
+                                                                            tabIndex={-1}
+                                                                            className="transition-transform duration-150"
+                                                                            onCheckedChange={(checked) => {
+                                                                                if (checked) {
+                                                                                    setSelectedTracks(prev => [...prev, trackId]);
+                                                                                } else {
+                                                                                    setSelectedTracks(prev => prev.filter(id => id !== trackId));
+                                                                                }
+                                                                            }}
                                                                         />
-                                                                        {template.label}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </ScrollArea>
                                                 </PopoverContent>
                                             </Popover>
+                                            {/* {selectedTracks.length > 0 && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {selectedTracks.length === 1 
+                                                        ? `Track ${selectedTracks[0]} selected` 
+                                                        : `${selectedTracks.length} tracks selected: ${selectedTracks.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}`
+                                                    }
+                                                </p>
+                                            )} */}
+                                        </div>
+                                    </Card>
+                                    <Card className="p-4 shadow-none ">
+                                        <div className="space-y-3.5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                                                    <Film className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Caption Settings</p>
+                                                    <p className="text-xs text-muted-foreground">Configure track, template, and styling</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-sm font-normal">Output Track</Label>
+                                                    <Select defaultValue="1">
+                                                        <SelectTrigger className="w-[180px] h-9">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="1">Video Track 1</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-sm font-normal">Base Template</Label>
+                                                    <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                className="w-[180px] h-9 justify-between font-normal"
+                                                            >
+                                                                {selectedTemplate?.label || "Select template..."}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="p-0 w-[180px]" align="end">
+                                                            <Command>
+                                                                <CommandInput placeholder="Search templates..." />
+                                                                <CommandList>
+                                                                    <CommandEmpty>No templates found.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {[
+                                                                            { value: "default", label: "Default Text+" },
+                                                                            { value: "minimal", label: "Minimal" },
+                                                                            { value: "modern", label: "Modern" },
+                                                                            { value: "classic", label: "Classic" },
+                                                                            { value: "bold", label: "Bold" },
+                                                                            { value: "elegant", label: "Elegant" },
+                                                                        ].map((template) => (
+                                                                            <CommandItem
+                                                                                key={template.value}
+                                                                                value={template.value}
+                                                                                onSelect={() => {
+                                                                                    setSelectedTemplate(template)
+                                                                                    setOpenTemplates(false)
+                                                                                }}
+                                                                            >
+                                                                                <Check
+                                                                                    className={cn(
+                                                                                        "mr-2 h-4 w-4",
+                                                                                        selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
+                                                                                    )}
+                                                                                />
+                                                                                {template.label}
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                            </div>
                                         </div>
                                     </Card>
                                 </div>
@@ -684,87 +785,6 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                     checked={settings.translate}
                                                     onCheckedChange={(checked) => updateSetting("translate", checked)}
                                                 />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Diarize Speakers */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="p-3.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                    <Speech className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1">
-                                                        <p className="text-sm font-medium">Speaker Labeling</p>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    tabIndex={0}
-                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
-                                                                >
-                                                                    <Info className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="bottom" align="start" className="w-56 p-3">
-                                                                <p className="text-xs text-left">
-                                                                    Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Unique captions for each speaker.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Switch checked={settings.diarize} onCheckedChange={(checked) => updateSetting("diarize", checked)} />
-                                        </div>
-                                        {settings.diarize && (
-                                            <div className="mt-3 pt-3 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1">
-                                                        <Label className="text-sm">Auto-detect Speakers</Label>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    tabIndex={0}
-                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
-                                                                >
-                                                                    <Info className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
-                                                                <p className="text-xs text-left text-slate-700 dark:text-slate-200">
-                                                                    Auto-detecting speakers can be less accurate than specifying the exact number of speakers.
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
-                                                    <Switch
-                                                        checked={parseInt(settings.numSpeakers as string) === 0}
-                                                        onCheckedChange={(checked) => updateSetting("numSpeakers", checked ? "0" : "2")}
-                                                    />
-                                                </div>
-                                                {parseInt(settings.numSpeakers as string) > 0 && (
-                                                    <div className="flex items-center justify-between mt-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <Label className="text-sm">No. of Speakers</Label>
-                                                        </div>
-                                                        <Input
-                                                            type="number"
-                                                            min="1"
-                                                            value={settings.numSpeakers}
-                                                            onChange={(e) => updateSetting("numSpeakers", e.target.value)}
-                                                            className="w-20"
-                                                        />
-                                                    </div>
-                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -922,6 +942,87 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Diarize Speakers */}
+                                <div className="border rounded-lg overflow-hidden">
+                                    <div className="p-3.5">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                                    <Speech className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-1">
+                                                        <p className="text-sm font-medium">Speaker Labeling</p>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={0}
+                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
+                                                                >
+                                                                    <Info className="h-4 w-4" />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="bottom" align="start" className="w-56 p-3">
+                                                                <p className="text-xs text-left">
+                                                                    Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Unique captions for each speaker.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Switch checked={settings.diarize} onCheckedChange={(checked) => updateSetting("diarize", checked)} />
+                                        </div>
+                                        {settings.diarize && (
+                                            <div className="mt-3 pt-3 border-t">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-1">
+                                                        <Label className="text-sm font-normal">Auto-detect Speakers</Label>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={0}
+                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
+                                                                >
+                                                                    <Info className="h-4 w-4" />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
+                                                                <p className="text-xs text-left text-slate-700 dark:text-slate-200">
+                                                                    May hallucinate non-existent speakers, so specifying the exact number of speakers can give better results.
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                    <Switch
+                                                        checked={parseInt(settings.numSpeakers as string) === 0}
+                                                        onCheckedChange={(checked) => updateSetting("numSpeakers", checked ? "0" : "2")}
+                                                    />
+                                                </div>
+                                                {parseInt(settings.numSpeakers as string) > 0 && (
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <Label className="text-sm font-normal">No. of Speakers</Label>
+                                                        </div>
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            value={settings.numSpeakers}
+                                                            onChange={(e) => updateSetting("numSpeakers", e.target.value)}
+                                                            className="w-20"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                         </CollapsibleContent>
@@ -977,21 +1078,40 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                                     <p className="text-xs text-muted-foreground">Set all text to specific case</p>
                                                 </div>
                                             </div>
-                                            <Select
-                                                value={settings.textFormat}
-                                                onValueChange={(value: 'none' | 'uppercase' | 'lowercase') => {
-                                                    updateSetting('textFormat', value);
-                                                }}
-                                            >
-                                                <SelectTrigger className="w-32">
-                                                    <SelectValue placeholder="Select text case" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">Original</SelectItem>
-                                                    <SelectItem value="uppercase">Uppercase</SelectItem>
-                                                    <SelectItem value="lowercase">Lowercase</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className={cn(
+                                                        "h-8 px-3",
+                                                        (settings.textFormat as "none" | "uppercase" | "lowercase") === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                                                    )}
+                                                    onClick={() => {
+                                                        type TextFormat = "none" | "uppercase" | "lowercase";
+                                                        const currentFormat = settings.textFormat as TextFormat;
+                                                        const newFormat: TextFormat = currentFormat === "uppercase" ? "none" : "uppercase";
+                                                        updateSetting('textFormat', newFormat);
+                                                    }}
+                                                >
+                                                    ABC
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className={cn(
+                                                        "h-8 px-3",
+                                                        (settings.textFormat as "none" | "uppercase" | "lowercase") === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                                                    )}
+                                                    onClick={() => {
+                                                        type TextFormat = "none" | "uppercase" | "lowercase";
+                                                        const currentFormat = settings.textFormat as TextFormat;
+                                                        const newFormat: TextFormat = currentFormat === "lowercase" ? "none" : "lowercase";
+                                                        updateSetting('textFormat', newFormat);
+                                                    }}
+                                                >
+                                                    abc
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
