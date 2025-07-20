@@ -70,7 +70,7 @@ export const ModelSelectionCard = ({
         {/* Selected Model Details */}
         <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
           <h4 className="font-semibold text-sm mb-2">Model Details</h4>
-          
+
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedModel.details}</p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
             <div className="flex flex-wrap gap-2">
@@ -78,19 +78,19 @@ export const ModelSelectionCard = ({
                 <HardDrive className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <div className="flex flex-col leading-tight">
                   <span className="font-semibold text-xs">{selectedModel.size}</span>
-                  <span className="text-[11px] text-indigo-700 dark:text-indigo-400">Disk Space</span>
+                  <span className="text-[11px]">Disk Space</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 px-2.5 py-1.5 bg-indigo-100/60 dark:bg-indigo-900/40 rounded-md border border-indigo-200 dark:border-indigo-800 min-w-[110px]">
                 <MemoryStick className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <div className="flex flex-col leading-tight">
                   <span className="font-semibold text-xs">{selectedModel.ram}</span>
-                  <span className="text-[11px] text-indigo-700 dark:text-indigo-400">RAM Required</span>
+                  <span className="text-[11px]">RAM Required</span>
                 </div>
               </div>
             </div>
           </div>
-          
+
         </div>
       </div>
     )
@@ -200,8 +200,8 @@ export const ModelSelectionCard = ({
                   <div
                     key={model.value}
                     className={`flex items-center justify-between p-3 cursor-pointer rounded-lg transition-colors duration-200 ${selectedModel.value === model.value
-                        ? "bg-purple-50 dark:bg-purple-900/20"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      ? "bg-purple-50 dark:bg-purple-900/20"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                       }`}
                     onClick={() => {
                       onModelChange(model)

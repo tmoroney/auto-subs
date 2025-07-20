@@ -165,7 +165,7 @@ function App() {
       <SidebarProvider
         style={
           {
-            "--sidebar-width": "46vw",
+            "--sidebar-width": "44vw",
             "--sidebar-width-mobile": "100vw",
           } as React.CSSProperties
         }

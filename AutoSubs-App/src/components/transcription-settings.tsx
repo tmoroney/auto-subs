@@ -1,20 +1,16 @@
 import * as React from "react"
 import {
     ChevronDown as ChevronDownIcon,
-    Languages,
     Heart,
     Github,
     Captions,
     AlertTriangle,
     X,
-    Globe,
-    HelpCircle,
-    Check,
-    ChevronsUpDown
+    HelpCircle
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -23,15 +19,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
-import { useState } from "react"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { cn } from "@/lib/utils"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
+import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
 import { ModelSelectionCard, Model } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
@@ -89,109 +82,7 @@ const models = [
     },
 ]
 
-const languages = [
-    { label: "Auto (default)", value: "auto" },
-    { label: "English", value: "en" },
-    { label: "Chinese", value: "zh" },
-    { label: "German", value: "de" },
-    { label: "Spanish", value: "es" },
-    { label: "Russian", value: "ru" },
-    { label: "Korean", value: "ko" },
-    { label: "French", value: "fr" },
-    { label: "Japanese", value: "ja" },
-    { label: "Portuguese", value: "pt" },
-    { label: "Turkish", value: "tr" },
-    { label: "Polish", value: "pl" },
-    { label: "Catalan", value: "ca" },
-    { label: "Dutch", value: "nl" },
-    { label: "Arabic", value: "ar" },
-    { label: "Swedish", value: "sv" },
-    { label: "Italian", value: "it" },
-    { label: "Indonesian", value: "id" },
-    { label: "Hindi", value: "hi" },
-    { label: "Finnish", value: "fi" },
-    { label: "Vietnamese", value: "vi" },
-    { label: "Hebrew", value: "he" },
-    { label: "Ukrainian", value: "uk" },
-    { label: "Greek", value: "el" },
-    { label: "Malay", value: "ms" },
-    { label: "Czech", value: "cs" },
-    { label: "Romanian", value: "ro" },
-    { label: "Danish", value: "da" },
-    { label: "Hungarian", value: "hu" },
-    { label: "Tamil", value: "ta" },
-    { label: "Norwegian", value: "no" },
-    { label: "Thai", value: "th" },
-    { label: "Urdu", value: "ur" },
-    { label: "Croatian", value: "hr" },
-    { label: "Bulgarian", value: "bg" },
-    { label: "Lithuanian", value: "lt" },
-    { label: "Latin", value: "la" },
-    { label: "Maori", value: "mi" },
-    { label: "Malayalam", value: "ml" },
-    { label: "Welsh", value: "cy" },
-    { label: "Slovak", value: "sk" },
-    { label: "Telugu", value: "te" },
-    { label: "Persian", value: "fa" },
-    { label: "Latvian", value: "lv" },
-    { label: "Bengali", value: "bn" },
-    { label: "Serbian", value: "sr" },
-    { label: "Azerbaijani", value: "az" },
-    { label: "Slovenian", value: "sl" },
-    { label: "Kannada", value: "kn" },
-    { label: "Estonian", value: "et" },
-    { label: "Macedonian", value: "mk" },
-    { label: "Breton", value: "br" },
-    { label: "Basque", value: "eu" },
-    { label: "Icelandic", value: "is" },
-    { label: "Armenian", value: "hy" },
-    { label: "Nepali", value: "ne" },
-    { label: "Mongolian", value: "mn" },
-    { label: "Bosnian", value: "bs" },
-    { label: "Kazakh", value: "kk" },
-    { label: "Albanian", value: "sq" },
-    { label: "Swahili", value: "sw" },
-    { label: "Galician", value: "gl" },
-    { label: "Marathi", value: "mr" },
-    { label: "Punjabi", value: "pa" },
-    { label: "Sinhala", value: "si" },
-    { label: "Khmer", value: "km" },
-    { label: "Shona", value: "sn" },
-    { label: "Yoruba", value: "yo" },
-    { label: "Somali", value: "so" },
-    { label: "Afrikaans", value: "af" },
-    { label: "Occitan", value: "oc" },
-    { label: "Georgian", value: "ka" },
-    { label: "Belarusian", value: "be" },
-    { label: "Tajik", value: "tg" },
-    { label: "Sindhi", value: "sd" },
-    { label: "Gujarati", value: "gu" },
-    { label: "Amharic", value: "am" },
-    { label: "Yiddish", value: "yi" },
-    { label: "Lao", value: "lo" },
-    { label: "Uzbek", value: "uz" },
-    { label: "Faroese", value: "fo" },
-    { label: "Haitian Creole", value: "ht" },
-    { label: "Pashto", value: "ps" },
-    { label: "Turkmen", value: "tk" },
-    { label: "Nynorsk", value: "nn" },
-    { label: "Maltese", value: "mt" },
-    { label: "Sanskrit", value: "sa" },
-    { label: "Luxembourgish", value: "lb" },
-    { label: "Myanmar", value: "my" },
-    { label: "Tibetan", value: "bo" },
-    { label: "Tagalog", value: "tl" },
-    { label: "Malagasy", value: "mg" },
-    { label: "Assamese", value: "as" },
-    { label: "Tatar", value: "tt" },
-    { label: "Hawaiian", value: "haw" },
-    { label: "Lingala", value: "ln" },
-    { label: "Hausa", value: "ha" },
-    { label: "Bashkir", value: "ba" },
-    { label: "Javanese", value: "jw" },
-    { label: "Sundanese", value: "su" },
-    { label: "Cantonese", value: "yue" },
-] as const;
+
 
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
@@ -236,7 +127,7 @@ export const TranscriptionSettings = ({
 }: TranscriptionSettingsProps) => {
     const { timelineInfo } = useGlobal()
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
-    const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
+
     const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || models[1])
     const [downloadingModel] = React.useState<string | null>(null)
     const [downloadProgress] = React.useState<number>(0)
@@ -503,89 +394,28 @@ export const TranscriptionSettings = ({
                             <div className="space-y-4">
 
                                 {/* Language */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="p-3.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                    <Globe className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Input Language</p>
-                                                    <p className="text-xs text-muted-foreground">Language in audio</p>
-                                                </div>
-                                            </div>
-                                            <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={openSourceLanguages}
-                                                        className="w-[46%] sm:w-[50%] justify-between font-normal"
-                                                    >
-                                                        {settings.sourceLanguage
-                                                            ? languages.find((language) => language.value === settings.sourceLanguage)?.label
-                                                            : "Select language..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="p-0 w-full">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search languages..." />
-                                                        <CommandList>
-                                                            <CommandEmpty>No language found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {languages
-                                                                    .slice()
-                                                                    .sort((a, b) => {
-                                                                        if (a.value === 'auto') return -1;
-                                                                        if (b.value === 'auto') return 1;
-                                                                        return a.label.localeCompare(b.label);
-                                                                    })
-                                                                    .map((language) => (
-                                                                        <CommandItem
-                                                                            value={language.label}
-                                                                            key={language.value}
-                                                                            onSelect={() => {
-                                                                                updateSetting('sourceLanguage', language.value);
-                                                                                setOpenSourceLanguages(false);
-                                                                            }}
-                                                                        >
-                                                                            <Check
-                                                                                className={cn(
-                                                                                    "mr-2 h-4 w-4",
-                                                                                    language.value === settings.sourceLanguage
-                                                                                        ? "opacity-100"
-                                                                                        : "opacity-0"
-                                                                                )}
-                                                                            />
-                                                                            {language.label}
-                                                                        </CommandItem>
-                                                                    ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                        {settings.sourceLanguage !== 'en' && (
-                                            <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="ml-0 p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                        <Languages className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium">Translate to English</p>
-                                                    </div>
-                                                </div>
-                                                <Switch
-                                                    checked={settings.translate}
-                                                    onCheckedChange={(checked) => updateSetting("translate", checked)}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <LanguageSettingsCard
+                                    sourceLanguage={walkthroughSettings?.sourceLanguage || settings.sourceLanguage}
+                                    translate={walkthroughSettings?.translate || settings.translate}
+                                    onSourceLanguageChange={(language: string) => {
+                                        updateSetting('sourceLanguage', language);
+                                        if (onWalkthroughSettingsChange && walkthroughSettings) {
+                                            onWalkthroughSettingsChange({
+                                                ...walkthroughSettings,
+                                                sourceLanguage: language
+                                            });
+                                        }
+                                    }}
+                                    onTranslateChange={(translate: boolean) => {
+                                        updateSetting('translate', translate);
+                                        if (onWalkthroughSettingsChange && walkthroughSettings) {
+                                            onWalkthroughSettingsChange({
+                                                ...walkthroughSettings,
+                                                translate: translate
+                                            });
+                                        }
+                                    }}
+                                />
 
                                 {/* Speaker Labeling */}
                                 <SpeakerLabelingCard

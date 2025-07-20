@@ -266,13 +266,16 @@ export const SetupWalkthrough = ({
       },
       {
         id: "complete",
-        title: "Setup Complete",
-        description: "All your preferences are saved. You’re ready to start transcribing!",
+        title: "",
+        description: "",
         component: (
           <Card className="p-8 text-center max-w-md mx-auto">
             <div className="space-y-4">
               <Check className="h-12 w-12 text-green-500 dark:text-green-400 mx-auto" />
               <h2 className="text-2xl font-bold">Setup Complete</h2>
+              <p className="text-muted-foreground">
+                You’re ready to start transcribing!
+              </p>
               <p className="text-muted-foreground">
                 You can revisit this walkthrough or adjust your preferences anytime from the main settings.
               </p>
@@ -345,7 +348,7 @@ export const SetupWalkthrough = ({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50">
       <div className="bg-background w-full h-screen flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b flex-shrink-0 relative">
+        <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0 relative">
           {/* Title (left) */}
           <div className="flex items-center gap-4 min-w-0">
             <h1 className="text-xl font-semibold whitespace-nowrap">Setup</h1>
@@ -397,7 +400,7 @@ export const SetupWalkthrough = ({
         </div>
 
         {/* Footer - Stuck to bottom */}
-        <div className="flex items-center justify-between p-6 border-t bg-muted/30 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30 flex-shrink-0">
           <Button
             variant="outline"
             onClick={handlePrevious}
