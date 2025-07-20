@@ -1,59 +1,22 @@
 import * as React from "react"
 import {
+    ChevronDown as ChevronDownIcon,
     Languages,
-    HelpCircle,
     Heart,
     Github,
-    Type,
-    Trash2,
+    Captions,
     AlertTriangle,
     X,
-    HardDrive,
-    MemoryStick,
-    Info,
     Globe,
-    ChevronDown as ChevronDownIcon,
-    Speech,
-    Signature,
-    AArrowUp,
-    ShieldX,
-    ChevronRight,
-
-    Captions,
-    Upload,
-    FileUp,
-    AudioLines,
-    Tally5,
-    Brain,
-    Download,
-    Film,
+    HelpCircle,
+    Check,
+    ChevronsUpDown
 } from "lucide-react"
 
-import {
-    Tooltip,
-    TooltipTrigger,
-    TooltipContent,
-} from "@/components/ui/tooltip"
-
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
@@ -63,49 +26,15 @@ import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useState } from "react"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
-import { open } from '@tauri-apps/plugin-dialog';
-import { downloadDir } from "@tauri-apps/api/path"
-
-const tutorialSections = [
-    {
-        title: "🚀 Quick Start",
-        items: [
-            "Select output track for subtitles",
-            "Pick a template (great default included)",
-            "Choose language and click Generate",
-            "Subtitles will appear on your editing timeline in Resolve"
-        ]
-    },
-    {
-        title: "🎙️ Models",
-        items: [
-            "Choose from multiple transcription models",
-            "Larger models are more accurate but slower and may require a lot of memory",
-            "Smaller models are faster and more lightweight but may be less accurate"
-        ]
-    },
-    {
-        title: "👥 Speakers",
-        items: [
-            "Auto-detects multiple speakers",
-            "Color-coded speaker labels",
-            "Customize labels & colors",
-            "Ideal for interviews & podcasts"
-        ]
-    },
-    {
-        title: "💡 Tips",
-        items: [
-            "Clear audio = Better results",
-            "Edit your captions in the preview window if words are incorrect",
-            "Modify speaker colors to make it easier to identify speakers in the timeline"
-        ]
-    }
-];
+import { AudioFileCard } from "./settings-cards/audio-file-card"
+import { AudioInputCard } from "./settings-cards/audio-input-card"
+import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
+import { ModelSelectionCard, Model } from "./settings-cards/model-selection-card"
+import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
+import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 
 const models = [
     {
@@ -113,7 +42,7 @@ const models = [
         label: "Tiny",
         description: "Fastest",
         size: "75MB",
-        ram: "~1GB",
+        ram: "1GB",
         image: "/hummingbird.png",
         details: "Smallest and fastest model. Great for quick drafts or low-resource devices. Lower accuracy on tough audio.",
         isDownloaded: true,
@@ -123,7 +52,7 @@ const models = [
         label: "Base",
         description: "General use",
         size: "140MB",
-        ram: "~1GB",
+        ram: "1GB",
         image: "/sparrow.png",
         details: "Balanced for most standard tasks. Good speed and accuracy for everyday transcription.",
         isDownloaded: true,
@@ -133,7 +62,7 @@ const models = [
         label: "Small",
         description: "Balanced",
         size: "480MB",
-        ram: "~2GB",
+        ram: "2GB",
         image: "/fox.png",
         details: "Better accuracy than Tiny/Base. Still fast. Good for varied accents and conditions.",
         isDownloaded: false,
@@ -143,7 +72,7 @@ const models = [
         label: "Medium",
         description: "Accurate",
         size: "1.5GB",
-        ram: "~5GB",
+        ram: "5GB",
         image: "/wolf.png",
         details: "High accuracy, handles difficult audio. Slower and uses more memory.",
         isDownloaded: false,
@@ -153,7 +82,7 @@ const models = [
         label: "Large",
         description: "Max accuracy",
         size: "3.1GB",
-        ram: "~10GB",
+        ram: "10GB",
         image: "/elephant.png",
         details: "Most accurate, best for complex audio or many speakers. Requires lots of RAM and a strong GPU.",
         isDownloaded: false,
@@ -266,26 +195,57 @@ const languages = [
 
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
+    onShowTutorial?: () => void
+    walkthroughSettings?: {
+        selectedFile: string | null
+        selectedTracks: string[]
+        selectedTemplate: { value: string; label: string }
+        sourceLanguage: string
+        translate: boolean
+        selectedModel: {
+            value: string
+            label: string
+            description: string
+            size: string
+            ram: string
+            image: string
+            details: string
+            isDownloaded: boolean
+        }
+        models: Array<{
+            value: string
+            label: string
+            description: string
+            size: string
+            ram: string
+            image: string
+            details: string
+            isDownloaded: boolean
+        }>
+        downloadingModel: string | null
+        downloadProgress: number
+    }
+    onWalkthroughSettingsChange?: (settings: any) => void
 }
 
-export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSettingsProps) => {
+export const TranscriptionSettings = ({
+    isStandaloneMode,
+    onShowTutorial,
+    walkthroughSettings,
+    onWalkthroughSettingsChange
+}: TranscriptionSettingsProps) => {
     const { timelineInfo } = useGlobal()
-    const [openTemplates, setOpenTemplates] = React.useState(false)
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
-    const [openHighlighter, setOpenHighlighter] = useState(false)
-    const [highlighterEnabled, setHighlighterEnabled] = useState(false)
-    const [highlighterColor, setHighlighterColor] = useState("#FFD700")
     const [openSourceLanguages, setOpenSourceLanguages] = useState(false)
-    const [openModelSelector, setOpenModelSelector] = React.useState(false)
-    const [selectedModel, setSelectedModel] = React.useState(models[1])
-    const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
-    const [downloadProgress, setDownloadProgress] = React.useState(0)
-    const [isUpdateAvailable, setIsUpdateAvailable] = React.useState(false)
+    const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || models[1])
+    const [downloadingModel] = React.useState<string | null>(null)
+    const [downloadProgress] = React.useState<number>(0)
+    const [isUpdateAvailable] = React.useState<boolean>(false)
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
-    const [modelsState, setModelsState] = React.useState(models)
+    const [modelsState, setModelsState] = React.useState(walkthroughSettings?.models || models)
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
     const [selectedTracks, setSelectedTracks] = React.useState<string[]>(['1']) // Default to Track 1 selected
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
@@ -355,7 +315,16 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
         }
     }
 
-
+    // Handle model change - sync with walkthrough settings
+    const handleModelChange = (model: Model) => {
+        setSelectedModel(model)
+        if (onWalkthroughSettingsChange && walkthroughSettings) {
+            onWalkthroughSettingsChange({
+                ...walkthroughSettings,
+                selectedModel: model
+            })
+        }
+    }
 
     // Check which models are downloaded when component mounts
     React.useEffect(() => {
@@ -365,25 +334,40 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                 console.log("Downloaded models:", downloadedModels)
 
                 // Update modelsState based on downloaded models
-                setModelsState(prevModels =>
-                    prevModels.map(model => ({
-                        ...model,
-                        isDownloaded: downloadedModels.some(downloadedModel =>
-                            downloadedModel.includes(model.value)
-                        )
-                    }))
-                )
+                const updatedModels = (walkthroughSettings?.models || models).map(model => ({
+                    ...model,
+                    isDownloaded: downloadedModels.some(downloadedModel =>
+                        downloadedModel.includes(model.value)
+                    )
+                }))
+                setModelsState(updatedModels)
+
+                // Also update walkthrough settings if available
+                if (onWalkthroughSettingsChange && walkthroughSettings) {
+                    onWalkthroughSettingsChange({
+                        ...walkthroughSettings,
+                        models: updatedModels
+                    })
+                }
 
                 // Update selectedModel if it's in the downloaded models
-                setSelectedModel(prevSelected => {
-                    const isSelectedDownloaded = downloadedModels.some(downloadedModel =>
-                        downloadedModel.includes(prevSelected.value)
-                    )
-                    return {
-                        ...prevSelected,
-                        isDownloaded: isSelectedDownloaded
-                    }
-                })
+                const currentSelected = walkthroughSettings?.selectedModel || selectedModel
+                const isSelectedDownloaded = downloadedModels.some(downloadedModel =>
+                    downloadedModel.includes(currentSelected.value)
+                )
+                const updatedSelectedModel = {
+                    ...currentSelected,
+                    isDownloaded: isSelectedDownloaded
+                }
+                setSelectedModel(updatedSelectedModel)
+
+                // Also update walkthrough settings if available
+                if (onWalkthroughSettingsChange && walkthroughSettings) {
+                    onWalkthroughSettingsChange({
+                        ...walkthroughSettings,
+                        selectedModel: updatedSelectedModel
+                    })
+                }
             } catch (error) {
                 console.error("Failed to check downloaded models:", error)
             }
@@ -391,6 +375,14 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
 
         checkDownloadedModels()
     }, [])
+
+    // Sync local state with walkthrough settings when they change
+    React.useEffect(() => {
+        if (walkthroughSettings) {
+            setSelectedModel(walkthroughSettings.selectedModel)
+            setModelsState(walkthroughSettings.models)
+        }
+    }, [walkthroughSettings?.selectedModel, walkthroughSettings?.models])
 
     return (
         <>
@@ -448,240 +440,45 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                         <div className="space-y-4">
                             {isStandaloneMode ? (
                                 <div>
-                                    <Card className="p-3.5 shadow-none">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                                                    <FileUp className="h-5 w-5 text-red-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Audio File</p>
-                                                    <p className="text-xs text-muted-foreground">Select an audio file to transcribe</p>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="outline"
-                                                size="default"
-                                                onClick={async () => {
-                                                    const file = await open({
-                                                        multiple: false,
-                                                        directory: false,
-                                                        filters: [{
-                                                            name: 'Audio Files',
-                                                            extensions: ['wav', 'mp3']
-                                                        }],
-                                                        defaultPath: await downloadDir()
-                                                    })
-                                                    setSelectedFile(file)
-                                                }}
-                                            >
-                                                <Upload className="h-4 w-4 mr-2" />
-                                                {selectedFile ? 'Change File' : 'Select File'}
-                                            </Button>
-                                        </div>
-                                        {selectedFile && (
-                                            <div className="text-sm text-muted-foreground truncate mt-2">
-                                                <span className="font-medium">Selected: </span>
-                                                {selectedFile.split('/').pop()}
-                                            </div>
-                                        )}
-                                    </Card>
+                                    <AudioFileCard
+                                        selectedFile={walkthroughSettings?.selectedFile ?? selectedFile}
+                                        onFileSelect={(file) => {
+                                            setSelectedFile(file)
+                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
+                                                onWalkthroughSettingsChange({
+                                                    ...walkthroughSettings,
+                                                    selectedFile: file
+                                                })
+                                            }
+                                        }}
+                                    />
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <Card className="p-3.5 shadow-none">
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                                                    <AudioLines className="h-5 w-5 text-red-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Audio Input</p>
-                                                    <p className="text-xs text-muted-foreground">Select tracks to be transcribed</p>
-                                                </div>
-                                            </div>
-                                            <Popover open={openTrackSelector} onOpenChange={setOpenTrackSelector}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={openTrackSelector}
-                                                        className="w-full justify-between"
-                                                    >
-                                                        {selectedTracks.length === 0
-                                                            ? "Select tracks..."
-                                                            : selectedTracks.length === 1
-                                                                ? `Track ${selectedTracks[0]}`
-                                                                : `${selectedTracks.length} tracks selected`
-                                                        }
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="min-w-[320px] p-0 overflow-hidden" align="start">
-                                                    <div className="px-4 py-3 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 border-b">
-                                                        <div className="flex items-center justify-between min-h-[28px]">
-                                                            <span className="text-sm text-muted-foreground">
-                                                                {selectedTracks.length > 0
-                                                                    ? (selectedTracks.length === 1
-                                                                        ? `Track ${selectedTracks[0]} selected`
-                                                                        : `${selectedTracks.length} tracks selected`)
-                                                                    : 'No tracks selected'}
-                                                            </span>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="text-xs h-7 px-2 hover:bg-white/80 dark:hover:bg-zinc-800/80"
-                                                                onClick={() => {
-                                                                    if (selectedTracks.length === 8) {
-                                                                        setSelectedTracks([]);
-                                                                    } else {
-                                                                        setSelectedTracks(['1', '2', '3', '4', '5', '6', '7', '8']);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                {selectedTracks.length === 8 ? "Clear All" : "Select All"}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    <ScrollArea className="h-[280px] w-full">
-                                                        <div className="flex flex-col gap-1 p-2">
-                                                            {[1, 2, 3, 4, 5, 6, 7, 8].map((trackNum) => {
-                                                                const trackId = trackNum.toString();
-                                                                const isChecked = selectedTracks.includes(trackId);
-                                                                return (
-                                                                    <button
-                                                                        type="button"
-                                                                        key={trackId}
-                                                                        tabIndex={0}
-                                                                        className={`group relative flex items-center gap-3 py-2 px-3 rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 w-full
-                                                                            ${isChecked
-                                                                                ? 'bg-gradient-to-br from-red-50 to-orange-50/70 dark:from-red-900/40 dark:to-orange-900/40 border-red-200 dark:border-red-800'
-                                                                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}
-                                                                        onClick={() => {
-                                                                            if (isChecked) {
-                                                                                setSelectedTracks(prev => prev.filter(id => id !== trackId));
-                                                                            } else {
-                                                                                setSelectedTracks(prev => [...prev, trackId]);
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
-                                                                            ${isChecked
-                                                                                ? 'bg-red-100 dark:bg-red-900/50'
-                                                                                : 'bg-zinc-100 dark:bg-zinc-800'}`}
-                                                                        >
-                                                                            <AudioLines className={`h-4 w-4 ${isChecked ? 'text-red-600 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
-                                                                        </div>
-                                                                        <span className={`text-sm font-medium flex-1 text-left ${isChecked ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                                                            Track {trackNum}
-                                                                        </span>
-                                                                        <Checkbox
-                                                                            id={`track-${trackId}`}
-                                                                            checked={isChecked}
-                                                                            tabIndex={-1}
-                                                                            className="transition-transform duration-150"
-                                                                            onCheckedChange={(checked) => {
-                                                                                if (checked) {
-                                                                                    setSelectedTracks(prev => [...prev, trackId]);
-                                                                                } else {
-                                                                                    setSelectedTracks(prev => prev.filter(id => id !== trackId));
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </ScrollArea>
-                                                </PopoverContent>
-                                            </Popover>
-                                            {/* {selectedTracks.length > 0 && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {selectedTracks.length === 1 
-                                                        ? `Track ${selectedTracks[0]} selected` 
-                                                        : `${selectedTracks.length} tracks selected: ${selectedTracks.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}`
-                                                    }
-                                                </p>
-                                            )} */}
-                                        </div>
-                                    </Card>
-                                    <Card className="p-4 shadow-none ">
-                                        <div className="space-y-3.5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                                                    <Film className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Caption Settings</p>
-                                                    <p className="text-xs text-muted-foreground">Configure track, template, and styling</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-sm font-normal">Output Track</Label>
-                                                    <Select defaultValue="1">
-                                                        <SelectTrigger className="w-[180px] h-9">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="1">Video Track 1</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-sm font-normal">Base Template</Label>
-                                                    <Popover open={openTemplates} onOpenChange={setOpenTemplates}>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                className="w-[180px] h-9 justify-between font-normal"
-                                                            >
-                                                                {selectedTemplate?.label || "Select template..."}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="p-0 w-[180px]" align="end">
-                                                            <Command>
-                                                                <CommandInput placeholder="Search templates..." />
-                                                                <CommandList>
-                                                                    <CommandEmpty>No templates found.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {[
-                                                                            { value: "default", label: "Default Text+" },
-                                                                            { value: "minimal", label: "Minimal" },
-                                                                            { value: "modern", label: "Modern" },
-                                                                            { value: "classic", label: "Classic" },
-                                                                            { value: "bold", label: "Bold" },
-                                                                            { value: "elegant", label: "Elegant" },
-                                                                        ].map((template) => (
-                                                                            <CommandItem
-                                                                                key={template.value}
-                                                                                value={template.value}
-                                                                                onSelect={() => {
-                                                                                    setSelectedTemplate(template)
-                                                                                    setOpenTemplates(false)
-                                                                                }}
-                                                                            >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        selectedTemplate?.value === template.value ? "opacity-100" : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {template.label}
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
+                                    <AudioInputCard
+                                        selectedTracks={walkthroughSettings?.selectedTracks ?? selectedTracks}
+                                        onTracksChange={(tracks) => {
+                                            setSelectedTracks(tracks)
+                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
+                                                onWalkthroughSettingsChange({
+                                                    ...walkthroughSettings,
+                                                    selectedTracks: tracks
+                                                })
+                                            }
+                                        }}
+                                    />
+                                    <CaptionSettingsCard
+                                        selectedTemplate={walkthroughSettings?.selectedTemplate ?? selectedTemplate}
+                                        onTemplateChange={(template) => {
+                                            setSelectedTemplate(template)
+                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
+                                                onWalkthroughSettingsChange({
+                                                    ...walkthroughSettings,
+                                                    selectedTemplate: template
+                                                })
+                                            }
+                                        }}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -690,7 +487,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
 
 
                     {/* Processing */}
-                    <Collapsible defaultOpen className="space-y-4">
+                    <Collapsible defaultOpen className="space-y-3">
                         <div className="flex items-center gap-4">
                             <CollapsibleTrigger asChild>
                                 <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
@@ -790,239 +587,23 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                     </div>
                                 </div>
 
+                                {/* Speaker Labeling */}
+                                <SpeakerLabelingCard
+                                    diarize={settings.diarize}
+                                    numSpeakers={settings.numSpeakers}
+                                    onDiarizeChange={(checked) => updateSetting("diarize", checked)}
+                                    onNumSpeakersChange={(value) => updateSetting("numSpeakers", value)}
+                                />
+
                                 {/* Model */}
-                                <div className="border rounded-lg overflow-hidden dark:from-gray-900 dark:to-purple-950/20">
-                                    <div className="p-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                    <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Transcription Model</p>
-                                                    <p className="text-xs text-muted-foreground">Choose a speech-to-text model</p>
-                                                </div>
-                                            </div>
-                                            {downloadingModel === selectedModel.value ? (
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
-                                                    <Progress value={downloadProgress} className="h-2 w-16" />
-                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                </div>
-                                            ) : selectedModel.isDownloaded ? (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 rounded-lg"
-                                                            title="Delete Model"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
-                                                        <div className="flex items-center gap-2">
-                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                                                            <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
-                                                        </div>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            This will delete the <span className="font-bold">{selectedModel.label}</span> model from your device. <br /><br /> You will need to download it again if you want to use it in the future.
-                                                        </span>
-                                                        <div className="flex justify-end gap-2">
-                                                            <DialogClose asChild>
-                                                                <Button variant="ghost" size="sm">Cancel</Button>
-                                                            </DialogClose>
-                                                            <Button
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    handleDeleteModel(selectedModel.value)
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </Button>
-                                                        </div>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            ) : null}
-                                        </div>
-
-                                        <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={openModelSelector}
-                                                    className="w-full justify-between font-normal h-auto p-3.5 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/20"
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="relative">
-                                                            <img src={selectedModel.image} alt={selectedModel.label + " icon"} className="w-14 h-14 object-contain rounded-lg" />
-                                                        </div>
-                                                        <div className="flex flex-col items-start">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-semibold text-base">{selectedModel.label}</span>
-                                                                {selectedModel.isDownloaded ? (
-                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
-                                                                        <Check className="h-3 w-3 inline" /> Cached
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                                                                        <Download className="h-3 w-3 inline" /> Not Cached
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                                    <HardDrive className="h-3 w-3" />
-                                                                    <span className="font-medium">{selectedModel.size}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                                    <MemoryStick className="h-3 w-3" />
-                                                                    <span className="font-medium">{selectedModel.ram} RAM</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <ChevronsUpDown className="mr-2 h-5 w-5 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-full p-2" align="start">
-                                                <div className="space-y-1">
-                                                    {modelsState.map((model) => (
-                                                        <div
-                                                            key={model.value}
-                                                            className={`flex items-center justify-between rounded-lg px-3 py-3 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors duration-150 ${selectedModel.value === model.value ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" : "border border-transparent"
-                                                                }`}
-                                                            onClick={() => {
-                                                                setSelectedModel(model)
-                                                                setOpenModelSelector(false)
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="relative">
-                                                                    <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
-                                                                    {model.isDownloaded && (
-                                                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium">{model.label}</span>
-                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                        <span>{model.size}</span>
-                                                                        <span>•</span>
-                                                                        <span>{model.description}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {downloadingModel === model.value ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Progress value={downloadProgress} className="h-2 w-16" />
-                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                                    </div>
-                                                                ) : model.isDownloaded ? (
-                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                        Cached
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                                                        Available
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-
-                                        <div className="mt-3 p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedModel.details}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Diarize Speakers */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="p-3.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                                    <Speech className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1">
-                                                        <p className="text-sm font-medium">Speaker Labeling</p>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    tabIndex={0}
-                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
-                                                                >
-                                                                    <Info className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="bottom" align="start" className="w-56 p-3">
-                                                                <p className="text-xs text-left">
-                                                                    Analyses voice patterns to identify and label different speakers in your audio. May slightly increase processing time.
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Unique captions for each speaker.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Switch checked={settings.diarize} onCheckedChange={(checked) => updateSetting("diarize", checked)} />
-                                        </div>
-                                        {settings.diarize && (
-                                            <div className="mt-3 pt-3 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1">
-                                                        <Label className="text-sm font-normal">Auto-detect Speakers</Label>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    tabIndex={0}
-                                                                    className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
-                                                                >
-                                                                    <Info className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
-                                                                <p className="text-xs text-left text-slate-700 dark:text-slate-200">
-                                                                    May hallucinate non-existent speakers, so specifying the exact number of speakers can give better results.
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
-                                                    <Switch
-                                                        checked={parseInt(settings.numSpeakers as string) === 0}
-                                                        onCheckedChange={(checked) => updateSetting("numSpeakers", checked ? "0" : "2")}
-                                                    />
-                                                </div>
-                                                {parseInt(settings.numSpeakers as string) > 0 && (
-                                                    <div className="flex items-center justify-between mt-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <Label className="text-sm font-normal">No. of Speakers</Label>
-                                                        </div>
-                                                        <Input
-                                                            type="number"
-                                                            min="1"
-                                                            value={settings.numSpeakers}
-                                                            onChange={(e) => updateSetting("numSpeakers", e.target.value)}
-                                                            className="w-20"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <ModelSelectionCard
+                                    selectedModel={selectedModel}
+                                    models={modelsState}
+                                    downloadingModel={downloadingModel}
+                                    downloadProgress={downloadProgress}
+                                    onModelChange={handleModelChange}
+                                    onDeleteModel={handleDeleteModel}
+                                />
                             </div>
 
                         </CollapsibleContent>
@@ -1031,7 +612,7 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
 
 
                     {/* Text Formatting */}
-                    <Collapsible defaultOpen className="space-y-4">
+                    <Collapsible defaultOpen className="space-y-3">
                         <div className="flex items-center gap-4">
                             <CollapsibleTrigger asChild>
                                 <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
@@ -1044,162 +625,18 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
                         <CollapsibleContent>
-                            <div className="space-y-4">
-                                {/* Max Words */}
-                                <div className="flex items-center justify-between p-3.5 border rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-                                            <Tally5 className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Max Words</p>
-                                            <p className="text-xs text-muted-foreground">Number of words per line</p>
-                                        </div>
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={settings.maxWordsLine}
-                                        onChange={(e) => updateSetting("maxWordsLine", e.target.value)}
-                                        className="w-20"
-                                    />
-                                </div>
-
-                                {/* Text Case Dropdown */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="p-3.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-                                                    <AArrowUp className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Text Case</p>
-                                                    <p className="text-xs text-muted-foreground">Set all text to specific case</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={cn(
-                                                        "h-8 px-3",
-                                                        (settings.textFormat as "none" | "uppercase" | "lowercase") === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                                                    )}
-                                                    onClick={() => {
-                                                        type TextFormat = "none" | "uppercase" | "lowercase";
-                                                        const currentFormat = settings.textFormat as TextFormat;
-                                                        const newFormat: TextFormat = currentFormat === "uppercase" ? "none" : "uppercase";
-                                                        updateSetting('textFormat', newFormat);
-                                                    }}
-                                                >
-                                                    ABC
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={cn(
-                                                        "h-8 px-3",
-                                                        (settings.textFormat as "none" | "uppercase" | "lowercase") === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                                                    )}
-                                                    onClick={() => {
-                                                        type TextFormat = "none" | "uppercase" | "lowercase";
-                                                        const currentFormat = settings.textFormat as TextFormat;
-                                                        const newFormat: TextFormat = currentFormat === "lowercase" ? "none" : "lowercase";
-                                                        updateSetting('textFormat', newFormat);
-                                                    }}
-                                                >
-                                                    abc
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Remove Punctuation Toggle */}
-                                <div className="flex items-center justify-between p-3.5 border rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-                                            <Signature className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Remove Punctuation</p>
-                                            <p className="text-xs text-muted-foreground">Removes all commas, periods, etc.</p>
-                                        </div>
-                                    </div>
-                                    <Switch
-                                        checked={settings.removePunctuation}
-                                        onCheckedChange={(checked) => updateSetting('removePunctuation', checked)}
-                                    />
-                                </div>
-
-                                {/* Censored Words Card */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="p-3.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-                                                    <ShieldX className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Censor Sensitive Words</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Example: <span className="font-mono bg-muted px-1 rounded">kill</span> → <span className="font-mono bg-muted px-1 rounded">k*ll</span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Switch checked={settings.censorWords} onCheckedChange={(checked) => updateSetting("censorWords", checked)} />
-                                        </div>
-                                        {settings.censorWords && (
-                                            <div className="mt-3 pt-3 border-t">
-                                                <div className="flex flex-col gap-2">
-                                                    <ScrollArea className="max-h-[150px]">
-                                                        {settings.sensitiveWords.length === 0 ? (
-                                                            <div className="text-xs text-muted-foreground p-4 text-center">
-                                                                No words selected to censor.
-                                                            </div>
-                                                        ) : (
-                                                            settings.sensitiveWords.map((word: string, index: number) => (
-                                                                <div key={index} className="flex items-center m-1 mb-2 mr-3">
-                                                                    <Input
-                                                                        value={word}
-                                                                        type="string"
-                                                                        placeholder="Enter word"
-                                                                        onChange={(e) => {
-                                                                            const newWords = [...settings.sensitiveWords];
-                                                                            newWords[index] = e.target.value;
-                                                                            updateSetting('sensitiveWords', newWords);
-                                                                        }}
-                                                                    />
-                                                                    <Button
-                                                                        variant="destructive"
-                                                                        size="sm"
-                                                                        className="ml-2"
-                                                                        onClick={() => {
-                                                                            const newWords = settings.sensitiveWords.filter((_, i) => i !== index);
-                                                                            updateSetting('sensitiveWords', newWords);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="size-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            ))
-                                                        )}
-                                                    </ScrollArea>
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        className="mx-1 w-full"
-                                                        onClick={() => updateSetting('sensitiveWords', [...settings.sensitiveWords, ""])}
-                                                    >
-                                                        Add Word
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            <TextFormattingCard
+                                maxWordsLine={settings.maxWordsLine}
+                                textFormat={settings.textFormat}
+                                removePunctuation={settings.removePunctuation}
+                                censorWords={settings.censorWords}
+                                sensitiveWords={settings.sensitiveWords}
+                                onMaxWordsLineChange={(value) => updateSetting("maxWordsLine", value)}
+                                onTextFormatChange={(format) => updateSetting("textFormat", format)}
+                                onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
+                                onCensorWordsChange={(checked) => updateSetting("censorWords", checked)}
+                                onSensitiveWordsChange={(words) => updateSetting("sensitiveWords", words)}
+                            />
                         </CollapsibleContent>
                     </Collapsible>
 
@@ -1253,42 +690,14 @@ export const TranscriptionSettings = ({ isStandaloneMode }: TranscriptionSetting
                                 </a>
                             </Button>
                             <div className="grid grid-cols-2 gap-2">
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" className="w-full bg-transparent">
-                                            <HelpCircle className="h-4 w-4 mr-2" />
-                                            Help
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Quick Tutorial</DialogTitle>
-                                            <DialogDescription>Scroll down to learn how to use AutoSubs</DialogDescription>
-                                        </DialogHeader>
-                                        <ScrollArea className="mt-2 max-h-[60vh] pr-4">
-                                            <div className="space-y-6">
-                                                {tutorialSections.map((section, index) => (
-                                                    <section key={index} className="space-y-3">
-                                                        <h2 className="text-lg font-semibold flex items-center">
-                                                            <span className="inline-flex items-center justify-center w-6 h-6 mr-2 text-sm font-bold text-white bg-primary rounded-full">
-                                                                {index + 1}
-                                                            </span>
-                                                            {section.title}
-                                                        </h2>
-                                                        <ul className="space-y-2">
-                                                            {section.items.map((item, itemIndex) => (
-                                                                <li key={itemIndex} className="flex items-start">
-                                                                    <ChevronRight className="mr-2 h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-                                                                    <span className="text-sm">{item}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </section>
-                                                ))}
-                                            </div>
-                                        </ScrollArea>
-                                    </DialogContent>
-                                </Dialog>
+                                <Button
+                                    variant="outline"
+                                    className="w-full bg-transparent"
+                                    onClick={onShowTutorial}
+                                >
+                                    <HelpCircle className="h-4 w-4 mr-2" />
+                                    Tutorial
+                                </Button>
                                 <Button variant="outline" className="w-full bg-transparent" asChild>
                                     <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
                                         <Github className="h-4 w-4 mr-2" />
