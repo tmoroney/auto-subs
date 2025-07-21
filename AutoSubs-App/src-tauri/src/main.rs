@@ -6,7 +6,7 @@ use serde_json::json;
 use std::thread;
 use tauri::RunEvent;
 use crate::transcribe::transcribe_audio;
-use crate::models::get_downloaded_models;
+use crate::models::{get_downloaded_models, delete_model};
 use whisper_rs;
 
 
@@ -39,7 +39,7 @@ fn main() {
             // Any additional setup logic if needed
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![transcribe_audio, get_downloaded_models])
+        .invoke_handler(tauri::generate_handler![transcribe::transcribe_audio, models::get_downloaded_models, models::delete_model])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
         .run(|_app_handle, event| {

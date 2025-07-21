@@ -21,6 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
+import { listen } from "@tauri-apps/api/event"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
@@ -129,8 +130,9 @@ export const TranscriptionSettings = ({
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
 
     const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || models[1])
-    const [downloadingModel] = React.useState<string | null>(null)
-    const [downloadProgress] = React.useState<number>(0)
+    const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
+    const [downloadProgress, setDownloadProgress] = React.useState<number>(0)
+    const [isModelDownloading, setIsModelDownloading] = React.useState(false)
     const [isUpdateAvailable] = React.useState<boolean>(false)
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
@@ -160,14 +162,77 @@ export const TranscriptionSettings = ({
         setSettings((prev) => ({ ...prev, [key]: value }))
     }
 
+    // Listen for transcription and model download progress events from the backend
+    React.useEffect(() => {
+        let unlistenTranscription: (() => void) | null = null;
+        let unlistenModelStart: (() => void) | null = null;
+        let unlistenModelProgress: (() => void) | null = null;
+        let unlistenModelComplete: (() => void) | null = null;
+        let unlistenModelCache: (() => void) | null = null;
 
+        const setupEventListeners = async () => {
+            try {
+                // Transcription progress listener
+                unlistenTranscription = await listen<number>('transcription-progress', (event) => {
+                    console.log('Received transcription progress:', event.payload);
+                    setTranscriptionProgress(event.payload);
+                });
 
+                // Model download start listener
+                unlistenModelStart = await listen<[string, string, number]>('model-download-start', (event) => {
+                    const [modelName] = event.payload;
+                    setDownloadingModel(modelName);
+                    setIsModelDownloading(true);
+                    setDownloadProgress(0);
+                });
 
+                // Model download progress listener
+                unlistenModelProgress = await listen<number>('model-download-progress', (event) => {
+                    setDownloadProgress(event.payload);
+                });
 
-    const handleDeleteModel = (modelValue: string) => {
-        setModelsState((prevModels) => prevModels.map((m) => (m.value === modelValue ? { ...m, isDownloaded: false } : m)))
-        if (selectedModel.value === modelValue) {
-            setSelectedModel((prev) => ({ ...prev, isDownloaded: false }))
+                // Model download complete listener
+                unlistenModelComplete = await listen<string>('model-download-complete', () => {
+                    setDownloadingModel(null);
+                    setIsModelDownloading(false);
+                    setDownloadProgress(0);
+                });
+
+                // Model found in cache listener
+                unlistenModelCache = await listen<string>('model-found-in-cache', () => {
+                    // No action needed when model is found in cache
+                });
+            } catch (error) {
+                console.error('Failed to setup event listeners:', error);
+            }
+        };
+
+        setupEventListeners();
+
+        return () => {
+            if (unlistenTranscription) unlistenTranscription();
+            if (unlistenModelStart) unlistenModelStart();
+            if (unlistenModelProgress) unlistenModelProgress();
+            if (unlistenModelComplete) unlistenModelComplete();
+            if (unlistenModelCache) unlistenModelCache();
+        };
+    }, []);
+
+    const handleDeleteModel = async (modelValue: string) => {
+        try {
+            // Call the backend to delete the model files
+            await invoke('delete_model', { model: modelValue })
+            
+            // Update the local state to reflect the deletion
+            setModelsState((prevModels) => prevModels.map((m) => (m.value === modelValue ? { ...m, isDownloaded: false } : m)))
+            if (selectedModel.value === modelValue) {
+                setSelectedModel((prev) => ({ ...prev, isDownloaded: false }))
+            }
+            
+            console.log(`Successfully deleted model: ${modelValue}`)
+        } catch (error) {
+            console.error(`Failed to delete model ${modelValue}:`, error)
+            // You could add a toast notification here to inform the user of the error
         }
     }
 
@@ -203,6 +268,10 @@ export const TranscriptionSettings = ({
         } finally {
             setIsTranscribing(false)
             setTranscriptionProgress(0) // Reset progress
+            // set modelsState to reflect that the model is downloaded
+            setModelsState((prevModels) => prevModels.map((m) => (m.value === selectedModel.value ? { ...m, isDownloaded: true } : m)))
+            // set selectedModel to reflect that the model is downloaded
+            setSelectedModel((prev) => ({ ...prev, isDownloaded: true }))
         }
     }
 
@@ -548,8 +617,22 @@ export const TranscriptionSettings = ({
                         </Button>
                     )}
 
+                    {/* Model Download Progress */}
+                    {isModelDownloading && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Downloading {downloadingModel} model...</span>
+                                <span>{downloadProgress}%</span>
+                            </div>
+                            <Progress 
+                                value={downloadProgress} 
+                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-600" 
+                            />
+                        </div>
+                    )}
+
                     {/* Transcription Progress */}
-                    {isTranscribing && (
+                    {isTranscribing && !isModelDownloading && (
                         <div className="space-y-1">
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>Transcription Progress</span>
@@ -562,7 +645,7 @@ export const TranscriptionSettings = ({
                     {/* Start Transcription Button */}
                     <Button
                         onClick={handleStartTranscription}
-                        disabled={!selectedModel.isDownloaded || isTranscribing || downloadingModel !== null}
+                        disabled={isTranscribing || downloadingModel !== null}
                         className="w-full"
                         size="lg"
                     >

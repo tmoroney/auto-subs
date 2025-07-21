@@ -43,7 +43,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
 
     let enable_dtw = true;
 
-    let model_path = crate::models::download_model_if_needed(&options.model, &options.lang)?;
+    let model_path = crate::models::download_model_if_needed(app.clone(), &options.model, &options.lang)?;
 
     let audio_duration = get_audio_duration(&options.audio_path)
         .map_err(|e| format!("Failed to get audio duration: {}", e))?;
@@ -491,6 +491,19 @@ pub async fn run_transcription_pipeline(
                 None => return Err(eyre!("Diarization enabled but no diarization options provided")),
             };
             
+            // Clear the global progress callback to prevent double progress reporting
+            // We'll handle progress manually in the diarization loop
+            {
+                let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
+                *guard = None;
+            }
+            
+            // Also ensure no progress callback is set on the params object itself
+            // This prevents Whisper from reporting progress for individual segments
+            params.set_progress_callback_safe(|_| {
+                // Do nothing - we handle progress manually in diarization mode
+            });
+            
             tracing::debug!("Diarize enabled {:?}", diarize_options);
             params.set_single_segment(true);
             let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
@@ -498,7 +511,7 @@ pub async fn run_transcription_pipeline(
                 pyannote_rs::EmbeddingExtractor::new(diarize_options.embedding_model_path)
                     .map_err(|e| eyre!("{:?}", e))?;
 
-            // Get speech segments as an iterator
+            // Get speech segments as an iterator and collect them to get accurate count
             let diarize_segments_iter = pyannote_rs::get_segments(
                 &original_samples,
                 16000,
@@ -506,18 +519,20 @@ pub async fn run_transcription_pipeline(
             )
             .map_err(|e| eyre!("{:?}", e))?;
 
-            // Count total segments for progress reporting
-            let total_segments = original_samples.len() / (16000 * 10); // Rough estimate based on 10s windows
+            // Collect all segments first to get accurate total count for progress reporting
+            let all_segments: Result<Vec<_>, _> = diarize_segments_iter.collect();
+            let all_segments = all_segments.map_err(|e| eyre!("Error collecting segments: {:?}", e))?;
+            let total_segments = all_segments.len();
             let mut processed_segments = 0;
 
-            for (i, diarize_segment_result) in diarize_segments_iter.enumerate() {
+            for (i, diarize_segment) in all_segments.into_iter().enumerate() {
                 if let Some(ref abort_callback) = abort_callback {
                     if abort_callback() {
                         break;
                     }
                 }
 
-                let diarize_segment = diarize_segment_result.map_err(|e| eyre!("Error processing segment: {:?}", e))?;
+                // diarize_segment is already unwrapped from the iterator collection
 
                 // whisper compatible. segment indices
                 tracing::trace!(
@@ -641,6 +656,8 @@ pub async fn run_transcription_pipeline(
             };
             return Ok(transcript);
         } else {
+            // Only set up Whisper's internal progress callback when diarization is NOT enabled
+            // When diarization is enabled, we handle progress manually in the diarization loop above
             if let Some(callback) = progress_callback {
                 let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
                 let internal_progress_callback = move |progress: i32| callback(progress);
