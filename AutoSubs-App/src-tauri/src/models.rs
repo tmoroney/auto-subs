@@ -100,9 +100,17 @@ fn get_model_cache_dir() -> Result<PathBuf, String> {
     Ok(model_dir)
 }
 
+/// Returns the appropriate filename for a Whisper model based on the model variant and language.
+/// - If the model is "large", it maps to "large-v3" internally, matching the naming convention.
+/// - If the `lang` parameter is "en" (case-insensitive) and the model isn't "large-v3", returns the English-specific model file.
+/// - Otherwise, returns the general model file name.
+/// Examples:
+///   get_filename("base", &Some("en".to_string()))      -> "ggml-base.en.bin"
+///   get_filename("large", &None)                       -> "ggml-large-v3.bin"
+///   get_filename("medium", &Some("fr".to_string()))    -> "ggml-medium.bin"
 fn get_filename(model: &str, lang: &Option<String>) -> String {
     let model_name = if model == "large" { "large-v3" } else { model };
-    let is_en = lang.as_deref().map_or(true, |l| l.eq_ignore_ascii_case("en"));
+    let is_en = lang.as_deref().map_or(false, |l| l.eq_ignore_ascii_case("en"));
     if is_en && model_name != "large-v3" {
         format!("ggml-{}.en.bin", model_name)
     } else {

@@ -23,8 +23,6 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPCACHE/transcripts/**",
-          "$CACHE/transcripts/**",
           "$DESKTOP/**",
           "$DOCUMENT/**",
           "$DOWNLOAD/**",
@@ -47,7 +45,8 @@
       "resources/"
     ],
     "externalBin": [
-      "binaries/ffmpeg"
+      "binaries/ffmpeg",
+      "binaries/ffprobe"
     ],
     "macOS": {
       "minimumSystemVersion": "14.0"

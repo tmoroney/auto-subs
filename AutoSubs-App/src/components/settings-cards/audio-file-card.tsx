@@ -1,5 +1,5 @@
 import * as React from "react"
-import { FileUp, Upload } from "lucide-react"
+import { Check, CircleCheckBig, FileCheck, FileCheck2, FileUp, Paperclip, Upload } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { open } from '@tauri-apps/plugin-dialog'
@@ -21,10 +21,9 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
           const files = event.payload.paths as string[] | undefined;
           if (files && files.length > 0) {
             const file = files[0];
-            const ext = file.split('.').pop()?.toLowerCase();
-            if (ext === 'wav' || ext === 'mp3') {
-              onFileSelect(file);
-            }
+            // Accept all common audio and video file types supported by ffmpeg
+            // Backend will validate actual support
+            onFileSelect(file);
           }
         }
       });
@@ -38,8 +37,10 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
       multiple: false,
       directory: false,
       filters: [{
-        name: 'Audio Files',
-        extensions: ['wav', 'mp3']
+        name: 'Media Files (ffmpeg-supported)',
+        extensions: [
+          'wav', 'mp3', 'm4a', 'flac', 'ogg', 'aac', 'mp4', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpeg', 'mpg', 'm4v', '3gp', 'aiff', 'opus', 'alac', '*'
+        ]
       }],
       defaultPath: await downloadDir()
     })
@@ -56,7 +57,7 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
         </div>
         <div>
           <p className="text-sm font-medium">Audio File</p>
-          <p className="text-xs text-muted-foreground">Select an audio file to transcribe</p>
+          <p className="text-xs text-muted-foreground">Generate subtitles from an audio or video file</p>
         </div>
       </div>
       {/* Drag and Drop Area */}
@@ -69,15 +70,17 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleFileSelect(); }}
       >
         <Upload className="h-7 w-7 mb-1 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Drop audio file here or click to select</span>
-        <span className="text-xs text-muted-foreground mt-1">(WAV or MP3)</span>
+        <span className="text-sm font-medium text-muted-foreground">Drop file here or click to select</span>
+        <span className="text-xs text-muted-foreground mt-1">Supports most formats</span>
       </div>
       {/* Old button removed, replaced by dropzone */}
 
       {selectedFile && (
-        <div className="text-sm text-muted-foreground truncate mt-2">
-          <span className="font-medium">Selected: </span>
-          {selectedFile.split('/').pop()}
+        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-muted/40 rounded-lg">
+          <span className="text-sm text-muted-foreground">Selected:</span>
+          <span className="font-mono text-xs bg-background px-2 py-0.5 rounded border border-muted-foreground/10 max-w-[180px] truncate">
+            {selectedFile.split('/').pop()}
+          </span>
         </div>
       )}
     </Card>

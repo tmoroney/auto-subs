@@ -22,66 +22,17 @@ import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
+import { saveTranscript, generateTranscriptFilename } from "@/utils/fileUtils"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
 import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
 import { ModelSelectionCard, Model } from "./settings-cards/model-selection-card"
+import { models, getDefaultModel } from "@/lib/models"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 
-const models = [
-    {
-        value: "tiny",
-        label: "Tiny",
-        description: "Fastest",
-        size: "75MB",
-        ram: "1GB",
-        image: "/hummingbird.png",
-        details: "Smallest and fastest model. Great for quick drafts or low-resource devices. Lower accuracy on tough audio.",
-        isDownloaded: true,
-    },
-    {
-        value: "base",
-        label: "Base",
-        description: "General use",
-        size: "140MB",
-        ram: "1GB",
-        image: "/sparrow.png",
-        details: "Balanced for most standard tasks. Good speed and accuracy for everyday transcription.",
-        isDownloaded: true,
-    },
-    {
-        value: "small",
-        label: "Small",
-        description: "Balanced",
-        size: "480MB",
-        ram: "2GB",
-        image: "/fox.png",
-        details: "Better accuracy than Tiny/Base. Still fast. Good for varied accents and conditions.",
-        isDownloaded: false,
-    },
-    {
-        value: "medium",
-        label: "Medium",
-        description: "Accurate",
-        size: "1.5GB",
-        ram: "5GB",
-        image: "/wolf.png",
-        details: "High accuracy, handles difficult audio. Slower and uses more memory.",
-        isDownloaded: false,
-    },
-    {
-        value: "large",
-        label: "Large",
-        description: "Max accuracy",
-        size: "3.1GB",
-        ram: "10GB",
-        image: "/elephant.png",
-        details: "Most accurate, best for complex audio or many speakers. Requires lots of RAM and a strong GPU.",
-        isDownloaded: false,
-    },
-]
+// Using centralized model definitions from lib/models.ts
 
 
 
@@ -120,16 +71,18 @@ interface TranscriptionSettingsProps {
     onWalkthroughSettingsChange?: (settings: any) => void
 }
 
-export const TranscriptionSettings = ({
+export function TranscriptionSettings({
     isStandaloneMode,
     onShowTutorial,
     walkthroughSettings,
     onWalkthroughSettingsChange
-}: TranscriptionSettingsProps) => {
-    const { timelineInfo } = useGlobal()
+}: TranscriptionSettingsProps) {
+    const isMobile = useIsMobile()
+    const globalContext = useGlobal()
+    const { timelineInfo } = globalContext || {}
     const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
 
-    const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || models[1])
+    const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || getDefaultModel())
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState<number>(0)
     const [isModelDownloading, setIsModelDownloading] = React.useState(false)
@@ -138,11 +91,10 @@ export const TranscriptionSettings = ({
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
-    const [modelsState, setModelsState] = React.useState(walkthroughSettings?.models || models)
+    const [modelsState, setModelsState] = React.useState(walkthroughSettings?.models || [...models])
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
     const [selectedTracks, setSelectedTracks] = React.useState<string[]>(['1']) // Default to Track 1 selected
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
-    const isMobile = useIsMobile()
 
 
 
@@ -261,7 +213,32 @@ export const TranscriptionSettings = ({
             console.log("Invoking transcribe_audio with options:", options)
             const transcript = await invoke("transcribe_audio", { options })
             console.log("Transcription successful:", transcript)
-            // Handle successful transcription, e.g., display the transcript
+            
+            // Generate filename based on mode and input
+            const filename = generateTranscriptFilename(
+                isStandaloneMode, 
+                selectedFile, 
+                globalContext?.timelineInfo?.name
+            )
+            
+            // Save transcript to JSON file
+            await saveTranscript(transcript as any, filename)
+            console.log("Transcript saved to:", filename)
+            
+            // Transform transcript segments to subtitle format and update the caption list
+            const subtitles = (transcript as any).segments.map((segment: any, index: number) => ({
+                id: index.toString(),
+                start: segment.start,
+                end: segment.end,
+                text: segment.text.trim(),
+                speaker: segment.speaker || undefined,
+                words: segment.words || []
+            }))
+            
+            // Update the global subtitles state to show in sidebar
+            globalContext?.updateSubtitles(subtitles)
+            console.log("Caption list updated with", subtitles.length, "captions")
+            
         } catch (error) {
             console.error("Transcription failed:", error)
             // Handle error, e.g., show an error message to the user
@@ -608,7 +585,7 @@ export const TranscriptionSettings = ({
                     </div>
                 </div>
                 {/* Footer */}
-                <div className="sticky bottom-0 p-4 border-t bg-background/95 backdrop-blur-sm z-20 shadow-lg space-y-2">
+                <div className="sticky bottom-0 p-4 border-t bg-background/95 backdrop-blur-sm z-20 shadow-2xl space-y-3">
                     {/* Mobile Caption Viewer Button */}
                     {isMobile && (
                         <Button onClick={() => setShowMobileCaptions(true)} variant="outline" className="w-full" size="lg">

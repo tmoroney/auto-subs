@@ -13,10 +13,6 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 // This function is now an `async` Tauri command.
-// 1. `#[command]` allows you to invoke it from your frontend.
-// 2. `async` is required because running an external process is an async operation.
-// 3. Tauri automatically provides the `AppHandle` to any command that lists it as a parameter.
-// 4. The return type is `Result<(), String>` because errors must be serializable to be sent to the frontend.
 pub async fn normalize(app: AppHandle, input: PathBuf, output: PathBuf, additional_ffmpeg_args: Option<Vec<String>>) -> std::result::Result<(), String> {
     // We use a helper async function to keep using eyre's `Result` for cleaner error handling with `?`
     // and then map the final result to the `Result<(), String>` that Tauri expects for commands.
@@ -91,12 +87,42 @@ pub async fn normalize(app: AppHandle, input: PathBuf, output: PathBuf, addition
 }
 
 
-pub fn get_audio_duration(path: &str) -> Result<f64, String> {
-    let reader = hound::WavReader::open(path)
-        .map_err(|e| format!("Failed to open WAV file: {}", e))?;
-    let duration = reader.duration() as f64 / reader.spec().sample_rate as f64;
+// Uses ffprobe to get duration of any audio/video file (async, Tauri sidecar)
+pub async fn get_audio_duration(app: AppHandle, path: String) -> std::result::Result<f64, String> {
+    use eyre::Context;
+    // Prepare ffprobe sidecar
+    let sidecar_command = app.shell()
+        .sidecar("ffprobe")
+        .context("Failed to create sidecar command for 'ffprobe'. Is it configured in tauri.conf.json?")
+        .map_err(|e| e.to_string())?;
+
+    let args = vec![
+        "-v".to_string(), "error".to_string(),
+        "-show_entries".to_string(), "format=duration".to_string(),
+        "-of".to_string(), "default=noprint_wrappers=1:nokey=1".to_string(),
+        path.clone(),
+    ];
+
+    let output_result = sidecar_command.args(args).output().await
+        .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
+
+    if !output_result.status.success() {
+        let error_message = String::from_utf8_lossy(&output_result.stderr);
+        return Err(format!(
+            "ffprobe failed with exit code: {:?}\nStderr: {}",
+            output_result.status.code(),
+            error_message
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output_result.stdout);
+    let duration_str = stdout.trim();
+    let duration = duration_str.parse::<f64>().map_err(|e| format!(
+        "Failed to parse ffprobe duration output '{}': {}", duration_str, e
+    ))?;
     Ok(duration)
 }
+
 
 pub fn parse_wav_file(path: &PathBuf) -> Result<Vec<i16>> {
     tracing::debug!("wav reader read from {:?}", path);

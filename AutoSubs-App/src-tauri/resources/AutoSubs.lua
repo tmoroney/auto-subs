@@ -74,7 +74,8 @@ if os_name == "Windows" then
     ]]
 
     -- Get path to the main AutoSubs app and modules
-    storage_path = os.getenv("APPDATA") .. "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
+    storage_path = os.getenv("APPDATA") ..
+    "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
     local install_path = assert(read_file(storage_path .. "install_path.txt"))
     main_app = install_path .. "\\AutoSubs.exe"
     storage_path = install_path .. "\\resources\\AutoSubs\\"
@@ -357,7 +358,9 @@ function CheckTrackEmpty(trackIndex, markIn, markOut)
     return #trackItems == 0
 end
 
-function ExportAudio(outputDir, inputTrack)
+-- Export audio from selected tracks
+-- inputTracks is a table of track indices to export
+function ExportAudio(outputDir, inputTracks)
     local audioInfo = {
         timeline = ""
     }
@@ -370,18 +373,16 @@ function ExportAudio(outputDir, inputTrack)
     local trackStates = {}
     local timeline;
     local audioTracks;
-    if inputTrack ~= "0" and inputTrack ~= "" then
-        -- mute all tracks except the selected one
-        timeline = project:GetCurrentTimeline()
-        audioTracks = timeline:GetTrackCount("audio")
-        for i = 1, audioTracks do
-            local state = timeline:GetIsTrackEnabled("audio", i)
-            trackStates[i] = state
-            if i == tonumber(inputTrack) then
-                timeline:SetTrackEnable("audio", i, true)
-            else
-                timeline:SetTrackEnable("audio", i, false)
-            end
+    -- mute all tracks except the selected one
+    timeline = project:GetCurrentTimeline()
+    audioTracks = timeline:GetTrackCount("audio")
+    for i = 1, audioTracks do
+        local state = timeline:GetIsTrackEnabled("audio", i)
+        trackStates[i] = state
+        if i == tonumber(inputTracks[i]) then
+            timeline:SetTrackEnable("audio", i, true)
+        else
+            timeline:SetTrackEnable("audio", i, false)
         end
     end
 
@@ -420,16 +421,9 @@ function ExportAudio(outputDir, inputTrack)
 
     resolve:OpenPage("edit")
 
-    -- unmute all tracks
-    if inputTrack ~= "0" and inputTrack ~= "" then
-        for i = 1, audioTracks do
-            timeline:SetTrackEnable("audio", i, trackStates[i])
-        end
-    end
-
-    -- check if audio file exists
-    if not io.open(audioInfo.path, "r") then
-        sleep(1)
+    -- reset track states
+    for i = 1, audioTracks do
+        timeline:SetTrackEnable("audio", i, trackStates[i])
     end
 
     return audioInfo
@@ -490,7 +484,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
     local subtitles = data["segments"]
 
     print("Adding subtitles to timeline")
-    
+
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local rootFolder = mediaPool:GetRootFolder()

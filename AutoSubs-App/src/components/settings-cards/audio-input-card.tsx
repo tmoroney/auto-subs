@@ -162,7 +162,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
                         tabIndex={0}
                         className={`group relative flex items-center gap-3 py-2 px-3 rounded-lg border transition-all duration-200 w-full
                           ${isChecked
-                            ? 'bg-gradient-to-br from-red-50 to-orange-50/70 dark:from-red-900/40 dark:to-orange-900/40 border-red-200 dark:border-red-800'
+                            ? 'bg-red-50/50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
                             : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}
                         onClick={() => {
                           if (isChecked) {

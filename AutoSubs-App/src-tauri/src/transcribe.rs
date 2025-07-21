@@ -45,7 +45,8 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
 
     let model_path = crate::models::download_model_if_needed(app.clone(), &options.model, &options.lang)?;
 
-    let audio_duration = get_audio_duration(&options.audio_path)
+    let audio_duration = crate::audio::get_audio_duration(app.clone(), options.audio_path.clone())
+        .await
         .map_err(|e| format!("Failed to get audio duration: {}", e))?;
 
     let ctx = create_context(

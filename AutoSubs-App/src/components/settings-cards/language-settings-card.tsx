@@ -134,7 +134,7 @@ export const LanguageSettingsCard = ({
             </div>
             <div>
               <p className="text-sm font-medium">Input Language</p>
-              <p className="text-xs text-muted-foreground">Language in audio</p>
+              <p className="text-xs text-muted-foreground">Language of audio</p>
             </div>
           </div>
           <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>

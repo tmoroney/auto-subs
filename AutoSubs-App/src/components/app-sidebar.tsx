@@ -7,7 +7,7 @@ import { useGlobal } from "@/contexts/GlobalContext"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchQuery, setSearchQuery] = React.useState("")
-  const { exportSubtitles, subtitles } = useGlobal()
+  const { exportSubtitles, subtitles, updateCaption } = useGlobal()
   
   // Helper function to format time in HH:MM:SS
   const formatTime = React.useCallback((seconds: number | string): string => {
@@ -36,14 +36,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }
 
-  const handleEditCaption = (captionOrId: Caption | number) => {
+  const handleEditCaption = async (captionOrId: Caption | number) => {
     const id = typeof captionOrId === 'number' ? captionOrId : captionOrId.id;
     const caption = typeof captionOrId === 'number' 
       ? captions.find(c => c.id === captionOrId)
       : captionOrId;
       
     console.log("Edit caption:", id, "Full caption:", caption);
-    // Add edit functionality here using the full caption if available
+    
+    if (caption && typeof captionOrId !== 'number') {
+      // Caption object was passed, so we can save the changes
+      try {
+        const updatedCaption = {
+          id: caption.id,
+          start: typeof caption.timestamp === 'string' ? parseFloat(caption.timestamp.split(':').reduce((acc, time) => (60 * acc) + +time, 0).toString()) : 0,
+          end: typeof caption.timestamp === 'string' ? parseFloat(caption.timestamp.split(':').reduce((acc, time) => (60 * acc) + +time, 0).toString()) + 5 : 5, // Default 5 second duration
+          text: caption.text,
+          speaker: caption.speaker,
+          words: (caption as any).words || []
+        };
+        
+        // Use the global context to update the caption
+        if (updateCaption) {
+          await updateCaption(caption.id, updatedCaption);
+          console.log("Caption successfully updated!");
+        } else {
+          console.error("updateCaption function not available");
+        }
+      } catch (error) {
+        console.error("Failed to update caption:", error);
+      }
+    }
   }
 
   return (

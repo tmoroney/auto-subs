@@ -81,13 +81,15 @@ interface CaptionEditorProps {
     onSave: (updatedSegment: Caption) => void;
     onCancel: () => void;
     hideButtons?: boolean;
+    onStateChange?: (words: WordData[], text: string) => void;
 }
 
 const CaptionEditor = ({ 
     segment, 
     onSave, 
     onCancel,
-    hideButtons = false
+    hideButtons = false,
+    onStateChange
 }: CaptionEditorProps) => {
     // Initialize words state with proper typing
     const [words, setWords] = useState<WordData[]>(() => {
@@ -111,12 +113,18 @@ const CaptionEditor = ({
 
     const handleWordUpdate = (wordIndex: number, newWord: string) => {
         setWords(prevWords => {
-            return prevWords.map((word, i) => {
+            const newWords = prevWords.map((word, i) => {
                 if (i === wordIndex) {
                     return { ...word, word: newWord };
                 }
                 return word;
             });
+            
+            // Notify parent of state change
+            const newText = newWords.map(w => w.word).join(' ');
+            onStateChange?.(newWords, newText);
+            
+            return newWords;
         });
     };
 
@@ -142,6 +150,10 @@ const CaptionEditor = ({
                     };
                 }
             }
+            
+            // Notify parent of state change
+            const newText = newWords.map(w => w.word).join(' ');
+            onStateChange?.(newWords, newText);
             
             return newWords;
         });
@@ -220,14 +232,8 @@ function CaptionListComponent({
     isLoading = false,
     error = null
 }: CaptionListProps) {
-    // State for editor
-    const [editCaptions, setEditCaptions] = React.useState<Caption[]>([]);
-
-
-    // Update edit captions when captions prop changes
-    React.useEffect(() => {
-        setEditCaptions([...captions]);
-    }, [captions]);
+    // Ref to store the current editor state
+    const editorStateRef = React.useRef<{ words: WordData[]; text: string } | null>(null);
 
     const handleOpenEdit = React.useCallback((id: number) => {
         const caption = captions.find(c => c.id === id);
@@ -240,26 +246,19 @@ function CaptionListComponent({
 
     // Handle caption save
     const handleSave = React.useCallback((updatedSegment: Caption) => {
-        const idx = editCaptions.findIndex(c => c.id === updatedSegment.id);
-        if (idx !== -1) {
-            const updated = [...editCaptions];
-            updated[idx] = { 
-                ...updated[idx], 
-                ...updatedSegment,
-                text: updatedSegment.text || updated[idx].text,
-                words: updatedSegment.words || updated[idx].words
-            };
-            setEditCaptions(updated);
-            
-            if (onEditCaption) {
-                try {
-                    (onEditCaption as (caption: Caption) => void)(updated[idx]);
-                } catch (e) {
-                    (onEditCaption as (id: number) => void)(updated[idx].id);
-                }
+        console.log('handleSave called with:', updatedSegment);
+        
+        if (onEditCaption) {
+            try {
+                // Call the parent's edit handler with the updated caption
+                (onEditCaption as (caption: Caption) => void)(updatedSegment);
+                console.log('onEditCaption called successfully');
+            } catch (e) {
+                console.log('Fallback to id-based onEditCaption');
+                (onEditCaption as (id: number) => void)(updatedSegment.id);
             }
         }
-    }, [editCaptions, onEditCaption]);
+    }, [onEditCaption]);
 
     if (isLoading) {
         return <div className="p-4 text-center text-muted-foreground">Loading captions...</div>;
@@ -334,16 +333,30 @@ function CaptionListComponent({
                                         <CaptionEditor
                                             segment={{
                                                 ...caption,
-                                                words: ('words' in caption && Array.isArray((caption as any).words)) 
-                                                    ? (caption as any).words 
-                                                    : caption.text.split(/\s+/).filter(Boolean).map(word => ({
-                                                        word,
-                                                        start: 0,
-                                                        end: 0,
-                                                        probability: 1
-                                                    }))
+                                                words: (() => {
+                                                    const initialWords = ('words' in caption && Array.isArray((caption as any).words)) 
+                                                        ? (caption as any).words 
+                                                        : caption.text.split(/\s+/).filter(Boolean).map(word => ({
+                                                            word,
+                                                            start: 0,
+                                                            end: 0,
+                                                            probability: 1
+                                                        }));
+                                                    
+                                                    // Initialize the ref with the initial state
+                                                    editorStateRef.current = {
+                                                        words: initialWords,
+                                                        text: caption.text
+                                                    };
+                                                    
+                                                    return initialWords;
+                                                })()
                                             }}
                                             onSave={handleSave}
+                                            onStateChange={(words, text) => {
+                                                // Update the ref whenever the editor state changes
+                                                editorStateRef.current = { words, text };
+                                            }}
                                             onCancel={() => {}}
                                             hideButtons={true}
                                         />
@@ -358,30 +371,48 @@ function CaptionListComponent({
                                                     Cancel
                                                 </Button>
                                             </DialogClose>
-                                            <Button
-                                                variant="default"
-                                                type="button"
-                                                size="sm"
-                                                className="text-sm"
-                                                onClick={() => {
-                                                    // Get all word input elements
-                                                    const wordInputs = Array.from(document.querySelectorAll<HTMLInputElement>('.word-edit-input'));
-                                                    const words = wordInputs.map(input => ({
-                                                        word: input.value,
-                                                        start: 0,
-                                                        end: 0,
-                                                        probability: 1
-                                                    }));
-                                                    
-                                                    handleSave({
-                                                        ...caption,
-                                                        words,
-                                                        text: words.map(w => w.word).join(' ')
-                                                    });
-                                                }}
-                                            >
-                                                Save Changes
-                                            </Button>
+                                            <DialogClose asChild>
+                                                <Button
+                                                    variant="default"
+                                                    type="button"
+                                                    size="sm"
+                                                    className="text-sm"
+                                                    onClick={() => {
+                                                        // Get the current state from the editor ref or fallback to current caption
+                                                        let words: any[] = [];
+                                                        let text = '';
+                                                        
+                                                        if (editorStateRef.current) {
+                                                            words = editorStateRef.current.words;
+                                                            text = editorStateRef.current.text;
+                                                        } else {
+                                                            // Fallback to current caption
+                                                            words = ('words' in caption && Array.isArray((caption as any).words)) 
+                                                                ? (caption as any).words 
+                                                                : caption.text.split(/\s+/).filter(Boolean).map(word => ({
+                                                                    word,
+                                                                    start: 0,
+                                                                    end: 0,
+                                                                    probability: 1
+                                                                }));
+                                                            text = caption.text;
+                                                        }
+                                                        
+                                                        console.log('Saving caption with words:', words, 'text:', text);
+                                                        
+                                                        handleSave({
+                                                            ...caption,
+                                                            words,
+                                                            text
+                                                        });
+                                                        
+                                                        // Clear the ref after saving
+                                                        editorStateRef.current = null;
+                                                    }}
+                                                >
+                                                    Save Changes
+                                                </Button>
+                                            </DialogClose>
                                         </DialogFooter>
                                     </div>
                                 </DialogContent>

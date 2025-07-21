@@ -36,6 +36,8 @@ interface GlobalContextType {
   updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>;
   refresh: () => Promise<void>;
   populateSubtitles: (timelineId: string) => Promise<void>;
+  updateSubtitles: (subtitles: Subtitle[]) => void;
+  updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
   addSubsToTimeline: () => Promise<void>;
   exportSubtitles: () => Promise<void>;
   importSubtitles: () => Promise<void>;
@@ -224,7 +226,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     async function loadSubtitles() {
       if (timelineId) {
         console.log("Loading subtitles for timeline:", timelineId);
-        const transcript = await readTranscript(timelineId, storageDir);
+        const transcript = await readTranscript(timelineId);
         if (transcript) {
           console.log("Transcript loaded:", transcript);
           setMarkIn(transcript.mark_in);
@@ -371,7 +373,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     newSpeakers[index].style = style;
 
     setSpeakers(newSpeakers);
-    await updateTranscript(storageDir, timelineInfo.timelineId, newSpeakers, newTopSpeaker); // Use updated newTopSpeaker
+    await updateTranscript(timelineInfo.timelineId, newSpeakers, newTopSpeaker); // Use updated newTopSpeaker
   }
 
   async function checkForUpdates() {
@@ -419,7 +421,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
       setProgress(prev => ({ ...prev, currentStep: 2 }));
       // Get the full transcript path and fetch transcription
-      await getFullTranscriptPath(timelineInfo.timelineId, storageDir);
+      await getFullTranscriptPath(timelineInfo.timelineId);
       await fetchTranscription(settings);
     }
 
@@ -434,7 +436,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
 
   async function addSubsToTimeline() {
-    await addSubtitles(await getFullTranscriptPath(timelineInfo.timelineId, storageDir), timelineInfo.timelineId, settings.outputTrack);
+    await addSubtitles(await getFullTranscriptPath(timelineInfo.timelineId), timelineInfo.timelineId, settings.outputTrack);
   }
 
   async function jumpToSpeaker(start: number) {
@@ -452,6 +454,57 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       });
     }
   }
+
+  // Function to update subtitles
+  const updateSubtitles = (newSubtitles: Subtitle[]) => {
+    setSubtitles(newSubtitles);
+  };
+
+  // Function to update a specific caption
+  const updateCaption = async (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
+    // Update the local subtitles state
+    setSubtitles(prevSubtitles => 
+      prevSubtitles.map((subtitle: any) => {
+        if (subtitle.id === captionId.toString()) {
+          return {
+            ...subtitle,
+            start: updatedCaption.start.toString(),
+            end: updatedCaption.end.toString(),
+            text: updatedCaption.text,
+            speaker: updatedCaption.speaker || subtitle.speaker,
+            words: updatedCaption.words || subtitle.words
+          };
+        }
+        return subtitle;
+      })
+    );
+
+    // Save to JSON file if we have the necessary context
+    try {
+      const { updateCaptionInTranscript } = await import('@/utils/fileUtils');
+      
+      // Determine the current transcript filename
+      // For now, we'll try to determine this from the timeline info or use a fallback
+      let filename: string | null = null;
+      
+      if (timelineInfo?.name) {
+        // In resolve mode, use timeline name
+        filename = `${timelineInfo.name}.json`;
+      } else {
+        // In standalone mode, we need to find the most recent transcript
+        // For now, we'll log this and skip file saving
+        console.log('Cannot determine transcript filename for caption update');
+        return;
+      }
+      
+      if (filename) {
+        await updateCaptionInTranscript(filename, updatedCaption);
+        console.log('Caption updated in both UI and file');
+      }
+    } catch (error) {
+      console.error('Failed to update caption in file:', error);
+    }
+  };
 
   return (
     <GlobalContext.Provider value={{
@@ -473,6 +526,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       updateSpeaker,
       refresh,
       populateSubtitles,
+      updateSubtitles,
+      updateCaption,
       addSubsToTimeline,
       exportSubtitles,
       importSubtitles,
