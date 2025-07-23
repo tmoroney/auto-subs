@@ -111,7 +111,7 @@ local socket = require("ljsocket")
 local json = require("dkjson")
 local utf8 = require("utf8")
 
--- Load common DaVinci Resolve API utilities
+-- Load Project Manager
 local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
@@ -295,6 +295,11 @@ function GetTemplates()
 end
 
 function GetTimelineInfo()
+    -- Get project and media pool
+    project = projectManager:GetCurrentProject()
+    mediaPool = project:GetMediaPool()
+
+    -- Get timeline info
     local timelineInfo = {}
     local success, err = pcall(function()
         local timeline = project:GetCurrentTimeline()
@@ -514,7 +519,7 @@ end
 -- inputTracks is a table of track indices to export
 function ExportAudio(outputDir, inputTracks)
     -- Check if another export is already in progress
-    if currentExportJob.active then
+    if project:IsRenderingInProgress() then
         return {
             error = true,
             message = "Another export is already in progress"
@@ -707,20 +712,11 @@ function AddSubtitles(filePath, trackIndex, templateName)
         table.insert(clipList, newClip)
     end
 
+    local timelineItems = mediaPool:AppendToTimeline(clipList)
+
     -- Append all clips to the timeline
-    for i, newClip in ipairs(clipList) do
+    for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
-            -- Check if near next subtitle
-            if i < #clipList then
-                local nextStart = clipList[i + 1]["recordFrame"]
-                local framesBetween = nextStart - (newClip["recordFrame"] + newClip["endFrame"])
-                if (framesBetween < joinThreshold) then
-                    newClip["endFrame"] = nextStart - newClip["recordFrame"] + 1
-                end
-            end
-
-            local timelineItem = mediaPool:AppendToTimeline({ newClip })[1]
-
             local subtitle = subtitles[i]
             local subtitleText = subtitle["text"]
 
