@@ -197,6 +197,16 @@ function FramesToTimecode(frames, frameRate)
     return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, remainingFrames)
 end
 
+-- convert timecode in format HH:MM:SS:FF to frames
+function TimecodeToFrames(timecode, frameRate)
+    local hours, minutes, seconds, frames = string.match(timecode, "(%d+):(%d+):(%d+):(%d+)")
+    hours = tonumber(hours) or 0
+    minutes = tonumber(minutes) or 0
+    seconds = tonumber(seconds) or 0
+    frames = tonumber(frames) or 0
+    return hours * 60 * 60 * frameRate + minutes * 60 * frameRate + seconds * frameRate + frames
+end
+
 -- input of time in seconds
 function JumpToTime(time, markIn)
     local timeline = project:GetCurrentTimeline()
@@ -347,6 +357,7 @@ function GetAudioTracks()
 end
 
 function ResetTracks()
+    resolve:OpenPage("edit")
     local timeline = project:GetCurrentTimeline()
     local audioTracks = timeline:GetTrackCount("audio")
     for i = 1, audioTracks do
@@ -402,15 +413,20 @@ function GetExportProgress()
         end
 
         if renderInProgress then
-            -- Update progress from job status
-            local progressSuccess, jobStatus = pcall(function()
-                return project:GetRenderJobStatus(currentExportJob.pid)
-            end)
+            -- Progress check using playhead position compared to 'mark in' and 'mark out' points (better than job status)
+            local timeline = project:GetCurrentTimeline()
+            local currentTimecode = timeline:GetCurrentTimecode()
+            local frameRate = timeline:GetSetting("timelineFrameRate")
 
-            if progressSuccess and jobStatus and jobStatus.CompletionPercentage then
-                currentExportJob.progress = jobStatus.CompletionPercentage
-                print("Progress update: " .. currentExportJob.progress .. "%")
-            end
+            -- Playhead position in frames
+            local playheadPosition = TimecodeToFrames(currentTimecode, frameRate)
+            
+            -- Get mark in and out from audioInfo (already in frames)
+            local markIn = currentExportJob.audioInfo.markIn
+            local markOut = currentExportJob.audioInfo.markOut
+
+            -- Calculate progress percentage
+            currentExportJob.progress = math.floor(((playheadPosition - markIn) / (markOut - markIn)) * 100 + 0.5)
 
             return {
                 active = true,
@@ -421,6 +437,9 @@ function GetExportProgress()
         else
             -- Export completed - check if it was cancelled or completed normally
             currentExportJob.active = false
+            
+            -- Reset track states and open edit page
+            ResetTracks()
 
             if currentExportJob.cancelled then
                 return {
@@ -440,10 +459,6 @@ function GetExportProgress()
                     audioInfo = currentExportJob.audioInfo
                 }
             end
-
-            -- reset track states
-            ResetTracks()
-            resolve:OpenPage("edit")
         end
     else
         -- No PID available - something went wrong
@@ -473,7 +488,6 @@ function CancelExport()
 
         -- reset tracks to original state and return to edit page
         ResetTracks()
-        resolve:OpenPage("edit")
         
         if success then
             currentExportJob.cancelled = true
@@ -679,9 +693,6 @@ function AddSubtitles(filePath, trackIndex, templateName)
         -- print("Adding subtitle: ", subtitle["text"])
         local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
-
-        print("Start frame: " .. start_frame)
-        print("End frame: " .. end_frame)
 
         local duration = end_frame - start_frame
         local newClip = {
