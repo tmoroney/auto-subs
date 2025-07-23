@@ -39,7 +39,7 @@ fn main() {
             // Any additional setup logic if needed
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![transcribe::transcribe_audio, models::get_downloaded_models, models::delete_model])
+        .invoke_handler(tauri::generate_handler![transcribe::transcribe_audio, transcribe::cancel_transcription, models::get_downloaded_models, models::delete_model])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
         .run(|_app_handle, event| {
@@ -56,7 +56,7 @@ fn main() {
                         let client = Client::new();
 
                         // Define the API endpoint
-                        let resolve_api = "http://localhost:55010/";
+                        let resolve_api = "http://localhost:56002/";
 
                         // Prepare the JSON payload
                         let payload = json!({ "func": "Exit" });

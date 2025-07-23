@@ -6,7 +6,8 @@ import {
     Captions,
     AlertTriangle,
     X,
-    HelpCircle
+    HelpCircle,
+    XCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -27,6 +28,7 @@ import { LanguageSettingsCard } from "@/components/settings-cards/language-setti
 import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
+import { exportAudio, addSubtitlesToTimeline, getExportProgress, cancelExport } from "@/api/resolveAPI"
 
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
@@ -46,6 +48,10 @@ export function TranscriptionSettings({
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
+    const [isExporting, setIsExporting] = React.useState(false)
+    const [exportProgress, setExportProgress] = React.useState(0)
+    // Ref to track cancellation requests - allows interrupting polling loops
+    const cancelRequestedRef = React.useRef(false)
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
 
     // Listen for transcription and model download progress events from the backend
@@ -119,69 +125,225 @@ export function TranscriptionSettings({
         }
     }
 
-    const handleStartTranscription = async () => {
-        if (!fileInput) {
-            // Or show some error to the user
+    /**
+     * Validates input requirements before starting transcription
+     * @returns {boolean} True if validation passes, false otherwise
+     */
+    const validateTranscriptionInput = (): boolean => {
+        if (!fileInput && isStandaloneMode) {
             console.error("No file selected")
+            return false
+        }
+        if (!timelineInfo && !isStandaloneMode) {
+            console.error("No timeline selected")
+            return false
+        }
+        return true
+    }
+
+    /**
+     * Gets the audio path based on current mode
+     * @returns {Promise<string | null>} Path to audio file
+     */
+    const getSourceAudio = async (): Promise<string | null> => {
+        if (timelineInfo && !isStandaloneMode) {
+            // Reset cancellation flag at the start of export
+            cancelRequestedRef.current = false
+            setIsExporting(true)
+            setExportProgress(0)
+            
+            try {
+                // Start the export (non-blocking)
+                const exportResult = await exportAudio(settings.selectedInputTracks)
+                console.log("Export started:", exportResult)
+                
+                // Poll for export progress until completion
+                let exportCompleted = false
+                let audioInfo = null
+                
+                while (!exportCompleted && !cancelRequestedRef.current) {
+                    // Check if cancellation was requested before making the next API call
+                    if (cancelRequestedRef.current) {
+                        console.log("Export polling interrupted by cancellation request")
+                        break
+                    }
+                    
+                    const progressResult = await getExportProgress()
+                    console.log("Export progress:", progressResult)
+                    
+                    // Update progress
+                    setExportProgress(progressResult.progress || 0)
+                    
+                    if (progressResult.completed) {
+                        exportCompleted = true
+                        audioInfo = progressResult.audioInfo
+                        console.log("Export completed:", audioInfo)
+                    } else if (progressResult.cancelled) {
+                        console.log("Export was cancelled")
+                        setIsExporting(false)
+                        setExportProgress(0)
+                        return null
+                    } else if (progressResult.error) {
+                        console.error("Export error:", progressResult.message)
+                        setIsExporting(false)
+                        setExportProgress(0)
+                        throw new Error(progressResult.message || "Export failed")
+                    }
+                    
+                    // Wait before next poll (avoid overwhelming the server)
+                    if (!exportCompleted && !cancelRequestedRef.current) {
+                        await new Promise(resolve => setTimeout(resolve, 500))
+                        
+                        // Check again after timeout in case cancellation happened during the wait
+                        if (cancelRequestedRef.current) {
+                            console.log("Export polling interrupted during wait interval")
+                            break
+                        }
+                    }
+                }
+                
+                setIsExporting(false)
+                setExportProgress(100)
+                return audioInfo?.path || null
+                
+            } catch (error) {
+                setIsExporting(false)
+                setExportProgress(0)
+                throw error
+            }
+        } else {
+            return fileInput
+        }
+    }
+
+    /**
+     * Creates transcription options object
+     * @param {string} audioPath Path to audio file
+     * @returns {object} Options for transcription
+     */
+    const createTranscriptionOptions = (audioPath: string): object => ({
+        audioPath,
+        model: modelsState[settings.model].value,
+        lang: settings.language === "auto" ? null : settings.language,
+        enableDiarize: settings.enableDiarize,
+        maxSpeakers: settings.maxSpeakers,
+    })
+
+    /**
+     * Processes transcription results
+     * @param {any} transcript Raw transcript data
+     * @returns {Promise<string>} Filename where transcript was saved
+     */
+    const processTranscriptionResults = async (transcript: any): Promise<string> => {
+        // Generate filename for new transcript based on mode and input
+        const filename = generateTranscriptFilename(
+            isStandaloneMode,
+            fileInput,
+            timelineInfo?.timelineId
+        )
+
+        // Save transcript to JSON file
+        const subtitles = await saveTranscript(transcript, filename)
+        console.log("Transcript saved to:", filename)
+
+        // Update the global subtitles state to show in sidebar
+        updateSubtitles(subtitles)
+        console.log("Caption list updated with", subtitles.length, "captions")
+
+        return filename
+    }
+
+    /**
+     * Main function to handle the transcription process
+     */
+    const handleStartTranscription = async () => {
+        // Validate input requirements
+        if (!validateTranscriptionInput()) {
             return
         }
 
+        // Get audio path based on mode
+        const audioPath = await getSourceAudio()
+        if (!audioPath) {
+            console.error("Failed to get audio path")
+            return
+        }
+
+        // Set UI state to transcribing
         setIsTranscribing(true)
         setTranscriptionProgress(0)
 
-        const options = {
-            // @ts-ignore
-            audioPath: fileInput,
-            model: modelsState[settings.model].value,
-            lang: settings.language === "auto" ? null : settings.language,
-            enableDiarize: settings.enableDiarize,
-            maxSpeakers: settings.maxSpeakers,
-        }
-
         try {
+            // Create and log transcription options
+            const options = createTranscriptionOptions(audioPath)
             console.log("Invoking transcribe_audio with options:", options)
+            
+            // Perform transcription
             const transcript = await invoke("transcribe_audio", { options })
             console.log("Transcription successful:", transcript)
-
-            // Generate filename based on mode and input
-            const filename = generateTranscriptFilename(
-                isStandaloneMode,
-                fileInput,
-                timelineInfo?.name
-            )
-
-            // Save transcript to JSON file
-            await saveTranscript(transcript as any, filename)
-            console.log("Transcript saved to:", filename)
-
-            // Transform transcript segments to subtitle format and update the caption list
-            const subtitles = (transcript as any).segments.map((segment: any, index: number) => ({
-                id: index.toString(),
-                start: segment.start,
-                end: segment.end,
-                text: segment.text.trim(),
-                speaker: segment.speaker || undefined,
-                words: segment.words || []
-            }))
-
-            // Update the global subtitles state to show in sidebar
-            updateSubtitles(subtitles)
-            console.log("Caption list updated with", subtitles.length, "captions")
-
+            
+            // Process results and get filename
+            const filename = await processTranscriptionResults(transcript as any)
+            
+            // Add subtitles to timeline if in Resolve mode
+            if (!isStandaloneMode) {
+                await addSubtitlesToTimeline(
+                    filename, 
+                    settings.selectedTemplate.value, 
+                    settings.selectedOutputTrack
+                )
+            }
         } catch (error) {
             console.error("Transcription failed:", error)
             // Handle error, e.g., show an error message to the user
         } finally {
+            // Reset UI state
             setIsTranscribing(false)
             setTranscriptionProgress(0) // Reset progress
-            // set modelsState to reflect that the model is downloaded
+            // Update model download status
             await checkDownloadedModels()
         }
     }
 
-    // Handle model change - sync with global context
-    const handleModelChange = (model: number) => {
-        updateSetting('model', model)
+    /**
+     * Handle cancellation of the current transcription or export
+     * Calls the Tauri backend to interrupt the transcription process
+     * Also cancels export if transcription hasn't started yet
+     */
+    const handleCancelTranscription = async () => {
+        console.log("Cancelling process...")
+        // Set cancellation flag immediately to interrupt any polling loops
+        cancelRequestedRef.current = true
+        
+        try {
+            // If transcription is active, cancel it
+            if (isTranscribing) {
+                await invoke("cancel_transcription")
+                console.log("Transcription cancellation request sent to backend")
+            }
+            
+            // If export is active (and transcription hasn't started), cancel export
+            if (isExporting && !isTranscribing) {
+                const cancelResult = await cancelExport()
+                console.log("Export cancellation result:", cancelResult)
+            }
+            
+            // Reset UI state
+            setIsTranscribing(false)
+            setTranscriptionProgress(0)
+            setIsExporting(false)
+            setExportProgress(0)
+        } catch (error) {
+            console.error("Failed to cancel process:", error)
+            // Still reset UI state even if backend call fails
+            setIsTranscribing(false)
+            setTranscriptionProgress(0)
+            setIsExporting(false)
+            setExportProgress(0)
+        } finally {
+            // Ensure cancellation flag is set in all cases
+            cancelRequestedRef.current = true
+        }
     }
 
     return (
@@ -315,8 +477,8 @@ export function TranscriptionSettings({
                                     models={modelsState}
                                     downloadingModel={downloadingModel}
                                     downloadProgress={downloadProgress}
-                                    onModelChange={handleModelChange}
-                                    onDeleteModel={handleDeleteModel}
+                                    onModelChange={(model) => updateSetting('model', model)}
+                                    onDeleteModel={(model) => handleDeleteModel(model)}
                                 />
                             </div>
 
@@ -446,6 +608,20 @@ export function TranscriptionSettings({
                         </div>
                     )}
 
+                    {/* Export Progress (DaVinci Resolve mode only) */}
+                    {isExporting && !isStandaloneMode && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Exporting Audio from Timeline</span>
+                                <span>{exportProgress}%</span>
+                            </div>
+                            <Progress 
+                                value={exportProgress} 
+                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-600" 
+                            />
+                        </div>
+                    )}
+
                     {/* Transcription Progress */}
                     {isTranscribing && !isModelDownloading && (
                         <div className="space-y-1">
@@ -458,14 +634,27 @@ export function TranscriptionSettings({
                     )}
 
                     {/* Start Transcription Button */}
-                    <Button
-                        onClick={handleStartTranscription}
-                        disabled={isTranscribing || downloadingModel !== null}
-                        className="w-full"
-                        size="lg"
-                    >
-                        {isTranscribing ? "Processing..." : "Start Transcription"}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleStartTranscription}
+                            disabled={isTranscribing || isExporting || downloadingModel !== null}
+                            className="flex-1"
+                            size="lg"
+                        >
+                            {isExporting ? "Exporting Audio..." : isTranscribing ? "Processing..." : "Start Transcription"}
+                        </Button>
+                        {(isTranscribing || isExporting) && (
+                            <Button
+                                onClick={handleCancelTranscription}
+                                variant="outline"
+                                size="lg"
+                                className="px-3"
+                                title={isExporting ? "Cancel Export" : "Cancel Transcription"}
+                            >
+                                <XCircle className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 

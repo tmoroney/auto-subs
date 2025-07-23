@@ -294,7 +294,7 @@ function CaptionListComponent({
                     <div className="flex w-full items-center gap-2">
                         {caption.speaker && caption.color ? (
                             <span className={`font-medium text-xs text-${caption.color}`}>
-                                {caption.speaker}
+                                Speaker {caption.speaker}
                             </span>
                         ) : null}
                         <span className={`text-xs text-muted-foreground font-mono ${caption.speaker && caption.color ? 'ml-auto' : ''}`}>

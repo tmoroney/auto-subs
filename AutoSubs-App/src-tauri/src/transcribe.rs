@@ -24,6 +24,9 @@ use tauri::{AppHandle, Emitter, command, Manager};
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
 
+// Global cancellation state
+static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> = once_cell::sync::Lazy::new(|| Mutex::new(false));
+
 // --- Frontend Options Struct ---
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -36,9 +39,27 @@ pub struct FrontendTranscribeOptions {
 }
 
 #[command]
+pub async fn cancel_transcription() -> Result<(), String> {
+    println!("Cancellation requested");
+    if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
+        *should_cancel = true;
+        println!("Cancellation flag set to true");
+    } else {
+        return Err("Failed to acquire cancellation lock".to_string());
+    }
+    Ok(())
+}
+
+#[command]
 pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions) -> Result<Transcript, String> {
     let start_time = Instant::now();
     println!("Starting transcription with options: {:?}", options);
+    
+    // Reset cancellation flag at the start of transcription
+    if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
+        *should_cancel = false;
+        println!("Cancellation flag reset to false");
+    }
 
     let enable_dtw = true;
 
@@ -100,6 +121,19 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         let _ = progress_app.emit("transcription-progress", progress);
     }) as Box<dyn Fn(i32) + Send + Sync>);
 
+    // Abort callback: check cancellation flag
+    let abort_callback = Some(Box::new(|| {
+        if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+            let cancelled = *should_cancel;
+            if cancelled {
+                println!("Transcription cancelled by user");
+            }
+            cancelled
+        } else {
+            false
+        }
+    }) as Box<dyn Fn() -> bool + Send>);
+
     // Await the async pipeline
     match run_transcription_pipeline(
         app,
@@ -107,7 +141,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         transcribe_options,
         progress_callback,
         None,
-        None,
+        abort_callback,
         diarize_options,
         None,
         enable_dtw,
@@ -275,10 +309,11 @@ pub async fn create_normalized_audio(
     // It should hash not just the file path, but the file's content and modification date,
     // plus the `additional_ffmpeg_args`. This ensures that if the source file changes, a new
     // normalized version is created. Hashing just the name would indeed cause collisions.
-    if out_path.exists() {
-        tracing::info!("Using cached normalized audio: {}", out_path.display());
-        return Ok(out_path);
-    }
+    // if out_path.exists() {
+    //     println!("Using cached normalized audio: {}", out_path.display());
+    //     tracing::info!("Using cached normalized audio: {}", out_path.display());
+    //     return Ok(out_path);
+    // }
 
     // 1. We must `.await` the async `normalize` function.
     // 2. The `?` operator won't work directly because `normalize` returns Result<(), String>

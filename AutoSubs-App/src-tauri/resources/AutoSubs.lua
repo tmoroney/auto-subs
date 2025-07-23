@@ -75,7 +75,7 @@ if os_name == "Windows" then
 
     -- Get path to the main AutoSubs app and modules
     storage_path = os.getenv("APPDATA") ..
-    "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
+        "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
     local install_path = assert(read_file(storage_path .. "install_path.txt"))
     main_app = install_path .. "\\AutoSubs.exe"
     storage_path = install_path .. "\\resources\\AutoSubs\\"
@@ -115,6 +115,17 @@ local utf8 = require("utf8")
 local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
+
+-- Global state for export operations
+local currentExportJob = {
+    active = false,
+    pid = nil,
+    progress = 0,
+    cancelled = false,
+    startTime = nil,
+    audioInfo = nil,
+    trackStates = nil
+}
 
 -- Function to read a JSON file
 local function read_json_file(file_path)
@@ -335,6 +346,14 @@ function GetAudioTracks()
     return tracks
 end
 
+function ResetTracks()
+    local timeline = project:GetCurrentTimeline()
+    local audioTracks = timeline:GetTrackCount("audio")
+    for i = 1, audioTracks do
+        timeline:SetTrackEnable("audio", i, currentExportJob.trackStates[i])
+    end
+end
+
 function CheckTrackEmpty(trackIndex, markIn, markOut)
     trackIndex = tonumber(trackIndex)
     local timeline = project:GetCurrentTimeline()
@@ -352,17 +371,155 @@ function CheckTrackEmpty(trackIndex, markIn, markOut)
     return #trackItems == 0
 end
 
+-- Get the current export progress
+function GetExportProgress()
+    if not currentExportJob.active then
+        return {
+            active = false,
+            progress = 0,
+            message = "No export in progress"
+        }
+    end
+
+    if currentExportJob.cancelled then
+        return {
+            active = false,
+            progress = currentExportJob.progress,
+            cancelled = true,
+            message = "Export was cancelled"
+        }
+    end
+
+    -- Check if render is still in progress
+    if currentExportJob.pid then
+        local renderInProgress = false
+        local success, result = pcall(function()
+            return project:IsRenderingInProgress()
+        end)
+
+        if success then
+            renderInProgress = result
+        end
+
+        if renderInProgress then
+            -- Update progress from job status
+            local progressSuccess, jobStatus = pcall(function()
+                return project:GetRenderJobStatus(currentExportJob.pid)
+            end)
+
+            if progressSuccess and jobStatus and jobStatus.CompletionPercentage then
+                currentExportJob.progress = jobStatus.CompletionPercentage
+                print("Progress update: " .. currentExportJob.progress .. "%")
+            end
+
+            return {
+                active = true,
+                progress = currentExportJob.progress,
+                message = "Export in progress...",
+                pid = currentExportJob.pid
+            }
+        else
+            -- Export completed - check if it was cancelled or completed normally
+            currentExportJob.active = false
+
+            if currentExportJob.cancelled then
+                return {
+                    active = false,
+                    progress = currentExportJob.progress,
+                    cancelled = true,
+                    message = "Export was cancelled"
+                }
+            else
+                -- Normal completion
+                currentExportJob.progress = 100
+                return {
+                    active = false,
+                    progress = 100,
+                    completed = true,
+                    message = "Export completed successfully",
+                    audioInfo = currentExportJob.audioInfo
+                }
+            end
+
+            -- reset track states
+            ResetTracks()
+            resolve:OpenPage("edit")
+        end
+    else
+        -- No PID available - something went wrong
+        currentExportJob.active = false
+        return {
+            active = false,
+            progress = 0,
+            error = true,
+            message = "Export job lost - no process ID available"
+        }
+    end
+end
+
+-- Cancel the current export operation
+function CancelExport()
+    if not currentExportJob.active then
+        return {
+            success = false,
+            message = "No export in progress to cancel"
+        }
+    end
+
+    if currentExportJob.pid then
+        local success, err = pcall(function()
+            project:StopRendering()
+        end)
+
+        -- reset tracks to original state and return to edit page
+        ResetTracks()
+        resolve:OpenPage("edit")
+        
+        if success then
+            currentExportJob.cancelled = true
+            currentExportJob.active = false
+            return {
+                success = true,
+                message = "Export cancelled successfully"
+            }
+        else
+            return {
+                success = false,
+                message = "Failed to cancel export: " .. (err or "unknown error")
+            }
+        end
+    else
+        return {
+            success = false,
+            message = "No render job to cancel"
+        }
+    end
+end
+
 -- Export audio from selected tracks
 -- inputTracks is a table of track indices to export
 function ExportAudio(outputDir, inputTracks)
+    -- Check if another export is already in progress
+    if currentExportJob.active then
+        return {
+            error = true,
+            message = "Another export is already in progress"
+        }
+    end
+
+    -- Initialize export job state
+    currentExportJob = {
+        active = true,
+        pid = nil,
+        progress = 0,
+        cancelled = false,
+        startTime = os.time(),
+        audioInfo = nil
+    }
+
     local audioInfo = {
         timeline = ""
     }
-    -- local success, err = pcall(function()
-    --     resolve:ImportRenderPreset(storagePath .. "render-audio-only.xml")
-    --     project:LoadRenderPreset('render-audio-only')
-    --     project:SetRenderSettings({ TargetDir = outputDir })
-    -- end)
 
     local trackStates = {}
     local timeline;
@@ -380,6 +537,9 @@ function ExportAudio(outputDir, inputTracks)
         end
     end
 
+    -- save track states for later use
+    currentExportJob.trackStates = trackStates
+
     resolve:OpenPage("deliver")
 
     project:LoadRenderPreset('Audio Only')
@@ -393,8 +553,9 @@ function ExportAudio(outputDir, inputTracks)
         AudioSampleRate = 44100
     })
 
-    pcall(function()
+    local success, err = pcall(function()
         local pid = project:AddRenderJob()
+        currentExportJob.pid = pid
         project:StartRendering(pid)
 
         local renderJobList = project:GetRenderJobList()
@@ -406,21 +567,26 @@ function ExportAudio(outputDir, inputTracks)
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"]
         }
+        currentExportJob.audioInfo = audioInfo
 
-        while project:IsRenderingInProgress() do
-            print("Rendering...")
-            sleep(0.5) -- Check every 500 milliseconds
-        end
+        print("Export started with PID: " .. pid)
     end)
 
-    resolve:OpenPage("edit")
-
-    -- reset track states
-    for i = 1, audioTracks do
-        timeline:SetTrackEnable("audio", i, trackStates[i])
+    -- Handle export start result
+    if not success then
+        currentExportJob.active = false
+        return {
+            error = true,
+            message = "Failed to start export: " .. (err or "unknown error")
+        }
+    else
+        -- Export started successfully - return immediately
+        return {
+            started = true,
+            message = "Export started successfully. Use GetExportProgress to monitor progress.",
+            pid = currentExportJob.pid
+        }
     end
-
-    return audioInfo
 end
 
 -- Recursively searches to find the template item with the specified ID
@@ -480,6 +646,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
     print("Adding subtitles to timeline")
 
     local frame_rate = timeline:GetSetting("timelineFrameRate")
+    print("Frame rate: " .. frame_rate)
 
     local rootFolder = mediaPool:GetRootFolder()
 
@@ -512,6 +679,9 @@ function AddSubtitles(filePath, trackIndex, templateName)
         -- print("Adding subtitle: ", subtitle["text"])
         local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
+
+        print("Start frame: " .. start_frame)
+        print("End frame: " .. end_frame)
 
         local duration = end_frame - start_frame
         local newClip = {
@@ -687,8 +857,16 @@ while not quitServer do
                         })
                     elseif data.func == "ExportAudio" then
                         print("[AutoSubs Server] Exporting audio...")
-                        local audioInfo = ExportAudio(data.outputDir, data.inputTrack)
+                        local audioInfo = ExportAudio(data.outputDir, data.inputTracks)
                         body = json.encode(audioInfo)
+                    elseif data.func == "GetExportProgress" then
+                        print("[AutoSubs Server] Getting export progress...")
+                        local progressInfo = GetExportProgress()
+                        body = json.encode(progressInfo)
+                    elseif data.func == "CancelExport" then
+                        print("[AutoSubs Server] Cancelling export...")
+                        local cancelResult = CancelExport()
+                        body = json.encode(cancelResult)
                     elseif data.func == "AddSubtitles" then
                         print("[AutoSubs Server] Adding subtitles to timeline...")
                         AddSubtitles(data.filePath, data.trackIndex, data.templateName)

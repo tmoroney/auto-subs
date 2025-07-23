@@ -55,7 +55,7 @@ export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFi
 }
 
 // Save a new transcript to JSON file
-export async function saveTranscript(transcript: any, filename: string): Promise<void> {
+export async function saveTranscript(transcript: any, filename: string): Promise<Subtitle[]> {
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
@@ -81,8 +81,10 @@ export async function saveTranscript(transcript: any, filename: string): Promise
       topSpeaker: null // Will be populated when speakers are analyzed
     };
 
+    // Save transcript to file
     await writeTextFile(filePath, JSON.stringify(transcriptData, null, 2));
     console.log('Successfully saved transcript to:', filePath);
+    return subtitles;
   } catch (error) {
     console.error('Failed to save transcript:', error);
     throw new Error(`Failed to save transcript: ${error}`);

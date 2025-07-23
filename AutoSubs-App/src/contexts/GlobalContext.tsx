@@ -12,7 +12,7 @@ import { join, downloadDir } from '@tauri-apps/api/path';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo, addSubtitles, closeResolveLink } from '@/api/resolveAPI';
+import { jumpToTime, getTimelineInfo, closeResolveLink } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -39,7 +39,6 @@ interface GlobalContextType {
   populateSubtitles: (timelineId: string) => Promise<void>;
   updateSubtitles: (subtitles: Subtitle[]) => void;
   updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
-  addSubsToTimeline: () => Promise<void>;
   exportSubtitles: () => Promise<void>;
   importSubtitles: () => Promise<void>;
   jumpToSpeaker: (start: number) => void;
@@ -127,10 +126,27 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     initializeTimeline();
 
+    /*
     getCurrentWindow().once("tauri://close-requested", async () => {
-      closeResolveLink();
-      exit(0);
+      try {
+        // Set a timeout to ensure we don't hang forever
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout waiting for Resolve API')), 1000);
+        });
+        
+        // Try to send the exit request, but don't wait indefinitely
+        await Promise.race([
+          closeResolveLink().catch(err => console.error('Error closing Resolve link:', err)),
+          timeoutPromise
+        ]);
+      } catch (error) {
+        console.error('Failed to properly close Resolve link:', error);
+      } finally {
+        // Always exit the app, even if the request failed
+        exit(0);
+      }
     });
+    */
   }, []);
 
   async function checkDownloadedModels() {
@@ -407,10 +423,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   //   setProgress(prev => ({ ...prev, progress: 100, isLoading: false }));
   // }
 
-  async function addSubsToTimeline() {
-    await addSubtitles(generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId), timelineInfo.timelineId, settings.selectedOutputTrack);
-  }
-
   async function jumpToSpeaker(start: number) {
     await jumpToTime(start, markIn);
   }
@@ -501,7 +513,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       populateSubtitles,
       updateSubtitles,
       updateCaption,
-      addSubsToTimeline,
       exportSubtitles,
       importSubtitles,
       jumpToSpeaker,
