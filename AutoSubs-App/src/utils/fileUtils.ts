@@ -3,44 +3,6 @@ import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Speaker, Subtitle, TopSpeaker } from '@/types/interfaces';
 
-export async function getFullTranscriptPath(timelineId: string): Promise<string> {
-  const dir = await getTranscriptsDir();
-  return await join(dir, `${timelineId}.json`);
-}
-
-export async function readTranscript(timelineId: string): Promise<any | null> {
-  const filePath = await getFullTranscriptPath(timelineId);
-  if (!(await exists(filePath))) {
-    console.log("Transcript file not found.");
-    return null;
-  }
-  const contents = await readTextFile(filePath);
-  return JSON.parse(contents);
-}
-
-// Update the transcript file for the specified timeline with new speakers or subtitles
-export async function updateTranscript(timelineId: string, speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
-  if (!speakers && !subtitles) {
-    return;
-  }
-  // read current file
-  let transcript = await readTranscript(timelineId);
-  if (!transcript) transcript = {};
-  if (topSpeaker) {
-    transcript.topSpeaker = topSpeaker;
-  }
-  if (speakers) {
-    transcript.speakers = speakers;
-  }
-  if (subtitles) {
-    transcript.segments = subtitles;
-  }
-
-  // write to file
-  const filePath = await getFullTranscriptPath(timelineId);
-  return await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
-}
-
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
   // Store in user's Documents/AutoSubs-Transcripts for persistence across reinstalls
@@ -60,16 +22,32 @@ export async function getTranscriptsDir(): Promise<string> {
   return dir;
 }
 
+export async function getTranscriptPath(filename: string): Promise<string> {
+  const dir = await getTranscriptsDir();
+  return await join(dir, filename);
+}
+
+export async function readTranscript(filename: string): Promise<any | null> {
+  const filePath = await getTranscriptPath(filename);
+  console.log("Reading transcript from:", filePath);
+  if (!(await exists(filePath))) {
+    console.log("Transcript file not found.");
+    return null;
+  }
+  const contents = await readTextFile(filePath);
+  return JSON.parse(contents);
+}
+
 // Generate a filename for the transcript based on mode and input
-export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineName?: string): string {
+export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineId?: string): string {
   if (isStandaloneMode && selectedFile) {
     // For standalone mode, use the audio file name without extension
     const fileName = selectedFile.split('/').pop() || 'unknown';
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
     return `${nameWithoutExt}.json`;
-  } else if (!isStandaloneMode && timelineName) {
+  } else if (!isStandaloneMode && timelineId) {
     // For resolve mode, use the timeline name
-    return `${timelineName}.json`;
+    return `${timelineId}.json`;
   } else {
     // Fallback
     return `transcript_${Date.now()}.json`;
@@ -126,6 +104,29 @@ export async function loadTranscriptSubtitles(filename: string): Promise<Subtitl
   return transcript.segments || [];
 }
 
+// Update the transcript file for the specified timeline with new speakers or subtitles
+export async function updateTranscript(filename: string, speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
+  if (!speakers && !subtitles) {
+    return;
+  }
+  // read current file
+  let transcript = await readTranscript(filename);
+  if (!transcript) transcript = {};
+  if (topSpeaker) {
+    transcript.topSpeaker = topSpeaker;
+  }
+  if (speakers) {
+    transcript.speakers = speakers;
+  }
+  if (subtitles) {
+    transcript.segments = subtitles;
+  }
+
+  // write to file
+  const filePath = await getTranscriptPath(filename);
+  return await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
+}
+
 // Update a specific caption in the transcript file
 export async function updateCaptionInTranscript(filename: string, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }): Promise<void> {
   try {
@@ -174,14 +175,4 @@ export async function updateCaptionInTranscript(filename: string, updatedCaption
     console.error('Failed to update caption in transcript:', error);
     throw new Error(`Failed to update caption: ${error}`);
   }
-}
-
-// Get the current transcript filename based on mode and context
-export async function getCurrentTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineName?: string): Promise<string | null> {
-  if (isStandaloneMode && selectedFile) {
-    return generateTranscriptFilename(isStandaloneMode, selectedFile, timelineName);
-  } else if (!isStandaloneMode && timelineName) {
-    return generateTranscriptFilename(isStandaloneMode, selectedFile, timelineName);
-  }
-  return null;
 }

@@ -1,7 +1,7 @@
 // App.tsx
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
-import { models } from "@/lib/models";
 import { Captions, Moon, Sun } from "lucide-react"
+import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -12,8 +12,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { SetupWalkthrough } from "@/components/setup-walkthrough"
-import { invoke } from "@tauri-apps/api/core"
-
 export function ModeToggle() {
   const { setTheme, theme } = useTheme()
 
@@ -31,58 +29,10 @@ export function ModeToggle() {
 }
 
 function App() {
-  const [isStandaloneMode, setIsStandaloneMode] = React.useState(false)
   const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
-  const [walkthroughSettings, setWalkthroughSettings] = React.useState({
-    selectedFile: null as string | null,
-    selectedTracks: ['1'] as string[],
-    selectedTemplate: { value: "default", label: "Default Text+" },
-    sourceLanguage: "en",
-    translate: false,
-    selectedModel: models[0],
-    models: [...models], // Use the centralized model definitions
-    downloadingModel: null as string | null,
-    downloadProgress: 0,
-    // Text formatting settings
-    maxWordsLine: "10",
-    textFormat: "none" as "none" | "uppercase" | "lowercase",
-    removePunctuation: false,
-    censorWords: false,
-    sensitiveWords: [] as string[],
-  })
+  const { isStandaloneMode, setIsStandaloneMode } = useGlobal()
   const isMobile = useIsMobile()
-
-  // Check which models are downloaded when component mounts
-  React.useEffect(() => {
-    const checkDownloadedModels = async () => {
-      try {
-        const downloadedModels = await invoke("get_downloaded_models") as string[]
-        console.log("Downloaded models:", downloadedModels)
-
-        // Update models state based on downloaded models
-        setWalkthroughSettings(prev => ({
-          ...prev,
-          models: prev.models.map(model => ({
-            ...model,
-            isDownloaded: downloadedModels.some(downloadedModel =>
-              downloadedModel.includes(model.value)
-            )
-          })),
-          selectedModel: {
-            ...prev.selectedModel,
-            isDownloaded: downloadedModels.some(downloadedModel =>
-              downloadedModel.includes(prev.selectedModel.value)
-            )
-          }
-        }))
-      } catch (error) {
-        console.error("Failed to check downloaded models:", error)
-      }
-    }
-
-    checkDownloadedModels()
-  }, [])
 
   // Check if this is the first time the user opens the app
   React.useEffect(() => {
@@ -158,8 +108,6 @@ function App() {
             <TranscriptionSettings
               isStandaloneMode={isStandaloneMode}
               onShowTutorial={handleShowTutorial}
-              walkthroughSettings={walkthroughSettings}
-              onWalkthroughSettingsChange={setWalkthroughSettings}
             />
           </div>
         </SidebarInset>
@@ -170,45 +118,10 @@ function App() {
             onClose={() => setShowMobileCaptions(false)}
           />
         )}
+        {/* Use global context for walkthrough settings */}
         <SetupWalkthrough
           isOpen={showWalkthrough}
           onClose={handleWalkthroughClose}
-          isStandaloneMode={isStandaloneMode}
-          onModeChange={setIsStandaloneMode}
-          selectedFile={walkthroughSettings.selectedFile}
-          onFileSelect={(file) => setWalkthroughSettings(prev => ({ ...prev, selectedFile: file }))}
-          selectedTracks={walkthroughSettings.selectedTracks}
-          onTracksChange={(tracks) => setWalkthroughSettings(prev => ({ ...prev, selectedTracks: tracks }))}
-          selectedTemplate={walkthroughSettings.selectedTemplate}
-          onTemplateChange={(template) => setWalkthroughSettings(prev => ({ ...prev, selectedTemplate: template }))}
-          sourceLanguage={walkthroughSettings.sourceLanguage}
-          translate={walkthroughSettings.translate}
-          onSourceLanguageChange={(language) => setWalkthroughSettings(prev => ({ ...prev, sourceLanguage: language }))}
-          onTranslateChange={(translate) => setWalkthroughSettings(prev => ({ ...prev, translate: translate }))}
-          selectedModel={walkthroughSettings.selectedModel}
-          models={walkthroughSettings.models}
-          downloadingModel={walkthroughSettings.downloadingModel}
-          downloadProgress={walkthroughSettings.downloadProgress}
-          onModelChange={(model) => setWalkthroughSettings(prev => ({ ...prev, selectedModel: model }))}
-          maxWordsLine={walkthroughSettings.maxWordsLine}
-          textFormat={walkthroughSettings.textFormat}
-          removePunctuation={walkthroughSettings.removePunctuation}
-          censorWords={walkthroughSettings.censorWords}
-          sensitiveWords={walkthroughSettings.sensitiveWords}
-          onMaxWordsLineChange={(value) => setWalkthroughSettings(prev => ({ ...prev, maxWordsLine: value }))}
-          onTextFormatChange={(format) => setWalkthroughSettings(prev => ({ ...prev, textFormat: format }))}
-          onRemovePunctuationChange={(checked) => setWalkthroughSettings(prev => ({ ...prev, removePunctuation: checked }))}
-          onCensorWordsChange={(checked) => setWalkthroughSettings(prev => ({ ...prev, censorWords: checked }))}
-          onSensitiveWordsChange={(words) => setWalkthroughSettings(prev => ({ ...prev, sensitiveWords: words }))}
-          onDeleteModel={(modelValue) => {
-            setWalkthroughSettings(prev => ({
-              ...prev,
-              models: prev.models.map(m => m.value === modelValue ? { ...m, isDownloaded: false } : m),
-              selectedModel: prev.selectedModel.value === modelValue
-                ? { ...prev.selectedModel, isDownloaded: false }
-                : prev.selectedModel
-            }))
-          }}
         />
       </SidebarProvider>
     </ThemeProvider>

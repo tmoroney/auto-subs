@@ -1,3 +1,8 @@
+export interface ErrorMsg {
+    title: string;
+    desc: string;
+}
+
 export interface Speaker {
     label: string;
     id: string;
@@ -41,11 +46,11 @@ export interface SubtitleListProps {
     subtitles: Subtitle[];
 }
 
-interface Template {
+export interface Template {
     value: string;
     label: string;
 }
-interface Track {
+export interface Track {
     value: string;
     label: string;
 }
@@ -58,59 +63,40 @@ export interface TimelineInfo {
     outputTracks: Track[];
 }
 
-export interface ErrorMsg {
-    title: string;
-    desc: string;
-}
-
-export interface Progress {
-    isLoading: boolean;
-    value: number;
-    currentStep: number;
-    message: string;
-}
-
-export interface TranscriptionCallbacks {
-    setProgress: (value: number) => void;
-    setMessage: (message: string) => void;
-    setIsLoading: (value: boolean) => void;
-    setCurrentStep: (value: number) => void;
-    setSubtitles: (update: (prev: any[]) => any[]) => void;
-    enabledSteps: EnabeledSteps;
-    serverLoadingRef?: { current: boolean };
-}
-
-export interface TranscribeResponse {
-    result_file: string;
-    speakers: Speaker[];
-    top_speakers: TopSpeaker[];
-}
-
-export interface EnabeledSteps {
-    exportAudio: boolean;
-    transcribe: boolean;
-    customSrt: boolean;
-    diarize: boolean;
+export interface Model {
+    value: string
+    label: string
+    description: string
+    size: string
+    ram: string
+    image: string
+    details: string
+    isDownloaded: boolean
 }
 
 export interface Settings {
-    inputTrack: string;
-    outputTrack: string;
-    template: string;
-    model: string;
+    // Processing settings
+    model: number; // index of model in models array
     language: string,
     translate: boolean,
+    enableDiarize: boolean,
+    maxSpeakers: number,
+
+    // Text settings
     maxWords: number,
     maxChars: number,
     textFormat: "none" | "uppercase" | "lowercase";
+    removePunctuation: boolean,
+    enableCensor: boolean,
+    censorWords: Array<string>,
+
+    // Davinci Resolve settings
+    selectedInputTracks: string[];
+    selectedOutputTrack: string;
+    selectedTemplate: Template;
+
+    // Animation settings
+    animationType: "none" | "pop-in" | "fade-in" | "slide-in" | "typewriter";
     highlightType: "none" | "outline" | "fill" | "bubble";
     highlightColor: string;
-    animationType: "none" | "pop-in" | "fade-in" | "slide-in" | "typewriter";
-    wordLevel: boolean;
-    removePunctuation: boolean,
-    sensitiveWords: Array<string>,
-    alignWords: boolean,
-    diarizeMode: string,
-    diarizeSpeakerCount: number,
-    enabledSteps: EnabeledSteps;
 }

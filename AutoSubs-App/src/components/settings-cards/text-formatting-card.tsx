@@ -1,4 +1,3 @@
-import * as React from "react"
 import { Tally5, AArrowUp, Signature, ShieldX, Trash2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
@@ -7,31 +6,29 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
 interface TextFormattingCardProps {
-  maxWordsLine: string
+  maxWords: number
   textFormat: "none" | "uppercase" | "lowercase"
   removePunctuation: boolean
-  censorWords: boolean
-  sensitiveWords: string[]
-  onMaxWordsLineChange: (value: string) => void
+  enableCensor: boolean
+  censorWords: string[]
+  onMaxWordsChange: (value: number) => void
   onTextFormatChange: (format: "none" | "uppercase" | "lowercase") => void
   onRemovePunctuationChange: (checked: boolean) => void
-  onCensorWordsChange: (checked: boolean) => void
-  onSensitiveWordsChange: (words: string[]) => void
-  walkthroughMode?: boolean
+  onEnableCensorChange: (checked: boolean) => void
+  onCensorWordsChange: (words: string[]) => void
 }
 
 export const TextFormattingCard = ({
-  maxWordsLine,
+  maxWords,
   textFormat,
   removePunctuation,
+  enableCensor,
   censorWords,
-  sensitiveWords,
-  onMaxWordsLineChange,
+  onMaxWordsChange,
   onTextFormatChange,
   onRemovePunctuationChange,
+  onEnableCensorChange,
   onCensorWordsChange,
-  onSensitiveWordsChange,
-  walkthroughMode = false
 }: TextFormattingCardProps) => {
   return (
     <div className="space-y-4">
@@ -49,8 +46,8 @@ export const TextFormattingCard = ({
         <Input
           type="number"
           min="1"
-          value={maxWordsLine}
-          onChange={(e) => onMaxWordsLineChange(e.target.value)}
+          value={maxWords}
+          onChange={(e) => onMaxWordsChange(Number(e.target.value))}
           className="w-20"
         />
       </div>
@@ -134,27 +131,27 @@ export const TextFormattingCard = ({
                 </p>
               </div>
             </div>
-            <Switch checked={censorWords} onCheckedChange={onCensorWordsChange} />
+            <Switch checked={enableCensor} onCheckedChange={onEnableCensorChange} />
           </div>
-          {censorWords && (
+          {enableCensor && (
             <div className="mt-3 pt-3 border-t">
               <div className="flex flex-col gap-2">
                 <ScrollArea className="max-h-[150px]">
-                  {sensitiveWords.length === 0 ? (
+                  {censorWords.length === 0 ? (
                     <div className="text-xs text-muted-foreground p-4 text-center">
                       No words selected to censor.
                     </div>
                   ) : (
-                    sensitiveWords.map((word: string, index: number) => (
+                    censorWords.map((word: string, index: number) => (
                       <div key={index} className="flex items-center m-1 mb-2 mr-3">
                         <Input
                           value={word}
                           type="string"
                           placeholder="Enter word"
                           onChange={(e) => {
-                            const newWords = [...sensitiveWords];
+                            const newWords = [...censorWords];
                             newWords[index] = e.target.value;
-                            onSensitiveWordsChange(newWords);
+                            onCensorWordsChange(newWords);
                           }}
                         />
                         <Button
@@ -162,8 +159,8 @@ export const TextFormattingCard = ({
                           size="sm"
                           className="ml-2"
                           onClick={() => {
-                            const newWords = sensitiveWords.filter((_, i) => i !== index);
-                            onSensitiveWordsChange(newWords);
+                            const newWords = censorWords.filter((_, i) => i !== index);
+                            onCensorWordsChange(newWords);
                           }}
                         >
                           <Trash2 className="size-4" />
@@ -176,7 +173,7 @@ export const TextFormattingCard = ({
                   variant="secondary"
                   size="sm"
                   className="mx-1 w-full"
-                  onClick={() => onSensitiveWordsChange([...sensitiveWords, ""])}
+                  onClick={() => onCensorWordsChange([...censorWords, ""])}
                 >
                   Add Word
                 </Button>

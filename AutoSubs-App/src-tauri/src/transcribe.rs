@@ -17,10 +17,9 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
 use whisper_rs::DtwParameters;
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
-use tauri::command;
+use tauri::path;
 use serde::Deserialize;
-use tauri::AppHandle;
-use tauri::Emitter;
+use tauri::{AppHandle, Emitter, command, Manager};
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -80,9 +79,9 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
         let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
 
-                let segment_model_path = crate::models::download_diarize_model_if_needed("segmentation-3.0.onnx", seg_url).await?
+                let segment_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "segmentation-3.0.onnx", seg_url).await?
             .to_string_lossy().into_owned();
-        let embedding_model_path = crate::models::download_diarize_model_if_needed("wespeaker_en_voxceleb_CAM++.onnx", emb_url).await?
+        let embedding_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "wespeaker_en_voxceleb_CAM++.onnx", emb_url).await?
             .to_string_lossy().into_owned();
 
         Some(DiarizeOptions {
@@ -259,10 +258,6 @@ fn generate_cache_key(source: &Path, additional_ffmpeg_args: &Option<Vec<String>
     hasher.finish()
 }
 
-fn get_temp_folder() -> PathBuf {
-    std::env::temp_dir().join("whisper-testing")
-}
-
 // This function must now be `async` because it calls the async `normalize` function.
 pub async fn create_normalized_audio(
     app: AppHandle,
@@ -272,7 +267,8 @@ pub async fn create_normalized_audio(
     tracing::debug!("normalize {:?}", source.display());
 
     let cache_key = generate_cache_key(&source, &additional_ffmpeg_args);
-    let out_path = get_temp_folder().join(format!("{:x}.wav", cache_key));
+    let path_resolver = app.path();
+    let out_path = path_resolver.app_cache_dir().unwrap_or_else(|_| std::env::temp_dir()).join(format!("{:x}.wav", cache_key));
 
     // Regarding your caching question:
     // Caching is a great idea for performance. The key is to make `generate_cache_key` robust.

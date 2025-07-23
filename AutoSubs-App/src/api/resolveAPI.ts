@@ -2,12 +2,9 @@
 import { fetch } from '@tauri-apps/plugin-http';
 import { downloadDir } from '@tauri-apps/api/path';
 
-// import error variable from global context
-import { useGlobal } from '@/contexts/GlobalContext';
-
 const resolveAPI = "http://localhost:56002/";
 
-export async function exportAudio(inputTrack: string) {
+export async function exportAudio(inputTracks: Array<string>) {
   const outputDir = await downloadDir();
   const response = await fetch(resolveAPI, {
     method: 'POST',
@@ -15,7 +12,7 @@ export async function exportAudio(inputTrack: string) {
     body: JSON.stringify({
       func: "ExportAudio",
       outputDir,
-      inputTrack,
+      inputTracks,
     }),
   });
   const data = await response.json();

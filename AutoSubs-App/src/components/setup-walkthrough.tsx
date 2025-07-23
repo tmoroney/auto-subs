@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ChevronLeft, ChevronRight, X, Check, Clapperboard } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, ChevronLast } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -7,43 +7,9 @@ import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
 import { LanguageSettingsCard } from "./settings-cards/language-settings-card"
-import { ModelSelectionCard, Model } from "./settings-cards/model-selection-card"
+import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
-
-interface SetupWalkthroughProps {
-  isOpen: boolean
-  onClose: () => void
-  isStandaloneMode: boolean
-  onModeChange: (isStandalone: boolean) => void
-  // Settings state and handlers
-  selectedFile: string | null
-  onFileSelect: (file: string | null) => void
-  selectedTracks: string[]
-  onTracksChange: (tracks: string[]) => void
-  selectedTemplate: { value: string; label: string }
-  onTemplateChange: (template: { value: string; label: string }) => void
-  sourceLanguage: string
-  translate: boolean
-  onSourceLanguageChange: (language: string) => void
-  onTranslateChange: (translate: boolean) => void
-  selectedModel: Model
-  models: Model[]
-  downloadingModel: string | null
-  downloadProgress: number
-  onModelChange: (model: Model) => void
-  onDeleteModel: (modelValue: string) => void
-  // Text formatting settings
-  maxWordsLine: string
-  textFormat: "none" | "uppercase" | "lowercase"
-  removePunctuation: boolean
-  censorWords: boolean
-  sensitiveWords: string[]
-  onMaxWordsLineChange: (value: string) => void
-  onTextFormatChange: (format: "none" | "uppercase" | "lowercase") => void
-  onRemovePunctuationChange: (checked: boolean) => void
-  onCensorWordsChange: (checked: boolean) => void
-  onSensitiveWordsChange: (words: string[]) => void
-}
+import { useGlobal } from "@/contexts/GlobalContext"
 
 interface WalkthroughSlide {
   id: string
@@ -53,53 +19,31 @@ interface WalkthroughSlide {
   canProceed: boolean
 }
 
+interface SetupWalkthroughProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
 export const SetupWalkthrough = ({
   isOpen,
   onClose,
-  isStandaloneMode,
-  onModeChange,
-  selectedFile,
-  onFileSelect,
-  selectedTracks,
-  onTracksChange,
-  selectedTemplate,
-  onTemplateChange,
-  sourceLanguage,
-  translate,
-  onSourceLanguageChange,
-  onTranslateChange,
-  selectedModel,
-  models,
-  downloadingModel,
-  downloadProgress,
-  onModelChange,
-  onDeleteModel,
-  maxWordsLine,
-  textFormat,
-  removePunctuation,
-  censorWords,
-  sensitiveWords,
-  onMaxWordsLineChange,
-  onTextFormatChange,
-  onRemovePunctuationChange,
-  onCensorWordsChange,
-  onSensitiveWordsChange,
 }: SetupWalkthroughProps) => {
   const [currentSlide, setCurrentSlide] = React.useState(0)
+  const { settings, updateSetting, modelsState, timelineInfo, fileInput, setFileInput, isStandaloneMode, setIsStandaloneMode } = useGlobal()
 
   const slides: WalkthroughSlide[] = React.useMemo(() => {
     const baseSlides: WalkthroughSlide[] = [
       {
         id: "welcome",
-        title: "Welcome to AutoSubs",
-        description: "Let's set up your transcription preferences. This will only take a minute and you can change these settings anytime.",
+        title: "Welcome to AutoSubs 🎉",
+        description: "Let's set up your preferences. This will only take a minute 😀",
         component: (
           <Card className="p-8 text-center max-w-md mx-auto">
             <div className="space-y-4">
-              <Clapperboard className="h-14 w-14  mx-auto" />
+              <img src="/autosubs-logo.png" alt="AutoSubs logo" className="mx-auto w-24 h-24 mb-4" />
               <h2 className="text-2xl font-bold">Ready to get started?</h2>
               <p className="text-muted-foreground">
-                We'll guide you through the essential settings to get you transcribing quickly and accurately.
+                We'll guide you through the basics. You can change these settings anytime, so no pressure!
               </p>
             </div>
           </Card>
@@ -116,11 +60,11 @@ export const SetupWalkthrough = ({
               <div className="text-center space-y-2">
                 <h3 className="text-lg font-semibold">How do you want to use AutoSubs?</h3>
               </div>
-              
+
               <div className="flex justify-center">
-                <Tabs 
+                <Tabs
                   value={isStandaloneMode ? "standalone" : "resolve"}
-                  onValueChange={(value) => onModeChange(value === "standalone")}
+                  onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
                   className="w-full max-w-[400px]"
                 >
                   <TabsList className="w-full rounded-full bg-muted">
@@ -133,7 +77,7 @@ export const SetupWalkthrough = ({
                   </TabsList>
                 </Tabs>
               </div>
-              
+
               <div className="text-center space-y-2">
                 {isStandaloneMode ? (
                   <div className="space-y-1">
@@ -161,17 +105,17 @@ export const SetupWalkthrough = ({
     if (isStandaloneMode) {
       baseSlides.push({
         id: "audio-file",
-        title: "Select Your Audio File",
-        description: "Choose the audio file you want to transcribe. We support WAV and MP3 formats.",
+        title: "Transcribe Any File...",
+        description: "Select an audio or video file to transcribe.",
         component: (
           <div className="max-w-lg mx-auto">
             <AudioFileCard
-              selectedFile={selectedFile}
-              onFileSelect={onFileSelect}
+              selectedFile={fileInput}
+              onFileSelect={setFileInput}
             />
           </div>
         ),
-        canProceed: selectedFile !== null,
+        canProceed: fileInput !== null,
       })
     } else {
       baseSlides.push({
@@ -181,24 +125,32 @@ export const SetupWalkthrough = ({
         component: (
           <div className="max-w-lg mx-auto">
             <AudioInputCard
-              selectedTracks={selectedTracks}
-              onTracksChange={onTracksChange}
+              selectedTracks={settings.selectedInputTracks}
+              inputTracks={timelineInfo?.inputTracks || []}
+              onTracksChange={(tracks) => updateSetting("selectedInputTracks", tracks)}
               walkthroughMode={true}
             />
           </div>
         ),
-        canProceed: selectedTracks.length > 0,
+        canProceed: settings.selectedInputTracks.length > 0,
       })
 
       baseSlides.push({
         id: "caption-settings",
         title: "Caption Settings",
-        description: "Configure where your captions will appear and choose a template (Fusion Text+).",
+        description: "Choose a template (Fusion Text+) and where captions appear.",
         component: (
           <div className="max-w-lg mx-auto">
             <CaptionSettingsCard
-              selectedTemplate={selectedTemplate}
-              onTemplateChange={onTemplateChange}
+              selectedTemplate={settings.selectedTemplate}
+              onTemplateChange={(template) => updateSetting("selectedTemplate", template)}
+              outputTracks={timelineInfo?.outputTracks || []}
+              templates={timelineInfo?.templates || []}
+              selectedOutputTrack="1"
+              onOutputTrackChange={(track) => {
+                // Handle output track change if needed
+                console.log("Selected output track:", track);
+              }}
             />
           </div>
         ),
@@ -214,10 +166,10 @@ export const SetupWalkthrough = ({
         component: (
           <div className="max-w-lg mx-auto">
             <LanguageSettingsCard
-              sourceLanguage={sourceLanguage}
-              translate={translate}
-              onSourceLanguageChange={onSourceLanguageChange}
-              onTranslateChange={onTranslateChange}
+              sourceLanguage={settings.language}
+              translate={settings.translate}
+              onSourceLanguageChange={(language) => updateSetting("language", language)}
+              onTranslateChange={(translate) => updateSetting("translate", translate)}
             />
           </div>
         ),
@@ -225,17 +177,14 @@ export const SetupWalkthrough = ({
       },
       {
         id: "model",
-        title: "Choose AI Model",
-        description: "Choose a Speech-to-Text model. 'Small' is fast and accurate for most users.",
+        title: "Choose AI model",
+        description: "'Small' is fast and accurate for most users.",
         component: (
           <div className="max-w-2xl mx-auto">
             <ModelSelectionCard
-              selectedModel={selectedModel}
-              models={models}
-              downloadingModel={downloadingModel}
-              downloadProgress={downloadProgress}
-              onModelChange={onModelChange}
-              onDeleteModel={onDeleteModel}
+              selectedModel={settings.model}
+              models={modelsState}
+              onModelChange={(model) => updateSetting("model", model)}
               walkthroughMode={true}
             />
           </div>
@@ -245,20 +194,20 @@ export const SetupWalkthrough = ({
       {
         id: "text-formatting",
         title: "Text Formatting Options",
-        description: "Configure text formatting options like maximum words per line, text case, punctuation removal, and content filtering.",
+        description: "Choose how you want your captions formatted.",
         component: (
           <div className="max-w-lg mx-auto">
             <TextFormattingCard
-              maxWordsLine={maxWordsLine}
-              textFormat={textFormat}
-              removePunctuation={removePunctuation}
-              censorWords={censorWords}
-              sensitiveWords={sensitiveWords}
-              onMaxWordsLineChange={onMaxWordsLineChange}
-              onTextFormatChange={onTextFormatChange}
-              onRemovePunctuationChange={onRemovePunctuationChange}
-              onCensorWordsChange={onCensorWordsChange}
-              onSensitiveWordsChange={onSensitiveWordsChange}
+              maxWords={settings.maxWords}
+              textFormat={settings.textFormat}
+              removePunctuation={settings.removePunctuation}
+              enableCensor={settings.enableCensor}
+              censorWords={settings.censorWords}
+              onMaxWordsChange={(maxWords) => updateSetting("maxWords", maxWords)}
+              onTextFormatChange={(format) => updateSetting("textFormat", format)}
+              onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
+              onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
+              onCensorWordsChange={(words) => updateSetting("censorWords", words)}
             />
           </div>
         ),
@@ -289,32 +238,9 @@ export const SetupWalkthrough = ({
     return baseSlides
   }, [
     isStandaloneMode,
-    selectedFile,
-    selectedTracks,
-    selectedTemplate,
-    sourceLanguage,
-    translate,
-    selectedModel,
-    models,
-    downloadingModel,
-    downloadProgress,
-    onFileSelect,
-    onTracksChange,
-    onTemplateChange,
-    maxWordsLine,
-    textFormat,
-    removePunctuation,
-    censorWords,
-    sensitiveWords,
-    onMaxWordsLineChange,
-    onTextFormatChange,
-    onRemovePunctuationChange,
-    onCensorWordsChange,
-    onSensitiveWordsChange,
-    onSourceLanguageChange,
-    onTranslateChange,
-    onModelChange,
-    onDeleteModel,
+    modelsState,
+    settings,
+    updateSetting,
   ])
 
   const currentSlideData = slides[currentSlide]
@@ -364,22 +290,22 @@ export const SetupWalkthrough = ({
                 {slides.map((_, index) => (
                   <div
                     key={index}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentSlide
-                        ? "bg-primary"
-                        : index < currentSlide
+                    className={`w-2 h-2 rounded-full transition-colors ${index === currentSlide
+                      ? "bg-primary"
+                      : index < currentSlide
                         ? "bg-green-500"
                         : "bg-muted"
-                    }`}
+                      }`}
                   />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Close Button (right) */}
-          <Button variant="ghost" size="icon" onClick={handleClose}>
-            <X className="h-4 w-4" />
+          {/* Skip Button (right) */}
+          <Button variant="secondary" size="default" onClick={handleClose}>
+            Skip
+            <ChevronLast className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
@@ -392,7 +318,7 @@ export const SetupWalkthrough = ({
                 {currentSlideData.description}
               </p>
             </div>
-            
+
             <div className="w-full">
               {currentSlideData.component}
             </div>
@@ -403,6 +329,7 @@ export const SetupWalkthrough = ({
         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30 flex-shrink-0">
           <Button
             variant="outline"
+            size="default"
             onClick={handlePrevious}
             disabled={isFirstSlide}
             className="flex items-center gap-2"
@@ -421,6 +348,7 @@ export const SetupWalkthrough = ({
 
           <Button
             onClick={handleNext}
+            size="default"
             disabled={!currentSlideData.canProceed}
             className="flex items-center gap-2"
           >

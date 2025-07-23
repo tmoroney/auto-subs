@@ -8,12 +8,9 @@ import {
     X,
     HelpCircle
 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
-
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 
@@ -27,92 +24,29 @@ import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
 import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
-import { ModelSelectionCard, Model } from "./settings-cards/model-selection-card"
-import { models, getDefaultModel } from "@/lib/models"
+import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
-
-// Using centralized model definitions from lib/models.ts
-
-
 
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
     onShowTutorial?: () => void
-    walkthroughSettings?: {
-        selectedFile: string | null
-        selectedTracks: string[]
-        selectedTemplate: { value: string; label: string }
-        sourceLanguage: string
-        translate: boolean
-        selectedModel: {
-            value: string
-            label: string
-            description: string
-            size: string
-            ram: string
-            image: string
-            details: string
-            isDownloaded: boolean
-        }
-        models: Array<{
-            value: string
-            label: string
-            description: string
-            size: string
-            ram: string
-            image: string
-            details: string
-            isDownloaded: boolean
-        }>
-        downloadingModel: string | null
-        downloadProgress: number
-    }
-    onWalkthroughSettingsChange?: (settings: any) => void
 }
 
 export function TranscriptionSettings({
     isStandaloneMode,
-    onShowTutorial,
-    walkthroughSettings,
-    onWalkthroughSettingsChange
+    onShowTutorial
 }: TranscriptionSettingsProps) {
     const isMobile = useIsMobile()
-    const globalContext = useGlobal()
-    const { timelineInfo } = globalContext || {}
-    const [selectedTemplate, setSelectedTemplate] = React.useState<{ value: string; label: string }>({ value: "default", label: "Default Text+" })
-
-    const [selectedModel, setSelectedModel] = React.useState(walkthroughSettings?.selectedModel || getDefaultModel())
+    const {timelineInfo, setFileInput, fileInput, settings, updateSetting, updateSubtitles, modelsState, checkDownloadedModels } = useGlobal()
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState<number>(0)
     const [isModelDownloading, setIsModelDownloading] = React.useState(false)
     const [isUpdateAvailable] = React.useState<boolean>(false)
     const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
-    const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [isTranscribing, setIsTranscribing] = React.useState(false)
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
-    const [modelsState, setModelsState] = React.useState(walkthroughSettings?.models || [...models])
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
-    const [selectedTracks, setSelectedTracks] = React.useState<string[]>(['1']) // Default to Track 1 selected
-    const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
-
-
-
-    const [settings, setSettings] = React.useState({
-        diarize: true,
-        translate: false,
-        numSpeakers: "3",
-        sourceLanguage: "en",
-        maxWordsLine: "10",
-        removePunctuation: false,
-        textFormat: "none" as const,
-        censorWords: false,
-        sensitiveWords: [] as string[],
-    })
-
-    const updateSetting = (key: string, value: any) => {
-        setSettings((prev) => ({ ...prev, [key]: value }))
-    }
 
     // Listen for transcription and model download progress events from the backend
     React.useEffect(() => {
@@ -174,13 +108,10 @@ export function TranscriptionSettings({
         try {
             // Call the backend to delete the model files
             await invoke('delete_model', { model: modelValue })
-            
-            // Update the local state to reflect the deletion
-            setModelsState((prevModels) => prevModels.map((m) => (m.value === modelValue ? { ...m, isDownloaded: false } : m)))
-            if (selectedModel.value === modelValue) {
-                setSelectedModel((prev) => ({ ...prev, isDownloaded: false }))
-            }
-            
+
+            // Update the models state
+            await checkDownloadedModels()
+
             console.log(`Successfully deleted model: ${modelValue}`)
         } catch (error) {
             console.error(`Failed to delete model ${modelValue}:`, error)
@@ -189,7 +120,7 @@ export function TranscriptionSettings({
     }
 
     const handleStartTranscription = async () => {
-        if (!selectedFile) {
+        if (!fileInput) {
             // Or show some error to the user
             console.error("No file selected")
             return
@@ -200,31 +131,29 @@ export function TranscriptionSettings({
 
         const options = {
             // @ts-ignore
-            audioPath: selectedFile,
-            model: selectedModel.value,
-            lang: settings.sourceLanguage === "auto" ? null : settings.sourceLanguage,
-            enableDiarize: settings.diarize,
-            maxSpeakers: settings.diarize
-                ? (parseInt(settings.numSpeakers) === 0 ? null : parseInt(settings.numSpeakers))
-                : null,
+            audioPath: fileInput,
+            model: modelsState[settings.model].value,
+            lang: settings.language === "auto" ? null : settings.language,
+            enableDiarize: settings.enableDiarize,
+            maxSpeakers: settings.maxSpeakers,
         }
 
         try {
             console.log("Invoking transcribe_audio with options:", options)
             const transcript = await invoke("transcribe_audio", { options })
             console.log("Transcription successful:", transcript)
-            
+
             // Generate filename based on mode and input
             const filename = generateTranscriptFilename(
-                isStandaloneMode, 
-                selectedFile, 
-                globalContext?.timelineInfo?.name
+                isStandaloneMode,
+                fileInput,
+                timelineInfo?.name
             )
-            
+
             // Save transcript to JSON file
             await saveTranscript(transcript as any, filename)
             console.log("Transcript saved to:", filename)
-            
+
             // Transform transcript segments to subtitle format and update the caption list
             const subtitles = (transcript as any).segments.map((segment: any, index: number) => ({
                 id: index.toString(),
@@ -234,11 +163,11 @@ export function TranscriptionSettings({
                 speaker: segment.speaker || undefined,
                 words: segment.words || []
             }))
-            
+
             // Update the global subtitles state to show in sidebar
-            globalContext?.updateSubtitles(subtitles)
+            updateSubtitles(subtitles)
             console.log("Caption list updated with", subtitles.length, "captions")
-            
+
         } catch (error) {
             console.error("Transcription failed:", error)
             // Handle error, e.g., show an error message to the user
@@ -246,80 +175,14 @@ export function TranscriptionSettings({
             setIsTranscribing(false)
             setTranscriptionProgress(0) // Reset progress
             // set modelsState to reflect that the model is downloaded
-            setModelsState((prevModels) => prevModels.map((m) => (m.value === selectedModel.value ? { ...m, isDownloaded: true } : m)))
-            // set selectedModel to reflect that the model is downloaded
-            setSelectedModel((prev) => ({ ...prev, isDownloaded: true }))
+            await checkDownloadedModels()
         }
     }
 
-    // Handle model change - sync with walkthrough settings
-    const handleModelChange = (model: Model) => {
-        setSelectedModel(model)
-        if (onWalkthroughSettingsChange && walkthroughSettings) {
-            onWalkthroughSettingsChange({
-                ...walkthroughSettings,
-                selectedModel: model
-            })
-        }
+    // Handle model change - sync with global context
+    const handleModelChange = (model: number) => {
+        updateSetting('model', model)
     }
-
-    // Check which models are downloaded when component mounts
-    React.useEffect(() => {
-        const checkDownloadedModels = async () => {
-            try {
-                const downloadedModels = await invoke("get_downloaded_models") as string[]
-                console.log("Downloaded models:", downloadedModels)
-
-                // Update modelsState based on downloaded models
-                const updatedModels = (walkthroughSettings?.models || models).map(model => ({
-                    ...model,
-                    isDownloaded: downloadedModels.some(downloadedModel =>
-                        downloadedModel.includes(model.value)
-                    )
-                }))
-                setModelsState(updatedModels)
-
-                // Also update walkthrough settings if available
-                if (onWalkthroughSettingsChange && walkthroughSettings) {
-                    onWalkthroughSettingsChange({
-                        ...walkthroughSettings,
-                        models: updatedModels
-                    })
-                }
-
-                // Update selectedModel if it's in the downloaded models
-                const currentSelected = walkthroughSettings?.selectedModel || selectedModel
-                const isSelectedDownloaded = downloadedModels.some(downloadedModel =>
-                    downloadedModel.includes(currentSelected.value)
-                )
-                const updatedSelectedModel = {
-                    ...currentSelected,
-                    isDownloaded: isSelectedDownloaded
-                }
-                setSelectedModel(updatedSelectedModel)
-
-                // Also update walkthrough settings if available
-                if (onWalkthroughSettingsChange && walkthroughSettings) {
-                    onWalkthroughSettingsChange({
-                        ...walkthroughSettings,
-                        selectedModel: updatedSelectedModel
-                    })
-                }
-            } catch (error) {
-                console.error("Failed to check downloaded models:", error)
-            }
-        }
-
-        checkDownloadedModels()
-    }, [])
-
-    // Sync local state with walkthrough settings when they change
-    React.useEffect(() => {
-        if (walkthroughSettings) {
-            setSelectedModel(walkthroughSettings.selectedModel)
-            setModelsState(walkthroughSettings.models)
-        }
-    }, [walkthroughSettings?.selectedModel, walkthroughSettings?.models])
 
     return (
         <>
@@ -378,42 +241,29 @@ export function TranscriptionSettings({
                             {isStandaloneMode ? (
                                 <div>
                                     <AudioFileCard
-                                        selectedFile={walkthroughSettings?.selectedFile ?? selectedFile}
-                                        onFileSelect={(file) => {
-                                            setSelectedFile(file)
-                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
-                                                onWalkthroughSettingsChange({
-                                                    ...walkthroughSettings,
-                                                    selectedFile: file
-                                                })
-                                            }
-                                        }}
+                                        selectedFile={fileInput}
+                                        onFileSelect={(file) => setFileInput(file)}
                                     />
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     <AudioInputCard
-                                        selectedTracks={walkthroughSettings?.selectedTracks ?? selectedTracks}
+                                        selectedTracks={settings.selectedInputTracks}
+                                        inputTracks={timelineInfo?.inputTracks || []}
                                         onTracksChange={(tracks) => {
-                                            setSelectedTracks(tracks)
-                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
-                                                onWalkthroughSettingsChange({
-                                                    ...walkthroughSettings,
-                                                    selectedTracks: tracks
-                                                })
-                                            }
+                                            updateSetting("selectedInputTracks", tracks)
                                         }}
                                     />
                                     <CaptionSettingsCard
-                                        selectedTemplate={walkthroughSettings?.selectedTemplate ?? selectedTemplate}
+                                        selectedTemplate={settings.selectedTemplate}
                                         onTemplateChange={(template) => {
-                                            setSelectedTemplate(template)
-                                            if (onWalkthroughSettingsChange && walkthroughSettings) {
-                                                onWalkthroughSettingsChange({
-                                                    ...walkthroughSettings,
-                                                    selectedTemplate: template
-                                                })
-                                            }
+                                            updateSetting("selectedTemplate", template)
+                                        }}
+                                        outputTracks={timelineInfo?.outputTracks || []}
+                                        templates={timelineInfo?.templates || []}
+                                        selectedOutputTrack={settings.selectedOutputTrack}
+                                        onOutputTrackChange={(track) => {
+                                            updateSetting("selectedOutputTrack", track)
                                         }}
                                     />
                                 </div>
@@ -441,39 +291,27 @@ export function TranscriptionSettings({
 
                                 {/* Language */}
                                 <LanguageSettingsCard
-                                    sourceLanguage={walkthroughSettings?.sourceLanguage || settings.sourceLanguage}
-                                    translate={walkthroughSettings?.translate || settings.translate}
+                                    sourceLanguage={settings.language}
+                                    translate={settings.translate}
                                     onSourceLanguageChange={(language: string) => {
-                                        updateSetting('sourceLanguage', language);
-                                        if (onWalkthroughSettingsChange && walkthroughSettings) {
-                                            onWalkthroughSettingsChange({
-                                                ...walkthroughSettings,
-                                                sourceLanguage: language
-                                            });
-                                        }
+                                        updateSetting('language', language);
                                     }}
                                     onTranslateChange={(translate: boolean) => {
                                         updateSetting('translate', translate);
-                                        if (onWalkthroughSettingsChange && walkthroughSettings) {
-                                            onWalkthroughSettingsChange({
-                                                ...walkthroughSettings,
-                                                translate: translate
-                                            });
-                                        }
                                     }}
                                 />
 
                                 {/* Speaker Labeling */}
                                 <SpeakerLabelingCard
-                                    diarize={settings.diarize}
-                                    numSpeakers={settings.numSpeakers}
-                                    onDiarizeChange={(checked) => updateSetting("diarize", checked)}
-                                    onNumSpeakersChange={(value) => updateSetting("numSpeakers", value)}
+                                    diarize={settings.enableDiarize}
+                                    maxSpeakers={settings.maxSpeakers}
+                                    onDiarizeChange={(checked) => updateSetting("enableDiarize", checked)}
+                                    onMaxSpeakersChange={(value) => updateSetting("maxSpeakers", value)}
                                 />
 
                                 {/* Model */}
                                 <ModelSelectionCard
-                                    selectedModel={selectedModel}
+                                    selectedModel={settings.model}
                                     models={modelsState}
                                     downloadingModel={downloadingModel}
                                     downloadProgress={downloadProgress}
@@ -502,16 +340,16 @@ export function TranscriptionSettings({
                         </div>
                         <CollapsibleContent>
                             <TextFormattingCard
-                                maxWordsLine={settings.maxWordsLine}
+                                maxWords={settings.maxWords}
                                 textFormat={settings.textFormat}
                                 removePunctuation={settings.removePunctuation}
+                                enableCensor={settings.enableCensor}
                                 censorWords={settings.censorWords}
-                                sensitiveWords={settings.sensitiveWords}
-                                onMaxWordsLineChange={(value) => updateSetting("maxWordsLine", value)}
+                                onMaxWordsChange={(value) => updateSetting("maxWords", value)}
                                 onTextFormatChange={(format) => updateSetting("textFormat", format)}
                                 onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
-                                onCensorWordsChange={(checked) => updateSetting("censorWords", checked)}
-                                onSensitiveWordsChange={(words) => updateSetting("sensitiveWords", words)}
+                                onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
+                                onCensorWordsChange={(words) => updateSetting("censorWords", words)}
                             />
                         </CollapsibleContent>
                     </Collapsible>
@@ -601,9 +439,9 @@ export function TranscriptionSettings({
                                 <span>Downloading {downloadingModel} model...</span>
                                 <span>{downloadProgress}%</span>
                             </div>
-                            <Progress 
-                                value={downloadProgress} 
-                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-600" 
+                            <Progress
+                                value={downloadProgress}
+                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-600"
                             />
                         </div>
                     )}

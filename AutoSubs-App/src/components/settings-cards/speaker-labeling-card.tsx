@@ -1,4 +1,3 @@
-import * as React from "react"
 import { Speech, Info } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -7,18 +6,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface SpeakerLabelingCardProps {
   diarize: boolean
-  numSpeakers: string
+  maxSpeakers: number
   onDiarizeChange: (checked: boolean) => void
-  onNumSpeakersChange: (value: string) => void
-  walkthroughMode?: boolean
+  onMaxSpeakersChange: (value: number) => void
 }
 
 export const SpeakerLabelingCard = ({
   diarize,
-  numSpeakers,
+  maxSpeakers,
   onDiarizeChange,
-  onNumSpeakersChange,
-  walkthroughMode = false
+  onMaxSpeakersChange,
 }: SpeakerLabelingCardProps) => {
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -78,11 +75,11 @@ export const SpeakerLabelingCard = ({
                 </Tooltip>
               </div>
               <Switch
-                checked={parseInt(numSpeakers) === 0}
-                onCheckedChange={(checked) => onNumSpeakersChange(checked ? "0" : "2")}
+                checked={maxSpeakers === 0}
+                onCheckedChange={(checked) => onMaxSpeakersChange(checked ? 0 : 2)}
               />
             </div>
-            {parseInt(numSpeakers) > 0 && (
+            {maxSpeakers > 0 && (
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-3">
                   <Label className="text-sm font-normal">No. of Speakers</Label>
@@ -90,8 +87,8 @@ export const SpeakerLabelingCard = ({
                 <Input
                   type="number"
                   min="1"
-                  value={numSpeakers}
-                  onChange={(e) => onNumSpeakersChange(e.target.value)}
+                  value={maxSpeakers}
+                  onChange={(e) => onMaxSpeakersChange(Number(e.target.value))}
                   className="w-20"
                 />
               </div>

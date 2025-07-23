@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useState, useEffect, useRef } from 'react';
+import { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 
 // Import the required APIs from Tauri
 import { exit } from '@tauri-apps/plugin-process';
@@ -6,35 +6,36 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { platform } from '@tauri-apps/plugin-os';
 import { getVersion } from '@tauri-apps/api/app';
-import { join, downloadDir, appCacheDir, cacheDir } from '@tauri-apps/api/path';
+import { invoke } from '@tauri-apps/api/core';
+import { join, downloadDir } from '@tauri-apps/api/path';
 
 // Import custom APIs and utilities
-import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, AudioInfo, Progress, Settings, EnabeledSteps } from "@/types/interfaces";
-import { exportAudio, jumpToTime, getTimelineInfo, addSubtitles, closeResolveLink } from '@/api/resolveAPI';
-import { fetchTranscription } from '@/api/transcribeAPI';
-import { getFullTranscriptPath, readTranscript, updateTranscript } from '../utils/fileUtils';
+import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
+import { jumpToTime, getTimelineInfo, addSubtitles, closeResolveLink } from '@/api/resolveAPI';
+import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
+import { models } from '@/lib/models';
 
 interface GlobalContextType {
   settings: Settings;
+  modelsState: Model[];
+  isStandaloneMode: boolean;
   timelineInfo: TimelineInfo;
   subtitles: Subtitle[];
   speakers: Speaker[];
   topSpeaker: TopSpeaker;
   error: ErrorMsg;
-  audioPath: string;
-  progress: Progress;
-  timelineId: string | null;
+  fileInput: string | null;
+  checkDownloadedModels: () => Promise<void>;
+  setIsStandaloneMode: (isStandaloneMode: boolean) => void;
+  setFileInput: (fileInput: string | null) => void;
   updateSetting: (key: keyof Settings, value: any) => void
-  enableStep: (step: keyof EnabeledSteps, state: boolean) => void;
   setError: (error: ErrorMsg) => void;
-  setProgress: (progress: Progress) => void;
-  runSteps: (useCachedAudio: boolean) => Promise<void>;
   setSpeakers: (speakers: Speaker[]) => void;
   updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>;
   refresh: () => Promise<void>;
+  setModelsState: (models: Model[]) => void;
   populateSubtitles: (timelineId: string) => Promise<void>;
   updateSubtitles: (subtitles: Subtitle[]) => void;
   updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
@@ -52,62 +53,64 @@ interface GlobalProviderProps {
   children: ReactNode;
 }
 
-let storageDir = "";
-
 const DEFAULT_SETTINGS: Settings = {
-  inputTrack: "0",
-  outputTrack: "0",
-  template: "0",
-  model: "small",
+  // Processing settings
+  model: 0,
   language: "auto",
   translate: false,
+  enableDiarize: false,
+  maxSpeakers: 2,
+
+  // Text settings
   maxWords: 5,
   maxChars: 25,
   textFormat: "none",
+  removePunctuation: false,
+  enableCensor: false,
+  censorWords: [],
+
+  // Resolve settings
+  selectedInputTracks: ["1"],
+  selectedOutputTrack: "1",
+  selectedTemplate: { value: "Default Template", label: "Default Template" },
+
+  // Animation settings
   animationType: "none",
   highlightType: "none",
   highlightColor: "#000000",
-  wordLevel: false,
-  removePunctuation: false,
-  sensitiveWords: [],
-  alignWords: false,
-  diarizeSpeakerCount: 2,
-  diarizeMode: "auto",
-  enabledSteps: {
-    exportAudio: true,
-    transcribe: true,
-    customSrt: false,
-    diarize: false,
-  }
 };
 
 export function GlobalProvider({ children }: GlobalProviderProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [store, setStore] = useState<Store | null>(null);
-  const [progress, setProgress] = useState<Progress>({ isLoading: false, value: 0, currentStep: 0, message: "" });
-  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
+
+  // App state
+  const [modelsState, setModelsState] = useState(models)
+  const [isStandaloneMode, setIsStandaloneMode] = useState(false)
 
   // State declarations
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
   const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
-  const [audioPath, setAudioPath] = useState("");
+  const [fileInput, setFileInput] = useState<string | null>(null);
+
+  // Davinci Resolve state
+  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
   const [markIn, setMarkIn] = useState(0);
-  const [timelineId, setTimelineId] = useState<string | null>(null);
   const [markOut, setMarkOut] = useState(0);
 
   // Initialization useEffect
   useEffect(() => {
     initializeStore();
-    setTranscriptsFolder();
-    
+    checkDownloadedModels();
+
     // Initialize timeline info and load subtitles
     async function initializeTimeline() {
       try {
         console.log('Fetching timeline info...');
         const info = await getTimelineInfo().catch(() => {
-          console.log('Backend is offline, using example captions');
+          console.log('Link to Resolve is offline');
           return null;
         });
 
@@ -116,54 +119,36 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           setTimelineInfo(info);
           console.log('Populating subtitles for timeline:', info.timelineId);
           await populateSubtitles(info.timelineId);
-        } else {
-          // Load example captions when backend is offline
-          console.log('Loading example captions...');
-          try {
-            const response = await fetch('/example-captions.json');
-            if (!response.ok) throw new Error('Failed to load example captions');
-            
-            const exampleCaptions = await response.json();
-            console.log('Example captions loaded:', exampleCaptions);
-            
-            // Transform example captions to match Subtitle type
-            const subtitles = exampleCaptions.map((caption: any) => {
-              const subtitle: any = {
-                id: caption.id.toString(),
-                start: caption.start,
-                end: caption.end,
-                text: caption.text.trim(),
-                words: caption.words || []
-              };
-              // Only add speaker if speaker_id exists in the original data
-              if (caption.speaker_id !== undefined) {
-                subtitle.speaker = `Speaker ${caption.speaker_id}`;
-              }
-              return subtitle;
-            });
-            
-            setSubtitles(subtitles);
-            console.log('Example subtitles set:', subtitles);
-          } catch (error) {
-            console.error('Error loading example captions:', error);
-            setError({
-              title: 'Backend Offline',
-              desc: 'Could not connect to the backend and failed to load example captions.'
-            });
-          }
         }
       } catch (error) {
         console.error('Error initializing timeline:', error);
       }
     }
-    
+
     initializeTimeline();
-    
+
     getCurrentWindow().once("tauri://close-requested", async () => {
       closeResolveLink();
       exit(0);
     });
   }, []);
+
+  async function checkDownloadedModels() {
+    try {
+      const downloadedModels = await invoke("get_downloaded_models") as string[]
+      console.log("Downloaded models:", downloadedModels)
+
+      const updatedModels = models.map(model => ({
+        ...model,
+        isDownloaded: downloadedModels.some(downloadedModel =>
+          downloadedModel.includes(model.value)
+        )
+      }))
+      setModelsState(updatedModels)
+    } catch (error) {
+      console.error("Failed to check downloaded models:", error)
+    }
+  }
 
   async function initializeStore() {
     try {
@@ -179,12 +164,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     } catch (error) {
       console.error('Error initializing store:', error);
     }
-  }
-
-  async function setTranscriptsFolder() {
-    storageDir = platform() === 'windows'
-      ? await join(await cacheDir(), "AutoSubs-Cache/Cache/transcripts")
-      : await join(await appCacheDir(), "transcripts");
   }
 
   // Whenever settings change, persist them
@@ -207,26 +186,21 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     setSettings(DEFAULT_SETTINGS);
   }
   // Update a setting
-  const updateSetting = (key: keyof typeof DEFAULT_SETTINGS, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
-  // Enable or disable a step
-  const enableStep = (step: keyof EnabeledSteps, state: boolean) => {
+  // This enforces that key is a valid Settings property, and value must match its type
+  function updateSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
     setSettings(prev => ({
       ...prev,
-      enabledSteps: {
-        ...prev.enabledSteps,
-        [step]: state
-      }
+      [key]: value
     }));
-  };
+  }
 
   // Load subtitles when timelineId changes
   useEffect(() => {
     async function loadSubtitles() {
-      if (timelineId) {
-        console.log("Loading subtitles for timeline:", timelineId);
-        const transcript = await readTranscript(timelineId);
+      let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+      if (filename && filename.length > 0) {
+        console.log("Loading subtitles:", filename);
+        const transcript = await readTranscript(filename);
         if (transcript) {
           console.log("Transcript loaded:", transcript);
           setMarkIn(transcript.mark_in);
@@ -235,7 +209,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           setTopSpeaker(transcript.top_speaker || { name: '', count: 0 });
           console.log("Subtitles set:", transcript.segments);
         } else {
-          console.warn("No transcript found for timeline:", timelineId);
+          console.warn("No transcript found for:", filename);
           setSubtitles([]);
         }
       } else {
@@ -243,15 +217,15 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         setSubtitles([]);
       }
     }
-    
+
     loadSubtitles();
-  }, [timelineId]);
+  }, [timelineInfo.timelineId, isStandaloneMode]);
 
   async function populateSubtitles(newTimelineId: string) {
     if (process.env.NODE_ENV === 'development') {
       console.log("Setting timelineId to:", newTimelineId);
     }
-    setTimelineId(newTimelineId);
+    setTimelineInfo(prev => ({ ...prev, timelineId: newTimelineId }));
   }
 
   async function exportSubtitles() {
@@ -272,7 +246,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
       console.log('Generating SRT data from subtitles (first 3 items):', subtitles.slice(0, 3));
       console.log('Subtitles array length:', subtitles.length);
-      
+
       // Log the structure of the first subtitle if it exists
       if (subtitles.length > 0) {
         console.log('First subtitle structure:', {
@@ -284,15 +258,15 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           }))
         });
       }
-      
+
       let srtData = generateSrt(subtitles);
       console.log('Generated SRT data (first 100 chars):', srtData.substring(0, 100));
-      
+
       if (!srtData || srtData.trim() === '') {
         console.error('Generated SRT data is empty');
         throw new Error('Generated SRT data is empty');
       }
-      
+
       await writeTextFile(filePath, srtData);
       console.log('File saved successfully to', filePath);
     } catch (error) {
@@ -344,13 +318,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
       setSubtitles(subtitles);
 
-      let transcript = {
-        "segments": subtitles,
-        "speakers": [],
-      }
+      let transcript = { "segments": subtitles };
 
-      // write to json file
-      await writeTextFile(await join(storageDir, `${timelineInfo.timelineId}.json`), JSON.stringify(transcript, null, 2));
+      // Save transcript to file in Transcripts directory
+      let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+      await saveTranscript(transcript, filename);
     } catch (error) {
       console.error('Failed to open file', error);
       setError({
@@ -397,56 +369,56 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  async function runSteps(useCachedAudio: boolean) {
-    // To-do: Add ability to re-run specific step - not only cached audio
-    setProgress(prev => ({ ...prev, isLoading: true, progress: 5 }));
-    setSubtitles([]);
+  // async function runSteps(useCachedAudio: boolean) {
+  //   // To-do: Add ability to re-run specific step - not only cached audio
+  //   setProgress(prev => ({ ...prev, isLoading: true, progress: 5 }));
+  //   setSubtitles([]);
 
-    // Initialize audio info with timeline and path
-    const audioInfo: AudioInfo = {
-      timeline: timelineInfo.timelineId,
-      path: audioPath,
-      markIn: markIn,
-      markOut: markOut
-    };
+  //   // Initialize audio info with timeline and path
+  //   const audioInfo: AudioInfo = {
+  //     timeline: timelineInfo.timelineId,
+  //     path: audioPath,
+  //     markIn: markIn,
+  //     markOut: markOut
+  //   };
 
-    if (settings.enabledSteps.exportAudio && !useCachedAudio && !settings.enabledSteps.customSrt) {
-      setProgress(prev => ({ ...prev, currentStep: 1 }));
-      // Update audio info with exported audio details
-      Object.assign(audioInfo, await exportAudio(settings.inputTrack));
-    }
+  //   if (settings.enabledSteps.exportAudio && !useCachedAudio && !settings.enabledSteps.customSrt) {
+  //     setProgress(prev => ({ ...prev, currentStep: 1 }));
+  //     // Update audio info with exported audio details
+  //     Object.assign(audioInfo, await exportAudio(settings.inputTrack));
+  //   }
 
-    setProgress(prev => ({ ...prev, progress: 20 }));
-    
-    if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
-      setProgress(prev => ({ ...prev, currentStep: 2 }));
-      // Get the full transcript path and fetch transcription
-      await getFullTranscriptPath(timelineInfo.timelineId);
-      await fetchTranscription(settings);
-    }
+  //   setProgress(prev => ({ ...prev, progress: 20 }));
 
-    // TODO: skip transcription if custom srt is enabled
-    // TODO: send request to modify subtitles if only text format is re-run
+  //   if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
+  //     setProgress(prev => ({ ...prev, currentStep: 2 }));
+  //     // Get the full transcript path and fetch transcription
+  //     await getFullTranscriptPath(timelineInfo.timelineId);
+  //     //await fetchTranscription(settings);
+  //   }
 
-    setProgress(prev => ({ ...prev, currentStep: 7, progress: 90, message: "Populating timeline..." }));
-    await populateSubtitles(timelineInfo.timelineId);
-    await addSubtitles("filepath", timelineInfo.timelineId, settings.outputTrack);
+  //   // TODO: skip transcription if custom srt is enabled
+  //   // TODO: send request to modify subtitles if only text format is re-run
 
-    setProgress(prev => ({ ...prev, progress: 100, isLoading: false }));
-  }
+  //   setProgress(prev => ({ ...prev, currentStep: 7, progress: 90, message: "Populating timeline..." }));
+  //   await populateSubtitles(timelineInfo.timelineId);
+  //   await addSubtitles("filepath", timelineInfo.timelineId, settings.outputTrack);
+
+  //   setProgress(prev => ({ ...prev, progress: 100, isLoading: false }));
+  // }
 
   async function addSubsToTimeline() {
-    await addSubtitles(await getFullTranscriptPath(timelineInfo.timelineId), timelineInfo.timelineId, settings.outputTrack);
+    await addSubtitles(generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId), timelineInfo.timelineId, settings.selectedOutputTrack);
   }
 
   async function jumpToSpeaker(start: number) {
     await jumpToTime(start, markIn);
   }
-  
+
   async function refresh() {
     try {
-    setTimelineInfo(await getTimelineInfo());
-    await populateSubtitles(timelineInfo.timelineId);
+      setTimelineInfo(await getTimelineInfo());
+      await populateSubtitles(timelineInfo.timelineId);
     } catch (error) {
       setError({
         title: "Failed to get current timeline",
@@ -463,7 +435,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Function to update a specific caption
   const updateCaption = async (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
     // Update the local subtitles state
-    setSubtitles(prevSubtitles => 
+    setSubtitles(prevSubtitles =>
       prevSubtitles.map((subtitle: any) => {
         if (subtitle.id === captionId.toString()) {
           return {
@@ -482,21 +454,21 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     // Save to JSON file if we have the necessary context
     try {
       const { updateCaptionInTranscript } = await import('@/utils/fileUtils');
-      
+
       // Determine the current transcript filename
       // For now, we'll try to determine this from the timeline info or use a fallback
       let filename: string | null = null;
-      
-      if (timelineInfo?.name) {
+
+      if (timelineInfo?.timelineId) {
         // In resolve mode, use timeline name
-        filename = `${timelineInfo.name}.json`;
+        filename = `${timelineInfo.timelineId}.json`;
       } else {
         // In standalone mode, we need to find the most recent transcript
         // For now, we'll log this and skip file saving
         console.log('Cannot determine transcript filename for caption update');
         return;
       }
-      
+
       if (filename) {
         await updateCaptionInTranscript(filename, updatedCaption);
         console.log('Caption updated in both UI and file');
@@ -509,19 +481,20 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   return (
     <GlobalContext.Provider value={{
       settings,
+      modelsState,
       timelineInfo,
       subtitles,
       speakers,
       topSpeaker,
       error,
-      audioPath,
-      progress,
-      timelineId,
+      fileInput,
+      isStandaloneMode,
+      setIsStandaloneMode,
+      checkDownloadedModels,
+      setModelsState,
+      setFileInput,
       updateSetting,
-      enableStep,
       setError,
-      setProgress,
-      runSteps,
       setSpeakers,
       updateSpeaker,
       refresh,

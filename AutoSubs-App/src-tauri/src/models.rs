@@ -1,7 +1,7 @@
 use hf_hub::{api::sync::Api, api::Progress, Cache};
 use std::io::copy;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Emitter};
+use tauri::{command, AppHandle, Emitter, Manager};
 use zip::ZipArchive;
 
 /// Progress tracker for model downloads that emits events to the frontend
@@ -90,14 +90,19 @@ impl<P: Progress> Progress for SilentFinish<P> {
 }
 
 /// Returns the path to the app's model cache directory, creating it if it doesn't exist.
-fn get_model_cache_dir() -> Result<PathBuf, String> {
-    let cache_dir = dirs::cache_dir().ok_or_else(|| "Failed to get cache directory".to_string())?;
-    let model_dir = cache_dir.join("AutoSubs").join("models");
+fn get_model_cache_dir(app: AppHandle) -> Result<PathBuf, String> {
+    let cache_dir = app.path().app_cache_dir().map_err(|_| "Failed to get cache directory".to_string())?;
+    let model_dir = cache_dir.join("models");
     if !model_dir.exists() {
         std::fs::create_dir_all(&model_dir)
             .map_err(|e| format!("Failed to create model cache directory: {}", e))?;
     }
     Ok(model_dir)
+}
+
+fn get_snapshots_dir(app: AppHandle) -> PathBuf {
+    let cache_dir = get_model_cache_dir(app.clone()).unwrap();
+    cache_dir.join("models--ggerganov--whisper.cpp").join("snapshots")
 }
 
 /// Returns the appropriate filename for a Whisper model based on the model variant and language.
@@ -109,12 +114,12 @@ fn get_model_cache_dir() -> Result<PathBuf, String> {
 ///   get_filename("large", &None)                       -> "ggml-large-v3.bin"
 ///   get_filename("medium", &Some("fr".to_string()))    -> "ggml-medium.bin"
 fn get_filename(model: &str, lang: &Option<String>) -> String {
-    let model_name = if model == "large" { "large-v3" } else { model };
     let is_en = lang.as_deref().map_or(false, |l| l.eq_ignore_ascii_case("en"));
-    if is_en && model_name != "large-v3" {
-        format!("ggml-{}.en.bin", model_name)
+    // English models are not available for large-v3 and large-v3-turbo
+    if is_en && model != "large-v3" && model != "large-v3-turbo" {
+        format!("ggml-{}.en.bin", model)
     } else {
-        format!("ggml-{}.bin", model_name)
+        format!("ggml-{}.bin", model)
     }
 }
 
@@ -122,7 +127,8 @@ fn get_filename(model: &str, lang: &Option<String>) -> String {
 /// Returns the path to the model file in the cache.
 pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<String>) -> Result<PathBuf, String> {
     let filename = get_filename(model, lang);
-    let model_cache = get_model_cache_dir()?;
+    let model_cache = get_model_cache_dir(app.clone())?;
+    let snapshots_dir = get_snapshots_dir(app.clone());
 
     println!("Checking for model '{}' in cache...", filename);
 
@@ -135,12 +141,11 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
     // Check if model already exists in cache by checking file existence directly
     
     // Try to get the cached file path without downloading
-    let cache_path = model_cache.join("models--ggerganov--whisper.cpp").join("snapshots");
     let mut model_path = None;
     
     // Look for the file in cache directories
-    if cache_path.exists() {
-        for entry in std::fs::read_dir(&cache_path).map_err(|e| e.to_string())? {
+    if snapshots_dir.exists() {
+        for entry in std::fs::read_dir(&snapshots_dir).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             let snapshot_dir = entry.path();
             if snapshot_dir.is_dir() {
@@ -157,13 +162,9 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
     let model_path = match model_path {
         Some(path) => path,
         None => {
-            
             // On macOS, check if we'll also need to download CoreML encoder
             #[cfg(target_os = "macos")]
-            let needs_coreml = {
-                let model_name = if model == "large" { "large-v3" } else { model };
-                model_name != "large-v3"
-            };
+            let needs_coreml = true;
             #[cfg(not(target_os = "macos"))]
             let needs_coreml = false;
             
@@ -191,120 +192,117 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
     // If on mac, also download the corresponding coreml encoder if it exists
     #[cfg(target_os = "macos")]
     {
-        let is_en = lang.as_deref().map_or(true, |l| l.eq_ignore_ascii_case("en"));
-        let model_name = if model == "large" { "large-v3" } else { model };
-        // Only attempt for models that have coreml encoders (usually not "large")
-        if model_name != "large-v3" {
-            let coreml_file = if is_en {
-                format!("ggml-{}.en-encoder.mlmodelc.zip", model_name)
-            } else {
-                format!("ggml-{}-encoder.mlmodelc.zip", model_name)
-            };
-            
-            // Check if CoreML encoder already exists in cache
-            let mut coreml_cached = false;
-            if cache_path.exists() {
-                for entry in std::fs::read_dir(&cache_path).map_err(|e| e.to_string())? {
-                    let entry = entry.map_err(|e| e.to_string())?;
-                    let snapshot_dir = entry.path();
-                    if snapshot_dir.is_dir() {
-                        let potential_zip_path = snapshot_dir.join(&coreml_file);
-                        let coreml_extracted_name = coreml_file.trim_end_matches(".zip");
-                        let potential_extracted_path = snapshot_dir.join(coreml_extracted_name);
-                        
-                        if potential_zip_path.exists() && potential_extracted_path.exists() {
-                            coreml_cached = true;
-                            break;
-                        }
+        // English models are not available for large-v3 and large-v3-turbo
+        let is_en = lang.as_deref().map_or(true, |l| l.eq_ignore_ascii_case("en") && model != "large-v3" && model != "large-v3-turbo");
+        let coreml_file = if is_en {
+            format!("ggml-{}.en-encoder.mlmodelc.zip", model)
+        } else {
+            format!("ggml-{}-encoder.mlmodelc.zip", model)
+        };
+        
+        // Check if CoreML encoder already exists in snapshots dir
+        let mut coreml_cached = false;
+        if snapshots_dir.exists() {
+            for entry in std::fs::read_dir(&snapshots_dir).map_err(|e| e.to_string())? {
+                let entry = entry.map_err(|e| e.to_string())?;
+                let snapshot_dir = entry.path();
+                if snapshot_dir.is_dir() {
+                    let potential_zip_path = snapshot_dir.join(&coreml_file);
+                    let coreml_extracted_name = coreml_file.trim_end_matches(".zip");
+                    let potential_extracted_path = snapshot_dir.join(coreml_extracted_name);
+                    
+                    if potential_zip_path.exists() && potential_extracted_path.exists() {
+                        coreml_cached = true;
+                        break;
                     }
                 }
             }
-            
-            if !coreml_cached {
-                // Emit immediate progress at 70% to maintain progress bar continuity
-                let _ = app.emit("model-download-progress", 70);
-                
-                // Create progress tracker for CoreML download (70-90% range)
-                let coreml_progress = ModelDownloadProgress::new_with_offset(app.clone(), model.to_string(), 70.0, 20.0);
-                let silent_coreml_progress = SilentFinish { inner: coreml_progress };
-
-                // Download CoreML encoder with progress tracking
-                let coreml_zip_path = repo.download_with_progress(&coreml_file, silent_coreml_progress)
-                    .map_err(|e| e.to_string())?;
-                
-                // Emit progress event at 90% (download complete, starting extraction)
-                let _ = app.emit("model-download-progress", 90);
-                
-                // Extract the zip file to the same directory
-                let extract_dir = coreml_zip_path.parent().ok_or("Failed to get parent directory")?;
-                let coreml_extracted_name = coreml_file.trim_end_matches(".zip");
-                let coreml_extracted_path = extract_dir.join(coreml_extracted_name);
-                
-                // Only extract if not already extracted
-                if !coreml_extracted_path.exists() {
-                    let file = std::fs::File::open(&coreml_zip_path).map_err(|e| e.to_string())?;
-                    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-
-                    // Manually extract with progress reporting (90% -> 100%)
-                    let total_size = archive.len() as u64; // Use file count for progress
-                    let mut extracted_count = 0;
-
-                    for i in 0..archive.len() {
-                        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-                        let outpath = match file.enclosed_name() {
-                            Some(path) => extract_dir.join(path),
-                            None => continue,
-                        };
-
-                        if (*file.name()).ends_with('/') {
-                            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
-                        } else {
-                            if let Some(p) = outpath.parent() {
-                                if !p.exists() {
-                                    std::fs::create_dir_all(&p).map_err(|e| e.to_string())?;
-                                }
-                            }
-                            let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
-                            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
-                        }
-
-                        extracted_count += 1;
-                        let percentage = 90.0 + (extracted_count as f32 / total_size as f32) * 10.0;
-                        let _ = app.emit("model-download-progress", percentage as i32);
-                    }
-
-                    // After successful extraction, delete the zip file (symlink and original blob)
-                    let metadata = std::fs::symlink_metadata(&coreml_zip_path).map_err(|e| e.to_string())?;
-                    if metadata.file_type().is_symlink() {
-                        let target_path = std::fs::read_link(&coreml_zip_path).map_err(|e| e.to_string())?;
-                        let blob_path = if target_path.is_absolute() {
-                            target_path
-                        } else {
-                            extract_dir.join(target_path)
-                        };
-                        if blob_path.exists() {
-                            std::fs::remove_file(&blob_path).map_err(|e| format!("Failed to delete zip blob: {}", e))?;
-                        }
-                        std::fs::remove_file(&coreml_zip_path).map_err(|e| format!("Failed to delete zip symlink: {}", e))?;
-                    } else {
-                        // If it's not a symlink, just delete the file itself
-                        std::fs::remove_file(&coreml_zip_path).map_err(|e| format!("Failed to delete zip file: {}", e))?;
-                    }
-                }
-            } else {
-                // CoreML is cached, emit smooth progress transition
-                let _ = app.emit("model-download-progress", 70);
-                // Small delay to ensure smooth visual transition
-                std::thread::sleep(std::time::Duration::from_millis(50));
-                let _ = app.emit("model-download-progress", 90);
-            }
-            
-            // Final completion events are now sent only after all stages are done.
-            let _ = app.emit("model-download-progress", 100);
-            // Add a small delay to ensure the frontend can render the 100% state
-            std::thread::sleep(std::time::Duration::from_millis(250));
-            let _ = app.emit("model-download-complete", model);
         }
+        
+        if !coreml_cached {
+            // Emit immediate progress at 70% to maintain progress bar continuity
+            let _ = app.emit("model-download-progress", 70);
+            
+            // Create progress tracker for CoreML download (70-90% range)
+            let coreml_progress = ModelDownloadProgress::new_with_offset(app.clone(), model.to_string(), 70.0, 20.0);
+            let silent_coreml_progress = SilentFinish { inner: coreml_progress };
+
+            // Download CoreML encoder with progress tracking
+            let coreml_zip_path = repo.download_with_progress(&coreml_file, silent_coreml_progress)
+                .map_err(|e| e.to_string())?;
+            
+            // Emit progress event at 90% (download complete, starting extraction)
+            let _ = app.emit("model-download-progress", 90);
+            
+            // Extract the zip file to the same directory
+            let extract_dir = coreml_zip_path.parent().ok_or("Failed to get parent directory")?;
+            let coreml_extracted_name = coreml_file.trim_end_matches(".zip");
+            let coreml_extracted_path = extract_dir.join(coreml_extracted_name);
+            
+            // Only extract if not already extracted
+            if !coreml_extracted_path.exists() {
+                let file = std::fs::File::open(&coreml_zip_path).map_err(|e| e.to_string())?;
+                let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+                // Manually extract with progress reporting (90% -> 100%)
+                let total_size = archive.len() as u64; // Use file count for progress
+                let mut extracted_count = 0;
+
+                for i in 0..archive.len() {
+                    let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+                    let outpath = match file.enclosed_name() {
+                        Some(path) => extract_dir.join(path),
+                        None => continue,
+                    };
+
+                    if (*file.name()).ends_with('/') {
+                        std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+                    } else {
+                        if let Some(p) = outpath.parent() {
+                            if !p.exists() {
+                                std::fs::create_dir_all(&p).map_err(|e| e.to_string())?;
+                            }
+                        }
+                        let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
+                        std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+                    }
+
+                    extracted_count += 1;
+                    let percentage = 90.0 + (extracted_count as f32 / total_size as f32) * 10.0;
+                    let _ = app.emit("model-download-progress", percentage as i32);
+                }
+
+                // After successful extraction, delete the zip file (symlink and original blob)
+                let metadata = std::fs::symlink_metadata(&coreml_zip_path).map_err(|e| e.to_string())?;
+                if metadata.file_type().is_symlink() {
+                    let target_path = std::fs::read_link(&coreml_zip_path).map_err(|e| e.to_string())?;
+                    let blob_path = if target_path.is_absolute() {
+                        target_path
+                    } else {
+                        extract_dir.join(target_path)
+                    };
+                    if blob_path.exists() {
+                        std::fs::remove_file(&blob_path).map_err(|e| format!("Failed to delete zip blob: {}", e))?;
+                    }
+                    std::fs::remove_file(&coreml_zip_path).map_err(|e| format!("Failed to delete zip symlink: {}", e))?;
+                } else {
+                    // If it's not a symlink, just delete the file itself
+                    std::fs::remove_file(&coreml_zip_path).map_err(|e| format!("Failed to delete zip file: {}", e))?;
+                }
+            }
+        } else {
+            // CoreML is cached, emit smooth progress transition
+            let _ = app.emit("model-download-progress", 70);
+            // Small delay to ensure smooth visual transition
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            let _ = app.emit("model-download-progress", 90);
+        }
+        
+        // Final completion events are now sent only after all stages are done.
+        let _ = app.emit("model-download-progress", 100);
+        // Add a small delay to ensure the frontend can render the 100% state
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let _ = app.emit("model-download-complete", model);
     }
 
     println!("Model path is: {:?}", model_path);
@@ -313,9 +311,8 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
 
 
 #[command]
-pub fn delete_model(model: &str) -> Result<(), String> {
-    let model_cache = get_model_cache_dir()?;
-    let snapshots_dir = model_cache.join("models--ggerganov--whisper.cpp").join("snapshots");
+pub fn delete_model(model: &str, app: AppHandle) -> Result<(), String> {
+    let snapshots_dir = get_snapshots_dir(app.clone());
     
     if !snapshots_dir.exists() {
         return Ok(()); // No models to delete
@@ -389,10 +386,9 @@ pub fn delete_model(model: &str) -> Result<(), String> {
 }
 
 #[command]
-pub fn get_downloaded_models() -> Result<Vec<String>, String> {
+pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
     use std::fs;
-    let model_cache = get_model_cache_dir()?;
-    let snapshots_dir = model_cache.join("models--ggerganov--whisper.cpp").join("snapshots");
+    let snapshots_dir = get_snapshots_dir(app.clone());
     let mut models = Vec::new();
     for entry in fs::read_dir(&snapshots_dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -415,21 +411,10 @@ pub fn get_downloaded_models() -> Result<Vec<String>, String> {
     Ok(models)
 }
 
-/// Returns the path to the app's diarize model cache directory, creating it if it doesn't exist.
-fn get_diarize_model_cache_dir() -> Result<PathBuf, String> {
-    let cache_dir = dirs::cache_dir().ok_or_else(|| "Failed to get cache directory".to_string())?;
-    let model_dir = cache_dir.join("AutoSubs").join("models");
-    if !model_dir.exists() {
-        std::fs::create_dir_all(&model_dir)
-            .map_err(|e| format!("Failed to create diarize model cache directory: {}", e))?;
-    }
-    Ok(model_dir)
-}
-
 /// Downloads a file from a URL to a local cache if it doesn't already exist.
-pub async fn download_diarize_model_if_needed(file_name: &str, url: &str) -> Result<PathBuf, String> {
-    let cache_dir = get_diarize_model_cache_dir()?;
-    let local_path = cache_dir.join(file_name);
+pub async fn download_diarize_model_if_needed(app: AppHandle, file_name: &str, url: &str) -> Result<PathBuf, String> {
+    let model_dir = get_model_cache_dir(app.clone())?;
+    let local_path = model_dir.join(file_name);
 
     if local_path.exists() {
         println!("Diarize model '{}' found locally.", file_name);

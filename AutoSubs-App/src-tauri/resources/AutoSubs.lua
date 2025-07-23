@@ -1,4 +1,4 @@
-local DEV_MODE = false
+local DEV_MODE = true
 
 -- Detect the operating system
 local os_name = ffi.os
@@ -321,12 +321,6 @@ end
 
 function GetAudioTracks()
     local tracks = {}
-    local allTracks = {
-        value = "0",
-        label = "All Audio Tracks"
-    }
-    table.insert(tracks, allTracks)
-
     local success, err = pcall(function()
         local timeline = project:GetCurrentTimeline()
         local trackCount = timeline:GetTrackCount("audio")
@@ -720,6 +714,7 @@ while not quitServer do
 
                 -- Send HTTP response content
                 local response = CreateResponse(body)
+                print(response)
                 assert(client:send(response))
 
                 -- Close connection

@@ -7,14 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { Template } from "@/types/interfaces"
 
 interface CaptionSettingsCardProps {
-  selectedTemplate: { value: string; label: string }
-  onTemplateChange: (template: { value: string; label: string }) => void
+  selectedTemplate: Template
+  onTemplateChange: (template: Template) => void
+  outputTracks?: { label: string; value: string }[]
+  templates?: { label: string; value: string }[]
+  selectedOutputTrack?: string
+  onOutputTrackChange?: (track: string) => void
 }
 
-const templates = [
-  { value: "default", label: "Default Text+" },
+const defaultTemplates = [
   { value: "minimal", label: "Minimal" },
   { value: "modern", label: "Modern" },
   { value: "classic", label: "Classic" },
@@ -22,7 +26,14 @@ const templates = [
   { value: "elegant", label: "Elegant" },
 ]
 
-export const CaptionSettingsCard = ({ selectedTemplate, onTemplateChange }: CaptionSettingsCardProps) => {
+export const CaptionSettingsCard = ({
+  selectedTemplate,
+  onTemplateChange,
+  outputTracks = [],
+  templates = defaultTemplates,
+  selectedOutputTrack = "1",
+  onOutputTrackChange = () => {}
+}: CaptionSettingsCardProps) => {
   const [openTemplates, setOpenTemplates] = React.useState(false)
 
   return (
@@ -41,12 +52,23 @@ export const CaptionSettingsCard = ({ selectedTemplate, onTemplateChange }: Capt
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-normal">Output Track</Label>
-            <Select defaultValue="1">
+            <Select 
+              value={selectedOutputTrack} 
+              onValueChange={onOutputTrackChange}
+            >
               <SelectTrigger className="w-[180px] h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Video Track 1</SelectItem>
+                {outputTracks.length > 0 ? (
+                  outputTracks.map((track) => (
+                    <SelectItem key={track.value} value={track.value}>
+                      {track.label}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="1">Video Track 1</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

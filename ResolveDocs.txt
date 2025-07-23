@@ -1,5 +1,5 @@
-Last Updated: 20 September 2024
-----------------------------
+Last Updated: 7 May 2025
+------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
 
@@ -136,6 +136,8 @@ ProjectManager
                                                                          # 'IpAddress': IP address of the PostgreSQL server (string, optional key - defaults to '127.0.0.1')
   CreateCloudProject({cloudSettings})             --> Project            # Creates and returns a cloud project.
                                                                          # '{cloudSettings}': Check 'Cloud Projects Settings' subsection below for more information.
+  LoadCloudProject({cloudSettings})               --> Project            # Loads and returns a cloud project with the following cloud settings if there is a match found, and None if there is no matching cloud project.
+                                                                         # '{cloudSettings}': Check 'Cloud Projects Settings' subsection below for more information.
   ImportCloudProject(filePath, {cloudSettings})   --> Bool               # Returns True if import cloud project is successful; False otherwise
                                                                          # 'filePath': String; filePath of file to import
                                                                          # '{cloudSettings}': Check 'Cloud Projects Settings' subsection below for more information.
@@ -168,9 +170,15 @@ Project
   IsRenderingInProgress()                         --> Bool               # Returns True if rendering is in progress.
   LoadRenderPreset(presetName)                    --> Bool               # Sets a preset as current preset for rendering if presetName (string) exists.
   SaveAsNewRenderPreset(presetName)               --> Bool               # Creates new render preset by given name if presetName(string) is unique.
+  DeleteRenderPreset(presetName)                  --> Bool               # Delete render preset by provided name.
   SetRenderSettings({settings})                   --> Bool               # Sets given settings for rendering. Settings is a dict, with support for the keys:
                                                                          # Refer to "Looking up render settings" section for information for supported settings
   GetRenderJobStatus(jobId)                       --> {status info}      # Returns a dict with job status and completion percentage of the job by given jobId (string).
+  GetQuickExportRenderPresets()                   --> [preset_name..]    # Returns a list of Quick Export render presets by name
+  RenderWithQuickExport(preset_name, {param_dict})--> {status info}      # Starts a quick export render for the current active timeline. preset_name from GetQuickExportRenderPresets list. param_dict supports render settings keys "TargetDir", "CustomName", "VideoQuality", and "EnableUpload".
+                                                                         # "EnableUpload" key enables direct upload for supported web presets.
+                                                                         # Returns a dict with job status and time taken to render, or an error string if render has failed or not attempted
+                                                                         # Refer to "Looking up Render Settings" section for information on the above supported settings
   GetSetting(settingName)                         --> string             # Returns value of project setting (indicated by settingName, string). Check the section below for more information.
   SetSetting(settingName, settingValue)           --> Bool               # Sets the project setting (indicated by settingName, string) to the value (settingValue, string). Check the section below for more information.
   GetRenderFormats()                              --> {render formats..} # Returns a dict (format -> file extension) of available render formats.
@@ -185,7 +193,7 @@ Project
   InsertAudioToCurrentTrackAtPlayhead(mediaPath,  --> Bool               # Inserts the media specified by mediaPath (string) with startOffsetInSamples (int) and durationInSamples (int) at the playhead on a selected track on the Fairlight page. Returns True if successful, otherwise False.
           startOffsetInSamples, durationInSamples)
   LoadBurnInPreset(presetName)                    --> Bool               # Loads user defined data burn in preset for project when supplied presetName (string). Returns true if successful.
-  ExportCurrentFrameAsStill(filePath)             --> Bool               # Exports current frame as still to supplied filePath. filePath must end in valid export file format. Returns True if succssful, False otherwise.
+  ExportCurrentFrameAsStill(filePath)             --> Bool               # Exports current frame as still to supplied filePath. filePath must end in valid export file format. Returns True if successful, False otherwise.
   GetColorGroupsList()                            --> [ColorGroups...]   # Returns a list of all group objects in the timeline.
   AddColorGroup(groupName)                        --> ColorGroup         # Creates a new ColorGroup. groupName must be a unique string.
   DeleteColorGroup(colorGroup)                    --> Bool               # Deletes the given color group and sets clips to ungrouped.
@@ -208,10 +216,10 @@ MediaPool
   CreateEmptyTimeline(name)                       --> Timeline           # Adds new timeline with given name.
   AppendToTimeline(clip1, clip2, ...)             --> [TimelineItem]     # Appends specified MediaPoolItem objects in the current timeline. Returns the list of appended timelineItems.
   AppendToTimeline([clips])                       --> [TimelineItem]     # Appends specified MediaPoolItem objects in the current timeline. Returns the list of appended timelineItems.
-  AppendToTimeline([{clipInfo}, ...])             --> [TimelineItem]     # Appends list of clipInfos specified as dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), (optional) "mediaType" (int; 1 - Video only, 2 - Audio only), "trackIndex" (int) and "recordFrame" (int/float). Returns the list of appended timelineItems.
+  AppendToTimeline([{clipInfo}, ...])             --> [TimelineItem]     # Appends list of clipInfos specified as dict of "mediaPoolItem", "startFrame" (float/int), "endFrame" (float/int), (optional) "mediaType" (int; 1 - Video only, 2 - Audio only), "trackIndex" (int) and "recordFrame" (float/int). Returns the list of appended timelineItems.
   CreateTimelineFromClips(name, clip1, clip2,...) --> Timeline           # Creates new timeline with specified name, and appends the specified MediaPoolItem objects.
   CreateTimelineFromClips(name, [clips])          --> Timeline           # Creates new timeline with specified name, and appends the specified MediaPoolItem objects.
-  CreateTimelineFromClips(name, [{clipInfo}])     --> Timeline           # Creates new timeline with specified name, appending the list of clipInfos specified as a dict of "mediaPoolItem", "startFrame" (int), "endFrame" (int), "recordFrame" (int/float).
+  CreateTimelineFromClips(name, [{clipInfo}])     --> Timeline           # Creates new timeline with specified name, appending the list of clipInfos specified as a dict of "mediaPoolItem", "startFrame" (float/int), "endFrame" (float/int), "recordFrame" (float/int).
   ImportTimelineFromFile(filePath, {importOptions}) --> Timeline         # Creates timeline based on parameters within given file (AAF/EDL/XML/FCPXML/DRT/ADL/OTIO) and optional importOptions dict, with support for the keys:
                                                                          # "timelineName": string, specifies the name of the timeline to be created. Not valid for DRT import
                                                                          # "importSourceClips": Bool, specifies whether source clips should be imported, True by default. Not valid for DRT import
@@ -241,6 +249,8 @@ MediaPool
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool
   CreateStereoClip(LeftMediaPoolItem,
                    RightMediaPoolItem)            --> MediaPoolItem      # Takes in two existing media pool items and creates a new 3D stereoscopic media pool entry replacing the input media in the media pool.
+  AutoSyncAudio([MediaPoolItems], {audioSyncSettings}) --> Bool          # Syncs audio for specified [MediaPoolItems] (list). The list must contain a minimum of two MediaPoolItems - at least one video and one audio clip.
+                                                                         # Returns True if successful. Refer to 'Audio Sync Settings' section for details.
   GetSelectedClips()                              --> [MediaPoolItems]   # Returns the current selected MediaPoolItems
   SetSelectedClip(MediaPoolItem)                  --> Bool               # Sets the selected MediaPoolItem to the given MediaPoolItem
 
@@ -261,7 +271,7 @@ MediaPoolItem
   SetMetadata(metadataType, metadataValue)        --> Bool               # Sets the given metadata to metadataValue (string). Returns True if successful.
   SetMetadata({metadata})                         --> Bool               # Sets the item metadata with specified 'metadata' dict. Returns True if successful.
   GetThirdPartyMetadata(metadataType=None)        --> string|dict        # Returns the third party metadata value for the key 'metadataType'.
-                                                                         # If no argument is specified, a dict of all set third parth metadata properties is returned.
+                                                                         # If no argument is specified, a dict of all set third party metadata properties is returned.
   SetThirdPartyMetadata(metadataType, metadataValue) --> Bool            # Sets/Add the given third party metadata to metadataValue (string). Returns True if successful.
   SetThirdPartyMetadata({metadata})               --> Bool               # Sets/Add the item third party metadata with specified 'metadata' dict. Returns True if successful.
   GetMediaId()                                    --> string             # Returns the unique ID for the MediaPoolItem.
@@ -286,13 +296,19 @@ MediaPoolItem
                                                                          # If no argument is specified, a dict of all clip properties is returned. Check the section below for more information.
   SetClipProperty(propertyName, propertyValue)    --> Bool               # Sets the given property to propertyValue (string). Check the section below for more information.
   LinkProxyMedia(proxyMediaFilePath)              --> Bool               # Links proxy media located at path specified by arg 'proxyMediaFilePath' with the current clip. 'proxyMediaFilePath' should be absolute clip path.
+  LinkFullResolutionMedia(fullResMediaPath)       --> Bool               # Links proxy media to full resolution media files specified via its path.
   UnlinkProxyMedia()                              --> Bool               # Unlinks any proxy media associated with clip.
   ReplaceClip(filePath)                           --> Bool               # Replaces the underlying asset and metadata of MediaPoolItem with the specified absolute clip path.
+  ReplaceClipPreserveSubClip(filePath)            --> Bool               # Replaces the underlying asset and metadata of a video or audio clip with the specified absolute clip path, preserving original sub clip extents.
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool item
   TranscribeAudio()                               --> Bool               # Transcribes audio of the MediaPoolItem. Returns True if successful; False otherwise
   ClearTranscription()                            --> Bool               # Clears audio transcription of the MediaPoolItem. Returns True if successful; False otherwise.
-
   GetAudioMapping()                               --> json formatted string # Returns a string with MediaPoolItem's audio mapping information. Check 'Audio Mapping' section below for more information.
+  GetMarkInOut()                                  --> {mark}             # Returns dict of in/out marks set (keys omitted if not set), example:
+                                                                         # {'video': {'in': 0, 'out': 134}, 'audio': {'in': 0, 'out': 134}}
+  SetMarkInOut(in, out, type="all")               --> Bool               # Sets mark in/out of type "video", "audio" or "all" (default).
+  ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
+  MonitorGrowingFile()                            --> Bool               # Monitor a file as long as it keeps growing (stops if the file does not grow for some time).
 
 Timeline
   GetName()                                       --> string             # Returns the timeline name.
@@ -303,14 +319,15 @@ Timeline
   GetStartTimecode()                              --> string             # Returns the start timecode for the timeline.
   GetTrackCount(trackType)                        --> int                # Returns the number of tracks for the given track type ("audio", "video" or "subtitle").
   AddTrack(trackType, subTrackType)               --> Bool               # Adds track of trackType ("video", "subtitle", "audio"). Optional argument subTrackType is used for "audio" trackType.
-                                                                         # subTrackType can be one of {"mono", "stereo", "5.1", "5.1film", "7.1", "7.1film", "adaptive1", ... , "adaptive24"}
+                                                                         # subTrackType can be one of {"mono", "stereo", lrc, lcr, lrcs, lcrs, quad, "5.0", "5.0film", "5.1", "5.1film", "7.0", "7.0film" ,"7.1", "7.1film", "adaptive1", ... , "adaptive36"}
                                                                          # subTrackType defaults to 'mono' if skipped and track type is ‘audio’.
   AddTrack(trackType, newTrackOptions)            --> Bool               # Adds track of trackType ("video", "subtitle", "audio"). Optional newTrackOptions = {'audioType': same as subTrackType above, 'index': 1 <= index <= GetTrackCount(trackType))
                                                                          # 'audiotype' defaults to 'mono' if arg skipped and track type is ‘audio’.
                                                                          # 'index' if skipped (or if value not in bounds) appends track.
   DeleteTrack(trackType, trackIndex)              --> Bool               # Deletes track of trackType ("video", "subtitle", "audio") and given trackIndex. 1 <= trackIndex <= GetTrackCount(trackType).
   GetTrackSubType(trackType, trackIndex)          --> string             # Returns an audio track's format.
-                                                                         # the return value is one of {"mono", "stereo", "5.1", "5.1film", "7.1", "7.1film", "adaptive1", ... , "adaptive24"} and matches the parameters 'subTrackType' and 'audioType' in timeline.AddTrack.
+                                                                         # the return value is one of {"mono", "stereo", lrc, lcr, lrcs, lcrs, quad, "5.0", "5.0film", "5.1", "5.1film", "7.0", "7.0film" ,"7.1", "7.1film", "adaptive1", ... , "adaptive36"}
+                                                                         # and matches the parameters 'subTrackType' and 'audioType' in timeline.AddTrack.
                                                                          # returns a blank string for non audio tracks
 
   SetTrackEnable(trackType, trackIndex, Bool)     --> Bool               # Enables/Disables track with given trackType and trackIndex
@@ -338,8 +355,6 @@ Timeline
   DeleteMarkersByColor(color)                     --> Bool               # Deletes all timeline markers of the specified color. An "All" argument is supported and deletes all timeline markers.
   DeleteMarkerAtFrame(frameNum)                   --> Bool               # Deletes the timeline marker at the given frame number.
   DeleteMarkerByCustomData(customData)            --> Bool               # Delete first matching marker with specified customData.
-  ApplyGradeFromDRX(path, gradeMode, item1, item2, ...)--> Bool          # Loads a still from given file path (string) and applies grade to Timeline Items with gradeMode (int): 0 - "No keyframes", 1 - "Source Timecode aligned", 2 - "Start Frames aligned".
-  ApplyGradeFromDRX(path, gradeMode, [items])     --> Bool               # Loads a still from given file path (string) and applies grade to Timeline Items with gradeMode (int): 0 - "No keyframes", 1 - "Source Timecode aligned", 2 - "Start Frames aligned".
   GetCurrentTimecode()                            --> string             # Returns a string timecode representation for the current playhead position, while on Cut, Edit, Color, Fairlight and Deliver pages.
   SetCurrentTimecode(timecode)                    --> Bool               # Sets current playhead position from input timecode for Cut, Edit, Color, Fairlight and Deliver pages.
   GetCurrentVideoItem()                           --> item               # Returns the current video timeline item.
@@ -383,6 +398,11 @@ Timeline
   AnalyzeDolbyVision([timelineItems]=[],          --> Bool               # Analyzes Dolby Vision on clips present on the timeline. Returns True if analysis start is successful; False otherwise.
                      analysisType=NONE)                                  # if [timelineItems] is empty, analysis performed on all items. Else, analysis performed on [timelineItems] only.
                                                                          # set analysisType to resolve.DLB_BLEND_SHOTS for blend setting
+  GetMediaPoolItem()                              --> MediaPoolItem      # Returns the media pool item corresponding to the timeline
+  GetMarkInOut()                                  --> {mark}             # Returns dict of in/out marks set (keys omitted if not set), example:
+                                                                         # {'video': {'in': 0, 'out': 134}, 'audio': {'in': 0, 'out': 134}}
+  SetMarkInOut(in, out, type="all")               --> Bool               # Sets mark in/out of type "video", "audio" or "all" (default).
+  ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
@@ -435,7 +455,6 @@ TimelineItem
   GetStereoConvergenceValues()                    --> {keyframes...}     # Returns a dict (offset -> value) of keyframe offsets and respective convergence values.
   GetStereoLeftFloatingWindowParams()             --> {keyframes...}     # For the LEFT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
   GetStereoRightFloatingWindowParams()            --> {keyframes...}     # For the RIGHT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
-  ApplyArriCdlLut()                               --> Bool               # Applies ARRI CDL and LUT. Returns True if successful, False otherwise.
   SetCDL([CDL map])                               --> Bool               # Keys of map are: "NodeIndex", "Slope", "Offset", "Power", "Saturation", where 1 <= NodeIndex <= total number of nodes.
                                                                          # Example python code - SetCDL({"NodeIndex" : "1", "Slope" : "0.5 0.4 0.2", "Offset" : "0.4 0.3 0.2", "Power" : "0.6 0.7 0.8", "Saturation" : "0.65"})
   AddTake(mediaPoolItem, startFrame, endFrame)    --> Bool               # Adds mediaPoolItem as a new take. Initializes a take selector for the timeline item if needed. By default, the full clip extents is added. startFrame (int) and endFrame (int) are optional arguments used to specify the extents.
@@ -467,13 +486,20 @@ TimelineItem
                                                                            # trackType is one of {"audio", "video", "subtitle"}
                                                                            # 1 <= trackIndex <= Timeline.GetTrackCount(trackType)
   GetSourceAudioChannelMapping()                 --> json formatted string # Returns a string with TimelineItem's audio mapping information. Check 'Audio Mapping' section below for more information.
+  GetIsColorOutputCacheEnabled()                  --> cache_value        # Returns if the cache corresponding to cache_type is enabled
+  GetIsFusionOutputCacheEnabled()                 --> cache_value        # Returns if the cache corresponding to cache_type is enabled (or auto)
+  SetColorOutputCache(cache_value)                --> Bool               # Sets caching to enabled or disabled. Equivalent to clip context menu action 'Render Cache Color Output'.
+  SetFusionOutputCache(cache_value)               --> Bool               # Sets caching to auto, enabled or disabled. Equivalent to clip context menu action 'Render Cache Fusion Output'.
 
 Gallery
-  GetAlbumName(galleryStillAlbum)                 --> string             # Returns the name of the GalleryStillAlbum object 'galleryStillAlbum'.
-  SetAlbumName(galleryStillAlbum, albumName)      --> Bool               # Sets the name of the GalleryStillAlbum object 'galleryStillAlbum' to 'albumName'.
-  GetCurrentStillAlbum()                          --> galleryStillAlbum  # Returns current album as a GalleryStillAlbum object.
-  SetCurrentStillAlbum(galleryStillAlbum)         --> Bool               # Sets current album to GalleryStillAlbum object 'galleryStillAlbum'.
-  GetGalleryStillAlbums()                         --> [galleryStillAlbum] # Returns the gallery albums as a list of GalleryStillAlbum objects.
+  GetAlbumName(galleryStillAlbum)                 --> string              # Returns the name of the GalleryStillAlbum object 'galleryStillAlbum'.
+  SetAlbumName(galleryStillAlbum, albumName)      --> Bool                # Sets the name of the GalleryStillAlbum object 'galleryStillAlbum' to 'albumName'.
+  GetCurrentStillAlbum()                          --> galleryStillAlbum   # Returns current album as a GalleryStillAlbum object.
+  SetCurrentStillAlbum(galleryStillAlbum)         --> Bool                # Sets current album to GalleryStillAlbum object 'galleryStillAlbum'.
+  GetGalleryStillAlbums()                         --> [galleryStillAlbum] # Returns the gallery Still albums as a list of GalleryStillAlbum objects.
+  GetGalleryPowerGradeAlbums()                    --> [galleryStillAlbum] # Returns the gallery PowerGrade albums as a list of GalleryStillAlbum objects.
+  CreateGalleryStillAlbum()                       --> galleryStillAlbum   # Returns a newly created Still album (GalleryStillAlbum object), or None if not successful.
+  CreateGalleryPowerGradeAlbum()                  --> galleryStillAlbum   # Returns a newly created PowerGrade album (GalleryStillAlbum object), or None if not successful.
 
 GalleryStillAlbum
   GetStills()                                     --> [galleryStill]     # Returns the list of GalleryStill objects in the album.
@@ -491,10 +517,15 @@ Graph
                                                                          # The lutPath can be an absolute path, or a relative path (based off custom LUT paths or the master LUT path).
                                                                          # The operation is successful for valid lut paths that Resolve has already discovered (see Project.RefreshLUTList).
   GetLUT(nodeIndex)                               --> String             # Gets relative LUT path based on the node index provided, 1 <= nodeIndex <= total number of nodes.
+  SetNodeCacheMode(nodeIndex, cache_value)        --> Bool               # Sets the cache mode type on the node mapping the node index provided. Refer to "Cache Mode" section below to find the possible values of cache_value.
+  GetNodeCacheMode(nodeIndex)                     --> cache_value        # Returns the cache mode type on the node mapping the node index provided.
   GetNodeLabel(nodeIndex)                         --> string             # Returns the label of the node at nodeIndex.
   GetToolsInNode(nodeIndex)                       --> [toolsList]        # Returns toolsList (list of strings) of the tools used in the node indicated by given nodeIndex (int).
   SetNodeEnabled(nodeIndex, isEnabled)            --> Bool               # Sets the node at the given nodeIndex (int) to isEnabled (bool).
                                                                          # 1 <= nodeIndex <= self.GetNumNodes().
+  ApplyGradeFromDRX(path, gradeMode)              --> Bool               # Loads a still from given file path (string) and applies grade to graph with gradeMode (int): 0 - “No keyframes”, 1 - “Source Timecode aligned”, 2 - “Start Frames aligned”.
+  ApplyArriCdlLut()                               --> Bool               # Applies ARRI CDL and LUT. Returns True if successful, False otherwise.
+  ResetAllGrades()                                --> Bool               # Returns True if all grades were reset successfully, False otherwise.
 
 ColorGroup
   GetName()                                       --> String             # Returns the name (string) of the ColorGroup.
@@ -520,23 +551,58 @@ This section covers additional notes for the functions Resolve.GetKeyframeMode()
 
 Integer values returned by Resolve.GetKeyframeMode() will correspond to the enums above.
 
+Cache Mode information
+-------------------------
+This section covers additional notes for the functions Graph:GetNodeCacheMode(nodeIndex) and Graph:SetNodeCacheMode(nodeIndex, cache_value).
+
+cache_value is an enumerated integer with one of the following values:
+    - resolve.CACHE_AUTO_ENABLED  = -1
+    - resolve.CACHE_DISABLED      =  0
+    - resolve.CACHE_ENABLED       =  1
+
+Integer values returned by Graph:GetNodeCacheMode(nodeIndex) will correspond to the enums above.
+
 Cloud Projects Settings
 --------------------------------------
-This section covers additional notes for the functions "ProjectManager:CreateCloudProject," "ProjectManager:ImportCloudProject," and "ProjectManager:RestoreCloudProject"
+This section covers additional notes for the functions "ProjectManager:LoadCloudProject", "ProjectManager:CreateCloudProject", "ProjectManager:ImportCloudProject", and "ProjectManager:RestoreCloudProject"
 
-All three functions take in a {cloudSettings} dict, that have the following keys:
+All four functions "ProjectManager:CreateCloudProject", "ProjectManager:LoadCloudProject", "ProjectManager:ImportCloudProject", and "ProjectManager:RestoreCloudProject" take in a {cloudSettings} dict, that have the following keys:
 * resolve.CLOUD_SETTING_PROJECT_NAME: String, ["" by default]
 * resolve.CLOUD_SETTING_PROJECT_MEDIA_PATH: String, ["" by default]
 * resolve.CLOUD_SETTING_IS_COLLAB: Bool, [False by default]
 * resolve.CLOUD_SETTING_SYNC_MODE: syncMode (see below), [resolve.CLOUD_SYNC_PROXY_ONLY by default]
 * resolve.CLOUD_SETTING_IS_CAMERA_ACCESS: Bool [False by default]
 
+Note that "ProjectManager:LoadCloudProject" only honour the following keys: resolve.CLOUD_SETTING_PROJECT_NAME, resolve.CLOUD_SETTING_PROJECT_MEDIA_PATH and resolve.CLOUD_SETTING_SYNC_MODE.
+Only 1st load on a given system will honour all 3 settings. Subsequent loads will honour only resolve.CLOUD_SETTING_PROJECT_NAME
+
 Where syncMode is one of the following values:
 * resolve.CLOUD_SYNC_NONE,
 * resolve.CLOUD_SYNC_PROXY_ONLY,
 * resolve.CLOUD_SYNC_PROXY_AND_ORIG
 
-All three "ProjectManager:CreateCloudProject," "ProjectManager:ImportCloudProject," and "ProjectManager:RestoreCloudProject" require resolve.PROJECT_MEDIA_PATH to be defined. "ProjectManager:CreateCloudProject" also requires resolve.PROJECT_NAME to be defined.
+All four functions "ProjectManager:CreateCloudProject", "ProjectManager:LoadCloudProject", "ProjectManager:ImportCloudProject", and "ProjectManager:RestoreCloudProject" require resolve.PROJECT_MEDIA_PATH to be defined. 
+"ProjectManager:LoadCloudProject" and "ProjectManager:CreateCloudProject" also requires resolve.PROJECT_NAME to be defined.
+
+Audio Sync Settings
+---------------------
+This section covers additional notes for the functions "MediaPool:AutoSyncAudio".
+
+AutoSyncAudio takes in a {audioSyncSettings} dict, that has the following keys:
+* resolve.AUDIO_SYNC_MODE:                  audioSyncMode (see below),  [resolve.AUDIO_SYNC_TIMECODE by default]
+* resolve.AUDIO_SYNC_CHANNEL_NUMBER:        channelNumber (see below)   [1 by default]
+* resolve.AUDIO_SYNC_RETAIN_EMBEDDED_AUDIO: Bool,                       [False by default]
+* resolve.AUDIO_SYNC_RETAIN_VIDEO_METADATA: Bool,                       [False by default]
+
+audioSyncMode can be one of the following:
+* resolve.AUDIO_SYNC_WAVEFORM
+* resolve.AUDIO_SYNC_TIMECODE
+
+With AUDIO_SYNC_WAVEFORM mode, channelNumber is used to determine channel offset for comparison.
+channelNumber can be one of the following:
+* resolve.AUDIO_SYNC_CHANNEL_AUTOMATIC    = -1
+* resolve.AUDIO_SYNC_CHANNEL_MIX          = -2
+* an actual channel offset from input media for waveform comparison. 1 <= channel offset <= channelMax, where channelMax is the channel count of the audio clip in [MediaPoolItems] with the fewest channels.
 
 Looking up Project and Clip properties
 --------------------------------------
@@ -612,10 +678,12 @@ mpItem.GetAudioMapping() returns a string of the form:
       "linked_audio": {                             # A list of only linked audio information
         "1": {                                      # Same as (B) above
           "channels": 8,
+          "offset": -100,                           # Audio at media offset 0 plays file_start + 100th sample
           "path": FILE_PATH
         },
         "2": {                                      # Same as (C) above
           "channels": 6,
+          "offset": 200,                            # Audio at media start plays 200 samples of digital black then file_start + 0th audio sample
           "path": FILE_PATH
         }
       },
@@ -652,8 +720,8 @@ The parameter setting is a dictionary containing the following keys:
 
 Note that the default values for some keys may change based on values defined for other keys, as per the UI.
 For example, if the following dictionary is supplied,
-    CreateSubtitlesFromAudio( { resolve.SUBTITLE_LANGUAGE = resolve.AUTO_CAPTION_KOREAN,
-                                resolve.SUBTITLE_CAPTION_PRESET = resolve.AUTO_CAPTION_NETFLIX } )
+    { resolve.SUBTITLE_LANGUAGE = resolve.AUTO_CAPTION_KOREAN,
+      resolve.SUBTITLE_CAPTION_PRESET = resolve.AUTO_CAPTION_NETFLIX }
 the default value for resolve.SUBTITLE_CHARS_PER_LINE will be 16 instead of 42
 
 languageIDs:
@@ -714,6 +782,9 @@ The parameter setting is a dictionary containing the following keys:
     - "MultiPassEncode": Bool. Can only be set for H.264.
     - "AlphaMode": 0 - Premultiplied, 1 - Straight. Can only be set if "ExportAlpha" is true.
     - "NetworkOptimization": Bool. Only supported by QuickTime and MP4 formats.
+    - "ClipStartFrame": int
+    - "TimelineStartTimecode": string (example: "01:00:00:00")
+    - "ReplaceExistingFilesInPlace": Bool
 
 Looking up timeline export properties
 -------------------------------------

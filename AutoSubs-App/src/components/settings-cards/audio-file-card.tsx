@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, CircleCheckBig, FileCheck, FileCheck2, FileUp, Paperclip, Upload } from "lucide-react"
+import { FileUp, Upload } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { open } from '@tauri-apps/plugin-dialog'
@@ -56,8 +56,8 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
           <FileUp className="h-5 w-5 text-red-500" />
         </div>
         <div>
-          <p className="text-sm font-medium">Audio File</p>
-          <p className="text-xs text-muted-foreground">Generate subtitles from an audio or video file</p>
+          <p className="text-sm font-medium">Transcribe File</p>
+          <p className="text-xs text-muted-foreground">Generate subtitles for any audio or video file</p>
         </div>
       </div>
       {/* Drag and Drop Area */}
@@ -71,9 +71,8 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
       >
         <Upload className="h-7 w-7 mb-1 text-muted-foreground" />
         <span className="text-sm font-medium text-muted-foreground">Drop file here or click to select</span>
-        <span className="text-xs text-muted-foreground mt-1">Supports most formats</span>
+        <span className="text-xs text-muted-foreground mt-1">Supports most media formats</span>
       </div>
-      {/* Old button removed, replaced by dropzone */}
 
       {selectedFile && (
         <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-muted/40 rounded-lg">
