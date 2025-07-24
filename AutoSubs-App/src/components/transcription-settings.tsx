@@ -10,14 +10,13 @@ import {
     XCircle,
     RefreshCcw,
     History,
-    Film,
-    Cable
+    Cable,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -410,15 +409,12 @@ export function TranscriptionSettings({
                         ) : (
                             <div className="space-y-3">
                                 <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-slate-100 dark:bg-slate-900">
-                                    <div className={`ml-1 rounded ${
-                                        !timelineInfo || !timelineInfo.timelineId 
-                                            ? 'dark:bg-red-900/20 text-red-500 dark:text-red-500' 
-                                            : 'dark:bg-green-900/20 text-green-500 dark:text-green-500'
-                                    }`}>
-                                        <Cable className="h-4 w-4" />
-                                    </div>
+                                    <Cable className={`ml-1 h-4 w-4 ${!timelineInfo || !timelineInfo.timelineId
+                                        ? 'text-red-500 dark:text-red-500'
+                                        : 'text-green-500 dark:text-green-500'
+                                        }`} />
                                     <div className="flex-1">
-                                        <div className="text-xs font-medium font-mono text-foreground truncate">
+                                        <div className="text-xs font-medium font-mono truncate dark:text-gray-300 text-gray-700">
                                             {!timelineInfo || !timelineInfo.timelineId ? 'Open a timeline in Resolve.' : timelineInfo.name}
                                         </div>
                                     </div>
@@ -536,11 +532,13 @@ export function TranscriptionSettings({
                         <CollapsibleContent>
                             <TextFormattingCard
                                 maxWords={settings.maxWords}
+                                numLines={settings.numLines}
                                 textFormat={settings.textFormat}
                                 removePunctuation={settings.removePunctuation}
                                 enableCensor={settings.enableCensor}
                                 censorWords={settings.censorWords}
                                 onMaxWordsChange={(value) => updateSetting("maxWords", value)}
+                                onNumLinesChange={(value) => updateSetting("numLines", value)}
                                 onTextFormatChange={(format) => updateSetting("textFormat", format)}
                                 onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
                                 onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
@@ -557,7 +555,7 @@ export function TranscriptionSettings({
                             </h3>
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-3.5">
                             <div className="grid grid-cols-2 gap-3">
                                 <Button
                                     variant="outline"
@@ -612,8 +610,17 @@ export function TranscriptionSettings({
                                     </div>
                                 </a>
                             </Button>
-                            <Button size="default" className="w-full bg-slate-200 text-black hover:bg-slate-800 hover:text-white dark:bg-slate-800 dark:text-white dark:hover:bg-slate-200 dark:hover:text-black" asChild>
-                                <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
+                            <Button
+                                size="default"
+                                className="w-full bg-[#24292f] text-white hover:bg-[#57606a] hover:text-white dark:bg-[#161b22] dark:text-[#e6edf3] dark:hover:bg-[#24292f] dark:hover:text-white border border-[#24292f] dark:border-[#30363d] shadow-sm"
+                                asChild
+                            >
+                                <a
+                                    href="https://github.com/tmoroney/auto-subs"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center w-full h-full"
+                                >
                                     <Github className="h-4 w-4 mr-2" />
                                     Source Code
                                 </a>

@@ -85,6 +85,7 @@ export interface Settings {
     // Text settings
     maxWords: number,
     maxChars: number,
+    numLines: number,
     textFormat: "none" | "uppercase" | "lowercase";
     removePunctuation: boolean,
     enableCensor: boolean,

@@ -13,7 +13,18 @@ interface WordData {
     probability?: number;
 }
 import { Button } from "@/components/ui/button"
-import { Edit2, XCircle as XCircleIcon, Users, Palette, User } from "lucide-react"
+import { Pencil, XCircle as XCircleIcon } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -72,6 +83,128 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
                 <XCircleIcon className="w-full h-full" />
             </button>
         </div>
+    );
+};
+
+// --- Speaker Edit Dialog ---
+interface SpeakerEditDialogProps {
+    caption: Caption;
+    allCaptions: Caption[];
+    onUpdateCaption: (updatedCaption: Caption) => void;
+    onUpdateAllSpeakers: (oldSpeakerName: string, newSpeakerName: string, outlineColor: string, fillColor: string) => void;
+}
+
+const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
+    caption,
+    onUpdateCaption,
+    onUpdateAllSpeakers
+}) => {
+    const [open, setOpen] = useState(false);
+    const [speakerName, setSpeakerName] = useState(caption.speaker || '');
+    const [outlineColor, setOutlineColor] = useState('#ffffff');
+    const [fillColor, setFillColor] = useState('#000000');
+
+    const handleApplyToThisCaption = () => {
+        // Ensure we preserve all original data including words array
+        const updatedCaption = {
+            ...caption,
+            speaker: speakerName,
+            outlineColor,
+            fillColor
+            // The words array should already be in the caption object
+        };
+        onUpdateCaption(updatedCaption);
+        setOpen(false);
+    };
+
+    const handleApplyToAllSpeakers = () => {
+        onUpdateAllSpeakers(caption.speaker || '', speakerName, outlineColor, fillColor);
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button
+                    variant="outline"
+                    className="ml-auto text-xs p-2 h-6"
+                >
+                    {caption.speaker}
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Speaker</DialogTitle>
+                    <DialogDescription>
+                        Modify speaker details and colors
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="speaker-name" className="text-right">
+                            Speaker Name
+                        </Label>
+                        <Input
+                            id="speaker-name"
+                            value={speakerName}
+                            onChange={(e) => setSpeakerName(e.target.value)}
+                            className="col-span-2"
+                        />
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="outline-color" className="text-right">
+                            Outline Color
+                        </Label>
+                        <div className="col-span-2 flex items-center gap-2">
+                            <Input
+                                id="outline-color"
+                                type="color"
+                                value={outlineColor}
+                                onChange={(e) => setOutlineColor(e.target.value)}
+                                className="w-12 h-10 p-1"
+                            />
+                            <Input
+                                value={outlineColor}
+                                onChange={(e) => setOutlineColor(e.target.value)}
+                                placeholder="#ffffff"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="fill-color" className="text-right">
+                            Fill Color
+                        </Label>
+                        <div className="col-span-2 flex items-center gap-2">
+                            <Input
+                                id="fill-color"
+                                type="color"
+                                value={fillColor}
+                                onChange={(e) => setFillColor(e.target.value)}
+                                className="w-12 h-10 p-1"
+                            />
+                            <Input
+                                value={fillColor}
+                                onChange={(e) => setFillColor(e.target.value)}
+                                placeholder="#000000"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleApplyToThisCaption}
+                    >
+                        Apply to This Caption
+                    </Button>
+                    <Button
+                        onClick={handleApplyToAllSpeakers}
+                    >
+                        Apply to All "{caption.speaker}" Speakers
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
@@ -213,13 +346,6 @@ interface CaptionListProps {
 }
 
 import {
-    Dialog,
-    DialogTrigger,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
 
@@ -260,6 +386,45 @@ function CaptionListComponent({
         }
     }, [onEditCaption]);
 
+    // Handle updating all speakers with the same name
+    const handleSaveAllSpeakers = React.useCallback(async (oldSpeakerName: string, newSpeakerName: string, outlineColor: string, fillColor: string) => {
+        console.log('handleSaveAllSpeakers called:', { oldSpeakerName, newSpeakerName, outlineColor, fillColor });
+
+        if (onEditCaption) {
+            // Create updated captions for all speakers with the same name
+            const updatedCaptions = captions.map(caption => {
+                if (caption.speaker === oldSpeakerName) {
+                    return {
+                        ...caption,
+                        speaker: newSpeakerName,
+                        outlineColor,
+                        fillColor
+                        // Preserve existing words array - it should already be there
+                    };
+                }
+                return caption;
+            });
+
+            // For each updated caption, trigger the edit handler
+            // The GlobalContext will handle the actual file saving
+            const changedCaptions = updatedCaptions.filter(caption => 
+                caption.speaker === newSpeakerName && 
+                caption.speaker !== oldSpeakerName
+            );
+
+            // Process each caption sequentially
+            for (const caption of changedCaptions) {
+                try {
+                    (onEditCaption as (caption: Caption) => void)(caption);
+                    // Small delay to prevent race conditions
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                } catch (e) {
+                    console.error('Failed to update caption:', e);
+                }
+            }
+        }
+    }, [onEditCaption, captions]);
+
     if (isLoading) {
         return <div className="p-4 text-center text-muted-foreground">Loading captions...</div>;
     }
@@ -296,13 +461,12 @@ function CaptionListComponent({
                             {caption.timestamp}
                         </span>
                         {caption.speaker && caption.color ? (
-                            <Button
-                                variant="secondary"
-                                className="ml-auto text-xs p-2 h-6"
-                            >
-                                <User className="mr-1 h-3.5 w-3.5" />
-                                Speaker {caption.speaker}
-                            </Button>
+                            <SpeakerEditDialog
+                                caption={caption}
+                                allCaptions={captions}
+                                onUpdateCaption={handleSave}
+                                onUpdateAllSpeakers={handleSaveAllSpeakers}
+                            />
                         ) : null}
 
                     </div>
@@ -324,7 +488,7 @@ function CaptionListComponent({
                                             variant="outline"
                                             className="h-8 w-8 rounded-full shadow-md bg-background hover:bg-background/50"
                                         >
-                                            <Edit2 className="h-4 w-4" />
+                                            <Pencil className="h-4 w-4" />
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-h-[90vh] overflow-y-auto">

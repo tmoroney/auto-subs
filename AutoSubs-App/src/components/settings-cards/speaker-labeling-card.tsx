@@ -1,4 +1,4 @@
-import { Speech, Info } from "lucide-react"
+import { Speech, Info, TriangleAlert, ShieldAlert } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -62,14 +62,14 @@ export const SpeakerLabelingCard = ({
                     <button
                       type="button"
                       tabIndex={0}
-                      className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
+                      className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 dark:text-slate-300"
                     >
-                      <Info className="h-4 w-4" />
+                      <ShieldAlert className="h-4 w-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" align="center" className="w-[220px] p-3">
                     <p className="text-xs text-left text-slate-700 dark:text-slate-200">
-                      May hallucinate non-existent speakers, so specifying the exact number of speakers can give better results.
+                      It is recommended to specify the maximum number of speakers to get better results.
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -82,7 +82,7 @@ export const SpeakerLabelingCard = ({
             {maxSpeakers > 0 && (
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-3">
-                  <Label className="text-sm font-normal">No. of Speakers</Label>
+                  <Label className="text-sm font-normal">Max Speakers</Label>
                 </div>
                 <Input
                   type="number"

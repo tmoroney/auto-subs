@@ -1,4 +1,4 @@
-import { Tally5, AArrowUp, Signature, ShieldX, Trash2 } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, Trash2, WholeWord, WrapText } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils"
 
 interface TextFormattingCardProps {
   maxWords: number
+  numLines: number
   textFormat: "none" | "uppercase" | "lowercase"
   removePunctuation: boolean
   enableCensor: boolean
   censorWords: string[]
   onMaxWordsChange: (value: number) => void
+  onNumLinesChange: (value: number) => void
   onTextFormatChange: (format: "none" | "uppercase" | "lowercase") => void
   onRemovePunctuationChange: (checked: boolean) => void
   onEnableCensorChange: (checked: boolean) => void
@@ -20,11 +22,13 @@ interface TextFormattingCardProps {
 
 export const TextFormattingCard = ({
   maxWords,
+  numLines,
   textFormat,
   removePunctuation,
   enableCensor,
   censorWords,
   onMaxWordsChange,
+  onNumLinesChange,
   onTextFormatChange,
   onRemovePunctuationChange,
   onEnableCensorChange,
@@ -36,11 +40,11 @@ export const TextFormattingCard = ({
       <div className="flex items-center justify-between p-3.5 border rounded-lg">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-            <Tally5 className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+            <WholeWord className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
           </div>
           <div>
             <p className="text-sm font-medium">Max Words</p>
-            <p className="text-xs text-muted-foreground">Number of words per line</p>
+            <p className="text-xs text-muted-foreground">Words per line</p>
           </div>
         </div>
         <Input
@@ -48,6 +52,26 @@ export const TextFormattingCard = ({
           min="1"
           value={maxWords}
           onChange={(e) => onMaxWordsChange(Number(e.target.value))}
+          className="w-20"
+        />
+      </div>
+
+      {/* Number of lines */}
+      <div className="flex items-center justify-between p-3.5 border rounded-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+            <WrapText className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Number of Lines</p>
+            <p className="text-xs text-muted-foreground">Lines per subtitle</p>
+          </div>
+        </div>
+        <Input
+          type="number"
+          min="1"
+          value={numLines}
+          onChange={(e) => onNumLinesChange(Number(e.target.value))}
           className="w-20"
         />
       </div>

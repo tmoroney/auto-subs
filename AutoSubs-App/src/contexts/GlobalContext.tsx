@@ -1,18 +1,16 @@
 import { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 
 // Import the required APIs from Tauri
-import { exit } from '@tauri-apps/plugin-process';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { join, downloadDir } from '@tauri-apps/api/path';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo, closeResolveLink } from '@/api/resolveAPI';
+import { jumpToTime, getTimelineInfo } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -62,6 +60,7 @@ const DEFAULT_SETTINGS: Settings = {
   // Text settings
   maxWords: 5,
   maxChars: 25,
+  numLines: 1,
   textFormat: "none",
   removePunctuation: false,
   enableCensor: false,
@@ -458,7 +457,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       const { updateCaptionInTranscript } = await import('@/utils/fileUtils');
 
       // Determine the current transcript filename
-      // For now, we'll try to determine this from the timeline info or use a fallback
       let filename: string | null = null;
 
       if (timelineInfo?.timelineId) {
@@ -466,9 +464,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         filename = `${timelineInfo.timelineId}.json`;
       } else {
         // In standalone mode, we need to find the most recent transcript
-        // For now, we'll log this and skip file saving
-        console.log('Cannot determine transcript filename for caption update');
-        return;
+        const currentFilename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+        filename = currentFilename;
       }
 
       if (filename) {
