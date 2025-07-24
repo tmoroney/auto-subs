@@ -674,7 +674,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
         templateName = templates[1].value
     end
 
-    local text_clip = GetTemplateItem(rootFolder, templateName)
+    local templateItem = GetTemplateItem(rootFolder, templateName)
 
     -- convert speakers to dictionary
     local speakersExist = false
@@ -691,17 +691,13 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
     -- If within 1 second, join the subtitles
     local clipList = {}
-    local joinThreshold = frame_rate
-    --local subtitlesCount = #subtitles
-
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])
         local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
-
-        local duration = end_frame - start_frame
+        local duration = ((end_frame - start_frame) / frame_rate) * templateItem:GetClipProperty()["FPS"]
         local newClip = {
-            mediaPoolItem = text_clip,
+            mediaPoolItem = templateItem,
             mediaType = 1,
             startFrame = 0,
             endFrame = duration,
@@ -711,6 +707,19 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
         table.insert(clipList, newClip)
     end
+
+    -- TODO: Fix this to scale the duration of the clip to the template FPS
+    -- Join subtitles if within 1 second
+    -- local joinThreshold = frame_rate
+    -- for i, clip in ipairs(clipList) do
+    --     if i < #clipList then
+    --         local nextStart = clipList[i + 1]["recordFrame"]
+    --         local framesBetween = nextStart - (clip["recordFrame"] + clip["endFrame"])
+    --         if (framesBetween < joinThreshold) then
+    --             clip["endFrame"] = ((nextStart - clip["recordFrame"]) / frame_rate) * templateItem:GetClipProperty()["FPS"]
+    --         end
+    --     end
+    -- end
 
     local timelineItems = mediaPool:AppendToTimeline(clipList)
 
@@ -782,7 +791,7 @@ end)
 if not success then
     os.execute([[
         curl --request POST \
-            --url http://localhost:55010/ \
+            --url http://localhost:56002/ \
             --header 'Content-Type: application/json' \
             --header 'content-type: application/json' \
             --data '{
