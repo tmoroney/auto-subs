@@ -92,7 +92,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup className="px-0">
           <SidebarGroupContent>
             <div className="h-full overflow-y-auto">
               <CaptionList 
@@ -102,7 +101,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               />
             </div>
           </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   )

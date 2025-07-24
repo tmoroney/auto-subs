@@ -9,7 +9,9 @@ import {
     HelpCircle,
     XCircle,
     RefreshCcw,
-    ListRestart
+    History,
+    Film,
+    Cable
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -32,6 +34,7 @@ import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 import { exportAudio, addSubtitlesToTimeline, getExportProgress, cancelExport } from "@/api/resolveAPI"
+import { Card } from "./ui/card"
 
 interface TranscriptionSettingsProps {
     isStandaloneMode: boolean
@@ -53,6 +56,7 @@ export function TranscriptionSettings({
     const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
     const [isExporting, setIsExporting] = React.useState(false)
     const [exportProgress, setExportProgress] = React.useState(0)
+    const [isRefreshing, setIsRefreshing] = React.useState(false)
     // Ref to track cancellation requests - allows interrupting polling loops
     const cancelRequestedRef = React.useRef(false)
     const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
@@ -373,7 +377,7 @@ export function TranscriptionSettings({
                     )}
 
                     {/* File Source / DaVinci Resolve */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
                                 {!isStandaloneMode && (
@@ -388,52 +392,78 @@ export function TranscriptionSettings({
                             </h3>
                             {!isStandaloneMode && (
                                 <div className="flex items-center gap-2">
-                                    <div
-                                        className={`w-2 h-2 rounded-full flex-shrink-0 ${!timelineInfo || !timelineInfo.timelineId ? 'bg-red-500' : 'bg-green-500'}`}
-                                        title={!timelineInfo || !timelineInfo.timelineId ? "Disconnected" : "Connected"}
-                                    />
-                                    <span
-                                        className="text-xs font-medium text-muted-foreground truncate max-w-[120px]"
-                                        title={!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : timelineInfo.name || 'Current Timeline'}
-                                    >
-                                        {!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : timelineInfo.name || 'Current Timeline'}
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${!timelineInfo || !timelineInfo.timelineId ? 'bg-red-500' : 'bg-green-500'}`} />
+                                    <span className="text-xs font-medium text-muted-foreground truncate max-w-[120px]">
+                                        {!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : 'Connected'}
                                     </span>
                                 </div>
                             )}
-                            <div className="flex-1 h-px bg-border ml-4"></div>
+                            <div className="flex-1 h-px bg-border ml-1"></div>
                         </div>
-                        <div className="space-y-4">
-                            {isStandaloneMode ? (
-                                <div>
-                                    <AudioFileCard
-                                        selectedFile={fileInput}
-                                        onFileSelect={(file) => setFileInput(file)}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <AudioInputCard
-                                        selectedTracks={settings.selectedInputTracks}
-                                        inputTracks={timelineInfo?.inputTracks || []}
-                                        onTracksChange={(tracks) => {
-                                            updateSetting("selectedInputTracks", tracks)
-                                        }}
-                                    />
-                                    <CaptionSettingsCard
-                                        selectedTemplate={settings.selectedTemplate}
-                                        onTemplateChange={(template) => {
-                                            updateSetting("selectedTemplate", template)
-                                        }}
-                                        outputTracks={timelineInfo?.outputTracks || []}
-                                        templates={timelineInfo?.templates || []}
-                                        selectedOutputTrack={settings.selectedOutputTrack}
-                                        onOutputTrackChange={(track) => {
-                                            updateSetting("selectedOutputTrack", track)
-                                        }}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                        {isStandaloneMode ? (
+                            <div>
+                                <AudioFileCard
+                                    selectedFile={fileInput}
+                                    onFileSelect={(file) => setFileInput(file)}
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-slate-100 dark:bg-slate-900">
+                                    <div className={`ml-1 rounded ${
+                                        !timelineInfo || !timelineInfo.timelineId 
+                                            ? 'dark:bg-red-900/20 text-red-500 dark:text-red-500' 
+                                            : 'dark:bg-green-900/20 text-green-500 dark:text-green-500'
+                                    }`}>
+                                        <Cable className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-xs font-medium font-mono text-foreground truncate">
+                                            {!timelineInfo || !timelineInfo.timelineId ? 'Open a timeline in Resolve.' : timelineInfo.name}
+                                        </div>
+                                    </div>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                onClick={async () => {
+                                                    setIsRefreshing(true);
+                                                    await refresh();
+                                                    setTimeout(() => setIsRefreshing(false), 400);
+                                                }}
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0"
+                                                disabled={isRefreshing}
+                                            >
+                                                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="text-xs">
+                                            Refresh
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </Card>
+                                <AudioInputCard
+                                    selectedTracks={settings.selectedInputTracks}
+                                    inputTracks={timelineInfo?.inputTracks || []}
+                                    onTracksChange={(tracks) => {
+                                        updateSetting("selectedInputTracks", tracks)
+                                    }}
+                                />
+                                <CaptionSettingsCard
+                                    selectedTemplate={settings.selectedTemplate}
+                                    onTemplateChange={(template) => {
+                                        updateSetting("selectedTemplate", template)
+                                    }}
+                                    outputTracks={timelineInfo?.outputTracks || []}
+                                    templates={timelineInfo?.templates || []}
+                                    selectedOutputTrack={settings.selectedOutputTrack}
+                                    onOutputTrackChange={(track) => {
+                                        updateSetting("selectedOutputTrack", track)
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
 
 
@@ -538,15 +568,14 @@ export function TranscriptionSettings({
                                     Tutorial
                                 </Button>
                                 <Button variant="outline" size="default" onClick={resetSettings}>
-                                    <ListRestart className="h-4 w-4 mr-2" />
+                                    <History className="h-4 w-4 mr-2" />
                                     Reset Settings
                                 </Button>
                             </div>
                             <Button
                                 asChild
-                                variant="secondary"
-                                size="default"
-                                className="w-full text-pink-500 dark:text-pink-400 transition-colors bg-pink-50 dark:bg-pink-950/50 relative overflow-hidden group"
+                                variant="outline"
+                                className="w-full text-pink-500 border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-colors relative overflow-hidden group"
                             >
                                 <a
                                     href="https://buymeacoffee.com/tmoroney"
@@ -554,7 +583,7 @@ export function TranscriptionSettings({
                                     rel="noopener noreferrer"
                                     className="flex items-center w-full h-full"
                                 >
-                                    <Heart className="h-4 w-4 mr-2 fill-pink-50 dark:fill-pink-950 dark:group-hover:fill-pink-400 group-hover:fill-pink-500 transition-all" />
+                                    <Heart className="h-4 w-4 mr-2 group-hover:fill-pink-500 fill-background text-pink-500 transition-colors" />
                                     <span>Support AutoSubs</span>
 
                                     {/* Bursting hearts animation */}
@@ -583,14 +612,12 @@ export function TranscriptionSettings({
                                     </div>
                                 </a>
                             </Button>
-                            <Button variant="secondary" size="default" className="w-full" asChild>
+                            <Button size="default" className="w-full bg-slate-200 text-black hover:bg-slate-800 hover:text-white dark:bg-slate-800 dark:text-white dark:hover:bg-slate-200 dark:hover:text-black" asChild>
                                 <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
                                     <Github className="h-4 w-4 mr-2" />
-                                    Source
+                                    Source Code
                                 </a>
                             </Button>
-
-
                         </div>
                     </div>
                 </div>
@@ -654,7 +681,7 @@ export function TranscriptionSettings({
                             {isExporting ? "Exporting Audio..." : isTranscribing ? "Processing..." : "Start Transcription"}
                         </Button>
 
-                        {(isTranscribing || isExporting) ? (
+                        {(isTranscribing || isExporting) && (
                             <Button
                                 onClick={handleCancelTranscription}
                                 variant="destructive"
@@ -662,15 +689,6 @@ export function TranscriptionSettings({
                                 className="px-3"
                             >
                                 <XCircle className="h-4 w-4" />
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={refresh}
-                                variant="outline"
-                                size="lg"
-                                className="px-3"
-                            >
-                                <RefreshCcw className="h-4 w-4" />
                             </Button>
                         )}
                     </div>

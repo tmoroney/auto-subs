@@ -149,7 +149,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
           <CaptionList
             captions={filteredCaptions}
             onEditCaption={handleEditCaption}
-            itemClassName="hover:bg-sidebar-accent rounded-lg p-3 transition-colors"
+            itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
             showEditOnHover={false}
           />
         ) : (

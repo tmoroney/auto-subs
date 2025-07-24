@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Film, Check, ChevronsUpDown } from "lucide-react"
+import { Captions, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -41,7 +41,7 @@ export const CaptionSettingsCard = ({
       <div className="space-y-3.5">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-            <Film className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <Captions className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Caption Settings</p>

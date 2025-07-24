@@ -13,7 +13,7 @@ interface WordData {
     probability?: number;
 }
 import { Button } from "@/components/ui/button"
-import { Edit2, XCircle as XCircleIcon } from "lucide-react"
+import { Edit2, XCircle as XCircleIcon, Users, Palette, User } from "lucide-react"
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -84,9 +84,9 @@ interface CaptionEditorProps {
     onStateChange?: (words: WordData[], text: string) => void;
 }
 
-const CaptionEditor = ({ 
-    segment, 
-    onSave, 
+const CaptionEditor = ({
+    segment,
+    onSave,
     onCancel,
     hideButtons = false,
     onStateChange
@@ -119,11 +119,11 @@ const CaptionEditor = ({
                 }
                 return word;
             });
-            
+
             // Notify parent of state change
             const newText = newWords.map(w => w.word).join(' ');
             onStateChange?.(newWords, newText);
-            
+
             return newWords;
         });
     };
@@ -133,7 +133,7 @@ const CaptionEditor = ({
             const newWords = [...prevWords];
             const wordToRemove = newWords[wordIndex];
             newWords.splice(wordIndex, 1);
-            
+
             // Update the timing of adjacent words if needed
             if (newWords.length > 0) {
                 if (wordIndex > 0) {
@@ -150,17 +150,17 @@ const CaptionEditor = ({
                     };
                 }
             }
-            
+
             // Notify parent of state change
             const newText = newWords.map(w => w.word).join(' ');
             onStateChange?.(newWords, newText);
-            
+
             return newWords;
         });
     };
 
     const handleSave = () => {
-        const updatedCaption = { 
+        const updatedCaption = {
             ...segment,
             words: [...words],
             text: words.map(w => w.word).join(' ')
@@ -247,7 +247,7 @@ function CaptionListComponent({
     // Handle caption save
     const handleSave = React.useCallback((updatedSegment: Caption) => {
         console.log('handleSave called with:', updatedSegment);
-        
+
         if (onEditCaption) {
             try {
                 // Call the parent's edit handler with the updated caption
@@ -277,7 +277,7 @@ function CaptionListComponent({
             {captions.map((caption) => (
                 <div
                     key={caption.id}
-                    className={`relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 ${itemClassName}`}
+                    className={`relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                     onMouseEnter={(e) => {
                         if (!showEditOnHover) return;
                         const target = e.currentTarget;
@@ -292,19 +292,24 @@ function CaptionListComponent({
                     }}
                 >
                     <div className="flex w-full items-center gap-2">
-                        {caption.speaker && caption.color ? (
-                            <span className={`font-medium text-xs text-${caption.color}`}>
-                                Speaker {caption.speaker}
-                            </span>
-                        ) : null}
-                        <span className={`text-xs text-muted-foreground font-mono ${caption.speaker && caption.color ? 'ml-auto' : ''}`}>
+                        <span className={`text-xs text-muted-foreground font-mono`}>
                             {caption.timestamp}
                         </span>
+                        {caption.speaker && caption.color ? (
+                            <Button
+                                variant="secondary"
+                                className="ml-auto text-xs p-2 h-6"
+                            >
+                                <User className="mr-1 h-3.5 w-3.5" />
+                                Speaker {caption.speaker}
+                            </Button>
+                        ) : null}
+
                     </div>
                     <div className="relative w-full pr-8">
                         <span className="text-foreground leading-relaxed">{caption.text}</span>
                         {onEditCaption && (
-                            <div 
+                            <div
                                 className={`absolute -right-2 -bottom-2 transition-opacity edit-button ${!showEditOnHover ? 'opacity-100' : 'opacity-0'}`}
                                 style={!showEditOnHover ? { pointerEvents: 'auto' } : { pointerEvents: 'auto' }}
                             >
@@ -322,102 +327,102 @@ function CaptionListComponent({
                                             <Edit2 className="h-4 w-4" />
                                         </Button>
                                     </DialogTrigger>
-                                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                        <DialogTitle>Edit Caption</DialogTitle>
-                                        <DialogDescription>
-                                            Edit the caption text by modifying the words below
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                        <CaptionEditor
-                                            segment={{
-                                                ...caption,
-                                                words: (() => {
-                                                    const initialWords = ('words' in caption && Array.isArray((caption as any).words)) 
-                                                        ? (caption as any).words 
-                                                        : caption.text.split(/\s+/).filter(Boolean).map(word => ({
-                                                            word,
-                                                            start: 0,
-                                                            end: 0,
-                                                            probability: 1
-                                                        }));
-                                                    
-                                                    // Initialize the ref with the initial state
-                                                    editorStateRef.current = {
-                                                        words: initialWords,
-                                                        text: caption.text
-                                                    };
-                                                    
-                                                    return initialWords;
-                                                })()
-                                            }}
-                                            onSave={handleSave}
-                                            onStateChange={(words, text) => {
-                                                // Update the ref whenever the editor state changes
-                                                editorStateRef.current = { words, text };
-                                            }}
-                                            onCancel={() => {}}
-                                            hideButtons={true}
-                                        />
-                                        <DialogFooter>
-                                            <DialogClose asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    type="button"
-                                                    size="sm"
-                                                    className="text-sm mt-2 sm:mt-0"
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            </DialogClose>
-                                            <DialogClose asChild>
-                                                <Button
-                                                    variant="default"
-                                                    type="button"
-                                                    size="sm"
-                                                    className="text-sm"
-                                                    onClick={() => {
-                                                        // Get the current state from the editor ref or fallback to current caption
-                                                        let words: any[] = [];
-                                                        let text = '';
-                                                        
-                                                        if (editorStateRef.current) {
-                                                            words = editorStateRef.current.words;
-                                                            text = editorStateRef.current.text;
-                                                        } else {
-                                                            // Fallback to current caption
-                                                            words = ('words' in caption && Array.isArray((caption as any).words)) 
-                                                                ? (caption as any).words 
-                                                                : caption.text.split(/\s+/).filter(Boolean).map(word => ({
-                                                                    word,
-                                                                    start: 0,
-                                                                    end: 0,
-                                                                    probability: 1
-                                                                }));
-                                                            text = caption.text;
-                                                        }
-                                                        
-                                                        console.log('Saving caption with words:', words, 'text:', text);
-                                                        
-                                                        handleSave({
-                                                            ...caption,
-                                                            words,
-                                                            text
-                                                        });
-                                                        
-                                                        // Clear the ref after saving
-                                                        editorStateRef.current = null;
-                                                    }}
-                                                >
-                                                    Save Changes
-                                                </Button>
-                                            </DialogClose>
-                                        </DialogFooter>
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
+                                    <DialogContent className="max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle>Edit Caption</DialogTitle>
+                                            <DialogDescription>
+                                                Edit the caption text by modifying the words below
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                            <CaptionEditor
+                                                segment={{
+                                                    ...caption,
+                                                    words: (() => {
+                                                        const initialWords = ('words' in caption && Array.isArray((caption as any).words))
+                                                            ? (caption as any).words
+                                                            : caption.text.split(/\s+/).filter(Boolean).map(word => ({
+                                                                word,
+                                                                start: 0,
+                                                                end: 0,
+                                                                probability: 1
+                                                            }));
+
+                                                        // Initialize the ref with the initial state
+                                                        editorStateRef.current = {
+                                                            words: initialWords,
+                                                            text: caption.text
+                                                        };
+
+                                                        return initialWords;
+                                                    })()
+                                                }}
+                                                onSave={handleSave}
+                                                onStateChange={(words, text) => {
+                                                    // Update the ref whenever the editor state changes
+                                                    editorStateRef.current = { words, text };
+                                                }}
+                                                onCancel={() => { }}
+                                                hideButtons={true}
+                                            />
+                                            <DialogFooter>
+                                                <DialogClose asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        type="button"
+                                                        size="sm"
+                                                        className="text-sm mt-2 sm:mt-0"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </DialogClose>
+                                                <DialogClose asChild>
+                                                    <Button
+                                                        variant="default"
+                                                        type="button"
+                                                        size="sm"
+                                                        className="text-sm"
+                                                        onClick={() => {
+                                                            // Get the current state from the editor ref or fallback to current caption
+                                                            let words: any[] = [];
+                                                            let text = '';
+
+                                                            if (editorStateRef.current) {
+                                                                words = editorStateRef.current.words;
+                                                                text = editorStateRef.current.text;
+                                                            } else {
+                                                                // Fallback to current caption
+                                                                words = ('words' in caption && Array.isArray((caption as any).words))
+                                                                    ? (caption as any).words
+                                                                    : caption.text.split(/\s+/).filter(Boolean).map(word => ({
+                                                                        word,
+                                                                        start: 0,
+                                                                        end: 0,
+                                                                        probability: 1
+                                                                    }));
+                                                                text = caption.text;
+                                                            }
+
+                                                            console.log('Saving caption with words:', words, 'text:', text);
+
+                                                            handleSave({
+                                                                ...caption,
+                                                                words,
+                                                                text
+                                                            });
+
+                                                            // Clear the ref after saving
+                                                            editorStateRef.current = null;
+                                                        }}
+                                                    >
+                                                        Save Changes
+                                                    </Button>
+                                                </DialogClose>
+                                            </DialogFooter>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
                         )}
                     </div>
                 </div>
