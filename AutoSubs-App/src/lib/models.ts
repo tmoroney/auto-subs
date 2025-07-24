@@ -48,7 +48,7 @@ export const models: Model[] = [
   },
   {
     value: "large-v3-turbo",
-    label: "Large-Turbo",
+    label: "Large (Turbo)",
     description: "Reborn Speed",
     size: "1.6GB",
     ram: "6GB",

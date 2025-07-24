@@ -36,7 +36,6 @@ interface GlobalContextType {
   updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
-  populateSubtitles: (timelineId: string) => Promise<void>;
   updateSubtitles: (subtitles: Subtitle[]) => void;
   updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
   exportSubtitles: () => Promise<void>;
@@ -116,8 +115,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         if (info && info.timelineId) {
           console.log('Timeline info received:', info);
           setTimelineInfo(info);
-          console.log('Populating subtitles for timeline:', info.timelineId);
-          await populateSubtitles(info.timelineId);
         }
       } catch (error) {
         console.error('Error initializing timeline:', error);
@@ -236,13 +233,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     loadSubtitles();
   }, [timelineInfo.timelineId, isStandaloneMode]);
-
-  async function populateSubtitles(newTimelineId: string) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Setting timelineId to:", newTimelineId);
-    }
-    setTimelineInfo(prev => ({ ...prev, timelineId: newTimelineId }));
-  }
 
   async function exportSubtitles() {
     try {
@@ -429,8 +419,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   async function refresh() {
     try {
-      setTimelineInfo(await getTimelineInfo());
-      await populateSubtitles(timelineInfo.timelineId);
+      let newTimelineInfo = await getTimelineInfo();
+      setTimelineInfo(newTimelineInfo);
     } catch (error) {
       setError({
         title: "Failed to get current timeline",
@@ -510,7 +500,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       setSpeakers,
       updateSpeaker,
       refresh,
-      populateSubtitles,
       updateSubtitles,
       updateCaption,
       exportSubtitles,

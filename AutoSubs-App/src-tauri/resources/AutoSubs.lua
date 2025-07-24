@@ -689,37 +689,41 @@ function AddSubtitles(filePath, trackIndex, templateName)
         end
     end
 
+    local template_frame_rate = templateItem:GetClipProperty()["FPS"]
+
     -- If within 1 second, join the subtitles
+    local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])
         local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
-        local duration = ((end_frame - start_frame) / frame_rate) * templateItem:GetClipProperty()["FPS"]
+        local timeline_pos = markIn + start_frame
+        local clip_timeline_duration = end_frame - start_frame
+
+        if i < #subtitles then
+            local next_start = markIn + SecondsToFrames(subtitles[i + 1]["start"], frame_rate)
+            local frames_between = next_start - (timeline_pos + clip_timeline_duration)
+            -- if gap between clips is less than threshold, join them
+            if frames_between < joinThreshold then
+                clip_timeline_duration = clip_timeline_duration + frames_between + 1
+            end
+        end
+
+        -- convert clip_timeline_duration to template frame rate
+        local duration = (clip_timeline_duration / frame_rate) * template_frame_rate
+
+        -- create clipInfo item
         local newClip = {
             mediaPoolItem = templateItem,
             mediaType = 1,
             startFrame = 0,
             endFrame = duration,
-            recordFrame = start_frame + markIn,
+            recordFrame = timeline_pos,
             trackIndex = trackIndex
         }
-
         table.insert(clipList, newClip)
     end
-
-    -- TODO: Fix this to scale the duration of the clip to the template FPS
-    -- Join subtitles if within 1 second
-    -- local joinThreshold = frame_rate
-    -- for i, clip in ipairs(clipList) do
-    --     if i < #clipList then
-    --         local nextStart = clipList[i + 1]["recordFrame"]
-    --         local framesBetween = nextStart - (clip["recordFrame"] + clip["endFrame"])
-    --         if (framesBetween < joinThreshold) then
-    --             clip["endFrame"] = ((nextStart - clip["recordFrame"]) / frame_rate) * templateItem:GetClipProperty()["FPS"]
-    --         end
-    --     end
-    -- end
 
     local timelineItems = mediaPool:AppendToTimeline(clipList)
 

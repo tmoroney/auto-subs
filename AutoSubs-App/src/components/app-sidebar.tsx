@@ -21,7 +21,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (!subtitles || subtitles.length === 0) return [];
     return subtitles.map((sub, index) => ({
       id: index,
-      speaker: sub.speaker || `Speaker ${index + 1}`,
+      speaker: sub.speaker,
       timestamp: formatTime(sub.start),
       text: sub.text,
       color: `hsl(${(index * 137.5) % 360}, 70%, 60%)`

@@ -1,8 +1,9 @@
 import * as React from "react"
-import { Globe, Languages, Check, ChevronsUpDown } from "lucide-react"
+import { Globe, Languages, Check, ChevronsUpDown, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 
@@ -196,8 +197,24 @@ export const LanguageSettingsCard = ({
               <div className="ml-0 p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <Languages className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
+              <div className="flex items-center gap-1">
                 <p className="text-sm font-medium">Translate to English</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-400 inline-flex items-center justify-center h-4 w-4 text-slate-700 dark:text-slate-300"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start" className="w-64 p-3">
+                    <p className="text-xs text-left">
+                      OpenAI Whisper models currently only support translating to English while transcribing. More language options coming soon with dedicated translation models.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
             <Switch

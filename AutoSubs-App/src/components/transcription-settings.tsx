@@ -7,12 +7,15 @@ import {
     AlertTriangle,
     X,
     HelpCircle,
-    XCircle
+    XCircle,
+    RefreshCcw,
+    ListRestart
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -40,7 +43,7 @@ export function TranscriptionSettings({
     onShowTutorial
 }: TranscriptionSettingsProps) {
     const isMobile = useIsMobile()
-    const {timelineInfo, setFileInput, fileInput, settings, updateSetting, updateSubtitles, modelsState, checkDownloadedModels } = useGlobal()
+    const { timelineInfo, setFileInput, fileInput, settings, updateSetting, updateSubtitles, modelsState, checkDownloadedModels, refresh, resetSettings } = useGlobal()
     const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
     const [downloadProgress, setDownloadProgress] = React.useState<number>(0)
     const [isModelDownloading, setIsModelDownloading] = React.useState(false)
@@ -151,29 +154,29 @@ export function TranscriptionSettings({
             cancelRequestedRef.current = false
             setIsExporting(true)
             setExportProgress(0)
-            
+
             try {
                 // Start the export (non-blocking)
                 const exportResult = await exportAudio(settings.selectedInputTracks)
                 console.log("Export started:", exportResult)
-                
+
                 // Poll for export progress until completion
                 let exportCompleted = false
                 let audioInfo = null
-                
+
                 while (!exportCompleted && !cancelRequestedRef.current) {
                     // Check if cancellation was requested before making the next API call
                     if (cancelRequestedRef.current) {
                         console.log("Export polling interrupted by cancellation request")
                         break
                     }
-                    
+
                     const progressResult = await getExportProgress()
                     console.log("Export progress:", progressResult)
-                    
+
                     // Update progress
                     setExportProgress(progressResult.progress || 0)
-                    
+
                     if (progressResult.completed) {
                         exportCompleted = true
                         audioInfo = progressResult.audioInfo
@@ -189,11 +192,11 @@ export function TranscriptionSettings({
                         setExportProgress(0)
                         throw new Error(progressResult.message || "Export failed")
                     }
-                    
+
                     // Wait before next poll (avoid overwhelming the server)
                     if (!exportCompleted && !cancelRequestedRef.current) {
                         await new Promise(resolve => setTimeout(resolve, 500))
-                        
+
                         // Check again after timeout in case cancellation happened during the wait
                         if (cancelRequestedRef.current) {
                             console.log("Export polling interrupted during wait interval")
@@ -201,11 +204,11 @@ export function TranscriptionSettings({
                         }
                     }
                 }
-                
+
                 setIsExporting(false)
                 setExportProgress(100)
                 return audioInfo?.path || null
-                
+
             } catch (error) {
                 setIsExporting(false)
                 setExportProgress(0)
@@ -277,19 +280,19 @@ export function TranscriptionSettings({
             // Create and log transcription options
             const options = createTranscriptionOptions(audioPath)
             console.log("Invoking transcribe_audio with options:", options)
-            
+
             // Perform transcription
             const transcript = await invoke("transcribe_audio", { options })
             console.log("Transcription successful:", transcript)
-            
+
             // Process results and get filename
             const filename = await processTranscriptionResults(transcript as any)
-            
+
             // Add subtitles to timeline if in Resolve mode
             if (!isStandaloneMode) {
                 await addSubtitlesToTimeline(
-                    filename, 
-                    settings.selectedTemplate.value, 
+                    filename,
+                    settings.selectedTemplate.value,
                     settings.selectedOutputTrack
                 )
             }
@@ -314,20 +317,20 @@ export function TranscriptionSettings({
         console.log("Cancelling process...")
         // Set cancellation flag immediately to interrupt any polling loops
         cancelRequestedRef.current = true
-        
+
         try {
             // If transcription is active, cancel it
             if (isTranscribing) {
                 await invoke("cancel_transcription")
                 console.log("Transcription cancellation request sent to backend")
             }
-            
+
             // If export is active (and transcription hasn't started), cancel export
             if (isExporting && !isTranscribing) {
                 const cancelResult = await cancelExport()
                 console.log("Export cancellation result:", cancelResult)
             }
-            
+
             // Reset UI state
             setIsTranscribing(false)
             setTranscriptionProgress(0)
@@ -348,9 +351,9 @@ export function TranscriptionSettings({
 
     return (
         <>
-            <div className="flex flex-col h-[calc(100vh-60px)] bg-background overflow-y-auto">
-                {/* Main Content */}
-                <div className="flex-1 p-4 space-y-6">
+            <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
+                {/* Main Content - Scrollable area */}
+                <div className="flex-1 p-4 space-y-6 overflow-y-auto">
                     {/* Update Alert */}
                     {!isUpdateDismissed && isUpdateAvailable && (
                         <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
@@ -517,7 +520,7 @@ export function TranscriptionSettings({
                     </Collapsible>
 
                     {/* About & Support */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="flex items-center gap-4">
                             <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                                 About & Support
@@ -525,10 +528,25 @@ export function TranscriptionSettings({
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
                         <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={onShowTutorial}
+                                >
+                                    <HelpCircle className="h-4 w-4 mr-2" />
+                                    Tutorial
+                                </Button>
+                                <Button variant="outline" size="default" onClick={resetSettings}>
+                                    <ListRestart className="h-4 w-4 mr-2" />
+                                    Reset Settings
+                                </Button>
+                            </div>
                             <Button
                                 asChild
-                                variant="outline"
-                                className="w-full text-pink-500 border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/20 transition-colors relative overflow-hidden group"
+                                variant="secondary"
+                                size="default"
+                                className="w-full text-pink-500 dark:text-pink-400 transition-colors bg-pink-50 dark:bg-pink-950/50 relative overflow-hidden group"
                             >
                                 <a
                                     href="https://buymeacoffee.com/tmoroney"
@@ -536,7 +554,7 @@ export function TranscriptionSettings({
                                     rel="noopener noreferrer"
                                     className="flex items-center w-full h-full"
                                 >
-                                    <Heart className="h-4 w-4 mr-2 group-hover:fill-pink-500 transition-colors" />
+                                    <Heart className="h-4 w-4 mr-2 fill-pink-50 dark:fill-pink-950 dark:group-hover:fill-pink-400 group-hover:fill-pink-500 transition-all" />
                                     <span>Support AutoSubs</span>
 
                                     {/* Bursting hearts animation */}
@@ -565,27 +583,19 @@ export function TranscriptionSettings({
                                     </div>
                                 </a>
                             </Button>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-full bg-transparent"
-                                    onClick={onShowTutorial}
-                                >
-                                    <HelpCircle className="h-4 w-4 mr-2" />
-                                    Tutorial
-                                </Button>
-                                <Button variant="outline" className="w-full bg-transparent" asChild>
-                                    <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
-                                        <Github className="h-4 w-4 mr-2" />
-                                        Source
-                                    </a>
-                                </Button>
-                            </div>
+                            <Button variant="secondary" size="default" className="w-full" asChild>
+                                <a href="https://github.com/tmoroney/auto-subs" target="_blank" rel="noopener noreferrer">
+                                    <Github className="h-4 w-4 mr-2" />
+                                    Source
+                                </a>
+                            </Button>
+
+
                         </div>
                     </div>
                 </div>
                 {/* Footer */}
-                <div className="sticky bottom-0 p-4 border-t bg-background/95 backdrop-blur-sm z-20 shadow-2xl space-y-3">
+                <div className="sticky bottom-0 p-4 border-t bg-background/50 backdrop-blur-sm shadow-2xl space-y-3">
                     {/* Mobile Caption Viewer Button */}
                     {isMobile && (
                         <Button onClick={() => setShowMobileCaptions(true)} variant="outline" className="w-full" size="lg">
@@ -615,9 +625,9 @@ export function TranscriptionSettings({
                                 <span>Exporting Audio from Timeline</span>
                                 <span>{exportProgress}%</span>
                             </div>
-                            <Progress 
-                                value={exportProgress} 
-                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-600" 
+                            <Progress
+                                value={exportProgress}
+                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-600"
                             />
                         </div>
                     )}
@@ -637,21 +647,30 @@ export function TranscriptionSettings({
                     <div className="flex gap-2">
                         <Button
                             onClick={handleStartTranscription}
-                            disabled={isTranscribing || isExporting || downloadingModel !== null}
+                            disabled={isTranscribing || isExporting || downloadingModel !== null || (settings.selectedInputTracks.length === 0 && !isStandaloneMode) || (fileInput === null && isStandaloneMode)}
                             className="flex-1"
                             size="lg"
                         >
                             {isExporting ? "Exporting Audio..." : isTranscribing ? "Processing..." : "Start Transcription"}
                         </Button>
-                        {(isTranscribing || isExporting) && (
+
+                        {(isTranscribing || isExporting) ? (
                             <Button
                                 onClick={handleCancelTranscription}
+                                variant="destructive"
+                                size="lg"
+                                className="px-3"
+                            >
+                                <XCircle className="h-4 w-4" />
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={refresh}
                                 variant="outline"
                                 size="lg"
                                 className="px-3"
-                                title={isExporting ? "Cancel Export" : "Cancel Transcription"}
                             >
-                                <XCircle className="h-4 w-4" />
+                                <RefreshCcw className="h-4 w-4" />
                             </Button>
                         )}
                     </div>
