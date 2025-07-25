@@ -46,7 +46,7 @@ export const SpeakerLabelingCard = ({
                 </Tooltip>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enables unique captions for each speaker.
+                Unique captions for each speaker.
               </p>
             </div>
           </div>

@@ -144,7 +144,7 @@ export const LanguageSettingsCard = ({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openSourceLanguages}
-                className="w-[46%] sm:w-[50%] justify-between font-normal"
+                className="w-[40%] sm:w-[50%] min-w-[150px] justify-between font-normal"
               >
                 {sourceLanguage
                   ? languages.find((language) => language.value === sourceLanguage)?.label

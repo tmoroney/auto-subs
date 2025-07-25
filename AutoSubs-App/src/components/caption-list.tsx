@@ -442,19 +442,7 @@ function CaptionListComponent({
             {captions.map((caption) => (
                 <div
                     key={caption.id}
-                    className={`relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
-                    onMouseEnter={(e) => {
-                        if (!showEditOnHover) return;
-                        const target = e.currentTarget;
-                        const button = target.querySelector('.edit-button') as HTMLElement;
-                        if (button) button.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                        if (!showEditOnHover) return;
-                        const target = e.currentTarget;
-                        const button = target.querySelector('.edit-button') as HTMLElement;
-                        if (button) button.style.opacity = '0';
-                    }}
+                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                 >
                     <div className="flex w-full items-center gap-2">
                         <span className={`text-xs text-muted-foreground font-mono`}>
@@ -474,8 +462,7 @@ function CaptionListComponent({
                         <span className="text-foreground leading-relaxed">{caption.text}</span>
                         {onEditCaption && (
                             <div
-                                className={`absolute -right-2 -bottom-2 transition-opacity edit-button ${!showEditOnHover ? 'opacity-100' : 'opacity-0'}`}
-                                style={!showEditOnHover ? { pointerEvents: 'auto' } : { pointerEvents: 'auto' }}
+                                className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
                             >
                                 <Dialog>
                                     <DialogTrigger asChild>
