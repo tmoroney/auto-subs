@@ -6,7 +6,7 @@ import { load, Store } from '@tauri-apps/plugin-store';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
-import { join, downloadDir } from '@tauri-apps/api/path';
+import { downloadDir } from '@tauri-apps/api/path';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
@@ -95,7 +95,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Davinci Resolve state
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
   const [markIn, setMarkIn] = useState(0);
-  const [markOut, setMarkOut] = useState(0);
 
   // Initialization useEffect
   useEffect(() => {

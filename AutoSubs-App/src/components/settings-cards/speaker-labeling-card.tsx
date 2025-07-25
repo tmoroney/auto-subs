@@ -1,4 +1,4 @@
-import { Speech, Info, TriangleAlert, ShieldAlert } from "lucide-react"
+import { Speech, Info, ShieldAlert } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"

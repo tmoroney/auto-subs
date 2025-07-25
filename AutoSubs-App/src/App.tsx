@@ -1,6 +1,6 @@
 // App.tsx
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
-import { Captions, Download, Heart, Moon, Sun, Upload } from "lucide-react"
+import { Captions, Heart, Moon, Sun } from "lucide-react"
 import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button"
 import React from "react"
@@ -36,7 +36,7 @@ export function ThemeToggle() {
 function App() {
   const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
-  const { isStandaloneMode, setIsStandaloneMode, exportSubtitles, subtitles } = useGlobal()
+  const { isStandaloneMode, setIsStandaloneMode } = useGlobal()
   const isMobile = useIsMobile()
 
   // Check if this is the first time the user opens the app
@@ -46,15 +46,6 @@ function App() {
       setShowWalkthrough(true)
     }
   }, [])
-
-  // Handle export button click
-  const handleExport = async () => {
-    try {
-      await exportSubtitles();
-    } catch (error) {
-      // Error is handled by the exportSubtitles function
-    }
-  }
 
   const handleWalkthroughClose = () => {
     setShowWalkthrough(false)

@@ -117,11 +117,11 @@ interface LanguageSettingsCardProps {
   onTranslateChange: (translate: boolean) => void
 }
 
-export const LanguageSettingsCard = ({ 
-  sourceLanguage, 
-  translate, 
-  onSourceLanguageChange, 
-  onTranslateChange 
+export const LanguageSettingsCard = ({
+  sourceLanguage,
+  translate,
+  onSourceLanguageChange,
+  onTranslateChange
 }: LanguageSettingsCardProps) => {
   const [openSourceLanguages, setOpenSourceLanguages] = React.useState(false)
 
@@ -138,59 +138,60 @@ export const LanguageSettingsCard = ({
               <p className="text-xs text-muted-foreground">Language of audio</p>
             </div>
           </div>
-          <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={openSourceLanguages}
-                className="w-[40%] sm:w-[50%] min-w-[150px] justify-between font-normal"
-              >
-                {sourceLanguage
-                  ? languages.find((language) => language.value === sourceLanguage)?.label
-                  : "Select language..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="p-0 w-full">
-              <Command>
-                <CommandInput placeholder="Search languages..." />
-                <CommandList>
-                  <CommandEmpty>No language found.</CommandEmpty>
-                  <CommandGroup>
-                    {languages
-                      .slice()
-                      .sort((a, b) => {
-                        if (a.value === 'auto') return -1;
-                        if (b.value === 'auto') return 1;
-                        return a.label.localeCompare(b.label);
-                      })
-                      .map((language) => (
-                        <CommandItem
-                          value={language.label}
-                          key={language.value}
-                          onSelect={() => {
-                            onSourceLanguageChange(language.value);
-                            setOpenSourceLanguages(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              language.value === sourceLanguage
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          {language.label}
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
         </div>
+
+        <Popover open={openSourceLanguages} onOpenChange={setOpenSourceLanguages}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={openSourceLanguages}
+              className="w-full justify-between font-normal mt-3"
+            >
+              {sourceLanguage
+                ? languages.find((language) => language.value === sourceLanguage)?.label
+                : "Select language..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-full">
+            <Command>
+              <CommandInput placeholder="Search languages..." />
+              <CommandList>
+                <CommandEmpty>No language found.</CommandEmpty>
+                <CommandGroup>
+                  {languages
+                    .slice()
+                    .sort((a, b) => {
+                      if (a.value === 'auto') return -1;
+                      if (b.value === 'auto') return 1;
+                      return a.label.localeCompare(b.label);
+                    })
+                    .map((language) => (
+                      <CommandItem
+                        value={language.label}
+                        key={language.value}
+                        onSelect={() => {
+                          onSourceLanguageChange(language.value);
+                          setOpenSourceLanguages(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            language.value === sourceLanguage
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {language.label}
+                      </CommandItem>
+                    ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
         {sourceLanguage !== 'en' && (
           <div className="mt-3 pt-3 border-t flex items-center justify-between">
             <div className="flex items-center gap-3">

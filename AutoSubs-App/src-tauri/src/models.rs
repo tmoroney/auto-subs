@@ -1,8 +1,7 @@
-use hf_hub::{api::sync::Api, api::Progress, Cache};
+use hf_hub::{api::Progress};
 use std::io::copy;
 use std::path::PathBuf;
 use tauri::{command, AppHandle, Emitter, Manager};
-use zip::ZipArchive;
 
 /// Progress tracker for model downloads that emits events to the frontend
 struct ModelDownloadProgress {

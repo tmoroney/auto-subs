@@ -2,35 +2,30 @@
 // use num::integer::div_floor;
 use serde::{Deserialize, Serialize};
 
-// pub fn format_timestamp(seconds: i64, always_include_hours: bool, decimal_marker: &str) -> String {
-//     assert!(seconds >= 0, "non-negative timestamp expected");
-//     let mut milliseconds = seconds * 10;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WordTimestamp {
+    pub word: String,
+    pub start: f64,
+    pub end: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub probability: Option<f32>,
+}
 
-//     let hours = div_floor(milliseconds, 3_600_000);
-//     milliseconds -= hours * 3_600_000;
-
-//     let minutes = div_floor(milliseconds, 60_000);
-//     milliseconds -= minutes * 60_000;
-
-//     let seconds = div_floor(milliseconds, 1_000);
-//     milliseconds -= seconds * 1_000;
-
-//     let hours_marker = if always_include_hours || hours != 0 {
-//         format!("{:02}:", hours)
-//     } else {
-//         String::new()
-//     };
-
-//     format!("{hours_marker}{minutes:02}:{seconds:02}{decimal_marker}{milliseconds:03}")
-// }
-
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Segment {
+    pub start: f64,
+    pub end: f64,
+    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub words: Option<Vec<WordTimestamp>>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transcript {
     pub processing_time_sec: u64,
     pub segments: Vec<Segment>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub word_timestamps: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -95,25 +90,29 @@ impl Transcript {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WordTimestamp {
-    pub word: String,
-    pub start: f64,
-    pub end: f64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub probability: Option<f32>,
-}
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Segment {
-    pub start: f64,
-    pub end: f64,
-    pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub speaker: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub words: Option<Vec<WordTimestamp>>,
-}
+// pub fn format_timestamp(seconds: i64, always_include_hours: bool, decimal_marker: &str) -> String {
+//     assert!(seconds >= 0, "non-negative timestamp expected");
+//     let mut milliseconds = seconds * 10;
+
+//     let hours = div_floor(milliseconds, 3_600_000);
+//     milliseconds -= hours * 3_600_000;
+
+//     let minutes = div_floor(milliseconds, 60_000);
+//     milliseconds -= minutes * 60_000;
+
+//     let seconds = div_floor(milliseconds, 1_000);
+//     milliseconds -= seconds * 1_000;
+
+//     let hours_marker = if always_include_hours || hours != 0 {
+//         format!("{:02}:", hours)
+//     } else {
+//         String::new()
+//     };
+
+//     format!("{hours_marker}{minutes:02}:{seconds:02}{decimal_marker}{milliseconds:03}")
+// }
+
 
 // impl Segment {
 //     pub fn as_text(&self) -> String {

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarInput } from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarGroupContent, SidebarHeader, SidebarInput } from "@/components/ui/sidebar"
 import { CaptionList, Caption } from "@/components/caption-list"
 import { useGlobal } from "@/contexts/GlobalContext"
 

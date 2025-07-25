@@ -3,8 +3,6 @@ import { ChevronLeft, ChevronRight, Check, ChevronLast } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AudioFileCard } from "./settings-cards/audio-file-card"
-import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
 import { LanguageSettingsCard } from "./settings-cards/language-settings-card"
 import { ModelSelectionCard } from "./settings-cards/model-selection-card"
@@ -29,7 +27,7 @@ export const SetupWalkthrough = ({
   onClose,
 }: SetupWalkthroughProps) => {
   const [currentSlide, setCurrentSlide] = React.useState(0)
-  const { settings, updateSetting, modelsState, timelineInfo, fileInput, setFileInput, isStandaloneMode, setIsStandaloneMode } = useGlobal()
+  const { settings, updateSetting, modelsState, timelineInfo, isStandaloneMode, setIsStandaloneMode } = useGlobal()
 
   const slides: WalkthroughSlide[] = React.useMemo(() => {
     const baseSlides: WalkthroughSlide[] = [
@@ -102,79 +100,7 @@ export const SetupWalkthrough = ({
       },
     ]
 
-    if (isStandaloneMode) {
-      baseSlides.push({
-        id: "audio-file",
-        title: "Transcribe Any File...",
-        description: "Select an audio or video file to transcribe.",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <AudioFileCard
-              selectedFile={fileInput}
-              onFileSelect={setFileInput}
-            />
-          </div>
-        ),
-        canProceed: fileInput !== null,
-      })
-    } else {
-      baseSlides.push({
-        id: "audio-input",
-        title: "Select Audio Tracks",
-        description: "Choose the audio tracks in your current timeline to transcribe.",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <AudioInputCard
-              selectedTracks={settings.selectedInputTracks}
-              inputTracks={timelineInfo?.inputTracks || []}
-              onTracksChange={(tracks) => updateSetting("selectedInputTracks", tracks)}
-              walkthroughMode={true}
-            />
-          </div>
-        ),
-        canProceed: settings.selectedInputTracks.length > 0,
-      })
-
-      baseSlides.push({
-        id: "caption-settings",
-        title: "Caption Settings",
-        description: "Choose a template (Fusion Text+) and where captions appear.",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <CaptionSettingsCard
-              selectedTemplate={settings.selectedTemplate}
-              onTemplateChange={(template) => updateSetting("selectedTemplate", template)}
-              outputTracks={timelineInfo?.outputTracks || []}
-              templates={timelineInfo?.templates || []}
-              selectedOutputTrack="1"
-              onOutputTrackChange={(track) => {
-                // Handle output track change if needed
-                console.log("Selected output track:", track);
-              }}
-            />
-          </div>
-        ),
-        canProceed: true,
-      })
-    }
-
     baseSlides.push(
-      {
-        id: "language",
-        title: "Input Language",
-        description: "Select the language spoken in your audio. Choose 'Auto' if you're unsure.",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <LanguageSettingsCard
-              sourceLanguage={settings.language}
-              translate={settings.translate}
-              onSourceLanguageChange={(language) => updateSetting("language", language)}
-              onTranslateChange={(translate) => updateSetting("translate", translate)}
-            />
-          </div>
-        ),
-        canProceed: true,
-      },
       {
         id: "model",
         title: "Choose AI model",
@@ -192,6 +118,22 @@ export const SetupWalkthrough = ({
         canProceed: true,
       },
       {
+        id: "language",
+        title: "Input Language",
+        description: "What language is spoken in the audio?",
+        component: (
+          <div className="max-w-lg mx-auto">
+            <LanguageSettingsCard
+              sourceLanguage={settings.language}
+              translate={settings.translate}
+              onSourceLanguageChange={(language) => updateSetting("language", language)}
+              onTranslateChange={(translate) => updateSetting("translate", translate)}
+            />
+          </div>
+        ),
+        canProceed: true,
+      },
+      {
         id: "text-formatting",
         title: "Text Formatting Options",
         description: "Choose how you want your captions formatted.",
@@ -199,11 +141,13 @@ export const SetupWalkthrough = ({
           <div className="max-w-lg mx-auto">
             <TextFormattingCard
               maxWords={settings.maxWords}
+              numLines={settings.numLines}
               textFormat={settings.textFormat}
               removePunctuation={settings.removePunctuation}
               enableCensor={settings.enableCensor}
               censorWords={settings.censorWords}
               onMaxWordsChange={(maxWords) => updateSetting("maxWords", maxWords)}
+              onNumLinesChange={(numLines) => updateSetting("numLines", numLines)}
               onTextFormatChange={(format) => updateSetting("textFormat", format)}
               onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
               onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
@@ -234,6 +178,30 @@ export const SetupWalkthrough = ({
         canProceed: true,
       }
     )
+
+    if (!isStandaloneMode) {
+      baseSlides.push({
+        id: "caption-settings",
+        title: "Caption Settings",
+        description: "Choose a template (Fusion Text+) and where captions appear.",
+        component: (
+          <div className="max-w-lg mx-auto">
+            <CaptionSettingsCard
+              selectedTemplate={settings.selectedTemplate}
+              onTemplateChange={(template) => updateSetting("selectedTemplate", template)}
+              outputTracks={timelineInfo?.outputTracks || []}
+              templates={timelineInfo?.templates || []}
+              selectedOutputTrack="1"
+              onOutputTrackChange={(track) => {
+                // Handle output track change if needed
+                console.log("Selected output track:", track);
+              }}
+            />
+          </div>
+        ),
+        canProceed: true,
+      })
+    }
 
     return baseSlides
   }, [

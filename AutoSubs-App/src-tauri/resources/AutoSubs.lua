@@ -1,5 +1,11 @@
 local DEV_MODE = true
 
+---These are global variables given to us by the Resolve embedded LuaJIT environment
+---I disable the undefined global warnings for them to stop my editor from complaining
+---@diagnostic disable: undefined-global
+local ffi = ffi
+local resolve = resolve
+
 -- Detect the operating system
 local os_name = ffi.os
 print("Operating System: " .. os_name)
@@ -123,7 +129,12 @@ local currentExportJob = {
     progress = 0,
     cancelled = false,
     startTime = nil,
-    audioInfo = nil,
+    audioInfo = {
+        timelineId = "",
+        path = "",
+        markIn = 0,
+        markOut = 0
+    },
     trackStates = nil
 }
 
@@ -425,7 +436,7 @@ function GetExportProgress()
 
             -- Playhead position in frames
             local playheadPosition = TimecodeToFrames(currentTimecode, frameRate)
-            
+
             -- Get mark in and out from audioInfo (already in frames)
             local markIn = currentExportJob.audioInfo.markIn
             local markOut = currentExportJob.audioInfo.markOut
@@ -442,7 +453,7 @@ function GetExportProgress()
         else
             -- Export completed - check if it was cancelled or completed normally
             currentExportJob.active = false
-            
+
             -- Reset track states and open edit page
             ResetTracks()
 
@@ -493,7 +504,7 @@ function CancelExport()
 
         -- reset tracks to original state and return to edit page
         ResetTracks()
-        
+
         if success then
             currentExportJob.cancelled = true
             currentExportJob.active = false
@@ -628,11 +639,15 @@ end
 -- Add subtitles to the timeline using the specified template
 function AddSubtitles(filePath, trackIndex, templateName)
     resolve:OpenPage("edit")
+    
     local data = read_json_file(filePath)
-    if data == nil then
+    if type(data) ~= "table" then
         print("Error reading JSON file")
         return false
     end
+
+    ---@type { mark_in: integer, mark_out: integer, segments: table, speakers: table }
+    data = data
 
     local timeline = project:GetCurrentTimeline()
     local timelineStart = timeline:GetStartFrame()
@@ -710,21 +725,22 @@ function AddSubtitles(filePath, trackIndex, templateName)
             end
         end
 
-        -- convert clip_timeline_duration to template frame rate
+        -- Resolve uses frame rate of clip for startFrame and endFrame, so we need to convert clip_timeline_duration to template frame rate
         local duration = (clip_timeline_duration / frame_rate) * template_frame_rate
 
-        -- create clipInfo item
         local newClip = {
-            mediaPoolItem = templateItem,
-            mediaType = 1,
-            startFrame = 0,
-            endFrame = duration,
-            recordFrame = timeline_pos,
-            trackIndex = trackIndex
+            mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
+            mediaType = 1, -- media type 1 is video
+            startFrame = 0, -- start frame means within the clip
+            endFrame = duration, -- end frame means within the clip
+            recordFrame = timeline_pos, -- record frame means where in the timeline the clip should be placed
+            trackIndex = trackIndex -- track the clip should be placed on
         }
+
         table.insert(clipList, newClip)
     end
 
+    -- Note: Seems to be faster to add all clips at once then add one by one (which arguably looks cooler)
     local timelineItems = mediaPool:AppendToTimeline(clipList)
 
     -- Append all clips to the timeline
@@ -733,7 +749,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
             local subtitle = subtitles[i]
             local subtitleText = subtitle["text"]
 
-            -- Skip if text is not compatible
+            -- Skip if text is not TextPlus (TODO: Add support for other types of text if possible)
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local text_plus_tools = comp:GetToolList(false, "TextPlus")
@@ -742,17 +758,20 @@ function AddSubtitles(filePath, trackIndex, templateName)
                 -- Set text colors if available
                 if speakersExist then
                     local speaker = speakers[subtitle["speaker"]]
-                    -- dump(speaker)
-                    local color = hexToRgb(speaker.color)
-                    -- print("Color: ", color.r, color.g, color.b)
-                    if speaker.style == "Fill" then
-                        text_plus_tools[1]:SetInput("Red1", color.r)
-                        text_plus_tools[1]:SetInput("Green1", color.g)
-                        text_plus_tools[1]:SetInput("Blue1", color.b)
-                    elseif speaker.style == "Outline" then
-                        text_plus_tools[1]:SetInput("Red2", color.r)
-                        text_plus_tools[1]:SetInput("Green2", color.g)
-                        text_plus_tools[1]:SetInput("Blue2", color.b)
+                    -- Just so linter will stop bothering me
+                    if speaker ~= nil then
+                        local color = hexToRgb(speaker.color)
+                        if color ~= nil then
+                            if speaker.style == "Fill" then
+                                text_plus_tools[1]:SetInput("Red1", color.r)
+                                text_plus_tools[1]:SetInput("Green1", color.g)
+                                text_plus_tools[1]:SetInput("Blue1", color.b)
+                            elseif speaker.style == "Outline" then
+                                text_plus_tools[1]:SetInput("Red2", color.r)
+                                text_plus_tools[1]:SetInput("Green2", color.g)
+                                text_plus_tools[1]:SetInput("Blue2", color.b)
+                            end
+                        end
                     end
                 end
 
@@ -808,7 +827,7 @@ end
 
 assert(server:listen())
 
--- Start AutoSubs app
+-- Start AutoSubs app if not in dev mode
 if not DEV_MODE then
     if os_name == "Windows" then
         -- Windows
@@ -857,49 +876,54 @@ while not quitServer do
 
                 -- Parse the JSON content
                 local data, pos, err = json.decode(content, 1, nil)
-                local body = ""
 
-                local success, err = pcall(function()
-                    if data == nil then
+                -- Initialize body for response
+                local body = nil
+
+                -- success already defined above
+                success, err = pcall(function()
+                    if data ~= nil then
+                        if data.func == "GetTimelineInfo" then
+                            print("[AutoSubs Server] Retrieving Timeline Info...")
+                            local timelineInfo = GetTimelineInfo()
+                            body = json.encode(timelineInfo)
+                        elseif data.func == "JumpToTime" then
+                            print("[AutoSubs Server] Jumping to time...")
+                            JumpToTime(data.start, data.markIn)
+                            body = json.encode({
+                                message = "Jumped to time"
+                            })
+                        elseif data.func == "ExportAudio" then
+                            print("[AutoSubs Server] Exporting audio...")
+                            local audioInfo = ExportAudio(data.outputDir, data.inputTracks)
+                            body = json.encode(audioInfo)
+                        elseif data.func == "GetExportProgress" then
+                            print("[AutoSubs Server] Getting export progress...")
+                            local progressInfo = GetExportProgress()
+                            body = json.encode(progressInfo)
+                        elseif data.func == "CancelExport" then
+                            print("[AutoSubs Server] Cancelling export...")
+                            local cancelResult = CancelExport()
+                            body = json.encode(cancelResult)
+                        elseif data.func == "AddSubtitles" then
+                            print("[AutoSubs Server] Adding subtitles to timeline...")
+                            AddSubtitles(data.filePath, data.trackIndex, data.templateName)
+                            body = json.encode({
+                                message = "Job completed"
+                            })
+                        elseif data.func == "Exit" then
+                            body = json.encode({
+                                message = "Server shutting down"
+                            })
+                            quitServer = true
+                        else
+                            print("Invalid function name")
+                        end
+                    else
                         body = json.encode({
                             message = "Invalid JSON data"
                         })
                         print("Invalid JSON data")
-                    elseif data.func == "GetTimelineInfo" then
-                        print("[AutoSubs Server] Retrieving Timeline Info...")
-                        local timelineInfo = GetTimelineInfo()
-                        body = json.encode(timelineInfo)
-                    elseif data.func == "JumpToTime" then
-                        print("[AutoSubs Server] Jumping to time...")
-                        JumpToTime(data.start, data.markIn)
-                        body = json.encode({
-                            message = "Jumped to time"
-                        })
-                    elseif data.func == "ExportAudio" then
-                        print("[AutoSubs Server] Exporting audio...")
-                        local audioInfo = ExportAudio(data.outputDir, data.inputTracks)
-                        body = json.encode(audioInfo)
-                    elseif data.func == "GetExportProgress" then
-                        print("[AutoSubs Server] Getting export progress...")
-                        local progressInfo = GetExportProgress()
-                        body = json.encode(progressInfo)
-                    elseif data.func == "CancelExport" then
-                        print("[AutoSubs Server] Cancelling export...")
-                        local cancelResult = CancelExport()
-                        body = json.encode(cancelResult)
-                    elseif data.func == "AddSubtitles" then
-                        print("[AutoSubs Server] Adding subtitles to timeline...")
-                        AddSubtitles(data.filePath, data.trackIndex, data.templateName)
-                        body = json.encode({
-                            message = "Job completed"
-                        })
-                    elseif data.func == "Exit" then
-                        body = json.encode({
-                            message = "Server shutting down"
-                        })
-                        quitServer = true
-                    else
-                        print("Invalid function name")
                     end
                 end)
 
@@ -931,8 +955,4 @@ end
 
 print("Shutting down AutoSubs Link server...")
 server:close()
-
--- Kill transcription server if necessary
--- ffi.C.system(command_close)
-
 print("Server shut down.")

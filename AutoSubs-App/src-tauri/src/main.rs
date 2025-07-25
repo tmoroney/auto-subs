@@ -5,10 +5,6 @@ use reqwest::Client;
 use serde_json::json;
 use std::thread;
 use tauri::RunEvent;
-use crate::transcribe::transcribe_audio;
-use crate::models::{get_downloaded_models, delete_model};
-use whisper_rs;
-
 
 // Import plugins
 use tauri_plugin_dialog::init as dialog_plugin;

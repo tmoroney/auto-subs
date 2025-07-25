@@ -1,7 +1,6 @@
 use eyre::{bail, Context, Result};
 use hound::{SampleFormat, WavReader};
 use std::fs;
-use std::io::Read;
 use std::{path::PathBuf};
 use tauri_plugin_shell::ShellExt; // You need to bring the ShellExt trait into scope
 use tauri::AppHandle; // Command is now accessed via the app handle

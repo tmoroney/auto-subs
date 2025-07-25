@@ -1,4 +1,10 @@
+---@diagnostic disable: undefined-global
+local resolve = resolve
+
+-- Resolve variables
 local projectManager = resolve:GetProjectManager()
+
+-- Project variables (probably best to get these when actual function is called)
 local project = projectManager:GetCurrentProject()
 local timeline = project:GetCurrentTimeline()
 local framerate = timeline:GetSetting("timelineFrameRate")

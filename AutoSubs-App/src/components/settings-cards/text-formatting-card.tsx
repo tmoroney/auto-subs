@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 interface TextFormattingCardProps {
@@ -43,8 +44,8 @@ export const TextFormattingCard = ({
             <WholeWord className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
           </div>
           <div>
-            <p className="text-sm font-medium">Max Words</p>
-            <p className="text-xs text-muted-foreground">Words per line</p>
+            <p className="text-sm font-medium">Word Count</p>
+            <p className="text-xs text-muted-foreground">Max words per line</p>
           </div>
         </div>
         <Input
@@ -63,8 +64,8 @@ export const TextFormattingCard = ({
             <WrapText className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
           </div>
           <div>
-            <p className="text-sm font-medium">Number of Lines</p>
-            <p className="text-xs text-muted-foreground">Lines per subtitle</p>
+            <p className="text-sm font-medium">Line Count</p>
+            <p className="text-xs text-muted-foreground">Max lines shown per caption</p>
           </div>
         </div>
         <Input
@@ -86,38 +87,52 @@ export const TextFormattingCard = ({
               </div>
               <div>
                 <p className="text-sm font-medium">Text Case</p>
-                <p className="text-xs text-muted-foreground">Set all text to specific case</p>
+                <p className="text-xs text-muted-foreground">Modify caption text case</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-8 px-3",
-                  textFormat === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                )}
-                onClick={() => {
-                  const newFormat = textFormat === "uppercase" ? "none" : "uppercase";
-                  onTextFormatChange(newFormat);
-                }}
-              >
-                ABC
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-8 px-3",
-                  textFormat === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                )}
-                onClick={() => {
-                  const newFormat = textFormat === "lowercase" ? "none" : "lowercase";
-                  onTextFormatChange(newFormat);
-                }}
-              >
-                abc
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className={cn(
+                      "px-3",
+                      textFormat === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                    )}
+                    onClick={() => {
+                      const newFormat = textFormat === "lowercase" ? "none" : "lowercase";
+                      onTextFormatChange(newFormat);
+                    }}
+                  >
+                    abc
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="center">
+                  Lowercase All Text
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className={cn(
+                      "px-3",
+                      textFormat === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                    )}
+                    onClick={() => {
+                      const newFormat = textFormat === "uppercase" ? "none" : "uppercase";
+                      onTextFormatChange(newFormat);
+                    }}
+                  >
+                    ABC
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="center">
+                  Uppercase All Text
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

@@ -1,5 +1,4 @@
 use crate::config::TranscribeOptions;
-use crate::audio::get_audio_duration;
 use crate::transcript::{Segment, Transcript};
 use crate::audio;
 use eyre::{bail, eyre, Context, OptionExt, Result};
@@ -17,9 +16,10 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
 use whisper_rs::DtwParameters;
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
-use tauri::path;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, command, Manager};
+use std::fs;
+use std::time::SystemTime;
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -230,6 +230,7 @@ pub fn create_context(
             ("medium", true) => DtwModelPreset::MediumEn,
             ("medium", false) => DtwModelPreset::Medium,
             ("large", _) => DtwModelPreset::LargeV3,
+            ("large-turbo", _) => DtwModelPreset::LargeV3Turbo,
             // Add a sensible default or handle other cases
             _ => DtwModelPreset::SmallEn, // Defaulting to SmallEn
         };
@@ -279,14 +280,20 @@ pub fn should_normalize(source: PathBuf) -> bool {
     true
 }
 
-fn generate_cache_key(source: &Path, additional_ffmpeg_args: &Option<Vec<String>>) -> u64 {
+fn generate_cache_key(source: &Path) -> u64 {
     let mut hasher = DefaultHasher::new();
     source.hash(&mut hasher);
 
-    if let Some(args) = additional_ffmpeg_args {
-        for arg in args {
-            arg.hash(&mut hasher);
+    // Add file metadata (last modified time) to the hash
+    if let Ok(metadata) = fs::metadata(source) {
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(duration_since_epoch) = modified.duration_since(SystemTime::UNIX_EPOCH) {
+                duration_since_epoch.as_secs().hash(&mut hasher);
+                duration_since_epoch.subsec_nanos().hash(&mut hasher);
+            }
         }
+        // Optionally, you could also hash file size for even more robustness:
+        metadata.len().hash(&mut hasher);
     }
 
     hasher.finish()
@@ -300,25 +307,16 @@ pub async fn create_normalized_audio(
 ) -> Result<PathBuf> {
     tracing::debug!("normalize {:?}", source.display());
 
-    let cache_key = generate_cache_key(&source, &additional_ffmpeg_args);
+    let cache_key = generate_cache_key(&source);
     let path_resolver = app.path();
     let out_path = path_resolver.app_cache_dir().unwrap_or_else(|_| std::env::temp_dir()).join(format!("{:x}.wav", cache_key));
 
-    // Regarding your caching question:
-    // Caching is a great idea for performance. The key is to make `generate_cache_key` robust.
-    // It should hash not just the file path, but the file's content and modification date,
-    // plus the `additional_ffmpeg_args`. This ensures that if the source file changes, a new
-    // normalized version is created. Hashing just the name would indeed cause collisions.
-    // if out_path.exists() {
-    //     println!("Using cached normalized audio: {}", out_path.display());
-    //     tracing::info!("Using cached normalized audio: {}", out_path.display());
-    //     return Ok(out_path);
-    // }
+    if out_path.exists() {
+        println!("Using cached normalized audio: {}", out_path.display());
+        tracing::info!("Using cached normalized audio: {}", out_path.display());
+        return Ok(out_path);
+    }
 
-    // 1. We must `.await` the async `normalize` function.
-    // 2. The `?` operator won't work directly because `normalize` returns Result<(), String>
-    //    while this function returns `eyre::Result`. We need to convert the error type.
-    // 3. `map_err` converts the `String` error from the `normalize` command into an `eyre::Error`.
     audio::normalize(app, source, out_path.clone(), additional_ffmpeg_args)
         .await
         .map_err(|e| eyre::eyre!("Failed to normalize audio: {}", e))?;
@@ -452,10 +450,6 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: bool) -> Vec<
         }
     }
 
-    // Ensure the last word ends at the end of the segment
-    if let Some(last) = word_timestamps.last_mut() {
-        last.end = (end_of_segment as f64) * 0.01;
-    }
     word_timestamps
 }
 
@@ -505,7 +499,7 @@ pub async fn run_transcription_pipeline(
         let mut state = ctx.create_state().context("failed to create key")?;
         let mut params = setup_params(&options);
         let st = std::time::Instant::now();
-        let mut segments = Vec::new();
+        let mut segments: Vec<Segment> = Vec::new();
     
         // Enable word timestamps if requested
         if options.word_timestamps.unwrap_or(false) {
@@ -565,8 +559,6 @@ pub async fn run_transcription_pipeline(
                 }
 
                 // diarize_segment is already unwrapped from the iterator collection
-
-                // whisper compatible. segment indices
                 tracing::trace!(
                     "diarize segment: {} - {}",
                     diarize_segment.start,
@@ -584,8 +576,6 @@ pub async fn run_transcription_pipeline(
                     .full_n_segments()
                     .context("failed to get number of segments")?;
                 tracing::debug!("found {} sentence segments", num_segments);
-
-                tracing::debug!("looping segments...");
 
                 if num_segments > 0 {
                     let embedding_result: Vec<f32> = match extractor.compute(&diarize_segment.samples) {
@@ -621,37 +611,45 @@ pub async fn run_transcription_pipeline(
                             .full_get_segment_text_lossy(seg_idx as i32)
                             .context("failed to get segment")?;
 
+                        let offset = diarize_segment.start as f64;
+                        let (seg_start, seg_end);
+
                         // Get word timestamps if DTW is enabled
                         let words = if enable_dtw {
-                            let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
-                            for word in &mut word_timestamps {
-                                word.start += diarize_segment.start as f64;
-                                word.end += diarize_segment.start as f64;
-                                if word.end > diarize_segment.end as f64 {
-                                    word.end = diarize_segment.end as f64;
-                                }
-                                word.start = (word.start * 100.0).trunc() / 100.0;
-                                word.end = (word.end * 100.0).trunc() / 100.0;
+                            let mut words = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+                            // Add offset to all word timestamps and round to 2 decimal places
+                            for w in &mut words {
+                                w.start = ((w.start + offset) * 100.0).trunc() / 100.0;
+                                w.end = ((w.end + offset).min(diarize_segment.end as f64) * 100.0).trunc() / 100.0; // Ensure end time is within diarize segment bounds
                             }
-                            Some(word_timestamps)
+                            seg_start = words.first().map_or(0.0, |w| w.start);
+                            seg_end = words.last().map_or(seg_start, |w| w.end);
+                            Some(words)
                         } else {
+                            // Get segment start and end time in seconds (converted from centiseconds), relative to diarize segment start
+                            let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01 + offset;
+                            let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01 + offset;
+
+                            // Round start time to 2 decimal places for consistency
+                            seg_start = (t0 * 100.0).trunc() / 100.0;
+                            // Ensure end is not after diarize segment end, and round to 2 decimals
+                            seg_end = ((t1.min(diarize_segment.end as f64)) * 100.0).trunc() / 100.0;
+
+                            // No word-level timestamps available
                             None
                         };
 
-                        // Get segment-level timestamps and add diarization segment offset
-                        let (mut seg_start, mut seg_end) = {
-                            let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-                            let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-                            (
-                                t0 + diarize_segment.start as f64,
-                                t1 + diarize_segment.start as f64
-                            )
-                        };
-                        if seg_end > diarize_segment.end as f64 {
-                            seg_end = diarize_segment.end as f64;
+                        // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
+                        if let Some(last) = segments.last_mut() {
+                            if last.end > seg_start {
+                                last.end = seg_start;
+                            }
+                            
+                            // If word-level enabled, also update end time of last word
+                            if let Some(words) = &mut last.words {
+                                words.last_mut().unwrap().end = seg_end;
+                            }
                         }
-                        seg_start = (seg_start * 100.0).trunc() / 100.0;
-                        seg_end = (seg_end * 100.0).trunc() / 100.0;
 
                         let segment = Segment {
                             speaker: Some(speaker.clone()),
@@ -660,11 +658,7 @@ pub async fn run_transcription_pipeline(
                             text,
                             words,
                         };
-                        segments.push(segment.clone());
-
-                        if let Some(ref new_segment_callback) = new_segment_callback {
-                            new_segment_callback(segment);
-                        }
+                        segments.push(segment);
                     }
 
                     // Update progress
@@ -683,8 +677,7 @@ pub async fn run_transcription_pipeline(
             
             let transcript = Transcript {
                 processing_time_sec: st.elapsed().as_secs(),
-                segments,
-                word_timestamps: Some(false), // word-level timestamps not available in diarization mode
+                segments
             };
             return Ok(transcript);
         } else {
@@ -698,19 +691,6 @@ pub async fn run_transcription_pipeline(
             let mut samples = vec![0.0f32; original_samples.len()];
 
             whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
-
-            if let Some(new_segment_callback) = new_segment_callback {
-                let internal_new_segmet_callback = move |segment: SegmentCallbackData| {
-                    new_segment_callback(Segment {
-                        start: segment.start_timestamp as f64,
-                        end: segment.end_timestamp as f64,
-                        text: segment.text,
-                        speaker: None,  // No speaker info in non-diarized mode
-                        words: None,    // Word timestamps not available in diarization mode
-                    });
-                };
-                params.set_segment_callback_safe_lossy(internal_new_segmet_callback);
-            }
 
             if let Some(abort_callback) = abort_callback {
                 params.set_abort_callback_safe(abort_callback);
@@ -744,44 +724,65 @@ pub async fn run_transcription_pipeline(
             tracing::debug!("found {} sentence segments", num_segments);
 
             // Process each segment and collect word timestamps
-            let mut segments = Vec::with_capacity(num_segments as usize);
+            let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
         
             for seg_idx in 0..num_segments {
-                // Get the segment text and ALL token timestamps
-                let word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
-                let segment_text = state.full_get_segment_text_lossy(seg_idx)
-                    .context("failed to get segment text")?;
-            
-                // Get segment-level timestamps
-                let (start, end) = {
-                    let t0 = state.full_get_segment_t0(seg_idx).unwrap_or(0) as f64 * 0.01;
-                    let t1 = state.full_get_segment_t1(seg_idx).unwrap_or(0) as f64 * 0.01;
-                    (t0, t1)
+                let (seg_start, seg_end);
+
+                // Get the segment text
+                let text = state.full_get_segment_text_lossy(seg_idx as i32).context("failed to get segment")?;
+                
+                // Get word timestamps if DTW is enabled
+                let words = if enable_dtw {
+                    let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+                    for word in &mut word_timestamps {
+                        // Round to 2 decimal places
+                        word.start = (word.start as f64 * 100.0).trunc() / 100.0;
+                        word.end = (word.end as f64 * 100.0).trunc() / 100.0;
+                    }
+                    seg_start = word_timestamps.first().unwrap().start;
+                    seg_end = word_timestamps.last().unwrap().end;
+                    Some(word_timestamps)
+                } else {
+                    // Convert centiseconds to seconds
+                    let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+                    let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+
+                    // Round to 2 decimal places
+                    seg_start = (t0 as f64 * 100.0).trunc() / 100.0;
+                    seg_end = (t1 as f64 * 100.0).trunc() / 100.0;
+                    None
                 };
-            
-                let has_words = !word_timestamps.is_empty();
+
+                // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
+                if let Some(last) = segments.last_mut() {
+                    if last.end > seg_start {
+                        last.end = seg_start;
+                    }
+                    
+                    // If word-level enabled, also update end time of last word
+                    if let Some(words) = &mut last.words {
+                        words.last_mut().unwrap().end = seg_end;
+                    }
+                }
                     
                 // Create the segment after we're done printing
                 let segment = Segment {
-                    start,
-                    end,
-                    text: segment_text,
-                    speaker: None,  // No speaker info in non-diarized mode
-                    words: if has_words { 
-                        Some(word_timestamps) 
-                    } else { None },
+                    speaker: None, // No speaker info in non-diarized mode
+                    start: seg_start,
+                    end: seg_end,
+                    text,
+                    words,
                 };
-                
+
                 segments.push(segment);
             }
 
-            // Create and return the final transcript
-            let has_word_timestamps = enable_dtw && !segments.is_empty() && segments[0].words.is_some();
-            Ok(Transcript {
+            let transcript = Transcript {
                 processing_time_sec: st.elapsed().as_secs(),
-                segments,
-                word_timestamps: Some(has_word_timestamps),
-            })
+                segments
+            };
+            return Ok(transcript);
         }
     }).await??;
     Ok(transcript)
