@@ -1,5 +1,5 @@
 import * as React from "react"
-import { X, Download } from "lucide-react"
+import { X, Download, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CaptionList, Caption } from "@/components/caption-list"
@@ -13,7 +13,7 @@ interface MobileCaptionViewerProps {
 export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { exportSubtitles, subtitles } = useGlobal()
+  const { exportSubtitles, importSubtitles, subtitles } = useGlobal()
 
   // Helper function to format time in HH:MM:SS
   const formatTime = (seconds: number | string): string => {
@@ -69,9 +69,17 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
 
   const handleExport = async () => {
     try {
-      await exportSubtitles();
+      await exportSubtitles()
     } catch (error) {
-      // Error is handled by the exportSubtitles function
+      console.error("Failed to export subtitles:", error)
+    }
+  }
+
+  const handleImport = async () => {
+    try {
+      await importSubtitles()
+    } catch (error) {
+      console.error("Failed to import subtitles:", error)
     }
   }
 
@@ -98,16 +106,25 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-background/80 backdrop-blur-sm shrink-0">
-        <Button
-          onClick={handleExport}
-          size="sm"
-          variant="outline"
-          className="h-9 gap-2"
-          disabled={captions.length === 0}
-        >
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="flex-1"
+            disabled={captions.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            onClick={handleImport}
+            variant="outline"
+            className="flex-1"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+        </div>
         <Button 
           onClick={onClose} 
           variant="ghost" 
@@ -150,7 +167,6 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
             captions={filteredCaptions}
             onEditCaption={handleEditCaption}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
-            showEditOnHover={false}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">

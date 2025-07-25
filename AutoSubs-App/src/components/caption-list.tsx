@@ -340,7 +340,6 @@ interface CaptionListProps {
     onEditCaption?: ((id: number) => void) | ((caption: Caption) => void)
     className?: string
     itemClassName?: string
-    showEditOnHover?: boolean
     isLoading?: boolean
     error?: string | null
 }
@@ -354,7 +353,6 @@ function CaptionListComponent({
     onEditCaption,
     className = "",
     itemClassName = "",
-    showEditOnHover = true,
     isLoading = false,
     error = null
 }: CaptionListProps) {

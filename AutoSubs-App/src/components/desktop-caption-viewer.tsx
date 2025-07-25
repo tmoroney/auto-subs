@@ -1,5 +1,6 @@
 import * as React from "react"
-import { X } from "lucide-react"
+import { Download, Upload, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CaptionList, Caption } from "@/components/caption-list"
 import { useGlobal } from "@/contexts/GlobalContext"
@@ -7,7 +8,7 @@ import { useGlobal } from "@/contexts/GlobalContext"
 export function DesktopCaptionViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles } = useGlobal()
+  const { subtitles, exportSubtitles, importSubtitles } = useGlobal()
 
   // Helper function to format time in HH:MM:SS
   const formatTime = (seconds: number | string): string => {
@@ -34,50 +35,90 @@ export function DesktopCaptionViewer() {
   const filteredCaptions = React.useMemo(() => {
     if (!searchQuery.trim()) return captions;
     const query = searchQuery.toLowerCase();
-    return captions.filter(caption => 
-      caption.text.toLowerCase().includes(query) || 
+    return captions.filter(caption =>
+      caption.text.toLowerCase().includes(query) ||
       (caption.speaker && caption.speaker.toLowerCase().includes(query))
     );
   }, [captions, searchQuery])
 
   const handleEditCaption = (captionOrId: Caption | number) => {
     const id = typeof captionOrId === 'number' ? captionOrId : captionOrId.id;
-    const caption = typeof captionOrId === 'number' 
+    const caption = typeof captionOrId === 'number'
       ? captions.find(c => c.id === captionOrId)
       : captionOrId;
-      
+
     console.log(`Edit caption with id: ${id}`, "Full caption:", caption);
     // Add edit functionality here using the full caption if available
   }
 
-  // Export functionality moved to App.tsx header
+  const handleExport = async () => {
+    try {
+      await exportSubtitles()
+    } catch (error) {
+      console.error("Failed to export subtitles:", error)
+    }
+  }
+
+  const handleImport = async () => {
+    try {
+      await importSubtitles()
+    } catch (error) {
+      console.error("Failed to import subtitles:", error)
+    }
+  }
 
   return (
-    <div className="flex flex-col h-full border-l">
+    <div className="flex flex-col h-full border-l bg-sidebar">
+
+      {/* Export/Import Buttons */}
+      <div className="shrink-0 p-3 pb-0">
+        <div className="flex gap-2">
+          <Button
+            onClick={handleImport}
+            variant="outline"
+            className="flex-1"
+            size="sm"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            disabled={captions.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
 
       {/* Search */}
-      <div className="p-3 border-b shrink-0 sticky top-0 z-10">
+      <div className="shrink-0 p-3 border-b">
         <div className="relative">
-          <Input 
+          <Input
             ref={searchInputRef}
-            placeholder="Search captions..." 
-            value={searchQuery} 
+            placeholder="Search captions..."
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
             aria-label="Search captions"
           />
           {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery("")}
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
+
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2">
@@ -86,13 +127,12 @@ export function DesktopCaptionViewer() {
             captions={filteredCaptions}
             onEditCaption={handleEditCaption}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
-            showEditOnHover={false}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
             <p className="text-lg font-medium mb-2">No captions found</p>
             <p className="text-sm">
-              {searchQuery 
+              {searchQuery
                 ? 'Try a different search term'
                 : 'No captions available. Try importing some first.'}
             </p>

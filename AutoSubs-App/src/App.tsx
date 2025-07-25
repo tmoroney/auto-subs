@@ -1,6 +1,6 @@
 // App.tsx
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
-import { Captions, Download, Moon, Sun, Upload } from "lucide-react"
+import { Captions, Download, Heart, Moon, Sun, Upload } from "lucide-react"
 import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button"
 import React from "react"
@@ -70,91 +70,36 @@ function App() {
       <TooltipProvider>
         <div className="flex flex-col h-screen overflow-hidden">
           {/* Top Menu Bar */}
-          <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
-            {/* Left side - Mode switcher (desktop) */}
-            <div className="flex items-center gap-2">
-              {!isMobile && (
-                <>
-                  <Tabs
-                    value={isStandaloneMode ? "standalone" : "resolve"}
-                    onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
-                    className="w-auto max-w-[200px]"
-                  >
-                    <TabsList className="rounded-full bg-muted">
-                      <TabsTrigger value="resolve" className="rounded-full text-sm px-3">
-                        Resolve
-                      </TabsTrigger>
-                      <TabsTrigger value="standalone" className="rounded-full text-sm px-3">
-                        Standalone
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </>
-              )}
-            </div>
-
-            {/* Center - Mode switcher (mobile) */}
-            {isMobile && (
-              <>
-                {/* Left side - Theme toggle */}
-                <ThemeToggle />
-                <div className="flex-1 flex justify-center px-6">
-                  <Tabs
-                    value={isStandaloneMode ? "standalone" : "resolve"}
-                    onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
-                    className="w-full max-w-[400px]"
-                  >
-                    <TabsList className="w-full rounded-full bg-muted">
-                      <TabsTrigger value="resolve" className="flex-1 rounded-full text-sm">
-                        Resolve
-                      </TabsTrigger>
-                      <TabsTrigger value="standalone" className="flex-1 rounded-full text-sm">
-                        Standalone
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </>
-            )}
-
-            {/* Right side - Theme toggle and buttons */}
-            <div className="flex items-center gap-2">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowMobileCaptions(true)}
+          {isMobile && (
+            <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
+              <ThemeToggle />
+              {/* Left side - Mode switcher (desktop) */}
+              <div className="flex-1 flex justify-center px-2">
+                <Tabs
+                  value={isStandaloneMode ? "standalone" : "resolve"}
+                  onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
+                  className="w-full max-w-[400px]"
                 >
-                  <Captions className="h-5 w-5" />
-                </Button>
-              )}
-              {!isMobile && (
-                <>
-                  <Button
-                    onClick={handleExport}
-                    size="sm"
-                    variant="ghost"
-                    className="gap-2"
-                    disabled={subtitles.length === 0}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Import
-                  </Button>
-                  <Button
-                    onClick={handleExport}
-                    size="sm"
-                    variant="ghost"
-                    className="gap-2"
-                    disabled={subtitles.length === 0}
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
-                  <ThemeToggle />
-                </>
-              )}
-            </div>
-          </header>
+                  <TabsList className="w-full rounded-full bg-muted">
+                    <TabsTrigger value="resolve" className="flex-1 rounded-full text-sm">
+                      Resolve
+                    </TabsTrigger>
+                    <TabsTrigger value="standalone" className="flex-1 rounded-full text-sm">
+                      Standalone
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowMobileCaptions(true)}
+              >
+                <Captions className="h-5 w-5" />
+              </Button>
+            </header>
+          )}
+
 
           {/* Main Content Area with Resizable Panels */}
           <div className="flex-1 min-h-0">
@@ -170,6 +115,44 @@ function App() {
               // Desktop: Resizable panels with transcription settings and caption viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 <ResizablePanel defaultSize={55} className="min-w-[380px]">
+                  {!isMobile && (
+                    <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
+                      <ThemeToggle />
+                      {/* Left side - Mode switcher (desktop) */}
+                      <div className="flex-1 flex justify-center px-2">
+                        <Tabs
+                          value={isStandaloneMode ? "standalone" : "resolve"}
+                          onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
+                          className="w-full max-w-[400px]"
+                        >
+                          <TabsList className="w-full rounded-full bg-muted">
+                            <TabsTrigger value="resolve" className="flex-1 rounded-full text-sm">
+                              Resolve
+                            </TabsTrigger>
+                            <TabsTrigger value="standalone" className="flex-1 rounded-full text-sm">
+                              Standalone
+                            </TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group rounded-full bg-background hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-all"
+                        asChild
+                      >
+                        <a
+                          href="https://buymeacoffee.com/tmoroney"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Support on Buy Me a Coffee"
+                        >
+                          <Heart className="h-5 w-5 fill-background group-hover:fill-pink-500 group-hover:text-pink-500 group-hover:animate-pulse transition-all"/>
+                        </a>
+                      </Button>
+                    </header>
+                  )}
+
                   <TranscriptionSettings
                     isStandaloneMode={isStandaloneMode}
                     onShowTutorial={handleShowTutorial}

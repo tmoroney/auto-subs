@@ -408,7 +408,7 @@ export function TranscriptionSettings({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-slate-100 dark:bg-slate-900">
+                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-sidebar">
                                     <Cable className={`ml-1 h-4 w-4 ${!timelineInfo || !timelineInfo.timelineId
                                         ? 'text-red-500 dark:text-red-500'
                                         : 'text-green-500 dark:text-green-500'
