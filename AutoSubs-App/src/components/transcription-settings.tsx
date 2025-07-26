@@ -231,6 +231,7 @@ export function TranscriptionSettings({
         audioPath,
         model: modelsState[settings.model].value,
         lang: settings.language === "auto" ? null : settings.language,
+        translate: settings.translate,
         enableDiarize: settings.enableDiarize,
         maxSpeakers: settings.maxSpeakers,
     })

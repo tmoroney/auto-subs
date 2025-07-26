@@ -388,7 +388,8 @@ pub fn delete_model(model: &str, app: AppHandle) -> Result<(), String> {
 pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
     use std::fs;
     let snapshots_dir = get_snapshots_dir(app.clone());
-    let mut models = Vec::new();
+    let mut found_files = Vec::new();
+    
     for entry in fs::read_dir(&snapshots_dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
@@ -400,14 +401,39 @@ pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
                     let file_name = file.file_name();
                     if let Some(name) = file_name.to_str() {
                         if name.ends_with(".bin") {
-                            models.push(name.to_string());
+                            found_files.push(name.to_string());
                         }
                     }
                 }
             }
         }
     }
-    Ok(models)
+    
+    // Map filenames back to conceptual model names
+    let mut detected_models = Vec::new();
+    
+    for filename in found_files {
+        if filename == "ggml-large-v3.bin" {
+            detected_models.push("large".to_string());
+        } else if filename == "ggml-large-v3-turbo.bin" {
+            detected_models.push("large-turbo".to_string());
+        } else if filename.starts_with("ggml-") && filename.ends_with(".bin") {
+            // Handle other models like base, small, medium
+            let model_part = filename.replace("ggml-", "").replace(".bin", "");
+            if model_part.ends_with(".en") {
+                let model = model_part.replace(".en", "");
+                detected_models.push(model);
+            } else {
+                detected_models.push(model_part);
+            }
+        }
+    }
+    
+    // Remove duplicates and sort
+    detected_models.sort();
+    detected_models.dedup();
+    
+    Ok(detected_models)
 }
 
 /// Downloads a file from a URL to a local cache if it doesn't already exist.

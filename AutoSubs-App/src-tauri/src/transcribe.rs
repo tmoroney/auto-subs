@@ -34,7 +34,8 @@ pub struct FrontendTranscribeOptions {
     pub audio_path: String,
     pub model: String, // e.g., "tiny", "base", "small", "medium", "large"
     pub lang: Option<String>,
-    pub enable_diarize: bool,
+    pub translate: Option<bool>,
+    pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
 }
 
@@ -61,6 +62,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         println!("Cancellation flag reset to false");
     }
 
+    // Enable DTW by default to improve word timestamps
     let enable_dtw = true;
 
     let model_path = crate::models::download_model_if_needed(app.clone(), &options.model, &options.lang)?;
@@ -89,18 +91,18 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         max_text_ctx: None,
         n_threads: None,
         temperature: None,
-        translate: None,
+        translate: options.translate,
         word_timestamps: Some(true),
         sampling_bestof_or_beam_size: None,
         sampling_strategy: None,
     };
 
-        let diarize_options = if options.enable_diarize {
+    let diarize_options = if let Some(true) = options.enable_diarize {
         println!("Diarization enabled, checking for models...");
         let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
         let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
 
-                let segment_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "segmentation-3.0.onnx", seg_url).await?
+        let segment_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "segmentation-3.0.onnx", seg_url).await?
             .to_string_lossy().into_owned();
         let embedding_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "wespeaker_en_voxceleb_CAM++.onnx", emb_url).await?
             .to_string_lossy().into_owned();
@@ -144,7 +146,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         abort_callback,
         diarize_options,
         None,
-        enable_dtw,
+        Some(enable_dtw),
         options.enable_diarize,
     ).await {
         Ok(mut transcript) => {
@@ -196,6 +198,7 @@ pub fn create_context(
     if let Some(gpu_device) = gpu_device {
         ctx_params.gpu_device = gpu_device;
     }
+    // set enable_dtw from preference
     if let Some(true) = enable_dtw {
         let dtw_mem_size = match audio_duration_secs {
             Some(duration) => {
@@ -389,7 +392,7 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     params
 }
 
-fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: bool) -> Vec<crate::transcript::WordTimestamp> {
+fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>) -> Vec<crate::transcript::WordTimestamp> {
     let ntok = state.full_n_tokens(seg).unwrap() as usize;
     let mut word_timestamps = Vec::with_capacity(ntok);
 
@@ -441,7 +444,7 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: bool) -> Vec<
         }
 
         current_word.push_str(&token_text);
-        prev_end_frame = if enable_dtw { data.t_dtw } else { data.t1 };
+        prev_end_frame = if let Some(true) = enable_dtw { data.t_dtw } else { data.t1 };
 
         // If last token, push the final word
         if is_last && !current_word.is_empty() {
@@ -470,8 +473,8 @@ pub async fn run_transcription_pipeline(
     abort_callback: Option<Box<dyn Fn() -> bool + Send>>,
     diarize_options: Option<DiarizeOptions>,
     additional_ffmpeg_args: Option<Vec<String>>,
-    enable_dtw: bool,
-    enable_diarize: bool,
+    enable_dtw: Option<bool>,
+    enable_diarize: Option<bool>,
 ) -> Result<Transcript> {
     tracing::debug!("Transcribe called with {:?}", options);
 
@@ -506,12 +509,12 @@ pub async fn run_transcription_pipeline(
             params.set_token_timestamps(true);
         } else {
             // Ensure word timestamps are enabled if we're in DTW mode
-            if enable_dtw {
+            if let Some(true) = enable_dtw {
                 params.set_token_timestamps(true);
             }
         }
         // Process with diarization if enabled
-        if enable_diarize {
+        if let Some(true) = enable_diarize {
             let diarize_options = match diarize_options {
                 Some(opts) => opts,
                 None => return Err(eyre!("Diarization enabled but no diarization options provided")),
@@ -615,7 +618,7 @@ pub async fn run_transcription_pipeline(
                         let (seg_start, seg_end);
 
                         // Get word timestamps if DTW is enabled
-                        let words = if enable_dtw {
+                        let words = if let Some(true) = enable_dtw {
                             let mut words = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
                             // Add offset to all word timestamps and round to 2 decimal places
                             for w in &mut words {
@@ -733,7 +736,7 @@ pub async fn run_transcription_pipeline(
                 let text = state.full_get_segment_text_lossy(seg_idx as i32).context("failed to get segment")?;
                 
                 // Get word timestamps if DTW is enabled
-                let words = if enable_dtw {
+                let words = if let Some(true) = enable_dtw {
                     let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
                     for word in &mut word_timestamps {
                         // Round to 2 decimal places

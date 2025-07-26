@@ -183,7 +183,7 @@ export const ModelSelectionCard = ({
               <ChevronsUpDown className="mx-1 h-5 w-5 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-2" align="start">
+          <PopoverContent className="w-[300px] p-2" align="start">
             <ScrollArea className="h-[250px]">
               <div className="space-y-1 pr-0">
                 {models.map((model, index) => (
