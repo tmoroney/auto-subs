@@ -169,7 +169,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
                 </div>
               )}
               {inputTracks.length > 0 ? (
-                <ScrollArea className="h-[280px] w-full">
+                <ScrollArea className="h-[200px] w-full">
                   <div className="flex flex-col gap-1 p-2">
                     {inputTracks.map((track) => {
                       const trackId = track.value;

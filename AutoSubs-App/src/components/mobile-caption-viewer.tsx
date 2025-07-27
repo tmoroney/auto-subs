@@ -1,9 +1,10 @@
 import * as React from "react"
-import { X, Download, Upload } from "lucide-react"
+import { UserRoundPen, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CaptionList, Caption } from "@/components/caption-list"
 import { useGlobal } from "@/contexts/GlobalContext"
+import { ImportExportPopover } from "@/components/import-export-popover"
 
 interface MobileCaptionViewerProps {
   isOpen: boolean
@@ -40,8 +41,8 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
   const filteredCaptions = React.useMemo(() => {
     if (!searchQuery.trim()) return captions;
     const query = searchQuery.toLowerCase();
-    return captions.filter(caption => 
-      caption.text.toLowerCase().includes(query) || 
+    return captions.filter(caption =>
+      caption.text.toLowerCase().includes(query) ||
       (caption.speaker && caption.speaker.toLowerCase().includes(query))
     );
   }, [captions, searchQuery])
@@ -59,10 +60,10 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
 
   const handleEditCaption = (captionOrId: Caption | number) => {
     const id = typeof captionOrId === 'number' ? captionOrId : captionOrId.id;
-    const caption = typeof captionOrId === 'number' 
+    const caption = typeof captionOrId === 'number'
       ? captions.find(c => c.id === captionOrId)
       : captionOrId;
-      
+
     console.log(`Edit caption with id: ${id}`, "Full caption:", caption);
     // Add edit functionality here using the full caption if available
   }
@@ -90,11 +91,11 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
         onClose();
       }
     };
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown);
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -103,33 +104,15 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="fixed inset-0 z-50 bg-sidebar flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b bg-background/80 backdrop-blur-sm shrink-0">
-        <div className="flex gap-2">
-          <Button
-            onClick={handleExport}
-            variant="outline"
-            className="flex-1"
-            disabled={captions.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button
-            onClick={handleImport}
-            variant="outline"
-            className="flex-1"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-        </div>
-        <Button 
-          onClick={onClose} 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9"
+      <div className="flex items-center justify-between p-2 pl-3 border-b bg-sidebar shrink-0">
+        <h1 className="text-lg font-medium">Captions</h1>
+        <Button
+          onClick={onClose}
+          variant="outline"
+          size="icon"
+          className="h-8"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -137,12 +120,27 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
       </div>
 
       {/* Search */}
-      <div className="p-2 border-b shrink-0 sticky top-0 bg-background z-10">
+      <div className="p-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
+        <div className="flex space-x-2 items-center">
+          <ImportExportPopover
+            onImport={handleImport}
+            onExport={handleExport}
+            hasCaptions={captions.length > 0}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <UserRoundPen className="h-4 w-4 mr-2" />
+            Edit Speakers
+          </Button>
+        </div>
         <div className="relative">
-          <Input 
+          <Input
             ref={searchInputRef}
-            placeholder="Search captions..." 
-            value={searchQuery} 
+            placeholder="Search captions..."
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
             aria-label="Search captions"
@@ -172,7 +170,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
             <p className="text-lg font-medium mb-2">No captions found</p>
             <p className="text-sm">
-              {searchQuery 
+              {searchQuery
                 ? 'Try a different search term'
                 : 'No captions available. Try importing some first.'}
             </p>

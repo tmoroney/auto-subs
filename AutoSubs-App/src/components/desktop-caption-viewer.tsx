@@ -1,14 +1,15 @@
 import * as React from "react"
-import { Download, Upload, X } from "lucide-react"
+import { UserRoundPen, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CaptionList, Caption } from "@/components/caption-list"
 import { useGlobal } from "@/contexts/GlobalContext"
+import { ImportExportPopover } from "@/components/import-export-popover"
 
 export function DesktopCaptionViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles, exportSubtitles, importSubtitles } = useGlobal()
+  const { subtitles, exportSubtitlesAs, importSubtitles } = useGlobal()
 
   // Helper function to format time in HH:MM:SS
   const formatTime = (seconds: number | string): string => {
@@ -51,9 +52,9 @@ export function DesktopCaptionViewer() {
     // Add edit functionality here using the full caption if available
   }
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'srt' | 'json' = 'srt') => {
     try {
-      await exportSubtitles()
+      await exportSubtitlesAs(format)
     } catch (error) {
       console.error("Failed to export subtitles:", error)
     }
@@ -70,29 +71,20 @@ export function DesktopCaptionViewer() {
   return (
     <div className="flex flex-col h-full border-l bg-sidebar">
 
-      {/* Export/Import Buttons */}
-      <div className="shrink-0 p-3 pb-0">
-        <div className="flex gap-2">
-          <Button
-            onClick={handleImport}
-            variant="outline"
-            className="flex-1"
-            size="sm"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-          <Button
-            onClick={handleExport}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            disabled={captions.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
+      {/* Import/Export Popover & Edit Speakers */}
+      <div className="shrink-0 p-3 pb-0 flex gap-2">
+        <ImportExportPopover 
+          onImport={handleImport}
+          onExport={handleExport}
+          hasCaptions={captions.length > 0}
+        />
+        <Button
+          variant="outline"
+          className="w-full"
+        >
+          <UserRoundPen className="h-4 w-4 mr-2" />
+          Speakers
+        </Button>
       </div>
 
       {/* Search */}

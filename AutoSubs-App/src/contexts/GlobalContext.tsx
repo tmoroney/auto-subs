@@ -11,7 +11,7 @@ import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo, getExportProgress, cancelExport } from '@/api/resolveAPI';
+import { jumpToTime, getTimelineInfo, cancelExport } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -37,6 +37,10 @@ interface GlobalContextType {
   exportProgress: number;
   setExportProgress: (progress: number) => void;
   cancelRequestedRef: React.MutableRefObject<boolean>;
+  // Transcription utils
+  validateTranscriptionInput: () => boolean;
+  createTranscriptionOptions: (audioPath: string) => object;
+  processTranscriptionResults: (transcript: any) => Promise<string>;
   // UI state
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
@@ -60,6 +64,7 @@ interface GlobalContextType {
   updateSubtitles: (subtitles: Subtitle[]) => void;
   updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
   exportSubtitles: () => Promise<void>;
+  exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
   importSubtitles: () => Promise<void>;
   jumpToSpeaker: (start: number) => void;
   resetSettings: () => void;
@@ -256,14 +261,24 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }, [timelineInfo.timelineId, isStandaloneMode]);
 
   async function exportSubtitles() {
+    // Default to SRT export for backward compatibility
+    await exportSubtitlesAs('srt');
+  }
+
+  async function exportSubtitlesAs(format: 'srt' | 'json') {
     try {
       if (!subtitles || subtitles.length === 0) {
         throw new Error('No subtitles available to export');
       }
 
+      const defaultPath = format === 'srt' ? 'subtitles.srt' : 'subtitles.json';
+      const filters = format === 'srt'
+        ? [{ name: 'SRT Files', extensions: ['srt'] }]
+        : [{ name: 'JSON Files', extensions: ['json'] }];
+
       const filePath = await save({
-        defaultPath: 'subtitles.srt',
-        filters: [{ name: 'SRT Files', extensions: ['srt'] }],
+        defaultPath,
+        filters,
       });
 
       if (!filePath) {
@@ -271,33 +286,55 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         return;
       }
 
-      console.log('Generating SRT data from subtitles (first 3 items):', subtitles.slice(0, 3));
-      console.log('Subtitles array length:', subtitles.length);
+      if (format === 'srt') {
+        console.log('Generating SRT data from subtitles (first 3 items):', subtitles.slice(0, 3));
+        console.log('Subtitles array length:', subtitles.length);
 
-      // Log the structure of the first subtitle if it exists
-      if (subtitles.length > 0) {
-        console.log('First subtitle structure:', {
-          keys: Object.keys(subtitles[0]),
-          values: Object.entries(subtitles[0]).map(([key, value]) => ({
-            key,
-            type: typeof value,
-            value: value
+        // Log the structure of the first subtitle if it exists
+        if (subtitles.length > 0) {
+          console.log('First subtitle structure:', {
+            keys: Object.keys(subtitles[0]),
+            values: Object.entries(subtitles[0]).map(([key, value]) => ({
+              key,
+              type: typeof value,
+              value: value
+            }))
+          });
+        }
+
+        let srtData = generateSrt(subtitles);
+        console.log('Generated SRT data (first 100 chars):', srtData.substring(0, 100));
+
+        if (!srtData || srtData.trim() === '') {
+          console.error('Generated SRT data is empty');
+          throw new Error('Generated SRT data is empty');
+        }
+
+        await writeTextFile(filePath, srtData);
+        console.log('SRT file saved successfully to', filePath);
+      } else {
+        // Export as JSON
+        console.log('Generating JSON data from subtitles (first 3 items):', subtitles.slice(0, 3));
+
+        // Create a structured JSON object similar to what's used internally
+        const jsonData = {
+          createdAt: new Date().toISOString(),
+          segments: subtitles.map((segment, index) => ({
+            id: index.toString(),
+            start: segment.start,
+            end: segment.end,
+            text: segment.text.trim(),
+            speaker: segment.speaker || undefined,
+            words: segment.words || []
           }))
-        });
+        };
+
+        const jsonString = JSON.stringify(jsonData, null, 2);
+        await writeTextFile(filePath, jsonString);
+        console.log('JSON file saved successfully to', filePath);
       }
-
-      let srtData = generateSrt(subtitles);
-      console.log('Generated SRT data (first 100 chars):', srtData.substring(0, 100));
-
-      if (!srtData || srtData.trim() === '') {
-        console.error('Generated SRT data is empty');
-        throw new Error('Generated SRT data is empty');
-      }
-
-      await writeTextFile(filePath, srtData);
-      console.log('File saved successfully to', filePath);
     } catch (error) {
-      console.error('Failed to save file', error);
+      console.error(`Failed to save ${format} file`, error);
     }
   }
 
@@ -427,7 +464,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       try {
         // Import the required functions directly
         const { exportAudio, getExportProgress } = await import('@/api/resolveAPI');
-        
+
         // Start the export (non-blocking)
         const exportResult = await exportAudio(inputTracks);
         console.log("Export started:", exportResult);
@@ -613,6 +650,60 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   };
 
+  /**
+       * Validates input requirements before starting transcription
+       * @returns {boolean} True if validation passes, false otherwise
+       */
+  const validateTranscriptionInput = (): boolean => {
+    if (!fileInput && isStandaloneMode) {
+      console.error("No file selected")
+      return false
+    }
+    if (!timelineInfo && !isStandaloneMode) {
+      console.error("No timeline selected")
+      return false
+    }
+    return true
+  }
+
+  /**
+   * Creates transcription options object
+   * @param {string} audioPath Path to audio file
+   * @returns {object} Options for transcription
+   */
+  const createTranscriptionOptions = (audioPath: string): object => ({
+    audioPath,
+    model: modelsState[settings.model].value,
+    lang: settings.language === "auto" ? null : settings.language,
+    translate: settings.translate,
+    enableDiarize: settings.enableDiarize,
+    maxSpeakers: settings.maxSpeakers,
+  })
+
+  /**
+   * Processes transcription results
+   * @param {any} transcript Raw transcript data
+   * @returns {Promise<string>} Filename where transcript was saved
+   */
+  const processTranscriptionResults = async (transcript: any): Promise<string> => {
+    // Generate filename for new transcript based on mode and input
+    const filename = generateTranscriptFilename(
+      isStandaloneMode,
+      fileInput,
+      timelineInfo?.timelineId
+    )
+
+    // Save transcript to JSON file
+    const subtitles = await saveTranscript(transcript, filename)
+    console.log("Transcript saved to:", filename)
+
+    // Update the global subtitles state to show in sidebar
+    updateSubtitles(subtitles)
+    console.log("Caption list updated with", subtitles.length, "captions")
+
+    return filename
+  }
+
   return (
     <GlobalContext.Provider value={{
       settings,
@@ -636,6 +727,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       updateSubtitles,
       updateCaption,
       exportSubtitles,
+      exportSubtitlesAs,
       importSubtitles,
       jumpToSpeaker,
       resetSettings,
@@ -656,6 +748,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       exportProgress,
       setExportProgress,
       cancelRequestedRef,
+      // Transcription utils
+      validateTranscriptionInput,
+      createTranscriptionOptions,
+      processTranscriptionResults,
       // UI state
       isTranscribing,
       setIsTranscribing,

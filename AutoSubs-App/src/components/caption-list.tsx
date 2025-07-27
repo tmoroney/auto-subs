@@ -13,7 +13,7 @@ interface WordData {
     probability?: number;
 }
 import { Button } from "@/components/ui/button"
-import { Pencil, XCircle as XCircleIcon } from "lucide-react"
+import { Pencil, XCircle as XCircleIcon, User, Check } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -26,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+
+const defaultColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#ffffff"]
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -104,6 +106,7 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
     const [speakerName, setSpeakerName] = useState(caption.speaker || '');
     const [outline, setOutline] = useState<ColorModifier>(caption.outlineColor || { enabled: false, color: '#ffffff' });
     const [fill, setFill] = useState<ColorModifier>(caption.fillColor || { enabled: false, color: '#000000' });
+    const [editingSpeakerName, setEditingSpeakerName] = useState(false);
 
     const handleApplyToThisCaption = () => {
         // Ensure we preserve all original data including words array
@@ -133,47 +136,61 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
                     {caption.speaker}
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Edit Speaker</DialogTitle>
                     <DialogDescription>
                         Modify speaker details and colors
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <Label htmlFor="speaker-name" className="text-right">
-                            Speaker Name
-                        </Label>
-                        <Input
-                            id="speaker-name"
-                            value={speakerName}
-                            onChange={(e) => setSpeakerName(e.target.value)}
-                            className="col-span-2"
-                        />
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <User className="w-5 h-5" />
+                        </div>
+                        {editingSpeakerName ? (
+                            <>
+                                <Input
+                                    id="speaker-name"
+                                    value={speakerName}
+                                    onChange={(e) => setSpeakerName(e.target.value)}
+                                    className="w-32"
+                                    autoFocus
+                                    onBlur={() => setEditingSpeakerName(false)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") setEditingSpeakerName(false);
+                                        if (e.key === "Escape") setEditingSpeakerName(false);
+                                    }}
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="ml-1"
+                                    onClick={() => setEditingSpeakerName(false)}
+                                    aria-label="Save speaker name"
+                                >
+                                    <Check className="w-4 h-4" />
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="font-medium">{speakerName}</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="ml-1"
+                                    onClick={() => setEditingSpeakerName(true)}
+                                    aria-label="Edit speaker name"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </Button>
+                            </>
+                        )}
                     </div>
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <Label htmlFor="outline-color" className="text-right">
-                            Outline Color
-                        </Label>
-                        <div className="col-span-2">
-                            {outline.enabled && (
-                            <div className="flex items-center gap-2 mb-2">
-                                <Input
-                                    id="outline-color"
-                                    type="color"
-                                    value={outline.color}
-                                    onChange={(e) => setOutline({ ...outline, color: e.target.value })}
-                                    className="w-12 h-10 p-1"
-                                />
-                                <Input
-                                    value={outline.color}
-                                    onChange={(e) => setOutline({ ...outline, color: e.target.value })}
-                                    placeholder="#ffffff"
-                                />
-                            </div>
-                            )}
-                            <div className="flex items-center gap-3">
+
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="enable-outline"
                                     checked={outline.enabled}
@@ -185,34 +202,45 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
                                         }
                                     }}
                                 />
-                                <Label htmlFor="enable-outline" className="font-normal text-sm">
-                                    Enable Custom Outline
+                                <Label htmlFor="enable-outline" className="text-sm font-medium">
+                                    Outline Color
                                 </Label>
                             </div>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <Label htmlFor="fill-color" className="text-right">
-                            Fill Color
-                        </Label>
-                        <div className="col-span-2">
-                            {fill.enabled && (
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Input
-                                        id="fill-color"
-                                        type="color"
-                                        value={fill.color}
-                                    onChange={(e) => setFill({ ...fill, color: e.target.value })}
-                                    className="w-12 h-10 p-1"
-                                />
-                                <Input
-                                    value={fill.color}
-                                    onChange={(e) => setFill({ ...fill, color: e.target.value })}
-                                    placeholder="#000000"
-                                />
-                            </div>
+                            
+                            {outline.enabled && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id="outline-color"
+                                            type="color"
+                                            value={outline.color}
+                                            onChange={(e) => setOutline({ ...outline, color: e.target.value })}
+                                            className="w-12 h-10 p-1"
+                                        />
+                                        <Input
+                                            value={outline.color}
+                                            onChange={(e) => setOutline({ ...outline, color: e.target.value })}
+                                            placeholder="#ffffff"
+                                        />
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-2">
+                                        {defaultColors.map((color) => (
+                                            <button
+                                                key={color}
+                                                className="w-8 h-8 rounded-full border-2 border-muted-foreground/20"
+                                                style={{ backgroundColor: color }}
+                                                onClick={() => setOutline({ ...outline, color })}
+                                                aria-label={`Select ${color}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             )}
-                            <div className="flex items-center gap-3">
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="enable-fill"
                                     checked={fill.enabled}
@@ -224,24 +252,71 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
                                         }
                                     }}
                                 />
-                                <Label htmlFor="enable-fill" className="font-normal text-sm">
-                                    Enable Custom Fill
+                                <Label htmlFor="enable-fill" className="text-sm font-medium">
+                                    Fill Color
                                 </Label>
                             </div>
+                            
+                            {fill.enabled && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id="fill-color"
+                                            type="color"
+                                            value={fill.color}
+                                            onChange={(e) => setFill({ ...fill, color: e.target.value })}
+                                            className="w-12 h-10 p-1"
+                                        />
+                                        <Input
+                                            value={fill.color}
+                                            onChange={(e) => setFill({ ...fill, color: e.target.value })}
+                                            placeholder="#000000"
+                                        />
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-2">
+                                        {defaultColors.map((color) => (
+                                            <button
+                                                key={color}
+                                                className="w-8 h-8 rounded-full border-2 border-muted-foreground/20"
+                                                style={{ backgroundColor: color }}
+                                                onClick={() => setFill({ ...fill, color })}
+                                                aria-label={`Select ${color}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {(outline.enabled || fill.enabled) && (
+                        <div className="p-3 bg-muted rounded-lg">
+                            <div className="text-sm font-medium mb-2">Preview</div>
+                            <div
+                                className="inline-block px-3 py-1 rounded text-sm font-medium"
+                                style={{
+                                    backgroundColor: fill.enabled ? fill.color : "transparent",
+                                    color: fill.enabled ? (fill.color === "#000000" || fill.color === "#000" ? "#ffffff" : "#000000") : "#000000",
+                                    border: outline.enabled ? `2px solid ${outline.color}` : "none",
+                                }}
+                            >
+                                Sample caption text
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter className="gap-2">
                     <Button
                         variant="outline"
                         onClick={handleApplyToThisCaption}
                     >
-                        Apply to This Caption
+                        Apply to Only This Caption
                     </Button>
                     <Button
                         onClick={handleApplyToAllSpeakers}
                     >
-                        Apply to All "{caption.speaker}" Speakers
+                        Apply to All Captions with "{caption.speaker}"
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -98,7 +98,6 @@ function App() {
               // Mobile: Just show transcription settings
               <div className="h-full overflow-hidden">
                 <TranscriptionSettings
-                  isStandaloneMode={isStandaloneMode}
                   onShowTutorial={handleShowTutorial}
                 />
               </div>
@@ -145,7 +144,6 @@ function App() {
                   )}
 
                   <TranscriptionSettings
-                    isStandaloneMode={isStandaloneMode}
                     onShowTutorial={handleShowTutorial}
                   />
                 </ResizablePanel>

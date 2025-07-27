@@ -24,7 +24,6 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
-import { saveTranscript, generateTranscriptFilename } from "@/utils/fileUtils"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
 import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
@@ -50,7 +49,9 @@ export const TranscriptionSettings = ({
         checkDownloadedModels,
         handleDeleteModel,
         getSourceAudio,
-        updateSubtitles,
+        validateTranscriptionInput,
+        createTranscriptionOptions,
+        processTranscriptionResults,
         refresh,
         resetSettings,
         setFileInput,
@@ -85,60 +86,6 @@ export const TranscriptionSettings = ({
         const cleanup = setupEventListeners();
         return cleanup;
     }, [setupEventListeners]);
-
-    /**
-     * Validates input requirements before starting transcription
-     * @returns {boolean} True if validation passes, false otherwise
-     */
-    const validateTranscriptionInput = (): boolean => {
-        if (!fileInput && isStandaloneMode) {
-            console.error("No file selected")
-            return false
-        }
-        if (!timelineInfo && !isStandaloneMode) {
-            console.error("No timeline selected")
-            return false
-        }
-        return true
-    }
-
-    /**
-     * Creates transcription options object
-     * @param {string} audioPath Path to audio file
-     * @returns {object} Options for transcription
-     */
-    const createTranscriptionOptions = (audioPath: string): object => ({
-        audioPath,
-        model: modelsState[settings.model].value,
-        lang: settings.language === "auto" ? null : settings.language,
-        translate: settings.translate,
-        enableDiarize: settings.enableDiarize,
-        maxSpeakers: settings.maxSpeakers,
-    })
-
-    /**
-     * Processes transcription results
-     * @param {any} transcript Raw transcript data
-     * @returns {Promise<string>} Filename where transcript was saved
-     */
-    const processTranscriptionResults = async (transcript: any): Promise<string> => {
-        // Generate filename for new transcript based on mode and input
-        const filename = generateTranscriptFilename(
-            isStandaloneMode,
-            fileInput,
-            timelineInfo?.timelineId
-        )
-
-        // Save transcript to JSON file
-        const subtitles = await saveTranscript(transcript, filename)
-        console.log("Transcript saved to:", filename)
-
-        // Update the global subtitles state to show in sidebar
-        updateSubtitles(subtitles)
-        console.log("Caption list updated with", subtitles.length, "captions")
-
-        return filename
-    }
 
     /**
      * Main function to handle the transcription process
@@ -514,10 +461,12 @@ export const TranscriptionSettings = ({
                     </div>
                 </div>
                 {/* Footer */}
-                <div className="sticky bottom-0 p-4 border-t bg-background/50 backdrop-blur-sm shadow-2xl space-y-3">
+                <div
+                    className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
+                >
                     {/* Mobile Caption Viewer Button */}
                     {isMobile && (
-                        <Button onClick={() => setShowMobileCaptions(true)} variant="outline" className="w-full" size="lg">
+                        <Button onClick={() => setShowMobileCaptions(true)} variant="secondary" className="w-full" size="lg">
                             <Captions className="h-5 w-5 mr-2" />
                             View Captions
                         </Button>
