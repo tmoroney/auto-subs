@@ -655,7 +655,7 @@ pub async fn run_transcription_pipeline(
                         }
 
                         let segment = Segment {
-                            speaker: Some(speaker.clone()),
+                            speaker: Some(format!("Speaker {}", speaker)),
                             start: seg_start,
                             end: seg_end,
                             text,

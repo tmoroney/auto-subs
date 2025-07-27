@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Card } from "@/components/ui/card"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -32,7 +33,6 @@ import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 import { addSubtitlesToTimeline } from "@/api/resolveAPI"
-import { Card } from "./ui/card"
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void

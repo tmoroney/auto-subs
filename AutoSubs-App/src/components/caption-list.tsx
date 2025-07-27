@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useRef, useEffect } from "react";
-import { Caption as BaseCaption } from "@/data/captions"
+import { Caption as BaseCaption, ColorModifier } from "@/data/captions"
 
 export interface Caption extends BaseCaption {
     words?: WordData[];
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -91,7 +92,7 @@ interface SpeakerEditDialogProps {
     caption: Caption;
     allCaptions: Caption[];
     onUpdateCaption: (updatedCaption: Caption) => void;
-    onUpdateAllSpeakers: (oldSpeakerName: string, newSpeakerName: string, outlineColor: string, fillColor: string) => void;
+    onUpdateAllSpeakers: (oldSpeakerName: string, newSpeakerName: string, outline: ColorModifier, fill: ColorModifier) => void;
 }
 
 const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
@@ -101,16 +102,16 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
 }) => {
     const [open, setOpen] = useState(false);
     const [speakerName, setSpeakerName] = useState(caption.speaker || '');
-    const [outlineColor, setOutlineColor] = useState('#ffffff');
-    const [fillColor, setFillColor] = useState('#000000');
+    const [outline, setOutline] = useState<ColorModifier>(caption.outlineColor || { enabled: false, color: '#ffffff' });
+    const [fill, setFill] = useState<ColorModifier>(caption.fillColor || { enabled: false, color: '#000000' });
 
     const handleApplyToThisCaption = () => {
         // Ensure we preserve all original data including words array
         const updatedCaption = {
             ...caption,
             speaker: speakerName,
-            outlineColor,
-            fillColor
+            outlineColor: outline,
+            fillColor: fill,
             // The words array should already be in the caption object
         };
         onUpdateCaption(updatedCaption);
@@ -118,7 +119,7 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
     };
 
     const handleApplyToAllSpeakers = () => {
-        onUpdateAllSpeakers(caption.speaker || '', speakerName, outlineColor, fillColor);
+        onUpdateAllSpeakers(caption.speaker || '', speakerName, outline, fill);
         setOpen(false);
     };
 
@@ -155,38 +156,78 @@ const SpeakerEditDialog: React.FC<SpeakerEditDialogProps> = ({
                         <Label htmlFor="outline-color" className="text-right">
                             Outline Color
                         </Label>
-                        <div className="col-span-2 flex items-center gap-2">
-                            <Input
-                                id="outline-color"
-                                type="color"
-                                value={outlineColor}
-                                onChange={(e) => setOutlineColor(e.target.value)}
-                                className="w-12 h-10 p-1"
-                            />
-                            <Input
-                                value={outlineColor}
-                                onChange={(e) => setOutlineColor(e.target.value)}
-                                placeholder="#ffffff"
-                            />
+                        <div className="col-span-2">
+                            {outline.enabled && (
+                            <div className="flex items-center gap-2 mb-2">
+                                <Input
+                                    id="outline-color"
+                                    type="color"
+                                    value={outline.color}
+                                    onChange={(e) => setOutline({ ...outline, color: e.target.value })}
+                                    className="w-12 h-10 p-1"
+                                />
+                                <Input
+                                    value={outline.color}
+                                    onChange={(e) => setOutline({ ...outline, color: e.target.value })}
+                                    placeholder="#ffffff"
+                                />
+                            </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="enable-outline"
+                                    checked={outline.enabled}
+                                    onCheckedChange={(checked) => {
+                                        if (checked) {
+                                            setOutline({ ...outline, enabled: true });
+                                        } else {
+                                            setOutline({ ...outline, enabled: false });
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="enable-outline" className="font-normal text-sm">
+                                    Enable Custom Outline
+                                </Label>
+                            </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="fill-color" className="text-right">
                             Fill Color
                         </Label>
-                        <div className="col-span-2 flex items-center gap-2">
-                            <Input
-                                id="fill-color"
-                                type="color"
-                                value={fillColor}
-                                onChange={(e) => setFillColor(e.target.value)}
-                                className="w-12 h-10 p-1"
-                            />
-                            <Input
-                                value={fillColor}
-                                onChange={(e) => setFillColor(e.target.value)}
-                                placeholder="#000000"
-                            />
+                        <div className="col-span-2">
+                            {fill.enabled && (
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Input
+                                        id="fill-color"
+                                        type="color"
+                                        value={fill.color}
+                                    onChange={(e) => setFill({ ...fill, color: e.target.value })}
+                                    className="w-12 h-10 p-1"
+                                />
+                                <Input
+                                    value={fill.color}
+                                    onChange={(e) => setFill({ ...fill, color: e.target.value })}
+                                    placeholder="#000000"
+                                />
+                            </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="enable-fill"
+                                    checked={fill.enabled}
+                                    onCheckedChange={(checked) => {
+                                        if (checked) {
+                                            setFill({ ...fill, enabled: true });
+                                        } else {
+                                            setFill({ ...fill, enabled: false });
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="enable-fill" className="font-normal text-sm">
+                                    Enable Custom Fill
+                                </Label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -385,8 +426,8 @@ function CaptionListComponent({
     }, [onEditCaption]);
 
     // Handle updating all speakers with the same name
-    const handleSaveAllSpeakers = React.useCallback(async (oldSpeakerName: string, newSpeakerName: string, outlineColor: string, fillColor: string) => {
-        console.log('handleSaveAllSpeakers called:', { oldSpeakerName, newSpeakerName, outlineColor, fillColor });
+    const handleSaveAllSpeakers = React.useCallback(async (oldSpeakerName: string, newSpeakerName: string, outline: ColorModifier, fill: ColorModifier) => {
+        console.log('handleSaveAllSpeakers called:', { oldSpeakerName, newSpeakerName, outline, fill });
 
         if (onEditCaption) {
             // Create updated captions for all speakers with the same name
@@ -395,8 +436,8 @@ function CaptionListComponent({
                     return {
                         ...caption,
                         speaker: newSpeakerName,
-                        outlineColor,
-                        fillColor
+                        outlineColor: outline,
+                        fillColor: fill
                         // Preserve existing words array - it should already be there
                     };
                 }
@@ -413,7 +454,7 @@ function CaptionListComponent({
             // Process each caption sequentially
             for (const caption of changedCaptions) {
                 try {
-                    (onEditCaption as (caption: Caption) => void)(caption);
+                    (onEditCaption as (caption: Caption) => void)(caption as Caption);
                     // Small delay to prevent race conditions
                     await new Promise(resolve => setTimeout(resolve, 50));
                 } catch (e) {
@@ -446,7 +487,7 @@ function CaptionListComponent({
                         <span className={`text-xs text-muted-foreground font-mono`}>
                             {caption.timestamp}
                         </span>
-                        {caption.speaker && caption.color ? (
+                        {caption.speaker ? (
                             <SpeakerEditDialog
                                 caption={caption}
                                 allCaptions={captions}
