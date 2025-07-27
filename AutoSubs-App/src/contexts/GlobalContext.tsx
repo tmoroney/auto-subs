@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useState, useEffect } from 'react';
+import { ReactNode, createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 // Import the required APIs from Tauri
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -7,10 +7,11 @@ import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { downloadDir } from '@tauri-apps/api/path';
+import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo } from '@/api/resolveAPI';
+import { jumpToTime, getTimelineInfo, getExportProgress, cancelExport } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -25,6 +26,28 @@ interface GlobalContextType {
   topSpeaker: TopSpeaker;
   error: ErrorMsg;
   fileInput: string | null;
+  // Event listener states
+  transcriptionProgress: number;
+  downloadingModel: string | null;
+  isModelDownloading: boolean;
+  downloadProgress: number;
+  // Export state
+  isExporting: boolean;
+  setIsExporting: (isExporting: boolean) => void;
+  exportProgress: number;
+  setExportProgress: (progress: number) => void;
+  cancelRequestedRef: React.MutableRefObject<boolean>;
+  // UI state
+  isTranscribing: boolean;
+  setIsTranscribing: (isTranscribing: boolean) => void;
+  isRefreshing: boolean;
+  setIsRefreshing: (isRefreshing: boolean) => void;
+  isUpdateAvailable: boolean;
+  isUpdateDismissed: boolean;
+  setIsUpdateDismissed: (isUpdateDismissed: boolean) => void;
+  showMobileCaptions: boolean;
+  setShowMobileCaptions: (showMobileCaptions: boolean) => void;
+  setTranscriptionProgress: (progress: number) => void;
   checkDownloadedModels: () => Promise<void>;
   setIsStandaloneMode: (isStandaloneMode: boolean) => void;
   setFileInput: (fileInput: string | null) => void;
@@ -41,6 +64,10 @@ interface GlobalContextType {
   jumpToSpeaker: (start: number) => void;
   resetSettings: () => void;
   checkForUpdates: () => Promise<string | null>;
+  setupEventListeners: () => () => void; // Return cleanup function
+  handleDeleteModel: (modelValue: string) => Promise<void>;
+  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<string | null>;
+  cancelExport: () => Promise<any>;
 }
 
 export const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -92,6 +119,24 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
   const [fileInput, setFileInput] = useState<string | null>(null);
 
+  // Event listener states
+  const [transcriptionProgress, setTranscriptionProgress] = useState<number>(0);
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+  const [isModelDownloading, setIsModelDownloading] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const cancelRequestedRef = useRef<boolean>(false);
+
+  // UI state
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isUpdateAvailable] = useState<boolean>(false);
+  const [isUpdateDismissed, setIsUpdateDismissed] = useState<boolean>(false);
+  const [showMobileCaptions, setShowMobileCaptions] = useState<boolean>(false);
+
   // Davinci Resolve state
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
   const [markIn, setMarkIn] = useState(0);
@@ -120,28 +165,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
 
     initializeTimeline();
-
-    /*
-    getCurrentWindow().once("tauri://close-requested", async () => {
-      try {
-        // Set a timeout to ensure we don't hang forever
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout waiting for Resolve API')), 1000);
-        });
-        
-        // Try to send the exit request, but don't wait indefinitely
-        await Promise.race([
-          closeResolveLink().catch(err => console.error('Error closing Resolve link:', err)),
-          timeoutPromise
-        ]);
-      } catch (error) {
-        console.error('Failed to properly close Resolve link:', error);
-      } finally {
-        // Always exit the app, even if the request failed
-        exit(0);
-      }
-    });
-    */
   }, []);
 
   async function checkDownloadedModels() {
@@ -373,43 +396,157 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  // async function runSteps(useCachedAudio: boolean) {
-  //   // To-do: Add ability to re-run specific step - not only cached audio
-  //   setProgress(prev => ({ ...prev, isLoading: true, progress: 5 }));
-  //   setSubtitles([]);
+  // Function to delete a model
+  const handleDeleteModel = async (modelValue: string) => {
+    try {
+      // Call the backend to delete the model files
+      await invoke('delete_model', { model: modelValue });
 
-  //   // Initialize audio info with timeline and path
-  //   const audioInfo: AudioInfo = {
-  //     timeline: timelineInfo.timelineId,
-  //     path: audioPath,
-  //     markIn: markIn,
-  //     markOut: markOut
-  //   };
+      // Update the models state
+      await checkDownloadedModels();
 
-  //   if (settings.enabledSteps.exportAudio && !useCachedAudio && !settings.enabledSteps.customSrt) {
-  //     setProgress(prev => ({ ...prev, currentStep: 1 }));
-  //     // Update audio info with exported audio details
-  //     Object.assign(audioInfo, await exportAudio(settings.inputTrack));
-  //   }
+      console.log(`Successfully deleted model: ${modelValue}`);
+    } catch (error) {
+      console.error(`Failed to delete model ${modelValue}:`, error);
+      // You could add a toast notification here to inform the user of the error
+    }
+  };
 
-  //   setProgress(prev => ({ ...prev, progress: 20 }));
+  // Function to get source audio based on current mode
+  const getSourceAudio = async (
+    isStandaloneMode: boolean,
+    fileInput: string | null,
+    inputTracks: string[]
+  ): Promise<string | null> => {
+    if (timelineInfo && !isStandaloneMode) {
+      // Reset cancellation flag at the start of export
+      cancelRequestedRef.current = false;
+      setIsExporting(true);
+      setExportProgress(0);
 
-  //   if (settings.enabledSteps.transcribe && !settings.enabledSteps.customSrt) {
-  //     setProgress(prev => ({ ...prev, currentStep: 2 }));
-  //     // Get the full transcript path and fetch transcription
-  //     await getFullTranscriptPath(timelineInfo.timelineId);
-  //     //await fetchTranscription(settings);
-  //   }
+      try {
+        // Import the required functions directly
+        const { exportAudio, getExportProgress } = await import('@/api/resolveAPI');
+        
+        // Start the export (non-blocking)
+        const exportResult = await exportAudio(inputTracks);
+        console.log("Export started:", exportResult);
 
-  //   // TODO: skip transcription if custom srt is enabled
-  //   // TODO: send request to modify subtitles if only text format is re-run
+        // Poll for export progress until completion
+        let exportCompleted = false;
+        let audioInfo = null;
 
-  //   setProgress(prev => ({ ...prev, currentStep: 7, progress: 90, message: "Populating timeline..." }));
-  //   await populateSubtitles(timelineInfo.timelineId);
-  //   await addSubtitles("filepath", timelineInfo.timelineId, settings.outputTrack);
+        while (!exportCompleted && !cancelRequestedRef.current) {
+          // Check if cancellation was requested before making the next API call
+          if (cancelRequestedRef.current) {
+            console.log("Export polling interrupted by cancellation request");
+            break;
+          }
 
-  //   setProgress(prev => ({ ...prev, progress: 100, isLoading: false }));
-  // }
+          const progressResult = await getExportProgress();
+          console.log("Export progress:", progressResult);
+
+          // Update progress
+          setExportProgress(progressResult.progress || 0);
+
+          if (progressResult.completed) {
+            exportCompleted = true;
+            audioInfo = progressResult.audioInfo;
+            console.log("Export completed:", audioInfo);
+          } else if (progressResult.cancelled) {
+            console.log("Export was cancelled");
+            setIsExporting(false);
+            setExportProgress(0);
+            return null;
+          } else if (progressResult.error) {
+            console.error("Export error:", progressResult.message);
+            setIsExporting(false);
+            setExportProgress(0);
+            throw new Error(progressResult.message || "Export failed");
+          }
+
+          // Wait before next poll (avoid overwhelming the server)
+          if (!exportCompleted && !cancelRequestedRef.current) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Check again after timeout in case cancellation happened during the wait
+            if (cancelRequestedRef.current) {
+              console.log("Export polling interrupted during wait interval");
+              break;
+            }
+          }
+        }
+
+        setIsExporting(false);
+        setExportProgress(100);
+        return audioInfo?.path || null;
+
+      } catch (error) {
+        setIsExporting(false);
+        setExportProgress(0);
+        throw error;
+      }
+    } else {
+      return fileInput;
+    }
+  };
+
+  // Set up event listeners for transcription and model download progress
+  const setupEventListeners = useCallback(() => {
+    let unlistenTranscription: (() => void) | null = null;
+    let unlistenModelStart: (() => void) | null = null;
+    let unlistenModelProgress: (() => void) | null = null;
+    let unlistenModelComplete: (() => void) | null = null;
+    let unlistenModelCache: (() => void) | null = null;
+
+    const setup = async () => {
+      try {
+        // Transcription progress listener
+        unlistenTranscription = await listen<number>('transcription-progress', (event: { payload: number }) => {
+          console.log('Received transcription progress:', event.payload);
+          setTranscriptionProgress(event.payload);
+        });
+
+        // Model download start listener
+        unlistenModelStart = await listen<[string, string, number]>('model-download-start', (event: { payload: [string, string, number] }) => {
+          const [modelName] = event.payload;
+          setDownloadingModel(modelName);
+          setIsModelDownloading(true);
+          setDownloadProgress(0);
+        });
+
+        // Model download progress listener
+        unlistenModelProgress = await listen<number>('model-download-progress', (event: { payload: number }) => {
+          setDownloadProgress(event.payload);
+        });
+
+        // Model download complete listener
+        unlistenModelComplete = await listen<string>('model-download-complete', () => {
+          setDownloadingModel(null);
+          setIsModelDownloading(false);
+          setDownloadProgress(0);
+        });
+
+        // Model found in cache listener
+        unlistenModelCache = await listen<string>('model-found-in-cache', () => {
+          // No action needed when model is found in cache
+        });
+      } catch (error) {
+        console.error('Failed to setup event listeners:', error);
+      }
+    };
+
+    setup();
+
+    // Return cleanup function
+    return () => {
+      if (unlistenTranscription) unlistenTranscription();
+      if (unlistenModelStart) unlistenModelStart();
+      if (unlistenModelProgress) unlistenModelProgress();
+      if (unlistenModelComplete) unlistenModelComplete();
+      if (unlistenModelCache) unlistenModelCache();
+    };
+  }, []);
 
   async function jumpToSpeaker(start: number) {
     await jumpToTime(start, markIn);
@@ -502,7 +639,33 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       importSubtitles,
       jumpToSpeaker,
       resetSettings,
-      checkForUpdates
+      checkForUpdates,
+      // Event listener states
+      transcriptionProgress,
+      downloadingModel,
+      isModelDownloading,
+      downloadProgress,
+      setTranscriptionProgress,
+      setupEventListeners,
+      handleDeleteModel,
+      getSourceAudio,
+      cancelExport,
+      // Export state
+      isExporting,
+      setIsExporting,
+      exportProgress,
+      setExportProgress,
+      cancelRequestedRef,
+      // UI state
+      isTranscribing,
+      setIsTranscribing,
+      isRefreshing,
+      setIsRefreshing,
+      isUpdateAvailable,
+      isUpdateDismissed,
+      setIsUpdateDismissed,
+      showMobileCaptions,
+      setShowMobileCaptions,
     }}>
       {children}
     </GlobalContext.Provider>

@@ -23,7 +23,6 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
 import { saveTranscript, generateTranscriptFilename } from "@/utils/fileUtils"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
@@ -32,104 +31,60 @@ import { LanguageSettingsCard } from "@/components/settings-cards/language-setti
 import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
-import { exportAudio, addSubtitlesToTimeline, getExportProgress, cancelExport } from "@/api/resolveAPI"
+import { addSubtitlesToTimeline } from "@/api/resolveAPI"
 import { Card } from "./ui/card"
 
 interface TranscriptionSettingsProps {
-    isStandaloneMode: boolean
     onShowTutorial?: () => void
 }
 
-export function TranscriptionSettings({
-    isStandaloneMode,
+export const TranscriptionSettings = ({
     onShowTutorial
-}: TranscriptionSettingsProps) {
+}: TranscriptionSettingsProps) => {
     const isMobile = useIsMobile()
-    const { timelineInfo, setFileInput, fileInput, settings, updateSetting, updateSubtitles, modelsState, checkDownloadedModels, refresh, resetSettings } = useGlobal()
-    const [downloadingModel, setDownloadingModel] = React.useState<string | null>(null)
-    const [downloadProgress, setDownloadProgress] = React.useState<number>(0)
-    const [isModelDownloading, setIsModelDownloading] = React.useState(false)
-    const [isUpdateAvailable] = React.useState<boolean>(false)
-    const [isUpdateDismissed, setIsUpdateDismissed] = React.useState(false)
-    const [isTranscribing, setIsTranscribing] = React.useState(false)
-    const [transcriptionProgress, setTranscriptionProgress] = React.useState(0)
-    const [isExporting, setIsExporting] = React.useState(false)
-    const [exportProgress, setExportProgress] = React.useState(0)
-    const [isRefreshing, setIsRefreshing] = React.useState(false)
+    const {
+        settings,
+        modelsState,
+        timelineInfo,
+        updateSetting,
+        checkDownloadedModels,
+        handleDeleteModel,
+        getSourceAudio,
+        updateSubtitles,
+        refresh,
+        resetSettings,
+        setFileInput,
+        fileInput,
+        transcriptionProgress,
+        setTranscriptionProgress,
+        downloadingModel,
+        isModelDownloading,
+        downloadProgress,
+        setupEventListeners,
+        isStandaloneMode,
+        cancelExport,
+        isExporting,
+        setIsExporting,
+        exportProgress,
+        setExportProgress,
+        isRefreshing,
+        setIsRefreshing,
+        isTranscribing,
+        setIsTranscribing,
+        isUpdateAvailable,
+        isUpdateDismissed,
+        setIsUpdateDismissed,
+        showMobileCaptions,
+        setShowMobileCaptions,
+    } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
     const cancelRequestedRef = React.useRef(false)
-    const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
 
-    // Listen for transcription and model download progress events from the backend
+    // Set up event listeners from global context
     React.useEffect(() => {
-        let unlistenTranscription: (() => void) | null = null;
-        let unlistenModelStart: (() => void) | null = null;
-        let unlistenModelProgress: (() => void) | null = null;
-        let unlistenModelComplete: (() => void) | null = null;
-        let unlistenModelCache: (() => void) | null = null;
-
-        const setupEventListeners = async () => {
-            try {
-                // Transcription progress listener
-                unlistenTranscription = await listen<number>('transcription-progress', (event) => {
-                    console.log('Received transcription progress:', event.payload);
-                    setTranscriptionProgress(event.payload);
-                });
-
-                // Model download start listener
-                unlistenModelStart = await listen<[string, string, number]>('model-download-start', (event) => {
-                    const [modelName] = event.payload;
-                    setDownloadingModel(modelName);
-                    setIsModelDownloading(true);
-                    setDownloadProgress(0);
-                });
-
-                // Model download progress listener
-                unlistenModelProgress = await listen<number>('model-download-progress', (event) => {
-                    setDownloadProgress(event.payload);
-                });
-
-                // Model download complete listener
-                unlistenModelComplete = await listen<string>('model-download-complete', () => {
-                    setDownloadingModel(null);
-                    setIsModelDownloading(false);
-                    setDownloadProgress(0);
-                });
-
-                // Model found in cache listener
-                unlistenModelCache = await listen<string>('model-found-in-cache', () => {
-                    // No action needed when model is found in cache
-                });
-            } catch (error) {
-                console.error('Failed to setup event listeners:', error);
-            }
-        };
-
-        setupEventListeners();
-
-        return () => {
-            if (unlistenTranscription) unlistenTranscription();
-            if (unlistenModelStart) unlistenModelStart();
-            if (unlistenModelProgress) unlistenModelProgress();
-            if (unlistenModelComplete) unlistenModelComplete();
-            if (unlistenModelCache) unlistenModelCache();
-        };
-    }, []);
-
-    const handleDeleteModel = async (modelValue: string) => {
-        try {
-            // Call the backend to delete the model files
-            await invoke('delete_model', { model: modelValue })
-
-            // Update the models state
-            await checkDownloadedModels()
-
-            console.log(`Successfully deleted model: ${modelValue}`)
-        } catch (error) {
-            console.error(`Failed to delete model ${modelValue}:`, error)
-            // You could add a toast notification here to inform the user of the error
-        }
-    }
+        const cleanup = setupEventListeners();
+        return cleanup;
+    }, [setupEventListeners]);
 
     /**
      * Validates input requirements before starting transcription
@@ -145,81 +100,6 @@ export function TranscriptionSettings({
             return false
         }
         return true
-    }
-
-    /**
-     * Gets the audio path based on current mode
-     * @returns {Promise<string | null>} Path to audio file
-     */
-    const getSourceAudio = async (): Promise<string | null> => {
-        if (timelineInfo && !isStandaloneMode) {
-            // Reset cancellation flag at the start of export
-            cancelRequestedRef.current = false
-            setIsExporting(true)
-            setExportProgress(0)
-
-            try {
-                // Start the export (non-blocking)
-                const exportResult = await exportAudio(settings.selectedInputTracks)
-                console.log("Export started:", exportResult)
-
-                // Poll for export progress until completion
-                let exportCompleted = false
-                let audioInfo = null
-
-                while (!exportCompleted && !cancelRequestedRef.current) {
-                    // Check if cancellation was requested before making the next API call
-                    if (cancelRequestedRef.current) {
-                        console.log("Export polling interrupted by cancellation request")
-                        break
-                    }
-
-                    const progressResult = await getExportProgress()
-                    console.log("Export progress:", progressResult)
-
-                    // Update progress
-                    setExportProgress(progressResult.progress || 0)
-
-                    if (progressResult.completed) {
-                        exportCompleted = true
-                        audioInfo = progressResult.audioInfo
-                        console.log("Export completed:", audioInfo)
-                    } else if (progressResult.cancelled) {
-                        console.log("Export was cancelled")
-                        setIsExporting(false)
-                        setExportProgress(0)
-                        return null
-                    } else if (progressResult.error) {
-                        console.error("Export error:", progressResult.message)
-                        setIsExporting(false)
-                        setExportProgress(0)
-                        throw new Error(progressResult.message || "Export failed")
-                    }
-
-                    // Wait before next poll (avoid overwhelming the server)
-                    if (!exportCompleted && !cancelRequestedRef.current) {
-                        await new Promise(resolve => setTimeout(resolve, 500))
-
-                        // Check again after timeout in case cancellation happened during the wait
-                        if (cancelRequestedRef.current) {
-                            console.log("Export polling interrupted during wait interval")
-                            break
-                        }
-                    }
-                }
-
-                setIsExporting(false)
-                setExportProgress(100)
-                return audioInfo?.path || null
-
-            } catch (error) {
-                setIsExporting(false)
-                setExportProgress(0)
-                throw error
-            }
-        } else {
-            return fileInput
-        }
     }
 
     /**
@@ -270,7 +150,11 @@ export function TranscriptionSettings({
         }
 
         // Get audio path based on mode
-        const audioPath = await getSourceAudio()
+        const audioPath = await getSourceAudio(
+            isStandaloneMode,
+            fileInput,
+            settings.selectedInputTracks
+        )
         if (!audioPath) {
             console.error("Failed to get audio path")
             return

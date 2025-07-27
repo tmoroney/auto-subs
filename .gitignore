@@ -23,3 +23,4 @@ sign.sh
 AutoSubs-App/package-lock.json
 /Mac-Package/Payload
 /AutoSubs-App/src-tauri/binaries
+/AutoSubs-App/.windsurf
