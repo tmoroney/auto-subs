@@ -1,49 +1,31 @@
+// Error message interface
 export interface ErrorMsg {
     title: string;
     desc: string;
 }
 
+// Speaker Interfaces
 export interface Speaker {
-    label: string;
-    id: string;
-    color: string;
-    style: string;
+    name: string;
     sample: {
         start: number;
         end: number;
     };
-    subtitle_lines: number;
-    word_count: number;
+    fill: ColorModifier;
+    outline: ColorModifier;
 }
 
-export interface TopSpeaker {
-    label: string;
-    id: string;
-    percentage: number;
+export interface ColorModifier {
+    enabled: boolean;
+    color: string;
 }
 
+// Resolve Interfaces
 export interface AudioInfo {
     timeline: string;
     path: string;
     markIn: number;
     markOut: number;
-}
-
-export interface Subtitle {
-    start: string;
-    end: string;
-    text: string;
-    speaker: string;
-    words?: Array<{
-        word: string;
-        start: number;
-        end: number;
-        probability?: number;
-    }>;
-}
-
-export interface SubtitleListProps {
-    subtitles: Subtitle[];
 }
 
 export interface Template {
@@ -63,6 +45,25 @@ export interface TimelineInfo {
     outputTracks: Track[];
 }
 
+// Subtitle Interfaces
+export interface Subtitle {
+    start: string;
+    end: string;
+    text: string;
+    speaker: string;
+    words?: Array<{
+        word: string;
+        start: number;
+        end: number;
+        probability?: number;
+    }>;
+}
+
+export interface SubtitleListProps {
+    subtitles: Subtitle[];
+}
+
+// Model Interface
 export interface Model {
     value: string
     label: string
@@ -74,6 +75,7 @@ export interface Model {
     isDownloaded: boolean
 }
 
+// Settings Interface
 export interface Settings {
     // Processing settings
     model: number; // index of model in models array

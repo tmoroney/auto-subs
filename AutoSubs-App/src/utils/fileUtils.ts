@@ -1,7 +1,7 @@
 // src/utils/fileUtils.ts
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
-import { Speaker, Subtitle, TopSpeaker } from '@/types/interfaces';
+import { Speaker, Subtitle } from '@/types/interfaces';
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -107,16 +107,13 @@ export async function loadTranscriptSubtitles(filename: string): Promise<Subtitl
 }
 
 // Update the transcript file for the specified timeline with new speakers or subtitles
-export async function updateTranscript(filename: string, speakers?: Speaker[], topSpeaker?: TopSpeaker, subtitles?: Subtitle[]) {
+export async function updateTranscript(filename: string, speakers?: Speaker[], subtitles?: Subtitle[]) {
   if (!speakers && !subtitles) {
     return;
   }
   // read current file
   let transcript = await readTranscript(filename);
   if (!transcript) transcript = {};
-  if (topSpeaker) {
-    transcript.topSpeaker = topSpeaker;
-  }
   if (speakers) {
     transcript.speakers = speakers;
   }

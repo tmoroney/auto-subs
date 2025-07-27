@@ -10,7 +10,7 @@ import { downloadDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
-import { Subtitle, Speaker, TopSpeaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
+import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, ColorModifier } from "@/types/interfaces";
 import { jumpToTime, getTimelineInfo, cancelExport } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
@@ -23,7 +23,6 @@ interface GlobalContextType {
   timelineInfo: TimelineInfo;
   subtitles: Subtitle[];
   speakers: Speaker[];
-  topSpeaker: TopSpeaker;
   error: ErrorMsg;
   fileInput: string | null;
   // Event listener states
@@ -58,7 +57,7 @@ interface GlobalContextType {
   updateSetting: (key: keyof Settings, value: any) => void
   setError: (error: ErrorMsg) => void;
   setSpeakers: (speakers: Speaker[]) => void;
-  updateSpeaker: (index: number, label: string, color: string, style: string) => Promise<void>;
+  updateSpeaker: (name: string, newName: string, fill: ColorModifier, outline: ColorModifier) => Promise<void>;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
   updateSubtitles: (subtitles: Subtitle[]) => void;
@@ -120,7 +119,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // State declarations
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
-  const [topSpeaker, setTopSpeaker] = useState<TopSpeaker>({ label: "", id: "", percentage: 0 });
   const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
   const [fileInput, setFileInput] = useState<string | null>(null);
 
@@ -245,7 +243,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           setMarkIn(transcript.mark_in);
           setSubtitles(transcript.segments || []);
           setSpeakers(transcript.speakers || []);
-          setTopSpeaker(transcript.top_speaker || { name: '', count: 0 });
           console.log("Subtitles set:", transcript.segments);
         } else {
           console.warn("No transcript found for:", filename);
@@ -396,20 +393,17 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  async function updateSpeaker(index: number, label: string, color: string, style: string) {
-    let newTopSpeaker = topSpeaker;
-    if (topSpeaker.id === speakers[index].id) {
-      newTopSpeaker = { ...topSpeaker, label };
-      setTopSpeaker(newTopSpeaker); // Update the state
-    }
-
+  async function updateSpeaker(name: string, newName: string, fill: ColorModifier, outline: ColorModifier) {
     const newSpeakers = [...speakers];
-    newSpeakers[index].label = label;
-    newSpeakers[index].color = color;
-    newSpeakers[index].style = style;
+    const index = speakers.findIndex(speaker => speaker.name === name);
+    newSpeakers[index].name = newName;
+    newSpeakers[index].fill = fill;
+    newSpeakers[index].outline = outline;
 
     setSpeakers(newSpeakers);
-    await updateTranscript(timelineInfo.timelineId, newSpeakers, newTopSpeaker); // Use updated newTopSpeaker
+    console.log("Updated speaker:", newSpeakers[index]);
+    let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+    await updateTranscript(filename, newSpeakers);
   }
 
   async function checkForUpdates() {
@@ -711,7 +705,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       timelineInfo,
       subtitles,
       speakers,
-      topSpeaker,
       error,
       fileInput,
       isStandaloneMode,
