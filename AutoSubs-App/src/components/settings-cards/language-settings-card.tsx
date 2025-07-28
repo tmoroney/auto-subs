@@ -135,7 +135,7 @@ export const LanguageSettingsCard = ({
             </div>
             <div>
               <p className="text-sm font-medium">Input Language</p>
-              <p className="text-xs text-muted-foreground">Language of audio</p>
+              <p className="text-xs text-muted-foreground">Select language spoken in audio</p>
             </div>
           </div>
         </div>

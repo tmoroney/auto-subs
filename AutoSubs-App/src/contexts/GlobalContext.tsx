@@ -10,7 +10,7 @@ import { downloadDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
-import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, ColorModifier } from "@/types/interfaces";
+import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
 import { jumpToTime, getTimelineInfo, cancelExport } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';

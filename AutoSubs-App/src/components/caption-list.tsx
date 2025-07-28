@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useGlobal } from "@/contexts/GlobalContext"
 import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
-import { Pencil, XCircle as XCircleIcon, User, Check } from "lucide-react"
+import { Pencil, XCircle as XCircleIcon } from "lucide-react"
 import {
     Dialog,
     DialogContent,
