@@ -21,6 +21,7 @@ interface GlobalContextType {
   modelsState: Model[];
   isStandaloneMode: boolean;
   timelineInfo: TimelineInfo;
+  markIn: number;
   subtitles: Subtitle[];
   speakers: Speaker[];
   error: ErrorMsg;
@@ -57,10 +58,9 @@ interface GlobalContextType {
   updateSetting: (key: keyof Settings, value: any) => void
   setError: (error: ErrorMsg) => void;
   setSpeakers: (speakers: Speaker[]) => void;
-  updateSpeaker: (name: string, newName: string, fill: ColorModifier, outline: ColorModifier) => Promise<void>;
+  updateSpeakers: (speakers: Speaker[]) => void;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
-  updateSubtitles: (subtitles: Subtitle[]) => void;
   updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
   exportSubtitles: () => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
@@ -243,7 +243,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           setMarkIn(transcript.mark_in);
           setSubtitles(transcript.segments || []);
           setSpeakers(transcript.speakers || []);
-          console.log("Subtitles set:", transcript.segments);
+          console.log("Speakers set:", speakers);
+          console.log("Subtitles set:", subtitles);
         } else {
           console.warn("No transcript found for:", filename);
           setSubtitles([]);
@@ -321,7 +322,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
             start: segment.start,
             end: segment.end,
             text: segment.text.trim(),
-            speaker: segment.speaker || undefined,
+            speaker_id: segment.speaker_id || undefined,
             words: segment.words || []
           }))
         };
@@ -372,7 +373,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           const [endSecs, endMillis] = endSeconds.split(',');
           const endInSeconds = parseInt(endHours) * 3600 + parseInt(endMinutes) * 60 + parseInt(endSecs) + parseInt(endMillis) / 1000;
 
-          let subtitle = { start: startInSeconds.toString(), end: endInSeconds.toString(), text, speaker: "" };
+          let subtitle = { id: i, start: startInSeconds.toString(), end: endInSeconds.toString(), text, speaker_id: "" };
           subtitles.push(subtitle);
         }
       }
@@ -393,15 +394,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  async function updateSpeaker(name: string, newName: string, fill: ColorModifier, outline: ColorModifier) {
-    const newSpeakers = [...speakers];
-    const index = speakers.findIndex(speaker => speaker.name === name);
-    newSpeakers[index].name = newName;
-    newSpeakers[index].fill = fill;
-    newSpeakers[index].outline = outline;
-
+  async function updateSpeakers(newSpeakers: Speaker[]) {
+    console.log("Updating speakers:", newSpeakers);
     setSpeakers(newSpeakers);
-    console.log("Updated speaker:", newSpeakers[index]);
     let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
     await updateTranscript(filename, newSpeakers);
   }
@@ -595,11 +590,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  // Function to update subtitles
-  const updateSubtitles = (newSubtitles: Subtitle[]) => {
-    setSubtitles(newSubtitles);
-  };
-
   // Function to update a specific caption
   const updateCaption = async (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
     // Update the local subtitles state
@@ -688,11 +678,12 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     )
 
     // Save transcript to JSON file
-    const subtitles = await saveTranscript(transcript, filename)
+    const { subtitles, speakers } = await saveTranscript(transcript, filename)
     console.log("Transcript saved to:", filename)
 
     // Update the global subtitles state to show in sidebar
-    updateSubtitles(subtitles)
+    setSpeakers(speakers)
+    setSubtitles(subtitles)
     console.log("Caption list updated with", subtitles.length, "captions")
 
     return filename
@@ -703,6 +694,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       settings,
       modelsState,
       timelineInfo,
+      markIn,
       subtitles,
       speakers,
       error,
@@ -715,9 +707,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       updateSetting,
       setError,
       setSpeakers,
-      updateSpeaker,
+      updateSpeakers,
       refresh,
-      updateSubtitles,
       updateCaption,
       exportSubtitles,
       exportSubtitlesAs,

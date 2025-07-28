@@ -4,22 +4,6 @@ export interface ErrorMsg {
     desc: string;
 }
 
-// Speaker Interfaces
-export interface Speaker {
-    name: string;
-    sample: {
-        start: number;
-        end: number;
-    };
-    fill: ColorModifier;
-    outline: ColorModifier;
-}
-
-export interface ColorModifier {
-    enabled: boolean;
-    color: string;
-}
-
 // Resolve Interfaces
 export interface AudioInfo {
     timeline: string;
@@ -46,21 +30,36 @@ export interface TimelineInfo {
 }
 
 // Subtitle Interfaces
+export interface Word {
+    word: string;
+    start: number;
+    end: number;
+    probability?: number;
+}
 export interface Subtitle {
+    id: number;
     start: string;
     end: string;
     text: string;
-    speaker: string;
-    words?: Array<{
-        word: string;
-        start: number;
-        end: number;
-        probability?: number;
-    }>;
+    speaker_id: string;
+    words?: Array<Word>;
 }
 
-export interface SubtitleListProps {
-    subtitles: Subtitle[];
+// Speaker Interfaces
+export interface ColorModifier {
+    enabled: boolean;
+    color: string;
+}
+export interface Sample {
+    start: number;
+    end: number;
+}
+export interface Speaker {
+    name: string;
+    fill: ColorModifier;
+    outline: ColorModifier;
+    sample: Sample;
+    track?: string;
 }
 
 // Model Interface

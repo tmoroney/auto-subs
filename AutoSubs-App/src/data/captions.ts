@@ -1,6 +1,6 @@
 export interface Caption {
   id: number;
-  speaker?: string;
+  speaker_id?: string;
   timestamp: string;
   text: string;
 }

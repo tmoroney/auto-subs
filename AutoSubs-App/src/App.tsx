@@ -104,7 +104,7 @@ function App() {
             ) : (
               // Desktop: Resizable panels with transcription settings and caption viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={55} className="min-w-[380px]">
+                <ResizablePanel defaultSize={55} className="min-w-[360px]">
                   {!isMobile && (
                     <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
                       <ThemeToggle />
@@ -148,7 +148,7 @@ function App() {
                   />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={45} minSize={25}>
+                <ResizablePanel defaultSize={45} minSize={45}>
                   <DesktopCaptionViewer />
                 </ResizablePanel>
               </ResizablePanelGroup>

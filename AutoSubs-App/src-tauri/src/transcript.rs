@@ -17,15 +17,36 @@ pub struct Segment {
     pub end: f64,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub speaker: Option<String>,
+    pub speaker_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<Vec<WordTimestamp>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ColorModifier {
+    pub enabled: bool,
+    pub color: String
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Sample {
+    pub start: f64,
+    pub end: f64
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Speaker {
+    pub name: String,
+    pub fill: ColorModifier,
+    pub outline: ColorModifier,
+    pub sample: Sample
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transcript {
     pub processing_time_sec: u64,
     pub segments: Vec<Segment>,
+    pub speakers: Vec<Speaker>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -36,7 +57,7 @@ pub struct JsonSegment {
     end: f64,
     text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    speaker: Option<String>,
+    speaker_id: Option<String>,
     tokens: Vec<i32>,
     temperature: f32,
     avg_logprob: f64,
@@ -77,7 +98,7 @@ impl Transcript {
                     start: segment.start,
                     end: segment.end,
                     text: segment.text.clone(),
-                    speaker: segment.speaker.clone(),
+                    speaker_id: segment.speaker_id.clone(),
                     tokens: vec![], // Whisper tokens would need to be captured during transcription
                     temperature: 0.0, // Default value, should be set during transcription
                     avg_logprob: 0.0, // Default value, should be set during transcription

@@ -1,17 +1,7 @@
 import * as React from "react"
 import { useState, useRef, useEffect } from "react";
-import { Caption as BaseCaption } from "@/data/captions"
-
-export interface Caption extends BaseCaption {
-    words?: WordData[];
-}
-
-interface WordData {
-    word: string;
-    start: number;
-    end: number;
-    probability?: number;
-}
+import { useGlobal } from "@/contexts/GlobalContext"
+import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
 import { Pencil, XCircle as XCircleIcon, User, Check } from "lucide-react"
 import {
@@ -24,7 +14,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 
-const defaultColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#ffffff"]
+import { SpeakerEditor } from "@/components/speaker-editor"
 
 // --- Word Component ---
 const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
@@ -88,11 +78,11 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
 
 // --- Caption Editor Component ---
 interface CaptionEditorProps {
-    segment: Caption & { words?: WordData[] };
-    onSave: (updatedSegment: Caption) => void;
+    segment: Subtitle & { words?: Word[] };
+    onSave: (updatedSegment: Subtitle) => void;
     onCancel: () => void;
     hideButtons?: boolean;
-    onStateChange?: (words: WordData[], text: string) => void;
+    onStateChange?: (words: Word[], text: string) => void;
 }
 
 const CaptionEditor = ({
@@ -103,7 +93,7 @@ const CaptionEditor = ({
     onStateChange
 }: CaptionEditorProps) => {
     // Initialize words state with proper typing
-    const [words, setWords] = useState<WordData[]>(() => {
+    const [words, setWords] = useState<Word[]>(() => {
         if (segment?.words && Array.isArray(segment.words)) {
             return segment.words.map(word => ({
                 word: word.word || '',
@@ -210,57 +200,66 @@ const CaptionEditor = ({
 };
 
 interface CaptionListProps {
-    captions: Caption[]
-    /**
-     * Callback when a caption is edited.
-     * Can accept either a caption ID (number) or the full Caption object.
-     */
-    onEditCaption?: ((id: number) => void) | ((caption: Caption) => void)
-    className?: string
-    itemClassName?: string
-    isLoading?: boolean
-    error?: string | null
+    onEditCaption?: (caption: Subtitle) => void;
+    className?: string;
+    itemClassName?: string;
+    isLoading?: boolean;
+    error?: string | null;
 }
 
 import {
     DialogClose,
 } from "@/components/ui/dialog"
 
-function CaptionListComponent({
-    captions = [],
+const CaptionList = ({
     onEditCaption,
     className = "",
     itemClassName = "",
     isLoading = false,
     error = null
-}: CaptionListProps) {
+}: CaptionListProps) => {
+    const { subtitles, updateCaption, speakers } = useGlobal();
     // Ref to store the current editor state
-    const editorStateRef = React.useRef<{ words: WordData[]; text: string } | null>(null);
+    const editorStateRef = React.useRef<{ words: Word[]; text: string } | null>(null);
 
-    const handleOpenEdit = React.useCallback((id: number) => {
-        const caption = captions.find(c => c.id === id);
+    const handleOpenEdit = React.useCallback((index: number) => {
+        const caption = subtitles[index];
         if (!caption) {
-            console.warn('Could not find caption with id:', id);
+            console.warn('Could not find caption at index:', index);
             return;
         }
         // Dialog will be opened by the DialogTrigger
-    }, [captions]);
+    }, [subtitles]);
 
     // Handle caption save
-    const handleSave = React.useCallback((updatedSegment: Caption) => {
+    const handleSave = React.useCallback((updatedSegment: Subtitle) => {
         console.log('handleSave called with:', updatedSegment);
 
-        if (onEditCaption) {
-            try {
-                // Call the parent's edit handler with the updated caption
-                (onEditCaption as (caption: Caption) => void)(updatedSegment);
-                console.log('onEditCaption called successfully');
-            } catch (e) {
-                console.log('Fallback to id-based onEditCaption');
-                (onEditCaption as (id: number) => void)(updatedSegment.id);
-            }
+        // Update the global subtitles state
+        // Since Subtitle doesn't have an id field, we'll need to use the index
+        // This is a simplified approach - in a real app, you'd want to have proper IDs
+        const index = subtitles.indexOf(updatedSegment);
+        if (index !== -1 && updateCaption) {
+            // Convert the Subtitle to the format expected by updateCaption
+            const captionToUpdate = {
+                id: index, // Using index as ID for now
+                start: parseFloat(updatedSegment.start),
+                end: parseFloat(updatedSegment.end),
+                text: updatedSegment.text,
+                speaker: updatedSegment.speaker_id,
+                words: updatedSegment.words
+            };
+
+            // Call the global updateCaption function
+            updateCaption(index, captionToUpdate).catch(error => {
+                console.error('Failed to update caption:', error);
+            });
         }
-    }, [onEditCaption]);
+
+        if (onEditCaption) {
+            onEditCaption(updatedSegment);
+        }
+    }, [onEditCaption, subtitles, updateCaption]);
 
 
     if (isLoading) {
@@ -271,28 +270,30 @@ function CaptionListComponent({
         return <div className="p-4 text-center text-destructive">{error}</div>;
     }
 
-    if (!captions || captions.length === 0) {
+    if (!subtitles || subtitles.length === 0) {
         return <div className="p-4 text-center text-muted-foreground">No captions available</div>;
     }
 
     return (
         <div className={className}>
-            {captions.map((caption) => (
+            {subtitles.map((caption, index) => (
                 <div
-                    key={caption.id}
+                    key={index}
                     className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                 >
                     <div className="flex w-full items-center gap-2">
-                        <span className={`text-xs text-muted-foreground font-mono`}>
-                            {caption.timestamp}
-                        </span>
-                        {caption.speaker ? (
-                            <Button
-                                variant="outline"
-                                className="ml-auto text-xs p-2 h-6"
-                            >
-                                {caption.speaker}
-                            </Button>
+                        <div className="text-xs text-muted-foreground">
+                            {caption.start} - {caption.end}
+                        </div>
+                        {caption.speaker_id && speakers.length > 0 ? (
+                            <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={Number(caption.speaker_id)-1}>
+                                <Button
+                                    variant="outline"
+                                    className="ml-auto text-xs p-2 h-6"
+                                >
+                                    {speakers[Number(caption.speaker_id)-1]?.name || 'Unknown Speaker'}
+                                </Button>
+                            </SpeakerEditor>
                         ) : null}
 
                     </div>
@@ -307,7 +308,7 @@ function CaptionListComponent({
                                         <Button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleOpenEdit(caption.id);
+                                                handleOpenEdit(index);
                                             }}
                                             size="icon"
                                             variant="outline"
@@ -420,12 +421,4 @@ function CaptionListComponent({
     )
 }
 
-// Memoize the component to prevent unnecessary re-renders
-export const CaptionList = React.memo(
-    CaptionListComponent,
-    (prevProps, nextProps) => (
-        prevProps.captions === nextProps.captions &&
-        prevProps.isLoading === nextProps.isLoading &&
-        prevProps.error === nextProps.error
-    )
-);
+export { CaptionList };

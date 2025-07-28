@@ -1,5 +1,5 @@
 use crate::config::TranscribeOptions;
-use crate::transcript::{Segment, Transcript};
+use crate::transcript::{Segment, Transcript, Speaker, Sample, ColorModifier};
 use crate::audio;
 use eyre::{bail, eyre, Context, OptionExt, Result};
 use hound::WavReader;
@@ -456,6 +456,48 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
     word_timestamps
 }
 
+/// Aggregates speakers from transcript segments, similar to the frontend logic
+fn aggregate_speakers_from_segments(segments: &[Segment]) -> Vec<Speaker> {
+    use std::collections::HashMap;
+    
+    let mut speaker_map: HashMap<String, (f64, f64)> = HashMap::new();
+    
+    // Build speaker map from segments
+    for segment in segments {
+        if let Some(ref speaker_id) = segment.speaker_id {
+            let speaker_name = format!("Speaker {}", speaker_id.trim());
+            if !speaker_name.is_empty() {
+                if !speaker_map.contains_key(&speaker_name) {
+                    // First occurrence of this speaker - store their sample timing
+                    speaker_map.insert(speaker_name.to_string(), (segment.start, segment.end));
+                }
+            }
+        }
+    }
+    
+    // Convert map to speakers array
+    let mut speakers = Vec::new();
+    for (name, (start, end)) in speaker_map {
+        speakers.push(Speaker {
+            name,
+            sample: Sample {
+                start,
+                end,
+            },
+            fill: ColorModifier {
+                enabled: false,
+                color: String::new(),
+            },
+            outline: ColorModifier {
+                enabled: false,
+                color: String::new(),
+            },
+        });
+    }
+    
+    speakers
+}
+
 #[derive(Debug, Clone)]
 pub struct DiarizeOptions {
     pub segment_model_path: String,
@@ -595,7 +637,7 @@ pub async fn run_transcription_pipeline(
                     };
 
                     // Find the speaker
-                    let speaker = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
+                    let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
                         embedding_manager
                             .get_best_speaker_match(embedding_result)
                             .map(|r| r.to_string())
@@ -655,7 +697,7 @@ pub async fn run_transcription_pipeline(
                         }
 
                         let segment = Segment {
-                            speaker: Some(format!("Speaker {}", speaker)),
+                            speaker_id: Some(speaker_id.clone()),
                             start: seg_start,
                             end: seg_end,
                             text,
@@ -678,9 +720,13 @@ pub async fn run_transcription_pipeline(
                 }
             }
             
+            // Aggregate speakers from segments
+            let speakers = aggregate_speakers_from_segments(&segments);
+            
             let transcript = Transcript {
                 processing_time_sec: st.elapsed().as_secs(),
-                segments
+                segments,
+                speakers,
             };
             return Ok(transcript);
         } else {
@@ -771,7 +817,7 @@ pub async fn run_transcription_pipeline(
                     
                 // Create the segment after we're done printing
                 let segment = Segment {
-                    speaker: None, // No speaker info in non-diarized mode
+                    speaker_id: None, // No speaker info in non-diarized mode
                     start: seg_start,
                     end: seg_end,
                     text,
@@ -781,9 +827,13 @@ pub async fn run_transcription_pipeline(
                 segments.push(segment);
             }
 
+            // No speaker aggregation needed for non-diarized transcripts since all segments have speaker_id: None
+            let speakers = Vec::new();
+            
             let transcript = Transcript {
                 processing_time_sec: st.elapsed().as_secs(),
-                segments
+                segments,
+                speakers,
             };
             return Ok(transcript);
         }

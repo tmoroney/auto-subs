@@ -1,7 +1,7 @@
 // src/utils/fileUtils.ts
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
-import { Speaker, Subtitle } from '@/types/interfaces';
+import { Subtitle, Speaker } from '@/types/interfaces';
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -55,7 +55,7 @@ export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFi
 }
 
 // Save a new transcript to JSON file
-export async function saveTranscript(transcript: any, filename: string): Promise<Subtitle[]> {
+export async function saveTranscript(transcript: any, filename: string): Promise<{ subtitles: Subtitle[]; speakers: Speaker[] }> {
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
@@ -68,23 +68,25 @@ export async function saveTranscript(transcript: any, filename: string): Promise
       start: segment.start,
       end: segment.end,
       text: segment.text.trim(),
-      speaker: segment.speaker || undefined,
+      speaker_id: segment.speaker_id || undefined,
       words: segment.words || []
     }));
+
+    // Speakers are now aggregated in the Rust backend and included in the transcript
+    const speakers: Speaker[] = transcript.speakers || [];
 
     const transcriptData = {
       filename,
       createdAt: new Date().toISOString(),
       processingTime: transcript.processing_time_sec,
+      speakers: speakers,
       segments: subtitles,
-      speakers: [], // Will be populated when speakers are edited
-      topSpeaker: null // Will be populated when speakers are analyzed
     };
 
     // Save transcript to file
     await writeTextFile(filePath, JSON.stringify(transcriptData, null, 2));
     console.log('Successfully saved transcript to:', filePath);
-    return subtitles;
+    return { subtitles, speakers };
   } catch (error) {
     console.error('Failed to save transcript:', error);
     throw new Error(`Failed to save transcript: ${error}`);

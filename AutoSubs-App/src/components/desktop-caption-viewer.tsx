@@ -1,10 +1,12 @@
 import * as React from "react"
-import { UserRoundPen, X } from "lucide-react"
+import { UserRoundPen, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CaptionList, Caption } from "@/components/caption-list"
+import { CaptionList } from "@/components/caption-list"
 import { useGlobal } from "@/contexts/GlobalContext"
+import { Subtitle } from "@/types/interfaces"
 import { ImportExportPopover } from "@/components/import-export-popover"
+import { SpeakerEditor } from "@/components/speaker-editor"
 
 export function DesktopCaptionViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -23,7 +25,7 @@ export function DesktopCaptionViewer() {
     if (!subtitles || subtitles.length === 0) return [];
     return subtitles.map((sub, index) => ({
       id: index,
-      speaker: sub.speaker,
+      speaker_id: sub.speaker_id,
       timestamp: formatTime(sub.start),
       text: sub.text,
       color: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
@@ -34,21 +36,21 @@ export function DesktopCaptionViewer() {
 
   // Filter captions based on search query
   const filteredCaptions = React.useMemo(() => {
-    if (!searchQuery.trim()) return captions;
+    if (!searchQuery.trim()) return subtitles;
     const query = searchQuery.toLowerCase();
-    return captions.filter(caption =>
+    return subtitles.filter(caption =>
       caption.text.toLowerCase().includes(query) ||
-      (caption.speaker && caption.speaker.toLowerCase().includes(query))
+      (caption.speaker_id && caption.speaker_id.toLowerCase().includes(query))
     );
-  }, [captions, searchQuery])
+  }, [subtitles, searchQuery])
 
-  const handleEditCaption = (captionOrId: Caption | number) => {
-    const id = typeof captionOrId === 'number' ? captionOrId : captionOrId.id;
+  const handleEditCaption = (captionOrId: Subtitle | number) => {
+    const index = typeof captionOrId === 'number' ? captionOrId : subtitles.indexOf(captionOrId);
     const caption = typeof captionOrId === 'number'
-      ? captions.find(c => c.id === captionOrId)
+      ? subtitles[captionOrId]
       : captionOrId;
 
-    console.log(`Edit caption with id: ${id}`, "Full caption:", caption);
+    console.log(`Edit caption at index: ${index}`, "Full caption:", caption);
     // Add edit functionality here using the full caption if available
   }
 
@@ -73,18 +75,17 @@ export function DesktopCaptionViewer() {
 
       {/* Import/Export Popover & Edit Speakers */}
       <div className="shrink-0 p-3 pb-0 flex gap-2">
-        <ImportExportPopover 
+        <ImportExportPopover
           onImport={handleImport}
           onExport={handleExport}
           hasCaptions={captions.length > 0}
         />
-        <Button
-          variant="outline"
-          className="w-full"
-        >
-          <UserRoundPen className="h-4 w-4 mr-2" />
-          Speakers
-        </Button>
+        <SpeakerEditor afterTranscription={false}>
+          <Button variant="outline" className="w-full">
+            <Users className="w-4 h-4 mr-2" />
+            Edit Speakers
+          </Button>
+        </SpeakerEditor>
       </div>
 
       {/* Search */}
@@ -116,7 +117,6 @@ export function DesktopCaptionViewer() {
       <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2">
         {filteredCaptions.length > 0 ? (
           <CaptionList
-            captions={filteredCaptions}
             onEditCaption={handleEditCaption}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
           />
