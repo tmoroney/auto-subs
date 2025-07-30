@@ -11,7 +11,7 @@ import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo, cancelExport } from '@/api/resolveAPI';
+import { jumpToTime, getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -41,6 +41,7 @@ interface GlobalContextType {
   validateTranscriptionInput: () => boolean;
   createTranscriptionOptions: (audioPath: string) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
+  pushToTimeline: () => Promise<void>;
   // UI state
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
@@ -689,6 +690,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     return filename
   }
 
+  async function pushToTimeline() {
+    let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack);
+  }
+
   return (
     <GlobalContext.Provider value={{
       settings,
@@ -714,6 +720,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       exportSubtitlesAs,
       importSubtitles,
       jumpToSpeaker,
+      pushToTimeline,
       resetSettings,
       checkForUpdates,
       // Event listener states

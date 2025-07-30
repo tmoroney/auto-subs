@@ -636,6 +636,15 @@ function GetTemplateItem(folder, templateName)
     end
 end
 
+function SanitizeTrackIndex(trackIndex, markIn, markOut)
+    if trackIndex == "0" or trackIndex == "" or trackIndex == nil or tonumber(trackIndex) > timeline:GetTrackCount("video") or CheckTrackEmpty(trackIndex, markIn, markOut) then
+        trackIndex = timeline:GetTrackCount("video") + 1
+        timeline:AddTrack("video")
+    end
+
+    return tonumber(trackIndex)
+end
+
 -- Add subtitles to the timeline using the specified template
 function AddSubtitles(filePath, trackIndex, templateName)
     resolve:OpenPage("edit")
@@ -655,6 +664,13 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
     local markIn = data["mark_in"]
     local markOut = data["mark_out"]
+    local subtitles = data["segments"]
+    local speakers = data["speakers"]
+
+    local speakersExist = false
+    if speakers and #speakers > 0 then
+        speakersExist = true
+    end
 
     if not markIn or not markOut then
         local success, err = pcall(function()
@@ -669,18 +685,18 @@ function AddSubtitles(filePath, trackIndex, templateName)
         end
     end
 
-    if trackIndex == "0" or trackIndex == "" or not CheckTrackEmpty(trackIndex, markIn, markOut) then
-        trackIndex = timeline:GetTrackCount("video") + 1
-    else
-        trackIndex = tonumber(trackIndex)
+    trackIndex = SanitizeTrackIndex(trackIndex, markIn, markOut)
+
+    -- Sanitize speaker tracks
+    if speakersExist then
+        for i, speaker in ipairs(speakers) do
+            if speaker.track == nil or speaker.track == "" then
+                speaker.track = trackIndex
+            else
+                speaker.track = SanitizeTrackIndex(speaker.track, markIn, markOut)
+            end
+        end
     end
-
-    local subtitles = data["segments"]
-
-    print("Adding subtitles to timeline")
-
-    local frame_rate = timeline:GetSetting("timelineFrameRate")
-    print("Frame rate: " .. frame_rate)
 
     local rootFolder = mediaPool:GetRootFolder()
 
@@ -689,22 +705,12 @@ function AddSubtitles(filePath, trackIndex, templateName)
         templateName = templates[1].value
     end
 
+    -- Get template and frame rate
     local templateItem = GetTemplateItem(rootFolder, templateName)
-
-    -- convert speakers to dictionary
-    local speakersExist = false
-    local speakers = {}
-    if #data.speakers > 0 then
-        speakersExist = true
-        for _, speaker in ipairs(data.speakers) do
-            speakers[speaker.id] = {
-                color = speaker.color,
-                style = speaker.style
-            }
-        end
-    end
-
     local template_frame_rate = templateItem:GetClipProperty()["FPS"]
+
+    -- Get Timeline Frame rate
+    local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     -- If within 1 second, join the subtitles
     local joinThreshold = frame_rate
@@ -728,13 +734,22 @@ function AddSubtitles(filePath, trackIndex, templateName)
         -- Resolve uses frame rate of clip for startFrame and endFrame, so we need to convert clip_timeline_duration to template frame rate
         local duration = (clip_timeline_duration / frame_rate) * template_frame_rate
 
+        -- If speakers exists then check for custom track
+        local itemTrack = trackIndex
+        if speakersExist then
+            local speaker = speakers[tonumber(subtitle["speaker_id"]) + 1]
+            if speaker.track ~= nil and speaker.track ~= "" then
+                itemTrack = speaker.track
+            end
+        end
+
         local newClip = {
             mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
             mediaType = 1, -- media type 1 is video
             startFrame = 0, -- start frame means within the clip
             endFrame = duration, -- end frame means within the clip
             recordFrame = timeline_pos, -- record frame means where in the timeline the clip should be placed
-            trackIndex = trackIndex -- track the clip should be placed on
+            trackIndex = itemTrack -- track the clip should be placed on
         }
 
         table.insert(clipList, newClip)
@@ -757,16 +772,24 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
                 -- Set text colors if available
                 if speakersExist then
-                    local speaker = speakers[subtitle["speaker"]]
-                    -- Just so linter will stop bothering me
-                    if speaker ~= nil then
-                        local color = hexToRgb(speaker.color)
-                        if color ~= nil then
-                            if speaker.style == "Fill" then
+                    local speaker_id = subtitle["speaker_id"]
+                    if speaker_id ~= "?" then
+                        local speaker = speakers[tonumber(speaker_id) + 1]
+                        local color = nil
+
+                        -- Set custom colors for each speaker if enabled
+                        if speaker.fill.enabled and speaker.fill.color ~= "" then
+                            color = hexToRgb(speaker.fill.color)
+                            if color ~= nil then
                                 text_plus_tools[1]:SetInput("Red1", color.r)
                                 text_plus_tools[1]:SetInput("Green1", color.g)
                                 text_plus_tools[1]:SetInput("Blue1", color.b)
-                            elseif speaker.style == "Outline" then
+                            end
+                        end
+
+                        if speaker.outline.enabled and speaker.outline.color ~= "" then
+                            color = hexToRgb(speaker.outline.color)
+                            if color ~= nil then
                                 text_plus_tools[1]:SetInput("Red2", color.r)
                                 text_plus_tools[1]:SetInput("Green2", color.g)
                                 text_plus_tools[1]:SetInput("Blue2", color.b)
@@ -781,7 +804,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
         end)
 
         if not success then
-            print("Attempted to add subtitle on top of existing timeline item. Please select an empty track.")
+            print("Failed to add subtitle to timeline: " .. err)
         end
     end
 end

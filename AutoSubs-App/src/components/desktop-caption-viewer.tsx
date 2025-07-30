@@ -10,7 +10,7 @@ import { SpeakerEditor } from "@/components/speaker-editor"
 export function DesktopCaptionViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles, exportSubtitlesAs, importSubtitles } = useGlobal()
+  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
 
   const handleExport = async (format: 'srt' | 'json' = 'srt') => {
@@ -95,6 +95,7 @@ export function DesktopCaptionViewer() {
         <Button
           variant="default"
           className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
+          onClick={() => pushToTimeline()}
         >
           <Layers2 className="w-4 h-4 mr-2" />
           Add to Timeline

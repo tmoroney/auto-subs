@@ -457,27 +457,43 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
 }
 
 /// Aggregates speakers from transcript segments, similar to the frontend logic
-fn aggregate_speakers_from_segments(segments: &[Segment]) -> Vec<Speaker> {
+fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
     
-    let mut speaker_map: HashMap<String, (f64, f64)> = HashMap::new();
+    // Build speaker map: speaker_name -> (index, start_time, end_time)
+    let mut speaker_info: HashMap<String, (usize, f64, f64)> = HashMap::new();
+    let mut speaker_counter = 0;
     
-    // Build speaker map from segments
-    for segment in segments {
+    // First pass: collect unique speakers and assign indices
+    for segment in segments.iter() {
         if let Some(ref speaker_id) = segment.speaker_id {
             let speaker_name = format!("Speaker {}", speaker_id.trim());
             if !speaker_name.is_empty() {
-                if !speaker_map.contains_key(&speaker_name) {
-                    // First occurrence of this speaker - store their sample timing
-                    speaker_map.insert(speaker_name.to_string(), (segment.start, segment.end));
+                if !speaker_info.contains_key(&speaker_name) {
+                    speaker_info.insert(speaker_name.clone(), (speaker_counter, segment.start, segment.end));
+                    speaker_counter += 1;
                 }
             }
         }
     }
     
-    // Convert map to speakers array
+    // Create updated segments with new speaker IDs
+    let mut updated_segments = segments.to_vec();
+    for segment in updated_segments.iter_mut() {
+        if let Some(ref speaker_id) = segment.speaker_id {
+            let speaker_name = format!("Speaker {}", speaker_id.trim());
+            if let Some(&(index, _, _)) = speaker_info.get(&speaker_name) {
+                segment.speaker_id = Some(index.to_string());
+            }
+        }
+    }
+    
+    // Convert speaker info to speakers array, sorted by index
     let mut speakers = Vec::new();
-    for (name, (start, end)) in speaker_map {
+    let mut speaker_list: Vec<(String, (usize, f64, f64))> = speaker_info.into_iter().collect();
+    speaker_list.sort_by_key(|(_, (index, _, _))| *index);
+    
+    for (name, (_, start, end)) in speaker_list {
         speakers.push(Speaker {
             name,
             sample: Sample {
@@ -495,7 +511,7 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> Vec<Speaker> {
         });
     }
     
-    speakers
+    (speakers, updated_segments)
 }
 
 #[derive(Debug, Clone)]
@@ -720,8 +736,9 @@ pub async fn run_transcription_pipeline(
                 }
             }
             
-            // Aggregate speakers from segments
-            let speakers = aggregate_speakers_from_segments(&segments);
+            // Aggregate speakers from segments and update speaker IDs
+            let (speakers, updated_segments) = aggregate_speakers_from_segments(&segments);
+            let segments = updated_segments;
             
             let transcript = Transcript {
                 processing_time_sec: st.elapsed().as_secs(),

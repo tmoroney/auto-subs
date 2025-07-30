@@ -178,11 +178,11 @@ const CaptionList = ({
                                     variant="outline"
                                     className="ml-auto text-xs p-2 h-6"
                                     onClick={() => {
-                                        setExpandedSpeakerIndex(Number(caption.speaker_id) - 1);
+                                        setExpandedSpeakerIndex(Number(caption.speaker_id));
                                         setShowSpeakerEditor(true);
                                     }}
                                 >
-                                    {speakers[Number(caption.speaker_id) - 1]?.name || 'Unknown Speaker'}
+                                    {speakers[Number(caption.speaker_id)]?.name || 'Unknown Speaker'}
                                 </Button>
                             </>
                         ) : null}

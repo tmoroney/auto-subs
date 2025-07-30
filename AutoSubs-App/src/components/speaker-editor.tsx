@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Speech, ChevronDown, ChevronRight } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Speaker } from "@/types/interfaces"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { useState, useEffect } from "react"
@@ -12,13 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DialogDescription } from "@radix-ui/react-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { jumpToTime } from "@/api/resolveAPI"
-
 //const defaultColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
-
-// temp function
-function addToTimeline() {
-    console.log("Adding to timeline");
-}
 
 
 interface SpeakerEditorProps {
@@ -29,7 +23,7 @@ interface SpeakerEditorProps {
 }
 
 export function SpeakerEditor({ afterTranscription = false, open = false, onOpenChange, expandedSpeakerIndex }: SpeakerEditorProps) {
-    const { speakers, timelineInfo, settings, markIn, updateSpeakers } = useGlobal();
+    const { speakers, timelineInfo, settings, markIn, updateSpeakers, pushToTimeline } = useGlobal();
     const [localSpeakers, setLocalSpeakers] = useState(speakers);
     const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
 
@@ -108,7 +102,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                                 Jump to sample in timeline
                                             </TooltipContent>
                                         </Tooltip>
-                                        <span className="text-xs text-muted-foreground bg-muted rounded-md px-3 h-8 flex items-center">{speaker.track ? timelineInfo.outputTracks[Number(speaker.track)].label : timelineInfo.outputTracks[Number(settings.selectedOutputTrack)].label}</span>
+                                        <span className="text-xs text-muted-foreground bg-muted rounded-md px-3 h-8 flex items-center">{speaker.track ? timelineInfo.outputTracks[Number(speaker.track)]?.label : timelineInfo.outputTracks[Number(settings.selectedOutputTrack)]?.label}</span>
                                     </div>
                                 </div>
                             </div>
@@ -144,7 +138,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                                             })
                                                         }
                                                     />
-                                                    <Label htmlFor={`fill-${index}`}>Background Color</Label>
+                                                    <Label htmlFor={`fill-${index}`}>Fill Color</Label>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <input
@@ -257,7 +251,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                     </DialogClose>
                     <DialogClose asChild>
                         {afterTranscription ? (
-                            <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers); addToTimeline() }}>
+                            <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers); pushToTimeline() }}>
                                 Save & Add to Timeline
                             </Button>
                         ) : (
