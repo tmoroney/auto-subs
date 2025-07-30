@@ -10,7 +10,7 @@ import { downloadDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
-import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model } from "@/types/interfaces";
+import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
 import { jumpToTime, getTimelineInfo, cancelExport } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt } from '@/utils/srtUtils';
@@ -39,7 +39,7 @@ interface GlobalContextType {
   cancelRequestedRef: React.MutableRefObject<boolean>;
   // Transcription utils
   validateTranscriptionInput: () => boolean;
-  createTranscriptionOptions: (audioPath: string) => object;
+  createTranscriptionOptions: (audioPath: string) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   // UI state
   isTranscribing: boolean;
@@ -602,7 +602,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
             end: updatedCaption.end.toString(),
             text: updatedCaption.text,
             speaker: updatedCaption.speaker || subtitle.speaker,
-            words: updatedCaption.words || subtitle.words
+            words: updatedCaption.words !== undefined ? updatedCaption.words : subtitle.words
           };
         }
         return subtitle;
@@ -655,10 +655,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
    * @param {string} audioPath Path to audio file
    * @returns {object} Options for transcription
    */
-  const createTranscriptionOptions = (audioPath: string): object => ({
+  const createTranscriptionOptions = (audioPath: string): TranscriptionOptions => ({
     audioPath,
     model: modelsState[settings.model].value,
-    lang: settings.language === "auto" ? null : settings.language,
+    lang: settings.language,
     translate: settings.translate,
     enableDiarize: settings.enableDiarize,
     maxSpeakers: settings.maxSpeakers,

@@ -152,15 +152,16 @@ export async function updateCaptionInTranscript(filename: string, updatedCaption
   // Find and update the specific caption
   const captionIndex = transcript.segments.findIndex((segment: any) => segment.id === updatedCaption.id.toString());
   if (captionIndex !== -1) {
-    // Preserve the original words array from the existing segment
+    // Update the segment with new data while preserving timestamps
     const existingSegment = transcript.segments[captionIndex];
     transcript.segments[captionIndex] = {
       ...existingSegment,
-      // Update with the new caption data, preserving existing time values and words
+      // Update with the new caption data
       id: updatedCaption.id.toString(),
       text: updatedCaption.text,
       speaker: updatedCaption.speaker,
-      words: existingSegment.words || updatedCaption.words || []
+      // Use updated words if provided, otherwise keep existing words
+      words: updatedCaption.words !== undefined ? updatedCaption.words : existingSegment.words
       // Preserve original start/end times from existing segment
     };
     

@@ -102,3 +102,12 @@ export interface Settings {
     highlightType: "none" | "outline" | "fill" | "bubble";
     highlightColor: string;
 }
+
+export interface TranscriptionOptions {
+    audioPath: string,
+    model: string,
+    lang: string,
+    translate: boolean,
+    enableDiarize: boolean,
+    maxSpeakers: number
+}

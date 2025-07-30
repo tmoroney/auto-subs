@@ -23,11 +23,12 @@ function addToTimeline() {
 
 interface SpeakerEditorProps {
     afterTranscription?: boolean;
-    children?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
     expandedSpeakerIndex?: number;
 }
 
-export function SpeakerEditor({ afterTranscription = false, children, expandedSpeakerIndex }: SpeakerEditorProps) {
+export function SpeakerEditor({ afterTranscription = false, open = false, onOpenChange, expandedSpeakerIndex }: SpeakerEditorProps) {
     const { speakers, timelineInfo, settings, markIn, updateSpeakers } = useGlobal();
     const [localSpeakers, setLocalSpeakers] = useState(speakers);
     const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
@@ -56,18 +57,13 @@ export function SpeakerEditor({ afterTranscription = false, children, expandedSp
     }, [speakers, expandedSpeakerIndex]);
 
     return (
-        <Dialog>
-            {children && (
-                <DialogTrigger asChild>
-                    {children}
-                </DialogTrigger>
-            )}
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit Speakers</DialogTitle>
                     <DialogDescription className="text-sm">These are the speakers detected in the audio.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto">
                     {localSpeakers.map((speaker, index) => (
                         <Card key={index} className="overflow-hidden">
                             <div
@@ -83,10 +79,10 @@ export function SpeakerEditor({ afterTranscription = false, children, expandedSp
                                                 <ChevronRight className="w-4 h-4" />
                                             )}
                                             <div
-                                                className="w-4 h-4 rounded-full border-2"
+                                                className="w-5 h-5 rounded-full border-4"
                                                 style={{
                                                     backgroundColor: speaker.fill.enabled ? speaker.fill.color : "transparent",
-                                                    borderColor: speaker.outline.enabled ? speaker.outline.color : "#e5e7eb",
+                                                    borderColor: speaker.outline.enabled ? speaker.outline.color : "",
                                                 }}
                                             />
                                         </div>
@@ -118,124 +114,129 @@ export function SpeakerEditor({ afterTranscription = false, children, expandedSp
                             </div>
 
                             {expandedSpeaker === index && (
-                                <CardContent className="pt-0 p-4 px-4 border-t bg-muted/20 overflow-auto">
-                                    <div className="space-y-4">
-                                        {/* Speaker Name */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor={`name-${index}`} className="text-sm font-medium">
-                                                Speaker Name
-                                            </Label>
-                                            <Input
-                                                id={`name-${index}`}
-                                                value={speaker.name}
-                                                onChange={(e) => updateSpeaker(index, { ...speaker, name: e.target.value })}
-                                                placeholder="Enter speaker name"
-                                            />
-                                        </div>
+                                <CardContent className="p-4 pt-2 border-t space-y-3">
+                                    {/* Speaker Name */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor={`name-${index}`}>Name</Label>
+                                        <Input
+                                            id={`name-${index}`}
+                                            value={speaker.name}
+                                            onChange={(e) => updateSpeaker(index, { ...speaker, name: e.target.value })}
+                                            placeholder="Enter speaker name"
+                                            className="w-full"
+                                        />
+                                    </div>
 
-                                        {/* Fill & Outline Colors (on the same line) */}
-                                        <div className="flex flex-wrap gap-6 items-end">
+                                    {/* Color Settings */}
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Appearance</Label>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {/* Fill Color */}
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    id={`fill-${index}`}
-                                                    checked={speaker.fill.enabled}
-                                                    onCheckedChange={(checked) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            fill: { ...speaker.fill, enabled: !!checked },
-                                                        })
-                                                    }
-                                                />
-                                                <Label htmlFor={`fill-${index}`} className="text-sm font-medium">
-                                                    Fill
-                                                </Label>
-                                                <input
-                                                    type="color"
-                                                    value={speaker.fill.color}
-                                                    onChange={(e) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            fill: { ...speaker.fill, color: e.target.value },
-                                                        })
-                                                    }
-                                                    disabled={!speaker.fill.enabled}
-                                                    className="w-8 h-8 rounded border border-input disabled:opacity-50 disabled:cursor-not-allowed"
-                                                />
-                                                <Input
-                                                    value={speaker.fill.color}
-                                                    onChange={(e) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            fill: { ...speaker.fill, color: e.target.value },
-                                                        })
-                                                    }
-                                                    disabled={!speaker.fill.enabled}
-                                                    className="font-mono text-sm w-24"
-                                                    placeholder="#000000"
-                                                />
+                                            <div className="space-y-2 p-3 rounded-lg bg-muted/40">
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        id={`fill-${index}`}
+                                                        checked={speaker.fill.enabled}
+                                                        onCheckedChange={(checked) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                fill: { ...speaker.fill, enabled: !!checked },
+                                                            })
+                                                        }
+                                                    />
+                                                    <Label htmlFor={`fill-${index}`}>Background Color</Label>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="color"
+                                                        value={speaker.fill.color}
+                                                        onChange={(e) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                fill: { ...speaker.fill, color: e.target.value },
+                                                            })
+                                                        }
+                                                        disabled={!speaker.fill.enabled}
+                                                        className="w-10 h-10 rounded-md border-2 border-input bg-background disabled:opacity-50"
+                                                    />
+                                                    <Input
+                                                        value={speaker.fill.color}
+                                                        onChange={(e) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                fill: { ...speaker.fill, color: e.target.value },
+                                                            })
+                                                        }
+                                                        disabled={!speaker.fill.enabled}
+                                                        className="font-mono flex-1"
+                                                        placeholder="#000000"
+                                                    />
+                                                </div>
                                             </div>
-                                            {/* Outline Color */}
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    id={`outline-${index}`}
-                                                    checked={speaker.outline.enabled}
-                                                    onCheckedChange={(checked) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            outline: { ...speaker.outline, enabled: !!checked },
-                                                        })
-                                                    }
-                                                />
-                                                <Label htmlFor={`outline-${index}`} className="text-sm font-medium">
-                                                    Outline
-                                                </Label>
-                                                <input
-                                                    type="color"
-                                                    value={speaker.outline.color}
-                                                    onChange={(e) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            outline: { ...speaker.outline, color: e.target.value },
-                                                        })
-                                                    }
-                                                    disabled={!speaker.outline.enabled}
-                                                    className="w-8 h-8 rounded border border-input disabled:opacity-50 disabled:cursor-not-allowed"
-                                                />
-                                                <Input
-                                                    value={speaker.outline.color}
-                                                    onChange={(e) =>
-                                                        updateSpeaker(index, {
-                                                            ...speaker,
-                                                            outline: { ...speaker.outline, color: e.target.value },
-                                                        })
-                                                    }
-                                                    disabled={!speaker.outline.enabled}
-                                                    className="font-mono text-sm w-24"
-                                                    placeholder="#000000"
-                                                />
-                                            </div>
-                                        </div>
 
-                                        {/* Track Selection */}
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-medium">DaVinci Resolve Track</Label>
-                                            <Select
-                                                value={speaker.track || settings.selectedOutputTrack}
-                                                onValueChange={(value) => updateSpeaker(index, { ...speaker, track: value })}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select track" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {timelineInfo.outputTracks.map((track) => (
-                                                        <SelectItem key={track.value} value={track.value}>
-                                                            {track.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            {/* Outline Color */}
+                                            <div className="space-y-2 p-3 rounded-lg bg-muted/40">
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        id={`outline-${index}`}
+                                                        checked={speaker.outline.enabled}
+                                                        onCheckedChange={(checked) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                outline: { ...speaker.outline, enabled: !!checked },
+                                                            })
+                                                        }
+                                                    />
+                                                    <Label htmlFor={`outline-${index}`}>Border Color</Label>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="color"
+                                                        value={speaker.outline.color}
+                                                        onChange={(e) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                outline: { ...speaker.outline, color: e.target.value },
+                                                            })
+                                                        }
+                                                        disabled={!speaker.outline.enabled}
+                                                        className="w-10 h-10 rounded-md border-2 border-input bg-background disabled:opacity-50"
+                                                    />
+                                                    <Input
+                                                        value={speaker.outline.color}
+                                                        onChange={(e) =>
+                                                            updateSpeaker(index, {
+                                                                ...speaker,
+                                                                outline: { ...speaker.outline, color: e.target.value },
+                                                            })
+                                                        }
+                                                        disabled={!speaker.outline.enabled}
+                                                        className="font-mono flex-1"
+                                                        placeholder="#000000"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
+                                    </div>
+
+                                    {/* Track Selection */}
+                                    <div className="space-y-2">
+                                        <Label>Output Track</Label>
+                                        <Select
+                                            value={speaker.track || settings.selectedOutputTrack}
+                                            onValueChange={(value) => updateSpeaker(index, { ...speaker, track: value })}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Select a track" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {timelineInfo.outputTracks.map((track) => (
+                                                    <SelectItem key={track.value} value={track.value}>
+                                                        {track.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </CardContent>
                             )}

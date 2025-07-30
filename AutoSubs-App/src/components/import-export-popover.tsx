@@ -121,7 +121,7 @@ export function ImportExportPopover({ onImport, onExport, hasCaptions }: ImportE
                         <div className="flex gap-3 pt-2">
                             <Button
                                 variant="outline"
-                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'srt' ? 'border-primary' : ''}`}
+                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
                                 onClick={() => setExportFormat("srt")}
                                 aria-label="Export as SRT"
                                 type="button"
@@ -131,7 +131,7 @@ export function ImportExportPopover({ onImport, onExport, hasCaptions }: ImportE
                             </Button>
                             <Button
                                 variant="outline"
-                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'json' ? 'border-primary' : ''}`}
+                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'json' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
                                 onClick={() => setExportFormat("json")}
                                 aria-label="Export as JSON"
                                 type="button"

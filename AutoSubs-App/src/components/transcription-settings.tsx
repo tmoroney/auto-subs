@@ -31,7 +31,8 @@ import { LanguageSettingsCard } from "@/components/settings-cards/language-setti
 import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
-import { addSubtitlesToTimeline } from "@/api/resolveAPI"
+import { SpeakerEditor } from "./speaker-editor"
+import { TranscriptionOptions } from "@/types/interfaces"
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
@@ -80,6 +81,7 @@ export const TranscriptionSettings = ({
     } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
     const cancelRequestedRef = React.useRef(false)
+    const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
 
     // Set up event listeners from global context
     React.useEffect(() => {
@@ -113,7 +115,7 @@ export const TranscriptionSettings = ({
 
         try {
             // Create and log transcription options
-            const options = createTranscriptionOptions(audioPath)
+            const options: TranscriptionOptions = createTranscriptionOptions(audioPath)
             console.log("Invoking transcribe_audio with options:", options)
 
             // Perform transcription
@@ -121,15 +123,11 @@ export const TranscriptionSettings = ({
             console.log("Transcription successful:", transcript)
 
             // Process results and get filename
-            const filename = await processTranscriptionResults(transcript as any)
+            await processTranscriptionResults(transcript as any)
 
-            // Add subtitles to timeline if in Resolve mode
-            if (!isStandaloneMode) {
-                await addSubtitlesToTimeline(
-                    filename,
-                    settings.selectedTemplate.value,
-                    settings.selectedOutputTrack
-                )
+            if (!isStandaloneMode && options.enableDiarize) {
+                console.log("Enabling speaker editor")
+                setShowSpeakerEditor(true)
             }
         } catch (error) {
             console.error("Transcription failed:", error)
@@ -141,6 +139,13 @@ export const TranscriptionSettings = ({
             // Update model download status
             await checkDownloadedModels()
         }
+    }
+
+    const resetUIState = () => {
+        setIsTranscribing(false)
+        setTranscriptionProgress(0)
+        setIsExporting(false)
+        setExportProgress(0)
     }
 
     /**
@@ -167,17 +172,11 @@ export const TranscriptionSettings = ({
             }
 
             // Reset UI state
-            setIsTranscribing(false)
-            setTranscriptionProgress(0)
-            setIsExporting(false)
-            setExportProgress(0)
+            resetUIState()
         } catch (error) {
             console.error("Failed to cancel process:", error)
             // Still reset UI state even if backend call fails
-            setIsTranscribing(false)
-            setTranscriptionProgress(0)
-            setIsExporting(false)
-            setExportProgress(0)
+            resetUIState()
         } finally {
             // Ensure cancellation flag is set in all cases
             cancelRequestedRef.current = true
@@ -538,6 +537,11 @@ export const TranscriptionSettings = ({
 
             {/* Mobile Caption Viewer */}
             {isMobile && <MobileCaptionViewer isOpen={showMobileCaptions} onClose={() => setShowMobileCaptions(false)} />}
+
+            {/* Speaker Editor */}
+            {showSpeakerEditor && (
+                <SpeakerEditor afterTranscription={true} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
+            )}
         </>
     )
 }
