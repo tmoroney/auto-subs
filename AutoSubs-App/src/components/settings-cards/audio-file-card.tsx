@@ -48,7 +48,7 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
   }
 
   return (
-    <Card 
+    <Card
       className="p-3.5 shadow-none relative"
     >
       <div className="flex items-center gap-3 mb-2">

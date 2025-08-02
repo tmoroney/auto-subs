@@ -40,8 +40,8 @@ export function DesktopSubtitleViewer() {
           hasSubtitles={subtitles.length > 0}
         />
         <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
-            <Users className="w-4 h-4 mr-2" />
-            Speakers
+          <Users className="w-4 h-4 mr-2" />
+          Speakers
         </Button>
         <SpeakerEditor afterTranscription={false} open={showSpeakerEditor} onOpenChange={() => setShowSpeakerEditor(false)} />
       </div>

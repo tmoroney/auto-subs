@@ -32,7 +32,7 @@ export const SubtitleSettingsCard = ({
   outputTracks = [],
   templates = defaultTemplates,
   selectedOutputTrack = "1",
-  onOutputTrackChange = () => {}
+  onOutputTrackChange = () => { }
 }: SubtitleSettingsCardProps) => {
   const [openTemplates, setOpenTemplates] = React.useState(false)
 
@@ -52,8 +52,8 @@ export const SubtitleSettingsCard = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-normal">Output Track</Label>
-            <Select 
-              value={selectedOutputTrack} 
+            <Select
+              value={selectedOutputTrack}
               onValueChange={onOutputTrackChange}
             >
               <SelectTrigger className="w-[180px] h-9">

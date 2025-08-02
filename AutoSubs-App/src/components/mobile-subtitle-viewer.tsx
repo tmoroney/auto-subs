@@ -78,9 +78,9 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
             hasSubtitles={subtitles.length > 0}
           />
           <Button variant="outline" className="w-full">
-              <Users className="w-4 h-4 mr-2" />
-              Edit Speakers
-            </Button>
+            <Users className="w-4 h-4 mr-2" />
+            Edit Speakers
+          </Button>
           <SpeakerEditor afterTranscription={false} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
         </div>
         <div className="relative">

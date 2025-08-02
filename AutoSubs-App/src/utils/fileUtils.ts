@@ -7,7 +7,7 @@ import { Subtitle, Speaker } from '@/types/interfaces';
 export async function getTranscriptsDir(): Promise<string> {
   // Store in user's Documents/AutoSubs-Transcripts for persistence across reinstalls
   const dir = await join(await documentDir(), "AutoSubs-Transcripts");
-  
+
   // Ensure the directory exists
   try {
     if (!(await exists(dir))) {
@@ -18,7 +18,7 @@ export async function getTranscriptsDir(): Promise<string> {
     console.error('Failed to create transcripts directory:', error);
     throw new Error(`Failed to create transcripts directory: ${error}`);
   }
-  
+
   return dir;
 }
 
@@ -59,9 +59,9 @@ export async function saveTranscript(transcript: any, filename: string): Promise
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
-    
+
     console.log('Saving transcript to:', filePath);
-    
+
     // Transform transcript segments to subtitle format
     const subtitles: Subtitle[] = transcript.segments.map((segment: any, index: number) => ({
       id: index.toString(),
@@ -97,12 +97,12 @@ export async function saveTranscript(transcript: any, filename: string): Promise
 export async function loadTranscriptSubtitles(filename: string): Promise<Subtitle[]> {
   const storageDir = await getTranscriptsDir();
   const filePath = await join(storageDir, filename);
-  
+
   if (!(await exists(filePath))) {
     console.log("Transcript file not found:", filename);
     return [];
   }
-  
+
   const contents = await readTextFile(filePath);
   const transcript = JSON.parse(contents);
   return transcript.segments || [];
@@ -133,47 +133,47 @@ export async function updateSubtitleInTranscript(filename: string, updatedSubtit
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
-    
+
     console.log('Updating subtitle in file:', filePath);
-    
+
     if (!(await exists(filePath))) {
       console.log("Transcript file not found:", filename);
       return;
     }
-  
-  const contents = await readTextFile(filePath);
-  const transcript = JSON.parse(contents);
-  
-  if (!transcript.segments) {
-    console.log("No segments found in transcript");
-    return;
-  }
-  
-  // Find and update the specific subtitle
-  const subtitleIndex = transcript.segments.findIndex((segment: any) => segment.id === updatedSubtitle.id.toString());
-  if (subtitleIndex !== -1) {
-    // Update the segment with new data while preserving timestamps
-    const existingSegment = transcript.segments[subtitleIndex];
-    transcript.segments[subtitleIndex] = {
-      ...existingSegment,
-      // Update with the new subtitle data
-      id: updatedSubtitle.id.toString(),
-      text: updatedSubtitle.text,
-      speaker: updatedSubtitle.speaker,
-      // Use updated words if provided, otherwise keep existing words
-      words: updatedSubtitle.words !== undefined ? updatedSubtitle.words : existingSegment.words
-      // Preserve original start/end times from existing segment
-    };
-    
-    // Update the modification timestamp
-    transcript.lastModified = new Date().toISOString();
-    
-    // Save the updated transcript
-    await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
-    console.log("Subtitle updated in transcript file:", filename);
-  } else {
-    console.log("Subtitle not found in transcript:", updatedSubtitle.id);
-  }
+
+    const contents = await readTextFile(filePath);
+    const transcript = JSON.parse(contents);
+
+    if (!transcript.segments) {
+      console.log("No segments found in transcript");
+      return;
+    }
+
+    // Find and update the specific subtitle
+    const subtitleIndex = transcript.segments.findIndex((segment: any) => segment.id === updatedSubtitle.id.toString());
+    if (subtitleIndex !== -1) {
+      // Update the segment with new data while preserving timestamps
+      const existingSegment = transcript.segments[subtitleIndex];
+      transcript.segments[subtitleIndex] = {
+        ...existingSegment,
+        // Update with the new subtitle data
+        id: updatedSubtitle.id.toString(),
+        text: updatedSubtitle.text,
+        speaker: updatedSubtitle.speaker,
+        // Use updated words if provided, otherwise keep existing words
+        words: updatedSubtitle.words !== undefined ? updatedSubtitle.words : existingSegment.words
+        // Preserve original start/end times from existing segment
+      };
+
+      // Update the modification timestamp
+      transcript.lastModified = new Date().toISOString();
+
+      // Save the updated transcript
+      await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
+      console.log("Subtitle updated in transcript file:", filename);
+    } else {
+      console.log("Subtitle not found in transcript:", updatedSubtitle.id);
+    }
   } catch (error) {
     console.error('Failed to update subtitle in transcript:', error);
     throw new Error(`Failed to update subtitle: ${error}`);

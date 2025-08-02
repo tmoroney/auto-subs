@@ -23,7 +23,7 @@ export const ModelSelectionCard = ({
   downloadingModel = null,
   downloadProgress = 0,
   onModelChange,
-  onDeleteModel = () => {},
+  onDeleteModel = () => { },
   walkthroughMode = false
 }: ModelSelectionCardProps) => {
   const [openModelSelector, setOpenModelSelector] = React.useState(false)
