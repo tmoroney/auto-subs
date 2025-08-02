@@ -50,8 +50,8 @@ interface GlobalContextType {
   isUpdateAvailable: boolean;
   isUpdateDismissed: boolean;
   setIsUpdateDismissed: (isUpdateDismissed: boolean) => void;
-  showMobileCaptions: boolean;
-  setShowMobileCaptions: (showMobileCaptions: boolean) => void;
+  showMobileSubtitles: boolean;
+  setShowMobileSubtitles: (showMobileSubtitles: boolean) => void;
   setTranscriptionProgress: (progress: number) => void;
   checkDownloadedModels: () => Promise<void>;
   setIsStandaloneMode: (isStandaloneMode: boolean) => void;
@@ -62,7 +62,7 @@ interface GlobalContextType {
   updateSpeakers: (speakers: Speaker[]) => void;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
-  updateCaption: (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
+  updateSubtitle: (subtitleId: number, updatedSubtitle: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
   exportSubtitles: () => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
   importSubtitles: () => Promise<void>;
@@ -90,9 +90,8 @@ const DEFAULT_SETTINGS: Settings = {
   maxSpeakers: 2,
 
   // Text settings
-  maxWords: 5,
-  maxChars: 25,
-  numLines: 1,
+  maxWordsPerLine: 5,
+  maxLines: 1,
   textFormat: "none",
   removePunctuation: false,
   enableCensor: false,
@@ -139,7 +138,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isUpdateAvailable] = useState<boolean>(false);
   const [isUpdateDismissed, setIsUpdateDismissed] = useState<boolean>(false);
-  const [showMobileCaptions, setShowMobileCaptions] = useState<boolean>(false);
+  const [showMobileSubtitles, setShowMobileSubtitles] = useState<boolean>(false);
 
   // Davinci Resolve state
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
@@ -591,19 +590,19 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   }
 
-  // Function to update a specific caption
-  const updateCaption = async (captionId: number, updatedCaption: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
+  // Function to update a specific subtitle
+  const updateSubtitle = async (subtitleId: number, updatedSubtitle: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
     // Update the local subtitles state
     setSubtitles(prevSubtitles =>
       prevSubtitles.map((subtitle: any) => {
-        if (subtitle.id === captionId.toString()) {
+        if (subtitle.id === subtitleId.toString()) {
           return {
             ...subtitle,
-            start: updatedCaption.start.toString(),
-            end: updatedCaption.end.toString(),
-            text: updatedCaption.text,
-            speaker: updatedCaption.speaker || subtitle.speaker,
-            words: updatedCaption.words !== undefined ? updatedCaption.words : subtitle.words
+            start: updatedSubtitle.start.toString(),
+            end: updatedSubtitle.end.toString(),
+            text: updatedSubtitle.text,
+            speaker: updatedSubtitle.speaker || subtitle.speaker,
+            words: updatedSubtitle.words !== undefined ? updatedSubtitle.words : subtitle.words
           };
         }
         return subtitle;
@@ -612,7 +611,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     // Save to JSON file if we have the necessary context
     try {
-      const { updateCaptionInTranscript } = await import('@/utils/fileUtils');
+      const { updateSubtitleInTranscript } = await import('@/utils/fileUtils');
 
       // Determine the current transcript filename
       let filename: string | null = null;
@@ -627,11 +626,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       }
 
       if (filename) {
-        await updateCaptionInTranscript(filename, updatedCaption);
-        console.log('Caption updated in both UI and file');
+        await updateSubtitleInTranscript(filename, updatedSubtitle);
+        console.log('Subtitle updated in both UI and file');
       }
     } catch (error) {
-      console.error('Failed to update caption in file:', error);
+      console.error('Failed to update subtitle in file:', error);
     }
   };
 
@@ -685,7 +684,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     // Update the global subtitles state to show in sidebar
     setSpeakers(speakers)
     setSubtitles(subtitles)
-    console.log("Caption list updated with", subtitles.length, "captions")
+    console.log("Subtitle list updated with", subtitles.length, "subtitles")
 
     return filename
   }
@@ -715,7 +714,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       setSpeakers,
       updateSpeakers,
       refresh,
-      updateCaption,
+      updateSubtitle,
       exportSubtitles,
       exportSubtitlesAs,
       importSubtitles,
@@ -751,8 +750,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       isUpdateAvailable,
       isUpdateDismissed,
       setIsUpdateDismissed,
-      showMobileCaptions,
-      setShowMobileCaptions,
+      showMobileSubtitles,
+      setShowMobileSubtitles,
     }}>
       {children}
     </GlobalContext.Provider>

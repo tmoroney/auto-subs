@@ -21,12 +21,12 @@ import { Card } from "@/components/ui/card"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
-import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
+import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
 import { AudioFileCard } from "./settings-cards/audio-file-card"
 import { AudioInputCard } from "./settings-cards/audio-input-card"
-import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
+import { SubtitleSettingsCard } from "./settings-cards/subtitle-settings-card"
 import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
 import { ModelSelectionCard } from "./settings-cards/model-selection-card"
 import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
@@ -76,8 +76,8 @@ export const TranscriptionSettings = ({
         isUpdateAvailable,
         isUpdateDismissed,
         setIsUpdateDismissed,
-        showMobileCaptions,
-        setShowMobileCaptions,
+        showMobileSubtitles,
+        setShowMobileSubtitles,
     } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
     const cancelRequestedRef = React.useRef(false)
@@ -277,7 +277,7 @@ export const TranscriptionSettings = ({
                                         updateSetting("selectedInputTracks", tracks)
                                     }}
                                 />
-                                <CaptionSettingsCard
+                                <SubtitleSettingsCard
                                     selectedTemplate={settings.selectedTemplate}
                                     onTemplateChange={(template) => {
                                         updateSetting("selectedTemplate", template)
@@ -362,14 +362,14 @@ export const TranscriptionSettings = ({
                         </div>
                         <CollapsibleContent>
                             <TextFormattingCard
-                                maxWords={settings.maxWords}
-                                numLines={settings.numLines}
+                                maxWordsPerLine={settings.maxWordsPerLine}
+                                maxLines={settings.maxLines}
                                 textFormat={settings.textFormat}
                                 removePunctuation={settings.removePunctuation}
                                 enableCensor={settings.enableCensor}
                                 censorWords={settings.censorWords}
-                                onMaxWordsChange={(value) => updateSetting("maxWords", value)}
-                                onNumLinesChange={(value) => updateSetting("numLines", value)}
+                                onMaxWordsPerLineChange={(value) => updateSetting("maxWordsPerLine", value)}
+                                onMaxLinesChange={(value) => updateSetting("maxLines", value)}
                                 onTextFormatChange={(format) => updateSetting("textFormat", format)}
                                 onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
                                 onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
@@ -463,11 +463,11 @@ export const TranscriptionSettings = ({
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
                 >
-                    {/* Mobile Caption Viewer Button */}
+                    {/* Mobile Subtitles Viewer Button */}
                     {isMobile && (
-                        <Button onClick={() => setShowMobileCaptions(true)} variant="secondary" className="w-full" size="lg">
+                        <Button onClick={() => setShowMobileSubtitles(true)} variant="secondary" className="w-full" size="lg">
                             <Captions className="h-5 w-5 mr-2" />
-                            View Captions
+                            View Subtitles
                         </Button>
                     )}
 
@@ -535,8 +535,8 @@ export const TranscriptionSettings = ({
                 </div>
             </div>
 
-            {/* Mobile Caption Viewer */}
-            {isMobile && <MobileCaptionViewer isOpen={showMobileCaptions} onClose={() => setShowMobileCaptions(false)} />}
+            {/* Mobile Subtitles Viewer */}
+            {isMobile && <MobileSubtitleViewer isOpen={showMobileSubtitles} onClose={() => setShowMobileSubtitles(false)} />}
 
             {/* Speaker Editor */}
             {showSpeakerEditor && (

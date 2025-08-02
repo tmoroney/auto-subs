@@ -2,17 +2,17 @@ import * as React from "react"
 import { Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CaptionList } from "@/components/caption-list"
+import { SubtitleList } from "@/components/subtitle-list"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
 
-interface MobileCaptionViewerProps {
+interface MobileSubtitleViewerProps {
   isOpen: boolean
   onClose: () => void
 }
 
-export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProps) {
+export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const { exportSubtitles, importSubtitles, subtitles } = useGlobal()
@@ -57,7 +57,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
     <div className="fixed inset-0 z-50 bg-sidebar flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-2 pl-3 border-b bg-sidebar shrink-0">
-        <h1 className="text-lg font-medium">Captions</h1>
+        <h1 className="text-lg font-medium">Subtitles</h1>
         <Button
           onClick={onClose}
           variant="outline"
@@ -75,7 +75,7 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
           <ImportExportPopover
             onImport={handleImport}
             onExport={handleExport}
-            hasCaptions={subtitles.length > 0}
+            hasSubtitles={subtitles.length > 0}
           />
           <Button variant="outline" className="w-full">
               <Users className="w-4 h-4 mr-2" />
@@ -86,11 +86,11 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
         <div className="relative">
           <Input
             ref={searchInputRef}
-            placeholder="Search captions..."
+            placeholder="Search subtitles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
-            aria-label="Search captions"
+            aria-label="Search subtitles"
           />
           {searchQuery && (
             <button
@@ -108,17 +108,17 @@ export function MobileCaptionViewer({ isOpen, onClose }: MobileCaptionViewerProp
       {/* Content */}
       <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2">
         {subtitles.length > 0 ? (
-          <CaptionList
+          <SubtitleList
             searchQuery={searchQuery}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
-            <p className="text-lg font-medium mb-2">No captions found</p>
+            <p className="text-lg font-medium mb-2">No subtitles found</p>
             <p className="text-sm">
               {searchQuery
                 ? 'Try a different search term'
-                : 'No captions available. Try importing some first.'}
+                : 'No subtitles available. Try importing some first.'}
             </p>
           </div>
         )}

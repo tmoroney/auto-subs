@@ -84,9 +84,8 @@ export interface Settings {
     maxSpeakers: number,
 
     // Text settings
-    maxWords: number,
-    maxChars: number,
-    numLines: number,
+    maxWordsPerLine: number,
+    maxLines: number,
     textFormat: "none" | "uppercase" | "lowercase";
     removePunctuation: boolean,
     enableCensor: boolean,

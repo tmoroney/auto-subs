@@ -9,7 +9,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils"
 import { Template } from "@/types/interfaces"
 
-interface CaptionSettingsCardProps {
+interface SubtitleSettingsCardProps {
   selectedTemplate: Template
   onTemplateChange: (template: Template) => void
   outputTracks?: { label: string; value: string }[]
@@ -26,14 +26,14 @@ const defaultTemplates = [
   { value: "elegant", label: "Elegant" },
 ]
 
-export const CaptionSettingsCard = ({
+export const SubtitleSettingsCard = ({
   selectedTemplate,
   onTemplateChange,
   outputTracks = [],
   templates = defaultTemplates,
   selectedOutputTrack = "1",
   onOutputTrackChange = () => {}
-}: CaptionSettingsCardProps) => {
+}: SubtitleSettingsCardProps) => {
   const [openTemplates, setOpenTemplates] = React.useState(false)
 
   return (
@@ -44,7 +44,7 @@ export const CaptionSettingsCard = ({
             <Captions className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Caption Settings</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Subtitle Settings</p>
             <p className="text-xs text-muted-foreground">Configure track, template, and styling</p>
           </div>
         </div>

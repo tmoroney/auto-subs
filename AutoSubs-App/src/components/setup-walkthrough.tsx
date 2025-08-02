@@ -3,10 +3,10 @@ import { ChevronLeft, ChevronRight, Check, ChevronLast } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CaptionSettingsCard } from "./settings-cards/caption-settings-card"
-import { LanguageSettingsCard } from "./settings-cards/language-settings-card"
-import { ModelSelectionCard } from "./settings-cards/model-selection-card"
-import { TextFormattingCard } from "./settings-cards/text-formatting-card"
+import { SubtitleSettingsCard } from "@/components/settings-cards/subtitle-settings-card"
+import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
+import { ModelSelectionCard } from "@/components/settings-cards/model-selection-card"
+import { TextFormattingCard } from "@/components/settings-cards/text-formatting-card"
 import { useGlobal } from "@/contexts/GlobalContext"
 
 interface WalkthroughSlide {
@@ -88,7 +88,7 @@ export const SetupWalkthrough = ({
                   <div className="space-y-1">
                     <p className="font-medium text-sm">DaVinci Resolve Mode</p>
                     <p className="text-xs text-muted-foreground">
-                      Connect to DaVinci Resolve and add captions directly to your timeline.
+                      Connect to DaVinci Resolve and add subtitles directly to your timeline.
                     </p>
                   </div>
                 )}
@@ -136,18 +136,18 @@ export const SetupWalkthrough = ({
       {
         id: "text-formatting",
         title: "Text Formatting Options",
-        description: "Choose how you want your captions formatted.",
+        description: "Choose how you want your subtitles formatted.",
         component: (
           <div className="max-w-lg mx-auto">
             <TextFormattingCard
-              maxWords={settings.maxWords}
-              numLines={settings.numLines}
+              maxWordsPerLine={settings.maxWordsPerLine}
+              maxLines={settings.maxLines}
               textFormat={settings.textFormat}
               removePunctuation={settings.removePunctuation}
               enableCensor={settings.enableCensor}
               censorWords={settings.censorWords}
-              onMaxWordsChange={(maxWords) => updateSetting("maxWords", maxWords)}
-              onNumLinesChange={(numLines) => updateSetting("numLines", numLines)}
+              onMaxWordsPerLineChange={(maxWordsPerLine) => updateSetting("maxWordsPerLine", maxWordsPerLine)}
+              onMaxLinesChange={(maxLines) => updateSetting("maxLines", maxLines)}
               onTextFormatChange={(format) => updateSetting("textFormat", format)}
               onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
               onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
@@ -181,12 +181,12 @@ export const SetupWalkthrough = ({
 
     if (!isStandaloneMode) {
       baseSlides.push({
-        id: "caption-settings",
-        title: "Caption Settings",
-        description: "Choose a template (Fusion Text+) and where captions appear.",
+        id: "subtitle-settings",
+        title: "Subtitle Settings",
+        description: "Choose a template (Fusion Text+) and where subtitles appear.",
         component: (
           <div className="max-w-lg mx-auto">
-            <CaptionSettingsCard
+            <SubtitleSettingsCard
               selectedTemplate={settings.selectedTemplate}
               onTemplateChange={(template) => updateSetting("selectedTemplate", template)}
               outputTracks={timelineInfo?.outputTracks || []}

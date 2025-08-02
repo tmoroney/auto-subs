@@ -7,8 +7,8 @@ import React from "react"
 import { TranscriptionSettings } from "@/components/transcription-settings"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { MobileCaptionViewer } from "@/components/mobile-caption-viewer"
-import { DesktopCaptionViewer } from "@/components/desktop-caption-viewer"
+import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
+import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
 import { SetupWalkthrough } from "@/components/setup-walkthrough"
 import {
   ResizablePanelGroup,
@@ -34,7 +34,7 @@ export function ThemeToggle() {
 }
 
 function App() {
-  const [showMobileCaptions, setShowMobileCaptions] = React.useState(false)
+  const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
   const { isStandaloneMode, setIsStandaloneMode } = useGlobal()
   const isMobile = useIsMobile()
@@ -84,7 +84,7 @@ function App() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowMobileCaptions(true)}
+                onClick={() => setShowMobileSubtitles(true)}
               >
                 <Captions className="h-5 w-5" />
               </Button>
@@ -102,7 +102,7 @@ function App() {
                 />
               </div>
             ) : (
-              // Desktop: Resizable panels with transcription settings and caption viewer
+              // Desktop: Resizable panels with transcription settings and subtitle viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 <ResizablePanel defaultSize={55} className="min-w-[360px]">
                   {!isMobile && (
@@ -149,17 +149,17 @@ function App() {
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={45} minSize={45}>
-                  <DesktopCaptionViewer />
+                  <DesktopSubtitleViewer />
                 </ResizablePanel>
               </ResizablePanelGroup>
             )}
           </div>
 
-          {/* Mobile Caption Viewer */}
+          {/* Mobile Subtitles Viewer */}
           {isMobile && (
-            <MobileCaptionViewer
-              isOpen={showMobileCaptions}
-              onClose={() => setShowMobileCaptions(false)}
+            <MobileSubtitleViewer
+              isOpen={showMobileSubtitles}
+              onClose={() => setShowMobileSubtitles(false)}
             />
           )}
 

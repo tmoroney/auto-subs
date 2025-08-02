@@ -7,14 +7,14 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 interface TextFormattingCardProps {
-  maxWords: number
-  numLines: number
+  maxWordsPerLine: number
+  maxLines: number
   textFormat: "none" | "uppercase" | "lowercase"
   removePunctuation: boolean
   enableCensor: boolean
   censorWords: string[]
-  onMaxWordsChange: (value: number) => void
-  onNumLinesChange: (value: number) => void
+  onMaxWordsPerLineChange: (value: number) => void
+  onMaxLinesChange: (value: number) => void
   onTextFormatChange: (format: "none" | "uppercase" | "lowercase") => void
   onRemovePunctuationChange: (checked: boolean) => void
   onEnableCensorChange: (checked: boolean) => void
@@ -22,14 +22,14 @@ interface TextFormattingCardProps {
 }
 
 export const TextFormattingCard = ({
-  maxWords,
-  numLines,
+  maxWordsPerLine,
+  maxLines,
   textFormat,
   removePunctuation,
   enableCensor,
   censorWords,
-  onMaxWordsChange,
-  onNumLinesChange,
+  onMaxWordsPerLineChange,
+  onMaxLinesChange,
   onTextFormatChange,
   onRemovePunctuationChange,
   onEnableCensorChange,
@@ -51,8 +51,8 @@ export const TextFormattingCard = ({
         <Input
           type="number"
           min="1"
-          value={maxWords}
-          onChange={(e) => onMaxWordsChange(Number(e.target.value))}
+          value={maxWordsPerLine}
+          onChange={(e) => onMaxWordsPerLineChange(Number(e.target.value))}
           className="w-20"
         />
       </div>
@@ -65,14 +65,14 @@ export const TextFormattingCard = ({
           </div>
           <div>
             <p className="text-sm font-medium">Line Count</p>
-            <p className="text-xs text-muted-foreground">Max lines shown per caption</p>
+            <p className="text-xs text-muted-foreground">Max lines shown per subtitle</p>
           </div>
         </div>
         <Input
           type="number"
           min="1"
-          value={numLines}
-          onChange={(e) => onNumLinesChange(Number(e.target.value))}
+          value={maxLines}
+          onChange={(e) => onMaxLinesChange(Number(e.target.value))}
           className="w-20"
         />
       </div>
@@ -87,7 +87,7 @@ export const TextFormattingCard = ({
               </div>
               <div>
                 <p className="text-sm font-medium">Text Case</p>
-                <p className="text-xs text-muted-foreground">Modify caption text case</p>
+                <p className="text-xs text-muted-foreground">Modify subtitle text case</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

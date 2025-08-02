@@ -12,10 +12,10 @@ type ExportFormat = 'srt' | 'json';
 interface ImportExportPopoverProps {
     onImport: () => Promise<void>
     onExport: (format: ExportFormat) => Promise<void>
-    hasCaptions: boolean
+    hasSubtitles: boolean
 }
 
-export function ImportExportPopover({ onImport, onExport, hasCaptions }: ImportExportPopoverProps) {
+export function ImportExportPopover({ onImport, onExport, hasSubtitles }: ImportExportPopoverProps) {
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [exportFormat, setExportFormat] = React.useState<ExportFormat>('srt')
 
@@ -143,7 +143,7 @@ export function ImportExportPopover({ onImport, onExport, hasCaptions }: ImportE
                         <Button
                             onClick={handleExportFile}
                             className="w-full mt-4"
-                            disabled={!hasCaptions}
+                            disabled={!hasSubtitles}
                         >
                             <Download className="h-4 w-4 mr-2" />
                             Download {exportFormat.toUpperCase()}

@@ -77,7 +77,7 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
 };
 
 
-interface CaptionListProps {
+interface SubtitleListProps {
     searchQuery?: string;
     className?: string;
     itemClassName?: string;
@@ -89,15 +89,15 @@ import {
     DialogClose,
 } from "@/components/ui/dialog"
 
-const CaptionList = ({
+const SubtitleList = ({
     searchQuery = "",
     className = "",
     itemClassName = "",
     isLoading = false,
     error = null
-}: CaptionListProps) => {
-    const { subtitles, updateCaption, speakers } = useGlobal();
-    const [editingCaption, setEditingCaption] = useState<Subtitle | null>(null);
+}: SubtitleListProps) => {
+    const { subtitles, updateSubtitle, speakers } = useGlobal();
+    const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
     const [editingWords, setEditingWords] = useState<Word[]>([]);
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
     const [expandedSpeakerIndex, setExpandedSpeakerIndex] = React.useState<number | undefined>(undefined);
@@ -105,42 +105,42 @@ const CaptionList = ({
     const filteredSubtitles = React.useMemo(() => {
         if (!searchQuery.trim()) return subtitles;
         const query = searchQuery.toLowerCase();
-        return subtitles.filter(caption =>
-            caption.text.toLowerCase().includes(query) ||
-            (caption.speaker_id && caption.speaker_id.toLowerCase().includes(query))
+        return subtitles.filter(subtitle =>
+            subtitle.text.toLowerCase().includes(query) ||
+            (subtitle.speaker_id && subtitle.speaker_id.toLowerCase().includes(query))
         );
     }, [subtitles, searchQuery]);
 
-    const handleOpenEdit = (caption: Subtitle) => {
-        setEditingCaption(caption);
-        // Populate editor with words array from the caption object
-        setEditingWords(caption.words || []);
+    const handleOpenEdit = (subtitle: Subtitle) => {
+        setEditingSubtitle(subtitle);
+        // Populate editor with words array from the subtitle object
+        setEditingWords(subtitle.words || []);
     };
 
     const handleSaveChanges = () => {
-        if (editingCaption) {
+        if (editingSubtitle) {
             // Concatenate all word text to sync the text field with word data
             const updatedText = editingWords.map(word => word.word).join(' ');
 
-            const updatedCaption: Subtitle = {
-                ...editingCaption,
+            const updatedSubtitle: Subtitle = {
+                ...editingSubtitle,
                 text: updatedText,
                 words: editingWords
             };
 
-            const captionIndex = subtitles.findIndex(sub => sub.id === editingCaption.id);
-            if (captionIndex !== -1) {
-                // Convert string timestamps to numbers for updateCaption
-                const captionToUpdate = {
-                    ...updatedCaption,
-                    start: typeof updatedCaption.start === 'string' ? parseFloat(updatedCaption.start) : updatedCaption.start,
-                    end: typeof updatedCaption.end === 'string' ? parseFloat(updatedCaption.end) : updatedCaption.end,
-                    speaker: updatedCaption.speaker_id
+            const subtitleIndex = subtitles.findIndex(sub => sub.id === editingSubtitle.id);
+            if (subtitleIndex !== -1) {
+                // Convert string timestamps to numbers for updateSubtitle
+                const subtitleToUpdate = {
+                    ...updatedSubtitle,
+                    start: typeof updatedSubtitle.start === 'string' ? parseFloat(updatedSubtitle.start) : updatedSubtitle.start,
+                    end: typeof updatedSubtitle.end === 'string' ? parseFloat(updatedSubtitle.end) : updatedSubtitle.end,
+                    speaker: updatedSubtitle.speaker_id
                 };
-                updateCaption(captionIndex, captionToUpdate);
+                updateSubtitle(subtitleIndex, subtitleToUpdate);
             }
 
-            setEditingCaption(null);
+            setEditingSubtitle(null);
             setEditingWords([]);
         }
     };
@@ -149,7 +149,7 @@ const CaptionList = ({
 
 
     if (isLoading) {
-        return <div className="p-4 text-center text-muted-foreground">Loading captions...</div>;
+        return <div className="p-4 text-center text-muted-foreground">Loading subtitles...</div>;
     }
 
     if (error) {
@@ -157,39 +157,39 @@ const CaptionList = ({
     }
 
     if (!filteredSubtitles || filteredSubtitles.length === 0) {
-        return <div className="p-4 text-center text-muted-foreground">No captions available</div>;
+        return <div className="p-4 text-center text-muted-foreground">No subtitles available</div>;
     }
 
     return (
         <div className={className}>
             <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={expandedSpeakerIndex} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-            {filteredSubtitles.map((caption: Subtitle, index: number) => (
+            {filteredSubtitles.map((subtitle: Subtitle, index: number) => (
                 <div
                     key={index}
                     className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                 >
                     <div className="flex w-full items-center gap-2">
                         <div className="text-xs text-muted-foreground">
-                            {caption.start} - {caption.end}
+                            {subtitle.start} - {subtitle.end}
                         </div>
-                        {caption.speaker_id && speakers.length > 0 ? (
+                        {subtitle.speaker_id && speakers.length > 0 ? (
                             <>
                                 <Button
                                     variant="outline"
                                     className="ml-auto text-xs p-2 h-6"
                                     onClick={() => {
-                                        setExpandedSpeakerIndex(Number(caption.speaker_id));
+                                        setExpandedSpeakerIndex(Number(subtitle.speaker_id));
                                         setShowSpeakerEditor(true);
                                     }}
                                 >
-                                    {speakers[Number(caption.speaker_id)]?.name || 'Unknown Speaker'}
+                                    {speakers[Number(subtitle.speaker_id)]?.name || 'Unknown Speaker'}
                                 </Button>
                             </>
                         ) : null}
 
                     </div>
                     <div className="relative w-full pr-8">
-                        <span className="text-foreground leading-relaxed">{caption.text}</span>
+                        <span className="text-foreground leading-relaxed">{subtitle.text}</span>
                         <div
                             className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
                         >
@@ -198,7 +198,7 @@ const CaptionList = ({
                                     <Button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleOpenEdit(caption);
+                                            handleOpenEdit(subtitle);
                                         }}
                                         size="icon"
                                         variant="outline"
@@ -209,13 +209,13 @@ const CaptionList = ({
                                 </DialogTrigger>
                                 <DialogContent className="max-h-[90vh] overflow-y-auto">
                                     <DialogHeader>
-                                        <DialogTitle>Edit Caption</DialogTitle>
+                                        <DialogTitle>Edit Subtitle</DialogTitle>
                                         <DialogDescription>
-                                            Edit the caption text by modifying the words below
+                                            Edit the subtitle text by modifying the words below
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4">
-                                        {editingCaption && (
+                                        {editingSubtitle && (
                                             <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                                                 {editingWords.map((word, wordIndex) => (
                                                     <Word
@@ -282,4 +282,4 @@ const CaptionList = ({
     )
 }
 
-export { CaptionList };
+export { SubtitleList };

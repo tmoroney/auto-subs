@@ -40,13 +40,13 @@ export const SpeakerLabelingCard = ({
                   </TooltipTrigger>
                   <TooltipContent side="bottom" align="start" className="w-56 p-3">
                     <p className="text-xs text-left">
-                      Identifies different speakers based on voice patterns and labels them in the captions. May slightly increase processing time.
+                      Identifies different speakers based on voice patterns and labels them in the subtitles. May slightly increase processing time.
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </div>
               <p className="text-xs text-muted-foreground">
-                Unique captions for each speaker.
+                Unique subtitles for each speaker.
               </p>
             </div>
           </div>
