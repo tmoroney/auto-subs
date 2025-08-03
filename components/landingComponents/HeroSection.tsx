@@ -1,12 +1,14 @@
 'use client'
 
+// if you want to use the "v3 out now" badge, uncomment line 11 and line 61-78
+
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Download, Github } from 'lucide-react'
 import { useState } from 'react'
 import { DownloadModal } from '@/components/ui/DownloadModal'
 import { motion } from 'framer-motion'
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+// import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },

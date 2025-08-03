@@ -33,28 +33,28 @@ export default function FeaturesSection() {
 
   const features = [
     {
-      icon: 'auto-subs/assets/lightning.png',
+      icon: '/auto-subs/assets/lightning.png',
       title: "Fast Generate",
       description: "Quickly generate accurate subtitles in minutes.",
       gradient: "from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-900",
       iconColor: "text-blue-600 dark:text-blue-400"
     },
     {
-      icon: 'auto-subs/assets/paintbrush.png',
+      icon: '/auto-subs/assets/paintbrush.png',
       title: "Customise",
       description: "Create unique subtitles with custom colours and effects.",
       gradient: "from-purple-50 to-white dark:from-purple-900/20 dark:to-gray-900",
       iconColor: "text-purple-600 dark:text-purple-400"
     },
     {
-      icon: 'auto-subs/assets/speech.png',
+      icon: '/auto-subs/assets/speech.png',
       title: "Diarize Audio",
       description: "Differentiate speakers and style subtitles uniquely.",
       gradient: "from-orange-50 to-white dark:from-orange-900/20 dark:to-gray-900",
       iconColor: "text-orange-600 dark:text-orange-400"
     },
     {
-      icon: 'auto-subs/assets/globe.png',
+      icon: '/auto-subs/assets/globe.png',
       title: "Multilingual",
       description: "Transcribe in 50+ languages and translate easily.",
       gradient: "from-green-50 to-white dark:from-green-900/20 dark:to-gray-900",
