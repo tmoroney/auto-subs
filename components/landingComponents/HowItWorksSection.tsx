@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ModelSelectionCard } from '../ui/ModelSelectionCard'
 import { AiProcessingCard } from '../ui/AIProcessingCard'
-import { StepItem } from './StepItem'
+import { StepItem } from '../ui/StepItem'
 
 const steps = [
   {
@@ -39,7 +39,7 @@ const visualComponents = [
       width={400}
       height={264}
       unoptimized
-      className="w-full object-contain rounded-xl shadow-2xl shadow-gray-400/30"
+      className="w-full object-contain rounded-xl shadow-2xl shadow-gray-400/30 dark:shadow-gray-800/50"
     />
   </div>
 ];
@@ -79,18 +79,19 @@ export default function HowItWorksSection() {
   }, [activeStep])
 
   return (
-    <section ref={sectionRef} id="how-it-works" className="w-full h-screen bg-gray-50 scroll-mt-20">
-      <div className="container mx-auto px-6 lg:px-10 max-w-7xl h-full">
-        <motion.h2 
-          className="text-4xl font-bold tracking-tight text-center py-16 text-gray-900"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
-          How It Works
-        </motion.h2>
-        
+    <section className="py-20 bg-white dark:bg-gray-900 transition-colors duration-300">
+      <div className="container mx-auto px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <motion.h2 
+            className="text-4xl font-bold text-gray-900 dark:text-white mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            How It Works
+          </motion.h2>
+        </div>
         <div className="grid md:grid-cols-2 gap-x-20 h-[calc(100vh-200px)]">
           <div className="flex flex-col justify-center">
             {steps.map((step, index) => (

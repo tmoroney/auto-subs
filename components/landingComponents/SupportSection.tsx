@@ -65,18 +65,14 @@ export default function SupportSection({ onNavigate }: SupportSectionProps) {
   ]
 
   return (
-    <section 
-      id="support" 
-      ref={sectionRef}
-      className="w-full py-20 md:py-32 bg-gradient-to-r from-blue-500 to-purple-600 text-white scroll-mt-20"
-    >
-      <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
+    <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <div className="container mx-auto px-6 lg:px-8">
         <div className="flex flex-col items-center space-y-8 text-center">
           <div className="space-y-4 transition-all duration-1000">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
               Support the Project
             </h2>
-            <p className="mx-auto max-w-[700px] text-lg md:text-xl text-blue-100">
+            <p className="mx-auto max-w-[700px] text-lg md:text-xl text-gray-600 dark:text-gray-400">
               Help us keep AutoSubs free and open-source. Your support goes a long way.
             </p>
           </div>
@@ -88,28 +84,29 @@ export default function SupportSection({ onNavigate }: SupportSectionProps) {
                 <div
                   key={index}
                   data-card={index}
-                  className={`flex flex-col items-center bg-white rounded-xl px-8 py-12 shadow-lg text-gray-900 transition-all duration-1000 ease-out transform ${
-                    visibleCards.includes(index) 
-                    ? 'translate-y-0 opacity-100 scale-100' 
-                    : 'translate-y-16 opacity-0 scale-90'
-                } hover:shadow-2xl`}
-                style={{ transitionDelay: `${index * 200}ms` }}
-              >
+                  className={`flex flex-col items-center bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/50 p-8 transition-all duration-500 transform ${visibleCards.includes(index) ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-16 opacity-0 scale-90'} hover:shadow-2xl`}
+                  style={{ transitionDelay: `${index * 200}ms` }}
+                >
                   <div className="relative mb-6">
-                    <IconComponent className={`h-20 w-20 ${option.iconColor} mb-4 transition-transform duration-500 group-hover:scale-110`} />
+                    <IconComponent className={`h-20 w-20 ${option.iconColor} mb-4 transition-transform duration-500`} />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white opacity-20 rounded-full blur-xl"></div>
                   </div>
                   
-                  <h3 className="text-2xl font-bold mb-3 text-gray-900 transition-colors duration-300">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                     {option.title}
                   </h3>
                   
-                  <p className="text-gray-600 mb-8 text-center leading-relaxed transition-colors duration-300">
+                  <p className="text-gray-600 dark:text-gray-300 mb-8 text-center leading-relaxed transition-colors duration-300">
                     {option.description}
                   </p>
                   
-                  <a href={option.url} target={option.url.startsWith('http') ? "_blank" : undefined} rel={option.url.startsWith('http') ? "noopener noreferrer" : undefined}>
-                    <Button className={`${option.buttonColor} text-white font-bold px-8 py-4 text-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95`}>
+                  { /* I have added the cursor not allowed thing when the button text says coming soon, so no need to change anything here. If you wanna change the url and button text, the cursor becomes normal! */}
+                  <a href={option.url} target={option.url.startsWith("http") ? "_blank" : undefined} rel={option.url.startsWith("http") ? "noopener noreferrer" : undefined}>
+                    <Button
+                      className={`${option.buttonColor} text-white font-bold px-8 py-4 text-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 ${
+                        option.buttonText === "Coming Soon..." ? "cursor-not-allowed" : ""
+                      }`}
+                    >
                       {option.buttonText}
                     </Button>
                   </a>

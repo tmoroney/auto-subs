@@ -2,47 +2,86 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Rabbit, Bird, Turtle } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
+import Image from 'next/image'
 
 const models = [
-  { name: 'Whisper Small', description: 'Balanced speed and accuracy.', icon: Rabbit },
-  { name: 'Whisper Medium', description: 'Great accuracy, moderate speed.', icon: Bird },
-  { name: 'Whisper Large-V3', description: 'Most accurate, but slower.', icon: Turtle },
+  { name: 'Whisper Tiny', description: 'Agile and lightweight like a hummingbird. Best for drafts, low-resource devices, and simple audio. Quick but less accurate on tough speech.', icon: '/auto-subs/assets/hummingbird.png' },
+  { name: 'Whisper Base', description: 'Agile and resourceful as an otter. Excels at everyday transcription with reliable speed and accuracy.', icon: '/auto-subs/assets/otter.png' },
+  { name: 'Whisper Small', description: 'Clever and versatile as a fox. Better accuracy than Tiny/Base. Still fast. Good for varied accents and conditions.', icon: '/auto-subs/assets/fox.png' },
+  { name: 'Whisper Medium', description: 'Sharp and discerning like an owl. Offers high accuracy, especially adept at handling challenging audio conditions. A balanced choice for precision.', icon: '/auto-subs/assets/owl.png' },
+  { name: 'Whisper Large turbo', description: 'Swift and efficient like a phoenix rising. Delivers near-Large accuracy at significantly higher speed.', icon: '/auto-subs/assets/phoenix.png' },
+  { name: 'Whisper Large', description: 'Powerful and thorough as an elephant. Most accurate, best for complex audio or many speakers. Requires lots of RAM and a strong GPU.', icon: '/auto-subs/assets/elephant.png' },
 ]
 
 export function ModelSelectionCard() {
   const [selected, setSelected] = useState(0)
 
   return (
-    <div className="w-full h-[250px] bg-white p-4 rounded-lg shadow-md border border-gray-200">
-      {models.map((model, index) => (
-        <motion.div
-          key={model.name}
-          className="flex items-center gap-4 p-3 rounded-md cursor-pointer transition-colors hover:bg-gray-100/70"
-          onClick={() => setSelected(index)}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-        >
-          <model.icon className="w-5 h-5 text-gray-500" />
-          <div className="flex-grow">
-            <p className="font-semibold text-gray-800 text-left">{model.name}</p>
-            <p className="text-sm text-gray-500 text-left">{model.description}</p>
-          </div>
-          <AnimatePresence>
-            {selected === index && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              >
-                <Check className="w-5 h-5 text-blue-600" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      ))}
-    </div>
+    <TooltipProvider>
+      <div className="w-full bg-white p-6 rounded-lg shadow-md border border-gray-200 dark:bg-gray-800 dark:border-gray-700 h-[250px]">
+        <div className="flex justify-center items-center gap-4 mb-6">
+          {models.map((model, index) => (
+            <Tooltip key={model.name}>
+              <TooltipTrigger asChild>
+                <motion.div
+                  className={`relative cursor-pointer transition-all duration-300 rounded-lg p-2`}
+                  onClick={() => setSelected(index)}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="relative w-11 h-11 flex items-center justify-center">
+                    <Image 
+                      src={model.icon} 
+                      alt={model.name} 
+                      width={40} 
+                      height={40}
+                      className={`object-contain transition-all duration-300 ${
+                        selected === index ? 'opacity-100' : 'opacity-70'
+                      }`}
+                    />
+                    
+                    {/* Subtle selection indicator - bottom dot */}
+                    {selected === index && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{model.name}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selected}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="text-center"
+          >
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+              {models[selected].name}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              {models[selected].description}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </TooltipProvider>
   )
 }

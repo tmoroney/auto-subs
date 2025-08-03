@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Zap, Paintbrush, Speech, Globe } from 'lucide-react'
+import Image from 'next/image'
 
 export default function FeaturesSection() {
   const [visibleCards, setVisibleCards] = useState<number[]>([])
@@ -34,43 +34,39 @@ export default function FeaturesSection() {
 
   const features = [
     {
-      icon: Zap,
+      icon: 'auto-subs/assets/lightning.png',
       title: "Fast Generate",
       description: "Quickly generate accurate subtitles in minutes.",
-      gradient: "from-blue-50 to-white",
-      iconColor: "text-blue-600"
+      gradient: "from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-900",
+      iconColor: "text-blue-600 dark:text-blue-400"
     },
     {
-      icon: Paintbrush,
+      icon: 'auto-subs/assets/paintbrush.png',
       title: "Customise",
       description: "Create unique subtitles with custom colours and effects.",
-      gradient: "from-purple-50 to-white",
-      iconColor: "text-purple-600"
+      gradient: "from-purple-50 to-white dark:from-purple-900/20 dark:to-gray-900",
+      iconColor: "text-purple-600 dark:text-purple-400"
     },
     {
-      icon: Speech,
+      icon: 'auto-subs/assets/speech.png',
       title: "Diarize Audio",
       description: "Differentiate speakers and style subtitles uniquely.",
-      gradient: "from-red-50 to-white",
-      iconColor: "text-red-600"
+      gradient: "from-orange-50 to-white dark:from-orange-900/20 dark:to-gray-900",
+      iconColor: "text-orange-600 dark:text-orange-400"
     },
     {
-      icon: Globe,
+      icon: 'auto-subs/assets/globe.png',
       title: "Multilingual",
       description: "Transcribe in 50+ languages and translate easily.",
-      gradient: "from-green-50 to-white",
-      iconColor: "text-green-600"
+      gradient: "from-green-50 to-white dark:from-green-900/20 dark:to-gray-900",
+      iconColor: "text-green-600 dark:text-green-400"
     }
   ]
 
   return (
-    <section 
-      id="features" 
-      ref={sectionRef}
-      className="w-full py-20 md:py-32 bg-white scroll-mt-20"
-    >
+    <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto px-6 lg:px-10 max-w-6xl mb-10">
-        <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-center mb-16 text-gray-900 opacity-0 animate-fade-in">
+        <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-center mb-16 text-gray-900 dark:text-white opacity-0 animate-fade-in">
           Key Features
         </h2>
         
@@ -91,15 +87,15 @@ export default function FeaturesSection() {
                 <div className={`relative mb-6 transition-transform duration-500 ${
                   visibleCards.includes(index) ? 'rotate-0' : 'rotate-12'
                 }`}>
-                  <IconComponent className={`h-16 w-16 ${feature.iconColor} transition-all duration-500`} />
+                  <Image src={feature.icon} alt={feature.title} width={64} height={64}/>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 rounded-full blur-xl" />
                 </div>
                 
-                <h3 className="text-2xl font-semibold mb-4 text-gray-900 transition-colors duration-300">
+                <h3 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white transition-colors duration-300">
                   {feature.title}
                 </h3>
                 
-                <p className="text-gray-600 transition-colors duration-300 leading-relaxed">
+                <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {feature.description}
                 </p>
               </div>

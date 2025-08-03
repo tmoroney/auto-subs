@@ -29,10 +29,10 @@ export function StepItem({ step, index, isActive, setActiveStep }: StepItemProps
   return (
     <div ref={ref} className="h-40 flex flex-col justify-center transition-opacity duration-300">
       <div className={`transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-        <h3 className="text-3xl font-bold text-gray-900 mb-3">
+        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
           {step.number}. {step.title}
         </h3>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-gray-600 dark:text-gray-300">
           {step.description}
         </p>
       </div>
