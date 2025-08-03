@@ -8,16 +8,16 @@ interface FooterProps {
 
 export default function Footer({ onNavigate }: FooterProps) {
   return (
-    <footer className="py-8 w-full bg-gray-900 text-white">
+    <footer className="py-8 w-full bg-gray-900 dark:bg-gray-950 text-white transition-colors duration-300">
       <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
         <div className="flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm mb-4 md:mb-0 transition-colors duration-300 hover:text-blue-300">
+          <p className="text-sm mb-4 md:mb-0 text-gray-300 dark:text-gray-400 transition-colors duration-300 hover:text-blue-400 dark:hover:text-blue-300">
             © {new Date().getFullYear()} Tom Moroney. All rights reserved.
           </p>
           
           <nav className="flex flex-wrap justify-center md:justify-end gap-6">
             <a 
-              className="text-sm hover:underline underline-offset-4 transition-colors duration-300 hover:text-blue-300"
+              className="text-sm text-gray-300 dark:text-gray-400 hover:text-blue-400 dark:hover:text-blue-300 hover:underline underline-offset-4 transition-colors duration-300"
               href="https://github.com/tmoroney/auto-subs"
               target="_blank"
               rel="noopener noreferrer"
@@ -26,7 +26,7 @@ export default function Footer({ onNavigate }: FooterProps) {
             </a>
             
             <a 
-              className="text-sm hover:underline underline-offset-4 transition-colors duration-300 hover:text-blue-300"
+              className="text-sm text-gray-300 dark:text-gray-400 hover:text-blue-400 dark:hover:text-blue-300 hover:underline underline-offset-4 transition-colors duration-300"
               href="https://github.com/tmoroney/auto-subs/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
@@ -35,7 +35,7 @@ export default function Footer({ onNavigate }: FooterProps) {
             </a>
             
             <a
-              className="text-sm hover:underline underline-offset-4 transition-colors duration-300 hover:text-blue-300 flex items-center"
+              className="text-sm text-gray-300 dark:text-gray-400 hover:text-blue-400 dark:hover:text-blue-300 hover:underline underline-offset-4 transition-colors duration-300 flex items-center"
               href="https://discord.com/invite/TBFUfGWegm"
               target="_blank"
               rel="noopener noreferrer"

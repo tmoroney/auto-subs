@@ -23,7 +23,7 @@ const itemVariants = {
 export function AiProcessingCard() {
   return (
     <motion.div 
-      className="w-full h-[250px] bg-white p-4 rounded-lg shadow-md border border-gray-200 space-y-2"
+      className="w-full h-[250px] bg-white p-4 rounded-lg shadow-md border border-gray-200 space-y-2 dark:bg-gray-800 dark:border-gray-700"
       variants={containerVariants}
       initial="hidden"
       whileInView="visible"
@@ -32,7 +32,7 @@ export function AiProcessingCard() {
       {speakers.map((speaker) => (
         <motion.div
           key={speaker.name}
-          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg dark:bg-gray-700"
           variants={itemVariants}
         >
           <div className="flex items-center gap-3">
@@ -40,11 +40,11 @@ export function AiProcessingCard() {
               S{speaker.name.split(' ')[1]}
             </div>
             <div>
-              <p className="font-semibold text-gray-800">{speaker.name}</p>
-              <p className="text-sm text-gray-500">{speaker.lines}</p>
+              <p className="font-semibold text-gray-800 dark:text-white">{speaker.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{speaker.lines}</p>
             </div>
           </div>
-          <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors">
+          <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors dark:text-gray-400 dark:hover:text-blue-400">
             <PenSquare size={16} /> Modify
           </button>
         </motion.div>

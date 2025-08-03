@@ -35,7 +35,7 @@ export default function HeroSection() {
   return (
     <section 
       id="hero"
-      className="relative w-full h-screen min-h-[750px] bg-gradient-to-br from-[#1E40AF] to-[#4F46E5] text-white overflow-hidden flex items-center"
+      className="relative w-full h-screen min-h-[750px] bg-gradient-to-br from-[#1E40AF] to-[#4F46E5] dark:from-gray-900 dark:to-gray-800 text-white overflow-hidden flex items-center transition-colors duration-300"
     >
       <div className="absolute top-0 left-0 w-full h-full">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-lighten filter blur-3xl opacity-40 animate-blob"></div>
@@ -56,7 +56,7 @@ export default function HeroSection() {
               className="flex justify-center lg:justify-start"
               variants={itemVariants}
             >
-              <div className="inline-block bg-white/20 backdrop-blur-sm text-yellow-300 text-sm font-semibold px-4 py-1.5 rounded-full border border-white/30 shadow-md">
+              <div className="inline-block bg-white/20 backdrop-blur-sm text-yellow-300 dark:text-blue-300 text-sm font-semibold px-4 py-1.5 rounded-full border border-white/30 shadow-md">
                 <span className="inline-flex items-center gap-1.5">
                   V3 OUT NOW
                   <span className="inline-flex">
@@ -76,12 +76,12 @@ export default function HeroSection() {
               variants={itemVariants}
             >
               AI-Powered Subtitles
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-400 mt-2">
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-400 dark:from-purple-300 dark:to-blue-400 mt-2">
                 for DaVinci Resolve
               </span>
             </motion.h1>
             
-            <motion.p className="text-lg md:text-xl text-blue-100 max-w-xl mx-auto lg:mx-0" variants={itemVariants}>
+            <motion.p className="text-lg md:text-xl text-blue-100 dark:text-gray-300 max-w-xl mx-auto lg:mx-0" variants={itemVariants}>
               Generate and style subtitles directly on your editing timeline to match your brand.
             </motion.p>
 
@@ -92,7 +92,7 @@ export default function HeroSection() {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button 
                   size="lg" 
-                  className="bg-white text-blue-600 hover:bg-gray-100 font-bold px-8 py-7 text-base shadow-lg hover:shadow-xl hover:shadow-white/10 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold px-8 py-7 text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto h-14"
                   onClick={() => setIsModalOpen(true)}
                 >
                   <Download size={20} />
@@ -103,7 +103,7 @@ export default function HeroSection() {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white/50 bg-transparent text-white hover:text-blue-600 hover:bg-white font-bold px-8 py-7 text-base transition-all duration-300 flex items-center gap-2 w-full sm:w-auto"
+                  className="border-white/50 dark:border-white/50 bg-transparent text-white hover:bg-white/10 dark:hover:bg-white/10 font-bold px-8 py-7 text-base transition-all duration-300 flex items-center gap-2 w-full sm:w-auto h-14"
                   onClick={() => window.open('https://github.com/tmoroney/auto-subs', '_blank')}
                 >
                   <Github size={20} />

@@ -47,7 +47,7 @@ export default function AboutDeveloperSection() {
     <section 
       id="about-developer" 
       ref={sectionRef}
-      className="w-full py-20 md:py-32 bg-white scroll-mt-20"
+      className="w-full py-20 md:py-32 bg-white dark:bg-gray-900 scroll-mt-20 transition-colors duration-300"
     >
       <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
         <div className="flex flex-col md:flex-row items-center gap-12">
@@ -63,20 +63,20 @@ export default function AboutDeveloperSection() {
                 }`}
                 onLoad={() => setImageLoaded(true)}
               />
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-600/20 blur-3xl -z-10" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-600/20 dark:from-blue-400/20 dark:to-purple-500/20 blur-3xl -z-10" />
             </div>
           </div>
           
           <div className={`md:w-1/2 space-y-6 transition-all duration-1000 delay-300 ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-20 opacity-0'}`}>
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-gray-900">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-gray-900 dark:text-white">
               Meet the Developer
             </h2>
             
-            <p className="text-lg text-gray-600 leading-relaxed transition-colors duration-300">
+            <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed transition-colors duration-300">
               Hi, I&apos;m Tom, the creator of AutoSubs. As a passionate coder and video enthusiast, I developed AutoSubs to address a challenge I encountered: the tedious and time-consuming task of manually crafting subtitles with custom designs.
             </p>
             
-            <p className="text-lg text-gray-600 leading-relaxed transition-colors duration-300">
+            <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed transition-colors duration-300">
               My mission is to eliminate creative roadblocks in the video creation process. That&apos;s why I&apos;ve dedicated myself to building AutoSubs — a powerful, intuitive tool designed to make life easier for content creators around the globe.
             </p>
             
@@ -91,8 +91,9 @@ export default function AboutDeveloperSection() {
               <Dialog>
                 <DialogTrigger asChild>
                   <Button 
+                    
                     variant="outline" 
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold px-6 py-6 text-lg transition-all duration-300"
+                    className="border-white/50 dark:border-white/50 bg-transparent  dark:text-white text-gray-800 hover:bg-white/10 dark:hover:bg-white/10 font-bold px-8 py-6 text-base transition-all duration-300 flex items-center gap-2 w-full sm:w-auto"
                   >
                     <MessageCircle className="mr-2 h-5 w-5" />
                     Get in Touch
@@ -135,20 +136,20 @@ export default function AboutDeveloperSection() {
                     </div>
                     
                     <div className="grid w-full max-w-sm items-center gap-1.5">
-                      <Label htmlFor="message">Message</Label>
+                      <Label htmlFor="message" className="text-gray-900 dark:text-white">Message</Label>
                       <Textarea 
                         id="message" 
                         name="entry.1197513361" 
                         placeholder="Type your message here" 
                         required 
-                        className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                        className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                       />
                     </div>
                     
                     <DialogFooter className="pt-2">
                       <Button 
                         type="submit" 
-                        className="bg-blue-600 hover:bg-blue-700 transition-all duration-300"
+                        className="bg-blue-600 hover:bg-blue-700 transition-all duration-300 dark:bg-blue-500 dark:hover:bg-blue-600"
                       >
                         Send Message
                       </Button>
