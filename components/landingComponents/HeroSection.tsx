@@ -56,7 +56,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
         >
           {/* left column */}
           <div className="text-center lg:text-left space-y-6">
-            <motion.div
+            {/* <motion.div
               className="flex justify-center lg:justify-start"
               variants={itemVariants}
             >
@@ -73,7 +73,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
                   </span>
                 </span>
               </div>
-            </motion.div>
+            </motion.div> */}
 
             <motion.h1 
               className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-shadow-md"
@@ -96,7 +96,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button 
                   size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold px-8 py-7 text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto h-14"
+                  className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full h-14"
                   onClick={() => window.open(downloadLink, '_blank')}
                 >
                   <Download size={20} />
@@ -107,7 +107,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white/50 dark:border-white/50 bg-transparent text-white hover:bg-white/10 dark:hover:bg-white/10 font-bold px-8 py-7 text-base transition-all duration-300 flex items-center gap-2 w-full sm:w-auto h-14"
+                  className="border-white/50 dark:border-white/50 bg-transparent text-white hover:bg-white/10 dark:hover:bg-white/10 font-bold text-base transition-all duration-300 flex items-center gap-2 w-full h-14"
                   onClick={() => window.open('https://github.com/tmoroney/auto-subs', '_blank')}
                 >
                   <Github size={20} />

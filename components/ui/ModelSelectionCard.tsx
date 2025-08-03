@@ -30,16 +30,16 @@ export function ModelSelectionCard() {
             <Tooltip key={model.name}>
               <TooltipTrigger asChild>
                 <motion.div
-                  className={`relative cursor-pointer transition-all duration-300 rounded-lg p-2`}
+                  className={`relative cursor-pointer transition-all duration-300 rounded-lg p-1`}
                   onClick={() => setSelected(index)}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <div className="relative w-11 h-11 flex items-center justify-center">
+                  <div className="relative flex items-center justify-center">
                     <Image 
                       src={model.icon} 
                       alt={model.name} 
-                      width={40} 
-                      height={40}
+                      width={80} 
+                      height={80}
                       className={`object-contain transition-all duration-300 ${
                         selected === index ? 'opacity-100' : 'opacity-70'
                       }`}
