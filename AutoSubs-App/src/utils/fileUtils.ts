@@ -2,7 +2,7 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
-import { formatSubtitles } from "./subtitleFormatter";
+import { splitAndFormatSubtitles } from "./subtitleFormatter";
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -68,6 +68,7 @@ function interpolateWordsFromText(text: string, start: number, end: number) {
     word,
     start: (segmentStart + idx * wordDuration).toFixed(3),
     end: (segmentStart + (idx + 1) * wordDuration).toFixed(3),
+    line_number: 0
   }));
 }
 
@@ -80,6 +81,7 @@ export async function saveTranscript(
     removePunctuation: boolean;
     censoredWords: string[];
     maxWordsPerLine: number;
+    maxCharsPerLine: number;
     maxLinesPerSubtitle: number;
   }
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
@@ -106,7 +108,7 @@ export async function saveTranscript(
     // Apply formatting if options are provided
     let segments: Subtitle[] = originalSegments;
     if (formatOptions) {
-      segments = formatSubtitles(originalSegments, formatOptions);
+      segments = splitAndFormatSubtitles(originalSegments, formatOptions);
     }
 
     // Speakers are now aggregated in the Rust backend and included in the transcript
@@ -167,7 +169,7 @@ export async function updateTranscript(filename: string, speakers?: Speaker[], s
 }
 
 // Update a specific subtitle in the transcript file
-export async function updateSubtitleInTranscript(filename: string, updatedSubtitle: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }): Promise<void> {
+export async function updateSubtitleInTranscript(filename: string, updatedSubtitle: Subtitle): Promise<void> {
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
@@ -197,7 +199,7 @@ export async function updateSubtitleInTranscript(filename: string, updatedSubtit
         // Update with the new subtitle data
         id: updatedSubtitle.id.toString(),
         text: updatedSubtitle.text,
-        speaker: updatedSubtitle.speaker,
+        speaker_id: updatedSubtitle.speaker_id,
         // Use updated words if provided, otherwise keep existing words
         words: updatedSubtitle.words !== undefined ? updatedSubtitle.words : existingSegment.words
         // Preserve original start/end times from existing segment

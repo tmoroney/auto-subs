@@ -62,7 +62,7 @@ interface GlobalContextType {
   updateSpeakers: (speakers: Speaker[]) => void;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
-  updateSubtitle: (subtitleId: number, updatedSubtitle: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => Promise<void>;
+  updateSubtitle: (subtitleId: number, updatedSubtitle: Subtitle) => Promise<void>;
   exportSubtitles: () => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
   importSubtitles: () => Promise<void>;
@@ -91,6 +91,7 @@ const DEFAULT_SETTINGS: Settings = {
 
   // Text settings
   maxWordsPerLine: 5,
+  maxCharsPerLine: 32,
   maxLinesPerSubtitle: 1,
   textCase: "none",
   removePunctuation: false,
@@ -367,6 +368,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         removePunctuation: settings.removePunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
         maxWordsPerLine: settings.maxWordsPerLine,
+        maxCharsPerLine: settings.maxCharsPerLine,
         maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
       });
       setSubtitles(segments)
@@ -576,7 +578,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
 
   // Function to update a specific subtitle
-  const updateSubtitle = async (subtitleId: number, updatedSubtitle: { id: number; start: number; end: number; text: string; speaker?: string; words?: any[] }) => {
+  const updateSubtitle = async (subtitleId: number, updatedSubtitle: Subtitle) => {
     // Update the local subtitles state
     setSubtitles(prevSubtitles =>
       prevSubtitles.map((subtitle: any) => {
@@ -586,8 +588,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
             start: updatedSubtitle.start.toString(),
             end: updatedSubtitle.end.toString(),
             text: updatedSubtitle.text,
-            speaker: updatedSubtitle.speaker || subtitle.speaker,
-            words: updatedSubtitle.words !== undefined ? updatedSubtitle.words : subtitle.words
+            speaker_id: updatedSubtitle.speaker_id,
+            words: updatedSubtitle.words
           };
         }
         return subtitle;
@@ -663,7 +665,14 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     )
 
     // Save transcript to JSON file
-    const { segments, speakers } = await saveTranscript(transcript, filename)
+    const { segments, speakers } = await saveTranscript(transcript, filename, {
+      case: settings.textCase,
+      removePunctuation: settings.removePunctuation,
+      censoredWords: settings.enableCensor ? settings.censoredWords : [],
+      maxWordsPerLine: settings.maxWordsPerLine,
+      maxCharsPerLine: settings.maxCharsPerLine,
+      maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+    })
     console.log("Transcript saved to:", filename)
 
     // Update the global subtitles state to show in sidebar

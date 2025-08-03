@@ -34,7 +34,7 @@ export interface Word {
     word: string;
     start: number;
     end: number;
-    line?: number;
+    line_number: number;
     probability?: number;
 }
 export interface Subtitle {
@@ -59,6 +59,7 @@ export interface Speaker {
     name: string;
     fill: ColorModifier;
     outline: ColorModifier;
+    border: ColorModifier;
     sample: Sample;
     track?: string;
 }
@@ -86,6 +87,7 @@ export interface Settings {
 
     // Text settings
     maxWordsPerLine: number,
+    maxCharsPerLine: number,
     maxLinesPerSubtitle: number,
     textCase: "none" | "uppercase" | "lowercase";
     removePunctuation: boolean,

@@ -645,10 +645,44 @@ function SanitizeTrackIndex(trackIndex, markIn, markOut)
     return tonumber(trackIndex)
 end
 
+function SetCustomColors(speaker, tool)
+    local color = nil
+    -- Set custom colors for each speaker if enabled
+    if speaker.fill.enabled and speaker.fill.color ~= "" then
+        color = hexToRgb(speaker.fill.color)
+        if color ~= nil then
+            tool:SetInput("Enabled1", 1)
+            tool:SetInput("Red1", color.r)
+            tool:SetInput("Green1", color.g)
+            tool:SetInput("Blue1", color.b)
+        end
+    end
+
+    if speaker.outline.enabled and speaker.outline.color ~= "" then
+        color = hexToRgb(speaker.outline.color)
+        if color ~= nil then
+            tool:SetInput("Enabled2", 1)
+            tool:SetInput("Red2", color.r)
+            tool:SetInput("Green2", color.g)
+            tool:SetInput("Blue2", color.b)
+        end
+    end
+
+    if speaker.border.enabled and speaker.border.color ~= "" then
+        color = hexToRgb(speaker.border.color)
+        if color ~= nil then
+            tool:SetInput("Enabled4", 1)
+            tool:SetInput("Red4", color.r)
+            tool:SetInput("Green4", color.g)
+            tool:SetInput("Blue4", color.b)
+        end
+    end
+end
+
 -- Add subtitles to the timeline using the specified template
 function AddSubtitles(filePath, trackIndex, templateName)
     resolve:OpenPage("edit")
-    
+
     local data = read_json_file(filePath)
     if type(data) ~= "table" then
         print("Error reading JSON file")
@@ -745,11 +779,11 @@ function AddSubtitles(filePath, trackIndex, templateName)
 
         local newClip = {
             mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
-            mediaType = 1, -- media type 1 is video
-            startFrame = 0, -- start frame means within the clip
-            endFrame = duration, -- end frame means within the clip
-            recordFrame = timeline_pos, -- record frame means where in the timeline the clip should be placed
-            trackIndex = itemTrack -- track the clip should be placed on
+            mediaType = 1,                -- media type 1 is video
+            startFrame = 0,               -- start frame means within the clip
+            endFrame = duration,          -- end frame means within the clip
+            recordFrame = timeline_pos,   -- record frame means where in the timeline the clip should be placed
+            trackIndex = itemTrack        -- track the clip should be placed on
         }
 
         table.insert(clipList, newClip)
@@ -767,34 +801,15 @@ function AddSubtitles(filePath, trackIndex, templateName)
             -- Skip if text is not TextPlus (TODO: Add support for other types of text if possible)
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local text_plus_tools = comp:GetToolList(false, "TextPlus")
-                text_plus_tools[1]:SetInput("StyledText", lstrip(subtitleText))
+                local tool = comp:FindToolByID("TextPlus")
+                tool:SetInput("StyledText", lstrip(subtitleText))
 
                 -- Set text colors if available
                 if speakersExist then
                     local speaker_id = subtitle["speaker_id"]
                     if speaker_id ~= "?" then
                         local speaker = speakers[tonumber(speaker_id) + 1]
-                        local color = nil
-
-                        -- Set custom colors for each speaker if enabled
-                        if speaker.fill.enabled and speaker.fill.color ~= "" then
-                            color = hexToRgb(speaker.fill.color)
-                            if color ~= nil then
-                                text_plus_tools[1]:SetInput("Red1", color.r)
-                                text_plus_tools[1]:SetInput("Green1", color.g)
-                                text_plus_tools[1]:SetInput("Blue1", color.b)
-                            end
-                        end
-
-                        if speaker.outline.enabled and speaker.outline.color ~= "" then
-                            color = hexToRgb(speaker.outline.color)
-                            if color ~= nil then
-                                text_plus_tools[1]:SetInput("Red2", color.r)
-                                text_plus_tools[1]:SetInput("Green2", color.g)
-                                text_plus_tools[1]:SetInput("Blue2", color.b)
-                            end
-                        end
+                        SetCustomColors(speaker, tool)
                     end
                 end
 
@@ -807,6 +822,50 @@ function AddSubtitles(filePath, trackIndex, templateName)
             print("Failed to add subtitle to timeline: " .. err)
         end
     end
+end
+
+-- place example subtitle on timeline with theme and export frame
+function GetExampleSubtitle(speaker, templateName, exportPath)
+    timeline:AddTrack("video")
+    local trackIndex = timeline:GetTrackCount("video")
+    local rootFolder = mediaPool:GetRootFolder()
+    local templateItem = GetTemplateItem(rootFolder, templateName)
+    local templateFrameRate = templateItem:GetClipProperty()["FPS"]
+    local timelineFrameRate = timeline:GetSetting("timelineFrameRate")
+
+    local timelinePos = TimecodeToFrames(timeline:GetCurrentTimecode(), timelineFrameRate)
+    
+    local newClip = {
+        mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
+        startFrame = 0,               -- start frame means within the clip
+        endFrame = templateFrameRate * 2,          -- end frame means within the clip
+        recordFrame = timelinePos,              -- record frame means where in the timeline the clip should be placed
+        trackIndex = trackIndex        -- track the clip should be placed on
+    }
+    local timelineItems = mediaPool:AppendToTimeline({newClip})
+    local timelineItem = timelineItems[1] 
+
+    local success, err = pcall(function()
+        -- Set timeline position to middle of clip
+        if timelineItem:GetFusionCompCount() > 0 then
+            local comp = timelineItem:GetFusionCompByIndex(1)
+            local tool = comp:FindToolByID("TextPlus")
+            tool:SetInput("StyledText", "Example Subtitle Text")
+            SetCustomColors(speaker, tool)
+        end
+        timelinePos = timelineItem:GetStart()
+        timeline:SetCurrentTimecode(FramesToTimecode(timelinePos + timelineFrameRate, timelineFrameRate))
+    end)
+    if not success then
+        print("Failed to set timeline position: " .. err)
+    end
+
+    -- could use GetCurrentClipThumbnailImage() here to get raw image data
+    project:ExportCurrentFrameAsStill(exportPath)
+    timeline:DeleteClips(timelineItems)
+    timeline:DeleteTrack("video", trackIndex)
+
+    return exportPath
 end
 
 local function set_cors_headers(client)
@@ -934,6 +993,10 @@ while not quitServer do
                             body = json.encode({
                                 message = "Job completed"
                             })
+                        elseif data.func == "GetExampleSubtitle" then
+                            print("[AutoSubs Server] Getting example subtitle...")
+                            local exampleSubtitlePath = GetExampleSubtitle(data.speaker, data.templateName, data.exportPath)
+                            body = json.encode(exampleSubtitlePath)
                         elseif data.func == "Exit" then
                             body = json.encode({
                                 message = "Server shutting down"

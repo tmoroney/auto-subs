@@ -35,50 +35,68 @@ function joinWordsToText(words: Word[]): string {
     return words.map((w) => w.word).join(" ").replace(/\s+/g, " ").trim();
 }
 
-function splitSubtitleIntoLines(subtitle: Subtitle, options: {
+function splitSubtitles(subtitles: Subtitle[], options: {
     maxWordsPerLine: number;
     maxLinesPerSubtitle: number;
+    maxCharsPerLine?: number;
 }): Subtitle[] {
-    // return early if we don't need to split
-    if (subtitle.words.length <= options.maxWordsPerLine) {
-        return [subtitle];
+    const result: Subtitle[] = [];
+
+    for (const subtitle of subtitles) {
+        const words = subtitle.words;
+        if (words.length <= options.maxWordsPerLine) {
+            result.push(subtitle);
+            continue;
+        }
+
+        // 1. Split words into lines, assigning line_number
+        let lines: Word[][] = [];
+        let currentLine: Word[] = [];
+        let lineNumber = 0;
+        let currentLineCharCount = 0;
+        for (let i = 0; i < words.length; i++) {
+            const word: Word = { ...words[i], line_number: lineNumber };
+            const wordText = word.word;
+            // Calculate char count if we add this word (including space if not first word)
+            const space = currentLine.length > 0 ? 1 : 0;
+            const prospectiveCharCount = currentLineCharCount + wordText.length + space;
+            const wouldExceedCharLimit = options.maxCharsPerLine !== undefined && prospectiveCharCount > options.maxCharsPerLine;
+            const isLineFull = currentLine.length === options.maxWordsPerLine;
+            const isLastWord = i === words.length - 1;
+
+            if ((isLineFull || wouldExceedCharLimit) && currentLine.length > 0) {
+                lines.push(currentLine);
+                currentLine = [];
+                lineNumber++;
+                currentLineCharCount = 0;
+            }
+            // After possibly starting a new line, add the word
+            currentLine.push({ ...word, line_number: lineNumber });
+            currentLineCharCount += (currentLine.length > 1 ? 1 : 0) + wordText.length;
+
+            if (isLastWord && currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+        }
+
+        // 2. Group lines into subtitles (each subtitle has up to maxLinesPerSubtitle lines)
+        for (let i = 0; i < lines.length; i += options.maxLinesPerSubtitle) {
+            const subtitleLines = lines.slice(i, i + options.maxLinesPerSubtitle);
+            const subtitleWords = subtitleLines.flat();
+            result.push({
+                ...subtitle,
+                words: subtitleWords,
+                text: joinWordsToText(subtitleWords),
+                start: subtitleWords[0].start,
+                end: subtitleWords[subtitleWords.length - 1].end,
+            });
+        }
     }
 
-    // split words into lines
-    let result: Subtitle[] = [];
-    let words = subtitle.words;
-
-    let lineIndex = 0;
-    let currentWords: Word[] = [];
-    for (let i = 0; i < words.length; i++) {
-        // increment line index if we have reached the max words per line
-        if (currentWords.length > options.maxWordsPerLine) {
-            lineIndex++;
-        }
-        words[i].line = lineIndex;
-        currentWords.push(words[i]);
-
-        // check if we have reached the max words per line or the end of the subtitle or current word ends with a period, question mark, or exclamation point
-        if (currentWords.length >= options.maxWordsPerLine * options.maxLinesPerSubtitle || i === words.length - 1 || words[i].word === '.' || words[i].word === '?' || words[i].word === '!') {
-            // create a new subtitle object
-            let newSubtitle: Subtitle = { ...subtitle };
-            // set the subtitle text to the joined words
-            newSubtitle.text = joinWordsToText(currentWords);
-            // set the subtitle id to the current index
-            newSubtitle.id = result.length;
-            // set the subtitle words to the current words
-            newSubtitle.words = currentWords;
-            // set the subtitle start and end to the first and last word in the subtitle
-            newSubtitle.start = currentWords[0].start;
-            newSubtitle.end = currentWords[currentWords.length - 1].end;
-
-            result.push(newSubtitle);
-            currentWords = [];
-            lineIndex = 0;
-        }
-    }
     return result;
 }
+
+
 
 /**
  * Applies all subtitle formatting operations in a single pass for efficiency.
@@ -86,7 +104,7 @@ function splitSubtitleIntoLines(subtitle: Subtitle, options: {
  * @param options Formatting options including case, punctuation removal, and word censoring.
  * @returns A new Subtitle with all formatting applied.
  */
-export function formatSubtitle(
+export function applyTextFormattingToSubtitle(
     subtitle: Subtitle,
     options: {
         case: 'lowercase' | 'uppercase' | 'none';
@@ -103,13 +121,13 @@ export function formatSubtitle(
         return { ...wordObj, word: w };
     });
 
-    return {
-        ...subtitle,
-        words: result
-    };
+    subtitle.text = joinWordsToText(result);
+    subtitle.words = result;
+
+    return subtitle;
 }
 
-export function formatSubtitles(
+export function splitAndFormatSubtitles(
     subtitles: Subtitle[],
     options: {
         case: 'lowercase' | 'uppercase' | 'none';
@@ -117,18 +135,17 @@ export function formatSubtitles(
         censoredWords: string[];
         maxWordsPerLine: number;
         maxLinesPerSubtitle: number;
+        maxCharsPerLine?: number;
     }
 ): Subtitle[] {
+    console.log("Splitting and formatting subtitles with options:", options);
     // split subtitles into lines
-    let processedSubtitles: Subtitle[] = [];
-    for (let subtitle of subtitles) {
-        processedSubtitles.push(...splitSubtitleIntoLines(subtitle, options));
-    }
+    let processedSubtitles: Subtitle[] = splitSubtitles(subtitles, options);
 
     // Process words array
     let result: Subtitle[] = [];
     for (let subtitle of processedSubtitles) {
-        result.push(formatSubtitle(subtitle, options));
+        result.push(applyTextFormattingToSubtitle(subtitle, options));
     }
 
     return result;

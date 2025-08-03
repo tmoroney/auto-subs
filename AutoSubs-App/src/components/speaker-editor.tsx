@@ -1,8 +1,8 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Speech, ChevronDown, ChevronRight } from "lucide-react"
+import { ColorPopover } from "@/components/color-popover"
+import { Speech, ChevronDown, ChevronRight, LoaderPinwheel, LoaderCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Speaker } from "@/types/interfaces"
 import { useGlobal } from "@/contexts/GlobalContext"
@@ -12,8 +12,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DialogDescription } from "@radix-ui/react-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { jumpToTime } from "@/api/resolveAPI"
-//const defaultColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
-
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { getExampleSubtitle } from "@/api/resolveAPI"
+import { downloadDir, join } from "@tauri-apps/api/path"
+import { convertFileSrc } from "@tauri-apps/api/core"
 
 interface SpeakerEditorProps {
     afterTranscription?: boolean;
@@ -26,6 +28,8 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
     const { speakers, timelineInfo, settings, markIn, updateSpeakers, pushToTimeline } = useGlobal();
     const [localSpeakers, setLocalSpeakers] = useState(speakers);
     const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
+    const [previews, setPreviews] = useState<{ [index: number]: string }>({});
+    const [loadingPreview, setLoadingPreview] = useState<{ [index: number]: boolean }>({});
 
     function toggleExpanded(index: number) {
         if (expandedSpeaker === index) {
@@ -41,6 +45,26 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
         setLocalSpeakers(newSpeakers);
     }
 
+    // Generate a preview for a specific speaker subtitle
+    async function generatePreview(index: number): Promise<string> {
+        setLoadingPreview(prev => ({ ...prev, [index]: true }));
+        const downloadPath = await downloadDir();
+        const filePath = await join(downloadPath, `speaker-${index}.png`);
+        let path = await getExampleSubtitle(localSpeakers[index], settings.selectedTemplate.value, filePath);
+        console.log("Generated preview for speaker", localSpeakers[index].name, "at", path);
+        try {
+            const assetUrl = convertFileSrc(path) + `?t=${Date.now()}`;
+            setPreviews(prev => ({ ...prev, [index]: assetUrl }));
+            return assetUrl;
+        } catch (err) {
+            console.error("Failed to create asset URL:", err);
+            setPreviews(prev => ({ ...prev, [index]: "" }));
+            return "";
+        } finally {
+            setLoadingPreview(prev => ({ ...prev, [index]: false }));
+        }
+    }
+
     useEffect(() => {
         setLocalSpeakers(speakers);
         // Auto-expand the specified speaker if provided
@@ -52,191 +76,198 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100vh-2rem)]">
                 <DialogHeader>
                     <DialogTitle>Edit Speakers</DialogTitle>
                     <DialogDescription className="text-sm">These are the speakers detected in the audio.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 overflow-y-auto">
-                    {localSpeakers.map((speaker, index) => (
-                        <Card key={index} className="overflow-hidden">
-                            <div
-                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => toggleExpanded(index)}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-2">
-                                            {expandedSpeaker === index ? (
-                                                <ChevronDown className="w-4 h-4" />
-                                            ) : (
-                                                <ChevronRight className="w-4 h-4" />
-                                            )}
-                                            <div
-                                                className="w-5 h-5 rounded-full border-4"
-                                                style={{
-                                                    backgroundColor: speaker.fill.enabled ? speaker.fill.color : "transparent",
-                                                    borderColor: speaker.outline.enabled ? speaker.outline.color : "",
-                                                }}
-                                            />
-                                        </div>
-                                        <span className="font-medium">{speaker.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="text-xs h-8"
-                                                    tabIndex={-1}
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        jumpToTime(speaker.sample.start, markIn);
+                <ScrollArea className="max-h-[calc(100vh-15rem)]">
+                    <div className="space-y-4">
+                        {localSpeakers.map((speaker, index) => (
+                            <Card key={index}>
+                                <div
+                                    className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                                    onClick={() => toggleExpanded(index)}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2">
+                                                {expandedSpeaker === index ? (
+                                                    <ChevronDown className="w-4 h-4" />
+                                                ) : (
+                                                    <ChevronRight className="w-4 h-4" />
+                                                )}
+                                                <div
+                                                    className="w-5 h-5 rounded-full border-4"
+                                                    style={{
+                                                        backgroundColor: speaker.fill.enabled ? speaker.fill.color : "transparent",
+                                                        borderColor: speaker.outline.enabled ? speaker.outline.color : "",
                                                     }}
-                                                >
-                                                    <Speech className="w-4 h-4" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="bottom" align="center" className="text-xs">
-                                                Jump to sample in timeline
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        <span className="text-xs text-muted-foreground bg-muted rounded-md px-3 h-8 flex items-center">{speaker.track ? timelineInfo.outputTracks[Number(speaker.track)]?.label : timelineInfo.outputTracks[Number(settings.selectedOutputTrack)]?.label}</span>
+                                                />
+                                            </div>
+                                            <span className="font-medium">{speaker.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-xs h-8"
+                                                        tabIndex={-1}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            jumpToTime(speaker.sample.start, markIn);
+                                                        }}
+                                                    >
+                                                        <Speech className="w-4 h-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom" align="center" className="text-xs">
+                                                    Jump to sample in timeline
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            <span className="text-xs text-muted-foreground bg-muted rounded-md px-3 h-8 flex items-center">{speaker.track ? timelineInfo.outputTracks[Number(speaker.track)]?.label : timelineInfo.outputTracks[Number(settings.selectedOutputTrack)]?.label}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {expandedSpeaker === index && (
-                                <CardContent className="p-4 pt-2 border-t space-y-3">
-                                    {/* Speaker Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor={`name-${index}`}>Name</Label>
-                                        <Input
-                                            id={`name-${index}`}
-                                            value={speaker.name}
-                                            onChange={(e) => updateSpeaker(index, { ...speaker, name: e.target.value })}
-                                            placeholder="Enter speaker name"
-                                            className="w-full"
-                                        />
-                                    </div>
-
-                                    {/* Color Settings */}
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-medium">Appearance</Label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Fill Color */}
-                                            <div className="space-y-2 p-3 rounded-lg bg-muted/40">
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        id={`fill-${index}`}
-                                                        checked={speaker.fill.enabled}
-                                                        onCheckedChange={(checked) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                fill: { ...speaker.fill, enabled: !!checked },
-                                                            })
-                                                        }
-                                                    />
-                                                    <Label htmlFor={`fill-${index}`}>Fill Color</Label>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="color"
-                                                        value={speaker.fill.color}
-                                                        onChange={(e) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                fill: { ...speaker.fill, color: e.target.value },
-                                                            })
-                                                        }
-                                                        disabled={!speaker.fill.enabled}
-                                                        className="w-10 h-10 rounded-md border-2 border-input bg-background disabled:opacity-50"
-                                                    />
-                                                    <Input
-                                                        value={speaker.fill.color}
-                                                        onChange={(e) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                fill: { ...speaker.fill, color: e.target.value },
-                                                            })
-                                                        }
-                                                        disabled={!speaker.fill.enabled}
-                                                        className="font-mono flex-1"
-                                                        placeholder="#000000"
-                                                    />
-                                                </div>
+                                {expandedSpeaker === index && (
+                                    <CardContent className="p-4 pb-2 border-t space-y-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {/* Speaker Name */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`name-${index}`}>Name</Label>
+                                                <Input
+                                                    id={`name-${index}`}
+                                                    value={speaker.name}
+                                                    onChange={(e) => updateSpeaker(index, { ...speaker, name: e.target.value })}
+                                                    placeholder="Enter speaker name"
+                                                    className="w-full"
+                                                />
                                             </div>
 
-                                            {/* Outline Color */}
-                                            <div className="space-y-2 p-3 rounded-lg bg-muted/40">
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        id={`outline-${index}`}
-                                                        checked={speaker.outline.enabled}
-                                                        onCheckedChange={(checked) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                outline: { ...speaker.outline, enabled: !!checked },
-                                                            })
-                                                        }
-                                                    />
-                                                    <Label htmlFor={`outline-${index}`}>Border Color</Label>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="color"
-                                                        value={speaker.outline.color}
-                                                        onChange={(e) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                outline: { ...speaker.outline, color: e.target.value },
-                                                            })
-                                                        }
-                                                        disabled={!speaker.outline.enabled}
-                                                        className="w-10 h-10 rounded-md border-2 border-input bg-background disabled:opacity-50"
-                                                    />
-                                                    <Input
-                                                        value={speaker.outline.color}
-                                                        onChange={(e) =>
-                                                            updateSpeaker(index, {
-                                                                ...speaker,
-                                                                outline: { ...speaker.outline, color: e.target.value },
-                                                            })
-                                                        }
-                                                        disabled={!speaker.outline.enabled}
-                                                        className="font-mono flex-1"
-                                                        placeholder="#000000"
-                                                    />
-                                                </div>
+                                            {/* Track Selection */}
+                                            <div className="space-y-2">
+                                                <Label>Output Track</Label>
+                                                <Select
+                                                    value={speaker.track || settings.selectedOutputTrack}
+                                                    onValueChange={(value) => updateSpeaker(index, { ...speaker, track: value })}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select a track" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {timelineInfo.outputTracks.map((track) => (
+                                                            <SelectItem key={track.value} value={track.value}>
+                                                                {track.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Track Selection */}
-                                    <div className="space-y-2">
-                                        <Label>Output Track</Label>
-                                        <Select
-                                            value={speaker.track || settings.selectedOutputTrack}
-                                            onValueChange={(value) => updateSpeaker(index, { ...speaker, track: value })}
+                                        {/* Color Settings */}
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-medium">Appearance</Label>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {/* Fill Color Popover */}
+                                                <ColorPopover
+                                                    label="Fill"
+                                                    enabled={speaker.fill.enabled}
+                                                    onEnabledChange={(enabled: boolean) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            fill: { ...speaker.fill, enabled },
+                                                        })
+                                                    }
+                                                    color={speaker.fill.color}
+                                                    onColorChange={(color: string) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            fill: { ...speaker.fill, color },
+                                                        })
+                                                    }
+                                                />
+
+                                                {/* Outline Color Popover */}
+                                                <ColorPopover
+                                                    label="Outline"
+                                                    enabled={speaker.outline.enabled}
+                                                    onEnabledChange={(enabled: boolean) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            outline: { ...speaker.outline, enabled },
+                                                        })
+                                                    }
+                                                    color={speaker.outline.color}
+                                                    onColorChange={(color: string) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            outline: { ...speaker.outline, color },
+                                                        })
+                                                    }
+                                                />
+
+                                                {/* Border Color Popover */}
+                                                <ColorPopover
+                                                    label="Border"
+                                                    enabled={speaker.border.enabled}
+                                                    onEnabledChange={(enabled: boolean) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            border: { ...speaker.border, enabled },
+                                                        })
+                                                    }
+                                                    color={speaker.border.color}
+                                                    onColorChange={(color: string) =>
+                                                        updateSpeaker(index, {
+                                                            ...speaker,
+                                                            border: { ...speaker.border, color },
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* Show preview */}
+                                        <Button
+                                            variant="secondary"
+                                            className="w-full flex items-center justify-center gap-2"
+                                            disabled={loadingPreview[index]}
+                                            onClick={async () => { await generatePreview(index); }}
                                         >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Select a track" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {timelineInfo.outputTracks.map((track) => (
-                                                    <SelectItem key={track.value} value={track.value}>
-                                                        {track.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-                    ))}
-                </div>
+                                            {loadingPreview[index] && (
+                                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                                            )}
+                                            Generate Preview
+                                        </Button>
+                                        <div className="flex justify-center relative">
+                                            {previews[index] && (
+                                                <div className="relative">
+                                                    <img
+                                                        src={previews[index]}
+                                                        alt="Subtitle Preview"
+                                                        className="max-w-full pb-2 rounded shadow transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0"
+                                                        onLoad={e => {
+                                                            e.currentTarget.classList.remove('-translate-y-4', 'opacity-0');
+                                                            e.currentTarget.classList.add('translate-y-0', 'opacity-100');
+                                                        }}
+                                                    />
+                                                    {loadingPreview[index] && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded pb-2">
+                                                            <LoaderPinwheel className="h-8 w-8 text-white animate-spin" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        ))}
+                    </div>
+                </ScrollArea>
                 <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-0">
                     <DialogClose asChild>
                         {afterTranscription ? (

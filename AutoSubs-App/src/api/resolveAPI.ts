@@ -2,6 +2,7 @@
 import { fetch } from '@tauri-apps/plugin-http';
 import { downloadDir } from '@tauri-apps/api/path';
 import { getTranscriptPath } from '@/utils/fileUtils';
+import { Speaker } from '@/types/interfaces';
 
 const resolveAPI = "http://localhost:56002/";
 
@@ -101,6 +102,15 @@ export async function getRenderJobStatus() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ func: "GetRenderJobStatus" }),
+  });
+  return response.json();
+}
+
+export async function getExampleSubtitle(speaker: Speaker, templateName: string, exportPath: string) {
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ func: "GetExampleSubtitle", speaker, templateName, exportPath }),
   });
   return response.json();
 }

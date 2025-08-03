@@ -508,6 +508,10 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
                 enabled: false,
                 color: String::new(),
             },
+            border: ColorModifier {
+                enabled: false,
+                color: String::new(),
+            },
         });
     }
     

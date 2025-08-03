@@ -39,6 +39,7 @@ pub struct Speaker {
     pub name: String,
     pub fill: ColorModifier,
     pub outline: ColorModifier,
+    pub border: ColorModifier,
     pub sample: Sample
 }
 

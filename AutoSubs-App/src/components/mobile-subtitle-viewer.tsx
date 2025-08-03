@@ -77,7 +77,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
             onExport={handleExport}
             hasSubtitles={subtitles.length > 0}
           />
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
             <Users className="w-4 h-4 mr-2" />
             Edit Speakers
           </Button>
