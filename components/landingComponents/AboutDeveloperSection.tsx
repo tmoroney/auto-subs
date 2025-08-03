@@ -93,7 +93,7 @@ export default function AboutDeveloperSection() {
                   <Button 
                     
                     variant="outline" 
-                    className="border-white/50 dark:border-white/50 bg-transparent  dark:text-white text-gray-800 hover:bg-white/10 dark:hover:bg-white/10 font-bold px-8 py-6 text-base transition-all duration-300 flex items-center gap-2 w-full sm:w-auto"
+                    className="border-white/50 dark:border-white/50 bg-transparent  dark:text-white text-gray-800 hover:bg-white/10 dark:hover:bg-white/10 font-bold px-8 py-6 text-base transition-all duration-300 gap-2"
                   >
                     <MessageCircle className="mr-2 h-5 w-5" />
                     Get in Touch
