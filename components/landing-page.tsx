@@ -62,13 +62,13 @@ export default function LandingPage() {
       <Header onNavigate={handleNavigate} />
       <HeroSection downloadLink={downloadLink} />
       <main className="flex-1">
-        <HowItWorksSection onNavigate={handleNavigate} />
-        <FeaturesSection onNavigate={handleNavigate} />
-        <SupportSection onNavigate={handleNavigate} />
-        <AboutDeveloperSection onNavigate={handleNavigate} />
-        <NewsletterSection onNavigate={handleNavigate} />
+        <HowItWorksSection />
+        <FeaturesSection />
+        <SupportSection />
+        <AboutDeveloperSection />
+        <NewsletterSection />
       </main>
-      <Footer onNavigate={handleNavigate} />
+      <Footer />
     </div>
   )
 }

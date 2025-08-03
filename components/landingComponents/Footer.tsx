@@ -2,11 +2,7 @@
 
 import { MessageCircle } from 'lucide-react'
 
-interface FooterProps {
-  onNavigate?: (sectionId: string) => void
-}
-
-export default function Footer({ onNavigate }: FooterProps) {
+export default function Footer() {
   return (
     <footer className="py-8 w-full bg-gray-900 dark:bg-gray-950 text-white transition-colors duration-300">
       <div className="container mx-auto px-6 lg:px-10 max-w-6xl">

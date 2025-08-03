@@ -28,9 +28,13 @@ const itemVariants = {
       ease: 'easeOut',
     },
   },
+} as const;
+
+interface HeroSectionProps {
+  downloadLink: string;
 }
 
-export default function HeroSection() {
+export default function HeroSection({ downloadLink }: HeroSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   return (
     <section 
@@ -93,7 +97,7 @@ export default function HeroSection() {
                 <Button 
                   size="lg" 
                   className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold px-8 py-7 text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto h-14"
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={() => window.open(downloadLink, '_blank')}
                 >
                   <Download size={20} />
                   Download AutoSubs - It&apos;s free

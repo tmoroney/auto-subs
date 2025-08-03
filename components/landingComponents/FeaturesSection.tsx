@@ -5,7 +5,6 @@ import Image from 'next/image'
 
 export default function FeaturesSection() {
   const [visibleCards, setVisibleCards] = useState<number[]>([])
-  const sectionRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
@@ -71,36 +70,33 @@ export default function FeaturesSection() {
         </h2>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {features.map((feature, index) => {
-            const IconComponent = feature.icon
-            return (
-              <div
-                key={index}
-                ref={(el) => (cardRefs.current[index] = el)}
-                className={`flex flex-col items-center text-center bg-gradient-to-b ${feature.gradient} rounded-lg p-8 shadow-sm transition-all duration-700 ${
-                  visibleCards.includes(index) 
-                    ? 'translate-y-0 opacity-100 scale-100' 
-                    : 'translate-y-20 opacity-0 scale-95'
-                }`}
-                style={{ transitionDelay: `${index * 150}ms` }}
-              >
-                <div className={`relative mb-6 transition-transform duration-500 ${
-                  visibleCards.includes(index) ? 'rotate-0' : 'rotate-12'
-                }`}>
-                  <Image src={feature.icon} alt={feature.title} width={64} height={64}/>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 rounded-full blur-xl" />
-                </div>
-                
-                <h3 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white transition-colors duration-300">
-                  {feature.title}
-                </h3>
-                
-                <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                  {feature.description}
-                </p>
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              ref={(el) => { cardRefs.current[index] = el; }}
+              className={`flex flex-col items-center text-center bg-gradient-to-b ${feature.gradient} rounded-lg p-8 shadow-sm transition-all duration-700 ${
+                visibleCards.includes(index) 
+                  ? 'translate-y-0 opacity-100 scale-100' 
+                  : 'translate-y-20 opacity-0 scale-95'
+              }`}
+              style={{ transitionDelay: `${index * 150}ms` }}
+            >
+              <div className={`relative mb-6 transition-transform duration-500 ${
+                visibleCards.includes(index) ? 'rotate-0' : 'rotate-12'
+              }`}>
+                <Image src={feature.icon} alt={feature.title} width={64} height={64}/>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 rounded-full blur-xl" />
               </div>
-            )
-          })}
+              
+              <h3 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white transition-colors duration-300">
+                {feature.title}
+              </h3>
+              
+              <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                {feature.description}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
       

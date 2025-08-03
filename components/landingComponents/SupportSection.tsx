@@ -1,15 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Star, Heart, Type } from 'lucide-react'
 
-interface SupportSectionProps {
-  onNavigate?: (sectionId: string) => void
-}
-
-export default function SupportSection({ onNavigate }: SupportSectionProps) {
-  const sectionRef = useRef<HTMLDivElement>(null)
+export default function SupportSection() {
+  
   const [visibleCards, setVisibleCards] = useState<number[]>([])
 
   useEffect(() => {

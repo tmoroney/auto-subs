@@ -44,7 +44,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       version: 'v2.1.0',
       size: '45.2 MB',
       os: 'Windows',
-      downloadUrl: '/downloads/auto-subs-windows-v2.1.0.exe',
+      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe',
       isRecommended: currentOS === 'Windows'
     },
     {
@@ -52,7 +52,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       version: 'v2.1.0',
       size: '52.8 MB',
       os: 'macOS',
-      downloadUrl: '/downloads/auto-subs-macos-v2.1.0.dmg',
+      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg',
       isRecommended: currentOS === 'macOS'
     },
     {
@@ -60,7 +60,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       version: 'v2.1.0',
       size: '48.1 MB',
       os: 'Linux',
-      downloadUrl: '/downloads/auto-subs-linux-v2.1.0.AppImage',
+      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Linux-x64.AppImage',
       isRecommended: currentOS === 'Linux'
     }
   ]
