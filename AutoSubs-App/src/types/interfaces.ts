@@ -34,15 +34,16 @@ export interface Word {
     word: string;
     start: number;
     end: number;
+    line?: number;
     probability?: number;
 }
 export interface Subtitle {
     id: number;
-    start: string;
-    end: string;
+    start: number;
+    end: number;
     text: string;
-    speaker_id: string;
-    words?: Array<Word>;
+    words: Array<Word>;
+    speaker_id?: string;
 }
 
 // Speaker Interfaces
@@ -85,11 +86,11 @@ export interface Settings {
 
     // Text settings
     maxWordsPerLine: number,
-    maxLines: number,
-    textFormat: "none" | "uppercase" | "lowercase";
+    maxLinesPerSubtitle: number,
+    textCase: "none" | "uppercase" | "lowercase";
     removePunctuation: boolean,
     enableCensor: boolean,
-    censorWords: Array<string>,
+    censoredWords: Array<string>,
 
     // Davinci Resolve settings
     selectedInputTracks: string[];

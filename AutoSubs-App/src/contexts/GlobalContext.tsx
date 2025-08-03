@@ -13,7 +13,7 @@ import { listen } from '@tauri-apps/api/event';
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
 import { jumpToTime, getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
-import { generateSrt } from '@/utils/srtUtils';
+import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
 
 interface GlobalContextType {
@@ -91,11 +91,11 @@ const DEFAULT_SETTINGS: Settings = {
 
   // Text settings
   maxWordsPerLine: 5,
-  maxLines: 1,
-  textFormat: "none",
+  maxLinesPerSubtitle: 1,
+  textCase: "none",
   removePunctuation: false,
   enableCensor: false,
-  censorWords: [],
+  censoredWords: [],
 
   // Resolve settings
   selectedInputTracks: ["1"],
@@ -353,38 +353,23 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         return;
       }
 
-      // read srt file and convert to json
+      // read srt file and convert to json using robust parser
       const srtData = await readTextFile(transcriptPath);
-      const srtLines = srtData.split('\n');
-      let subtitles: Subtitle[] = [];
-
-      // convert srt to [{start, end, text}]
-      for (let i = 0; i < srtLines.length; i++) {
-        if (srtLines[i].match(/\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/)) {
-          let start = srtLines[i].split(' --> ')[0];
-          let end = srtLines[i].split(' --> ')[1];
-          let text = srtLines[i + 1];
-
-          const [startHours, startMinutes, startSeconds] = start.split(':');
-          const [startSecs, startMillis] = startSeconds.split(',');
-          const startInSeconds = parseInt(startHours) * 3600 + parseInt(startMinutes) * 60 + parseInt(startSecs) + parseInt(startMillis) / 1000;
-
-          const [endHours, endMinutes, endSeconds] = end.split(':');
-          const [endSecs, endMillis] = endSeconds.split(',');
-          const endInSeconds = parseInt(endHours) * 3600 + parseInt(endMinutes) * 60 + parseInt(endSecs) + parseInt(endMillis) / 1000;
-
-          let subtitle = { id: i, start: startInSeconds.toString(), end: endInSeconds.toString(), text, speaker_id: "" };
-          subtitles.push(subtitle);
-        }
-      }
-
-      setSubtitles(subtitles);
-
-      let transcript = { "segments": subtitles };
+      const subtitles = parseSrt(srtData);
+      let transcript = { segments: subtitles };
 
       // Save transcript to file in Transcripts directory
       let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
-      await saveTranscript(transcript, filename);
+      console.log("Saving transcript to:", filename);
+      // No speakers for imported subtitles
+      let { segments } = await saveTranscript(transcript, filename, {
+        case: settings.textCase,
+        removePunctuation: settings.removePunctuation,
+        censoredWords: settings.enableCensor ? settings.censoredWords : [],
+        maxWordsPerLine: settings.maxWordsPerLine,
+        maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+      });
+      setSubtitles(segments)
     } catch (error) {
       console.error('Failed to open file', error);
       setError({
@@ -678,13 +663,13 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     )
 
     // Save transcript to JSON file
-    const { subtitles, speakers } = await saveTranscript(transcript, filename)
+    const { segments, speakers } = await saveTranscript(transcript, filename)
     console.log("Transcript saved to:", filename)
 
     // Update the global subtitles state to show in sidebar
     setSpeakers(speakers)
-    setSubtitles(subtitles)
-    console.log("Subtitle list updated with", subtitles.length, "subtitles")
+    setSubtitles(segments)
+    console.log("Subtitle list updated with", segments.length, "subtitles")
 
     return filename
   }

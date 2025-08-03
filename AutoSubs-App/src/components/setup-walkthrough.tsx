@@ -141,17 +141,17 @@ export const SetupWalkthrough = ({
           <div className="max-w-lg mx-auto">
             <TextFormattingCard
               maxWordsPerLine={settings.maxWordsPerLine}
-              maxLines={settings.maxLines}
-              textFormat={settings.textFormat}
+              maxLinesPerSubtitle={settings.maxLinesPerSubtitle}
+              textCase={settings.textCase}
               removePunctuation={settings.removePunctuation}
               enableCensor={settings.enableCensor}
-              censorWords={settings.censorWords}
+              censoredWords={settings.censoredWords}
               onMaxWordsPerLineChange={(maxWordsPerLine) => updateSetting("maxWordsPerLine", maxWordsPerLine)}
-              onMaxLinesChange={(maxLines) => updateSetting("maxLines", maxLines)}
-              onTextFormatChange={(format) => updateSetting("textFormat", format)}
+              onMaxLinesPerSubtitleChange={(maxLinesPerSubtitle) => updateSetting("maxLinesPerSubtitle", maxLinesPerSubtitle)}
+              onTextCaseChange={(textCase) => updateSetting("textCase", textCase)}
               onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
               onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
-              onCensorWordsChange={(words) => updateSetting("censorWords", words)}
+              onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
             />
           </div>
         ),

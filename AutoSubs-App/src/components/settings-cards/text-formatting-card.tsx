@@ -8,32 +8,32 @@ import { cn } from "@/lib/utils"
 
 interface TextFormattingCardProps {
   maxWordsPerLine: number
-  maxLines: number
-  textFormat: "none" | "uppercase" | "lowercase"
+  maxLinesPerSubtitle: number
+  textCase: "none" | "uppercase" | "lowercase"
   removePunctuation: boolean
   enableCensor: boolean
-  censorWords: string[]
+  censoredWords: string[]
   onMaxWordsPerLineChange: (value: number) => void
-  onMaxLinesChange: (value: number) => void
-  onTextFormatChange: (format: "none" | "uppercase" | "lowercase") => void
+  onMaxLinesPerSubtitleChange: (value: number) => void
+  onTextCaseChange: (textCase: "none" | "uppercase" | "lowercase") => void
   onRemovePunctuationChange: (checked: boolean) => void
   onEnableCensorChange: (checked: boolean) => void
-  onCensorWordsChange: (words: string[]) => void
+  onCensoredWordsChange: (words: string[]) => void
 }
 
 export const TextFormattingCard = ({
   maxWordsPerLine,
-  maxLines,
-  textFormat,
+  maxLinesPerSubtitle,
+  textCase,
   removePunctuation,
   enableCensor,
-  censorWords,
+  censoredWords,
   onMaxWordsPerLineChange,
-  onMaxLinesChange,
-  onTextFormatChange,
+  onMaxLinesPerSubtitleChange,
+  onTextCaseChange,
   onRemovePunctuationChange,
   onEnableCensorChange,
-  onCensorWordsChange,
+  onCensoredWordsChange,
 }: TextFormattingCardProps) => {
   return (
     <div className="space-y-4">
@@ -71,8 +71,8 @@ export const TextFormattingCard = ({
         <Input
           type="number"
           min="1"
-          value={maxLines}
-          onChange={(e) => onMaxLinesChange(Number(e.target.value))}
+          value={maxLinesPerSubtitle}
+          onChange={(e) => onMaxLinesPerSubtitleChange(Number(e.target.value))}
           className="w-20"
         />
       </div>
@@ -98,11 +98,11 @@ export const TextFormattingCard = ({
                     size="default"
                     className={cn(
                       "px-3",
-                      textFormat === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                      textCase === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {
-                      const newFormat = textFormat === "lowercase" ? "none" : "lowercase";
-                      onTextFormatChange(newFormat);
+                      const newFormat = textCase === "lowercase" ? "none" : "lowercase";
+                      onTextCaseChange(newFormat);
                     }}
                   >
                     abc
@@ -119,11 +119,11 @@ export const TextFormattingCard = ({
                     size="default"
                     className={cn(
                       "px-3",
-                      textFormat === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                      textCase === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {
-                      const newFormat = textFormat === "uppercase" ? "none" : "uppercase";
-                      onTextFormatChange(newFormat);
+                      const newFormat = textCase === "uppercase" ? "none" : "uppercase";
+                      onTextCaseChange(newFormat);
                     }}
                   >
                     ABC
@@ -176,21 +176,21 @@ export const TextFormattingCard = ({
             <div className="mt-3 pt-3 border-t">
               <div className="flex flex-col gap-2">
                 <ScrollArea className="max-h-[150px]">
-                  {censorWords.length === 0 ? (
+                  {censoredWords.length === 0 ? (
                     <div className="text-xs text-muted-foreground p-4 text-center">
                       No words selected to censor.
                     </div>
                   ) : (
-                    censorWords.map((word: string, index: number) => (
+                    censoredWords.map((word: string, index: number) => (
                       <div key={index} className="flex items-center m-1 mb-2 mr-3">
                         <Input
                           value={word}
                           type="string"
                           placeholder="Enter word"
                           onChange={(e) => {
-                            const newWords = [...censorWords];
+                            const newWords = [...censoredWords];
                             newWords[index] = e.target.value;
-                            onCensorWordsChange(newWords);
+                            onCensoredWordsChange(newWords);
                           }}
                         />
                         <Button
@@ -198,8 +198,8 @@ export const TextFormattingCard = ({
                           size="sm"
                           className="ml-2"
                           onClick={() => {
-                            const newWords = censorWords.filter((_, i) => i !== index);
-                            onCensorWordsChange(newWords);
+                            const newWords = censoredWords.filter((_, i) => i !== index);
+                            onCensoredWordsChange(newWords);
                           }}
                         >
                           <Trash2 className="size-4" />
@@ -212,7 +212,7 @@ export const TextFormattingCard = ({
                   variant="secondary"
                   size="sm"
                   className="mx-1 w-full"
-                  onClick={() => onCensorWordsChange([...censorWords, ""])}
+                  onClick={() => onCensoredWordsChange([...censoredWords, ""])}
                 >
                   Add Word
                 </Button>

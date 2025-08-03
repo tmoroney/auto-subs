@@ -363,17 +363,17 @@ export const TranscriptionSettings = ({
                         <CollapsibleContent>
                             <TextFormattingCard
                                 maxWordsPerLine={settings.maxWordsPerLine}
-                                maxLines={settings.maxLines}
-                                textFormat={settings.textFormat}
+                                maxLinesPerSubtitle={settings.maxLinesPerSubtitle}
+                                textCase={settings.textCase}
                                 removePunctuation={settings.removePunctuation}
                                 enableCensor={settings.enableCensor}
-                                censorWords={settings.censorWords}
+                                censoredWords={settings.censoredWords}
                                 onMaxWordsPerLineChange={(value) => updateSetting("maxWordsPerLine", value)}
-                                onMaxLinesChange={(value) => updateSetting("maxLines", value)}
-                                onTextFormatChange={(format) => updateSetting("textFormat", format)}
+                                onMaxLinesPerSubtitleChange={(value) => updateSetting("maxLinesPerSubtitle", value)}
+                                onTextCaseChange={(textCase) => updateSetting("textCase", textCase)}
                                 onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
                                 onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
-                                onCensorWordsChange={(words) => updateSetting("censorWords", words)}
+                                onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
                             />
                         </CollapsibleContent>
                     </Collapsible>

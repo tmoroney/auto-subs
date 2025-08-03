@@ -2,6 +2,7 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
+import { formatSubtitles } from "./subtitleFormatter";
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -54,23 +55,59 @@ export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFi
   }
 }
 
+// Helper to interpolate words with timings if missing
+function interpolateWordsFromText(text: string, start: number, end: number) {
+  // Use match to preserve whitespace as part of each word
+  const wordTexts = text.match(/(\s*\S+)/g) || [];
+  const wordCount = wordTexts.length;
+  const segmentStart = typeof start === 'string' ? parseFloat(start) : start;
+  const segmentEnd = typeof end === 'string' ? parseFloat(end) : end;
+  const duration = segmentEnd - segmentStart;
+  const wordDuration = wordCount > 0 ? duration / wordCount : 0;
+  return wordTexts.map((word, idx) => ({
+    word,
+    start: (segmentStart + idx * wordDuration).toFixed(3),
+    end: (segmentStart + (idx + 1) * wordDuration).toFixed(3),
+  }));
+}
+
 // Save a new transcript to JSON file
-export async function saveTranscript(transcript: any, filename: string): Promise<{ subtitles: Subtitle[]; speakers: Speaker[] }> {
+export async function saveTranscript(
+  transcript: any,
+  filename: string,
+  formatOptions?: {
+    case: 'lowercase' | 'uppercase' | 'none';
+    removePunctuation: boolean;
+    censoredWords: string[];
+    maxWordsPerLine: number;
+    maxLinesPerSubtitle: number;
+  }
+): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
     const storageDir = await getTranscriptsDir();
     const filePath = await join(storageDir, filename);
 
     console.log('Saving transcript to:', filePath);
 
-    // Transform transcript segments to subtitle format
-    const subtitles: Subtitle[] = transcript.segments.map((segment: any, index: number) => ({
-      id: index.toString(),
-      start: segment.start,
-      end: segment.end,
-      text: segment.text.trim(),
-      speaker_id: segment.speaker_id || undefined,
-      words: segment.words || []
-    }));
+    const originalSegments: Subtitle[] = transcript.segments.map((segment: any, index: number) => {
+      let words = segment.words && segment.words.length > 0
+        ? segment.words
+        : interpolateWordsFromText(segment.text, segment.start, segment.end);
+      return {
+        id: index.toString(),
+        start: segment.start,
+        end: segment.end,
+        text: segment.text.trim(),
+        speaker_id: segment.speaker_id || undefined,
+        words
+      };
+    });
+
+    // Apply formatting if options are provided
+    let segments: Subtitle[] = originalSegments;
+    if (formatOptions) {
+      segments = formatSubtitles(originalSegments, formatOptions);
+    }
 
     // Speakers are now aggregated in the Rust backend and included in the transcript
     const speakers: Speaker[] = transcript.speakers || [];
@@ -80,13 +117,14 @@ export async function saveTranscript(transcript: any, filename: string): Promise
       createdAt: new Date().toISOString(),
       processingTime: transcript.processing_time_sec,
       speakers: speakers,
-      segments: subtitles,
+      originalSegments: originalSegments,
+      segments: segments,
     };
 
     // Save transcript to file
     await writeTextFile(filePath, JSON.stringify(transcriptData, null, 2));
     console.log('Successfully saved transcript to:', filePath);
-    return { subtitles, speakers };
+    return { segments, speakers };
   } catch (error) {
     console.error('Failed to save transcript:', error);
     throw new Error(`Failed to save transcript: ${error}`);
