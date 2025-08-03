@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Feather, Truck, Cpu } from 'lucide-react'
+import { Check, Rabbit, Bird, Turtle } from 'lucide-react'
 
 const models = [
-  { name: 'Whisper Small', description: 'Balanced speed and accuracy.', icon: Feather },
-  { name: 'Whisper Medium', description: 'Great accuracy, moderate speed.', icon: Cpu },
-  { name: 'Whisper Large-V3', description: 'Most accurate, but slower.', icon: Truck },
+  { name: 'Whisper Small', description: 'Balanced speed and accuracy.', icon: Rabbit },
+  { name: 'Whisper Medium', description: 'Great accuracy, moderate speed.', icon: Bird },
+  { name: 'Whisper Large-V3', description: 'Most accurate, but slower.', icon: Turtle },
 ]
 
 export function ModelSelectionCard() {

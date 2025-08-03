@@ -3,11 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Zap, Paintbrush, Speech, Globe } from 'lucide-react'
 
-interface FeaturesSectionProps {
-  onNavigate?: (sectionId: string) => void
-}
-
-export default function FeaturesSection({ onNavigate }: FeaturesSectionProps) {
+export default function FeaturesSection() {
   const [visibleCards, setVisibleCards] = useState<number[]>([])
   const sectionRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])

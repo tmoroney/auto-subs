@@ -62,13 +62,13 @@ export default function HowItWorksSection() {
         if (e.deltaY > 0 && activeStep < steps.length - 1) {
           setActiveStep(prev => prev + 1)
           hasScrolled.current = true
-          setTimeout(() => { hasScrolled.current = false }, 800)
+          setTimeout(() => { hasScrolled.current = false }, 1500) // I've made ts higher so you need to scroll a bit more to go to the next step
         } else if (e.deltaY < 0 && activeStep > 0) {
           setActiveStep(prev => prev - 1)
           hasScrolled.current = true
-          setTimeout(() => { hasScrolled.current = false }, 800)
+          setTimeout(() => { hasScrolled.current = false }, 1500)
         } else if (e.deltaY > 0 && activeStep === steps.length - 1) {
-          // Allow normal scroll after last step
+          // normal scroll after last step
           return
         }
       }

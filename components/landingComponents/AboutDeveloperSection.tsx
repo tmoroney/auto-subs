@@ -16,11 +16,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
-interface AboutDeveloperSectionProps {
-  onNavigate?: (sectionId: string) => void
-}
 
-export default function AboutDeveloperSection({ onNavigate }: AboutDeveloperSectionProps) {
+export default function AboutDeveloperSection() {
   const [isVisible, setIsVisible] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
   const [imageLoaded, setImageLoaded] = useState(false)

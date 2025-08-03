@@ -5,41 +5,31 @@ import { Button } from '@/components/ui/button'
 import { Star, Heart, Type } from 'lucide-react'
 
 interface SupportSectionProps {
-  onNavigate: (sectionId: string) => void
+  onNavigate?: (sectionId: string) => void
 }
 
 export default function SupportSection({ onNavigate }: SupportSectionProps) {
-  const [isVisible, setIsVisible] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const [visibleCards, setVisibleCards] = useState<number[]>([])
 
   useEffect(() => {
-    const observerOptions = {
-      threshold: 0.2,
-      rootMargin: '0px 0px -50px 0px'
-    }
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          
-          const index = cardRefs.current.findIndex(ref => ref === entry.target)
-          if (index !== -1 && !visibleCards.includes(index)) {
-            setVisibleCards(prev => [...prev, index])
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const cardIndex = parseInt(entry.target.getAttribute('data-card') || '0')
+          if (entry.isIntersecting) {
+            setVisibleCards(prev => [...prev, cardIndex])
           }
-        }
-      })
-    }, observerOptions)
+        })
+      },
+      { 
+        threshold: 0.1,
+        rootMargin: '50px'
+      }
+    )
 
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    cardRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref)
-    })
+    const cards = document.querySelectorAll('[data-card]')
+    cards.forEach(card => observer.observe(card))
 
     return () => observer.disconnect()
   }, [])
@@ -82,7 +72,7 @@ export default function SupportSection({ onNavigate }: SupportSectionProps) {
     >
       <div className="container mx-auto px-6 lg:px-10 max-w-6xl">
         <div className="flex flex-col items-center space-y-8 text-center">
-          <div className={`space-y-4 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
+          <div className="space-y-4 transition-all duration-1000">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
               Support the Project
             </h2>
@@ -91,32 +81,35 @@ export default function SupportSection({ onNavigate }: SupportSectionProps) {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-6 mt-8">
+          <div className="flex flex-col sm:flex-row gap-8 mt-12">
             {supportOptions.map((option, index) => {
               const IconComponent = option.icon
               return (
                 <div
                   key={index}
-                  ref={(el) => (cardRefs.current[index] = el)}
-                  className={`flex flex-col items-center bg-white rounded-lg px-10 py-10 shadow-sm text-gray-900 transition-all duration-700 ${
+                  data-card={index}
+                  className={`flex flex-col items-center bg-white rounded-xl px-8 py-12 shadow-lg text-gray-900 transition-all duration-1000 ease-out transform ${
                     visibleCards.includes(index) 
-                      ? 'translate-y-0 opacity-100 scale-100' 
-                      : 'translate-y-20 opacity-0 scale-95'
-                  } hover:shadow-2xl`}
-                  style={{ transitionDelay: `${index * 200}ms` }}
-                >
-                  <IconComponent className={`h-16 w-16 ${option.iconColor} mb-6 transition-transform duration-500`} />
+                    ? 'translate-y-0 opacity-100 scale-100' 
+                    : 'translate-y-16 opacity-0 scale-90'
+                } hover:shadow-2xl`}
+                style={{ transitionDelay: `${index * 200}ms` }}
+              >
+                  <div className="relative mb-6">
+                    <IconComponent className={`h-20 w-20 ${option.iconColor} mb-4 transition-transform duration-500 group-hover:scale-110`} />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white opacity-20 rounded-full blur-xl"></div>
+                  </div>
                   
-                  <h3 className="text-2xl font-semibold mb-4 text-gray-900 transition-colors duration-300">
+                  <h3 className="text-2xl font-bold mb-3 text-gray-900 transition-colors duration-300">
                     {option.title}
                   </h3>
                   
-                  <p className="text-gray-600 mb-6 transition-colors duration-300">
+                  <p className="text-gray-600 mb-8 text-center leading-relaxed transition-colors duration-300">
                     {option.description}
                   </p>
                   
                   <a href={option.url} target={option.url.startsWith('http') ? "_blank" : undefined} rel={option.url.startsWith('http') ? "noopener noreferrer" : undefined}>
-                    <Button className={`${option.buttonColor} text-white font-semibold px-8 py-6 text-lg btn-hover-effect transition-all duration-300`}>
+                    <Button className={`${option.buttonColor} text-white font-bold px-8 py-4 text-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95`}>
                       {option.buttonText}
                     </Button>
                   </a>
@@ -127,19 +120,7 @@ export default function SupportSection({ onNavigate }: SupportSectionProps) {
         </div>
       </div>
       
-      <style jsx>{`
-        .btn-hover-effect {
-          transition: all 0.3s ease;
-        }
-        .btn-hover-effect:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-        .btn-hover-effect:active {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-      `}</style>
+
     </section>
   )
 }
