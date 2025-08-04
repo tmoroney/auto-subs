@@ -14,7 +14,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen pt-11 bg-gradient-to-br from-[#1E40AF] to-[#4F46E5] dark:from-[#1e293b] dark:to-[#0f172a] transition-colors duration-300">
-      <Header onNavigate={() => {}} />
+      <Header />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4">
         <motion.div 
           className="text-center max-w-2xl mx-auto"

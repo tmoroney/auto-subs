@@ -24,13 +24,6 @@ export default function LandingPage() {
     }
   }, []);
 
-  const handleNavigate = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-white font-sans">
       <style jsx global>{`
@@ -59,7 +52,7 @@ export default function LandingPage() {
           scroll-margin-top: 5rem;
         }
       `}</style>
-      <Header onNavigate={handleNavigate} />
+      <Header />
       <HeroSection downloadLink={downloadLink} />
       <main className="flex-1">
         <HowItWorksSection />
