@@ -73,7 +73,7 @@ export default function AboutDeveloperSection() {
             </h2>
             
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed transition-colors duration-300">
-              Hi, I&apos;m Tom, the creator of AutoSubs. As a passionate coder and video enthusiast, I developed AutoSubs to address a challenge I encountered: the tedious and time-consuming task of manually crafting subtitles with custom designs.
+              Hi, I&apos;m <span className="font-semibold">Tom</span>, the creator of AutoSubs. As a passionate coder and video enthusiast, I developed AutoSubs to address a challenge I encountered: the tedious and time-consuming task of manually crafting subtitles with custom designs.
             </p>
             
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed transition-colors duration-300">

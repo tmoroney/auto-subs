@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Star, Heart, Type } from 'lucide-react'
+import Image from 'next/image'
 
 export default function SupportSection() {
   
@@ -32,36 +32,33 @@ export default function SupportSection() {
 
   const supportOptions = [
     {
-      icon: Star,
+      icon: '/auto-subs/assets/star.png',
       title: "Star on GitHub",
       description: "Can't donate? Give us a star on GitHub to help others discover AutoSubs.",
       buttonText: "Give a Star",
       buttonColor: "bg-yellow-500 hover:bg-yellow-600",
-      iconColor: "text-yellow-400",
       url: "https://github.com/tmoroney/auto-subs"
     },
     {
-      icon: Heart,
+      icon: '/auto-subs/assets/heart.png',
       title: "Support Development",
       description: "Your donation helps me dedicate more time to improving AutoSubs and adding exciting new features.",
       buttonText: "Donate Now",
       buttonColor: "bg-red-500 hover:bg-red-600",
-      iconColor: "text-red-500",
       url: "https://www.buymeacoffee.com/tmoroney"
     },
     {
-      icon: Type,
+      icon: '/auto-subs/assets/folder.png',
       title: "Subtitle Templates",
       description: "Purchase the supporter pack with 20+ subtitle templates and animations.",
       buttonText: "Coming Soon...",
       buttonColor: "bg-purple-600 hover:bg-purple-700",
-      iconColor: "text-purple-600",
       url: "#"
     }
   ]
 
   return (
-    <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="support">
       <div className="container mx-auto px-6 lg:px-8">
         <div className="flex flex-col items-center space-y-8 text-center">
           <div className="space-y-4 transition-all duration-1000">
@@ -75,7 +72,6 @@ export default function SupportSection() {
           
           <div className="flex flex-col sm:flex-row gap-8 mt-12">
             {supportOptions.map((option, index) => {
-              const IconComponent = option.icon
               return (
                 <div
                   key={index}
@@ -84,7 +80,7 @@ export default function SupportSection() {
                   style={{ transitionDelay: `${index * 200}ms` }}
                 >
                   <div className="relative mb-6">
-                    <IconComponent className={`h-20 w-20 ${option.iconColor} mb-4 transition-transform duration-500`} />
+                    <Image src={option.icon} alt={option.title} width={100} height={100} className="h-20 w-20 mb-4 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white opacity-20 rounded-full blur-xl"></div>
                   </div>
                   

@@ -5,11 +5,7 @@ import Image from 'next/image'
 import { DownloadModal } from '@/components/ui/DownloadModal'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
-interface HeaderProps {
-  onNavigate: (sectionId: string) => void
-}
-
-export default function Header({ onNavigate }: HeaderProps) {
+export default function Header() {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -27,10 +23,6 @@ export default function Header({ onNavigate }: HeaderProps) {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [lastScrollY])
-
-  const handleNavigation = (sectionId: string) => {
-    onNavigate(sectionId)
-  }
 
   return (
     <div>
@@ -51,12 +43,12 @@ export default function Header({ onNavigate }: HeaderProps) {
             <ThemeToggle />
             <a
               className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors duration-300"
-              onClick={() => handleNavigation('support')} >
+              href="#support" >
               Support Project
             </a>
             <a
               className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors duration-300"
-              onClick={() => window.open('https://discord.com/invite/TBFUfGWegm', '_blank')} >
+              href="https://discord.com/invite/TBFUfGWegm" >
               Join Discord
             </a>
             <button

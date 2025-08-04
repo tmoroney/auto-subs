@@ -5,9 +5,10 @@
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Download, Github } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DownloadModal } from '@/components/ui/DownloadModal'
 import { motion } from 'framer-motion'
+import AutoSubsInterface from './AutoSubsInterface'
 // import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 const containerVariants = {
@@ -34,6 +35,65 @@ const itemVariants = {
 
 interface HeroSectionProps {
   downloadLink: string;
+}
+
+interface AnimatedCounterProps {
+  endValue: number;
+  label: string;
+  suffix?: string;
+  delay?: number;
+}
+
+function AnimatedCounter({ endValue, label, suffix, delay = 0 }: AnimatedCounterProps) {
+  const [count, setCount] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    // Set visibility to trigger animation
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+    
+    const duration = Math.max(1000, endValue * 15);
+    const increment = Math.max(1, Math.ceil(endValue / 50))
+    const intervalTime = Math.max(10, duration / (endValue / increment));
+
+    const intervalId = setInterval(() => {
+      setCount((prevCount) => {
+        const nextCount = prevCount + increment;
+        if (nextCount >= endValue) {
+          clearInterval(intervalId);
+          return endValue;
+        }
+        return nextCount;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(intervalId);
+  }, [endValue, isVisible]);
+
+  return (
+    <div className="text-center">
+      <motion.span
+        className="text-4xl font-bold"
+        variants={itemVariants}
+        initial="hidden"
+        animate={isVisible ? "visible" : "hidden"}
+      >
+        {count}
+        {suffix}
+      </motion.span>
+      <span className="block text-lg text-blue-100 dark:text-gray-300 mt-1">
+        {label}
+      </span>
+    </div>
+  );
 }
 
 export default function HeroSection({ downloadLink }: HeroSectionProps) {
@@ -117,17 +177,32 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
                 </Button>
               </motion.div>
             </motion.div>
+
+            <motion.div 
+              className="grid grid-cols-3 gap-6 pt-8 max-w-2xl mx-auto lg:mx-0 border-t border-white/10 mt-8"
+              variants={itemVariants}
+            >
+              <AnimatedCounter endValue={50} suffix="+" label="Languages" delay={100} />
+              <AnimatedCounter endValue={6} label="AI Models" delay={200} />
+              <AnimatedCounter endValue={100} suffix="%" label="Free & Open Source" delay={300} />
+            </motion.div>
           </div>
 
-          <div className="relative rounded-xl overflow-hidden">
-              <Image
-                src="/auto-subs/assets/AutoSubs.png"
-                alt="AutoSubs Interface Preview for DaVinci Resolve"
-                width={1200}
-                height={782}
-                className="rounded-xl"
-                priority
-              />
+          {/* desktop: interactive interface */}
+          <div className="hidden lg:block relative rounded-xl overflow-hidden">
+            <AutoSubsInterface/>
+          </div>
+          
+          {/* mobile: img */}
+          <div className="lg:hidden relative rounded-xl overflow-hidden">
+            <Image
+              src="/auto-subs/assets/AutoSubs.png"
+              alt="AutoSubs Interface Preview for DaVinci Resolve"
+              width={1200}
+              height={782}
+              className="rounded-xl"
+              priority
+            />
           </div>
         </motion.div>
       </div>
