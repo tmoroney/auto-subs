@@ -40,6 +40,9 @@ pub async fn normalize(app: AppHandle, input: PathBuf, output: PathBuf, addition
             "pcm_s16le".to_string(),
             "-map_metadata".to_string(),
             "-1".to_string(),
+            // Enhanced audio preprocessing for speech segmentation
+            //"-af".to_string(),
+            //"highpass=f=80,lowpass=f=8000,dynaudnorm=g=3:f=10:r=0.95:p=0.9,volume=2.0".to_string(),
         ];
 
         // Add any extra arguments if they exist

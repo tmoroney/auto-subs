@@ -25,7 +25,16 @@ pub struct Segment {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ColorModifier {
     pub enabled: bool,
-    pub color: String
+    pub color: String,
+}
+
+impl Default for ColorModifier {
+    fn default() -> Self {
+        ColorModifier {
+            enabled: false,
+            color: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

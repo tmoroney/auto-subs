@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct TranscribeOptions {
     pub path: String,
+    pub offset: Option<f64>,
     pub lang: Option<String>,
     pub verbose: Option<bool>,
 

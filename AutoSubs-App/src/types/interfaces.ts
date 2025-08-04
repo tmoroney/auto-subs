@@ -6,10 +6,10 @@ export interface ErrorMsg {
 
 // Resolve Interfaces
 export interface AudioInfo {
-    timeline: string;
     path: string;
     markIn: number;
     markOut: number;
+    offset: number;
 }
 
 export interface Template {

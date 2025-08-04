@@ -130,10 +130,10 @@ local currentExportJob = {
     cancelled = false,
     startTime = nil,
     audioInfo = {
-        timelineId = "",
         path = "",
-        markIn = 0,
-        markOut = 0
+        markIn = 0, -- mark in (frames) - may display in UI as timecode
+        markOut = 0, -- mark out (frames) - may display in UI as timecode
+        offset = 0 -- offset on timeline in seconds (regardless of timeline start)
     },
     trackStates = nil
 }
@@ -316,7 +316,8 @@ function GetTimelineInfo()
         local timeline = project:GetCurrentTimeline()
         timelineInfo = {
             name = timeline:GetName(),
-            timelineId = timeline:GetUniqueId()
+            timelineId = timeline:GetUniqueId(),
+            timelineStart = timeline:GetStartFrame() / timeline:GetSetting("timelineFrameRate")
         }
     end)
     if not success then
@@ -592,10 +593,10 @@ function ExportAudio(outputDir, inputTracks)
         local renderSettings = renderJobList[#renderJobList]
 
         audioInfo = {
-            timeline = project:GetCurrentTimeline():GetUniqueId(),
             path = renderSettings["TargetDir"] .. "/" .. renderSettings["OutputFilename"],
             markIn = renderSettings["MarkIn"],
-            markOut = renderSettings["MarkOut"]
+            markOut = renderSettings["MarkOut"],
+            offset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
         }
         currentExportJob.audioInfo = audioInfo
 
@@ -636,7 +637,7 @@ function GetTemplateItem(folder, templateName)
     end
 end
 
-function SanitizeTrackIndex(trackIndex, markIn, markOut)
+function SanitizeTrackIndex(timeline, trackIndex, markIn, markOut)
     if trackIndex == "0" or trackIndex == "" or trackIndex == nil or tonumber(trackIndex) > timeline:GetTrackCount("video") or CheckTrackEmpty(trackIndex, markIn, markOut) then
         trackIndex = timeline:GetTrackCount("video") + 1
         timeline:AddTrack("video")
@@ -719,7 +720,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
         end
     end
 
-    trackIndex = SanitizeTrackIndex(trackIndex, markIn, markOut)
+    trackIndex = SanitizeTrackIndex(timeline, trackIndex, markIn, markOut)
 
     -- Sanitize speaker tracks
     if speakersExist then
@@ -727,7 +728,7 @@ function AddSubtitles(filePath, trackIndex, templateName)
             if speaker.track == nil or speaker.track == "" then
                 speaker.track = trackIndex
             else
-                speaker.track = SanitizeTrackIndex(speaker.track, markIn, markOut)
+                speaker.track = SanitizeTrackIndex(timeline, speaker.track, markIn, markOut)
             end
         end
     end
@@ -824,6 +825,60 @@ function AddSubtitles(filePath, trackIndex, templateName)
     end
 end
 
+function ExtractFrame(comp, exportPath, templateFrameRate)
+    -- Lock the composition to prevent redraws and pop-ups during scripting [15, 16]
+    comp:Lock()
+
+    -- Access the Saver tool by its name (assuming it exists in the comp)
+    local mySaver = comp:AddTool("Saver")
+
+    if mySaver ~= nil then
+        -- Set the output filename for the Saver tool [6, 7]
+        -- Make sure to provide a full path and desired image format extension
+        mySaver:SetInput("Clip", {
+            Filename = exportPath,
+            FormatID = "PNGFormat",
+            Length = 0,
+            Saving = true,
+            TrimIn = 0,
+            ExtendFirst = 0,
+            ExtendLast = 0,
+            Loop = 1,
+            AspectMode = 0,
+            Depth = 0,
+            GlobalStart = -2000000000,
+            GlobalEnd = 0
+        })
+        -- GetInputList
+
+        -- Set the input for the Saver tool to the MediaOut tool
+        local mediaOut = comp:FindToolByID("MediaOut")
+        mySaver:SetInput("Input", mediaOut)
+
+        -- Define the frame number you want to extract
+        local frameToExtract = templateFrameRate
+
+        -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
+        local success = comp:Render({
+            Start = frameToExtract-1,   -- Start rendering at this frame
+            End = frameToExtract,     -- End rendering at this frame
+            Tool = mySaver,           -- Render up to this specific Saver tool [13]
+            Wait = true               -- Wait for the render to complete before continuing the script [19]
+        })
+
+        if success then
+            print("Frame " .. frameToExtract .. " successfully saved by " .. mySaver.Name .. " to " .. exportPath)
+        else
+            print("Failed to save frame " .. frameToExtract)
+        end
+    else
+        print("Saver tool 'MySaver' not found in the composition.")
+    end
+
+    -- Unlock the composition after changes are complete [15, 20]
+    comp:Unlock()
+end
+
 -- place example subtitle on timeline with theme and export frame
 function GetExampleSubtitle(speaker, templateName, exportPath)
     timeline:AddTrack("video")
@@ -843,7 +898,7 @@ function GetExampleSubtitle(speaker, templateName, exportPath)
         trackIndex = trackIndex        -- track the clip should be placed on
     }
     local timelineItems = mediaPool:AppendToTimeline({newClip})
-    local timelineItem = timelineItems[1] 
+    local timelineItem = timelineItems[1]
 
     local success, err = pcall(function()
         -- Set timeline position to middle of clip
@@ -854,7 +909,9 @@ function GetExampleSubtitle(speaker, templateName, exportPath)
             SetCustomColors(speaker, tool)
         end
         timelinePos = timelineItem:GetStart()
+        -- Set timeline position to middle of clip
         timeline:SetCurrentTimecode(FramesToTimecode(timelinePos + timelineFrameRate, timelineFrameRate))
+        sleep(0.1)
     end)
     if not success then
         print("Failed to set timeline position: " .. err)

@@ -32,6 +32,7 @@ static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> = once_cell::sync::Lazy
 #[serde(rename_all = "camelCase")]
 pub struct FrontendTranscribeOptions {
     pub audio_path: String,
+    pub offset: Option<f64>,
     pub model: String, // e.g., "tiny", "base", "small", "medium", "large"
     pub lang: Option<String>,
     pub translate: Option<bool>,
@@ -84,6 +85,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
 
     let transcribe_options = TranscribeOptions {
         path: options.audio_path.clone().into(),
+        offset: options.offset,
         lang: options.lang,
         init_prompt: None,
         max_sentence_len: None,
@@ -500,18 +502,9 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
                 start,
                 end,
             },
-            fill: ColorModifier {
-                enabled: false,
-                color: String::new(),
-            },
-            outline: ColorModifier {
-                enabled: false,
-                color: String::new(),
-            },
-            border: ColorModifier {
-                enabled: false,
-                color: String::new(),
-            },
+            fill: ColorModifier::default(),
+            outline: ColorModifier::default(),
+            border: ColorModifier::default(),
         });
     }
     
@@ -524,6 +517,87 @@ pub struct DiarizeOptions {
     pub embedding_model_path: String,
     pub threshold: f32,
     pub max_speakers: usize,
+}
+
+/// Aligns transcript segments with diarization timeline using timestamp overlap
+fn align_transcript_with_diarization(
+    transcript_segments: Vec<Segment>,
+    diarization_segments: Vec<pyannote_rs::Segment>,
+    embedding_manager: &mut pyannote_rs::EmbeddingManager,
+    extractor: &mut pyannote_rs::EmbeddingExtractor,
+    diarize_options: DiarizeOptions,
+) -> Result<Vec<Segment>> {
+    let mut aligned_segments = Vec::new();
+    
+    for mut transcript_seg in transcript_segments {
+        let seg_start = transcript_seg.start;
+        let seg_end = transcript_seg.end;
+        let seg_midpoint = (seg_start + seg_end) / 2.0;
+        
+        // Find the diarization segment that best overlaps with this transcript segment
+        let mut best_speaker_id = None;
+        let mut best_overlap = 0.0;
+        let mut best_diar_segment: Option<&pyannote_rs::Segment> = None;
+        
+        for diar_seg in &diarization_segments {
+            let diar_start = diar_seg.start;
+            let diar_end = diar_seg.end;
+            
+            // Calculate overlap between transcript segment and diarization segment
+            let overlap_start = seg_start.max(diar_start);
+            let overlap_end = seg_end.min(diar_end);
+            let overlap_duration = (overlap_end - overlap_start).max(0.0);
+            
+            // Also check if the midpoint falls within the diarization segment
+            let midpoint_in_segment = seg_midpoint >= diar_start && seg_midpoint <= diar_end;
+            
+            // Prefer segments where midpoint is contained, otherwise use largest overlap
+            let score = if midpoint_in_segment {
+                overlap_duration + 1000.0 // Bonus for midpoint containment
+            } else {
+                overlap_duration
+            };
+            
+            if score > best_overlap && overlap_duration > 0.1 { // Minimum 100ms overlap
+                best_overlap = score;
+                best_diar_segment = Some(diar_seg);
+            }
+        }
+        
+        // If we found a matching diarization segment, compute speaker embedding
+        if let Some(diar_seg) = best_diar_segment {
+            match extractor.compute(&diar_seg.samples) {
+                Ok(embedding_result) => {
+                    let embedding_vec: Vec<f32> = embedding_result.collect();
+                    
+                    // Find the speaker using the same logic as the original pipeline
+                    let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
+                        embedding_manager
+                            .get_best_speaker_match(embedding_vec)
+                            .map(|r| r.to_string())
+                            .unwrap_or_else(|_| "?".to_string())
+                    } else {
+                        embedding_manager
+                            .search_speaker(embedding_vec, diarize_options.threshold)
+                            .map(|r| r.to_string())
+                            .unwrap_or_else(|| "?".to_string())
+                    };
+                    
+                    best_speaker_id = Some(speaker_id);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to compute embedding for alignment: {:?}", e);
+                    best_speaker_id = Some("?".to_string());
+                }
+            }
+        }
+        
+        // Assign the speaker ID
+        transcript_seg.speaker_id = best_speaker_id;
+        aligned_segments.push(transcript_seg);
+    }
+    
+    Ok(aligned_segments)
 }
 
 pub async fn run_transcription_pipeline(
@@ -564,7 +638,6 @@ pub async fn run_transcription_pipeline(
         let mut state = ctx.create_state().context("failed to create key")?;
         let mut params = setup_params(&options);
         let st = std::time::Instant::now();
-        let mut segments: Vec<Segment> = Vec::new();
     
         // Enable word timestamps if requested
         if options.word_timestamps.unwrap_or(false) {
@@ -575,6 +648,107 @@ pub async fn run_transcription_pipeline(
                 params.set_token_timestamps(true);
             }
         }
+
+        // Only set up Whisper's internal progress callback when diarization is NOT enabled
+        // When diarization is enabled, we handle progress manually in the diarization loop above
+        if let Some(callback) = progress_callback {
+            let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
+            let internal_progress_callback = move |progress: i32| callback(progress);
+            *guard = Some(Box::new(internal_progress_callback));
+        }
+        let mut samples = vec![0.0f32; original_samples.len()];
+
+        whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
+
+        if let Some(abort_callback) = abort_callback {
+            params.set_abort_callback_safe(abort_callback);
+        }
+
+        if PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?.as_ref().is_some() {
+            params.set_progress_callback_safe(|progress| {
+                if let Ok(mut cb) = PROGRESS_CALLBACK.lock() {
+                    if let Some(cb) = cb.as_mut() {
+                        cb(progress);
+                    }
+                }
+            });
+        }
+
+        tracing::debug!("set start time...");
+
+        tracing::debug!("setting state full...");
+        state.full(params, &samples).context("failed to transcribe")?;
+        let _et = std::time::Instant::now();
+
+        tracing::debug!("getting segments count...");
+        let num_segments = state.full_n_segments().context("failed to get number of segments")?;
+        if num_segments == 0 {
+            bail!("no segments found!")
+        }
+        tracing::debug!("found {} sentence segments", num_segments);
+        
+        // Process segments with or without diarization
+        let num_segments = state.full_n_segments()?;
+        tracing::debug!("found {} sentence segments", num_segments);
+
+        // Process each segment and collect word timestamps
+        let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
+    
+        for seg_idx in 0..num_segments {
+            let (seg_start, seg_end);
+
+            // Get the segment text
+            let text = state.full_get_segment_text_lossy(seg_idx as i32).context("failed to get segment")?;
+            
+            // Get word timestamps if DTW is enabled
+            let words = if let Some(true) = enable_dtw {
+                let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+                for word in &mut word_timestamps {
+                    // Round to 2 decimal places
+                    word.start = (word.start as f64 * 100.0).trunc() / 100.0;
+                    word.end = (word.end as f64 * 100.0).trunc() / 100.0;
+                }
+                seg_start = word_timestamps.first().unwrap().start;
+                seg_end = word_timestamps.last().unwrap().end;
+                Some(word_timestamps)
+            } else {
+                // Convert centiseconds to seconds
+                let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+                let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
+
+                // Round to 2 decimal places
+                seg_start = (t0 as f64 * 100.0).trunc() / 100.0;
+                seg_end = (t1 as f64 * 100.0).trunc() / 100.0;
+                None
+            };
+
+            // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
+            if let Some(last) = segments.last_mut() {
+                if last.end > seg_start {
+                    last.end = seg_start;
+                }
+                
+                // If word-level enabled, also update end time of last word
+                if let Some(words) = &mut last.words {
+                    words.last_mut().unwrap().end = seg_end;
+                }
+            }
+                
+            // Create the segment after we're done printing
+            let segment = Segment {
+                speaker_id: None, // No speaker info in non-diarized mode
+                start: seg_start,
+                end: seg_end,
+                text,
+                words,
+            };
+
+            segments.push(segment);
+        }
+
+        // No speaker aggregation needed for non-diarized transcripts since all segments have speaker_id: None
+        let mut speakers = Vec::new();
+
         // Process with diarization if enabled
         if let Some(true) = enable_diarize {
             let diarize_options = match diarize_options {
@@ -582,282 +756,47 @@ pub async fn run_transcription_pipeline(
                 None => return Err(eyre!("Diarization enabled but no diarization options provided")),
             };
             
-            // Clear the global progress callback to prevent double progress reporting
-            // We'll handle progress manually in the diarization loop
-            {
-                let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
-                *guard = None;
-            }
-            
-            // Also ensure no progress callback is set on the params object itself
-            // This prevents Whisper from reporting progress for individual segments
-            params.set_progress_callback_safe(|_| {
-                // Do nothing - we handle progress manually in diarization mode
-            });
-            
             tracing::debug!("Diarize enabled {:?}", diarize_options);
-            params.set_single_segment(true);
             let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
             let mut extractor =
-                pyannote_rs::EmbeddingExtractor::new(diarize_options.embedding_model_path)
+                pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
                     .map_err(|e| eyre!("{:?}", e))?;
 
             // Get speech segments as an iterator and collect them to get accurate count
             let diarize_segments_iter = pyannote_rs::get_segments(
                 &original_samples,
                 16000,
-                diarize_options.segment_model_path,
+                &diarize_options.segment_model_path,
             )
             .map_err(|e| eyre!("{:?}", e))?;
 
             // Collect all segments first to get accurate total count for progress reporting
-            let all_segments: Result<Vec<_>, _> = diarize_segments_iter.collect();
-            let all_segments = all_segments.map_err(|e| eyre!("Error collecting segments: {:?}", e))?;
-            let total_segments = all_segments.len();
-            let mut processed_segments = 0;
+            let diarize_segments: Result<Vec<_>, _> = diarize_segments_iter.collect();
+            let diarize_segments = diarize_segments.map_err(|e| eyre!("Error collecting segments: {:?}", e))?;
+            let total_segments = diarize_segments.len();
 
-            for (i, diarize_segment) in all_segments.into_iter().enumerate() {
-                if let Some(ref abort_callback) = abort_callback {
-                    if abort_callback() {
-                        break;
-                    }
-                }
-
-                // diarize_segment is already unwrapped from the iterator collection
-                tracing::trace!(
-                    "diarize segment: {} - {}",
-                    diarize_segment.start,
-                    diarize_segment.end
-                );
-
-                // Pad with 1 second (16000 samples at 16kHz) of silence to avoid Whisper dropping last tokens
-                let mut padded_samples = diarize_segment.samples.clone();
-                padded_samples.extend(std::iter::repeat(0i16).take(16000)); // 1000 ms of silence
-                let mut samples = vec![0.0f32; padded_samples.len()];
-                whisper_rs::convert_integer_to_float_audio(&padded_samples, &mut samples)?;
-                state.full(params.clone(), &samples).context("failed to transcribe")?;
-
-                let num_segments = state
-                    .full_n_segments()
-                    .context("failed to get number of segments")?;
-                tracing::debug!("found {} sentence segments", num_segments);
-
-                if num_segments > 0 {
-                    let embedding_result: Vec<f32> = match extractor.compute(&diarize_segment.samples) {
-                        Ok(result) => result.collect(),
-                        Err(error) => {
-                            tracing::error!("error: {:?}", error);
-                            tracing::trace!(
-                                "start = {:.2}, end = {:.2}, speaker = ?",
-                                diarize_segment.start,
-                                diarize_segment.end
-                            );
-                            continue; // Skip to the next segment
-                        }
-                    };
-
-                    // Find the speaker
-                    let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
-                        embedding_manager
-                            .get_best_speaker_match(embedding_result)
-                            .map(|r| r.to_string())
-                            .unwrap_or_else(|_| "?".to_string())
-                    } else {
-                        embedding_manager
-                            .search_speaker(embedding_result, diarize_options.threshold)
-                            .map(|r| r.to_string())
-                            .unwrap_or_else(|| "?".to_string())
-                    };
-
-                    // Process all segments returned by Whisper for this diarization segment
-                    for seg_idx in 0..num_segments {
-                        // Get the segment text
-                        let text = state
-                            .full_get_segment_text_lossy(seg_idx as i32)
-                            .context("failed to get segment")?;
-
-                        let offset = diarize_segment.start as f64;
-                        let (seg_start, seg_end);
-
-                        // Get word timestamps if DTW is enabled
-                        let words = if let Some(true) = enable_dtw {
-                            let mut words = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
-                            // Add offset to all word timestamps and round to 2 decimal places
-                            for w in &mut words {
-                                w.start = ((w.start + offset) * 100.0).trunc() / 100.0;
-                                w.end = ((w.end + offset).min(diarize_segment.end as f64) * 100.0).trunc() / 100.0; // Ensure end time is within diarize segment bounds
-                            }
-                            seg_start = words.first().map_or(0.0, |w| w.start);
-                            seg_end = words.last().map_or(seg_start, |w| w.end);
-                            Some(words)
-                        } else {
-                            // Get segment start and end time in seconds (converted from centiseconds), relative to diarize segment start
-                            let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01 + offset;
-                            let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01 + offset;
-
-                            // Round start time to 2 decimal places for consistency
-                            seg_start = (t0 * 100.0).trunc() / 100.0;
-                            // Ensure end is not after diarize segment end, and round to 2 decimals
-                            seg_end = ((t1.min(diarize_segment.end as f64)) * 100.0).trunc() / 100.0;
-
-                            // No word-level timestamps available
-                            None
-                        };
-
-                        // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
-                        if let Some(last) = segments.last_mut() {
-                            if last.end > seg_start {
-                                last.end = seg_start;
-                            }
-                            
-                            // If word-level enabled, also update end time of last word
-                            if let Some(words) = &mut last.words {
-                                words.last_mut().unwrap().end = seg_end;
-                            }
-                        }
-
-                        let segment = Segment {
-                            speaker_id: Some(speaker_id.clone()),
-                            start: seg_start,
-                            end: seg_end,
-                            text,
-                            words,
-                        };
-                        segments.push(segment);
-                    }
-
-                    // Update progress
-                    processed_segments += 1;
-                    if let Some(ref progress_callback) = progress_callback {
-                        let progress = if total_segments > 0 {
-                            ((processed_segments as f64 / total_segments as f64) * 100.0) as i32
-                        } else {
-                            // Fallback to segment count if we can't estimate total
-                            (i as f64 * 10.0) as i32 // Assuming ~10s per segment
-                        };
-                        progress_callback(progress);
-                    }
-                }
-            }
-            
-            // Aggregate speakers from segments and update speaker IDs
-            let (speakers, updated_segments) = aggregate_speakers_from_segments(&segments);
-            let segments = updated_segments;
-            
-            let transcript = Transcript {
-                processing_time_sec: st.elapsed().as_secs(),
+            let aligned_segments = align_transcript_with_diarization(
                 segments,
-                speakers,
-            };
-            return Ok(transcript);
-        } else {
-            // Only set up Whisper's internal progress callback when diarization is NOT enabled
-            // When diarization is enabled, we handle progress manually in the diarization loop above
-            if let Some(callback) = progress_callback {
-                let mut guard = PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?;
-                let internal_progress_callback = move |progress: i32| callback(progress);
-                *guard = Some(Box::new(internal_progress_callback));
-            }
-            let mut samples = vec![0.0f32; original_samples.len()];
+                diarize_segments,
+                &mut embedding_manager,
+                &mut extractor,
+                diarize_options,
+            ).context("Failed to align transcript with diarization timeline")?;
+            segments = aligned_segments;
 
-            whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
+            // Aggregate speakers from segments
+            let (agg_speakers, agg_segments) = aggregate_speakers_from_segments(&segments);
+            speakers = agg_speakers;
+            segments = agg_segments;
+        } 
 
-            if let Some(abort_callback) = abort_callback {
-                params.set_abort_callback_safe(abort_callback);
-            }
-
-            if PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?.as_ref().is_some() {
-                params.set_progress_callback_safe(|progress| {
-                    if let Ok(mut cb) = PROGRESS_CALLBACK.lock() {
-                        if let Some(cb) = cb.as_mut() {
-                            cb(progress);
-                        }
-                    }
-                });
-            }
-
-            tracing::debug!("set start time...");
-
-            tracing::debug!("setting state full...");
-            state.full(params, &samples).context("failed to transcribe")?;
-            let _et = std::time::Instant::now();
-
-            tracing::debug!("getting segments count...");
-            let num_segments = state.full_n_segments().context("failed to get number of segments")?;
-            if num_segments == 0 {
-                bail!("no segments found!")
-            }
-            tracing::debug!("found {} sentence segments", num_segments);
-            
-            // Process segments with or without diarization
-            let num_segments = state.full_n_segments()?;
-            tracing::debug!("found {} sentence segments", num_segments);
-
-            // Process each segment and collect word timestamps
-            let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
+        let transcript = Transcript {
+            processing_time_sec: st.elapsed().as_secs(),
+            segments,
+            speakers,
+        };
+        return Ok(transcript);
         
-            for seg_idx in 0..num_segments {
-                let (seg_start, seg_end);
-
-                // Get the segment text
-                let text = state.full_get_segment_text_lossy(seg_idx as i32).context("failed to get segment")?;
-                
-                // Get word timestamps if DTW is enabled
-                let words = if let Some(true) = enable_dtw {
-                    let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
-                    for word in &mut word_timestamps {
-                        // Round to 2 decimal places
-                        word.start = (word.start as f64 * 100.0).trunc() / 100.0;
-                        word.end = (word.end as f64 * 100.0).trunc() / 100.0;
-                    }
-                    seg_start = word_timestamps.first().unwrap().start;
-                    seg_end = word_timestamps.last().unwrap().end;
-                    Some(word_timestamps)
-                } else {
-                    // Convert centiseconds to seconds
-                    let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-                    let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-
-                    // Round to 2 decimal places
-                    seg_start = (t0 as f64 * 100.0).trunc() / 100.0;
-                    seg_end = (t1 as f64 * 100.0).trunc() / 100.0;
-                    None
-                };
-
-                // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
-                if let Some(last) = segments.last_mut() {
-                    if last.end > seg_start {
-                        last.end = seg_start;
-                    }
-                    
-                    // If word-level enabled, also update end time of last word
-                    if let Some(words) = &mut last.words {
-                        words.last_mut().unwrap().end = seg_end;
-                    }
-                }
-                    
-                // Create the segment after we're done printing
-                let segment = Segment {
-                    speaker_id: None, // No speaker info in non-diarized mode
-                    start: seg_start,
-                    end: seg_end,
-                    text,
-                    words,
-                };
-
-                segments.push(segment);
-            }
-
-            // No speaker aggregation needed for non-diarized transcripts since all segments have speaker_id: None
-            let speakers = Vec::new();
-            
-            let transcript = Transcript {
-                processing_time_sec: st.elapsed().as_secs(),
-                segments,
-                speakers,
-            };
-            return Ok(transcript);
-        }
     }).await??;
     Ok(transcript)
 }
