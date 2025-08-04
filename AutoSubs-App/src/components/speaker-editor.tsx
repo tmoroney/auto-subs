@@ -13,7 +13,7 @@ import { DialogDescription } from "@radix-ui/react-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { jumpToTime } from "@/api/resolveAPI"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getExampleSubtitle } from "@/api/resolveAPI"
+import { generatePreview } from "@/api/resolveAPI"
 import { downloadDir, join } from "@tauri-apps/api/path"
 import { convertFileSrc } from "@tauri-apps/api/core"
 
@@ -46,11 +46,11 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
     }
 
     // Generate a preview for a specific speaker subtitle
-    async function generatePreview(index: number): Promise<string> {
+    async function getSubtitlePreview(index: number): Promise<string> {
         setLoadingPreview(prev => ({ ...prev, [index]: true }));
         const downloadPath = await downloadDir();
         const filePath = await join(downloadPath, `speaker-${index}.png`);
-        let path = await getExampleSubtitle(localSpeakers[index], settings.selectedTemplate.value, filePath);
+        let path = await generatePreview(localSpeakers[index], settings.selectedTemplate.value, filePath);
         console.log("Generated preview for speaker", localSpeakers[index].name, "at", path);
         try {
             const assetUrl = convertFileSrc(path) + `?t=${Date.now()}`;
@@ -235,7 +235,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                             variant="secondary"
                                             className="w-full flex items-center justify-center gap-2"
                                             disabled={loadingPreview[index]}
-                                            onClick={async () => { await generatePreview(index); }}
+                                            onClick={async () => { await getSubtitlePreview(index); }}
                                         >
                                             {loadingPreview[index] && (
                                                 <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -244,11 +244,11 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                         </Button>
                                         <div className="flex justify-center relative">
                                             {previews[index] && (
-                                                <div className="relative">
+                                                <div className="relative pb-2">
                                                     <img
                                                         src={previews[index]}
                                                         alt="Subtitle Preview"
-                                                        className="max-w-full pb-2 rounded shadow transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0"
+                                                        className="max-w-full rounded shadow transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0"
                                                         onLoad={e => {
                                                             e.currentTarget.classList.remove('-translate-y-4', 'opacity-0');
                                                             e.currentTarget.classList.add('translate-y-0', 'opacity-100');

@@ -83,12 +83,13 @@ export interface Settings {
     language: string,
     translate: boolean,
     enableDiarize: boolean,
-    maxSpeakers: number,
+    maxSpeakers: number | null,
 
     // Text settings
     maxWordsPerLine: number,
     maxCharsPerLine: number,
     maxLinesPerSubtitle: number,
+    splitOnPunctuation: boolean,
     textCase: "none" | "uppercase" | "lowercase";
     removePunctuation: boolean,
     enableCensor: boolean,
@@ -111,5 +112,5 @@ export interface TranscriptionOptions {
     lang: string,
     translate: boolean,
     enableDiarize: boolean,
-    maxSpeakers: number
+    maxSpeakers: number | null
 }

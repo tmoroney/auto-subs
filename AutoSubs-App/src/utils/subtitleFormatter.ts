@@ -36,15 +36,21 @@ function joinWordsToText(words: Word[]): string {
 }
 
 function splitSubtitles(subtitles: Subtitle[], options: {
-    maxWordsPerLine: number;
+    splitOnPunctuation: boolean;
     maxLinesPerSubtitle: number;
     maxCharsPerLine?: number;
+    maxWordsPerLine?: number;
 }): Subtitle[] {
     const result: Subtitle[] = [];
 
+    // Ensure none of the options are set to 0 (not allowed)
+    options.maxWordsPerLine = options.maxWordsPerLine ? (options.maxWordsPerLine === 0 ? undefined : options.maxWordsPerLine) : undefined;
+    options.maxCharsPerLine = options.maxCharsPerLine ? (options.maxCharsPerLine === 0 ? undefined : options.maxCharsPerLine) : undefined;
+    options.maxLinesPerSubtitle = options.maxLinesPerSubtitle && options.maxLinesPerSubtitle !== 0 ? options.maxLinesPerSubtitle : 1;
+
     for (const subtitle of subtitles) {
         const words = subtitle.words;
-        if (words.length <= options.maxWordsPerLine) {
+        if (options.maxWordsPerLine && words.length <= options.maxWordsPerLine) {
             result.push(subtitle);
             continue;
         }
@@ -61,18 +67,31 @@ function splitSubtitles(subtitles: Subtitle[], options: {
             const space = currentLine.length > 0 ? 1 : 0;
             const prospectiveCharCount = currentLineCharCount + wordText.length + space;
             const wouldExceedCharLimit = options.maxCharsPerLine !== undefined && prospectiveCharCount > options.maxCharsPerLine;
-            const isLineFull = currentLine.length === options.maxWordsPerLine;
+            const isLineFull = options.maxWordsPerLine !== undefined && currentLine.length === options.maxWordsPerLine;
             const isLastWord = i === words.length - 1;
 
+            // Check if we must split due to hard limits
             if ((isLineFull || wouldExceedCharLimit) && currentLine.length > 0) {
                 lines.push(currentLine);
                 currentLine = [];
                 lineNumber++;
                 currentLineCharCount = 0;
             }
-            // After possibly starting a new line, add the word
+            
+            // Add the current word to the line
             currentLine.push({ ...word, line_number: lineNumber });
             currentLineCharCount += (currentLine.length > 1 ? 1 : 0) + wordText.length;
+            
+            // Check if we should split on punctuation after adding the word
+            const shouldSplitOnPunctuation = options.splitOnPunctuation && 
+                /[.!?;:]$/.test(wordText.trim());
+
+            if (shouldSplitOnPunctuation) {
+                lines.push(currentLine);
+                currentLine = [];
+                lineNumber++;
+                currentLineCharCount = 0;
+            }
 
             if (isLastWord && currentLine.length > 0) {
                 lines.push(currentLine);
@@ -132,9 +151,10 @@ export function splitAndFormatSubtitles(
     options: {
         case: 'lowercase' | 'uppercase' | 'none';
         removePunctuation: boolean;
+        splitOnPunctuation: boolean;
         censoredWords: string[];
-        maxWordsPerLine: number;
         maxLinesPerSubtitle: number;
+        maxWordsPerLine?: number;
         maxCharsPerLine?: number;
     }
 ): Subtitle[] {

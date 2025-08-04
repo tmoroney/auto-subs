@@ -1,4 +1,4 @@
-use crate::config::TranscribeOptions;
+use crate::config::{TranscribeOptions, DiarizeOptions};
 use crate::transcript::{Segment, Transcript, Speaker, Sample, ColorModifier};
 use crate::audio;
 use eyre::{bail, eyre, Context, OptionExt, Result};
@@ -113,7 +113,10 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
             segment_model_path,
             embedding_model_path,
             threshold: 0.5,
-            max_speakers: options.max_speakers.unwrap_or(usize::MAX),
+            max_speakers: match options.max_speakers {
+                Some(0) | None => usize::MAX,
+                Some(n) => n,
+            },
         })
     } else {
         None
@@ -511,37 +514,147 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
     (speakers, updated_segments)
 }
 
-#[derive(Debug, Clone)]
-pub struct DiarizeOptions {
-    pub segment_model_path: String,
-    pub embedding_model_path: String,
-    pub threshold: f32,
-    pub max_speakers: usize,
+// Processes diarization for transcript segments using an optimized diarization-first pipeline
+fn process_diarization(
+    segments: Vec<Segment>,
+    original_samples: &[i16],
+    diarize_options: &DiarizeOptions,
+    progress_callback: Option<Box<dyn Fn(i32) + Send + Sync>>,
+) -> Result<(Vec<Speaker>, Vec<Segment>), eyre::Report> {
+    tracing::debug!("Diarize enabled {:?}", diarize_options);
+    let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
+    let mut extractor =
+        pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
+            .map_err(|e| eyre!("{:?}", e))?;
+
+    // Get speech segments as an iterator
+    let diarize_segments_iter = pyannote_rs::get_segments(
+        original_samples,
+        16000,
+        &diarize_options.segment_model_path,
+    )
+    .map_err(|e| eyre!("{:?}", e))?;
+
+    // Process segments efficiently using iterator and pre-computed embeddings
+    let aligned_segments = process_and_align_segments(
+        segments,
+        diarize_segments_iter,
+        &mut embedding_manager,
+        &mut extractor,
+        diarize_options,
+        progress_callback.as_ref(),
+    ).context("Failed to process and align segments with diarization")?;
+
+    // Aggregate speakers from segments
+    let (speakers, segments) = aggregate_speakers_from_segments(&aligned_segments);
+    
+    Ok((speakers, segments))
 }
 
-/// Aligns transcript segments with diarization timeline using timestamp overlap
-fn align_transcript_with_diarization(
+/// Optimized function that processes diarization segments and aligns them with transcript segments
+/// Uses iterator processing and caches embeddings to improve efficiency
+fn process_and_align_segments(
     transcript_segments: Vec<Segment>,
-    diarization_segments: Vec<pyannote_rs::Segment>,
+    diarize_segments_iter: impl Iterator<Item = Result<pyannote_rs::Segment, eyre::Report>>,
     embedding_manager: &mut pyannote_rs::EmbeddingManager,
     extractor: &mut pyannote_rs::EmbeddingExtractor,
-    diarize_options: DiarizeOptions,
+    diarize_options: &DiarizeOptions,
+    progress_callback: Option<&Box<dyn Fn(i32) + Send + Sync>>,
 ) -> Result<Vec<Segment>> {
-    let mut aligned_segments = Vec::new();
+    use std::collections::HashMap;
     
-    for mut transcript_seg in transcript_segments {
+    // Cache for computed embeddings to avoid recomputation
+    let mut embedding_cache: HashMap<(u64, u64), (Vec<f32>, String)> = HashMap::new();
+    
+    // Process diarization segments and build a sorted list for efficient lookup
+    let mut diarization_segments = Vec::new();
+    
+    // Collect segments first to track progress
+    let diarize_segments_vec: Vec<_> = diarize_segments_iter.collect();
+    let total_segments = diarize_segments_vec.len();
+    
+    // Emit initial progress
+    if let Some(callback) = progress_callback {
+        callback(0);
+    }
+    
+    for (segment_index, diar_result) in diarize_segments_vec.into_iter().enumerate() {
+        let diar_seg = diar_result.map_err(|e| eyre!("Error processing diarization segment: {:?}", e))?;
+        
+        // Create a cache key based on start/end times (rounded to avoid floating point issues)
+        let cache_key = (
+            (diar_seg.start * 1000.0) as u64,
+            (diar_seg.end * 1000.0) as u64,
+        );
+        
+        // Compute embedding for this segment
+        let (embedding_vec, speaker_id) = match extractor.compute(&diar_seg.samples) {
+            Ok(embedding_result) => {
+                let embedding_vec: Vec<f32> = embedding_result.collect();
+                
+                // Find the speaker using the same logic as the original pipeline
+                let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
+                    embedding_manager
+                        .get_best_speaker_match(embedding_vec.clone())
+                        .map(|r| r.to_string())
+                        .unwrap_or_else(|_| "?".to_string())
+                } else {
+                    embedding_manager
+                        .search_speaker(embedding_vec.clone(), diarize_options.threshold)
+                        .map(|r| r.to_string())
+                        .unwrap_or_else(|| "?".to_string())
+                };
+                
+                (embedding_vec, speaker_id)
+            }
+            Err(e) => {
+                tracing::warn!("Failed to compute embedding for diarization segment: {:?}", e);
+                (Vec::new(), "?".to_string())
+            }
+        };
+        
+        // Cache the embedding and speaker ID
+        embedding_cache.insert(cache_key, (embedding_vec, speaker_id.clone()));
+        
+        // Store segment with computed speaker ID
+        diarization_segments.push((diar_seg, speaker_id));
+        
+        // Emit progress update
+        if let Some(callback) = progress_callback {
+            let progress = ((segment_index + 1) as f32 / total_segments as f32 * 80.0) as i32; // First 80% for diarization (embedding computation is heavy)
+            callback(progress);
+        }
+    }
+    
+    // Sort diarization segments by start time for more efficient searching
+    diarization_segments.sort_by(|a, b| a.0.start.partial_cmp(&b.0.start).unwrap_or(std::cmp::Ordering::Equal));
+    
+    let mut aligned_segments = Vec::with_capacity(transcript_segments.len());
+    let total_transcript_segments = transcript_segments.len();
+    
+    // Process transcript segments and align with diarization
+    for (transcript_index, mut transcript_seg) in transcript_segments.into_iter().enumerate() {
         let seg_start = transcript_seg.start;
         let seg_end = transcript_seg.end;
         let seg_midpoint = (seg_start + seg_end) / 2.0;
         
-        // Find the diarization segment that best overlaps with this transcript segment
         let mut best_speaker_id = None;
         let mut best_overlap = 0.0;
-        let mut best_diar_segment: Option<&pyannote_rs::Segment> = None;
         
-        for diar_seg in &diarization_segments {
+        // Use binary search to find potential overlapping segments more efficiently
+        let start_idx = diarization_segments
+            .binary_search_by(|probe| probe.0.end.partial_cmp(&seg_start).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or_else(|idx| idx);
+        
+        // Only check segments that could potentially overlap
+        for (diar_seg, speaker_id) in diarization_segments[start_idx..].iter() {
             let diar_start = diar_seg.start;
             let diar_end = diar_seg.end;
+            
+            // Early termination if we've passed all possible overlapping segments
+            if diar_start > seg_end {
+                break;
+            }
             
             // Calculate overlap between transcript segment and diarization segment
             let overlap_start = seg_start.max(diar_start);
@@ -560,41 +673,25 @@ fn align_transcript_with_diarization(
             
             if score > best_overlap && overlap_duration > 0.1 { // Minimum 100ms overlap
                 best_overlap = score;
-                best_diar_segment = Some(diar_seg);
-            }
-        }
-        
-        // If we found a matching diarization segment, compute speaker embedding
-        if let Some(diar_seg) = best_diar_segment {
-            match extractor.compute(&diar_seg.samples) {
-                Ok(embedding_result) => {
-                    let embedding_vec: Vec<f32> = embedding_result.collect();
-                    
-                    // Find the speaker using the same logic as the original pipeline
-                    let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
-                        embedding_manager
-                            .get_best_speaker_match(embedding_vec)
-                            .map(|r| r.to_string())
-                            .unwrap_or_else(|_| "?".to_string())
-                    } else {
-                        embedding_manager
-                            .search_speaker(embedding_vec, diarize_options.threshold)
-                            .map(|r| r.to_string())
-                            .unwrap_or_else(|| "?".to_string())
-                    };
-                    
-                    best_speaker_id = Some(speaker_id);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to compute embedding for alignment: {:?}", e);
-                    best_speaker_id = Some("?".to_string());
-                }
+                best_speaker_id = Some(speaker_id.clone());
             }
         }
         
         // Assign the speaker ID
         transcript_seg.speaker_id = best_speaker_id;
         aligned_segments.push(transcript_seg);
+        
+        // Emit progress update for alignment phase (80-100%)
+        if let Some(callback) = progress_callback {
+            let progress = 80 + ((transcript_index + 1) as f32 / total_transcript_segments as f32 * 20.0) as i32;
+            callback(progress);
+        }
+    }
+    
+    // Ensure we emit 100% completion
+    if let Some(callback) = progress_callback {
+        callback(100);
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
     
     Ok(aligned_segments)
@@ -621,7 +718,7 @@ pub async fn run_transcription_pipeline(
     // --- Normalization (Async) ---
     // This part is async, so we await it directly.
     let out_path = if should_normalize(options.path.clone().into()) {
-        create_normalized_audio(app, options.path.clone().into(), additional_ffmpeg_args).await?
+        create_normalized_audio(app.clone(), options.path.clone().into(), additional_ffmpeg_args).await?
     } else {
         println!("Skip normalize");
         tracing::debug!("Skip normalize");
@@ -746,49 +843,37 @@ pub async fn run_transcription_pipeline(
             segments.push(segment);
         }
 
-        // No speaker aggregation needed for non-diarized transcripts since all segments have speaker_id: None
-        let mut speakers = Vec::new();
-
         // Process with diarization if enabled
-        if let Some(true) = enable_diarize {
-            let diarize_options = match diarize_options {
+        let (speakers, segments) = if let Some(true) = enable_diarize {
+            let diarize_opts = match diarize_options {
                 Some(opts) => opts,
                 None => return Err(eyre!("Diarization enabled but no diarization options provided")),
             };
             
-            tracing::debug!("Diarize enabled {:?}", diarize_options);
-            let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
-            let mut extractor =
-                pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
-                    .map_err(|e| eyre!("{:?}", e))?;
-
-            // Get speech segments as an iterator and collect them to get accurate count
-            let diarize_segments_iter = pyannote_rs::get_segments(
-                &original_samples,
-                16000,
-                &diarize_options.segment_model_path,
-            )
-            .map_err(|e| eyre!("{:?}", e))?;
-
-            // Collect all segments first to get accurate total count for progress reporting
-            let diarize_segments: Result<Vec<_>, _> = diarize_segments_iter.collect();
-            let diarize_segments = diarize_segments.map_err(|e| eyre!("Error collecting segments: {:?}", e))?;
-            let total_segments = diarize_segments.len();
-
-            let aligned_segments = align_transcript_with_diarization(
+            // Emit diarization start event
+            let _ = app.emit("diarization-start", ());
+            
+            // Create diarization progress callback
+            let diarize_app = app.clone();
+            let diarize_progress_callback = Some(Box::new(move |progress: i32| {
+                let _ = diarize_app.emit("diarization-progress", progress);
+            }) as Box<dyn Fn(i32) + Send + Sync>);
+            
+            let result = process_diarization(
                 segments,
-                diarize_segments,
-                &mut embedding_manager,
-                &mut extractor,
-                diarize_options,
-            ).context("Failed to align transcript with diarization timeline")?;
-            segments = aligned_segments;
-
-            // Aggregate speakers from segments
-            let (agg_speakers, agg_segments) = aggregate_speakers_from_segments(&segments);
-            speakers = agg_speakers;
-            segments = agg_segments;
-        } 
+                &original_samples,
+                &diarize_opts,
+                diarize_progress_callback,
+            )?;
+            
+            // Emit diarization complete event
+            let _ = app.emit("diarization-complete", ());
+            
+            result
+        } else {
+            // No speaker aggregation needed for non-diarized transcripts
+            (Vec::new(), segments)
+        }; 
 
         let transcript = Transcript {
             processing_time_sec: st.elapsed().as_secs(),

@@ -31,6 +31,8 @@ interface GlobalContextType {
   downloadingModel: string | null;
   isModelDownloading: boolean;
   downloadProgress: number;
+  diarizationProgress: number;
+  isDiarizing: boolean;
   // Export state
   isExporting: boolean;
   setIsExporting: (isExporting: boolean) => void;
@@ -87,12 +89,13 @@ const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   translate: false,
   enableDiarize: false,
-  maxSpeakers: 2,
+  maxSpeakers: null,
 
   // Text settings
   maxWordsPerLine: 5,
   maxCharsPerLine: 32,
   maxLinesPerSubtitle: 1,
+  splitOnPunctuation: true,
   textCase: "none",
   removePunctuation: false,
   enableCensor: false,
@@ -128,6 +131,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [isModelDownloading, setIsModelDownloading] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [diarizationProgress, setDiarizationProgress] = useState<number>(0);
+  const [isDiarizing, setIsDiarizing] = useState<boolean>(false);
 
   // Export state
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -366,6 +371,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       let { segments } = await saveTranscript(transcript, filename, {
         case: settings.textCase,
         removePunctuation: settings.removePunctuation,
+        splitOnPunctuation: settings.splitOnPunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
         maxWordsPerLine: settings.maxWordsPerLine,
         maxCharsPerLine: settings.maxCharsPerLine,
@@ -511,6 +517,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     let unlistenModelProgress: (() => void) | null = null;
     let unlistenModelComplete: (() => void) | null = null;
     let unlistenModelCache: (() => void) | null = null;
+    let unlistenDiarization: (() => void) | null = null;
+    let unlistenDiarizationStart: (() => void) | null = null;
+    let unlistenDiarizationComplete: (() => void) | null = null;
 
     const setup = async () => {
       try {
@@ -544,6 +553,26 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         unlistenModelCache = await listen<string>('model-found-in-cache', () => {
           // No action needed when model is found in cache
         });
+
+        // Diarization progress listener
+        unlistenDiarization = await listen<number>('diarization-progress', (event: { payload: number }) => {
+          console.log('Received diarization progress:', event.payload);
+          setDiarizationProgress(event.payload);
+        });
+
+        // Diarization start listener
+        unlistenDiarizationStart = await listen('diarization-start', () => {
+          console.log('Diarization started');
+          setIsDiarizing(true);
+          setDiarizationProgress(0);
+        });
+
+        // Diarization complete listener
+        unlistenDiarizationComplete = await listen('diarization-complete', () => {
+          console.log('Diarization completed');
+          setIsDiarizing(false);
+          setDiarizationProgress(100);
+        });
       } catch (error) {
         console.error('Failed to setup event listeners:', error);
       }
@@ -558,6 +587,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       if (unlistenModelProgress) unlistenModelProgress();
       if (unlistenModelComplete) unlistenModelComplete();
       if (unlistenModelCache) unlistenModelCache();
+      if (unlistenDiarization) unlistenDiarization();
+      if (unlistenDiarizationStart) unlistenDiarizationStart();
+      if (unlistenDiarizationComplete) unlistenDiarizationComplete();
     };
   }, []);
 
@@ -668,6 +700,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     const { segments, speakers } = await saveTranscript(transcript, filename, {
       case: settings.textCase,
       removePunctuation: settings.removePunctuation,
+      splitOnPunctuation: settings.splitOnPunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
       maxWordsPerLine: settings.maxWordsPerLine,
       maxCharsPerLine: settings.maxCharsPerLine,
@@ -721,6 +754,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       downloadingModel,
       isModelDownloading,
       downloadProgress,
+      diarizationProgress,
+      isDiarizing,
       setTranscriptionProgress,
       setupEventListeners,
       handleDeleteModel,

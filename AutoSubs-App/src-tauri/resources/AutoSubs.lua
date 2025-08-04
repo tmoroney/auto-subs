@@ -880,7 +880,8 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
 end
 
 -- place example subtitle on timeline with theme and export frame
-function GetExampleSubtitle(speaker, templateName, exportPath)
+function GeneratePreview(speaker, templateName, exportPath)
+    local timeline = project:GetCurrentTimeline()
     timeline:AddTrack("video")
     local trackIndex = timeline:GetTrackCount("video")
     local rootFolder = mediaPool:GetRootFolder()
@@ -1050,10 +1051,10 @@ while not quitServer do
                             body = json.encode({
                                 message = "Job completed"
                             })
-                        elseif data.func == "GetExampleSubtitle" then
-                            print("[AutoSubs Server] Getting example subtitle...")
-                            local exampleSubtitlePath = GetExampleSubtitle(data.speaker, data.templateName, data.exportPath)
-                            body = json.encode(exampleSubtitlePath)
+                        elseif data.func == "GeneratePreview" then
+                            print("[AutoSubs Server] Generating preview...")
+                            local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
+                            body = json.encode(previewPath)
                         elseif data.func == "Exit" then
                             body = json.encode({
                                 message = "Server shutting down"

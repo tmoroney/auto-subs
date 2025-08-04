@@ -26,3 +26,11 @@ impl fmt::Debug for TranscribeOptions {
         write!(f, "{}", json_string)
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct DiarizeOptions {
+    pub segment_model_path: String,
+    pub embedding_model_path: String,
+    pub threshold: f32,
+    pub max_speakers: usize,
+}

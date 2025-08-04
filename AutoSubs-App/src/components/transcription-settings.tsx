@@ -10,7 +10,8 @@ import {
     XCircle,
     RefreshCcw,
     History,
-    Cable,
+    LoaderCircle,
+    CirclePlay,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -18,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -78,10 +80,14 @@ export const TranscriptionSettings = ({
         setIsUpdateDismissed,
         showMobileSubtitles,
         setShowMobileSubtitles,
+        diarizationProgress,
+        isDiarizing,
+        pushToTimeline,
+        cancelRequestedRef,
     } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
-    const cancelRequestedRef = React.useRef(false)
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
+    const [showNonDiarizedDialog, setShowNonDiarizedDialog] = React.useState(false)
 
     // Set up event listeners from global context
     React.useEffect(() => {
@@ -128,6 +134,9 @@ export const TranscriptionSettings = ({
             if (!isStandaloneMode && options.enableDiarize) {
                 console.log("Enabling speaker editor")
                 setShowSpeakerEditor(true)
+            } else if (!isStandaloneMode && !options.enableDiarize) {
+                console.log("Showing non-diarized dialog")
+                setShowNonDiarizedDialog(true)
             }
         } catch (error) {
             console.error("Transcription failed:", error)
@@ -210,14 +219,6 @@ export const TranscriptionSettings = ({
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                                {!isStandaloneMode && (
-                                    <img
-                                        src="/davinci-resolve-logo.png"
-                                        alt="DaVinci Resolve Logo"
-                                        className="h-5 w-5 mr-0 inline-block"
-                                        style={{ verticalAlign: "middle" }}
-                                    />
-                                )}
                                 {isStandaloneMode ? "File Source" : "DaVinci Resolve"}
                             </h3>
                             {!isStandaloneMode && (
@@ -239,11 +240,16 @@ export const TranscriptionSettings = ({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-sidebar">
-                                    <Cable className={`ml-1 h-4 w-4 ${!timelineInfo || !timelineInfo.timelineId
-                                        ? 'text-red-500 dark:text-red-500'
-                                        : 'text-green-500 dark:text-green-500'
-                                        }`} />
+                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-secondary">
+                                    <img
+                                        src="/davinci-resolve-logo.png"
+                                        alt="DaVinci Resolve Logo"
+                                        className="h-5 w-5 mr-0 inline-block"
+                                        style={{
+                                            verticalAlign: "middle",
+                                            filter: timelineInfo && timelineInfo.timelineId ? undefined : "grayscale(100%)",
+                                        }}
+                                    />
                                     <div className="flex-1">
                                         <div className="text-xs font-medium font-mono truncate dark:text-gray-300 text-gray-700">
                                             {!timelineInfo || !timelineInfo.timelineId ? 'Open a timeline in Resolve.' : timelineInfo.name}
@@ -363,15 +369,19 @@ export const TranscriptionSettings = ({
                         <CollapsibleContent>
                             <TextFormattingCard
                                 maxWordsPerLine={settings.maxWordsPerLine}
+                                maxCharsPerLine={settings.maxCharsPerLine}
                                 maxLinesPerSubtitle={settings.maxLinesPerSubtitle}
                                 textCase={settings.textCase}
                                 removePunctuation={settings.removePunctuation}
+                                splitOnPunctuation={settings.splitOnPunctuation}
                                 enableCensor={settings.enableCensor}
                                 censoredWords={settings.censoredWords}
                                 onMaxWordsPerLineChange={(value) => updateSetting("maxWordsPerLine", value)}
+                                onMaxCharsPerLineChange={(value) => updateSetting("maxCharsPerLine", value)}
                                 onMaxLinesPerSubtitleChange={(value) => updateSetting("maxLinesPerSubtitle", value)}
                                 onTextCaseChange={(textCase) => updateSetting("textCase", textCase)}
                                 onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
+                                onSplitOnPunctuationChange={(checked) => updateSetting("splitOnPunctuation", checked)}
                                 onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
                                 onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
                             />
@@ -463,13 +473,6 @@ export const TranscriptionSettings = ({
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
                 >
-                    {/* Mobile Subtitles Viewer Button */}
-                    {isMobile && (
-                        <Button onClick={() => setShowMobileSubtitles(true)} variant="secondary" className="w-full" size="lg">
-                            <Captions className="h-5 w-5 mr-2" />
-                            View Subtitles
-                        </Button>
-                    )}
 
                     {/* Model Download Progress */}
                     {isModelDownloading && (
@@ -480,7 +483,7 @@ export const TranscriptionSettings = ({
                             </div>
                             <Progress
                                 value={downloadProgress}
-                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-600"
+                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500"
                             />
                         </div>
                     )}
@@ -500,7 +503,7 @@ export const TranscriptionSettings = ({
                     )}
 
                     {/* Transcription Progress */}
-                    {isTranscribing && !isModelDownloading && (
+                    {isTranscribing && !isModelDownloading && !isDiarizing && (
                         <div className="space-y-1">
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>Transcription Progress</span>
@@ -510,14 +513,34 @@ export const TranscriptionSettings = ({
                         </div>
                     )}
 
+                    {/* Diarization Progress */}
+                    {isDiarizing && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Diarization Progress</span>
+                                <span>{diarizationProgress}%</span>
+                            </div>
+                            <Progress value={diarizationProgress} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-400 [&>div]:to-purple-600" />
+                        </div>
+                    )}
+
+                    {/* Mobile Subtitles Viewer Button */}
+                    {isMobile && (
+                        <Button onClick={() => setShowMobileSubtitles(true)} variant="secondary" className="w-full">
+                            <Captions className="h-5 w-5 mr-2" />
+                            View Subtitles
+                        </Button>
+                    )}
+
                     {/* Start Transcription Button */}
                     <div className="flex gap-2">
                         <Button
                             onClick={handleStartTranscription}
                             disabled={isTranscribing || isExporting || downloadingModel !== null || (settings.selectedInputTracks.length === 0 && !isStandaloneMode) || (fileInput === null && isStandaloneMode)}
                             className="flex-1"
-                            size="lg"
+                            size={isMobile ? undefined : "lg"}
                         >
+                            {isTranscribing || isExporting ? <LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> : <CirclePlay className="mr-2 h-5 w-5" />}
                             {isExporting ? "Exporting Audio..." : isTranscribing ? "Processing..." : "Start Transcription"}
                         </Button>
 
@@ -525,7 +548,7 @@ export const TranscriptionSettings = ({
                             <Button
                                 onClick={handleCancelTranscription}
                                 variant="destructive"
-                                size="lg"
+                                size={isMobile ? undefined : "lg"}
                                 className="px-3"
                             >
                                 <XCircle className="h-4 w-4" />
@@ -542,6 +565,34 @@ export const TranscriptionSettings = ({
             {showSpeakerEditor && (
                 <SpeakerEditor afterTranscription={true} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
             )}
+
+            {/* Non-diarized completion dialog */}
+            <Dialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Transcription Complete</DialogTitle>
+                        <DialogDescription>
+                            Your transcription is ready. Would you like to add the subtitles to the timeline or continue editing?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowNonDiarizedDialog(false)}
+                        >
+                            Continue Editing
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setShowNonDiarizedDialog(false)
+                                pushToTimeline()
+                            }}
+                        >
+                            Add to Timeline
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     )
 }

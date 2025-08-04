@@ -106,11 +106,11 @@ export async function getRenderJobStatus() {
   return response.json();
 }
 
-export async function getExampleSubtitle(speaker: Speaker, templateName: string, exportPath: string) {
+export async function generatePreview(speaker: Speaker, templateName: string, exportPath: string) {
   const response = await fetch(resolveAPI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GetExampleSubtitle", speaker, templateName, exportPath }),
+    body: JSON.stringify({ func: "GeneratePreview", speaker, templateName, exportPath }),
   });
   return response.json();
 }

@@ -10,7 +10,7 @@ import { SpeakerEditor } from "@/components/speaker-editor"
 export function DesktopSubtitleViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline } = useGlobal()
+  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline, isStandaloneMode } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
 
   const handleExport = async (format: 'srt' | 'json' = 'srt') => {
@@ -91,9 +91,11 @@ export function DesktopSubtitleViewer() {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-3 flex justify-end gap-2 border-t">
+      {!isStandaloneMode && (
+      <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
         <Button
           variant="default"
+          size="default"
           className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
           onClick={() => pushToTimeline()}
         >
@@ -101,6 +103,7 @@ export function DesktopSubtitleViewer() {
           Add to Timeline
         </Button>
       </div>
+      )}
     </div>
   )
 }

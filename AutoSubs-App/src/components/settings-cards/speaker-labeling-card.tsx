@@ -6,9 +6,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface SpeakerLabelingCardProps {
   diarize: boolean
-  maxSpeakers: number
+  maxSpeakers: number | null
   onDiarizeChange: (checked: boolean) => void
-  onMaxSpeakersChange: (value: number) => void
+  onMaxSpeakersChange: (value: number | null) => void
 }
 
 export const SpeakerLabelingCard = ({
@@ -75,11 +75,11 @@ export const SpeakerLabelingCard = ({
                 </Tooltip>
               </div>
               <Switch
-                checked={maxSpeakers === 0}
-                onCheckedChange={(checked) => onMaxSpeakersChange(checked ? 0 : 2)}
+                checked={maxSpeakers === null}
+                onCheckedChange={(checked) => onMaxSpeakersChange(checked ? null : 2)}
               />
             </div>
-            {maxSpeakers > 0 && (
+            {maxSpeakers !== null && (
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-3">
                   <Label className="text-sm font-normal">Max Speakers</Label>
