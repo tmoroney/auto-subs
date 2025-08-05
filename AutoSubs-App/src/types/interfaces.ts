@@ -78,6 +78,10 @@ export interface Model {
 
 // Settings Interface
 export interface Settings {
+    // Survey notification settings
+    timesDismissedSurvey: number;
+    lastSurveyDate: string;
+
     // Processing settings
     model: number; // index of model in models array
     language: string,

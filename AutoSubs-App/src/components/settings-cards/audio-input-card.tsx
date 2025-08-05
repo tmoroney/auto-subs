@@ -10,22 +10,28 @@ import { Track } from "@/types/interfaces"
 interface AudioInputCardProps {
   selectedTracks: string[]
   onTracksChange: (tracks: string[]) => void
+  callRefresh: () => void
   walkthroughMode?: boolean
   inputTracks?: Track[]
 }
 
-export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode = false, inputTracks = [] }: AudioInputCardProps) => {
+export const AudioInputCard = ({ selectedTracks, onTracksChange, callRefresh, walkthroughMode = false, inputTracks = [] }: AudioInputCardProps) => {
   const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
 
   return (
     <Card className="p-3.5 shadow-none">
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-            <AudioLines className="h-5 w-5 text-red-500" />
-          </div>
+        <div className="flex items-center">
+          {!walkthroughMode ? (
+            <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 mr-3">
+              <AudioLines className="h-5 w-5 text-red-500" />
+            </div>
+          ) : (
+            <img src="/davinci-resolve-logo.png" alt="Audio Input" className="h-10 w-10 mr-2" />
+          )}
+
           <div>
-            <p className="text-sm font-medium">Audio Input</p>
+            <p className="text-sm font-medium">{walkthroughMode ? "Davinci Resolve Timeline" : "Audio Input"}</p>
             <p className="text-xs text-muted-foreground">Select tracks to be transcribed</p>
           </div>
         </div>
@@ -33,34 +39,9 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
           <div className="space-y-3">
             {inputTracks.length > 0 ? (
               <>
-                {/* Header with Select All/Clear All */}
-                <div className="flex items-center justify-between px-2 py-2 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 rounded-lg border">
-                  <span className="text-sm text-muted-foreground">
-                    {selectedTracks.length > 0
-                      ? (selectedTracks.length === 1
-                        ? `${inputTracks.find(track => track.value === selectedTracks[0])?.label || `Track ${selectedTracks[0]}`} selected`
-                        : `${selectedTracks.length} tracks selected`)
-                      : 'No tracks selected'}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs h-7 px-2 hover:bg-white/80 dark:hover:bg-zinc-800/80"
-                    onClick={() => {
-                      if (selectedTracks.length === inputTracks.length) {
-                        onTracksChange([]);
-                      } else {
-                        onTracksChange(inputTracks.map(track => track.value));
-                      }
-                    }}
-                  >
-                    {selectedTracks.length === inputTracks.length ? "Clear All" : "Select All"}
-                  </Button>
-                </div>
-
                 {/* Scrollable Track List */}
-                <ScrollArea className="h-[200px] w-full">
-                  <div className="flex flex-col gap-2 pr-3">
+                <ScrollArea className="max-h-[140px] flex flex-col">
+                  <div className="space-y-1">
                     {inputTracks.map((track) => {
                       const trackId = track.value;
                       const isChecked = selectedTracks.includes(trackId);
@@ -68,7 +49,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
                         <div
                           key={trackId}
                           className={`group relative flex items-center gap-3 py-2 px-3 rounded-lg border transition-all duration-200 w-full cursor-pointer select-none
-                          ${isChecked
+                            ${isChecked
                               ? 'bg-gradient-to-br from-red-50 to-orange-50/70 dark:from-red-900/40 dark:to-orange-900/40 border-red-200 dark:border-red-800'
                               : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}
                           onClick={() => {
@@ -80,7 +61,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
                           }}
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
-                          ${isChecked
+                            ${isChecked
                               ? 'bg-red-100 dark:bg-red-900/50'
                               : 'bg-zinc-100 dark:bg-zinc-800'}`}
                           >
@@ -118,7 +99,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
           </div>
         ) : (
           <Popover open={openTrackSelector} onOpenChange={setOpenTrackSelector}>
-            <PopoverTrigger asChild>
+            <PopoverTrigger asChild onClick={() => callRefresh()}>
               <Button
                 variant="outline"
                 role="combobox"
@@ -136,7 +117,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
             </PopoverTrigger>
             <PopoverContent className="min-w-[320px] p-0 overflow-hidden" align="start">
               {inputTracks.length > 0 ? (
-                <div className="px-4 py-3 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 border-b">
+                <div className="px-4 py-2 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 border-b">
                   <div className="flex items-center justify-between min-h-[28px]">
                     <span className="text-sm text-muted-foreground">
                       {selectedTracks.length > 0
@@ -169,7 +150,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, walkthroughMode
                 </div>
               )}
               {inputTracks.length > 0 ? (
-                <ScrollArea className="h-[200px] w-full">
+                <ScrollArea style={{ maxHeight: '200px', width: '100%' }}>
                   <div className="flex flex-col gap-1 p-2">
                     {inputTracks.map((track) => {
                       const trackId = track.value;

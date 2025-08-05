@@ -16,7 +16,6 @@ interface ModelSelectionCardProps {
   downloadProgress?: number
   onModelChange: (model: number) => void
   onDeleteModel?: (modelValue: string) => void
-  walkthroughMode?: boolean
 }
 
 export const ModelSelectionCard = ({
@@ -27,7 +26,6 @@ export const ModelSelectionCard = ({
   downloadProgress = 0,
   onModelChange,
   onDeleteModel = () => { },
-  walkthroughMode = false
 }: ModelSelectionCardProps) => {
   const [openModelSelector, setOpenModelSelector] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState('all')
@@ -36,64 +34,6 @@ export const ModelSelectionCard = ({
     // Map any non-English language to 'all' tab, English to 'en' tab
     setActiveTab(language === 'en' ? 'en' : 'all')
   }, [language])
-
-  if (walkthroughMode) {
-    return (
-      <div>
-        {/* Grid of Models */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {models.map((model, index) => (
-            <div
-              key={index}
-              className={`rounded-lg p-3 cursor-pointer transition-all duration-200 border-2 ${selectedModel === index
-                ? "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 shadow-sm"
-                : "border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                }`}
-              onClick={() => onModelChange(index)}
-            >
-              <div className="flex flex-col items-center text-center space-y-1">
-                {/* Model Image */}
-                <div className="relative">
-                  <img src={model.image} alt={model.label + " icon"} className="w-16 h-16 object-contain" />
-                </div>
-
-                {/* Model Name */}
-                <div className="space-y-1">
-                  <span className="font-semibold text-sm">{model.label}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Selected Model Details */}
-        <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
-          <h4 className="font-semibold text-sm mb-2">Model Details</h4>
-
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{models[selectedModel].details}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-indigo-100/60 dark:bg-indigo-900/40 rounded-md border border-indigo-200 dark:border-indigo-800 min-w-[135px]">
-                <HardDrive className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <div className="flex flex-col leading-tight">
-                  <span className="font-semibold text-xs">{models[selectedModel].size}</span>
-                  <span className="text-[11px]">Disk Space</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-indigo-100/60 dark:bg-indigo-900/40 rounded-md border border-indigo-200 dark:border-indigo-800 min-w-[110px]">
-                <MemoryStick className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <div className="flex flex-col leading-tight">
-                  <span className="font-semibold text-xs">{models[selectedModel].ram}</span>
-                  <span className="text-[11px]">RAM Required</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="border rounded-lg overflow-hidden dark:from-gray-900 dark:to-purple-950/20">

@@ -57,12 +57,12 @@ export const AudioFileCard = ({ selectedFile, onFileSelect }: AudioFileCardProps
         </div>
         <div>
           <p className="text-sm font-medium">Transcribe File</p>
-          <p className="text-xs text-muted-foreground">Generate subtitles for any audio or video file</p>
+          <p className="text-xs text-muted-foreground">Generate subtitles from any audio or video</p>
         </div>
       </div>
       {/* Drag and Drop Area */}
       <div
-        className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 mb-2 mt-4 bg-muted/10 cursor-pointer transition-colors hover:bg-muted/60 hover:dark:bg-muted/20 outline-none"
+        className="h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 mt-4 bg-muted/10 cursor-pointer transition-colors hover:bg-muted/60 hover:dark:bg-muted/20 outline-none"
         tabIndex={0}
         role="button"
         aria-label="Drop audio file here or click to select"

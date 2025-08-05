@@ -11,7 +11,7 @@ import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
-import { jumpToTime, getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
+import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -68,7 +68,6 @@ interface GlobalContextType {
   exportSubtitles: () => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
   importSubtitles: () => Promise<void>;
-  jumpToSpeaker: (start: number) => void;
   resetSettings: () => void;
   checkForUpdates: () => Promise<string | null>;
   setupEventListeners: () => () => void; // Return cleanup function
@@ -84,6 +83,10 @@ interface GlobalProviderProps {
 }
 
 const DEFAULT_SETTINGS: Settings = {
+  // Survey notification settings
+  neverShowSurveyAgain: false,
+  lastSurveyDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString(),
+
   // Processing settings
   model: 0,
   language: "auto",
@@ -606,10 +609,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     };
   }, []);
 
-  async function jumpToSpeaker(start: number) {
-    await jumpToTime(start, markIn);
-  }
-
   async function refresh() {
     try {
       let newTimelineInfo = await getTimelineInfo();
@@ -759,7 +758,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       exportSubtitles,
       exportSubtitlesAs,
       importSubtitles,
-      jumpToSpeaker,
       pushToTimeline,
       resetSettings,
       checkForUpdates,

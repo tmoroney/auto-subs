@@ -13,6 +13,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { SpeakerEditor } from "@/components/speaker-editor"
 
@@ -88,6 +89,7 @@ interface SubtitleListProps {
 import {
     DialogClose,
 } from "@/components/ui/dialog"
+import { jumpToTime } from "@/api/resolveAPI";
 
 const SubtitleList = ({
     searchQuery = "",
@@ -115,6 +117,14 @@ const SubtitleList = ({
         setEditingSubtitle(subtitle);
         // Populate editor with words array from the subtitle object
         setEditingWords(subtitle.words || []);
+    };
+
+    const formatTimecode = (seconds: number | string): string => {
+        const sec = typeof seconds === 'string' ? parseFloat(seconds) : seconds;
+        const hours = Math.floor(sec / 3600);
+        const minutes = Math.floor((sec % 3600) / 60);
+        const secs = Math.floor(sec % 60);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     const handleSaveChanges = () => {
@@ -169,9 +179,16 @@ const SubtitleList = ({
                     className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                 >
                     <div className="flex w-full items-center gap-2">
-                        <div className="text-xs text-muted-foreground">
-                            {subtitle.start} - {subtitle.end}
-                        </div>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <div className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary" onClick={async () => await jumpToTime(subtitle.start)}>
+                                    {formatTimecode(subtitle.start)}
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Click to jump to subtitle on timeline</p>
+                            </TooltipContent>
+                        </Tooltip>
                         {subtitle.speaker_id && speakers.length > 0 ? (
                             <>
                                 <Button

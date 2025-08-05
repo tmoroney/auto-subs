@@ -210,9 +210,9 @@ export const LanguageSettingsCard = ({
                       <Info className="h-4 w-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" align="start" className="w-64 p-3">
+                  <TooltipContent side="bottom" align="center" className="w-64 p-3">
                     <p className="text-xs text-left">
-                      OpenAI Whisper models currently only support translating to English while transcribing. More language options coming soon with dedicated translation models.
+                      OpenAI Whisper models only support translating to English while transcribing. More translation options are coming.
                     </p>
                   </TooltipContent>
                 </Tooltip>

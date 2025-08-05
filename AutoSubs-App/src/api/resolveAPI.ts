@@ -32,12 +32,11 @@ export async function exportAudio(inputTracks: Array<string>) {
   return data;
 }
 
-export async function jumpToTime(start: number, markIn: number) {
-  console.log("Jumping to time", start, markIn);
+export async function jumpToTime(seconds: number) {
   const response = await fetch(resolveAPI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "JumpToTime", start, markIn }),
+    body: JSON.stringify({ func: "JumpToTime", seconds }),
   });
   return response.json();
 }

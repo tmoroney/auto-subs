@@ -1,4 +1,4 @@
-import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, SquarePen, ArrowDown, CaseLower, CaseUpper, Settings } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, CaseLower, CaseUpper, Settings } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useState } from "react";
-import { Pencil } from "lucide-react"
 
 interface TextFormattingCardProps {
   maxWordsPerLine: number
@@ -175,6 +174,7 @@ export const TextFormattingCard = ({
                     variant="outline"
                     size="default"
                     className={cn(
+                      "w-12 p-0",
                       textCase === "lowercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {
@@ -195,6 +195,7 @@ export const TextFormattingCard = ({
                     variant="outline"
                     size="default"
                     className={cn(
+                      "w-12 p-0",
                       textCase === "uppercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {

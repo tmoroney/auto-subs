@@ -3,11 +3,12 @@ import { ChevronLeft, ChevronRight, Check, ChevronLast } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SubtitleSettingsCard } from "@/components/settings-cards/subtitle-settings-card"
 import { LanguageSettingsCard } from "@/components/settings-cards/language-settings-card"
 import { ModelSelectionCard } from "@/components/settings-cards/model-selection-card"
 import { TextFormattingCard } from "@/components/settings-cards/text-formatting-card"
 import { useGlobal } from "@/contexts/GlobalContext"
+import { AudioInputCard } from "./settings-cards/audio-input-card"
+import { AudioFileCard } from "./settings-cards/audio-file-card"
 
 interface WalkthroughSlide {
   id: string
@@ -27,7 +28,7 @@ export const SetupWalkthrough = ({
   onClose,
 }: SetupWalkthroughProps) => {
   const [currentSlide, setCurrentSlide] = React.useState(0)
-  const { settings, updateSetting, modelsState, timelineInfo, isStandaloneMode, setIsStandaloneMode } = useGlobal()
+  const { settings, updateSetting, modelsState, isStandaloneMode, setIsStandaloneMode, timelineInfo, fileInput, setFileInput, refresh } = useGlobal()
 
   const slides: WalkthroughSlide[] = React.useMemo(() => {
     const baseSlides: WalkthroughSlide[] = [
@@ -51,14 +52,10 @@ export const SetupWalkthrough = ({
       {
         id: "mode-selection",
         title: "Choose Your Mode",
-        description: "Switch between Resolve and Standalone modes.",
+        description: "Connect to DaVinci Resolve or use AutoSubs standalone. No editor required.",
         component: (
-          <Card className="p-8 max-w-xl mx-auto">
-            <div className="space-y-6">
-              <div className="text-center space-y-2">
-                <h3 className="text-lg font-semibold">How do you want to use AutoSubs?</h3>
-              </div>
-
+          <Card className="p-4 max-w-xl mx-auto">
+            <div className="space-y-4">
               <div className="flex justify-center">
                 <Tabs
                   value={isStandaloneMode ? "standalone" : "resolve"}
@@ -76,21 +73,20 @@ export const SetupWalkthrough = ({
                 </Tabs>
               </div>
 
-              <div className="text-center space-y-2">
+              <div className="space-y-2">
                 {isStandaloneMode ? (
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">Standalone Mode</p>
-                    <p className="text-xs text-muted-foreground">
-                      Upload audio files directly and generate subtitle files
-                    </p>
-                  </div>
+                  <AudioFileCard
+                    selectedFile={fileInput}
+                    onFileSelect={(file) => setFileInput(file)}
+                  />
                 ) : (
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">DaVinci Resolve Mode</p>
-                    <p className="text-xs text-muted-foreground">
-                      Connect to DaVinci Resolve and add subtitles directly to your timeline.
-                    </p>
-                  </div>
+                  <AudioInputCard
+                    callRefresh={() => refresh()}
+                    selectedTracks={settings.selectedInputTracks}
+                    onTracksChange={(tracks) => updateSetting("selectedInputTracks", tracks)}
+                    inputTracks={timelineInfo.inputTracks}
+                    walkthroughMode={true}
+                  />
                 )}
               </div>
             </div>
@@ -102,6 +98,22 @@ export const SetupWalkthrough = ({
 
     baseSlides.push(
       {
+        id: "language",
+        title: "Input Language",
+        description: "Select the language that you speak.",
+        component: (
+          <div className="max-w-lg mx-auto">
+            <LanguageSettingsCard
+              sourceLanguage={settings.language}
+              translate={settings.translate}
+              onSourceLanguageChange={(language) => updateSetting("language", language)}
+              onTranslateChange={(translate) => updateSetting("translate", translate)}
+            />
+          </div>
+        ),
+        canProceed: true,
+      },
+      {
         id: "model",
         title: "Choose AI model",
         description: "'Small' is fast and accurate for most users.",
@@ -112,23 +124,6 @@ export const SetupWalkthrough = ({
               selectedModel={settings.model}
               models={modelsState}
               onModelChange={(model) => updateSetting("model", model)}
-              walkthroughMode={true}
-            />
-          </div>
-        ),
-        canProceed: true,
-      },
-      {
-        id: "language",
-        title: "Input Language",
-        description: "What language is spoken in the audio?",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <LanguageSettingsCard
-              sourceLanguage={settings.language}
-              translate={settings.translate}
-              onSourceLanguageChange={(language) => updateSetting("language", language)}
-              onTranslateChange={(translate) => updateSetting("translate", translate)}
             />
           </div>
         ),
@@ -183,30 +178,6 @@ export const SetupWalkthrough = ({
         canProceed: true,
       }
     )
-
-    if (!isStandaloneMode) {
-      baseSlides.push({
-        id: "subtitle-settings",
-        title: "Subtitle Settings",
-        description: "Choose a template (Fusion Text+) and where subtitles appear.",
-        component: (
-          <div className="max-w-lg mx-auto">
-            <SubtitleSettingsCard
-              selectedTemplate={settings.selectedTemplate}
-              onTemplateChange={(template) => updateSetting("selectedTemplate", template)}
-              outputTracks={timelineInfo?.outputTracks || []}
-              templates={timelineInfo?.templates || []}
-              selectedOutputTrack="1"
-              onOutputTrackChange={(track) => {
-                // Handle output track change if needed
-                console.log("Selected output track:", track);
-              }}
-            />
-          </div>
-        ),
-        canProceed: true,
-      })
-    }
 
     return baseSlides
   }, [

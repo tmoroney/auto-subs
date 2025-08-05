@@ -25,7 +25,7 @@ interface SpeakerEditorProps {
 }
 
 export function SpeakerEditor({ afterTranscription = false, open = false, onOpenChange, expandedSpeakerIndex }: SpeakerEditorProps) {
-    const { speakers, timelineInfo, settings, markIn, updateSpeakers, pushToTimeline } = useGlobal();
+    const { speakers, timelineInfo, settings, updateSpeakers, pushToTimeline } = useGlobal();
     const [localSpeakers, setLocalSpeakers] = useState(speakers);
     const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
     const [previews, setPreviews] = useState<{ [index: number]: string }>({});
@@ -116,7 +116,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                                         tabIndex={-1}
                                                         onClick={e => {
                                                             e.stopPropagation();
-                                                            jumpToTime(speaker.sample.start, markIn);
+                                                            jumpToTime(speaker.sample.start);
                                                         }}
                                                     >
                                                         <Speech className="w-4 h-4" />

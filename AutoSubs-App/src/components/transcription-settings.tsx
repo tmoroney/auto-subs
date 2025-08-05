@@ -35,6 +35,7 @@ import { SpeakerLabelingCard } from "./settings-cards/speaker-labeling-card"
 import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 import { SpeakerEditor } from "./speaker-editor"
 import { TranscriptionOptions } from "@/types/interfaces"
+import { SurveyNotification } from "./survey-notification";
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
@@ -192,6 +193,11 @@ export const TranscriptionSettings = ({
         }
     }
 
+    function onDismissSurvey() {
+        updateSetting("timesDismissedSurvey", settings.timesDismissedSurvey + 1)
+        updateSetting("lastSurveyDate", new Date().toISOString())
+    }
+
     return (
         <>
             <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
@@ -214,6 +220,25 @@ export const TranscriptionSettings = ({
                             </AlertDescription>
                         </Alert>
                     )}
+
+                    {/* Survey Notification */}
+                    {/* Survey Notification (componentized) */}
+                    {(() => {
+                        const SURVEY_URL = "https://yoursurveyurl.com"; // <-- Replace with your survey link
+                        const SURVEY_INTERVAL_DAYS = 5; // Show every 5 days
+                        const lastSurveyDate = new Date(settings.lastSurveyDate);
+                        const now = new Date();
+                        const daysSinceLastSurvey = Math.floor((now.getTime() - lastSurveyDate.getTime()) / (1000 * 60 * 60 * 24));
+                        const shouldShowSurvey = settings.timesDismissedSurvey < 4 && (isNaN(daysSinceLastSurvey) || daysSinceLastSurvey >= SURVEY_INTERVAL_DAYS);
+                        if (!shouldShowSurvey) return null;
+                        return (
+                            <SurveyNotification
+                                surveyUrl={SURVEY_URL}
+                                onDismiss={onDismissSurvey}
+                            />
+                        );
+                    })()}
+
 
                     {/* File Source / DaVinci Resolve */}
                     <div className="space-y-3">
@@ -277,6 +302,7 @@ export const TranscriptionSettings = ({
                                     </Tooltip>
                                 </Card>
                                 <AudioInputCard
+                                    callRefresh={() => refresh()}
                                     selectedTracks={settings.selectedInputTracks}
                                     inputTracks={timelineInfo?.inputTracks || []}
                                     onTracksChange={(tracks) => {

@@ -219,10 +219,10 @@ function TimecodeToFrames(timecode, frameRate)
 end
 
 -- input of time in seconds
-function JumpToTime(time, markIn)
+function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    local frames = SecondsToFrames(time, frameRate) + markIn + 1
+    local frames = SecondsToFrames(seconds, frameRate) + timeline:GetStartFrame()
     local timecode = FramesToTimecode(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -1029,7 +1029,7 @@ while not quitServer do
                             body = json.encode(timelineInfo)
                         elseif data.func == "JumpToTime" then
                             print("[AutoSubs Server] Jumping to time...")
-                            JumpToTime(data.start, data.markIn)
+                            JumpToTime(data.seconds)
                             body = json.encode({
                                 message = "Jumped to time"
                             })
