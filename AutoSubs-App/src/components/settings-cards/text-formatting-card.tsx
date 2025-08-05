@@ -1,4 +1,4 @@
-import { AArrowUp, Signature, ShieldX, WholeWord, CircleX } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, SquarePen, ArrowDown, CaseLower, CaseUpper } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -72,9 +72,9 @@ export const TextFormattingCard = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="default"
                 >
-                  <Pencil className="h-4 w-4" />
+                  Edit
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4" align="center">
@@ -84,7 +84,7 @@ export const TextFormattingCard = ({
                     <div>
                       <p className="text-sm font-medium">Character Count</p>
                       {maxCharsPerLine === 0 ? (
-                        <p className="text-xs font-semibold text-destructive flex items-center gap-1">
+                        <p className="text-xs font-semibold text-orange-500 flex items-center gap-1">
                           <CircleX className="w-3 h-3 inline-block" /> Disabled (no character limit)
                         </p>
                       ) : (
@@ -105,7 +105,7 @@ export const TextFormattingCard = ({
                     <div>
                       <p className="text-sm font-medium">Word Count</p>
                       {maxWordsPerLine === 0 ? (
-                        <p className="text-xs font-semibold text-destructive flex items-center gap-1">
+                        <p className="text-xs font-semibold text-orange-500 flex items-center gap-1">
                           <CircleX className="w-3 h-3 inline-block" /> Disabled (no word limit)
                         </p>
                       ) : (
@@ -175,15 +175,14 @@ export const TextFormattingCard = ({
                     variant="outline"
                     size="default"
                     className={cn(
-                      "px-3",
-                      textCase === "lowercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                      textCase === "lowercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {
                       const newFormat = textCase === "lowercase" ? "none" : "lowercase";
                       onTextCaseChange(newFormat);
                     }}
                   >
-                    abc
+                    <CaseLower className="w-6 h-6" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" align="center">
@@ -196,15 +195,14 @@ export const TextFormattingCard = ({
                     variant="outline"
                     size="default"
                     className={cn(
-                      "px-3",
-                      textCase === "uppercase" && "bg-cyan-50 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                      textCase === "uppercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                     )}
                     onClick={() => {
                       const newFormat = textCase === "uppercase" ? "none" : "uppercase";
                       onTextCaseChange(newFormat);
                     }}
                   >
-                    ABC
+                    <CaseUpper className="w-6 h-6" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" align="center">

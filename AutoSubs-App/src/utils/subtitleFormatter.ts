@@ -1,31 +1,68 @@
 import { Subtitle, Word } from "@/types/interfaces";
 
-// Simple regex for punctuation removal
 const PUNCTUATION_REGEX = /[\p{P}$+<=>^`|~]/gu;
 
 function applyCaseToWord(word: string, mode: 'lowercase' | 'uppercase' | 'none'): string {
-    if (!mode || mode === 'none') return word;
-    return mode === 'lowercase' ? word.toLocaleLowerCase() : word.toLocaleUpperCase();
+    if (mode === 'lowercase') return word.toLocaleLowerCase();
+    if (mode === 'uppercase') return word.toLocaleUpperCase();
+    return word;
 }
 
 function removePunctuationFromWord(word: string): string {
     return word.replace(PUNCTUATION_REGEX, "");
 }
 
-function createCensorWord(censoredWords: string[]): (word: string) => string {
-    if (!censoredWords || censoredWords.length === 0) return (word) => word;
-    const censoredWordsSet = new Set(censoredWords.map(w => w.toLowerCase()));
+function hasCensoredWord(word: string, censoredSet: Set<string>): boolean {
+    const clean = word.replace(PUNCTUATION_REGEX, '').trim().toLowerCase();
+    return censoredSet.has(clean);
+}
+
+function getCensoredVersion(word: string): string {
+    const clean = word.replace(PUNCTUATION_REGEX, '').trim();
+    if (clean.length > 3) {
+        return clean[0] + '*'.repeat(clean.length - 2) + clean[clean.length - 1];
+    }
+    return '*'.repeat(clean.length);
+}
+
+/**
+ * Creates a function that censors a given word if it is in the list of censored words.
+ */
+function createCensorWord(censoredWords: string[]) {
+    if (!censoredWords || censoredWords.length === 0) {
+        return (word: string) => word;
+    }
+    const censoredSet = new Set(censoredWords.map(w => w.toLowerCase()));
     return (word: string) => {
-        const cleanWord = word.replace(PUNCTUATION_REGEX, '').toLowerCase();
-        if (censoredWordsSet.has(cleanWord)) {
-            if (word.length > 3) {
-                return word[0] + '*'.repeat(word.length - 2) + word[word.length - 1];
-            } else {
-                return '*'.repeat(word.length);
-            }
-        }
-        return word;
+        if (!hasCensoredWord(word, censoredSet)) return word;
+        const clean = word.replace(PUNCTUATION_REGEX, '').trim();
+        const censored = getCensoredVersion(word);
+        // Replace only the clean part, preserving punctuation
+        return word.replace(clean, censored);
     };
+}
+
+/**
+ * Applies all subtitle formatting operations in a single pass for efficiency.
+ */
+export function applyTextFormattingToSubtitle(
+    subtitle: Subtitle,
+    options: {
+        case: 'lowercase' | 'uppercase' | 'none';
+        removePunctuation: boolean;
+        censoredWords: string[];
+    }
+): Subtitle {
+    const censorWord = createCensorWord(options.censoredWords);
+    const result = subtitle.words.map(wordObj => {
+        let w = censorWord(wordObj.word);
+        if (options.removePunctuation) w = removePunctuationFromWord(w);
+        w = applyCaseToWord(w, options.case);
+        return { ...wordObj, word: w };
+    });
+    subtitle.text = joinWordsToText(result);
+    subtitle.words = result;
+    return subtitle;
 }
 
 /**
@@ -113,37 +150,6 @@ function splitSubtitles(subtitles: Subtitle[], options: {
     }
 
     return result;
-}
-
-
-
-/**
- * Applies all subtitle formatting operations in a single pass for efficiency.
- * @param subtitle The subtitle object to format.
- * @param options Formatting options including case, punctuation removal, and word censoring.
- * @returns A new Subtitle with all formatting applied.
- */
-export function applyTextFormattingToSubtitle(
-    subtitle: Subtitle,
-    options: {
-        case: 'lowercase' | 'uppercase' | 'none';
-        removePunctuation: boolean;
-        censoredWords: string[];
-    }
-): Subtitle {
-    // Process words array
-    let result = subtitle.words.map(wordObj => {
-        let w = wordObj.word;
-        w = applyCaseToWord(w, options.case);
-        if (options.removePunctuation) w = removePunctuationFromWord(w);
-        w = createCensorWord(options.censoredWords)(w);
-        return { ...wordObj, word: w };
-    });
-
-    subtitle.text = joinWordsToText(result);
-    subtitle.words = result;
-
-    return subtitle;
 }
 
 export function splitAndFormatSubtitles(

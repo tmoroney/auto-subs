@@ -92,17 +92,17 @@ export function DesktopSubtitleViewer() {
 
       {/* Footer */}
       {!isStandaloneMode && (
-      <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
-        <Button
-          variant="default"
-          size="default"
-          className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
-          onClick={() => pushToTimeline()}
-        >
-          <Layers2 className="w-4 h-4 mr-2" />
-          Add to Timeline
-        </Button>
-      </div>
+        <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
+          <Button
+            variant="default"
+            size="default"
+            className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
+            onClick={() => pushToTimeline()}
+          >
+            <Layers2 className="w-4 h-4 mr-2" />
+            Add to Timeline
+          </Button>
+        </div>
       )}
     </div>
   )

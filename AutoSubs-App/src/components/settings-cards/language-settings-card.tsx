@@ -155,7 +155,7 @@ export const LanguageSettingsCard = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-full">
-            <Command>
+            <Command className="max-h-[250px]">
               <CommandInput placeholder="Search languages..." />
               <CommandList>
                 <CommandEmpty>No language found.</CommandEmpty>

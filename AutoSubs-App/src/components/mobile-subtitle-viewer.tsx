@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Users, X } from "lucide-react"
+import { Layers2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
@@ -15,7 +15,7 @@ interface MobileSubtitleViewerProps {
 export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { exportSubtitles, importSubtitles, subtitles } = useGlobal()
+  const { exportSubtitles, importSubtitles, subtitles, pushToTimeline, isStandaloneMode } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
 
   const handleExport = async () => {
@@ -57,7 +57,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
     <div className="fixed inset-0 z-50 bg-sidebar flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-2 pl-3 border-b bg-sidebar shrink-0">
-        <h1 className="text-lg font-medium">Subtitles</h1>
+        <h1 className="text-xl font-medium">Subtitles</h1>
         <Button
           onClick={onClose}
           variant="outline"
@@ -69,8 +69,8 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="p-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
+      {/* Search & Import/Export & Speakers */}
+      <div className="px-2 pb-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
         <div className="flex space-x-2 items-center">
           <ImportExportPopover
             onImport={handleImport}
@@ -106,7 +106,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2">
+      <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2 pt-2">
         {subtitles.length > 0 ? (
           <SubtitleList
             searchQuery={searchQuery}
@@ -123,6 +123,21 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      {!isStandaloneMode && (
+      <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
+        <Button
+          variant="default"
+          size="default"
+          className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
+          onClick={() => pushToTimeline()}
+        >
+          <Layers2 className="w-4 h-4 mr-2" />
+          Add to Timeline
+        </Button>
+      </div>
+      )}
     </div>
   )
 }
