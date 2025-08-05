@@ -832,24 +832,17 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
     -- Access the Saver tool by its name (assuming it exists in the comp)
     local mySaver = comp:AddTool("Saver")
 
+    local extractedFrame = ""
+
     if mySaver ~= nil then
         -- Set the output filename for the Saver tool [6, 7]
         -- Make sure to provide a full path and desired image format extension
-        mySaver:SetInput("Clip", {
-            Filename = exportPath,
-            FormatID = "PNGFormat",
-            Length = 0,
-            Saving = true,
-            TrimIn = 0,
-            ExtendFirst = 0,
-            ExtendLast = 0,
-            Loop = 1,
-            AspectMode = 0,
-            Depth = 0,
-            GlobalStart = -2000000000,
-            GlobalEnd = 0
-        })
-        -- GetInputList
+        local name = mySaver.Name
+        local settings = mySaver:SaveSettings()
+        settings.Tools[name].Inputs.Clip.Value["Filename"] = exportPath .. "/subtitle-preview-0.png"
+        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
+        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
+        mySaver:LoadSettings(settings)
 
         -- Set the input for the Saver tool to the MediaOut tool
         local mediaOut = comp:FindToolByID("MediaOut")
@@ -861,10 +854,12 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
             Start = frameToExtract-1,   -- Start rendering at this frame
-            End = frameToExtract,     -- End rendering at this frame
+            End = frameToExtract-1,     -- End rendering at this frame
             Tool = mySaver,           -- Render up to this specific Saver tool [13]
             Wait = true               -- Wait for the render to complete before continuing the script [19]
         })
+
+        extractedFrame = exportPath .. "/subtitle-preview-" .. frameToExtract-1 .. ".png"
 
         if success then
             print("Frame " .. frameToExtract .. " successfully saved by " .. mySaver.Name .. " to " .. exportPath)
@@ -877,6 +872,8 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
 
     -- Unlock the composition after changes are complete [15, 20]
     comp:Unlock()
+
+    return extractedFrame
 end
 
 -- place example subtitle on timeline with theme and export frame
@@ -889,17 +886,19 @@ function GeneratePreview(speaker, templateName, exportPath)
     local templateFrameRate = templateItem:GetClipProperty()["FPS"]
     local timelineFrameRate = timeline:GetSetting("timelineFrameRate")
 
-    local timelinePos = TimecodeToFrames(timeline:GetCurrentTimecode(), timelineFrameRate)
+    --local timelinePos = TimecodeToFrames(timeline:GetCurrentTimecode(), timelineFrameRate)
     
     local newClip = {
         mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
         startFrame = 0,               -- start frame means within the clip
         endFrame = templateFrameRate * 2,          -- end frame means within the clip
-        recordFrame = timelinePos,              -- record frame means where in the timeline the clip should be placed
+        recordFrame = 0,              -- record frame means where in the timeline the clip should be placed
         trackIndex = trackIndex        -- track the clip should be placed on
     }
     local timelineItems = mediaPool:AppendToTimeline({newClip})
     local timelineItem = timelineItems[1]
+
+    local extractedFrame = exportPath .. "/subtitle-preview-0.png"
 
     local success, err = pcall(function()
         -- Set timeline position to middle of clip
@@ -908,22 +907,22 @@ function GeneratePreview(speaker, templateName, exportPath)
             local tool = comp:FindToolByID("TextPlus")
             tool:SetInput("StyledText", "Example Subtitle Text")
             SetCustomColors(speaker, tool)
+
+            extractedFrame = ExtractFrame(comp, exportPath, templateFrameRate)
         end
-        timelinePos = timelineItem:GetStart()
         -- Set timeline position to middle of clip
-        timeline:SetCurrentTimecode(FramesToTimecode(timelinePos + timelineFrameRate, timelineFrameRate))
-        sleep(0.1)
+        --timelinePos = timelineItem:GetStart()
+        --timeline:SetCurrentTimecode(FramesToTimecode(timelinePos + timelineFrameRate, timelineFrameRate))
+        --sleep(0.1)
     end)
     if not success then
         print("Failed to set timeline position: " .. err)
     end
-
-    -- could use GetCurrentClipThumbnailImage() here to get raw image data
-    project:ExportCurrentFrameAsStill(exportPath)
+    --project:ExportCurrentFrameAsStill(extractedFrame)
     timeline:DeleteClips(timelineItems)
     timeline:DeleteTrack("video", trackIndex)
 
-    return exportPath
+    return extractedFrame
 end
 
 local function set_cors_headers(client)

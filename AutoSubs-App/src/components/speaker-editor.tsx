@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { ColorPopover } from "@/components/color-popover"
-import { Speech, ChevronDown, ChevronRight, LoaderPinwheel, LoaderCircle } from "lucide-react"
+import { Speech, ChevronDown, ChevronRight, LoaderPinwheel, LoaderCircle, Palette } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Speaker } from "@/types/interfaces"
 import { useGlobal } from "@/contexts/GlobalContext"
@@ -49,8 +49,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
     async function getSubtitlePreview(index: number): Promise<string> {
         setLoadingPreview(prev => ({ ...prev, [index]: true }));
         const downloadPath = await downloadDir();
-        const filePath = await join(downloadPath, `speaker-${index}.png`);
-        let path = await generatePreview(localSpeakers[index], settings.selectedTemplate.value, filePath);
+        let path = await generatePreview(localSpeakers[index], settings.selectedTemplate.value, downloadPath);
         console.log("Generated preview for speaker", localSpeakers[index].name, "at", path);
         try {
             const assetUrl = convertFileSrc(path) + `?t=${Date.now()}`;
@@ -237,31 +236,39 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                             disabled={loadingPreview[index]}
                                             onClick={async () => { await getSubtitlePreview(index); }}
                                         >
-                                            {loadingPreview[index] && (
-                                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                                            {loadingPreview[index] ? (
+                                                <>
+                                                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                                                    Generating Preview...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Palette className="h-4 w-4" />
+                                                    Generate Preview
+                                                </>
                                             )}
-                                            Generate Preview
                                         </Button>
-                                        <div className="flex justify-center relative">
-                                            {previews[index] && (
-                                                <div className="relative pb-2">
+                                        {previews[index] && (
+                                            <div className="flex justify-center relative pb-2">
+                                                <div className="relative">
                                                     <img
                                                         src={previews[index]}
                                                         alt="Subtitle Preview"
-                                                        className="max-w-full rounded shadow transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0"
+                                                        className="max-w-full rounded-md shadow-none transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0 border-2"
                                                         onLoad={e => {
                                                             e.currentTarget.classList.remove('-translate-y-4', 'opacity-0');
                                                             e.currentTarget.classList.add('translate-y-0', 'opacity-100');
                                                         }}
                                                     />
                                                     {loadingPreview[index] && (
-                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded pb-2">
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md">
                                                             <LoaderPinwheel className="h-8 w-8 text-white animate-spin" />
                                                         </div>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
+
                                     </CardContent>
                                 )}
                             </Card>
@@ -293,6 +300,6 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                     </DialogClose>
                 </DialogFooter>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     )
 }
