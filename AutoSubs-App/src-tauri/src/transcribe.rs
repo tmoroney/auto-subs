@@ -72,7 +72,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
     // Enable DTW by default to improve word timestamps
     let enable_dtw = true;
 
-    let model_path = crate::models::download_model_if_needed(app.clone(), &options.model, &options.lang)?;
+    let model_path = crate::models::download_model_if_needed(app.clone(), &options.model)?;
 
     let audio_duration = crate::audio::get_audio_duration(app.clone(), options.audio_path.clone())
         .await
@@ -81,7 +81,6 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
     let ctx = create_context(
         &PathBuf::from(model_path),
         &options.model,
-        &options.lang,
         None,
         None,
         Some(enable_dtw),
@@ -191,7 +190,6 @@ fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
 pub fn create_context(
     model_path: &Path,
     model: &str,
-    lang: &Option<String>,
     gpu_device: Option<i32>,
     use_gpu: Option<bool>,
     enable_dtw: Option<bool>,
@@ -233,19 +231,17 @@ pub fn create_context(
         };
 
         ctx_params.flash_attn(false);  // DTW requires flash_attn off
-        let is_en = lang.as_deref().map_or(false, |l| l == "en");
-        let model_preset = match (model, is_en) {
-            ("tiny", true) => DtwModelPreset::TinyEn,
-            ("tiny", false) => DtwModelPreset::Tiny,
-            ("base", true) => DtwModelPreset::BaseEn,
-            ("base", false) => DtwModelPreset::Base,
-            ("small", true) => DtwModelPreset::SmallEn,
-            ("small", false) => DtwModelPreset::Small,
-            ("medium", true) => DtwModelPreset::MediumEn,
-            ("medium", false) => DtwModelPreset::Medium,
-            ("large", _) => DtwModelPreset::LargeV3,
-            ("large-turbo", _) => DtwModelPreset::LargeV3Turbo,
-            // Add a sensible default or handle other cases
+        let model_preset = match model {
+            "tiny.en" => DtwModelPreset::TinyEn,
+            "tiny" => DtwModelPreset::Tiny,
+            "base.en" => DtwModelPreset::BaseEn,
+            "base" => DtwModelPreset::Base,
+            "small.en" => DtwModelPreset::SmallEn,
+            "small" => DtwModelPreset::Small,
+            "medium.en" => DtwModelPreset::MediumEn,
+            "medium" => DtwModelPreset::Medium,
+            "large" => DtwModelPreset::LargeV3,
+            "large-turbo" => DtwModelPreset::LargeV3Turbo,
             _ => DtwModelPreset::SmallEn, // Defaulting to SmallEn
         };
 

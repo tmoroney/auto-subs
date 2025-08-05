@@ -92,8 +92,8 @@ const DEFAULT_SETTINGS: Settings = {
   maxSpeakers: null,
 
   // Text settings
-  maxWordsPerLine: 5,
-  maxCharsPerLine: 32,
+  maxWordsPerLine: 0,
+  maxCharsPerLine: 34,
   maxLinesPerSubtitle: 1,
   splitOnPunctuation: true,
   textCase: "none",
@@ -184,7 +184,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       const updatedModels = models.map(model => ({
         ...model,
         isDownloaded: downloadedModels.some(downloadedModel =>
-          downloadedModel.includes(model.value)
+          downloadedModel === model.value
         )
       }))
       setModelsState(updatedModels)

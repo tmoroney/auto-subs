@@ -5,11 +5,7 @@ use std::sync::Mutex;
 use tauri::{command, AppHandle, Emitter, Manager};
 use crate::transcribe::SHOULD_CANCEL;
 
-// Custom error type for cancelled downloads
-#[derive(Debug)]
-struct DownloadCancelledError;
-
-/// Progress tracker for model downloads that emits events to the frontend
+// Progress tracker for model downloads that emits events to the frontend
 struct ModelDownloadProgress {
     app: AppHandle,
     current: usize,
@@ -167,27 +163,9 @@ fn cleanup_stale_lock_files(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Returns the appropriate filename for a Whisper model based on the model variant and language.
-/// - If the model is "large", it maps to "large-v3" internally, matching the naming convention.
-/// - If the `lang` parameter is "en" (case-insensitive) and the model isn't "large-v3", returns the English-specific model file.
-/// - Otherwise, returns the general model file name.
-/// Examples:
-///   get_filename("base", &Some("en".to_string()))      -> "ggml-base.en.bin"
-///   get_filename("large", &None)                       -> "ggml-large-v3.bin"
-///   get_filename("medium", &Some("fr".to_string()))    -> "ggml-medium.bin"
-fn get_filename(model: &str, lang: &Option<String>) -> String {
-    let is_en = lang.as_deref().map_or(false, |l| l.eq_ignore_ascii_case("en"));
-    // English models are not available for large-v3 and large-v3-turbo
-    if is_en && model != "large-v3" && model != "large-v3-turbo" {
-        format!("ggml-{}.en.bin", model)
-    } else {
-        format!("ggml-{}.bin", model)
-    }
-}
-
 /// Checks if a model exists in the cache, and if not, downloads it from the Hugging Face Hub.
 /// Returns the path to the model file in the cache.
-pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<String>) -> Result<PathBuf, String> {
+pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, String> {
     // Check for cancellation at the start
     if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
         if *should_cancel {
@@ -197,7 +175,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
         }
     }
     
-    let filename = get_filename(model, lang);
+    let filename = format!("ggml-{}.bin", model);
     let model_cache = get_model_cache_dir(app.clone())?;
     let snapshots_dir = get_snapshots_dir(app.clone());
 
@@ -272,13 +250,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
     // If on mac, also download the corresponding coreml encoder if it exists
     #[cfg(target_os = "macos")]
     {
-        // English models are not available for large-v3 and large-v3-turbo
-        let is_en = lang.as_deref().map_or(true, |l| l.eq_ignore_ascii_case("en") && model != "large-v3" && model != "large-v3-turbo");
-        let coreml_file = if is_en {
-            format!("ggml-{}.en-encoder.mlmodelc.zip", model)
-        } else {
-            format!("ggml-{}-encoder.mlmodelc.zip", model)
-        };
+        let coreml_file = format!("ggml-{}.mlmodelc.zip", model);
         
         // Check if CoreML encoder already exists in snapshots dir
         let mut coreml_cached = false;
@@ -407,16 +379,11 @@ pub fn delete_model(model: &str, app: AppHandle) -> Result<(), String> {
         return Ok(()); // No models to delete
     }
     
-    let model_name = if model == "large" { "large-v3" } else { model };
-    
     // List of all possible file patterns for this model
     let file_patterns = vec![
-        format!("ggml-{}.bin", model_name),           // Non-English model
-        format!("ggml-{}.en.bin", model_name),        // English model
-        format!("ggml-{}-encoder.mlmodelc", model_name),     // Non-English CoreML encoder (extracted)
-        format!("ggml-{}.en-encoder.mlmodelc", model_name),  // English CoreML encoder (extracted)
-        format!("ggml-{}-encoder.mlmodelc.zip", model_name), // Non-English CoreML encoder (zip)
-        format!("ggml-{}.en-encoder.mlmodelc.zip", model_name), // English CoreML encoder (zip)
+        format!("ggml-{}.bin", model),           // Model file
+        format!("ggml-{}-encoder.mlmodelc", model),     // CoreML encoder (extracted)
+        format!("ggml-{}-encoder.mlmodelc.zip", model), // CoreML encoder (zip)
     ];
     
     let mut deleted_files = Vec::new();
@@ -503,19 +470,9 @@ pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
     let mut detected_models = Vec::new();
     
     for filename in found_files {
-        if filename == "ggml-large-v3.bin" {
-            detected_models.push("large".to_string());
-        } else if filename == "ggml-large-v3-turbo.bin" {
-            detected_models.push("large-turbo".to_string());
-        } else if filename.starts_with("ggml-") && filename.ends_with(".bin") {
-            // Handle other models like base, small, medium
+        if filename.starts_with("ggml-") && filename.ends_with(".bin") {
             let model_part = filename.replace("ggml-", "").replace(".bin", "");
-            if model_part.ends_with(".en") {
-                let model = model_part.replace(".en", "");
-                detected_models.push(model);
-            } else {
-                detected_models.push(model_part);
-            }
+            detected_models.push(model_part);
         }
     }
     

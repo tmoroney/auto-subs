@@ -6,8 +6,10 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Model } from "@/types/interfaces"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ModelSelectionCardProps {
+  language: string
   selectedModel: number
   models: Model[]
   downloadingModel?: string | null
@@ -18,6 +20,7 @@ interface ModelSelectionCardProps {
 }
 
 export const ModelSelectionCard = ({
+  language,
   selectedModel,
   models,
   downloadingModel = null,
@@ -27,6 +30,12 @@ export const ModelSelectionCard = ({
   walkthroughMode = false
 }: ModelSelectionCardProps) => {
   const [openModelSelector, setOpenModelSelector] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState('all')
+
+  React.useEffect(() => {
+    // Map any non-English language to 'all' tab, English to 'en' tab
+    setActiveTab(language === 'en' ? 'en' : 'all')
+  }, [language])
 
   if (walkthroughMode) {
     return (
@@ -184,56 +193,71 @@ export const ModelSelectionCard = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[300px] p-2" align="start">
-            <ScrollArea className="h-[250px]">
-              <div className="space-y-1 pr-0">
-                {models.map((model, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-3 cursor-pointer rounded-lg transition-colors duration-200 ${selectedModel === index
-                      ? "bg-purple-50 dark:bg-purple-900/20"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                      }`}
-                    onClick={() => {
-                      onModelChange(index)
-                      setOpenModelSelector(false)
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{model.label}</span>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <HardDrive className="h-3 w-3" />
-                            <span>{model.size}</span>
+            <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="all">All Languages</TabsTrigger>
+                <TabsTrigger value="en">English-Only</TabsTrigger>
+              </TabsList>
+              <ScrollArea className="h-[200px] mt-1">
+                <div className="space-y-1 pr-0">
+                  {models.filter(model => {
+                    if (activeTab === 'all') {
+                      return !model.value.includes('.en');
+                    } else {
+                      return model.value.includes('.en') || model.value === 'large-v3' || model.value === 'large-v3-turbo';
+                    }
+                  }).map((model) => {
+                    const originalIndex = models.findIndex(m => m.value === model.value);
+                    return (
+                      <div
+                        key={originalIndex}
+                        className={`flex items-center justify-between p-3 cursor-pointer rounded-lg transition-colors duration-200 ${selectedModel === originalIndex
+                          ? "bg-purple-50 dark:bg-purple-900/20"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          }`}
+                        onClick={() => {
+                          onModelChange(originalIndex)
+                          setOpenModelSelector(false)
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={model.image} alt={model.label + " icon"} className="w-10 h-10 object-contain rounded" />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{model.label}</span>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <HardDrive className="h-3 w-3" />
+                                <span>{model.size}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MemoryStick className="h-3 w-3" />
+                                <span>{model.ram}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <MemoryStick className="h-3 w-3" />
-                            <span>{model.ram}</span>
-                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {downloadingModel === model.value ? (
+                            <div className="flex items-center gap-2">
+                              <Progress value={downloadProgress} className="h-2 w-16" />
+                              <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                            </div>
+                          ) : model.isDownloaded ? (
+                            <span className="text-xs font-medium px-2 py-1 ml-6 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              Cached
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium px-2 py-1 ml-6 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                              Available
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {downloadingModel === model.value ? (
-                        <div className="flex items-center gap-2">
-                          <Progress value={downloadProgress} className="h-2 w-16" />
-                          <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                        </div>
-                      ) : model.isDownloaded ? (
-                        <span className="text-xs font-medium px-2 py-1 ml-6 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                          Cached
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium px-2 py-1 ml-6 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                          Available
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </Tabs>
           </PopoverContent>
         </Popover>
 

@@ -108,6 +108,7 @@ export const SetupWalkthrough = ({
         component: (
           <div className="max-w-2xl mx-auto">
             <ModelSelectionCard
+              language={settings.language}
               selectedModel={settings.model}
               models={modelsState}
               onModelChange={(model) => updateSetting("model", model)}

@@ -339,6 +339,7 @@ export const TranscriptionSettings = ({
 
                                 {/* Model */}
                                 <ModelSelectionCard
+                                    language={settings.language}
                                     selectedModel={settings.model}
                                     models={modelsState}
                                     downloadingModel={downloadingModel}
