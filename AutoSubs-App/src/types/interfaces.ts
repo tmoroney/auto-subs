@@ -108,6 +108,7 @@ export interface Settings {
 
 export interface TranscriptionOptions {
     audioPath: string,
+    offset: number,
     model: string,
     lang: string,
     translate: boolean,

@@ -598,6 +598,7 @@ function ExportAudio(outputDir, inputTracks)
             markOut = renderSettings["MarkOut"],
             offset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
         }
+        dump(audioInfo)
         currentExportJob.audioInfo = audioInfo
 
         print("Export started with PID: " .. pid)
@@ -754,11 +755,11 @@ function AddSubtitles(filePath, trackIndex, templateName)
         -- print("Adding subtitle: ", subtitle["text"])
         local start_frame = SecondsToFrames(subtitle["start"], frame_rate)
         local end_frame = SecondsToFrames(subtitle["end"], frame_rate)
-        local timeline_pos = markIn + start_frame
+        local timeline_pos = timelineStart + start_frame
         local clip_timeline_duration = end_frame - start_frame
 
         if i < #subtitles then
-            local next_start = markIn + SecondsToFrames(subtitles[i + 1]["start"], frame_rate)
+            local next_start = timelineStart + SecondsToFrames(subtitles[i + 1]["start"], frame_rate)
             local frames_between = next_start - (timeline_pos + clip_timeline_duration)
             -- if gap between clips is less than threshold, join them
             if frames_between < joinThreshold then

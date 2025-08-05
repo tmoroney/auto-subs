@@ -105,13 +105,13 @@ export const TranscriptionSettings = ({
         }
 
         // Get audio path based on mode
-        const audioPath = await getSourceAudio(
+        const audioInfo = await getSourceAudio(
             isStandaloneMode,
             fileInput,
             settings.selectedInputTracks
         )
-        if (!audioPath) {
-            console.error("Failed to get audio path")
+        if (!audioInfo) {
+            console.error("Failed to get audio")
             return
         }
 
@@ -121,7 +121,7 @@ export const TranscriptionSettings = ({
 
         try {
             // Create and log transcription options
-            const options: TranscriptionOptions = createTranscriptionOptions(audioPath)
+            const options: TranscriptionOptions = createTranscriptionOptions(audioInfo)
             console.log("Invoking transcribe_audio with options:", options)
 
             // Perform transcription

@@ -1,7 +1,13 @@
 use hf_hub::{api::Progress};
 use std::io::copy;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::{command, AppHandle, Emitter, Manager};
+use crate::transcribe::SHOULD_CANCEL;
+
+// Custom error type for cancelled downloads
+#[derive(Debug)]
+struct DownloadCancelledError;
 
 /// Progress tracker for model downloads that emits events to the frontend
 struct ModelDownloadProgress {
@@ -57,6 +63,19 @@ impl Progress for ModelDownloadProgress {
     }
 
     fn update(&mut self, size: usize) {
+        // Check for cancellation before updating progress
+        if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+            if *should_cancel {
+                // Clean up any stale lock files when cancellation is detected
+                let _ = cleanup_stale_lock_files(self.app.clone());
+                // Emit cancellation event and return early
+                let _ = self.app.emit("model-download-cancelled", &self.model_name);
+                // We can't directly abort the download here, but we can stop updating progress
+                // The download will continue but won't report progress
+                return;
+            }
+        }
+        
         self.current += size;
         let percentage = self.get_percentage();
         let _ = self.app.emit("model-download-progress", percentage as i32);
@@ -104,6 +123,50 @@ fn get_snapshots_dir(app: AppHandle) -> PathBuf {
     cache_dir.join("models--ggerganov--whisper.cpp").join("snapshots")
 }
 
+/// Cleans up stale lock files in the model cache directory
+/// This is called when model downloads are cancelled to prevent lock file issues
+fn cleanup_stale_lock_files(app: AppHandle) -> Result<(), String> {
+    let cache_dir = get_model_cache_dir(app.clone())?;
+    let blobs_dir = cache_dir.join("models--ggerganov--whisper.cpp").join("blobs");
+    
+    if !blobs_dir.exists() {
+        return Ok(()); // No blobs directory means no lock files to clean
+    }
+    
+    let mut cleaned_count = 0;
+    
+    // Iterate through all files in the blobs directory
+    match std::fs::read_dir(&blobs_dir) {
+        Ok(entries) => {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                        // Remove .lock files
+                        if filename.ends_with(".lock") {
+                            if let Err(e) = std::fs::remove_file(&path) {
+                                println!("Warning: Failed to remove lock file {}: {}", path.display(), e);
+                            } else {
+                                println!("Cleaned up stale lock file: {}", filename);
+                                cleaned_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("Warning: Could not read blobs directory for cleanup: {}", e);
+        }
+    }
+    
+    if cleaned_count > 0 {
+        println!("Cleaned up {} stale lock files", cleaned_count);
+    }
+    
+    Ok(())
+}
+
 /// Returns the appropriate filename for a Whisper model based on the model variant and language.
 /// - If the model is "large", it maps to "large-v3" internally, matching the naming convention.
 /// - If the `lang` parameter is "en" (case-insensitive) and the model isn't "large-v3", returns the English-specific model file.
@@ -125,6 +188,15 @@ fn get_filename(model: &str, lang: &Option<String>) -> String {
 /// Checks if a model exists in the cache, and if not, downloads it from the Hugging Face Hub.
 /// Returns the path to the model file in the cache.
 pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<String>) -> Result<PathBuf, String> {
+    // Check for cancellation at the start
+    if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+        if *should_cancel {
+            // Clean up any stale lock files before returning
+            let _ = cleanup_stale_lock_files(app.clone());
+            return Err("Model download cancelled".to_string());
+        }
+    }
+    
     let filename = get_filename(model, lang);
     let model_cache = get_model_cache_dir(app.clone())?;
     let snapshots_dir = get_snapshots_dir(app.clone());
@@ -161,6 +233,15 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
     let model_path = match model_path {
         Some(path) => path,
         None => {
+            // Check for cancellation before starting download
+            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+                if *should_cancel {
+                    // Clean up any stale lock files before returning
+                    let _ = cleanup_stale_lock_files(app.clone());
+                    return Err("Model download cancelled".to_string());
+                }
+            }
+            
             // On macOS, check if we'll also need to download CoreML encoder
             #[cfg(target_os = "macos")]
             let needs_coreml = true;
@@ -219,6 +300,15 @@ pub fn download_model_if_needed(app: AppHandle, model: &str, lang: &Option<Strin
         }
         
         if !coreml_cached {
+            // Check for cancellation before CoreML download
+            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+                if *should_cancel {
+                    // Clean up any stale lock files before returning
+                    let _ = cleanup_stale_lock_files(app.clone());
+                    return Err("Model download cancelled".to_string());
+                }
+            }
+            
             // Emit immediate progress at 70% to maintain progress bar continuity
             let _ = app.emit("model-download-progress", 70);
             

@@ -41,7 +41,7 @@ interface GlobalContextType {
   cancelRequestedRef: React.MutableRefObject<boolean>;
   // Transcription utils
   validateTranscriptionInput: () => boolean;
-  createTranscriptionOptions: (audioPath: string) => TranscriptionOptions;
+  createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   pushToTimeline: () => Promise<void>;
   // UI state
@@ -73,7 +73,7 @@ interface GlobalContextType {
   checkForUpdates: () => Promise<string | null>;
   setupEventListeners: () => () => void; // Return cleanup function
   handleDeleteModel: (modelValue: string) => Promise<void>;
-  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<string | null>;
+  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   cancelExport: () => Promise<any>;
 }
 
@@ -436,7 +436,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     isStandaloneMode: boolean,
     fileInput: string | null,
     inputTracks: string[]
-  ): Promise<string | null> => {
+  ): Promise<{ path: string, offset: number } | null> => {
     if (timelineInfo && !isStandaloneMode) {
       // Reset cancellation flag at the start of export
       cancelRequestedRef.current = false;
@@ -498,7 +498,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
         setIsExporting(false);
         setExportProgress(100);
-        return audioInfo?.path || null;
+
+        let audioPath = audioInfo["path"];
+        let audioOffset = audioInfo["offset"];
+        return { path: audioPath, offset: audioOffset };
 
       } catch (error) {
         setIsExporting(false);
@@ -506,7 +509,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         throw error;
       }
     } else {
-      return fileInput;
+      return { path: fileInput || "", offset: 0 };
     }
   };
 
@@ -517,6 +520,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     let unlistenModelProgress: (() => void) | null = null;
     let unlistenModelComplete: (() => void) | null = null;
     let unlistenModelCache: (() => void) | null = null;
+    let unlistenModelCancelled: (() => void) | null = null;
     let unlistenDiarization: (() => void) | null = null;
     let unlistenDiarizationStart: (() => void) | null = null;
     let unlistenDiarizationComplete: (() => void) | null = null;
@@ -554,6 +558,14 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           // No action needed when model is found in cache
         });
 
+        // Model download cancelled listener
+        unlistenModelCancelled = await listen<string>('model-download-cancelled', (event: { payload: string }) => {
+          console.log('Model download cancelled:', event.payload);
+          setDownloadingModel(null);
+          setIsModelDownloading(false);
+          setDownloadProgress(0);
+        });
+
         // Diarization progress listener
         unlistenDiarization = await listen<number>('diarization-progress', (event: { payload: number }) => {
           console.log('Received diarization progress:', event.payload);
@@ -587,6 +599,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       if (unlistenModelProgress) unlistenModelProgress();
       if (unlistenModelComplete) unlistenModelComplete();
       if (unlistenModelCache) unlistenModelCache();
+      if (unlistenModelCancelled) unlistenModelCancelled();
       if (unlistenDiarization) unlistenDiarization();
       if (unlistenDiarizationStart) unlistenDiarizationStart();
       if (unlistenDiarizationComplete) unlistenDiarizationComplete();
@@ -674,8 +687,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
    * @param {string} audioPath Path to audio file
    * @returns {object} Options for transcription
    */
-  const createTranscriptionOptions = (audioPath: string): TranscriptionOptions => ({
-    audioPath,
+  const createTranscriptionOptions = (audioInfo: { path: string, offset: number }): TranscriptionOptions => ({
+    audioPath: audioInfo.path,
+    offset: Math.round(audioInfo.offset * 1000) / 1000,
     model: modelsState[settings.model].value,
     lang: settings.language,
     translate: settings.translate,

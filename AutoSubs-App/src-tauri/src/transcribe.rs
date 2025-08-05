@@ -25,7 +25,13 @@ type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) +
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
 
 // Global cancellation state
-static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> = once_cell::sync::Lazy::new(|| Mutex::new(false));
+pub static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> = once_cell::sync::Lazy::new(|| Mutex::new(false));
+
+// Utility function for rounding to n decimal places
+fn round_to_places(val: f64, places: u32) -> f64 {
+    let factor = 10f64.powi(places as i32);
+    (val * factor).trunc() / factor
+}
 
 // --- Frontend Options Struct ---
 #[derive(Debug, Deserialize, Clone)]
@@ -319,11 +325,12 @@ pub async fn create_normalized_audio(
     let path_resolver = app.path();
     let out_path = path_resolver.app_cache_dir().unwrap_or_else(|_| std::env::temp_dir()).join(format!("{:x}.wav", cache_key));
 
-    if out_path.exists() {
-        println!("Using cached normalized audio: {}", out_path.display());
-        tracing::info!("Using cached normalized audio: {}", out_path.display());
-        return Ok(out_path);
-    }
+    // CACHING DISABLED: Always run normalization, ignore cache
+    // if out_path.exists() {
+    //     println!("Using cached normalized audio: {}", out_path.display());
+    //     tracing::info!("Using cached normalized audio: {}", out_path.display());
+    //     return Ok(out_path);
+    // }
 
     audio::normalize(app, source, out_path.clone(), additional_ffmpeg_args)
         .await
@@ -799,23 +806,16 @@ pub async fn run_transcription_pipeline(
             
             // Get word timestamps if DTW is enabled
             let words = if let Some(true) = enable_dtw {
-                let mut word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
-                for word in &mut word_timestamps {
-                    // Round to 2 decimal places
-                    word.start = (word.start as f64 * 100.0).trunc() / 100.0;
-                    word.end = (word.end as f64 * 100.0).trunc() / 100.0;
-                }
+                let word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
                 seg_start = word_timestamps.first().unwrap().start;
                 seg_end = word_timestamps.last().unwrap().end;
                 Some(word_timestamps)
             } else {
-                // Convert centiseconds to seconds
+                // Convert from centiseconds to seconds
                 let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
                 let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-
-                // Round to 2 decimal places
-                seg_start = (t0 as f64 * 100.0).trunc() / 100.0;
-                seg_end = (t1 as f64 * 100.0).trunc() / 100.0;
+                seg_start = t0;
+                seg_end = t1;
                 None
             };
 
@@ -844,12 +844,7 @@ pub async fn run_transcription_pipeline(
         }
 
         // Process with diarization if enabled
-        let (speakers, segments) = if let Some(true) = enable_diarize {
-            let diarize_opts = match diarize_options {
-                Some(opts) => opts,
-                None => return Err(eyre!("Diarization enabled but no diarization options provided")),
-            };
-            
+        let (mut speakers, mut segments) = if let Some(true) = enable_diarize {
             // Emit diarization start event
             let _ = app.emit("diarization-start", ());
             
@@ -859,10 +854,14 @@ pub async fn run_transcription_pipeline(
                 let _ = diarize_app.emit("diarization-progress", progress);
             }) as Box<dyn Fn(i32) + Send + Sync>);
             
+            let diarize_opts = match &diarize_options {
+                Some(opts) => opts,
+                None => return Err(eyre!("Diarization enabled but no diarization options provided")),
+            };
             let result = process_diarization(
                 segments,
                 &original_samples,
-                &diarize_opts,
+                diarize_opts,
                 diarize_progress_callback,
             )?;
             
@@ -874,6 +873,26 @@ pub async fn run_transcription_pipeline(
             // No speaker aggregation needed for non-diarized transcripts
             (Vec::new(), segments)
         }; 
+
+        let offset = options.offset.unwrap_or(0.0);
+
+        // loop through and offset to each word and segment, then round
+        for segment in segments.iter_mut() {
+            segment.start = round_to_places(segment.start + offset, 3);
+            segment.end = round_to_places(segment.end + offset, 3);
+            if let Some(words) = &mut segment.words {
+                for word in words.iter_mut() {
+                    word.start = round_to_places(word.start + offset, 3);
+                    word.end = round_to_places(word.end + offset, 3);
+                }
+            }
+        }
+
+        // loop through and offset to each speaker, then round
+        for speaker in speakers.iter_mut() {
+            speaker.sample.start = round_to_places(speaker.sample.start + offset, 3);
+            speaker.sample.end = round_to_places(speaker.sample.end + offset, 3);
+        }
 
         let transcript = Transcript {
             processing_time_sec: st.elapsed().as_secs(),

@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { jumpToTime } from "@/api/resolveAPI"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { generatePreview } from "@/api/resolveAPI"
-import { downloadDir, join } from "@tauri-apps/api/path"
+import { downloadDir } from "@tauri-apps/api/path"
 import { convertFileSrc } from "@tauri-apps/api/core"
 
 interface SpeakerEditorProps {
