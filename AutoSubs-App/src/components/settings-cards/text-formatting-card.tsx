@@ -1,4 +1,4 @@
-import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, SquarePen, ArrowDown, CaseLower, CaseUpper } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, SquarePen, ArrowDown, CaseLower, CaseUpper, Settings } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -72,9 +72,9 @@ export const TextFormattingCard = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  size="default"
+                  size="icon"
                 >
-                  Edit
+                  <Settings className="w-5 h-5" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4" align="center">

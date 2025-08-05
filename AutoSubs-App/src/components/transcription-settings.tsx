@@ -389,86 +389,94 @@ export const TranscriptionSettings = ({
                     </Collapsible>
 
                     {/* About & Support */}
-                    <div className="space-y-3">
+                    <Collapsible defaultOpen className="space-y-3">
                         <div className="flex items-center gap-4">
-                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                About & Support
-                            </h3>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
+                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        About & Support
+                                    </h3>
+                                </Button>
+                            </CollapsibleTrigger>
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
-                        <div className="space-y-3.5">
-                            <div className="grid grid-cols-2 gap-3">
+                        <CollapsibleContent>
+                            <div className="space-y-3.5">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={onShowTutorial}
+                                    >
+                                        <HelpCircle className="h-4 w-4 mr-2" />
+                                        Tutorial
+                                    </Button>
+                                    <Button variant="outline" size="default" onClick={resetSettings}>
+                                        <History className="h-4 w-4 mr-2" />
+                                        Reset Settings
+                                    </Button>
+                                </div>
                                 <Button
+                                    asChild
                                     variant="outline"
-                                    className="w-full"
-                                    onClick={onShowTutorial}
+                                    className="w-full text-pink-500 border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-colors relative overflow-hidden group"
                                 >
-                                    <HelpCircle className="h-4 w-4 mr-2" />
-                                    Tutorial
+                                    <a
+                                        href="https://buymeacoffee.com/tmoroney"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center w-full h-full"
+                                    >
+                                        <Heart className="h-4 w-4 mr-2 group-hover:fill-pink-500 fill-background text-pink-500 transition-colors" />
+                                        <span>Support AutoSubs</span>
+
+                                        {/* Bursting hearts animation */}
+                                        <div className="absolute inset-0 pointer-events-none">
+                                            {[
+                                                { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
+                                                { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
+                                                { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
+                                                { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
+                                                { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
+                                                { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
+                                                { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
+                                            ].map((p, i) => (
+                                                <Heart
+                                                    key={i}
+                                                    className="heart-anim absolute top-1/2 left-1/2 h-3 w-3 text-pink-400 opacity-0"
+                                                    style={{
+                                                        '--tx': p.tx,
+                                                        '--ty': p.ty,
+                                                        '--s': p.s,
+                                                        '--r': p.r,
+                                                        animationDelay: p.d,
+                                                    } as React.CSSProperties}
+                                                />
+                                            ))}
+                                        </div>
+                                    </a>
                                 </Button>
-                                <Button variant="outline" size="default" onClick={resetSettings}>
-                                    <History className="h-4 w-4 mr-2" />
-                                    Reset Settings
+                                <Button
+                                    size="default"
+                                    className="w-full bg-[#24292f] text-white hover:bg-[#57606a] hover:text-white dark:bg-[#161b22] dark:text-[#e6edf3] dark:hover:bg-[#24292f] dark:hover:text-white border border-[#24292f] dark:border-[#30363d] shadow-sm"
+                                    asChild
+                                >
+                                    <a
+                                        href="https://github.com/tmoroney/auto-subs"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center w-full h-full"
+                                    >
+                                        <Github className="h-4 w-4 mr-2" />
+                                        Source Code
+                                    </a>
                                 </Button>
                             </div>
-                            <Button
-                                asChild
-                                variant="outline"
-                                className="w-full text-pink-500 border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-colors relative overflow-hidden group"
-                            >
-                                <a
-                                    href="https://buymeacoffee.com/tmoroney"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center w-full h-full"
-                                >
-                                    <Heart className="h-4 w-4 mr-2 group-hover:fill-pink-500 fill-background text-pink-500 transition-colors" />
-                                    <span>Support AutoSubs</span>
-
-                                    {/* Bursting hearts animation */}
-                                    <div className="absolute inset-0 pointer-events-none">
-                                        {[
-                                            { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
-                                            { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
-                                            { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
-                                            { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
-                                            { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
-                                            { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
-                                            { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
-                                        ].map((p, i) => (
-                                            <Heart
-                                                key={i}
-                                                className="heart-anim absolute top-1/2 left-1/2 h-3 w-3 text-pink-400 opacity-0"
-                                                style={{
-                                                    '--tx': p.tx,
-                                                    '--ty': p.ty,
-                                                    '--s': p.s,
-                                                    '--r': p.r,
-                                                    animationDelay: p.d,
-                                                } as React.CSSProperties}
-                                            />
-                                        ))}
-                                    </div>
-                                </a>
-                            </Button>
-                            <Button
-                                size="default"
-                                className="w-full bg-[#24292f] text-white hover:bg-[#57606a] hover:text-white dark:bg-[#161b22] dark:text-[#e6edf3] dark:hover:bg-[#24292f] dark:hover:text-white border border-[#24292f] dark:border-[#30363d] shadow-sm"
-                                asChild
-                            >
-                                <a
-                                    href="https://github.com/tmoroney/auto-subs"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center w-full h-full"
-                                >
-                                    <Github className="h-4 w-4 mr-2" />
-                                    Source Code
-                                </a>
-                            </Button>
-                        </div>
-                    </div>
+                        </CollapsibleContent>
+                    </Collapsible>
                 </div>
+
                 {/* Footer */}
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
