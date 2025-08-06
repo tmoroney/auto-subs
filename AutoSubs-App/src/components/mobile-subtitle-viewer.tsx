@@ -15,24 +15,8 @@ interface MobileSubtitleViewerProps {
 export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { exportSubtitles, importSubtitles, subtitles, pushToTimeline, isStandaloneMode } = useGlobal()
+  const { exportSubtitlesAs, importSubtitles, subtitles, pushToTimeline, settings } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
-
-  const handleExport = async () => {
-    try {
-      await exportSubtitles()
-    } catch (error) {
-      console.error("Failed to export subtitles:", error)
-    }
-  }
-
-  const handleImport = async () => {
-    try {
-      await importSubtitles()
-    } catch (error) {
-      console.error("Failed to import subtitles:", error)
-    }
-  }
 
   // Close on escape key
   React.useEffect(() => {
@@ -70,11 +54,11 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
       </div>
 
       {/* Search & Import/Export & Speakers */}
-      <div className="px-2 pb-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
+      <div className="p-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
         <div className="flex space-x-2 items-center">
           <ImportExportPopover
-            onImport={handleImport}
-            onExport={handleExport}
+            onImport={importSubtitles}
+            onExport={exportSubtitlesAs}
             hasSubtitles={subtitles.length > 0}
           />
           <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
@@ -125,7 +109,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
       </div>
 
       {/* Footer */}
-      {!isStandaloneMode && (
+      {!settings.isStandaloneMode && (
       <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
         <Button
           variant="default"

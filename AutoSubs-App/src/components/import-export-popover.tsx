@@ -1,23 +1,26 @@
 import * as React from "react"
-import { Download, Upload, FileUp, FileJson, Captions } from "lucide-react"
+import { Download, Upload, FileUp, FileJson, Captions, Speech } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
+import { Switch } from "@/components/ui/switch"
+import { Card } from "@/components/ui/card"
 
 type ExportFormat = 'srt' | 'json';
 
 interface ImportExportPopoverProps {
     onImport: () => Promise<void>
-    onExport: (format: ExportFormat) => Promise<void>
+    onExport: (format: ExportFormat, includeSpeakerLabels: boolean) => Promise<void>
     hasSubtitles: boolean
 }
 
 export function ImportExportPopover({ onImport, onExport, hasSubtitles }: ImportExportPopoverProps) {
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [exportFormat, setExportFormat] = React.useState<ExportFormat>('srt')
+    const [includeSpeakerLabels, setIncludeSpeakerLabels] = React.useState(false)
 
     React.useEffect(() => {
         let unlisten: (() => void) | undefined;
@@ -69,7 +72,7 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles }: Import
 
     const handleExportFile = async () => {
         try {
-            await onExport(exportFormat);
+            await onExport(exportFormat, includeSpeakerLabels);
         } catch (error) {
             console.error("Failed to export file:", error);
         }
@@ -89,9 +92,9 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles }: Import
                         <TabsTrigger value="import">Import</TabsTrigger>
                         <TabsTrigger value="export">Export</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="import" className="space-y-4">
+                    <TabsContent value="import" className="space-y-3">
                         <div
-                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors mt-4 flex flex-col items-center"
+                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors mt-3 flex flex-col items-center justify-center h-36"
                             onClick={handleFileSelect}
                         >
                             <FileUp className="h-8 w-8 mb-2 text-muted-foreground" />
@@ -116,9 +119,22 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles }: Import
                             Import File
                         </Button>
                     </TabsContent>
-                    <TabsContent value="export" className="space-y-4">
+                    <TabsContent value="export" className="space-y-3">
 
-                        <div className="flex gap-3 pt-2">
+                        {/* Switch to include speaker labels or not */}
+                        <Card className="flex items-center justify-between p-2 mt-3 shadow-none">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                    <Speech className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <p className="text-sm font-medium">
+                                    Include speaker labels
+                                </p>
+                            </div>
+                            <Switch checked={includeSpeakerLabels} onCheckedChange={setIncludeSpeakerLabels} />
+                        </Card>
+
+                        <div className="flex gap-3">
                             <Button
                                 variant="outline"
                                 className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}

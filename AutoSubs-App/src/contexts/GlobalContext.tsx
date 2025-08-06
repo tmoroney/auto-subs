@@ -19,7 +19,6 @@ import { models } from '@/lib/models';
 interface GlobalContextType {
   settings: Settings;
   modelsState: Model[];
-  isStandaloneMode: boolean;
   timelineInfo: TimelineInfo;
   markIn: number;
   subtitles: Subtitle[];
@@ -56,7 +55,6 @@ interface GlobalContextType {
   setShowMobileSubtitles: (showMobileSubtitles: boolean) => void;
   setTranscriptionProgress: (progress: number) => void;
   checkDownloadedModels: () => Promise<void>;
-  setIsStandaloneMode: (isStandaloneMode: boolean) => void;
   setFileInput: (fileInput: string | null) => void;
   updateSetting: (key: keyof Settings, value: any) => void
   setError: (error: ErrorMsg) => void;
@@ -65,8 +63,7 @@ interface GlobalContextType {
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
   updateSubtitle: (subtitleId: number, updatedSubtitle: Subtitle) => Promise<void>;
-  exportSubtitles: () => Promise<void>;
-  exportSubtitlesAs: (format: 'srt' | 'json') => Promise<void>;
+  exportSubtitlesAs: (format: 'srt' | 'json', includeSpeakerLabels: boolean) => Promise<void>;
   importSubtitles: () => Promise<void>;
   resetSettings: () => void;
   checkForUpdates: () => Promise<string | null>;
@@ -83,8 +80,11 @@ interface GlobalProviderProps {
 }
 
 const DEFAULT_SETTINGS: Settings = {
+  // Mode
+  isStandaloneMode: false,
+
   // Survey notification settings
-  neverShowSurveyAgain: false,
+  timesDismissedSurvey: 0,
   lastSurveyDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString(),
 
   // Processing settings
@@ -121,7 +121,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   // App state
   const [modelsState, setModelsState] = useState(models)
-  const [isStandaloneMode, setIsStandaloneMode] = useState(false)
 
   // State declarations
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
@@ -243,7 +242,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Load subtitles when timelineId changes
   useEffect(() => {
     async function loadSubtitles() {
-      let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+      let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
       if (filename && filename.length > 0) {
         console.log("Loading subtitles:", filename);
         const transcript = await readTranscript(filename);
@@ -265,14 +264,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
 
     loadSubtitles();
-  }, [timelineInfo.timelineId, isStandaloneMode]);
+  }, [timelineInfo.timelineId, settings.isStandaloneMode, fileInput]);
 
-  async function exportSubtitles() {
-    // Default to SRT export for backward compatibility
-    await exportSubtitlesAs('srt');
-  }
-
-  async function exportSubtitlesAs(format: 'srt' | 'json') {
+  async function exportSubtitlesAs(format: 'srt' | 'json', includeSpeakerLabels: boolean) {
     try {
       if (!subtitles || subtitles.length === 0) {
         throw new Error('No subtitles available to export');
@@ -309,8 +303,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           });
         }
 
-        let srtData = generateSrt(subtitles);
-        console.log('Generated SRT data (first 100 chars):', srtData.substring(0, 100));
+        let srtData = generateSrt(subtitles, includeSpeakerLabels, speakers);
 
         if (!srtData || srtData.trim() === '') {
           console.error('Generated SRT data is empty');
@@ -368,7 +361,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       let transcript = { segments: subtitles };
 
       // Save transcript to file in Transcripts directory
-      let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+      let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
       console.log("Saving transcript to:", filename);
       // No speakers for imported subtitles
       let { segments } = await saveTranscript(transcript, filename, {
@@ -393,8 +386,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   async function updateSpeakers(newSpeakers: Speaker[]) {
     console.log("Updating speakers:", newSpeakers);
     setSpeakers(newSpeakers);
-    let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
-    await updateTranscript(filename, newSpeakers);
+    let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
+    await updateTranscript(filename, {
+      speakers: newSpeakers
+    });
   }
 
   async function checkForUpdates() {
@@ -622,28 +617,16 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
 
   // Function to update a specific subtitle
-  const updateSubtitle = async (subtitleId: number, updatedSubtitle: Subtitle) => {
+  const updateSubtitle = async (index: number, newSubtitle: Subtitle) => {
+
+    let updatedSubtitles = subtitles;
+    updatedSubtitles[index] = newSubtitle;
+
     // Update the local subtitles state
-    setSubtitles(prevSubtitles =>
-      prevSubtitles.map((subtitle: any) => {
-        if (subtitle.id === subtitleId.toString()) {
-          return {
-            ...subtitle,
-            start: updatedSubtitle.start.toString(),
-            end: updatedSubtitle.end.toString(),
-            text: updatedSubtitle.text,
-            speaker_id: updatedSubtitle.speaker_id,
-            words: updatedSubtitle.words
-          };
-        }
-        return subtitle;
-      })
-    );
+    setSubtitles(updatedSubtitles);
 
     // Save to JSON file if we have the necessary context
     try {
-      const { updateSubtitleInTranscript } = await import('@/utils/fileUtils');
-
       // Determine the current transcript filename
       let filename: string | null = null;
 
@@ -652,12 +635,14 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         filename = `${timelineInfo.timelineId}.json`;
       } else {
         // In standalone mode, we need to find the most recent transcript
-        const currentFilename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+        const currentFilename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
         filename = currentFilename;
       }
 
       if (filename) {
-        await updateSubtitleInTranscript(filename, updatedSubtitle);
+        await updateTranscript(filename, {
+          subtitles: updatedSubtitles
+        });
         console.log('Subtitle updated in both UI and file');
       }
     } catch (error) {
@@ -670,11 +655,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
        * @returns {boolean} True if validation passes, false otherwise
        */
   const validateTranscriptionInput = (): boolean => {
-    if (!fileInput && isStandaloneMode) {
+    if (!fileInput && settings.isStandaloneMode) {
       console.error("No file selected")
       return false
     }
-    if (!timelineInfo && !isStandaloneMode) {
+    if (!timelineInfo && !settings.isStandaloneMode) {
       console.error("No timeline selected")
       return false
     }
@@ -704,7 +689,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const processTranscriptionResults = async (transcript: any): Promise<string> => {
     // Generate filename for new transcript based on mode and input
     const filename = generateTranscriptFilename(
-      isStandaloneMode,
+      settings.isStandaloneMode,
       fileInput,
       timelineInfo?.timelineId
     )
@@ -730,7 +715,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
 
   async function pushToTimeline() {
-    let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineInfo.timelineId);
+    let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
     await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack);
   }
 
@@ -744,8 +729,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       speakers,
       error,
       fileInput,
-      isStandaloneMode,
-      setIsStandaloneMode,
       checkDownloadedModels,
       setModelsState,
       setFileInput,
@@ -755,7 +738,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       updateSpeakers,
       refresh,
       updateSubtitle,
-      exportSubtitles,
       exportSubtitlesAs,
       importSubtitles,
       pushToTimeline,

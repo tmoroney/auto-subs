@@ -10,24 +10,8 @@ import { SpeakerEditor } from "@/components/speaker-editor"
 export function DesktopSubtitleViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline, isStandaloneMode } = useGlobal()
+  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline, settings } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
-
-  const handleExport = async (format: 'srt' | 'json' = 'srt') => {
-    try {
-      await exportSubtitlesAs(format)
-    } catch (error) {
-      console.error("Failed to export subtitles:", error)
-    }
-  }
-
-  const handleImport = async () => {
-    try {
-      await importSubtitles()
-    } catch (error) {
-      console.error("Failed to import subtitles:", error)
-    }
-  }
 
   return (
     <div className="flex flex-col h-full border-l bg-sidebar">
@@ -35,8 +19,8 @@ export function DesktopSubtitleViewer() {
       {/* Import/Export Popover & Edit Speakers */}
       <div className="shrink-0 p-3 pb-0 flex gap-2">
         <ImportExportPopover
-          onImport={handleImport}
-          onExport={handleExport}
+          onImport={importSubtitles}
+          onExport={exportSubtitlesAs}
           hasSubtitles={subtitles.length > 0}
         />
         <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
@@ -91,7 +75,7 @@ export function DesktopSubtitleViewer() {
       </div>
 
       {/* Footer */}
-      {!isStandaloneMode && (
+      {!settings.isStandaloneMode && (
         <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
           <Button
             variant="default"

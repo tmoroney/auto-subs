@@ -66,7 +66,6 @@ export const TranscriptionSettings = ({
         isModelDownloading,
         downloadProgress,
         setupEventListeners,
-        isStandaloneMode,
         cancelExport,
         isExporting,
         setIsExporting,
@@ -107,7 +106,7 @@ export const TranscriptionSettings = ({
 
         // Get audio path based on mode
         const audioInfo = await getSourceAudio(
-            isStandaloneMode,
+            settings.isStandaloneMode,
             fileInput,
             settings.selectedInputTracks
         )
@@ -132,10 +131,10 @@ export const TranscriptionSettings = ({
             // Process results and get filename
             await processTranscriptionResults(transcript as any)
 
-            if (!isStandaloneMode && options.enableDiarize) {
+            if (!settings.isStandaloneMode && options.enableDiarize) {
                 console.log("Enabling speaker editor")
                 setShowSpeakerEditor(true)
-            } else if (!isStandaloneMode && !options.enableDiarize) {
+            } else if (!settings.isStandaloneMode && !options.enableDiarize) {
                 console.log("Showing non-diarized dialog")
                 setShowNonDiarizedDialog(true)
             }
@@ -244,9 +243,9 @@ export const TranscriptionSettings = ({
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                                {isStandaloneMode ? "File Source" : "DaVinci Resolve"}
+                                {settings.isStandaloneMode ? "File Source" : "DaVinci Resolve"}
                             </h3>
-                            {!isStandaloneMode && (
+                            {!settings.isStandaloneMode && (
                                 <div className="flex items-center gap-2">
                                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${!timelineInfo || !timelineInfo.timelineId ? 'bg-red-500' : 'bg-green-500'}`} />
                                     <span className="text-xs font-medium text-muted-foreground truncate max-w-[120px]">
@@ -256,7 +255,7 @@ export const TranscriptionSettings = ({
                             )}
                             <div className="flex-1 h-px bg-border ml-1"></div>
                         </div>
-                        {isStandaloneMode ? (
+                        {settings.isStandaloneMode ? (
                             <div>
                                 <AudioFileCard
                                     selectedFile={fileInput}
@@ -524,7 +523,7 @@ export const TranscriptionSettings = ({
                     )}
 
                     {/* Export Progress (DaVinci Resolve mode only) */}
-                    {isExporting && !isStandaloneMode && (
+                    {isExporting && !settings.isStandaloneMode && (
                         <div className="space-y-1">
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>Exporting Audio from Timeline</span>
@@ -571,7 +570,7 @@ export const TranscriptionSettings = ({
                     <div className="flex gap-2">
                         <Button
                             onClick={handleStartTranscription}
-                            disabled={isTranscribing || isExporting || downloadingModel !== null || (settings.selectedInputTracks.length === 0 && !isStandaloneMode) || (fileInput === null && isStandaloneMode)}
+                            disabled={isTranscribing || isExporting || downloadingModel !== null || (settings.selectedInputTracks.length === 0 && !settings.isStandaloneMode) || (fileInput === null && settings.isStandaloneMode)}
                             className="flex-1"
                             size={isMobile ? undefined : "lg"}
                         >

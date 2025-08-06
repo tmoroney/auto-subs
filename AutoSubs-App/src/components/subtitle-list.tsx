@@ -127,28 +127,18 @@ const SubtitleList = ({
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleSaveChanges = () => {
+    const handleSaveChanges = (index: number) => {
         if (editingSubtitle) {
             // Concatenate all word text to sync the text field with word data
             const updatedText = editingWords.map(word => word.word).join(' ');
 
-            const updatedSubtitle: Subtitle = {
+            const newSubtitle: Subtitle = {
                 ...editingSubtitle,
                 text: updatedText,
                 words: editingWords
             };
 
-            const subtitleIndex = subtitles.findIndex(sub => sub.id === editingSubtitle.id);
-            if (subtitleIndex !== -1) {
-                // Convert string timestamps to numbers for updateSubtitle
-                const subtitleToUpdate = {
-                    ...updatedSubtitle,
-                    start: typeof updatedSubtitle.start === 'string' ? parseFloat(updatedSubtitle.start) : updatedSubtitle.start,
-                    end: typeof updatedSubtitle.end === 'string' ? parseFloat(updatedSubtitle.end) : updatedSubtitle.end,
-                    speaker: updatedSubtitle.speaker_id
-                };
-                updateSubtitle(subtitleIndex, subtitleToUpdate);
-            }
+            updateSubtitle(index, newSubtitle);
 
             setEditingSubtitle(null);
             setEditingWords([]);
@@ -282,7 +272,7 @@ const SubtitleList = ({
                                                     type="button"
                                                     size="sm"
                                                     className="text-sm"
-                                                    onClick={handleSaveChanges}
+                                                    onClick={() => handleSaveChanges(index)}
                                                 >
                                                     Save Changes
                                                 </Button>

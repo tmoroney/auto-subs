@@ -135,17 +135,21 @@ function splitSubtitles(subtitles: Subtitle[], options: {
             }
         }
 
+        let subtitleIndex = 0
+
         // 2. Group lines into subtitles (each subtitle has up to maxLinesPerSubtitle lines)
         for (let i = 0; i < lines.length; i += options.maxLinesPerSubtitle) {
             const subtitleLines = lines.slice(i, i + options.maxLinesPerSubtitle);
             const subtitleWords = subtitleLines.flat();
             result.push({
                 ...subtitle,
+                id: subtitleIndex,
                 words: subtitleWords,
                 text: joinWordsToText(subtitleWords),
                 start: subtitleWords[0].start,
                 end: subtitleWords[subtitleWords.length - 1].end,
             });
+            subtitleIndex++
         }
     }
 
@@ -173,6 +177,11 @@ export function splitAndFormatSubtitles(
     for (let subtitle of processedSubtitles) {
         result.push(applyTextFormattingToSubtitle(subtitle, options));
     }
+
+    // Finally reset ids
+    result.forEach((subtitle, index) => {
+        subtitle.id = index;
+    });
 
     return result;
 }

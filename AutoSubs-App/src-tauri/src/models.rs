@@ -250,7 +250,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, 
     // If on mac, also download the corresponding coreml encoder if it exists
     #[cfg(target_os = "macos")]
     {
-        let coreml_file = format!("ggml-{}.mlmodelc.zip", model);
+        let coreml_file = format!("ggml-{}-encoder.mlmodelc.zip", model);
         
         // Check if CoreML encoder already exists in snapshots dir
         let mut coreml_cached = false;

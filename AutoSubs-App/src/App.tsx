@@ -36,7 +36,7 @@ export function ThemeToggle() {
 function App() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
-  const { isStandaloneMode, setIsStandaloneMode } = useGlobal()
+  const { settings, updateSetting } = useGlobal()
   const isMobile = useIsMobile()
 
   // Check if this is the first time the user opens the app
@@ -67,8 +67,8 @@ function App() {
               {/* Left side - Mode switcher (desktop) */}
               <div className="flex-1 flex justify-center px-2">
                 <Tabs
-                  value={isStandaloneMode ? "standalone" : "resolve"}
-                  onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
+                  value={settings.isStandaloneMode ? "standalone" : "resolve"}
+                  onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")}
                   className="w-full max-w-[400px]"
                 >
                   <TabsList className="w-full rounded-full bg-muted">
@@ -111,8 +111,8 @@ function App() {
                       {/* Left side - Mode switcher (desktop) */}
                       <div className="flex-1 flex justify-center px-2">
                         <Tabs
-                          value={isStandaloneMode ? "standalone" : "resolve"}
-                          onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
+                          value={settings.isStandaloneMode ? "standalone" : "resolve"}
+                          onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")}
                           className="w-full max-w-[400px]"
                         >
                           <TabsList className="w-full rounded-full bg-muted">

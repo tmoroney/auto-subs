@@ -78,6 +78,9 @@ export interface Model {
 
 // Settings Interface
 export interface Settings {
+    // Mode
+    isStandaloneMode: boolean,
+
     // Survey notification settings
     timesDismissedSurvey: number;
     lastSurveyDate: string;
