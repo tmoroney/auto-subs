@@ -2,6 +2,29 @@ import { Subtitle, Word } from "@/types/interfaces";
 
 const PUNCTUATION_REGEX = /[\p{P}$+<=>^`|~]/gu;
 
+/**
+ * Helper to join a words array into a normalized text string.
+ */
+export function joinWordsToText(words: Word[]): string {
+    if (!words.length) return '';
+    let result = '';
+    let prevLine = words[0].line_number ?? 0;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const currLine = word.line_number ?? 0;
+        if (i > 0) {
+            if (currLine !== prevLine) {
+                result += '\n';
+            } else {
+                result += ' ';
+            }
+        }
+        result += word.word;
+        prevLine = currLine;
+    }
+    return result.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim();
+}
+
 function applyCaseToWord(word: string, mode: 'lowercase' | 'uppercase' | 'none'): string {
     if (mode === 'lowercase') return word.toLocaleLowerCase();
     if (mode === 'uppercase') return word.toLocaleUpperCase();
@@ -63,13 +86,6 @@ export function applyTextFormattingToSubtitle(
     subtitle.text = joinWordsToText(result);
     subtitle.words = result;
     return subtitle;
-}
-
-/**
- * Helper to join a words array into a normalized text string.
- */
-function joinWordsToText(words: Word[]): string {
-    return words.map((w) => w.word).join(" ").replace(/\s+/g, " ").trim();
 }
 
 function splitSubtitles(subtitles: Subtitle[], options: {
@@ -174,6 +190,8 @@ export function splitAndFormatSubtitles(
 
     // Process words array
     let result: Subtitle[] = [];
+
+    // Always apply text formatting to reconstruct text with proper line breaks
     for (let subtitle of processedSubtitles) {
         result.push(applyTextFormattingToSubtitle(subtitle, options));
     }

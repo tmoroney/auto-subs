@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useGlobal } from "@/contexts/GlobalContext"
 import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { joinWordsToText } from "@/utils/subtitleFormatter"
 
 import { SpeakerEditor } from "@/components/speaker-editor"
 
@@ -103,6 +104,20 @@ const SubtitleList = ({
     const [editingWords, setEditingWords] = useState<Word[]>([]);
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
     const [expandedSpeakerIndex, setExpandedSpeakerIndex] = React.useState<number | undefined>(undefined);
+    
+    // Virtual scrolling state
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scrollTop, setScrollTop] = useState(0);
+    const [containerHeight, setContainerHeight] = useState(0);
+    
+    // Constants for virtualization - using adaptive height estimation
+    const ESTIMATED_ITEM_HEIGHT = 100; // Conservative estimate for variable heights
+    const BUFFER_SIZE = 3; // Smaller buffer for better performance
+
+    // Add subtitle content hash to force re-render when content changes
+    const subtitleContentHash = useMemo(() => {
+        return subtitles.map(s => `${s.text}-${s.start}-${s.end}`).join('|');
+    }, [subtitles]);
 
     const filteredSubtitles = React.useMemo(() => {
         if (!searchQuery.trim()) return subtitles;
@@ -111,7 +126,54 @@ const SubtitleList = ({
             subtitle.text.toLowerCase().includes(query) ||
             (subtitle.speaker_id && subtitle.speaker_id.toLowerCase().includes(query))
         );
-    }, [subtitles, searchQuery]);
+    }, [subtitles, searchQuery, subtitleContentHash]); // Include content hash
+    
+    // Calculate visible range with estimated heights
+    const { startIndex, endIndex, totalHeight } = useMemo(() => {
+        const itemCount = filteredSubtitles.length;
+        if (itemCount === 0) return { startIndex: 0, endIndex: 0, totalHeight: 0 };
+        
+        const visibleStart = Math.floor(scrollTop / ESTIMATED_ITEM_HEIGHT);
+        const visibleEnd = Math.min(
+            itemCount - 1,
+            Math.ceil((scrollTop + containerHeight) / ESTIMATED_ITEM_HEIGHT)
+        );
+        
+        const start = Math.max(0, visibleStart - BUFFER_SIZE);
+        const end = Math.min(itemCount - 1, visibleEnd + BUFFER_SIZE);
+        
+        // Use a more conservative total height to prevent large blank space
+        const averageItemHeight = ESTIMATED_ITEM_HEIGHT - 20; // Match the minHeight we use for items
+        
+        return {
+            startIndex: start,
+            endIndex: end,
+            totalHeight: itemCount * averageItemHeight
+        };
+    }, [scrollTop, containerHeight, filteredSubtitles.length, subtitleContentHash]);
+    
+    // Get visible items with content hash dependency
+    const visibleItems = useMemo(() => {
+        return filteredSubtitles.slice(startIndex, endIndex + 1);
+    }, [filteredSubtitles, startIndex, endIndex, subtitleContentHash]);
+    
+    // Handle scroll
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        setScrollTop(e.currentTarget.scrollTop);
+    }, []);
+    
+    // Handle container resize
+    useEffect(() => {
+        const updateContainerHeight = () => {
+            if (containerRef.current) {
+                setContainerHeight(containerRef.current.clientHeight);
+            }
+        };
+        
+        updateContainerHeight();
+        window.addEventListener('resize', updateContainerHeight);
+        return () => window.removeEventListener('resize', updateContainerHeight);
+    }, []);
 
     const handleOpenEdit = (subtitle: Subtitle) => {
         setEditingSubtitle(subtitle);
@@ -130,7 +192,7 @@ const SubtitleList = ({
     const handleSaveChanges = (index: number) => {
         if (editingSubtitle) {
             // Concatenate all word text to sync the text field with word data
-            const updatedText = editingWords.map(word => word.word).join(' ');
+            const updatedText = joinWordsToText(editingWords);
 
             const newSubtitle: Subtitle = {
                 ...editingSubtitle,
@@ -163,128 +225,151 @@ const SubtitleList = ({
     return (
         <div className={className}>
             <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={expandedSpeakerIndex} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-            {filteredSubtitles.map((subtitle: Subtitle, index: number) => (
-                <div
-                    key={index}
-                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
-                >
-                    <div className="flex w-full items-center gap-2">
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <div className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary" onClick={async () => await jumpToTime(subtitle.start)}>
-                                    {formatTimecode(subtitle.start)}
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Click to jump to subtitle on timeline</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        {subtitle.speaker_id && speakers.length > 0 ? (
-                            <>
-                                <Button
-                                    variant="outline"
-                                    className="ml-auto text-xs p-2 h-6"
-                                    onClick={() => {
-                                        setExpandedSpeakerIndex(Number(subtitle.speaker_id));
-                                        setShowSpeakerEditor(true);
+            <div 
+                ref={containerRef}
+                className="h-full"
+                onScroll={handleScroll}
+                style={{ height: '100%', overflow: 'visible' }}
+            >
+                <div style={{ height: totalHeight, position: 'relative' }}>
+                    <div 
+                        style={{ 
+                            transform: `translateY(${startIndex * ESTIMATED_ITEM_HEIGHT}px)`,
+                            position: 'relative'
+                        }}
+                    >
+                        {visibleItems.map((subtitle: Subtitle, virtualIndex: number) => {
+                            const actualIndex = startIndex + virtualIndex;
+                            
+                            return (
+                                <div
+                                    key={`${actualIndex}-${subtitle.text.slice(0, 20)}`} // Include content in key for proper re-rendering
+                                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
+                                    style={{ 
+                                        minHeight: ESTIMATED_ITEM_HEIGHT - 20 // Allow natural height with minimum
                                     }}
                                 >
-                                    {speakers[Number(subtitle.speaker_id)]?.name || 'Unknown Speaker'}
-                                </Button>
-                            </>
-                        ) : null}
-
-                    </div>
-                    <div className="relative w-full pr-8">
-                        <span className="text-foreground leading-relaxed">{subtitle.text}</span>
-                        <div
-                            className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
-                        >
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpenEdit(subtitle);
-                                        }}
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 rounded-full shadow-md bg-background hover:bg-background/50"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                        <DialogTitle>Edit Subtitle</DialogTitle>
-                                        <DialogDescription>
-                                            Edit the subtitle text by modifying the words below
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                        {editingSubtitle && (
-                                            <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                                                {editingWords.map((word, wordIndex) => (
-                                                    <Word
-                                                        key={wordIndex}
-                                                        word={word.word}
-                                                        onUpdate={(newWord) => {
-                                                            setEditingWords(prev =>
-                                                                prev.map((w, i) =>
-                                                                    i === wordIndex ? { ...w, word: newWord } : w
-                                                                )
-                                                            );
-                                                        }}
-                                                        onDelete={() => {
-                                                            setEditingWords(prev => {
-                                                                const newWords = prev.filter((_, i) => i !== wordIndex);
-
-                                                                // If this isn't the first word, update the previous word's end time
-                                                                if (wordIndex > 0 && newWords.length > 0) {
-                                                                    const deletedWord = prev[wordIndex];
-                                                                    newWords[wordIndex - 1] = {
-                                                                        ...newWords[wordIndex - 1],
-                                                                        end: deletedWord.end
-                                                                    };
-                                                                }
-
-                                                                return newWords;
-                                                            });
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                        <DialogFooter>
-                                            <DialogClose asChild>
+                                    <div className="flex w-full items-center gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <div className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary" onClick={async () => await jumpToTime(subtitle.start)}>
+                                                    {formatTimecode(subtitle.start)}
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p className="text-xs">Jump to point on timeline</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                        {subtitle.speaker_id && speakers.length > 0 ? (
+                                            <>
                                                 <Button
                                                     variant="outline"
-                                                    type="button"
-                                                    size="sm"
-                                                    className="text-sm mt-2 sm:mt-0"
+                                                    className="ml-auto text-xs p-2 h-6"
+                                                    onClick={() => {
+                                                        setExpandedSpeakerIndex(Number(subtitle.speaker_id));
+                                                        setShowSpeakerEditor(true);
+                                                    }}
                                                 >
-                                                    Cancel
+                                                    {speakers[Number(subtitle.speaker_id)]?.name || 'Unknown Speaker'}
                                                 </Button>
-                                            </DialogClose>
-                                            <DialogClose asChild>
-                                                <Button
-                                                    variant="default"
-                                                    type="button"
-                                                    size="sm"
-                                                    className="text-sm"
-                                                    onClick={() => handleSaveChanges(index)}
-                                                >
-                                                    Save Changes
-                                                </Button>
-                                            </DialogClose>
-                                        </DialogFooter>
+                                            </>
+                                        ) : null}
+
                                     </div>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
+                                    <div className="relative w-full pr-8">
+                                        <span className="text-foreground leading-relaxed whitespace-pre-line">{subtitle.text}</span>
+                                        <div
+                                            className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
+                                        >
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleOpenEdit(subtitle);
+                                                        }}
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="h-8 w-8 rounded-full shadow-md bg-background hover:bg-background/50"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Edit Subtitle</DialogTitle>
+                                                        <DialogDescription>
+                                                            Edit the subtitle text by modifying the words below
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4">
+                                                        {editingSubtitle && (
+                                                            <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                                {editingWords.map((word, wordIndex) => (
+                                                                    <Word
+                                                                        key={wordIndex}
+                                                                        word={word.word}
+                                                                        onUpdate={(newWord) => {
+                                                                            setEditingWords(prev =>
+                                                                                prev.map((w, i) =>
+                                                                                    i === wordIndex ? { ...w, word: newWord } : w
+                                                                                )
+                                                                            );
+                                                                        }}
+                                                                        onDelete={() => {
+                                                                            setEditingWords(prev => {
+                                                                                const newWords = prev.filter((_, i) => i !== wordIndex);
+
+                                                                                // If this isn't the first word, update the previous word's end time
+                                                                                if (wordIndex > 0 && newWords.length > 0) {
+                                                                                    const deletedWord = prev[wordIndex];
+                                                                                    newWords[wordIndex - 1] = {
+                                                                                        ...newWords[wordIndex - 1],
+                                                                                        end: deletedWord.end
+                                                                                    };
+                                                                                }
+
+                                                                                return newWords;
+                                                                            });
+                                                                        }}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        <DialogFooter>
+                                                            <DialogClose asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    className="text-sm mt-2 sm:mt-0"
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                            </DialogClose>
+                                                            <DialogClose asChild>
+                                                                <Button
+                                                                    variant="default"
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    className="text-sm"
+                                                                    onClick={() => handleSaveChanges(actualIndex)}
+                                                                >
+                                                                    Save Changes
+                                                                </Button>
+                                                            </DialogClose>
+                                                        </DialogFooter>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
-            ))}
+            </div>
         </div>
     )
 }

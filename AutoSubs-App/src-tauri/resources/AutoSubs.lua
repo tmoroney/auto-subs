@@ -222,7 +222,7 @@ end
 function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    local frames = SecondsToFrames(seconds, frameRate) + timeline:GetStartFrame()
+    local frames = SecondsToFrames(seconds, frameRate) + timeline:GetStartFrame() + 1
     local timecode = FramesToTimecode(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end

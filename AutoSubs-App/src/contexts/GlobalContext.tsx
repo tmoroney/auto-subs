@@ -85,7 +85,7 @@ const DEFAULT_SETTINGS: Settings = {
 
   // Survey notification settings
   timesDismissedSurvey: 0,
-  lastSurveyDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString(),
+  lastSurveyDate: new Date().toISOString(),
 
   // Processing settings
   model: 0,
@@ -619,7 +619,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Function to update a specific subtitle
   const updateSubtitle = async (index: number, newSubtitle: Subtitle) => {
 
-    let updatedSubtitles = subtitles;
+    // Create a new array instead of mutating the existing one
+    const updatedSubtitles = [...subtitles];
     updatedSubtitles[index] = newSubtitle;
 
     // Update the local subtitles state
