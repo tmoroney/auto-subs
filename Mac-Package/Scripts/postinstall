@@ -8,7 +8,7 @@ DEST_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion
 TEXT_FILE="$DEST_PATH/AutoSubs/install_path.txt"
 
 # Copy Lua file
-cp "$RESOURCES_PATH/AutoSubs V2.lua" "$DEST_PATH"
+cp "$RESOURCES_PATH/AutoSubs.lua" "$DEST_PATH"
 cp -r "$RESOURCES_PATH/AutoSubs" "$DEST_PATH"
 
 # Write JSON file with installation path
