@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useGlobal } from "@/contexts/GlobalContext"
 import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
-import { Pencil, XCircle as XCircleIcon } from "lucide-react"
+import { ArrowLeft, ArrowRight, Pencil, XCircle as XCircleIcon } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -19,7 +19,19 @@ import { joinWordsToText } from "@/utils/subtitleFormatter"
 import { SpeakerEditor } from "@/components/speaker-editor"
 
 // --- Word Component ---
-const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: string) => void; onDelete: () => void }) => {
+const Word = ({
+    word,
+    onUpdate,
+    onDelete,
+    onStartEdit,
+    onEndEdit,
+}: {
+    word: string;
+    onUpdate: (newWord: string) => void;
+    onDelete: () => void;
+    onStartEdit?: () => void;
+    onEndEdit?: () => void;
+}) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(word);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +46,7 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
     const handleSave = () => {
         onUpdate(editValue);
         setIsEditing(false);
+        onEndEdit?.();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -42,6 +55,7 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
         } else if (e.key === 'Escape') {
             setEditValue(word);
             setIsEditing(false);
+            onEndEdit?.();
         }
     };
 
@@ -54,16 +68,19 @@ const Word = ({ word, onUpdate, onDelete }: { word: string; onUpdate: (newWord: 
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
-                className="bg-blue-100 dark:bg-blue-900 border border-blue-500 rounded-md px-1 py-0.5 text-black dark:text-white outline-none"
-                style={{ width: `${Math.max(editValue.length, 5)}ch`, minWidth: '40px' }}
+                className="bg-blue-100 dark:bg-blue-900 border border-blue-500 rounded-md p-0 h-6 text-black dark:text-white outline-none"
+                style={{ width: `${Math.max(editValue.length, 0)}ch`, minWidth: '20px' }}
             />
         );
     }
     return (
         <div className="relative group rounded-md cursor-pointer">
             <span
-                onClick={() => setIsEditing(true)}
-                className="py-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
+                onClick={() => {
+                    setIsEditing(true);
+                    onStartEdit?.();
+                }}
+                className="py-2 px-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
             >
                 {word}
             </span>
@@ -99,11 +116,15 @@ const SubtitleList = ({
     isLoading = false,
     error = null
 }: SubtitleListProps) => {
-    const { subtitles, updateSubtitle, speakers } = useGlobal();
+    const { subtitles, updateSubtitles, speakers } = useGlobal();
     const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
     const [editingWords, setEditingWords] = useState<Word[]>([]);
+    const [editingWordIndex, setEditingWordIndex] = useState<number | null>(null);
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
     const [expandedSpeakerIndex, setExpandedSpeakerIndex] = React.useState<number | undefined>(undefined);
+    // Staged merge changes (applied on Save)
+    const [pendingPrevWords, setPendingPrevWords] = useState<Word[] | null>(null);
+    const [pendingNextWords, setPendingNextWords] = useState<Word[] | null>(null);
     
     // Virtual scrolling state
     const containerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +200,9 @@ const SubtitleList = ({
         setEditingSubtitle(subtitle);
         // Populate editor with words array from the subtitle object
         setEditingWords(subtitle.words || []);
+        setEditingWordIndex(null);
+        setPendingPrevWords(null);
+        setPendingNextWords(null);
     };
 
     const formatTimecode = (seconds: number | string): string => {
@@ -189,26 +213,103 @@ const SubtitleList = ({
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Merge currently edited first word into previous subtitle
+    const handleMergeLeft = (index: number) => {
+        if (editingSubtitle == null) return;
+        if (index <= 0) return; // no previous subtitle
+
+        const prevIdx = index - 1;
+        const movedWord = editingWords[0];
+        if (!movedWord) return;
+
+        // Stage prev words (append moved word to prev's end)
+        const prevBaseWords = pendingPrevWords ?? (subtitles[prevIdx].words || []);
+        const nextPrevWords = [...prevBaseWords, movedWord];
+        setPendingPrevWords(nextPrevWords);
+
+        // Update local editing state only
+        const currWords = editingWords.slice(1);
+        setEditingWords(currWords);
+        setEditingWordIndex(0);
+    };
+
+    // Merge currently edited last word into next subtitle
+    const handleMergeRight = (index: number) => {
+        if (editingSubtitle == null) return;
+        if (editingWords.length === 0) return;
+        if (index >= subtitles.length - 1) return; // no next subtitle
+
+        const nextIdx = index + 1;
+        const movedWord = editingWords[editingWords.length - 1];
+        if (!movedWord) return;
+
+        // Stage next words (prepend moved word to next's start)
+        const nextBaseWords = pendingNextWords ?? (subtitles[nextIdx].words || []);
+        const nextNextWords = [movedWord, ...nextBaseWords];
+        setPendingNextWords(nextNextWords);
+
+        // Update local editing state only
+        const currWords = editingWords.slice(0, -1);
+        setEditingWords(currWords);
+        setEditingWordIndex(currWords.length - 1);
+    };
+
     const handleSaveChanges = (index: number) => {
         if (editingSubtitle) {
             // Concatenate all word text to sync the text field with word data
             const updatedText = joinWordsToText(editingWords);
 
-            const newSubtitle: Subtitle = {
-                ...editingSubtitle,
-                text: updatedText,
-                words: editingWords
-            };
+            const newSubtitles = [...subtitles];
+            const prevIdx = index - 1;
+            const nextIdx = index + 1;
 
-            updateSubtitle(index, newSubtitle);
+            // Apply staged prev changes first
+            if (prevIdx >= 0 && pendingPrevWords) {
+                const prev = newSubtitles[prevIdx];
+                const updatedPrev = {
+                    ...prev,
+                    words: pendingPrevWords,
+                    text: joinWordsToText(pendingPrevWords),
+                    end: pendingPrevWords[pendingPrevWords.length - 1]?.end ?? prev.end,
+                } as Subtitle;
+                newSubtitles[prevIdx] = updatedPrev;
+            }
+
+            // Apply staged next changes (before possible removal of current to keep index stable)
+            if (nextIdx < newSubtitles.length && pendingNextWords) {
+                const next = newSubtitles[nextIdx];
+                const updatedNext = {
+                    ...next,
+                    words: pendingNextWords,
+                    text: joinWordsToText(pendingNextWords),
+                    start: pendingNextWords[0]?.start ?? next.start,
+                } as Subtitle;
+                newSubtitles[nextIdx] = updatedNext;
+            }
+
+            // Apply current edits or remove if empty
+            if (editingWords.length > 0) {
+                newSubtitles[index] = {
+                    ...editingSubtitle,
+                    text: updatedText,
+                    words: editingWords,
+                    start: editingWords[0]?.start ?? editingSubtitle.start,
+                    end: editingWords[editingWords.length - 1]?.end ?? editingSubtitle.end,
+                };
+            } else {
+                // Remove empty subtitle
+                newSubtitles.splice(index, 1);
+            }
+
+            updateSubtitles(newSubtitles);
 
             setEditingSubtitle(null);
             setEditingWords([]);
+            setEditingWordIndex(null);
+            setPendingPrevWords(null);
+            setPendingNextWords(null);
         }
     };
-
-
-
 
     if (isLoading) {
         return <div className="p-4 text-center text-muted-foreground">Loading subtitles...</div>;
@@ -304,11 +405,24 @@ const SubtitleList = ({
                                                     </DialogHeader>
                                                     <div className="space-y-4">
                                                         {editingSubtitle && (
-                                                            <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                            <div className="flex flex-wrap gap-0 m-0 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                                {editingWordIndex === 0 && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="text-xs h-6 mr-2"
+                                                                        onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
+                                                                        onClick={() => handleMergeLeft(actualIndex)}
+                                                                    >
+                                                                        <ArrowLeft className="h-4 w-4 mr-2" /> Merge Left
+                                                                    </Button>
+                                                                )}
                                                                 {editingWords.map((word, wordIndex) => (
                                                                     <Word
                                                                         key={wordIndex}
                                                                         word={word.word}
+                                                                        onStartEdit={() => setEditingWordIndex(wordIndex)}
+                                                                        onEndEdit={() => setEditingWordIndex(null)}
                                                                         onUpdate={(newWord) => {
                                                                             setEditingWords(prev =>
                                                                                 prev.map((w, i) =>
@@ -334,6 +448,17 @@ const SubtitleList = ({
                                                                         }}
                                                                     />
                                                                 ))}
+                                                                {editingWordIndex === editingWords.length - 1 && editingWords.length > 0 && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="text-xs h-6 ml-2"
+                                                                        onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
+                                                                        onClick={() => handleMergeRight(actualIndex)}
+                                                                    >
+                                                                        Merge Right<ArrowRight className="h-4 w-4 ml-2" /> 
+                                                                    </Button>
+                                                                )}
                                                             </div>
                                                         )}
                                                         <DialogFooter>

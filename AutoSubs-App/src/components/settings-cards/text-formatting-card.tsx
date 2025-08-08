@@ -1,4 +1,4 @@
-import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, CaseLower, CaseUpper, Settings } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, CaseLower, CaseUpper, Settings, CircleFadingArrowUp } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -6,8 +6,20 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useState } from "react";
+import { useGlobal } from "@/contexts/GlobalContext";
 
 interface TextFormattingCardProps {
   maxWordsPerLine: number
@@ -26,6 +38,7 @@ interface TextFormattingCardProps {
   onSplitOnPunctuationChange: (checked: boolean) => void
   onEnableCensorChange: (checked: boolean) => void
   onCensoredWordsChange: (words: string[]) => void
+  isWalkthroughMode: boolean
 }
 
 export const TextFormattingCard = ({
@@ -45,10 +58,12 @@ export const TextFormattingCard = ({
   onSplitOnPunctuationChange,
   onEnableCensorChange,
   onCensoredWordsChange,
+  isWalkthroughMode
 }: TextFormattingCardProps) => {
   const [newCensoredWord, setNewCensoredWord] = useState("");
+  const { reformatSubtitles } = useGlobal();
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Formatting Controls Popover */}
       <div className="border rounded-lg overflow-hidden">
         <div className="p-3.5">
@@ -311,6 +326,32 @@ export const TextFormattingCard = ({
           )}
         </div>
       </div>
+      {isWalkthroughMode ? null : (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="secondary"
+              size="default"
+              className="w-full"
+            >
+              <CircleFadingArrowUp className="w-5 h-5 mr-2" />
+              Update Subtitles
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will discard any manual subtitle edits and regenerate subtitles using the new formatting options.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={reformatSubtitles}>Update Subtitles</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

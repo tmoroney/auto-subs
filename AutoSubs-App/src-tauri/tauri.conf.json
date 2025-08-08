@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "AutoSubs",
-        "width": 780,
-        "height": 680,
+        "width": 750,
+        "height": 730,
         "closable": true
       }
     ],

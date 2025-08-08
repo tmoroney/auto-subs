@@ -132,7 +132,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                 </div>
 
                                 {expandedSpeaker === index && (
-                                    <CardContent className="p-4 pb-2 border-t space-y-3">
+                                    <CardContent className="p-4 pb-2 border-t space-y-3 mb-2">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {/* Speaker Name */}
                                             <div className="space-y-2">

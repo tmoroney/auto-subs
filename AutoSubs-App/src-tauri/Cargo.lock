@@ -2366,7 +2366,7 @@ dependencies = [
 [[package]]
 name = "knf-rs"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#81f84eff31cdfc9743d88298a3cb8bd556d0b667"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
 dependencies = [
  "eyre",
  "knf-rs-sys",
@@ -2376,7 +2376,7 @@ dependencies = [
 [[package]]
 name = "knf-rs-sys"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#81f84eff31cdfc9743d88298a3cb8bd556d0b667"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
 dependencies = [
  "bindgen 0.69.5",
  "cmake",
@@ -3661,7 +3661,7 @@ dependencies = [
 [[package]]
 name = "pyannote-rs"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#81f84eff31cdfc9743d88298a3cb8bd556d0b667"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
 dependencies = [
  "eyre",
  "hound",

@@ -62,7 +62,8 @@ interface GlobalContextType {
   updateSpeakers: (speakers: Speaker[]) => void;
   refresh: () => Promise<void>;
   setModelsState: (models: Model[]) => void;
-  updateSubtitle: (subtitleId: number, updatedSubtitle: Subtitle) => Promise<void>;
+  updateSubtitles: (newSubtitles: Subtitle[]) => Promise<void>;
+  reformatSubtitles: () => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json', includeSpeakerLabels: boolean) => Promise<void>;
   importSubtitles: () => Promise<void>;
   resetSettings: () => void;
@@ -617,14 +618,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
 
   // Function to update a specific subtitle
-  const updateSubtitle = async (index: number, newSubtitle: Subtitle) => {
-
-    // Create a new array instead of mutating the existing one
-    const updatedSubtitles = [...subtitles];
-    updatedSubtitles[index] = newSubtitle;
+  const updateSubtitles = async (newSubtitles: Subtitle[]) => {
 
     // Update the local subtitles state
-    setSubtitles(updatedSubtitles);
+    setSubtitles(newSubtitles);
 
     // Save to JSON file if we have the necessary context
     try {
@@ -642,7 +639,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
       if (filename) {
         await updateTranscript(filename, {
-          subtitles: updatedSubtitles
+          subtitles: newSubtitles
         });
         console.log('Subtitle updated in both UI and file');
       }
@@ -715,6 +712,27 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     return filename
   }
 
+  const reformatSubtitles = async () => {
+    const filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo?.timelineId);
+    const transcript = await readTranscript(filename);
+    if (!transcript) {
+      console.error("Failed to read transcript");
+      return;
+    }
+    const { segments, speakers } = await saveTranscript(transcript, filename, {
+      case: settings.textCase,
+      removePunctuation: settings.removePunctuation,
+      splitOnPunctuation: settings.splitOnPunctuation,
+      censoredWords: settings.enableCensor ? settings.censoredWords : [],
+      maxWordsPerLine: settings.maxWordsPerLine,
+      maxCharsPerLine: settings.maxCharsPerLine,
+      maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+    });
+    console.log("Subtitle list updated with", segments.length, "subtitles");
+    setSpeakers(speakers);
+    setSubtitles(segments);
+  };
+
   async function pushToTimeline() {
     let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
     await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack);
@@ -738,7 +756,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       setSpeakers,
       updateSpeakers,
       refresh,
-      updateSubtitle,
+      updateSubtitles,
+      reformatSubtitles,
       exportSubtitlesAs,
       importSubtitles,
       pushToTimeline,

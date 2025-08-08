@@ -28,7 +28,7 @@ export const SetupWalkthrough = ({
   onClose,
 }: SetupWalkthroughProps) => {
   const [currentSlide, setCurrentSlide] = React.useState(0)
-  const { settings, updateSetting, modelsState, isStandaloneMode, setIsStandaloneMode, timelineInfo, fileInput, setFileInput, refresh } = useGlobal()
+  const { settings, updateSetting, modelsState, timelineInfo, fileInput, setFileInput, refresh } = useGlobal()
 
   const slides: WalkthroughSlide[] = React.useMemo(() => {
     const baseSlides: WalkthroughSlide[] = [
@@ -58,8 +58,8 @@ export const SetupWalkthrough = ({
             <div className="space-y-4">
               <div className="flex justify-center">
                 <Tabs
-                  value={isStandaloneMode ? "standalone" : "resolve"}
-                  onValueChange={(value) => setIsStandaloneMode(value === "standalone")}
+                  value={settings.isStandaloneMode ? "standalone" : "resolve"}
+                  onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")}
                   className="w-full max-w-[400px]"
                 >
                   <TabsList className="w-full rounded-full bg-muted">
@@ -74,7 +74,7 @@ export const SetupWalkthrough = ({
               </div>
 
               <div className="space-y-2">
-                {isStandaloneMode ? (
+                {settings.isStandaloneMode ? (
                   <AudioFileCard
                     selectedFile={fileInput}
                     onFileSelect={(file) => setFileInput(file)}
@@ -152,6 +152,7 @@ export const SetupWalkthrough = ({
               onSplitOnPunctuationChange={(checked) => updateSetting("splitOnPunctuation", checked)}
               onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
               onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
+              isWalkthroughMode={true}
             />
           </div>
         ),
@@ -181,7 +182,6 @@ export const SetupWalkthrough = ({
 
     return baseSlides
   }, [
-    isStandaloneMode,
     modelsState,
     settings,
     updateSetting,

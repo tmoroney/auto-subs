@@ -19,7 +19,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Card } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -201,7 +210,7 @@ export const TranscriptionSettings = ({
         <>
             <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
                 {/* Main Content - Scrollable area */}
-                <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+                <div className="flex-1 p-4 space-y-5 overflow-y-auto">
                     {/* Update Alert */}
                     {!isUpdateDismissed && isUpdateAvailable && (
                         <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
@@ -221,7 +230,6 @@ export const TranscriptionSettings = ({
                     )}
 
                     {/* Survey Notification */}
-                    {/* Survey Notification (componentized) */}
                     {(() => {
                         const SURVEY_URL = "https://yoursurveyurl.com"; // <-- Replace with your survey link
                         const SURVEY_INTERVAL_DAYS = 5; // Show every 5 days
@@ -410,6 +418,7 @@ export const TranscriptionSettings = ({
                                 onSplitOnPunctuationChange={(checked) => updateSetting("splitOnPunctuation", checked)}
                                 onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
                                 onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
+                                isWalkthroughMode={false}
                             />
                         </CollapsibleContent>
                     </Collapsible>
@@ -601,32 +610,32 @@ export const TranscriptionSettings = ({
             )}
 
             {/* Non-diarized completion dialog */}
-            <Dialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Transcription Complete</DialogTitle>
-                        <DialogDescription>
-                            Your transcription is ready. Would you like to add the subtitles to the timeline or continue editing?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowNonDiarizedDialog(false)}
-                        >
-                            Continue Editing
-                        </Button>
-                        <Button
-                            onClick={() => {
+            <AlertDialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your account
+                            and remove your data from our servers.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                            <Button variant="outline" onClick={() => setShowNonDiarizedDialog(false)}>
+                                Continue Editing
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                            <Button onClick={() => {
                                 setShowNonDiarizedDialog(false)
                                 pushToTimeline()
-                            }}
-                        >
-                            Add to Timeline
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                            }}>
+                                Add to Timeline
+                            </Button>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     )
 }
