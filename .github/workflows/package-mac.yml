@@ -122,8 +122,10 @@ jobs:
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
+        export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
         # Build with explicit features and explicit Rust target from matrix
-        npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}" --target "${{ matrix.target }}"
+        npm run tauri build -- --target "${{ matrix.target }}" -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
       run: |
@@ -176,9 +178,78 @@ jobs:
           }
         done
 
-    - name: Upload Asset to Release
+    - name: Collect Tauri Updater Artifacts (macOS)
+      run: |
+        set -euo pipefail
+        # Paths
+        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+        ROOT_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle"
+        OUT_DIR="release-artifacts"
+
+        mkdir -p "$OUT_DIR"
+
+        # Required updater artifacts for macOS (upload only once to avoid overwriting between matrix builds)
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          if [ -f "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" ]; then
+            cp "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" "$OUT_DIR/"
+          else
+            echo "ERROR: Updater archive AutoSubs.app.tar.gz not found in $MACOS_BUNDLE_DIR" >&2
+            exit 1
+          fi
+
+          if [ -f "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz.sig" ]; then
+            cp "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz.sig" "$OUT_DIR/"
+          else
+            echo "ERROR: Updater signature AutoSubs.app.tar.gz.sig not found in $MACOS_BUNDLE_DIR" >&2
+            exit 1
+          fi
+        else
+          echo "Skipping updater tar.gz and sig on non-arm64 variant to avoid overwriting."
+        fi
+    
+    - name: Create latest.json for Updater
+      id: create_json
+      shell: bash
+      if: matrix.arch == 'arm64' # Only run once to avoid conflicts
+      run: |
+          set -euo pipefail
+          # Get the release tag name and sanitize it for the version number
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION=${VERSION#v}
+          
+          # Get the release notes (body) from the GitHub release event
+          RELEASE_NOTES="${{ github.event.release.body }}"
+  
+          # Create a new JSON object for the updater using the "notes" field
+          JSON_OUTPUT=$(jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --arg notes "$RELEASE_NOTES" \
+            '{
+              "version": $version,
+              "pub_date": $pub_date,
+              "notes": $notes,
+              "platforms": {
+                "macos-x86_64": {
+                  "signature": "SIGNATURE_GOES_HERE",
+                  "url": "https://github.com/tmoroney/auto-subs/releases/download/${{ github.event.release.tag_name }}/AutoSubs-Mac-Intel.pkg"
+                },
+                "macos-aarch64": {
+                  "signature": "SIGNATURE_GOES_HERE",
+                  "url": "https://github.com/tmoroney/auto-subs/releases/download/${{ github.event.release.tag_name }}/AutoSubs-Mac-ARM.pkg"
+                }
+              }
+            }')
+  
+          # Save the JSON to a file
+          echo "$JSON_OUTPUT" > latest.json
+
+    - name: Upload Assets to Release
       uses: softprops/action-gh-release@v2
       with:
-        files: AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg
+        files: |
+          AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg
+          release-artifacts/*
+          latest.json
         token: ${{ secrets.GH_TOKEN }}
         tag_name: ${{ github.event.release.tag_name }}

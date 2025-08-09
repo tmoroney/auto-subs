@@ -5,7 +5,6 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
-import { getVersion } from '@tauri-apps/api/app';
 import { downloadDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
 
@@ -48,9 +47,6 @@ interface GlobalContextType {
   setIsTranscribing: (isTranscribing: boolean) => void;
   isRefreshing: boolean;
   setIsRefreshing: (isRefreshing: boolean) => void;
-  isUpdateAvailable: boolean;
-  isUpdateDismissed: boolean;
-  setIsUpdateDismissed: (isUpdateDismissed: boolean) => void;
   showMobileSubtitles: boolean;
   setShowMobileSubtitles: (showMobileSubtitles: boolean) => void;
   setTranscriptionProgress: (progress: number) => void;
@@ -67,7 +63,6 @@ interface GlobalContextType {
   exportSubtitlesAs: (format: 'srt' | 'json', includeSpeakerLabels: boolean) => Promise<void>;
   importSubtitles: () => Promise<void>;
   resetSettings: () => void;
-  checkForUpdates: () => Promise<string | null>;
   setupEventListeners: () => () => void; // Return cleanup function
   handleDeleteModel: (modelValue: string) => Promise<void>;
   getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
@@ -146,8 +141,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // UI state
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isUpdateAvailable] = useState<boolean>(false);
-  const [isUpdateDismissed, setIsUpdateDismissed] = useState<boolean>(false);
   const [showMobileSubtitles, setShowMobileSubtitles] = useState<boolean>(false);
 
   // Davinci Resolve state
@@ -392,27 +385,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     await updateTranscript(filename, {
       speakers: newSpeakers
     });
-  }
-
-  async function checkForUpdates() {
-    try {
-      // fetch latest release from GitHub
-      const response = await fetch('https://api.github.com/repos/tmoroney/auto-subs/releases/latest');
-      const data = await response.json();
-
-      const latestVersion = data.tag_name.replace('V', '');
-
-      // compare with current version
-      const currentVersion = await getVersion();
-
-      if (latestVersion !== currentVersion) {
-        return data.body;
-      }
-      return null;
-    } catch (error) {
-      console.error("Failed to check for updates:", error);
-      return null;
-    }
   }
 
   // Function to delete a model
@@ -764,7 +736,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       importSubtitles,
       pushToTimeline,
       resetSettings,
-      checkForUpdates,
       // Event listener states
       transcriptionProgress,
       downloadingModel,
@@ -792,9 +763,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       setIsTranscribing,
       isRefreshing,
       setIsRefreshing,
-      isUpdateAvailable,
-      isUpdateDismissed,
-      setIsUpdateDismissed,
       showMobileSubtitles,
       setShowMobileSubtitles,
     }}>

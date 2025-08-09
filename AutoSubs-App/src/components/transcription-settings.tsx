@@ -85,9 +85,6 @@ export const TranscriptionSettings = ({
         setIsRefreshing,
         isTranscribing,
         setIsTranscribing,
-        isUpdateAvailable,
-        isUpdateDismissed,
-        setIsUpdateDismissed,
         showMobileSubtitles,
         setShowMobileSubtitles,
         diarizationProgress,
@@ -212,32 +209,14 @@ export const TranscriptionSettings = ({
             <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
                 {/* Main Content - Scrollable area */}
                 <div className="flex-1 p-4 space-y-5 overflow-y-auto">
-                    {/* Update Alert */}
-                    {!isUpdateDismissed && isUpdateAvailable && (
-                        <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
-                            <AlertTriangle className="h-4 w-4 text-green-600" />
-                            <AlertDescription className="flex items-center justify-between">
-                                <div>
-                                    <strong className="text-green-800 dark:text-green-200">Update Available!</strong>
-                                    <p className="text-xs text-green-700 dark:text-green-300">
-                                        Click the link to get the latest version.
-                                    </p>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setIsUpdateDismissed(true)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
                     {/* Survey Notification */}
                     {(() => {
-                        const SURVEY_URL = "https://yoursurveyurl.com"; // <-- Replace with your survey link
-                        const SURVEY_INTERVAL_DAYS = 5; // Show every 5 days
+                        const SURVEY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdt8RyGXsriQA8gH7VVJqua9xPXSuZvjdjH5tKHz8nN3NhT6A/viewform?usp=dialog"; // <-- Replace with your survey link
+                        const SURVEY_INTERVAL_DAYS = 10; // Show every 10 days
                         const lastSurveyDate = new Date(settings.lastSurveyDate);
                         const now = new Date();
                         const daysSinceLastSurvey = Math.floor((now.getTime() - lastSurveyDate.getTime()) / (1000 * 60 * 60 * 24));
-                        const shouldShowSurvey = settings.timesDismissedSurvey < 4 && (isNaN(daysSinceLastSurvey) || daysSinceLastSurvey >= SURVEY_INTERVAL_DAYS);
+                        const shouldShowSurvey = settings.timesDismissedSurvey < 3 && (isNaN(daysSinceLastSurvey) || daysSinceLastSurvey >= SURVEY_INTERVAL_DAYS);
                         if (!shouldShowSurvey) return null;
                         return (
                             <SurveyNotification
