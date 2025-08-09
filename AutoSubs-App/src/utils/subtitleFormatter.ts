@@ -103,10 +103,6 @@ function splitSubtitles(subtitles: Subtitle[], options: {
 
     for (const subtitle of subtitles) {
         const words = subtitle.words;
-        if (options.maxWordsPerLine && words.length <= options.maxWordsPerLine) {
-            result.push(subtitle);
-            continue;
-        }
 
         // 1. Split words into lines, assigning line_number
         let lines: Word[][] = [];

@@ -4,14 +4,18 @@
 INSTALL_PATH="/Applications"
 APP_PATH="$INSTALL_PATH/AutoSubs.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
-DEST_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
-TEXT_FILE="$DEST_PATH/AutoSubs/install_path.txt"
+UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+WORKFLOW_INTEGRATION_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
+TEXT_FILE="$UTILITY_PATH/AutoSubs/install_path.txt"
 
 # Copy Lua file
-cp "$RESOURCES_PATH/AutoSubs.lua" "$DEST_PATH"
-cp -r "$RESOURCES_PATH/AutoSubs" "$DEST_PATH"
+cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
+cp -r "$RESOURCES_PATH/AutoSubs" "$UTILITY_PATH"
 
 # Write JSON file with installation path
 echo $INSTALL_PATH > "$TEXT_FILE"
+
+# Also copy lua file to Workflow Integration Plugin for ease of use
+cp "$RESOURCES_PATH/AutoSubs.lua" "$WORKFLOW_INTEGRATION_PATH"
 
 exit 0

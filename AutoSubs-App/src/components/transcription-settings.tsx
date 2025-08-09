@@ -4,8 +4,6 @@ import {
     Heart,
     Github,
     Captions,
-    AlertTriangle,
-    X,
     HelpCircle,
     XCircle,
     RefreshCcw,
@@ -15,7 +13,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Card } from "@/components/ui/card"

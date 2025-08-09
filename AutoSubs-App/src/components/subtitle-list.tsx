@@ -419,7 +419,7 @@ const SubtitleList = ({
                                                                 )}
                                                                 {editingWords.map((word, wordIndex) => (
                                                                     <Word
-                                                                        key={wordIndex}
+                                                                        key={`${word.start}-${word.end}-${word.word}`}
                                                                         word={word.word}
                                                                         onStartEdit={() => setEditingWordIndex(wordIndex)}
                                                                         onEndEdit={() => setEditingWordIndex(null)}

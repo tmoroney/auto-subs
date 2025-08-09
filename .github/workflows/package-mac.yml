@@ -118,7 +118,7 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
-    - name: Bundle Tauri App
+    - name: Build Tauri
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
@@ -182,74 +182,107 @@ jobs:
       run: |
         set -euo pipefail
         # Paths
-        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos"
-        ROOT_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle"
+        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle/macos"
         OUT_DIR="release-artifacts"
 
         mkdir -p "$OUT_DIR"
 
-        # Required updater artifacts for macOS (upload only once to avoid overwriting between matrix builds)
-        if [ "${{ matrix.arch }}" = "arm64" ]; then
-          if [ -f "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" ]; then
-            cp "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" "$OUT_DIR/"
+        # Rename updater archives per-arch to avoid filename collisions in the release
+        if [ -f "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" ]; then
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            NEW_NAME="AutoSubs-macos-aarch64.app.tar.gz"
           else
-            echo "ERROR: Updater archive AutoSubs.app.tar.gz not found in $MACOS_BUNDLE_DIR" >&2
-            exit 1
+            NEW_NAME="AutoSubs-macos-x86_64.app.tar.gz"
           fi
-
+          mv "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz" "$MACOS_BUNDLE_DIR/$NEW_NAME"
           if [ -f "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz.sig" ]; then
-            cp "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz.sig" "$OUT_DIR/"
+            mv "$MACOS_BUNDLE_DIR/AutoSubs.app.tar.gz.sig" "$MACOS_BUNDLE_DIR/$NEW_NAME.sig"
           else
             echo "ERROR: Updater signature AutoSubs.app.tar.gz.sig not found in $MACOS_BUNDLE_DIR" >&2
             exit 1
           fi
+        fi
+
+        # Copy renamed updater artifacts to release output
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          cp "$MACOS_BUNDLE_DIR/AutoSubs-macos-aarch64.app.tar.gz" "$OUT_DIR/"
+          cp "$MACOS_BUNDLE_DIR/AutoSubs-macos-aarch64.app.tar.gz.sig" "$OUT_DIR/"
         else
-          echo "Skipping updater tar.gz and sig on non-arm64 variant to avoid overwriting."
+          cp "$MACOS_BUNDLE_DIR/AutoSubs-macos-x86_64.app.tar.gz" "$OUT_DIR/"
+          cp "$MACOS_BUNDLE_DIR/AutoSubs-macos-x86_64.app.tar.gz.sig" "$OUT_DIR/"
         fi
     
-    - name: Create latest.json for Updater
-      id: create_json
-      shell: bash
-      if: matrix.arch == 'arm64' # Only run once to avoid conflicts
-      run: |
-          set -euo pipefail
-          # Get the release tag name and sanitize it for the version number
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION=${VERSION#v}
-          
-          # Get the release notes (body) from the GitHub release event
-          RELEASE_NOTES="${{ github.event.release.body }}"
-  
-          # Create a new JSON object for the updater using the "notes" field
-          JSON_OUTPUT=$(jq -n \
-            --arg version "$VERSION" \
-            --arg pub_date "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            --arg notes "$RELEASE_NOTES" \
-            '{
-              "version": $version,
-              "pub_date": $pub_date,
-              "notes": $notes,
-              "platforms": {
-                "macos-x86_64": {
-                  "signature": "SIGNATURE_GOES_HERE",
-                  "url": "https://github.com/tmoroney/auto-subs/releases/download/${{ github.event.release.tag_name }}/AutoSubs-Mac-Intel.pkg"
-                },
-                "macos-aarch64": {
-                  "signature": "SIGNATURE_GOES_HERE",
-                  "url": "https://github.com/tmoroney/auto-subs/releases/download/${{ github.event.release.tag_name }}/AutoSubs-Mac-ARM.pkg"
-                }
-              }
-            }')
-  
-          # Save the JSON to a file
-          echo "$JSON_OUTPUT" > latest.json
-
-    - name: Upload Assets to Release
+    - name: Upload Build Artifacts to Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
           AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg
           release-artifacts/*
-          latest.json
         token: ${{ secrets.GH_TOKEN }}
         tag_name: ${{ github.event.release.tag_name }}
+
+  compose-latest-json:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compose latest.json with both macOS platforms
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p latest
+
+          # Download signature files from the release assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" \
+            --dir latest \
+            --clobber
+
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" \
+            --dir latest \
+            --clobber
+
+          ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
+          INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
+
+          VERSION="${TAG#v}"
+          PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          NOTES='${{ github.event.release.body }}'
+
+          JSON_OUTPUT=$(jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUB_DATE" \
+            --arg notes "$NOTES" \
+            --arg arm_sig "$ARM_SIG" \
+            --arg intel_sig "$INTEL_SIG" \
+            --arg tag "$TAG" \
+            '{
+              version: $version,
+              pub_date: $pub_date,
+              notes: $notes,
+              platforms: {
+                "macos-aarch64": {
+                  signature: $arm_sig,
+                  url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-aarch64.app.tar.gz")
+                },
+                "macos-x86_64": {
+                  signature: $intel_sig,
+                  url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
+                }
+              }
+            }')
+          echo "$JSON_OUTPUT" > latest.json
+
+      - name: Upload unified latest.json to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: latest.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.event.release.tag_name }}

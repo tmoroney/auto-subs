@@ -10,7 +10,6 @@ local DEV_MODE = false
 local PORT = 56002
 
 -- Load external libraries
-local utils = nil
 local socket = nil
 local json = nil
 local luaresolve = nil
@@ -59,6 +58,37 @@ local function read_json_file(file_path)
     return data -- Return the decoded Lua table
 end
 
+-- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
+function hexToRgb(hex)
+    local result = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
+    if result then
+        local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
+        return {
+            r = tonumber(r, 16) / 255,
+            g = tonumber(g, 16) / 255,
+            b = tonumber(b, 16) / 255
+        }
+    else
+        return nil
+    end
+end
+
+-- Convert seconds to frames based on the timeline frame rate
+function to_frames(seconds, frameRate)
+    return seconds * frameRate
+end
+
+-- Pause execution for a specified number of seconds (platform-independent)
+function sleep(n)
+    if ffi.os == "Windows" then
+        -- Windows
+        ffi.C.Sleep(n * 1000)
+    else
+        -- Unix-based (Linux, macOS)
+        os.execute("sleep " .. tonumber(n))
+    end
+end
+
 function CreateResponse(body)
     local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
         "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
@@ -71,7 +101,7 @@ end
 function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    local frames = utils:to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
+    local frames = to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
     local timecode = luaresolve:timecode_from_frame_auto(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -489,7 +519,7 @@ function SetCustomColors(speaker, tool)
     local color = nil
     -- Set custom colors for each speaker if enabled
     if speaker.fill.enabled and speaker.fill.color ~= "" then
-        color = utils:hexToRgb(speaker.fill.color)
+        color = hexToRgb(speaker.fill.color)
         if color ~= nil then
             tool:SetInput("Enabled1", 1)
             tool:SetInput("Red1", color.r)
@@ -499,7 +529,7 @@ function SetCustomColors(speaker, tool)
     end
 
     if speaker.outline.enabled and speaker.outline.color ~= "" then
-        color = utils:hexToRgb(speaker.outline.color)
+        color = hexToRgb(speaker.outline.color)
         if color ~= nil then
             tool:SetInput("Enabled2", 1)
             tool:SetInput("Red2", color.r)
@@ -509,7 +539,7 @@ function SetCustomColors(speaker, tool)
     end
 
     if speaker.border.enabled and speaker.border.color ~= "" then
-        color = utils:hexToRgb(speaker.border.color)
+        color = hexToRgb(speaker.border.color)
         if color ~= nil then
             tool:SetInput("Enabled4", 1)
             tool:SetInput("Red4", color.r)
@@ -604,13 +634,13 @@ function AddSubtitles(filePath, trackIndex, templateName)
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
         -- print("Adding subtitle: ", subtitle["text"])
-        local start_frame = utils:to_frames(subtitle["start"], frame_rate)
-        local end_frame = utils:to_frames(subtitle["end"], frame_rate)
+        local start_frame = to_frames(subtitle["start"], frame_rate)
+        local end_frame = to_frames(subtitle["end"], frame_rate)
         local timeline_pos = timelineStart + start_frame
         local clip_timeline_duration = end_frame - start_frame
 
         if i < #subtitles then
-            local next_start = timelineStart + utils:to_frames(subtitles[i + 1]["start"], frame_rate)
+            local next_start = timelineStart + to_frames(subtitles[i + 1]["start"], frame_rate)
             local frames_between = next_start - (timeline_pos + clip_timeline_duration)
             -- if gap between clips is less than threshold, join them
             if frames_between < joinThreshold then
@@ -706,9 +736,9 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
             Start = frameToExtract - 1, -- Start rendering at this frame
-            End = frameToExtract - 1, -- End rendering at this frame
-            Tool = mySaver,           -- Render up to this specific Saver tool [13]
-            Wait = true               -- Wait for the render to complete before continuing the script [19]
+            End = frameToExtract - 1,   -- End rendering at this frame
+            Tool = mySaver,             -- Render up to this specific Saver tool [13]
+            Wait = true                 -- Wait for the render to complete before continuing the script [19]
         })
 
         extractedFrame = exportPath .. "/subtitle-preview-" .. frameToExtract - 1 .. ".png"
@@ -851,7 +881,7 @@ function StartServer()
             "--header 'content-type: application/json' " ..
             "--data '{\"func\":\"Exit\"}'"
         os.execute(curl_cmd)
-        utils:sleep(0.5)
+        sleep(0.5)
         assert(server:bind(info))
     end
 
@@ -961,7 +991,7 @@ function StartServer()
         elseif err ~= "timeout" then
             error(err)
         end
-        utils:sleep(0.1)
+        sleep(0.1)
     end
 
     print("Shutting down AutoSubs Link server...")
@@ -973,10 +1003,12 @@ local AutoSubs = {
     Init = function(self, executable_path, resources_folder, dev_mode)
         DEV_MODE = dev_mode
         if ffi.os == "Windows" then
-            utils:define_windows_api()
+            -- Define Windows API functions using FFI to prevent terminal opening
+            ffi.cdef [[
+                void Sleep(unsigned int ms);
+                int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
+            ]]
 
-            storage_path = os.getenv("APPDATA") ..
-                "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
             main_app = executable_path
             resources_path = resources_folder
             command_open = 'start "" "' .. main_app .. '"'
@@ -984,13 +1016,10 @@ local AutoSubs = {
             ffi.cdef [[ int system(const char *command); ]]
 
             if ffi.os == "OSX" then
-                storage_path =
-                "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/AutoSubs/"
                 main_app = executable_path
                 resources_path = resources_folder
                 command_open = 'open ' .. main_app
             else -- Linux
-                storage_path = "/opt/resolve/Fusion/Scripts/Utility/AutoSubs/"
                 main_app = executable_path
                 resources_path = resources_folder
                 command_open = string.format("'%s' &", main_app)
@@ -1002,7 +1031,6 @@ local AutoSubs = {
         socket = require("ljsocket")
         json = require("dkjson")
         luaresolve = require("libavutil")
-        utils = require("utils")
 
         StartServer()
     end

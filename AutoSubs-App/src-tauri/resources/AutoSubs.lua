@@ -1,4 +1,4 @@
-local DEV_MODE = true
+local DEV_MODE = false
 
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
@@ -55,8 +55,7 @@ local resources_folder = nil
 local app_executable = nil
 
 if os_name == "Windows" then
-    -- Define the necessary Windows API functions using FFI
-    -- Note: Sleep and ShellExecuteA are used to prevent terminal from opening (replaces os.execute)
+    -- Define the necessary Windows API functions using FFI to prevent special character issues
     ffi.cdef [[
         typedef wchar_t WCHAR;
 
@@ -71,8 +70,6 @@ if os_name == "Windows" then
         void* _wfopen(const WCHAR* filename, const WCHAR* mode);
         size_t fread(void* buffer, size_t size, size_t count, void* stream);
         int fclose(void* stream);
-        void Sleep(unsigned int ms);
-        int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
     ]]
 
     -- Get path to the main AutoSubs app and modules
@@ -83,7 +80,7 @@ if os_name == "Windows" then
     resources_folder = install_path .. "\\resources\\"
 elseif os_name == "OSX" then
     app_executable = "/Applications/AutoSubs.app"
-    resources_folder = app_executable .. "/Contents/Resources/"
+    resources_folder = app_executable .. "/Contents/Resources/resources/"
 else
     app_executable = "/usr/bin/autosubs"
     resources_folder = "/usr/lib/autosubs/resources/"
