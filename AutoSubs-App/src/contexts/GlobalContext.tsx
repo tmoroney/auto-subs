@@ -92,6 +92,7 @@ const DEFAULT_SETTINGS: Settings = {
   model: 0,
   language: "auto",
   translate: false,
+  enableDTW: true,
   enableDiarize: false,
   maxSpeakers: null,
 
@@ -675,6 +676,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     model: modelsState[settings.model].value,
     lang: settings.language,
     translate: settings.translate,
+    enableDTW: settings.enableDTW,
     enableDiarize: settings.enableDiarize,
     maxSpeakers: settings.maxSpeakers,
   })

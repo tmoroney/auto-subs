@@ -6,7 +6,22 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-15
+            arch: arm64
+            target: aarch64-apple-darwin
+            features: mac-aarch
+            pkg_suffix: ARM
+          - platform: macos-13
+            arch: x86_64
+            target: x86_64-apple-darwin
+            features: mac-x86_64
+            pkg_suffix: Intel
+
+    runs-on: ${{ matrix.platform }}
 
     steps:
     - name: Checkout AutoSubs Repo Code
@@ -16,6 +31,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 24
+
+    - name: Install Rust stable and targets
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
 
     - name: Import Apple Certificates
       env:
@@ -71,9 +91,8 @@ jobs:
         mkdir -p binaries
         cd binaries
 
-        # Determine architecture and corresponding asset names
-        ARCH=$(uname -m)
-        if [ "$ARCH" = "arm64" ]; then
+        # Determine architecture and corresponding asset names from matrix
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
           ZIP_NAME="ffmpeg-aarch64-apple-darwin.zip"
           FFMPEG_SRC="ffmpeg-aarch64-apple-darwin"
           FFPROBE_SRC="ffprobe-aarch64-apple-darwin"
@@ -103,7 +122,8 @@ jobs:
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        npm run tauri build
+        # Build with explicit features and explicit Rust target from matrix
+        npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}" --target "${{ matrix.target }}"
 
     - name: Create Mac Package
       run: |
@@ -111,7 +131,7 @@ jobs:
         mkdir Mac-Package/Payload
 
         # Move the app to the package
-        mv AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Mac-Package/Payload
+        mv AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos/AutoSubs.app Mac-Package/Payload
 
     - name: Create PKG Installer
       run: |
@@ -119,8 +139,12 @@ jobs:
         chmod +x Mac-Package/Scripts/*
 
         # Create the package
+        # Resolve version from the GitHub Release tag (strip leading 'v' if present)
+        VERSION="${{ github.event.release.tag_name }}"
+        VERSION=${VERSION#v}
+
         pkgbuild --identifier com.tom-moroney.autosubs \
-          --version 3.0 \
+          --version "$VERSION" \
           --install-location "/Applications" \
           --root Mac-Package/Payload \
           --scripts Mac-Package/Scripts \
@@ -131,17 +155,17 @@ jobs:
         productsign --sign "Developer ID Installer: ${{ secrets.APPLE_IDENTITY }}" \
           --timestamp \
           "AutoSubs-unsigned.pkg" \
-          "AutoSubs-Mac-ARM.pkg"
+          "AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg"
 
     - name: Notarize PKG Installer
       run: |
         # Function to notarize and staple the package
         notarize_and_staple() {
-          xcrun notarytool submit "AutoSubs-Mac-ARM.pkg" \
+          xcrun notarytool submit "AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg" \
             --keychain-profile "AC_PASSWORD" \
             --wait
         
-          xcrun stapler staple "AutoSubs-Mac-ARM.pkg"
+          xcrun stapler staple "AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg"
         }
         
         # Try notarization up to 3 times in case of bus error
@@ -155,6 +179,6 @@ jobs:
     - name: Upload Asset to Release
       uses: softprops/action-gh-release@v2
       with:
-        files: AutoSubs-Mac-ARM.pkg
+        files: AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg
         token: ${{ secrets.GH_TOKEN }}
         tag_name: ${{ github.event.release.tag_name }}

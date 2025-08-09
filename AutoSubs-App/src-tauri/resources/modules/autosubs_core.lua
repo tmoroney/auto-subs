@@ -72,7 +72,7 @@ function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
     local frames = utils:to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
-    local timecode = luaresolve:frames_to_timecode(frames, frameRate)
+    local timecode = luaresolve:timecode_from_frame_auto(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
 

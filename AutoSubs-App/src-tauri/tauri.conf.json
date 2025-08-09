@@ -14,7 +14,7 @@
       {
         "title": "AutoSubs",
         "width": 750,
-        "height": 730,
+        "height": 740,
         "closable": true
       }
     ],
@@ -49,7 +49,7 @@
       "binaries/ffprobe"
     ],
     "macOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "13.0"
     },
     "windows": {
       "nsis": {
@@ -60,6 +60,15 @@
       "certificateThumbprint": "df6635960a607103e4882c0671c2f8d0ef2ace18",
       "timestampUrl": "http://time.certum.pl",
       "digestAlgorithm": "sha256"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFENjNBQjZFRkVCQTQxQTkKUldTcFFiciticXRqcmZtTlRWRzdnSHhBMFVNZkxvOGFRZThXdXFNQjFzakxqNDF0bUFyWkhwckUK",
+      "endpoints": [
+        "https://github.com/tmoroney/auto-subs/releases/latest/download/latest.json"
+      ]
     }
   }
 }

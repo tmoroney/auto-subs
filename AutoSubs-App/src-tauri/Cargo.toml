@@ -52,7 +52,6 @@ dirs = "5.0"
 zip = "4.3.0"
 
 [features]
-default = ["mac-aarch"]
 coreml = ["whisper-rs/coreml", "pyannote-rs/coreml"]
 directml = ["pyannote-rs/directml"]
 cuda = ["whisper-rs/cuda", "pyannote-rs/load-dynamic"]
@@ -66,5 +65,8 @@ mac-aarch = ["coreml", "metal"]
 mac-x86_64 = ["metal", "openblas"]
 windows = ["cuda", "vulkan", "openblas"]
 linux = ["cuda", "rocm", "vulkan", "openblas"]
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
 
 

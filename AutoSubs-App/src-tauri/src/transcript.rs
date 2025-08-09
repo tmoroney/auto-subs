@@ -40,7 +40,7 @@ impl Default for ColorModifier {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Sample {
     pub start: f64,
-    pub end: f64
+    pub end: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,14 +49,14 @@ pub struct Speaker {
     pub fill: ColorModifier,
     pub outline: ColorModifier,
     pub border: ColorModifier,
-    pub sample: Sample
+    pub sample: Sample,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transcript {
     pub processing_time_sec: u64,
     pub segments: Vec<Segment>,
-    pub speakers: Vec<Speaker>
+    pub speakers: Vec<Speaker>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,17 +90,21 @@ impl Transcript {
             .iter()
             .enumerate()
             .map(|(i, segment)| {
-                let words = segment.words.as_ref().map(|words| {
-                    words
-                        .iter()
-                        .map(|wt| JsonWordTimestamp {
-                            word: wt.word.clone(),
-                            start: wt.start,
-                            end: wt.end,
-                            probability: wt.probability.unwrap_or(0.0),
-                        })
-                        .collect()
-                }).unwrap_or_default();
+                let words = segment
+                    .words
+                    .as_ref()
+                    .map(|words| {
+                        words
+                            .iter()
+                            .map(|wt| JsonWordTimestamp {
+                                word: wt.word.clone(),
+                                start: wt.start,
+                                end: wt.end,
+                                probability: wt.probability.unwrap_or(0.0),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
 
                 JsonSegment {
                     id: i,
@@ -120,7 +124,6 @@ impl Transcript {
             .collect()
     }
 }
-
 
 // pub fn format_timestamp(seconds: i64, always_include_hours: bool, decimal_marker: &str) -> String {
 //     assert!(seconds >= 0, "non-negative timestamp expected");
@@ -143,7 +146,6 @@ impl Transcript {
 
 //     format!("{hours_marker}{minutes:02}:{seconds:02}{decimal_marker}{milliseconds:03}")
 // }
-
 
 // impl Segment {
 //     pub fn as_text(&self) -> String {

@@ -14,7 +14,7 @@ pub struct TranscribeOptions {
     pub temperature: Option<f32>,
     pub translate: Option<bool>,
     pub max_text_ctx: Option<i32>,
-    pub word_timestamps: Option<bool>,
+    pub enable_dtw: Option<bool>,
     pub max_sentence_len: Option<i32>,
     pub sampling_strategy: Option<String>,
     pub sampling_bestof_or_beam_size: Option<i32>,

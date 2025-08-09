@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Layers2, Users, X } from "lucide-react"
+import { Layers2, Users, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
@@ -17,6 +17,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const { exportSubtitlesAs, importSubtitles, subtitles, pushToTimeline, settings } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
+  const [isPushing, setIsPushing] = React.useState(false)
 
   // Close on escape key
   React.useEffect(() => {
@@ -115,10 +116,27 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
           variant="default"
           size="default"
           className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
-          onClick={() => pushToTimeline()}
+          disabled={isPushing}
+          onClick={async () => {
+            try {
+              setIsPushing(true)
+              await pushToTimeline()
+            } finally {
+              setIsPushing(false)
+            }
+          }}
         >
-          <Layers2 className="w-4 h-4 mr-2" />
-          Add to Timeline
+          {isPushing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Adding...
+            </>
+          ) : (
+            <>
+              <Layers2 className="w-4 h-4 mr-2" />
+              Add to Timeline
+            </>
+          )}
         </Button>
       </div>
       )}

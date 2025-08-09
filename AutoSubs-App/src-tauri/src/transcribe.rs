@@ -1,31 +1,32 @@
-use crate::config::{TranscribeOptions, DiarizeOptions};
-use crate::transcript::{Segment, Transcript, Speaker, Sample, ColorModifier};
 use crate::audio;
+use crate::config::{DiarizeOptions, TranscribeOptions};
+use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript};
 use eyre::{bail, eyre, Context, OptionExt, Result};
 use hound::WavReader;
+use serde::Deserialize;
 use std::collections::hash_map::DefaultHasher;
+use std::fs;
 use std::hash::{Hash, Hasher};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
+use std::time::SystemTime;
+use tauri::{command, AppHandle, Emitter, Manager};
+use whisper_rs::DtwMode;
+use whisper_rs::DtwModelPreset;
+use whisper_rs::DtwParameters;
 pub use whisper_rs::SegmentCallbackData;
 pub use whisper_rs::WhisperContext;
 pub use whisper_rs::WhisperState;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
-use whisper_rs::DtwParameters;
-use whisper_rs::DtwMode;
-use whisper_rs::DtwModelPreset;
-use serde::Deserialize;
-use tauri::{AppHandle, Emitter, command, Manager};
-use std::fs;
-use std::time::SystemTime;
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
 
 // Global cancellation state
-pub static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> = once_cell::sync::Lazy::new(|| Mutex::new(false));
+pub static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(false));
 
 // Utility function for rounding to n decimal places
 fn round_to_places(val: f64, places: u32) -> f64 {
@@ -42,6 +43,7 @@ pub struct FrontendTranscribeOptions {
     pub model: String, // e.g., "tiny", "base", "small", "medium", "large"
     pub lang: Option<String>,
     pub translate: Option<bool>,
+    pub enable_dtw: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
 }
@@ -59,18 +61,18 @@ pub async fn cancel_transcription() -> Result<(), String> {
 }
 
 #[command]
-pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions) -> Result<Transcript, String> {
+pub async fn transcribe_audio(
+    app: AppHandle,
+    options: FrontendTranscribeOptions,
+) -> Result<Transcript, String> {
     let start_time = Instant::now();
     println!("Starting transcription with options: {:?}", options);
-    
+
     // Reset cancellation flag at the start of transcription
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = false;
         println!("Cancellation flag reset to false");
     }
-
-    // Enable DTW by default to improve word timestamps
-    let enable_dtw = true;
 
     let model_path = crate::models::download_model_if_needed(app.clone(), &options.model)?;
 
@@ -82,8 +84,8 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         &PathBuf::from(model_path),
         &options.model,
         None,
-        None,
-        Some(enable_dtw),
+        Some(true),
+        options.enable_dtw, // improved word timestamps
         Some(audio_duration),
     )
     .map_err(|e| format!("Failed to create Whisper context: {}", e))?;
@@ -99,7 +101,7 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         n_threads: None,
         temperature: None,
         translate: options.translate,
-        word_timestamps: Some(true),
+        enable_dtw: options.enable_dtw,
         sampling_bestof_or_beam_size: None,
         sampling_strategy: None,
     };
@@ -109,10 +111,22 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
         let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
 
-        let segment_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "segmentation-3.0.onnx", seg_url).await?
-            .to_string_lossy().into_owned();
-        let embedding_model_path = crate::models::download_diarize_model_if_needed(app.clone(), "wespeaker_en_voxceleb_CAM++.onnx", emb_url).await?
-            .to_string_lossy().into_owned();
+        let segment_model_path = crate::models::download_diarize_model_if_needed(
+            app.clone(),
+            "segmentation-3.0.onnx",
+            seg_url,
+        )
+        .await?
+        .to_string_lossy()
+        .into_owned();
+        let embedding_model_path = crate::models::download_diarize_model_if_needed(
+            app.clone(),
+            "wespeaker_en_voxceleb_CAM++.onnx",
+            emb_url,
+        )
+        .await?
+        .to_string_lossy()
+        .into_owned();
 
         Some(DiarizeOptions {
             segment_model_path,
@@ -156,12 +170,16 @@ pub async fn transcribe_audio(app: AppHandle, options: FrontendTranscribeOptions
         abort_callback,
         diarize_options,
         None,
-        Some(enable_dtw),
         options.enable_diarize,
-    ).await {
+    )
+    .await
+    {
         Ok(mut transcript) => {
             transcript.processing_time_sec = start_time.elapsed().as_secs();
-            println!("Transcription successful in {:.2}s", transcript.processing_time_sec);
+            println!(
+                "Transcription successful in {:.2}s",
+                transcript.processing_time_sec
+            );
             Ok(transcript)
         }
         Err(e) => {
@@ -177,11 +195,11 @@ fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
     let base_mb = 16.0;
     let mb_per_second = 4.0;
     let estimated_mb = (base_mb + (audio_duration_secs * mb_per_second)).ceil() as usize;
-    
+
     // Ensure we have at least the minimum required
-    let min_mb = 16;  // 16MB minimum
+    let min_mb = 16; // 16MB minimum
     let max_mb = 1024; // 1GB maximum to prevent excessive memory usage
-    
+
     // Convert to bytes and ensure it's a multiple of 4MB (alignment)
     let bytes = (estimated_mb.max(min_mb).min(max_mb) * 1024 * 1024) & !0x3FFFFF;
     bytes
@@ -207,6 +225,7 @@ pub fn create_context(
     if let Some(gpu_device) = gpu_device {
         ctx_params.gpu_device = gpu_device;
     }
+
     // set enable_dtw from preference
     if let Some(true) = enable_dtw {
         let dtw_mem_size = match audio_duration_secs {
@@ -230,7 +249,7 @@ pub fn create_context(
             }
         };
 
-        ctx_params.flash_attn(false);  // DTW requires flash_attn off
+        ctx_params.flash_attn(false); // DTW requires flash_attn off
         let model_preset = match model {
             "tiny.en" => DtwModelPreset::TinyEn,
             "tiny" => DtwModelPreset::Tiny,
@@ -249,17 +268,20 @@ pub fn create_context(
             mode: DtwMode::ModelPreset { model_preset },
             dtw_mem_size,
         });
+    } else {
+        ctx_params.flash_attn(true);
     }
+
     // Print actual DTW state from ctx_params
     let dtw_enabled = enable_dtw.unwrap_or(false);
-    tracing::debug!("gpu device: {:?}", ctx_params.gpu_device);
-    tracing::debug!("use gpu: {:?}", ctx_params.use_gpu);
-    tracing::debug!("DTW enabled: {}", dtw_enabled);
     // print as well
     println!("gpu device: {:?}", ctx_params.gpu_device);
     println!("use gpu: {:?}", ctx_params.use_gpu);
     println!("DTW enabled: {}", dtw_enabled);
-    let model_path = model_path.to_str().ok_or_eyre("can't convert model option to str")?;
+    println!("flash attn: {}", ctx_params.flash_attn);
+    let model_path = model_path
+        .to_str()
+        .ok_or_eyre("can't convert model option to str")?;
     tracing::debug!("creating whisper context with model path {}", model_path);
     let ctx_unwind_result = catch_unwind(AssertUnwindSafe(|| {
         WhisperContext::new_with_params(model_path, ctx_params).context("failed to open model")
@@ -319,7 +341,10 @@ pub async fn create_normalized_audio(
 
     let cache_key = generate_cache_key(&source);
     let path_resolver = app.path();
-    let out_path = path_resolver.app_cache_dir().unwrap_or_else(|_| std::env::temp_dir()).join(format!("{:x}.wav", cache_key));
+    let out_path = path_resolver
+        .app_cache_dir()
+        .unwrap_or_else(|_| std::env::temp_dir())
+        .join(format!("{:x}.wav", cache_key));
 
     // CACHING DISABLED: Always run normalization, ignore cache
     // if out_path.exists() {
@@ -356,12 +381,6 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
 
     let mut params = FullParams::new(sampling_strategy);
     tracing::debug!("set language to {:?}", options.lang);
-
-    if let Some(true) = options.word_timestamps {
-        params.set_token_timestamps(true);
-        params.set_split_on_word(true);
-        //params.set_max_len(options.max_sentence_len.unwrap_or(1));
-    }
 
     if let Some(true) = options.translate {
         params.set_translate(true);
@@ -400,7 +419,11 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     params
 }
 
-fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>) -> Vec<crate::transcript::WordTimestamp> {
+fn get_word_timestamps(
+    state: &WhisperState,
+    seg: i32,
+    enable_dtw: Option<bool>,
+) -> Vec<crate::transcript::WordTimestamp> {
     let ntok = state.full_n_tokens(seg).unwrap() as usize;
     let mut word_timestamps = Vec::with_capacity(ntok);
 
@@ -411,8 +434,13 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
     let mut start_frame = start_of_segment;
 
     // Helper function to close the current word and add it to timestamps
-    let close_current_word = |word: &mut String, timestamps: &mut Vec<crate::transcript::WordTimestamp>, 
-                            _token_idx: i32, start: i64, end: i64, prob: f32| -> i64 {
+    let close_current_word = |word: &mut String,
+                              timestamps: &mut Vec<crate::transcript::WordTimestamp>,
+                              _token_idx: i32,
+                              start: i64,
+                              end: i64,
+                              prob: f32|
+     -> i64 {
         if !word.is_empty() {
             let end_frame = end.min(end_of_segment);
             timestamps.push(crate::transcript::WordTimestamp {
@@ -438,8 +466,14 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
         if is_special {
             if is_last && !current_word.is_empty() {
                 let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
-                start_frame = close_current_word(&mut current_word, &mut word_timestamps, 
-                                               i as i32, start_frame, prev_end_frame, prev_data.p);
+                start_frame = close_current_word(
+                    &mut current_word,
+                    &mut word_timestamps,
+                    i as i32,
+                    start_frame,
+                    prev_end_frame,
+                    prev_data.p,
+                );
             }
             continue;
         }
@@ -447,17 +481,33 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
         // New word starts at tokens with leading space or if first token
         if token_text.starts_with(' ') && !current_word.is_empty() {
             let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
-            start_frame = close_current_word(&mut current_word, &mut word_timestamps, 
-                                           i as i32, start_frame, prev_end_frame, prev_data.p);
+            start_frame = close_current_word(
+                &mut current_word,
+                &mut word_timestamps,
+                i as i32,
+                start_frame,
+                prev_end_frame,
+                prev_data.p,
+            );
         }
 
         current_word.push_str(&token_text);
-        prev_end_frame = if let Some(true) = enable_dtw { data.t_dtw } else { data.t1 };
+        prev_end_frame = if let Some(true) = enable_dtw {
+            data.t_dtw
+        } else {
+            data.t1
+        };
 
         // If last token, push the final word
         if is_last && !current_word.is_empty() {
-            close_current_word(&mut current_word, &mut word_timestamps, 
-                             i as i32, start_frame, prev_end_frame, data.p);
+            close_current_word(
+                &mut current_word,
+                &mut word_timestamps,
+                i as i32,
+                start_frame,
+                prev_end_frame,
+                data.p,
+            );
         }
     }
 
@@ -467,24 +517,27 @@ fn get_word_timestamps(state: &WhisperState, seg: i32, enable_dtw: Option<bool>)
 /// Aggregates speakers from transcript segments, similar to the frontend logic
 fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
-    
+
     // Build speaker map: speaker_name -> (index, start_time, end_time)
     let mut speaker_info: HashMap<String, (usize, f64, f64)> = HashMap::new();
     let mut speaker_counter = 0;
-    
+
     // First pass: collect unique speakers and assign indices
     for segment in segments.iter() {
         if let Some(ref speaker_id) = segment.speaker_id {
             let speaker_name = format!("Speaker {}", speaker_id.trim());
             if !speaker_name.is_empty() {
                 if !speaker_info.contains_key(&speaker_name) {
-                    speaker_info.insert(speaker_name.clone(), (speaker_counter, segment.start, segment.end));
+                    speaker_info.insert(
+                        speaker_name.clone(),
+                        (speaker_counter, segment.start, segment.end),
+                    );
                     speaker_counter += 1;
                 }
             }
         }
     }
-    
+
     // Create updated segments with new speaker IDs
     let mut updated_segments = segments.to_vec();
     for segment in updated_segments.iter_mut() {
@@ -495,25 +548,22 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
             }
         }
     }
-    
+
     // Convert speaker info to speakers array, sorted by index
     let mut speakers = Vec::new();
     let mut speaker_list: Vec<(String, (usize, f64, f64))> = speaker_info.into_iter().collect();
     speaker_list.sort_by_key(|(_, (index, _, _))| *index);
-    
+
     for (name, (_, start, end)) in speaker_list {
         speakers.push(Speaker {
             name,
-            sample: Sample {
-                start,
-                end,
-            },
+            sample: Sample { start, end },
             fill: ColorModifier::default(),
             outline: ColorModifier::default(),
             border: ColorModifier::default(),
         });
     }
-    
+
     (speakers, updated_segments)
 }
 
@@ -526,17 +576,13 @@ fn process_diarization(
 ) -> Result<(Vec<Speaker>, Vec<Segment>), eyre::Report> {
     tracing::debug!("Diarize enabled {:?}", diarize_options);
     let mut embedding_manager = pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers);
-    let mut extractor =
-        pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
-            .map_err(|e| eyre!("{:?}", e))?;
+    let mut extractor = pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
+        .map_err(|e| eyre!("{:?}", e))?;
 
     // Get speech segments as an iterator
-    let diarize_segments_iter = pyannote_rs::get_segments(
-        original_samples,
-        16000,
-        &diarize_options.segment_model_path,
-    )
-    .map_err(|e| eyre!("{:?}", e))?;
+    let diarize_segments_iter =
+        pyannote_rs::get_segments(original_samples, 16000, &diarize_options.segment_model_path)
+            .map_err(|e| eyre!("{:?}", e))?;
 
     // Process segments efficiently using iterator and pre-computed embeddings
     let aligned_segments = process_and_align_segments(
@@ -546,11 +592,12 @@ fn process_diarization(
         &mut extractor,
         diarize_options,
         progress_callback.as_ref(),
-    ).context("Failed to process and align segments with diarization")?;
+    )
+    .context("Failed to process and align segments with diarization")?;
 
     // Aggregate speakers from segments
     let (speakers, segments) = aggregate_speakers_from_segments(&aligned_segments);
-    
+
     Ok((speakers, segments))
 }
 
@@ -565,138 +612,155 @@ fn process_and_align_segments(
     progress_callback: Option<&Box<dyn Fn(i32) + Send + Sync>>,
 ) -> Result<Vec<Segment>> {
     use std::collections::HashMap;
-    
+
     // Cache for computed embeddings to avoid recomputation
     let mut embedding_cache: HashMap<(u64, u64), (Vec<f32>, String)> = HashMap::new();
-    
+
     // Process diarization segments and build a sorted list for efficient lookup
     let mut diarization_segments = Vec::new();
-    
+
     // Collect segments first to track progress
     let diarize_segments_vec: Vec<_> = diarize_segments_iter.collect();
     let total_segments = diarize_segments_vec.len();
-    
+
     // Emit initial progress
     if let Some(callback) = progress_callback {
         callback(0);
     }
-    
+
     for (segment_index, diar_result) in diarize_segments_vec.into_iter().enumerate() {
-        let diar_seg = diar_result.map_err(|e| eyre!("Error processing diarization segment: {:?}", e))?;
-        
+        let diar_seg =
+            diar_result.map_err(|e| eyre!("Error processing diarization segment: {:?}", e))?;
+
         // Create a cache key based on start/end times (rounded to avoid floating point issues)
         let cache_key = (
             (diar_seg.start * 1000.0) as u64,
             (diar_seg.end * 1000.0) as u64,
         );
-        
+
         // Compute embedding for this segment
         let (embedding_vec, speaker_id) = match extractor.compute(&diar_seg.samples) {
             Ok(embedding_result) => {
                 let embedding_vec: Vec<f32> = embedding_result.collect();
-                
+
                 // Find the speaker using the same logic as the original pipeline
-                let speaker_id = if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
-                    embedding_manager
-                        .get_best_speaker_match(embedding_vec.clone())
-                        .map(|r| r.to_string())
-                        .unwrap_or_else(|_| "?".to_string())
-                } else {
-                    embedding_manager
-                        .search_speaker(embedding_vec.clone(), diarize_options.threshold)
-                        .map(|r| r.to_string())
-                        .unwrap_or_else(|| "?".to_string())
-                };
-                
+                let speaker_id =
+                    if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
+                        embedding_manager
+                            .get_best_speaker_match(embedding_vec.clone())
+                            .map(|r| r.to_string())
+                            .unwrap_or_else(|_| "?".to_string())
+                    } else {
+                        embedding_manager
+                            .search_speaker(embedding_vec.clone(), diarize_options.threshold)
+                            .map(|r| r.to_string())
+                            .unwrap_or_else(|| "?".to_string())
+                    };
+
                 (embedding_vec, speaker_id)
             }
             Err(e) => {
-                tracing::warn!("Failed to compute embedding for diarization segment: {:?}", e);
+                tracing::warn!(
+                    "Failed to compute embedding for diarization segment: {:?}",
+                    e
+                );
                 (Vec::new(), "?".to_string())
             }
         };
-        
+
         // Cache the embedding and speaker ID
         embedding_cache.insert(cache_key, (embedding_vec, speaker_id.clone()));
-        
+
         // Store segment with computed speaker ID
         diarization_segments.push((diar_seg, speaker_id));
-        
+
         // Emit progress update
         if let Some(callback) = progress_callback {
             let progress = ((segment_index + 1) as f32 / total_segments as f32 * 80.0) as i32; // First 80% for diarization (embedding computation is heavy)
             callback(progress);
         }
     }
-    
+
     // Sort diarization segments by start time for more efficient searching
-    diarization_segments.sort_by(|a, b| a.0.start.partial_cmp(&b.0.start).unwrap_or(std::cmp::Ordering::Equal));
-    
+    diarization_segments.sort_by(|a, b| {
+        a.0.start
+            .partial_cmp(&b.0.start)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
     let mut aligned_segments = Vec::with_capacity(transcript_segments.len());
     let total_transcript_segments = transcript_segments.len();
-    
+
     // Process transcript segments and align with diarization
     for (transcript_index, mut transcript_seg) in transcript_segments.into_iter().enumerate() {
         let seg_start = transcript_seg.start;
         let seg_end = transcript_seg.end;
         let seg_midpoint = (seg_start + seg_end) / 2.0;
-        
+
         let mut best_speaker_id = None;
         let mut best_overlap = 0.0;
-        
+
         // Use binary search to find potential overlapping segments more efficiently
         let start_idx = diarization_segments
-            .binary_search_by(|probe| probe.0.end.partial_cmp(&seg_start).unwrap_or(std::cmp::Ordering::Equal))
+            .binary_search_by(|probe| {
+                probe
+                    .0
+                    .end
+                    .partial_cmp(&seg_start)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .unwrap_or_else(|idx| idx);
-        
+
         // Only check segments that could potentially overlap
         for (diar_seg, speaker_id) in diarization_segments[start_idx..].iter() {
             let diar_start = diar_seg.start;
             let diar_end = diar_seg.end;
-            
+
             // Early termination if we've passed all possible overlapping segments
             if diar_start > seg_end {
                 break;
             }
-            
+
             // Calculate overlap between transcript segment and diarization segment
             let overlap_start = seg_start.max(diar_start);
             let overlap_end = seg_end.min(diar_end);
             let overlap_duration = (overlap_end - overlap_start).max(0.0);
-            
+
             // Also check if the midpoint falls within the diarization segment
             let midpoint_in_segment = seg_midpoint >= diar_start && seg_midpoint <= diar_end;
-            
+
             // Prefer segments where midpoint is contained, otherwise use largest overlap
             let score = if midpoint_in_segment {
                 overlap_duration + 1000.0 // Bonus for midpoint containment
             } else {
                 overlap_duration
             };
-            
-            if score > best_overlap && overlap_duration > 0.1 { // Minimum 100ms overlap
+
+            if score > best_overlap && overlap_duration > 0.1 {
+                // Minimum 100ms overlap
                 best_overlap = score;
                 best_speaker_id = Some(speaker_id.clone());
             }
         }
-        
+
         // Assign the speaker ID
         transcript_seg.speaker_id = best_speaker_id;
         aligned_segments.push(transcript_seg);
-        
+
         // Emit progress update for alignment phase (80-100%)
         if let Some(callback) = progress_callback {
-            let progress = 80 + ((transcript_index + 1) as f32 / total_transcript_segments as f32 * 20.0) as i32;
+            let progress = 80
+                + ((transcript_index + 1) as f32 / total_transcript_segments as f32 * 20.0) as i32;
             callback(progress);
         }
     }
-    
+
     // Ensure we emit 100% completion
     if let Some(callback) = progress_callback {
         callback(100);
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    
+
     Ok(aligned_segments)
 }
 
@@ -709,7 +773,6 @@ pub async fn run_transcription_pipeline(
     abort_callback: Option<Box<dyn Fn() -> bool + Send>>,
     diarize_options: Option<DiarizeOptions>,
     additional_ffmpeg_args: Option<Vec<String>>,
-    enable_dtw: Option<bool>,
     enable_diarize: Option<bool>,
 ) -> Result<Transcript> {
     tracing::debug!("Transcribe called with {:?}", options);
@@ -721,7 +784,12 @@ pub async fn run_transcription_pipeline(
     // --- Normalization (Async) ---
     // This part is async, so we await it directly.
     let out_path = if should_normalize(options.path.clone().into()) {
-        create_normalized_audio(app.clone(), options.path.clone().into(), additional_ffmpeg_args).await?
+        create_normalized_audio(
+            app.clone(),
+            options.path.clone().into(),
+            additional_ffmpeg_args,
+        )
+        .await?
     } else {
         println!("Skip normalize");
         tracing::debug!("Skip normalize");
@@ -738,16 +806,6 @@ pub async fn run_transcription_pipeline(
         let mut state = ctx.create_state().context("failed to create key")?;
         let mut params = setup_params(&options);
         let st = std::time::Instant::now();
-    
-        // Enable word timestamps if requested
-        if options.word_timestamps.unwrap_or(false) {
-            params.set_token_timestamps(true);
-        } else {
-            // Ensure word timestamps are enabled if we're in DTW mode
-            if let Some(true) = enable_dtw {
-                params.set_token_timestamps(true);
-            }
-        }
 
         // Only set up Whisper's internal progress callback when diarization is NOT enabled
         // When diarization is enabled, we handle progress manually in the diarization loop above
@@ -764,7 +822,12 @@ pub async fn run_transcription_pipeline(
             params.set_abort_callback_safe(abort_callback);
         }
 
-        if PROGRESS_CALLBACK.lock().map_err(|e| eyre!("{:?}", e))?.as_ref().is_some() {
+        if PROGRESS_CALLBACK
+            .lock()
+            .map_err(|e| eyre!("{:?}", e))?
+            .as_ref()
+            .is_some()
+        {
             params.set_progress_callback_safe(|progress| {
                 if let Ok(mut cb) = PROGRESS_CALLBACK.lock() {
                     if let Some(cb) = cb.as_mut() {
@@ -777,42 +840,41 @@ pub async fn run_transcription_pipeline(
         tracing::debug!("set start time...");
 
         tracing::debug!("setting state full...");
-        state.full(params, &samples).context("failed to transcribe")?;
+        state
+            .full(params, &samples)
+            .context("failed to transcribe")?;
         let _et = std::time::Instant::now();
 
         tracing::debug!("getting segments count...");
-        let num_segments = state.full_n_segments().context("failed to get number of segments")?;
+        let num_segments = state
+            .full_n_segments()
+            .context("failed to get number of segments")?;
         if num_segments == 0 {
             bail!("no segments found!")
         }
         tracing::debug!("found {} sentence segments", num_segments);
-        
+
         // Process segments with or without diarization
         let num_segments = state.full_n_segments()?;
         tracing::debug!("found {} sentence segments", num_segments);
 
         // Process each segment and collect word timestamps
         let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
-    
+
         for seg_idx in 0..num_segments {
             let (seg_start, seg_end);
 
             // Get the segment text
-            let text = state.full_get_segment_text_lossy(seg_idx as i32).context("failed to get segment")?;
-            
+            let text = state
+                .full_get_segment_text_lossy(seg_idx as i32)
+                .context("failed to get segment")?;
+
             // Get word timestamps if DTW is enabled
-            let words = if let Some(true) = enable_dtw {
-                let word_timestamps = get_word_timestamps(&state, seg_idx as i32, enable_dtw);
+            let words = {
+                let word_timestamps = get_word_timestamps(&state, seg_idx as i32, options.enable_dtw);
                 seg_start = word_timestamps.first().unwrap().start;
                 seg_end = word_timestamps.last().unwrap().end;
                 Some(word_timestamps)
-            } else {
-                // Convert from centiseconds to seconds
-                let t0 = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-                let t1 = state.full_get_segment_t1(seg_idx as i32).unwrap_or(0) as f64 * 0.01;
-                seg_start = t0;
-                seg_end = t1;
-                None
             };
 
             // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
@@ -820,13 +882,13 @@ pub async fn run_transcription_pipeline(
                 if last.end > seg_start {
                     last.end = seg_start;
                 }
-                
+
                 // If word-level enabled, also update end time of last word
                 if let Some(words) = &mut last.words {
                     words.last_mut().unwrap().end = seg_end;
                 }
             }
-                
+
             // Create the segment after we're done printing
             let segment = Segment {
                 speaker_id: None, // No speaker info in non-diarized mode
@@ -843,16 +905,20 @@ pub async fn run_transcription_pipeline(
         let (mut speakers, mut segments) = if let Some(true) = enable_diarize {
             // Emit diarization start event
             let _ = app.emit("diarization-start", ());
-            
+
             // Create diarization progress callback
             let diarize_app = app.clone();
             let diarize_progress_callback = Some(Box::new(move |progress: i32| {
                 let _ = diarize_app.emit("diarization-progress", progress);
             }) as Box<dyn Fn(i32) + Send + Sync>);
-            
+
             let diarize_opts = match &diarize_options {
                 Some(opts) => opts,
-                None => return Err(eyre!("Diarization enabled but no diarization options provided")),
+                None => {
+                    return Err(eyre!(
+                        "Diarization enabled but no diarization options provided"
+                    ))
+                }
             };
             let result = process_diarization(
                 segments,
@@ -860,15 +926,15 @@ pub async fn run_transcription_pipeline(
                 diarize_opts,
                 diarize_progress_callback,
             )?;
-            
+
             // Emit diarization complete event
             let _ = app.emit("diarization-complete", ());
-            
+
             result
         } else {
             // No speaker aggregation needed for non-diarized transcripts
             (Vec::new(), segments)
-        }; 
+        };
 
         let offset = options.offset.unwrap_or(0.0);
 
@@ -896,7 +962,7 @@ pub async fn run_transcription_pipeline(
             speakers,
         };
         return Ok(transcript);
-        
-    }).await??;
+    })
+    .await??;
     Ok(transcript)
 }

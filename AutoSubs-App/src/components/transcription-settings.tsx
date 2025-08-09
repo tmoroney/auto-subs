@@ -45,6 +45,7 @@ import { TextFormattingCard } from "./settings-cards/text-formatting-card"
 import { SpeakerEditor } from "./speaker-editor"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { SurveyNotification } from "./survey-notification";
+import { WordTimestampsCard } from "./settings-cards/word-timestamps-card"
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
@@ -380,6 +381,12 @@ export const TranscriptionSettings = ({
                                     onModelChange={(model) => updateSetting('model', model)}
                                     onDeleteModel={(model) => handleDeleteModel(model)}
                                 />
+
+                                {/* Word Timestamps */}
+                                <WordTimestampsCard
+                                    enableDTW={settings.enableDTW}
+                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
+                                />
                             </div>
 
                         </CollapsibleContent>
@@ -613,10 +620,9 @@ export const TranscriptionSettings = ({
             <AlertDialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Transcription Complete</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete your account
-                            and remove your data from our servers.
+                            If you would like to edit the subtitles, click continue editing. When you're ready, click the orange button to add them to the timeline.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
