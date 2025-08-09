@@ -8,8 +8,7 @@ jobs:
   compose-windows:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Ensure jq is available
         run: |
@@ -23,21 +22,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p latest
-
-          # pull mac signatures (required)
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" --dir latest --clobber
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" --dir latest --clobber
-
-          # pull windows signature (optional)
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "AutoSubs-windows-x86_64.exe.sig" --dir latest --clobber || true
 
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
           WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
-
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           NOTES='${{ github.event.release.body }}'
@@ -48,6 +42,7 @@ jobs:
             --arg notes "$NOTES" \
             --arg arm_sig "$ARM_SIG" \
             --arg intel_sig "$INTEL_SIG" \
+            --arg windows_sig "$WINDOWS_SIG" \
             --arg tag "$TAG" \
             '{
               version: $version,
@@ -63,14 +58,12 @@ jobs:
                   url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
                 },
                 "windows-x86_64": (
-                  if ((env.WINDOWS_SIG // "") | length) > 0 then
-                    { signature: env.WINDOWS_SIG,
+                  if ($windows_sig | length) > 0 then
+                    { signature: $windows_sig,
                       url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
                   else empty end
                 )
               }
             }')
           echo "$JSON_OUTPUT" > latest.json
-
-          # Upload/overwrite latest.json on the release
           gh release upload "$TAG" latest.json --clobber

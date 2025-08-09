@@ -173,7 +173,7 @@ jobs:
       run: |
         set -euo pipefail
         # Paths
-        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle/macos"
+        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos"
         OUT_DIR="release-artifacts"
 
         mkdir -p "$OUT_DIR"
@@ -243,12 +243,12 @@ jobs:
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
           # Disable default features (mac-specific) for Linux build
-          npm run tauri build -- --no-default-features --features linux
+          npm run tauri build -- --target x86_64-unknown-linux-gnu -- --no-default-features --features linux
 
       - name: Collect Linux artifacts (.deb only)
         run: |
           set -euo pipefail
-          LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
+          LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle"
           # Debian package lives under bundle/deb
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
           if [ -n "$DEB_FILE" ]; then
@@ -298,15 +298,8 @@ jobs:
             --dir latest \
             --clobber
 
-          gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "AutoSubs-windows-x86_64.exe.sig" \
-            --dir latest \
-            --clobber || true
-
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
-          WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -331,13 +324,7 @@ jobs:
                 "macos-x86_64": {
                   signature: $intel_sig,
                   url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
-                },
-                "windows-x86_64": (
-                  if ($windows_sig | length) > 0 then
-                    { signature: $windows_sig,
-                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
-                  else empty end
-                )
+                }
               }
             }')
           echo "$JSON_OUTPUT" > latest.json

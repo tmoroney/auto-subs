@@ -64,8 +64,8 @@ vulkan = ["whisper-rs/vulkan"]
 # Platform/arch presets
 mac-aarch = ["coreml", "metal"]
 mac-x86_64 = ["metal", "openblas"]
-windows = ["vulkan","openblas"]
-linux = ["vulkan","openblas"]
+windows = ["vulkan", "openblas"]
+linux = ["vulkan", "openblas"]
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
