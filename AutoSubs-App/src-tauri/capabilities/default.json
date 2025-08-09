@@ -32,10 +32,10 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "path": "$APPCACHE/transcripts/**"
+          "path": "$DOCUMENT/**"
         },
         {
-          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
+          "path": "$DOWNLOAD/**"
         }
       ]
     },
@@ -44,10 +44,7 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [
         {
-          "path": "$APPCACHE/transcripts/**"
-        },
-        {
-          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
+          "path": "$DOCUMENT/**"
         }
       ]
     },
@@ -55,10 +52,7 @@
       "identifier": "fs:allow-exists",
       "allow": [
         {
-          "path": "$APPCACHE/transcripts/**"
-        },
-        {
-          "path": "$CACHE/AutoSubs-Cache/Cache/transcripts/**"
+          "path": "$DOCUMENT/**"
         }
       ]
     },
@@ -78,22 +72,6 @@
       ]
     },
     "store:default",
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
-        {
-          "name": "transcription-server-mac",
-          "cmd": "$RESOURCE/resources/Transcription-Server/transcription-server"
-        },
-        {
-          "name": "transcription-server-win",
-          "cmd": "$RESOURCE\\resources\\Transcription-Server\\transcription-server.exe"
-        }
-      ]
-    },
-    {
-      "identifier": "shell:allow-kill"
-    },
     "core:window:default",
     {
       "identifier": "core:window:allow-close"

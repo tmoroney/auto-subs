@@ -1,9 +1,9 @@
 [package]
 name = "autosubs"
-version = "2.0.0"
-description = "Automatic Custom Subtitles"
+version = "3.0.0"
+description = "Transcribe and diarize audio files"
 authors = ["Tom Moroney"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,10 +15,10 @@ name = "autosubs_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.0.0", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.0.0", features = ["protocol-asset", "devtools"] }
+tauri = { version = "2", features = ["protocol-asset", "devtools"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-http = "2"
@@ -28,9 +28,46 @@ tauri-plugin-store = "2"
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2"
 
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "blocking"] }
 
 # Add tokio for asynchronous runtime
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-os = "2"
+
+# Add transcription and diarization dependencies
+whisper-rs = "0.14.3"  # Let it use its default features
+pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
+num = "0.4.1"
+once_cell = "1.19.0"
+which = "6.0.1"
+eyre = "0.6.12"
+hound = "3.5.1"
+tempfile = "3.9.0"
+chrono = "0.4.38"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+ort-sys = "=2.0.0-rc.9" # prevents error with pyannote-rs
+hf-hub = "0.4.3"
+dirs = "5.0"
+zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
+
+[features]
+default = ["mac-aarch"]
+coreml = ["whisper-rs/coreml", "pyannote-rs/coreml"]
+directml = ["pyannote-rs/directml"]
+cuda = ["whisper-rs/cuda", "pyannote-rs/load-dynamic"]
+openblas = ["whisper-rs/openblas"]
+metal = ["whisper-rs/metal"]
+rocm = ["whisper-rs/hipblas"]
+vulkan = ["whisper-rs/vulkan"]
+
+# Platform/arch presets
+mac-aarch = ["coreml", "metal"]
+mac-x86_64 = ["metal", "openblas"]
+windows = ["vulkan", "openblas"]
+linux = ["vulkan", "openblas"]
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+
 

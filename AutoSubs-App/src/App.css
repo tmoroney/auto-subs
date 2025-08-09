@@ -85,3 +85,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Heart Burst Animation */
+.group:hover .heart-anim {
+    animation: burst 1s ease-out forwards;
+}
+
+@keyframes burst {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(var(--s)) rotate(var(--r));
+        opacity: 0;
+    }
+}

@@ -22,3 +22,6 @@ sign.sh
 /Transcription-Server/build
 AutoSubs-App/package-lock.json
 /Mac-Package/Payload
+/AutoSubs-App/src-tauri/binaries
+/AutoSubs-App/.windsurf
+/AutoSubs-App/src-tauri/src/pyannote-rs

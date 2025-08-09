@@ -1,9 +1,12 @@
+---@diagnostic disable: undefined-global
+local resolve = resolve
+
+-- Resolve variables
 local projectManager = resolve:GetProjectManager()
+
+-- Project variables (probably best to get these when actual function is called)
 local project = projectManager:GetCurrentProject()
 local timeline = project:GetCurrentTimeline()
-local framerate = timeline:GetSetting("timelineFrameRate")
-local animDuration = math.floor(0.14 * framerate)
-local animDurationShort = math.floor(0.05 * framerate)
 
 function SetInputs(tool, inputTable)
     for key, value in pairs(inputTable) do
@@ -11,10 +14,11 @@ function SetInputs(tool, inputTable)
     end
 end
 
-function Fade(template, follower, duration)
+function Fade(follower, duration, animDuration)
     local properties = { "Opacity1", "Opacity2", "Opacity3" }
+    print("Anim duration: " .. animDuration)
     for _, prop in ipairs(properties) do
-        local value = template:GetInput(prop)
+        local value = follower:GetInput(prop)
 
         -- Fade in
         local keyframes = {
@@ -29,8 +33,8 @@ function Fade(template, follower, duration)
     end
 end
 
-function PopIn(template, follower, duration)
-    local value = template:GetInput("Size")
+function PopIn(follower, duration, animDuration)
+    local value = follower:GetInput("Size")
 
     -- Pop in
     local keyframes = {
@@ -44,11 +48,11 @@ function PopIn(template, follower, duration)
     spline:SetKeyFrames(keyframes, true)
 end
 
-function SlideUp(comp, follower, duration)
+function SlideUp(follower, duration, animDuration)
     local keyframes = {
         [0] = { -0.7 },
         [animDuration] = { 0 },
-        [duration - 7] = { 0 },
+        [duration - animDuration] = { 0 },
         [duration] = { -0.7 },
     }
 
@@ -56,7 +60,7 @@ function SlideUp(comp, follower, duration)
         local offsetProp = "Offset" .. i
         local path = "XYPath" .. i
         follower:AddModifier(offsetProp, "XYPath")
-        local xyPath = comp:FindTool(path)
+        local xyPath = follower:FindTool(path)
         xyPath:AddModifier("Y", "BezierSpline")
         local spline = xyPath.Y:GetConnectedOutput():GetTool()
         spline:DeleteKeyFrames(0)
@@ -157,12 +161,14 @@ function HighlightWords(comp, follower, wordTimings, duration)
     for i, spokenWord in ipairs(wordTimings) do
         local styledText = {}
         -- Set styled text properties for each word at the current frame
+        local charIndex = 0
         for j, word in ipairs(wordTimings) do
             if i == j then
-                table.insert(styledText, { 2401, word.startIndex, word.endIndex, Value = word.value, __flags = 256, Index = 1 })
+                table.insert(styledText, { 2401, charIndex, word.endIndex, Value = word.value, __flags = 256, Index = 1 })
             else
-                table.insert(styledText, { 2401, word.startIndex, word.endIndex, Value = 0, __flags = 256, Index = 1 })
+                table.insert(styledText, { 2401, charIndex, word.endIndex, Value = 0, __flags = 256, Index = 1 })
             end
+            charIndex = word.endIndex + 1
         end
         local keyframeData = {
             i - 1,
@@ -186,27 +192,85 @@ function HighlightWords(comp, follower, wordTimings, duration)
     print("Keyframes successfully updated.")
 end
 
-local function getWordTimings(text, words)
-    local timings = {}
-    local currentIndex = 0
+function BuildAnimation(follower, clipDuration, animDuration, animationList)
+    print(animDuration)
+    for _, animation in ipairs(animationList) do
+        if animation == "fade" then
+            Fade(follower, clipDuration, animDuration)
+        elseif animation == "popin" then
+            PopIn(follower, clipDuration, animDuration)
+        elseif animation == "slideup" then
+            SlideUp(follower, clipDuration, animDuration)
+        end
+    end
+end
 
-    for _, word in ipairs(words) do
-        local startIndex = string.find(text, word.text, currentIndex + 1, true) - 1
-        local endIndex = startIndex + #word.text
-        table.insert(timings, {
-            startTime = word.startTime,
-            endTime = word.endTime,
-            startFrame = math.floor(word.startTime * framerate),
-            endFrame = math.floor(word.endTime * framerate),
-            startIndex = startIndex,
-            endIndex = endIndex,
-            value = 0.8 -- Highlight colour
-        })
-        currentIndex = endIndex + 1
+function ExampleData()
+    local wordData = {}
+
+    -- add 3 empty words (prevent .end from causing issues)
+    for i = 1, 3 do
+        table.insert(wordData, {})
     end
 
-    return timings
+    wordData[1]["start"] = 0
+    wordData[1]["end"] = 1.0
+    wordData[1]["word"] = "Subtitle"
+    wordData[1]["value"] = 0.8
+
+    wordData[2]["start"] = 1
+    wordData[2]["end"] = 2.5
+    wordData[2]["word"] = " Example"
+    wordData[2]["value"] = 0.8
+
+    wordData[3]["start"] = 2
+    wordData[3]["end"] = 4.0
+    wordData[3]["word"] = " Text"
+    wordData[3]["value"] = 0.8
+
+    return wordData
 end
+
+function AddWordTiming(follower, framerate, wordTimings, clipDuration, animDuration)
+    follower:AddModifier("DelayByCharacterPosition", "BezierSpline")
+    follower:SetInput("Order", 6)
+    local delaySpline = follower.DelayByCharacterPosition:GetConnectedOutput():GetTool()
+
+    local keyframes = {}
+    local currentIndex = 0
+    for i, word in ipairs(wordTimings) do
+        -- Format: [index of first character of word in string] = { frame that word starts }
+        keyframes[currentIndex] = { word.start * framerate}
+
+        -- Update start index for next word
+        currentIndex = currentIndex + #word.word
+    end
+    delaySpline:SetKeyFrames(keyframes)
+
+    -- Make sure that all keyframes are set to StepIn (prevent weird character by character animation)
+    local name = delaySpline.Name
+    local settings = delaySpline:SaveSettings()
+    for key, _ in pairs(settings.Tools[name].KeyFrames) do
+        settings.Tools[name].KeyFrames[key].Flags = { StepIn = true }
+    end
+    delaySpline:LoadSettings(settings)
+
+    -- Animate out all at once
+    follower:SetInput("DelayType", 0)
+    follower:SetInput("Delay", 0.5)
+    follower:AddModifier("Order", "BezierSpline")
+    local orderSpline = follower.Order:GetConnectedOutput():GetTool()
+    keyframes = {
+        [clipDuration - animDuration - 1] = { 6 },
+        [clipDuration - animDuration] = { 0 },
+    }
+    orderSpline:SetKeyFrames(keyframes)
+end
+
+
+-- Animation Plan
+-- 1. Add animation to follower
+-- 2. Add word timings
 
 
 
@@ -216,10 +280,13 @@ local timelineItem = timelineItems[1]
 
 if timelineItem:GetFusionCompCount() > 0 then
     local comp = timelineItem:GetFusionCompByIndex(1)
-    local duration = timelineItem:GetDuration()
-    print("Duration:", duration)
+    local framerate = comp:GetPrefs("Comp.FrameFormat.Rate")
+    local clipDuration = timelineItem:GetDuration()
+    local animDuration = 0.14 * framerate
+    local animDurationShort = 0.05 * framerate
 
     local template = comp:FindToolByID("TextPlus")
+    template:SetInput("StyledText", "Subtitle Example Text")
     local currentTool = comp:GetToolList(false, "StyledTextFollower")
     local follower = nil
     if #currentTool > 0 then
@@ -229,28 +296,14 @@ if timelineItem:GetFusionCompCount() > 0 then
         follower = comp:GetToolList(false, "StyledTextFollower")[1]
     end
 
-    local textExample = "Subtitle Example Text"
-    local wordData = {
-        { startTime = 0, endTime = 1.0, text = "Subtitle" },
-        { startTime = 1, endTime = 2.5, text = "Example" },
-        { startTime = 2, endTime = 4.0, text = "Text" }
-    }
+    local wordData = ExampleData()
 
-    local wordTimings = getWordTimings(textExample, wordData)
+    AddWordTiming(follower, framerate, wordData, clipDuration, animDuration)
+    --BuildAnimation(follower, clipDuration, animDuration, { "fade", "popin" })
+    Fade(follower, clipDuration, animDuration)
+    
 
     comp.CurrentTime = 0
-
-    -- Animation
-    Fade(template, follower, duration)
-    PopIn(template, follower, duration)
-    --SlideUp(comp, follower, duration)
-
-    -- Type of Animation
-    AnimateGradual(follower, duration, wordTimings)
-    --AnimateStepIn(follower, duration, wordTimings)
-
-    -- Highlight spoken words
-    --HighlightWords(comp, follower, wordTimings, duration)
 end
 
 local animate = {}

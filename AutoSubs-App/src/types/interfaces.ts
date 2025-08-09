@@ -1,45 +1,22 @@
-export interface Speaker {
-    label: string;
-    id: string;
-    color: string;
-    style: string;
-    sample: {
-        start: number;
-        end: number;
-    };
-    subtitle_lines: number;
-    word_count: number;
+// Error message interface
+export interface ErrorMsg {
+    title: string;
+    desc: string;
 }
 
-export interface TopSpeaker {
-    label: string;
-    id: string;
-    percentage: number;
-}
-
+// Resolve Interfaces
 export interface AudioInfo {
-    timeline: string;
     path: string;
     markIn: number;
     markOut: number;
+    offset: number;
 }
 
-export interface Subtitle {
-    start: string;
-    end: string;
-    text: string;
-    speaker: string;
-}
-
-export interface SubtitleListProps {
-    subtitles: Subtitle[];
-}
-
-interface Template {
+export interface Template {
     value: string;
     label: string;
 }
-interface Track {
+export interface Track {
     value: string;
     label: string;
 }
@@ -52,59 +29,98 @@ export interface TimelineInfo {
     outputTracks: Track[];
 }
 
-export interface ErrorMsg {
-    title: string;
-    desc: string;
+// Subtitle Interfaces
+export interface Word {
+    word: string;
+    start: number;
+    end: number;
+    line_number: number;
+    probability?: number;
+}
+export interface Subtitle {
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+    words: Array<Word>;
+    speaker_id?: string;
 }
 
-export interface Progress {
-    isLoading: boolean;
-    value: number;
-    currentStep: number;
-    message: string;
+// Speaker Interfaces
+export interface ColorModifier {
+    enabled: boolean;
+    color: string;
+}
+export interface Sample {
+    start: number;
+    end: number;
+}
+export interface Speaker {
+    name: string;
+    fill: ColorModifier;
+    outline: ColorModifier;
+    border: ColorModifier;
+    sample: Sample;
+    track?: string;
 }
 
-export interface TranscriptionCallbacks {
-    setProgress: (value: number) => void;
-    setMessage: (message: string) => void;
-    setIsLoading: (value: boolean) => void;
-    setCurrentStep: (value: number) => void;
-    setSubtitles: (update: (prev: any[]) => any[]) => void;
-    enabledSteps: EnabeledSteps;
-    serverLoadingRef?: { current: boolean };
+// Model Interface
+export interface Model {
+    value: string
+    label: string
+    description: string
+    size: string
+    ram: string
+    image: string
+    details: string
+    isDownloaded: boolean
 }
 
-export interface TranscribeResponse {
-    result_file: string;
-    speakers: Speaker[];
-    top_speakers: TopSpeaker[];
-}
-
-export interface EnabeledSteps {
-    exportAudio: boolean;
-    transcribe: boolean;
-    customSrt: boolean;
-    diarize: boolean;
-}
-
+// Settings Interface
 export interface Settings {
-    inputTrack: string;
-    outputTrack: string;
-    template: string;
-    model: string;
+    // Mode
+    isStandaloneMode: boolean,
+
+    // Survey notification settings
+    timesDismissedSurvey: number;
+    lastSurveyDate: string;
+
+    // Processing settings
+    model: number; // index of model in models array
     language: string,
     translate: boolean,
-    maxWords: number,
-    maxChars: number,
-    textFormat: "none" | "uppercase" | "lowercase";
+    enableDiarize: boolean,
+    maxSpeakers: number | null,
+    enableDTW: boolean,
+
+    // Text settings
+    maxWordsPerLine: number,
+    maxCharsPerLine: number,
+    maxLinesPerSubtitle: number,
+    splitOnPunctuation: boolean,
+    textCase: "none" | "uppercase" | "lowercase";
+    removePunctuation: boolean,
+    enableCensor: boolean,
+    censoredWords: Array<string>,
+
+    // Davinci Resolve settings
+    selectedInputTracks: string[];
+    selectedOutputTrack: string;
+    selectedTemplate: Template;
+
+    // Animation settings
+    animationType: "none" | "pop-in" | "fade-in" | "slide-in" | "typewriter";
     highlightType: "none" | "outline" | "fill" | "bubble";
     highlightColor: string;
-    animationType: "none" | "pop-in" | "fade-in" | "slide-in" | "typewriter";
-    wordLevel: boolean;
-    removePunctuation: boolean,
-    sensitiveWords: Array<string>,
-    alignWords: boolean,
-    diarizeMode: string,
-    diarizeSpeakerCount: number,
-    enabledSteps: EnabeledSteps;
+}
+
+export interface TranscriptionOptions {
+    audioPath: string,
+    offset: number,
+    model: string,
+    lang: string,
+    translate: boolean,
+    enableDTW: boolean,
+    enableDiarize: boolean,
+    maxSpeakers: number | null,
 }

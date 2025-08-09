@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "AutoSubs",
-  "version": "2.2.0",
-  "identifier": "com.autosubs.app",
+  "version": "3.0.0",
+  "identifier": "com.autosubs",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "AutoSubs",
-        "width": 780,
-        "height": 680,
+        "width": 750,
+        "height": 740,
         "closable": true
       }
     ],
@@ -23,8 +23,6 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPCACHE/transcripts/**",
-          "$CACHE/transcripts/**",
           "$DESKTOP/**",
           "$DOCUMENT/**",
           "$DOWNLOAD/**",
@@ -35,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app"],
+    "targets": ["nsis", "app", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -46,8 +44,20 @@
     "resources": [
       "resources/"
     ],
+    "externalBin": [
+      "binaries/ffmpeg",
+      "binaries/ffprobe"
+    ],
     "macOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "13.0"
+    },
+    "linux": {
+      "deb": {
+        "files": {
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
+        }
+      }
     },
     "windows": {
       "nsis": {
@@ -58,6 +68,15 @@
       "certificateThumbprint": "df6635960a607103e4882c0671c2f8d0ef2ace18",
       "timestampUrl": "http://time.certum.pl",
       "digestAlgorithm": "sha256"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFENjNBQjZFRkVCQTQxQTkKUldTcFFiciticXRqcmZtTlRWRzdnSHhBMFVNZkxvOGFRZThXdXFNQjFzakxqNDF0bUFyWkhwckUK",
+      "endpoints": [
+        "https://github.com/tmoroney/auto-subs/releases/latest/download/latest.json"
+      ]
     }
   }
 }

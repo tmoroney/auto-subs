@@ -1,13 +1,12 @@
 // src/api/resolveApi.ts
 import { fetch } from '@tauri-apps/plugin-http';
 import { downloadDir } from '@tauri-apps/api/path';
-
-// import error variable from global context
-import { useGlobal } from '@/contexts/GlobalContext';
+import { getTranscriptPath } from '@/utils/fileUtils';
+import { Speaker } from '@/types/interfaces';
 
 const resolveAPI = "http://localhost:56002/";
 
-export async function exportAudio(inputTrack: string) {
+export async function exportAudio(inputTracks: Array<string>) {
   const outputDir = await downloadDir();
   const response = await fetch(resolveAPI, {
     method: 'POST',
@@ -15,21 +14,29 @@ export async function exportAudio(inputTrack: string) {
     body: JSON.stringify({
       func: "ExportAudio",
       outputDir,
-      inputTrack,
+      inputTracks,
     }),
   });
   const data = await response.json();
-  if (!data.timeline) {
-    throw new Error("No timeline detected in Resolve.");
+  
+  // Check for errors in starting export
+  if (data.error) {
+    throw new Error(data.message || "Failed to start audio export");
   }
+  
+  // New non-blocking API returns started: true instead of timeline data
+  if (!data.started) {
+    throw new Error("Export did not start successfully");
+  }
+  
   return data;
 }
 
-export async function jumpToTime(start: number, markIn: number) {
+export async function jumpToTime(seconds: number) {
   const response = await fetch(resolveAPI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "JumpToTime", start, markIn }),
+    body: JSON.stringify({ func: "JumpToTime", seconds }),
   });
   return response.json();
 }
@@ -47,7 +54,8 @@ export async function getTimelineInfo() {
   return data;
 }
 
-export async function addSubtitles(filePath: string, currentTemplate: string, outputTrack: string) {
+export async function addSubtitlesToTimeline(filename: string, currentTemplate: string, outputTrack: string) {
+  const filePath = await getTranscriptPath(filename);
   const response = await fetch(resolveAPI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,6 +74,42 @@ export async function closeResolveLink() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ func: "Exit" }),
+  });
+  return response.json();
+}
+
+export async function getExportProgress() {
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ func: "GetExportProgress" }),
+  });
+  return response.json();
+}
+
+export async function cancelExport() {
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ func: "CancelExport" }),
+  });
+  return response.json();
+}
+
+export async function getRenderJobStatus() {
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ func: "GetRenderJobStatus" }),
+  });
+  return response.json();
+}
+
+export async function generatePreview(speaker: Speaker, templateName: string, exportPath: string) {
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ func: "GeneratePreview", speaker, templateName, exportPath }),
   });
   return response.json();
 }
