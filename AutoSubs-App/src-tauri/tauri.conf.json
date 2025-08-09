@@ -33,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app"],
+    "targets": ["nsis", "app", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -50,6 +50,14 @@
     ],
     "macOS": {
       "minimumSystemVersion": "13.0"
+    },
+    "linux": {
+      "deb": {
+        "files": {
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
+        }
+      }
     },
     "windows": {
       "nsis": {
