@@ -245,28 +245,10 @@ jobs:
           # Disable default features (mac-specific) for Linux build
           npm run tauri build -- --no-default-features --features linux
 
-      - name: Collect Linux artifacts
+      - name: Collect Linux artifacts (.deb only)
         run: |
           set -euo pipefail
           LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
-          OUT_DIR="release-artifacts"
-          mkdir -p "$OUT_DIR"
-
-          # Updater bundle lives under bundle/linux
-          if [ -f "$LINUX_BUNDLE_DIR/linux/AutoSubs.app.tar.gz" ]; then
-            mv "$LINUX_BUNDLE_DIR/linux/AutoSubs.app.tar.gz" "$LINUX_BUNDLE_DIR/linux/AutoSubs-linux-x86_64.app.tar.gz"
-            if [ -f "$LINUX_BUNDLE_DIR/linux/AutoSubs.app.tar.gz.sig" ]; then
-              mv "$LINUX_BUNDLE_DIR/linux/AutoSubs.app.tar.gz.sig" "$LINUX_BUNDLE_DIR/linux/AutoSubs-linux-x86_64.app.tar.gz.sig"
-            else
-              echo "ERROR: Updater signature AutoSubs.app.tar.gz.sig not found in $LINUX_BUNDLE_DIR/linux" >&2
-              exit 1
-            fi
-            cp "$LINUX_BUNDLE_DIR/linux/AutoSubs-linux-x86_64.app.tar.gz" "$OUT_DIR/"
-            cp "$LINUX_BUNDLE_DIR/linux/AutoSubs-linux-x86_64.app.tar.gz.sig" "$OUT_DIR/"
-          else
-            echo "WARNING: No updater bundle found at $LINUX_BUNDLE_DIR/linux/AutoSubs.app.tar.gz"
-          fi
-
           # Debian package lives under bundle/deb
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
           if [ -n "$DEB_FILE" ]; then
@@ -275,12 +257,11 @@ jobs:
             echo "WARNING: .deb package not found in $LINUX_BUNDLE_DIR/deb"
           fi
 
-      - name: Upload Linux artifacts to Release
+      - name: Upload Linux artifacts to Release (.deb only)
         uses: softprops/action-gh-release@v2
         with:
           files: |
             *.deb
-            release-artifacts/*
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.event.release.tag_name }}
 
@@ -319,20 +300,13 @@ jobs:
 
           gh release download "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern "AutoSubs-linux-x86_64.app.tar.gz.sig" \
-            --dir latest \
-            --clobber || true
-
-          gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "AutoSubs-windows-x86_64.app.tar.gz.sig" \
+            --pattern "AutoSubs-windows-x86_64.exe.sig" \
             --dir latest \
             --clobber || true
 
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
-          LINUX_SIG="$(cat latest/AutoSubs-linux-x86_64.app.tar.gz.sig 2>/dev/null || true)"
-          WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.app.tar.gz.sig 2>/dev/null || true)"
+          WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -344,7 +318,6 @@ jobs:
             --arg notes "$NOTES" \
             --arg arm_sig "$ARM_SIG" \
             --arg intel_sig "$INTEL_SIG" \
-            --arg linux_sig "$LINUX_SIG" \
             --arg tag "$TAG" \
             '{
               version: $version,
@@ -362,13 +335,7 @@ jobs:
                 "windows-x86_64": (
                   if ($windows_sig | length) > 0 then
                     { signature: $windows_sig,
-                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.app.tar.gz") }
-                  else empty end
-                ),
-                "linux-x86_64": (
-                  if ($linux_sig | length) > 0 then
-                    { signature: $linux_sig,
-                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-linux-x86_64.app.tar.gz") }
+                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
                   else empty end
                 )
               }
