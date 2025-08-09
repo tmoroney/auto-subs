@@ -349,7 +349,7 @@ export const TranscriptionSettings = ({
                             <div className="flex-1 h-px bg-border"></div>
                         </div>
                         <CollapsibleContent>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
 
                                 {/* Language */}
                                 <LanguageSettingsCard
@@ -371,6 +371,12 @@ export const TranscriptionSettings = ({
                                     onMaxSpeakersChange={(value) => updateSetting("maxSpeakers", value)}
                                 />
 
+                                {/* Word Timestamps */}
+                                <WordTimestampsCard
+                                    enableDTW={settings.enableDTW}
+                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
+                                />
+
                                 {/* Model */}
                                 <ModelSelectionCard
                                     language={settings.language}
@@ -380,12 +386,6 @@ export const TranscriptionSettings = ({
                                     downloadProgress={downloadProgress}
                                     onModelChange={(model) => updateSetting('model', model)}
                                     onDeleteModel={(model) => handleDeleteModel(model)}
-                                />
-
-                                {/* Word Timestamps */}
-                                <WordTimestampsCard
-                                    enableDTW={settings.enableDTW}
-                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
                                 />
                             </div>
 

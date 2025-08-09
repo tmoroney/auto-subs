@@ -2,7 +2,6 @@ use crate::transcribe::SHOULD_CANCEL;
 use hf_hub::api::Progress;
 use std::io::copy;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tauri::{command, AppHandle, Emitter, Manager};
 
 // Progress tracker for model downloads that emits events to the frontend

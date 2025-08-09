@@ -33,6 +33,37 @@ pub async fn normalize(
 
         println!("Normalizing {:?} to {:?}", input, output);
 
+        // Fast path: if input is already a 16kHz, mono, 16-bit PCM WAV, skip ffmpeg and just copy/no-op
+        if input
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|s| s.eq_ignore_ascii_case("wav"))
+            .unwrap_or(false)
+        {
+            if let Ok(reader) = WavReader::open(&input) {
+                let spec = reader.spec();
+                if spec.channels == 1
+                    && spec.sample_format == SampleFormat::Int
+                    && spec.sample_rate == 16000
+                    && spec.bits_per_sample == 16
+                {
+                    if input == output {
+                        println!("Input is already normalized WAV; skipping conversion.");
+                        return Ok(());
+                    } else {
+                        // Ensure file handle is closed before copying
+                        drop(reader);
+                        fs::copy(&input, &output)
+                            .context("failed to copy already-normalized WAV")?;
+                        println!(
+                            "Input is already normalized WAV; copied without re-encoding."
+                        );
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
         // The `Command` is accessed through the `shell()` method on the app handle.
         let sidecar_command = app.shell().sidecar("ffmpeg").context(
             "Failed to create sidecar command for 'ffmpeg'. Is it configured in tauri.conf.json?",
@@ -69,18 +100,7 @@ pub async fn normalize(
         if let Some(additional_args) = additional_ffmpeg_args {
             args.extend(additional_args);
         }
-
-        // Add final arguments
-        args.extend(vec![
-            output
-                .to_str()
-                .expect("Output path contains invalid UTF-8")
-                .to_string(),
-            "-hide_banner".to_string(),
-            "-y".to_string(),
-            "-loglevel".to_string(),
-            "error".to_string(),
-        ]);
+        // Note: output path and global flags are already included above; no further args appended here
 
         tracing::debug!("Running sidecar command: ffmpeg with args: {:?}", args);
 

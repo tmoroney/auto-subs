@@ -883,9 +883,13 @@ pub async fn run_transcription_pipeline(
                     last.end = seg_start;
                 }
 
-                // If word-level enabled, also update end time of last word
+                // If word-level enabled, clamp the last word's end to the previous segment's (possibly adjusted) end
                 if let Some(words) = &mut last.words {
-                    words.last_mut().unwrap().end = seg_end;
+                    if let Some(last_word) = words.last_mut() {
+                        if last_word.end > last.end {
+                            last_word.end = last.end;
+                        }
+                    }
                 }
             }
 
