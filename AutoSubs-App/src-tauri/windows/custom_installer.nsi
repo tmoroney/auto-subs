@@ -385,7 +385,7 @@ Var AppStartMenuFolder
 
 ; Define a custom function to display instructions with emojis
 Function CustomFinishPage
-    MessageBox MB_ICONINFORMATION "🎉 AutoSubs was successfully installed! 🎉$\r$\n$\r$\n👉 To use AutoSubs:$\r$\n1. Open DaVinci Resolve.$\r$\n2. Navigate to 'Workspace' → 'Scripts' in the top menu.$\r$\n3. Select 'AutoSubs V2'.$\r$\n$\r$\nEnjoy your new subtitles! 🎬"
+    MessageBox MB_ICONINFORMATION "🎉 AutoSubs was successfully installed! 🎉$\r$\n$\r$\n👉 To use AutoSubs:$\r$\n1. Open DaVinci Resolve.$\r$\n2. Navigate to 'Workspace' → 'Scripts' in the top menu.$\r$\n3. Select 'AutoSubs'.$\r$\n$\r$\nEnjoy your new subtitles! 🎬"
 FunctionEnd
 
 ; Insert the finish page and link it to the custom function
