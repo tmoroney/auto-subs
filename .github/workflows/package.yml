@@ -277,7 +277,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Compose latest.json with macOS and Linux platforms
+      - name: Compose latest.json with macOS and Windows artifacts
         env:
           TAG: ${{ github.event.release.tag_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -298,8 +298,15 @@ jobs:
             --dir latest \
             --clobber
 
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "AutoSubs-windows-x86_64.exe.sig" \
+            --dir latest \
+            --clobber || true
+
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
+          WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -317,14 +324,20 @@ jobs:
               pub_date: $pub_date,
               notes: $notes,
               platforms: {
-                "macos-aarch64": {
+                "darwin-aarch64": {
                   signature: $arm_sig,
                   url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-aarch64.app.tar.gz")
                 },
-                "macos-x86_64": {
+                "darwin-x86_64": {
                   signature: $intel_sig,
                   url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
-                }
+                },
+                "windows-x86_64": (
+                  if ($windows_sig | length) > 0 then
+                    { signature: $windows_sig,
+                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
+                  else empty end
+                )
               }
             }')
           echo "$JSON_OUTPUT" > latest.json

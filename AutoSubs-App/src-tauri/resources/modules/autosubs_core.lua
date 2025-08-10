@@ -832,7 +832,7 @@ local function set_cors_headers(client)
 end
 
 function LaunchApp()
-    if os_name == "Windows" then
+    if ffi.os == "Windows" then
         -- Windows
         local SW_SHOW = 5 -- Show the window
 
