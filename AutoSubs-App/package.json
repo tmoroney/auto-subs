@@ -8,7 +8,6 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    
     "build:win:gpu": "tauri build -- --no-default-features --features windows-gpu && mv src-tauri/target/release/AutoSubs.exe src-tauri/target/release/AutoSubs-gpu.exe",
     "build:win:cpu": "tauri build -- --no-default-features --features windows-cpu && mv src-tauri/target/release/AutoSubs.exe src-tauri/target/release/AutoSubs-cpu.exe",
     "build:win:nvidia": "tauri build -- --no-default-features --features windows-nvidia && mv src-tauri/target/release/AutoSubs.exe src-tauri/target/release/AutoSubs-nvidia.exe",
@@ -68,7 +67,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.1.0",
+    "@tauri-apps/cli": "^2.7.1",
     "@types/node": "^22.7.5",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",

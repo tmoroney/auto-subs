@@ -67,8 +67,7 @@
       },
       "certificateThumbprint": "df6635960a607103e4882c0671c2f8d0ef2ace18",
       "timestampUrl": "http://time.certum.pl",
-      "digestAlgorithm": "sha256",
-      "signCommand": "src-tauri/windows/sign.cmd"
+      "digestAlgorithm": "sha256"
     },
     "createUpdaterArtifacts": true
   },
