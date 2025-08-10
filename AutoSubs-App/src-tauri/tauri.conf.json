@@ -33,7 +33,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app", "deb"],
+    "targets": [
+      "nsis",
+      "app",
+      "deb"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -67,7 +71,8 @@
       },
       "certificateThumbprint": "df6635960a607103e4882c0671c2f8d0ef2ace18",
       "timestampUrl": "http://time.certum.pl",
-      "digestAlgorithm": "sha256"
+      "digestAlgorithm": "sha256",
+      "signCommand": "powershell -NoProfile -ExecutionPolicy Bypass -Command \" $path='%1'; $ext=[IO.Path]::GetExtension($path).ToLower(); if ($ext -in @('.exe','.dll','.msi')) { & 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64\\signtool.exe' sign /tr http://time.certum.pl /td sha256 /fd sha256 /sha1 df6635960a607103e4882c0671c2f8d0ef2ace18 $path; } else { Write-Host \\\"Skipping non-signable file: $path\\\"; }\""
     },
     "createUpdaterArtifacts": true
   },
