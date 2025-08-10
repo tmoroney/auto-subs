@@ -7,7 +7,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+
+    "build:win:vulkan": "tauri build --no-default-features --features windows && mv src-tauri/target/release/AutoSubs.exe src-tauri/target/release/AutoSubs-vulkan.exe",
+    "build:win:cuda": "tauri build --no-default-features --features windows-nvidia && mv src-tauri/target/release/AutoSubs.exe src-tauri/target/release/AutoSubs-cuda.exe",
+    "build:win:all": "npm run build:win:vulkan && npm run build:win:cuda",
+    "build:mac:arm64": "npm run tauri build -- --no-default-features --features mac-aarch",
+    "build:mac:x86_64": "npm run tauri build -- --no-default-features --features mac-x86_64",
+    "build:linux:x86_64": "npm run tauri build -- --no-default-features --features linux"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

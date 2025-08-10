@@ -116,7 +116,7 @@ jobs:
         export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
         export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
         # Build with explicit features and explicit Rust target from matrix
-        npm run tauri build -- --target "${{ matrix.target }}" -- --no-default-features --features "${{ matrix.features }}"
+        npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
       run: |
@@ -124,7 +124,7 @@ jobs:
         mkdir Mac-Package/Payload
 
         # Move the app to the package
-        mv AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos/AutoSubs.app Mac-Package/Payload
+        mv AutoSubs-App/src-tauri/target/release/bundle/macos/AutoSubs.app Mac-Package/Payload
 
     - name: Create PKG Installer
       run: |
@@ -173,7 +173,7 @@ jobs:
       run: |
         set -euo pipefail
         # Paths
-        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+        MACOS_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle/macos"
         OUT_DIR="release-artifacts"
 
         mkdir -p "$OUT_DIR"
@@ -243,12 +243,12 @@ jobs:
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
           # Disable default features (mac-specific) for Linux build
-          npm run tauri build -- --target x86_64-unknown-linux-gnu -- --no-default-features --features linux
+          npm run tauri build -- -- --no-default-features --features linux
 
       - name: Collect Linux artifacts (.deb only)
         run: |
           set -euo pipefail
-          LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle"
+          LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
           # Debian package lives under bundle/deb
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
           if [ -n "$DEB_FILE" ]; then
