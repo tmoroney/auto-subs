@@ -51,6 +51,9 @@ hf-hub = "0.4.3"
 dirs = "5.0"
 zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+
 [features]
 default = ["mac-aarch"]
 coreml = ["whisper-rs/coreml", "pyannote-rs/coreml"]
@@ -64,11 +67,7 @@ vulkan = ["whisper-rs/vulkan"]
 # Platform/arch presets
 mac-aarch = ["coreml", "metal"]
 mac-x86_64 = ["metal", "openblas"]
-windows = ["vulkan", "directml", "openblas"]
-windows-nvidia = ["cuda", "directml", "openblas"]
+windows-gpu = ["vulkan", "directml"]  # All GPU acceleration (AMD/Intel/NVIDIA via Vulkan + DirectML)
+windows-cpu = ["openblas", "directml"]  # Mostly CPU with DirectML fallback for diarization
+windows-nvidia = ["cuda"]  # NVIDIA CUDA optimization
 linux = ["vulkan", "openblas"]
-
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-updater = "2"
-
-
