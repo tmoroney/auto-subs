@@ -720,21 +720,21 @@ function AddSubtitles(filePath, trackIndex, templateName)
     timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
 end
 
-function ExtractFrame(comp, exportPath, templateFrameRate)
+function ExtractFrame(comp, exportDir, templateFrameRate)
     -- Lock the composition to prevent redraws and pop-ups during scripting [15, 16]
     comp:Lock()
 
     -- Access the Saver tool by its name (assuming it exists in the comp)
     local mySaver = comp:AddTool("Saver")
 
-    local extractedFrame = ""
+    local outputPath = ""
 
     if mySaver ~= nil then
         -- Set the output filename for the Saver tool [6, 7]
         -- Make sure to provide a full path and desired image format extension
         local name = mySaver.Name
         local settings = mySaver:SaveSettings()
-        settings.Tools[name].Inputs.Clip.Value["Filename"] = exportPath .. "/subtitle-preview-0.png"
+        settings.Tools[name].Inputs.Clip.Value["Filename"] = join_path(exportDir, "subtitle-preview-0.png")
         settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
         settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
         mySaver:LoadSettings(settings)
@@ -748,18 +748,19 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
 
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
-            Start = frameToExtract - 1, -- Start rendering at this frame
-            End = frameToExtract - 1,   -- End rendering at this frame
+            Start = frameToExtract-1, -- Start rendering at this frame
+            End = frameToExtract-1,   -- End rendering at this frame
             Tool = mySaver,             -- Render up to this specific Saver tool [13]
             Wait = true                 -- Wait for the render to complete before continuing the script [19]
         })
 
-        extractedFrame = exportPath .. "/subtitle-preview-" .. frameToExtract - 1 .. ".png"
+        local outputFilename = "subtitle-preview-" .. frameToExtract-1 .. ".png"
+        outputPath = join_path(exportDir, outputFilename)
 
         if success then
-            print("Frame " .. frameToExtract .. " successfully saved by " .. mySaver.Name .. " to " .. exportPath)
+            print("Frame " .. frameToExtract-1 .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
         else
-            print("Failed to save frame " .. frameToExtract)
+            print("Failed to save frame " .. frameToExtract-1)
         end
     else
         print("Saver tool 'MySaver' not found in the composition.")
@@ -768,11 +769,11 @@ function ExtractFrame(comp, exportPath, templateFrameRate)
     -- Unlock the composition after changes are complete [15, 20]
     comp:Unlock()
 
-    return extractedFrame
+    return outputPath
 end
 
 -- place example subtitle on timeline with theme and export frame
-function GeneratePreview(speaker, templateName, exportPath)
+function GeneratePreview(speaker, templateName, exportDir)
     local timeline = project:GetCurrentTimeline()
     local rootFolder = mediaPool:GetRootFolder()
 
@@ -813,8 +814,7 @@ function GeneratePreview(speaker, templateName, exportPath)
     local timelineItems = mediaPool:AppendToTimeline({ newClip })
     local timelineItem = timelineItems[1]
 
-    local extractedFrame = join_path(exportPath, "subtitle-preview-0.png")
-
+    local outputPath = nil
     local success, err = pcall(function()
         -- Set timeline position to middle of clip
         if timelineItem:GetFusionCompCount() > 0 then
@@ -823,17 +823,16 @@ function GeneratePreview(speaker, templateName, exportPath)
             tool:SetInput("StyledText", "Example Subtitle Text")
             SetCustomColors(speaker, tool)
 
-            extractedFrame = ExtractFrame(comp, exportPath, templateFrameRate)
+            outputPath = ExtractFrame(comp, exportDir, templateFrameRate)
         end
     end)
     if not success then
         print("Failed to set timeline position: " .. err)
     end
-    --project:ExportCurrentFrameAsStill(extractedFrame)
     timeline:DeleteClips(timelineItems)
     timeline:DeleteTrack("video", trackIndex)
 
-    return extractedFrame
+    return outputPath
 end
 
 local function set_cors_headers(client)

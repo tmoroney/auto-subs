@@ -80,6 +80,9 @@ fn main() {
                             .send()
                             .await;
 
+                        // Give the OS a brief moment to flush the request before terminating
+                        tokio::time::sleep(Duration::from_millis(150)).await;
+
                         // now actually exit the app
                         app_handle.exit(0);
 
@@ -94,9 +97,8 @@ fn main() {
                     });
                 }
                 RunEvent::WindowEvent { event, .. } => {
+                    // Ensure clicking the window close (X) reliably routes through ExitRequested
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        // When user closes the window (e.g., mac red button), request app exit.
-                        // The ExitRequested handler will perform the actual shutdown flow.
                         if !EXITING.load(AtomicOrdering::SeqCst) {
                             app.exit(0);
                         }
