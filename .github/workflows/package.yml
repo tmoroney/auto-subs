@@ -5,6 +5,12 @@ on:
       - created
       - published
       - edited
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build for'
+        required: true
+        type: string
 
 jobs:
   build-mac:
@@ -312,7 +318,7 @@ jobs:
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          NOTES='${{ github.event.release.body }}'
+          NOTES='${{ github.event.release.name }}'
 
           JSON_OUTPUT=$(jq -n \
             --arg version "$VERSION" \
