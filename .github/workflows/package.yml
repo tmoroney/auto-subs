@@ -14,6 +14,10 @@ on:
 
 permissions:
   contents: write
+ 
+env:
+  # Resolve tag for both release-triggered and manual runs
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build-mac:
@@ -37,6 +41,13 @@ jobs:
     steps:
     - name: Checkout AutoSubs Repo Code
       uses: actions/checkout@v4
+    
+    - name: Ensure TAG is set
+      run: |
+        if [ -z "${TAG}" ]; then
+          echo "ERROR: TAG is empty. Trigger this workflow from a Release event or provide the 'tag' input when using workflow_dispatch."
+          exit 1
+        fi
         
 
     - name: Import Apple Certificates
@@ -157,11 +168,8 @@ jobs:
         chmod +x Mac-Package/Scripts/*
 
         # Create the package
-        # Resolve version: prefer Release tag, fallback to workflow_dispatch input 'tag'
-        VERSION="${{ github.event.release.tag_name }}"
-        if [ -z "$VERSION" ]; then
-          VERSION="${{ inputs.tag }}"
-        fi
+        # Resolve version from TAG (strip leading 'v' if present)
+        VERSION="${TAG}"
         # Strip leading 'v' if present
         VERSION=${VERSION#v}
 
@@ -239,7 +247,7 @@ jobs:
           AutoSubs-Mac-${{ matrix.pkg_suffix }}.pkg
           release-artifacts/*
         token: ${{ secrets.GH_TOKEN }}
-        tag_name: ${{ github.event.release.tag_name }}
+        tag_name: ${{ env.TAG }}
 
   build-linux:
     runs-on: ubuntu-latest
@@ -260,7 +268,8 @@ jobs:
             pkg-config \
             libvulkan-dev \
             mesa-vulkan-drivers \
-            libopenblas-dev
+            libopenblas-dev \
+            shaderc-utils
 
       - name: Install NPM deps
         run: |
@@ -296,7 +305,7 @@ jobs:
           files: |
             *.deb
           token: ${{ secrets.GH_TOKEN }}
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.TAG }}
 
   compose-latest-json:
     needs: [build-mac, build-linux]
@@ -312,11 +321,15 @@ jobs:
 
       - name: Compose latest.json with macOS and Windows artifacts
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ env.TAG }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -euo pipefail
+          if [ -z "${TAG}" ]; then
+            echo "ERROR: TAG is empty. Ensure this workflow is triggered from a Release event or provide the 'tag' input when using workflow_dispatch."
+            exit 1
+          fi
           mkdir -p latest
 
           # Download signature files from the release assets
@@ -381,4 +394,4 @@ jobs:
         with:
           files: latest.json
           token: ${{ secrets.GH_TOKEN }}
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.TAG }}
