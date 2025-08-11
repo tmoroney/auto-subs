@@ -85,7 +85,7 @@ if os_name == "Windows" then
     -- Get path to the main AutoSubs app and modules
     local storage_path = os.getenv("APPDATA") ..
         "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs"
-    local install_path = assert(read_file(storage_path .. "install_path.txt"))
+    local install_path = assert(read_file(join_path(storage_path, "install_path.txt")))
     app_executable = install_path .. "\\AutoSubs.exe"
     resources_folder = install_path .. "\\resources"
 elseif os_name == "OSX" then
