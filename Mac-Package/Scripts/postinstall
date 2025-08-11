@@ -8,6 +8,9 @@ UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fus
 WORKFLOW_INTEGRATION_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
 TEXT_FILE="$UTILITY_PATH/AutoSubs/install_path.txt"
 
+# Remove legacy V2 Lua script if present
+rm -f "$UTILITY_PATH/AutoSubs V2.lua"
+
 # Copy Lua file
 cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
 cp -r "$RESOURCES_PATH/AutoSubs" "$UTILITY_PATH"
