@@ -41,27 +41,19 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
   const downloadOptions: DownloadOption[] = [
     {
       name: 'AutoSubs for Windows',
-      version: 'v2.1.0',
-      size: '45.2 MB',
+      version: 'v3.0.0',
+      size: '63 MB',
       os: 'Windows',
-      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Win-setup.exe',
+      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe',
       isRecommended: currentOS === 'Windows'
     },
     {
       name: 'AutoSubs for macOS',
-      version: 'v2.1.0',
-      size: '52.8 MB',
+      version: 'v3.0.0',
+      size: '66 MB',
       os: 'macOS',
-      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg',
+      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-macOS-arm64.pkg',
       isRecommended: currentOS === 'macOS'
-    },
-    {
-      name: 'AutoSubs for Linux',
-      version: 'v2.1.0',
-      size: '48.1 MB',
-      os: 'Linux',
-      downloadUrl: 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Linux-x64.AppImage',
-      isRecommended: currentOS === 'Linux'
     }
   ]
 
