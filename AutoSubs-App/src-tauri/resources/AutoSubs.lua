@@ -1,4 +1,4 @@
-local DEV_MODE = true
+local DEV_MODE = false
 
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
