@@ -715,6 +715,10 @@ function AddSubtitles(filePath, trackIndex, templateName)
             print("Failed to add subtitle to timeline: " .. err)
         end
     end
+
+    -- Set current position of playhead to last subtitle
+    local timecode = luaresolve:timecode_from_frame_auto(markOut, frame_rate)
+    timeline:SetCurrentTimecode(timecode)
 end
 
 function ExtractFrame(comp, exportPath, templateFrameRate)
@@ -915,14 +919,70 @@ function StartServer()
                 -- Try to receive data (example HTTP request)
                 local str, err = client:receive()
                 if str then
-                    -- print("Received request:", str)
-                    -- Split the request by the double newline
+                    -- Accumulate the full HTTP request (headers + body). Start with what we have.
+                    local request = str
                     local header_body_separator = "\r\n\r\n"
-                    local _, _, content = string.find(str, header_body_separator .. "(.*)")
+                    -- Temporarily allow short blocking reads to finish the HTTP request, then return to non-blocking
+                    if client.settimeout then client:settimeout(0.2) end
+                    while true do
+                        local sep_start, sep_end = string.find(request, header_body_separator, 1, true)
+                        if sep_end then
+                            local headers = string.sub(request, 1, sep_start - 1)
+                            local body_start_idx = sep_end + 1
+                            local cl = string.match(headers, "[Cc]ontent%-[Ll]ength:%s*(%d+)")
+                            if cl then
+                                local needed = tonumber(cl) or 0
+                                local current = #request - (body_start_idx - 1)
+                                if current >= needed then
+                                    break
+                                end
+                            else
+                                -- No Content-Length: assume no body or already complete
+                                break
+                            end
+                        end
+                        local chunk, rerr, partial = client:receive(1024)
+                        if chunk and #chunk > 0 then
+                            request = request .. chunk
+                        elseif partial and #partial > 0 then
+                            request = request .. partial
+                        else
+                            -- timeout or other read error; stop accumulating
+                            break
+                        end
+                    end
+                    if client.settimeout then client:settimeout(0) end
+
+                    -- Extract body content after headers, if present
+                    local _, sep_end = string.find(request, header_body_separator, 1, true)
+                    local content = nil
+                    if sep_end then
+                        content = string.sub(request, sep_end + 1)
+                    end
                     print("Received request:", content)
 
-                    -- Parse the JSON content
-                    local data, pos, err = json.decode(content, 1, nil)
+                    -- Minimal JSON helper to avoid crashes if `json` is unavailable
+                    local function safe_json(obj)
+                        if json and json.encode then
+                            return json.encode(obj)
+                        end
+                        if obj and obj.message ~= nil then
+                            local msg = tostring(obj.message):gsub('"', '\\"')
+                            return '{"message":"' .. msg .. '"}'
+                        end
+                        return "{}"
+                    end
+
+                    -- Parse the JSON content safely (avoid crashes if body is missing/partial)
+                    local data, pos, jerr = nil, nil, nil
+                    if content and #content > 0 then
+                        local ok, r1, r2, r3 = pcall(json.decode, content, 1, nil)
+                        if ok then
+                            data, pos, jerr = r1, r2, r3
+                        else
+                            jerr = r1
+                        end
+                    end
 
                     -- Initialize body for response
                     local body = nil
@@ -963,43 +1023,63 @@ function StartServer()
                                 local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
                                 body = json.encode(previewPath)
                             elseif data.func == "Exit" then
-                                body = json.encode({
-                                    message = "Server shutting down"
-                                })
+                                body = safe_json({ message = "Server shutting down" })
                                 quitServer = true
                             else
                                 print("Invalid function name")
                             end
                         else
-                            body = json.encode({
-                                message = "Invalid JSON data"
-                            })
-                            print("Invalid JSON data")
+                            -- Fallback: if JSON parse failed, detect Exit command by substring
+                            -- Check both the parsed body `content` and the raw request `str`
+                            local has_exit = false
+                            if content and string.find(content, '"func"%s*:%s*"Exit"') then
+                                has_exit = true
+                            elseif str and string.find(str, '"func"%s*:%s*"Exit"') then
+                                has_exit = true
+                            end
+                            if has_exit then
+                                body = safe_json({ message = "Server shutting down" })
+                                quitServer = true
+                            else
+                                body = safe_json({ message = "Invalid JSON data" })
+                                print("Invalid JSON data")
+                            end
                         end
                     end)
 
+                    -- Ensure we always return a body to avoid response builder crashes
+                    if body == nil then
+                        body = safe_json({ message = "OK" })
+                    end
+
                     if not success then
-                        body = json.encode({
-                            message = "Job failed with error: " .. err
+                        body = safe_json({
+                            message = "Job failed with error: " .. tostring(err)
                         })
                         print("Error:", err)
                     end
 
-                    -- Send HTTP response content
+                    -- Send HTTP response content (don't assert to avoid crashing on client disconnect)
                     local response = CreateResponse(body)
                     print(response)
-                    assert(client:send(response))
+                    local sent, sendErr = client:send(response)
+                    if not sent then
+                        print("Send failed:", sendErr or "unknown")
+                    end
 
                     -- Close connection
                     client:close()
                 elseif err == "closed" then
                     client:close()
                 elseif err ~= "timeout" then
-                    error(err)
+                    -- Don't crash the server on unexpected client receive errors
+                    print("Socket recv error:", err or "unknown")
+                    client:close()
                 end
             end
         elseif err ~= "timeout" then
-            error(err)
+            -- Don't crash the server on unexpected accept errors
+            print("Accept error:", err or "unknown")
         end
         sleep(0.1)
     end

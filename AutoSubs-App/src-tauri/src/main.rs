@@ -5,6 +5,7 @@ use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
 use tauri::RunEvent;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
 // Import plugins
 use tauri_plugin_dialog::init as dialog_plugin;
@@ -19,6 +20,9 @@ mod config;
 mod models;
 mod transcribe;
 mod transcript;
+
+// Global guard to avoid re-entrant exit handling
+static EXITING: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     whisper_rs::install_logging_hooks();
@@ -45,27 +49,60 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
         .run(|app, event| {
-            if let RunEvent::ExitRequested { api, .. } = event {
-                // keep the app alive long enough to send the shutdown signal
-                api.prevent_exit();
+            match event {
+                RunEvent::ExitRequested { api, .. } => {
+                    // If we're already exiting, don't intercept again; allow exit to proceed
+                    if EXITING.swap(true, AtomicOrdering::SeqCst) {
+                        return;
+                    }
 
-                let app_handle = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    // short timeout to avoid hanging on exit
-                    let client = Client::builder()
-                        .timeout(Duration::from_millis(750))
-                        .build()
-                        .unwrap_or_else(|_| Client::new());
+                    // keep the app alive long enough to send the shutdown signal
+                    api.prevent_exit();
 
-                    let _ = client
-                        .post("http://localhost:56002/")
-                        .json(&json!({ "func": "Exit" }))
-                        .send()
-                        .await;
+                    // Proactively cancel any active long-running tasks (e.g., transcription)
+                    if let Ok(mut should_cancel) = crate::transcribe::SHOULD_CANCEL.lock() {
+                        *should_cancel = true;
+                    }
 
-                    // now actually exit the app
-                    app_handle.exit(0);
-                });
+                    let app_handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        // short timeout to avoid hanging on exit
+                        let client = Client::builder()
+                            .no_proxy()
+                            .timeout(Duration::from_millis(750))
+                            .build()
+                            .unwrap_or_else(|_| Client::new());
+
+                        let _ = client
+                            .post("http://localhost:56002/")
+                            .header("Connection", "close")
+                            .json(&json!({ "func": "Exit" }))
+                            .send()
+                            .await;
+
+                        // now actually exit the app
+                        app_handle.exit(0);
+
+                        // On Windows, some background tasks can keep the process around.
+                        // Add a short fallback to force-terminate if the graceful exit didn't complete.
+                        #[cfg(target_os = "windows")]
+                        {
+                            tokio::time::sleep(Duration::from_millis(1200)).await;
+                            // last resort hard exit
+                            std::process::exit(0);
+                        }
+                    });
+                }
+                RunEvent::WindowEvent { event, .. } => {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        // When user closes the window (e.g., mac red button), request app exit.
+                        // The ExitRequested handler will perform the actual shutdown flow.
+                        if !EXITING.load(AtomicOrdering::SeqCst) {
+                            app.exit(0);
+                        }
+                    }
+                }
+                _ => {}
             }
         });
 }

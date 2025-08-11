@@ -648,9 +648,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     model: modelsState[settings.model].value,
     lang: settings.language,
     translate: settings.translate,
-    enable_dtw: settings.enableDTW,
-    enable_diarize: settings.enableDiarize,
-    max_speakers: settings.maxSpeakers,
+    enableDtw: settings.enableDTW,
+    enableDiarize: settings.enableDiarize,
+    maxSpeakers: settings.maxSpeakers,
   })
 
   /**

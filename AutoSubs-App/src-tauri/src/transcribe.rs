@@ -10,8 +10,10 @@ use std::hash::{Hash, Hasher};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Instant;
 use std::time::SystemTime;
+use std::time::Duration;
 use tauri::{command, AppHandle, Emitter, Manager};
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
@@ -27,6 +29,11 @@ static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| M
 // Global cancellation state
 pub static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> =
     once_cell::sync::Lazy::new(|| Mutex::new(false));
+
+// Latest progress values updated from hot compute loops (blocking threads)
+// Emission to the frontend is throttled via a periodic Tokio task.
+static LATEST_TRANSCRIBE_PROGRESS: AtomicI32 = AtomicI32::new(0);
+static LATEST_DIARIZE_PROGRESS: AtomicI32 = AtomicI32::new(0);
 
 // Utility function for rounding to n decimal places
 fn round_to_places(val: f64, places: u32) -> f64 {
@@ -141,10 +148,40 @@ pub async fn transcribe_audio(
         None
     };
 
-    // Progress callback: emit to frontend
-    let progress_app = app.clone();
+    // Reset progress atomics and set up a fixed-interval emitter task
+    LATEST_TRANSCRIBE_PROGRESS.store(0, Ordering::Relaxed);
+    LATEST_DIARIZE_PROGRESS.store(0, Ordering::Relaxed);
+
+    let emit_app = app.clone();
+    let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let emitter_handle = tokio::spawn(async move {
+        let mut last_t = -1;
+        let mut last_d = -1;
+        let mut interval = tokio::time::interval(Duration::from_millis(250));
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    let t = LATEST_TRANSCRIBE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
+                    if t != last_t {
+                        let _ = emit_app.emit("transcription-progress", t);
+                        last_t = t;
+                    }
+                    let d = LATEST_DIARIZE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
+                    if d != last_d {
+                        let _ = emit_app.emit("diarization-progress", d);
+                        last_d = d;
+                    }
+                }
+                _ = &mut stop_rx => {
+                    break;
+                }
+            }
+        }
+    });
+
+    // Progress callback: update atomic from hot loop
     let progress_callback = Some(Box::new(move |progress: i32| {
-        let _ = progress_app.emit("transcription-progress", progress);
+        LATEST_TRANSCRIBE_PROGRESS.store(progress, Ordering::Relaxed);
     }) as Box<dyn Fn(i32) + Send + Sync>);
 
     // Abort callback: check cancellation flag
@@ -161,7 +198,7 @@ pub async fn transcribe_audio(
     }) as Box<dyn Fn() -> bool + Send>);
 
     // Await the async pipeline
-    match run_transcription_pipeline(
+    let res = run_transcription_pipeline(
         app,
         ctx,
         transcribe_options,
@@ -172,8 +209,13 @@ pub async fn transcribe_audio(
         None,
         options.enable_diarize,
     )
-    .await
-    {
+    .await;
+
+    // Stop emitter and wait for it to finish
+    let _ = stop_tx.send(());
+    let _ = emitter_handle.await;
+
+    match res {
         Ok(mut transcript) => {
             transcript.processing_time_sec = start_time.elapsed().as_secs();
             println!(
@@ -415,6 +457,13 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     if let Some(n_threads) = options.n_threads {
         tracing::debug!("setting n threads to {n_threads}");
         params.set_n_threads(n_threads);
+    } else {
+        // Leave one core for UI/IPC to improve responsiveness in release builds
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get().saturating_sub(1).max(1))
+            .unwrap_or(1) as i32;
+        tracing::debug!("setting default n threads to {threads}");
+        params.set_n_threads(threads);
     }
     params
 }
@@ -910,10 +959,9 @@ pub async fn run_transcription_pipeline(
             // Emit diarization start event
             let _ = app.emit("diarization-start", ());
 
-            // Create diarization progress callback
-            let diarize_app = app.clone();
+            // Create diarization progress callback (atomic store; UI emission is periodic)
             let diarize_progress_callback = Some(Box::new(move |progress: i32| {
-                let _ = diarize_app.emit("diarization-progress", progress);
+                LATEST_DIARIZE_PROGRESS.store(progress, Ordering::Relaxed);
             }) as Box<dyn Fn(i32) + Send + Sync>);
 
             let diarize_opts = match &diarize_options {
