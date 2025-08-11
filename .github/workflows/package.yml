@@ -122,12 +122,24 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
+    - name: Install OpenBLAS (macOS x86_64 only)
+      if: matrix.arch == 'x86_64'
+      run: |
+        brew update
+        brew install openblas
+
     - name: Build Tauri
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
         export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
         export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+        # Configure OpenBLAS paths for macOS x86_64 builds
+        if [ "${{ matrix.arch }}" = "x86_64" ]; then
+          OPENBLAS_PREFIX="$(brew --prefix openblas)"
+          export BLAS_INCLUDE_DIRS="$OPENBLAS_PREFIX/include"
+          export BLAS_LIB_DIRS="$OPENBLAS_PREFIX/lib"
+        fi
         # Build with explicit features and explicit Rust target from matrix
         npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
@@ -145,8 +157,12 @@ jobs:
         chmod +x Mac-Package/Scripts/*
 
         # Create the package
-        # Resolve version from the GitHub Release tag (strip leading 'v' if present)
+        # Resolve version: prefer Release tag, fallback to workflow_dispatch input 'tag'
         VERSION="${{ github.event.release.tag_name }}"
+        if [ -z "$VERSION" ]; then
+          VERSION="${{ inputs.tag }}"
+        fi
+        # Strip leading 'v' if present
         VERSION=${VERSION#v}
 
         pkgbuild --identifier com.tom-moroney.autosubs \
@@ -243,7 +259,8 @@ jobs:
             build-essential \
             pkg-config \
             libvulkan-dev \
-            mesa-vulkan-drivers
+            mesa-vulkan-drivers \
+            libopenblas-dev
 
       - name: Install NPM deps
         run: |
@@ -255,6 +272,9 @@ jobs:
           cd AutoSubs-App
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+          # Configure OpenBLAS paths for Ubuntu runners
+          export BLAS_INCLUDE_DIRS="/usr/include/x86_64-linux-gnu"
+          export BLAS_LIB_DIRS="/usr/lib/x86_64-linux-gnu"
           # Disable default features (mac-specific) for Linux build
           npm run tauri build -- -- --no-default-features --features linux
 
@@ -360,5 +380,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: latest.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           tag_name: ${{ github.event.release.tag_name }}
