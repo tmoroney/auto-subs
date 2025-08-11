@@ -5,6 +5,16 @@ local DEV_MODE = false
 ---@diagnostic disable: undefined-global
 local ffi = ffi
 
+local function join_path(dir, filename)
+    local sep = package.config:sub(1,1) -- returns '\\' on Windows, '/' elsewhere
+    -- Remove trailing separator from dir, if any
+    if dir:sub(-1) == sep then
+        return dir .. filename
+    else
+        return dir .. sep .. filename
+    end
+end
+
 -- Helper to convert a UTF-8 string to a wide-character (WCHAR) string
 local function to_wide_string(str)
     local len = #str + 1 -- Include null terminator
@@ -74,24 +84,26 @@ if os_name == "Windows" then
 
     -- Get path to the main AutoSubs app and modules
     local storage_path = os.getenv("APPDATA") ..
-        "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs\\"
+        "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility\\AutoSubs"
     local install_path = assert(read_file(storage_path .. "install_path.txt"))
     app_executable = install_path .. "\\AutoSubs.exe"
-    resources_folder = install_path .. "\\resources\\"
+    resources_folder = install_path .. "\\resources"
 elseif os_name == "OSX" then
     app_executable = "/Applications/AutoSubs.app"
-    resources_folder = app_executable .. "/Contents/Resources/resources/"
+    resources_folder = app_executable .. "/Contents/Resources/resources"
 else
     app_executable = "/usr/bin/autosubs"
-    resources_folder = "/usr/lib/autosubs/resources/"
+    resources_folder = "/usr/lib/autosubs/resources"
 end
 
 -- temporarily redefine path for dev_mode
 if DEV_MODE then
-    resources_folder = os.getenv("HOME") .. "/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources/"
+    resources_folder = os.getenv("HOME") .. "/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources"
 end
 
-package.path = package.path .. ";" .. resources_folder .. "modules/?.lua"
+-- Set package path for module loading
+local modules_path = join_path(resources_folder, "modules")
+package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
 
 -- Launch AutoSubs
 local AutoSubs = require("autosubs_core")

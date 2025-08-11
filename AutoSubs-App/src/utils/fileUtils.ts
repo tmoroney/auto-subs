@@ -42,9 +42,9 @@ export async function readTranscript(filename: string): Promise<any | null> {
 // Generate a filename for the transcript based on mode and input
 export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineId?: string): string {
   if (isStandaloneMode && selectedFile) {
-    // For standalone mode, use the audio file name without extension
-    const fileName = selectedFile.split('/').pop() || 'unknown';
-    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+    // For standalone mode, use the audio file name without extension (cross-platform)
+    const fileName = selectedFile.split(/[/\\]/).pop() || 'unknown';
+    const nameWithoutExt = fileName.replace(/\.[^/.\\]+$/, '');
     return `${nameWithoutExt}.json`;
   } else if (!isStandaloneMode && timelineId) {
     // For resolve mode, use the timeline name

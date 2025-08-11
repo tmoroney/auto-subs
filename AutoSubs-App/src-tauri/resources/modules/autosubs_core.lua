@@ -15,7 +15,7 @@ local json = nil
 local luaresolve = nil
 
 -- OS SPECIFIC CONFIGURATION
-local storage_path
+local assets_path
 local resources_path
 local main_app
 local command_open
@@ -179,7 +179,7 @@ function GetTemplates()
     if not hasDefault and tonumber(resolve:GetVersion()[1]) >= 19 then
         print("Default template not found. Importing default template...")
         local ok = pcall(function()
-            mediaPool:ImportFolderFromFile(storage_path .. "subtitle-template.drb")
+            mediaPool:ImportFolderFromFile(join_path(assets_path, "subtitle-template.drb"))
             -- Append the default template to the list
             table.insert(t, { label = "Default Template", value = "Default Template" })
         end)
@@ -716,9 +716,8 @@ function AddSubtitles(filePath, trackIndex, templateName)
         end
     end
 
-    -- Set current position of playhead to last subtitle
-    local timecode = luaresolve:timecode_from_frame_auto(markOut, frame_rate)
-    timeline:SetCurrentTimecode(timecode)
+    -- Update timeline by moving playhead position
+    timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
 end
 
 function ExtractFrame(comp, exportPath, templateFrameRate)
@@ -814,7 +813,7 @@ function GeneratePreview(speaker, templateName, exportPath)
     local timelineItems = mediaPool:AppendToTimeline({ newClip })
     local timelineItem = timelineItems[1]
 
-    local extractedFrame = exportPath .. "/subtitle-preview-0.png"
+    local extractedFrame = join_path(exportPath, "subtitle-preview-0.png")
 
     local success, err = pcall(function()
         -- Set timeline position to middle of clip
@@ -1117,11 +1116,13 @@ local AutoSubs = {
         end
 
         -- Set package path for module loading and import required modules
-        package.path = package.path .. ";" .. resources_path .. "modules/?.lua"
+        local modules_path = join_path(resources_folder, "modules")
+        package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
         socket = require("ljsocket")
         json = require("dkjson")
         luaresolve = require("libavutil")
 
+        assets_path = join_path(resources_path, "AutoSubs")
         StartServer()
     end
 }
