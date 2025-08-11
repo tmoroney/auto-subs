@@ -871,6 +871,30 @@ function LaunchApp()
     end
 end
 
+-- Send a small HTTP POST to 127.0.0.1:PORT with {"func":"Exit"}
+local function send_exit_via_socket()
+    local ok = pcall(function()
+        local info = assert(socket.find_first_address("127.0.0.1", PORT))
+        local client = assert(socket.create(info.family, info.socket_type, info.protocol))
+        assert(client:set_option("nodelay", true, "tcp"))
+        client:set_blocking(true)
+
+        assert(client:connect(info))
+
+        local body = "{\"func\":\"Exit\"}"
+        local req = string.format(
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:%d\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",
+            PORT, #body, body
+        )
+
+        assert(client:send(req))
+        client:close()
+    end)
+    if not ok then
+        print("Failed to send Exit via socket")
+    end
+end
+
 function StartServer()
     -- Set up server socket configuration
     local info = assert(socket.find_first_address("127.0.0.1", PORT))
@@ -887,12 +911,7 @@ function StartServer()
     end)
 
     if not success then
-        local curl_cmd = "curl --request POST " ..
-            "--url http://localhost:" .. PORT .. "/ " ..
-            "--header 'Content-Type: application/json' " ..
-            "--header 'content-type: application/json' " ..
-            "--data '{\"func\":\"Exit\"}'"
-        os.execute(curl_cmd)
+        send_exit_via_socket()
         sleep(0.5)
         assert(server:bind(info))
     end

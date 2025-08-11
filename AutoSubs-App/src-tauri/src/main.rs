@@ -64,79 +64,81 @@ fn main() {
                         *should_cancel = true;
                     }
 
-                    let app_handle = app.clone();
-                    tauri::async_runtime::spawn(async move {
-                        // short timeout to avoid hanging on exit
-                        let client = Client::builder()
+                    // Windows: do a small blocking send inline so we don't exit before the request is on the wire
+                    #[cfg(target_os = "windows")]
+                    {
+                        let url = "http://127.0.0.1:56002/";
+                        let bc = reqwest::blocking::Client::builder()
                             .no_proxy()
                             .tcp_nodelay(true)
-                            .timeout(Duration::from_millis(750))
-                            .build()
-                            .unwrap_or_else(|_| Client::new());
+                            .timeout(Duration::from_millis(800))
+                            .build();
+                        if let Ok(bc) = bc {
+                            let _ = bc
+                                .post(url)
+                                .header("Connection", "close")
+                                .json(&json!({ "func": "Exit" }))
+                                .send();
+                        }
 
-                        let url = "http://127.0.0.1:56002/";
+                        // As an extra-safe fallback, send a raw HTTP request over TCP synchronously
+                        {
+                            use std::io::Write;
+                            use std::net::TcpStream;
+                            let body = b"{\"func\":\"Exit\"}";
+                            let req = format!(
+                                "POST / HTTP/1.1\r\nHost: 127.0.0.1:56002\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+                                body.len()
+                            );
+                            if let Ok(mut stream) = TcpStream::connect_timeout(
+                                &"127.0.0.1:56002".parse().unwrap(),
+                                Duration::from_millis(400),
+                            ) {
+                                let _ = stream.set_nodelay(true);
+                                let _ = stream.set_write_timeout(Some(Duration::from_millis(400)));
+                                let _ = stream.write_all(req.as_bytes());
+                                let _ = stream.write_all(body);
+                                let _ = stream.flush();
+                            }
+                        }
+                        // brief pause to allow flush
+                        std::thread::sleep(Duration::from_millis(250));
 
-                        // Try once, and on Windows retry once quickly if it fails
-                        let mut res = client
-                            .post(url)
-                            .header("Connection", "close")
-                            .json(&json!({ "func": "Exit" }))
-                            .send()
-                            .await;
+                        // now actually exit the app
+                        app.exit(0);
 
-                        #[cfg(target_os = "windows")]
-                        if res.is_err() {
-                            // brief pause then retry once
-                            tokio::time::sleep(Duration::from_millis(100)).await;
-                            res = client
+                        // last resort hard exit after a grace period
+                        std::thread::spawn(|| {
+                            std::thread::sleep(Duration::from_millis(1200));
+                            std::process::exit(0);
+                        });
+                    }
+
+                    // Non-Windows: keep async path
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        let app_handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            // short timeout to avoid hanging on exit
+                            let client = Client::builder()
+                                .no_proxy()
+                                .tcp_nodelay(true)
+                                .timeout(Duration::from_millis(750))
+                                .build()
+                                .unwrap_or_else(|_| Client::new());
+
+                            let url = "http://127.0.0.1:56002/";
+                            let _ = client
                                 .post(url)
                                 .header("Connection", "close")
                                 .json(&json!({ "func": "Exit" }))
                                 .send()
                                 .await;
-                        }
 
-                        // On Windows, also fire a blocking request on a native thread as a fallback
-                        // to avoid any async runtime teardown races.
-                        #[cfg(target_os = "windows")]
-                        {
-                            let url_owned = String::from(url);
-                            std::thread::spawn(move || {
-                                let bc = reqwest::blocking::Client::builder()
-                                    .no_proxy()
-                                    .tcp_nodelay(true)
-                                    .timeout(Duration::from_millis(1200))
-                                    .build();
-                                if let Ok(bc) = bc {
-                                    let _ = bc
-                                        .post(&url_owned)
-                                        .header("Connection", "close")
-                                        .json(&json!({ "func": "Exit" }))
-                                        .send();
-                                    // small pause to encourage flush
-                                    std::thread::sleep(Duration::from_millis(250));
-                                }
-                            });
-                        }
-
-                        // Give the OS a brief moment to flush the request before terminating
-                        #[cfg(target_os = "windows")]
-                        tokio::time::sleep(Duration::from_millis(500)).await;
-                        #[cfg(not(target_os = "windows"))]
-                        tokio::time::sleep(Duration::from_millis(150)).await;
-
-                        // now actually exit the app
-                        app_handle.exit(0);
-
-                        // On Windows, some background tasks can keep the process around.
-                        // Add a short fallback to force-terminate if the graceful exit didn't complete.
-                        #[cfg(target_os = "windows")]
-                        {
-                            tokio::time::sleep(Duration::from_millis(1200)).await;
-                            // last resort hard exit
-                            std::process::exit(0);
-                        }
-                    });
+                            tokio::time::sleep(Duration::from_millis(150)).await;
+                            app_handle.exit(0);
+                        });
+                    }
                 }
                 RunEvent::WindowEvent { event, .. } => {
                     // Ensure clicking the window close (X) reliably routes through ExitRequested
