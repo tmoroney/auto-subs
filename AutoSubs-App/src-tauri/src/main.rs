@@ -69,18 +69,60 @@ fn main() {
                         // short timeout to avoid hanging on exit
                         let client = Client::builder()
                             .no_proxy()
+                            .tcp_nodelay(true)
                             .timeout(Duration::from_millis(750))
                             .build()
                             .unwrap_or_else(|_| Client::new());
 
-                        let _ = client
-                            .post("http://localhost:56002/")
+                        let url = "http://127.0.0.1:56002/";
+
+                        // Try once, and on Windows retry once quickly if it fails
+                        let mut res = client
+                            .post(url)
                             .header("Connection", "close")
                             .json(&json!({ "func": "Exit" }))
                             .send()
                             .await;
 
+                        #[cfg(target_os = "windows")]
+                        if res.is_err() {
+                            // brief pause then retry once
+                            tokio::time::sleep(Duration::from_millis(100)).await;
+                            res = client
+                                .post(url)
+                                .header("Connection", "close")
+                                .json(&json!({ "func": "Exit" }))
+                                .send()
+                                .await;
+                        }
+
+                        // On Windows, also fire a blocking request on a native thread as a fallback
+                        // to avoid any async runtime teardown races.
+                        #[cfg(target_os = "windows")]
+                        {
+                            let url_owned = String::from(url);
+                            std::thread::spawn(move || {
+                                let bc = reqwest::blocking::Client::builder()
+                                    .no_proxy()
+                                    .tcp_nodelay(true)
+                                    .timeout(Duration::from_millis(1200))
+                                    .build();
+                                if let Ok(bc) = bc {
+                                    let _ = bc
+                                        .post(&url_owned)
+                                        .header("Connection", "close")
+                                        .json(&json!({ "func": "Exit" }))
+                                        .send();
+                                    // small pause to encourage flush
+                                    std::thread::sleep(Duration::from_millis(250));
+                                }
+                            });
+                        }
+
                         // Give the OS a brief moment to flush the request before terminating
+                        #[cfg(target_os = "windows")]
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+                        #[cfg(not(target_os = "windows"))]
                         tokio::time::sleep(Duration::from_millis(150)).await;
 
                         // now actually exit the app

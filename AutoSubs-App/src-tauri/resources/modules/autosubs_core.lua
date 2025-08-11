@@ -744,23 +744,23 @@ function ExtractFrame(comp, exportDir, templateFrameRate)
         mySaver:SetInput("Input", mediaOut)
 
         -- Define the frame number you want to extract
-        local frameToExtract = templateFrameRate
+        local frameToExtract = math.floor(comp:GetAttrs().COMPN_GlobalEnd / 2)
 
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
-            Start = frameToExtract-1, -- Start rendering at this frame
-            End = frameToExtract-1,   -- End rendering at this frame
+            Start = frameToExtract, -- Start rendering at this frame
+            End = frameToExtract,   -- End rendering at this frame
             Tool = mySaver,             -- Render up to this specific Saver tool [13]
             Wait = true                 -- Wait for the render to complete before continuing the script [19]
         })
 
-        local outputFilename = "subtitle-preview-" .. frameToExtract-1 .. ".png"
+        local outputFilename = "subtitle-preview-" .. frameToExtract .. ".png"
         outputPath = join_path(exportDir, outputFilename)
 
         if success then
-            print("Frame " .. frameToExtract-1 .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
+            print("Frame " .. frameToExtract .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
         else
-            print("Failed to save frame " .. frameToExtract-1)
+            print("Failed to save frame " .. frameToExtract)
         end
     else
         print("Saver tool 'MySaver' not found in the composition.")
