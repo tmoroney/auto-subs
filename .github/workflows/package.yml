@@ -86,14 +86,9 @@ jobs:
         cd AutoSubs-App
         npm install
 
-    - name: Authenticate GitHub CLI
+    - name: Download ffmpeg/ffprobe binaries
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: |
-        echo "$GH_TOKEN" | gh auth login --with-token
-        gh auth status
-
-    - name: Download ffmpeg/ffprobe binaries
       run: |
         set -euo pipefail
         cd AutoSubs-App/src-tauri
@@ -295,17 +290,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth status
-
       - name: Compose latest.json with macOS and Windows artifacts
         env:
           TAG: ${{ github.event.release.tag_name }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p latest
