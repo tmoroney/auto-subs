@@ -12,6 +12,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   build-mac:
     strategy:
@@ -82,6 +85,13 @@ jobs:
       run: |
         cd AutoSubs-App
         npm install
+
+    - name: Authenticate GitHub CLI
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "$GITHUB_TOKEN" | gh auth login --with-token
+        gh auth status
 
     - name: Download ffmpeg/ffprobe binaries
       run: |
@@ -284,6 +294,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
+
+      - name: Authenticate GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          gh auth status
 
       - name: Compose latest.json with macOS and Windows artifacts
         env:
