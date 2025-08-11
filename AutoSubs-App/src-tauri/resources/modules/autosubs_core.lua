@@ -58,6 +58,16 @@ local function read_json_file(file_path)
     return data -- Return the decoded Lua table
 end
 
+local function join_path(dir, filename)
+    local sep = package.config:sub(1,1) -- returns '\\' on Windows, '/' elsewhere
+    -- Remove trailing separator from dir, if any
+    if dir:sub(-1) == sep then
+        return dir .. filename
+    else
+        return dir .. sep .. filename
+    end
+end
+
 -- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
 function hexToRgb(hex)
     local result = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
@@ -321,7 +331,7 @@ function GetExportProgress()
             local frameRate = timeline:GetSetting("timelineFrameRate")
 
             -- Playhead position in frames
-            local playheadPosition = luaresolve:timecode_from_frame_auto(currentTimecode, frameRate)
+            local playheadPosition = luaresolve:frame_from_timecode(currentTimecode, frameRate)
 
             -- Get mark in and out from audioInfo (already in frames)
             local markIn = currentExportJob.audioInfo.markIn
@@ -478,7 +488,7 @@ function ExportAudio(outputDir, inputTracks)
         local renderSettings = renderJobList[#renderJobList]
 
         audioInfo = {
-            path = renderSettings["TargetDir"] .. "/" .. renderSettings["OutputFilename"],
+            path = join_path(renderSettings["TargetDir"], renderSettings["OutputFilename"]),
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"],
             offset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")

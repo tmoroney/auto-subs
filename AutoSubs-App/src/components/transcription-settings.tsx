@@ -135,10 +135,10 @@ export const TranscriptionSettings = ({
             // Process results and get filename
             await processTranscriptionResults(transcript as any)
 
-            if (!settings.isStandaloneMode && options.enableDiarize) {
+            if (!settings.isStandaloneMode && options.enable_diarize) {
                 console.log("Enabling speaker editor")
                 setShowSpeakerEditor(true)
-            } else if (!settings.isStandaloneMode && !options.enableDiarize) {
+            } else if (!settings.isStandaloneMode && !options.enable_diarize) {
                 console.log("Showing non-diarized dialog")
                 setShowNonDiarizedDialog(true)
             }
@@ -567,7 +567,7 @@ export const TranscriptionSettings = ({
                             size={isMobile ? undefined : "lg"}
                         >
                             {isTranscribing || isExporting ? <LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> : <CirclePlay className="mr-2 h-5 w-5" />}
-                            {isExporting ? "Exporting Audio..." : isTranscribing ? "Processing..." : "Start Transcription"}
+                            {isExporting ? "Exporting Audio..." : isTranscribing ? (isModelDownloading ? "Downloading Model..." : (transcriptionProgress === 0 ? "Normalizing Audio..." :  "Processing...")) : "Start Transcription"}
                         </Button>
 
                         {(isTranscribing || isExporting) && (

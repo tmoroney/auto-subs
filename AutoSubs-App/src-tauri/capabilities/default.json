@@ -18,8 +18,12 @@
           "url": "http://localhost:*"
         },
         {
-          "url": "https://api.github.com/repos/tmoroney/auto-subs/releases/latest"
+          "url": "https://huggingface.co/*"
+        },
+        {
+          "url": "https://github.com/thewh1teagle/pyannote-rs/releases/*"
         }
+
       ],
       "deny": [
         {

@@ -120,7 +120,7 @@ export interface TranscriptionOptions {
     model: string,
     lang: string,
     translate: boolean,
-    enableDTW: boolean,
-    enableDiarize: boolean,
-    maxSpeakers: number | null,
+    enable_dtw: boolean,
+    enable_diarize: boolean,
+    max_speakers: number | null,
 }
