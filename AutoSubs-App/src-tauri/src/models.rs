@@ -195,6 +195,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, 
 
     let api = hf_hub::api::sync::ApiBuilder::new()
         .with_cache_dir(model_cache.clone())
+        .with_token(None) // Explicitly set no token for public access
         .build()
         .map_err(|e| e.to_string())?;
     let repo = api.model("ggerganov/whisper.cpp".to_string());
