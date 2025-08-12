@@ -1,8 +1,7 @@
 name: Package AutoSubs for MacOS and Linux
 on:
   release:
-    types:
-      - published
+    types: [published, prereleased, created, released]
   workflow_dispatch:
     inputs:
       tag:
@@ -254,7 +253,7 @@ jobs:
             pkg-config \
             libvulkan-dev \
             mesa-vulkan-drivers \
-            libshaderc-dev
+            libshaderc-dev \
             google-shaderc-tools
 
       - name: Install NPM deps
