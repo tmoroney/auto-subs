@@ -255,6 +255,7 @@ jobs:
             libvulkan-dev \
             mesa-vulkan-drivers \
             libshaderc-dev
+            google-shaderc-tools
 
       - name: Install NPM deps
         run: |
