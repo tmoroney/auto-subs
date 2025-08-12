@@ -26,7 +26,8 @@ Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, ac
 
 Generate Subtitles & Label Speakers |  Advanced Settings
 :-------------------------:|:-------------------------:
-<img width="550" alt="Transcription Page" src="https://github.com/user-attachments/assets/59803d26-cda0-4b44-ac54-3eb46438f7a6"> | <img width="600" alt="Advanced Settings" src="https://github.com/user-attachments/assets/d136f300-89be-4f0c-a330-57372fd71041">
+<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/ca00769b-93e2-4127-b604-a9108bf8451a"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/be1a111a-71c5-4d8d-ad8c-d9e889e3e7ab">
+
 
 ## Quick Start
 ### 1) Download & Install
@@ -38,6 +39,7 @@ Generate Subtitles & Label Speakers |  Advanced Settings
 1. Launch AutoSubs.
 2. Select an audio/video file.
 3. Pick your model and language/translation options.
+
 4. Click Transcribe. Edit speakers/subtitles as needed.
 5. Export subtitles (e.g., to files) or copy text.
 
@@ -47,15 +49,6 @@ Generate Subtitles & Label Speakers |  Advanced Settings
 3. In AutoSubs, select your timeline/audio source and settings.
 4. Click Transcribe. Edit speakers/subtitles as needed.
 5. Send styled subtitles back to Resolve.
-
-Watch the tutorial to get started: [Watch Now](https://www.youtube.com/watch?v=U36KbpoAPxM)
-
-# AutoSubs V1 (Legacy Version)
-If your OS isn’t supported by the latest version, you can try **AutoSubs V1** using manual installation. This requires basic Python/terminal experience and is no longer supported.
->[!Warning]
-If using the free version of Resolve, you must be on **Resolve 19.0.3 or earlier**, as Blackmagic removed the built‑in UI manager in v19.1.
-
-### [AutoSubs V1 Install Guide](https://github.com/tmoroney/auto-subs/blob/a695224b66e46c62dc716f5336582795e7174f17/V1_README.md)
 
 # Contribute to AutoSubs
 PRs are welcome!
@@ -69,7 +62,7 @@ PRs are welcome!
    npm install
    npm run tauri dev
    ```
-4. For Resolve integration during development, copy the Lua script from `AutoSubs-App/src-tauri/resources/` into your Resolve scripts folder so Resolve can launch/connect to the dev app:
+4. For Resolve integration during development, copy the Lua (AutoSubs.lua) script from `AutoSubs-App/src-tauri/resources/` into your Resolve scripts folder so Resolve can launch/connect to the dev app. Open the lua script and set it to dev mode via the variable at the top, then set the location where the git repo was cloned:
    - Windows: `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
    - macOS: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
    Then open it from Resolve via **Workspace → Scripts → AutoSubs**.
