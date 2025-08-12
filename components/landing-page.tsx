@@ -14,14 +14,44 @@ export default function LandingPage() {
   const [downloadLink, setDownloadLink] = useState('');
 
   useEffect(() => {
-    const userAgent = window.navigator.userAgent;
-    if (userAgent.indexOf('Win') !== -1) {
-      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/download/V2.1.8/AutoSubs-Win-setup.exe');
-    } else if (userAgent.indexOf('Mac') !== -1) {
-      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-macOS-arm64.pkg');
-    } else {
-      setDownloadLink('https://github.com/tmoroney/auto-subs/releases');
+    const ua = window.navigator.userAgent;
+    const uaLower = ua.toLowerCase();
+    const setMacLink = (arch: 'arm' | 'intel') => {
+      setDownloadLink(
+        arch === 'arm'
+          ? 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg'
+          : 'https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg'
+      );
+    };
+
+    if (ua.indexOf('Win') !== -1) {
+      setDownloadLink('https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe');
+      return;
     }
+
+    if (ua.indexOf('Mac') !== -1) {
+      // Default heuristic first
+      const likelyArm = /arm64|apple\s*silicon|apple\s?m\d/i.test(ua) || (navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 0);
+      setMacLink(likelyArm ? 'arm' : 'intel');
+
+      // Try User-Agent Client Hints (Chromium) to refine
+      // @ts-ignore
+      const uad = navigator.userAgentData;
+      if (uad && typeof uad.getHighEntropyValues === 'function') {
+        try {
+          // @ts-ignore
+          uad.getHighEntropyValues(['architecture']).then((hints: { architecture?: string }) => {
+            const arch = hints?.architecture?.toLowerCase();
+            if (arch?.includes('arm')) setMacLink('arm');
+            else if (arch?.includes('x86')) setMacLink('intel');
+          }).catch(() => {});
+        } catch {}
+      }
+      return;
+    }
+
+    // Fallback to releases page for other platforms
+    setDownloadLink('https://github.com/tmoroney/auto-subs/releases');
   }, []);
 
   return (

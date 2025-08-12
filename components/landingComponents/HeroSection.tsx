@@ -4,7 +4,7 @@
 
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Download, Github } from 'lucide-react'
+import { Download, Github, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { DownloadModal } from '@/components/ui/DownloadModal'
 import { motion } from 'framer-motion'
@@ -98,6 +98,40 @@ function AnimatedCounter({ endValue, label, suffix, delay = 0 }: AnimatedCounter
 
 export default function HeroSection({ downloadLink }: HeroSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  
+  const handlePrimaryDownload = async (url: string) => {
+    try {
+      setDownloading(true)
+      const res = await fetch(url, { mode: 'cors', redirect: 'follow' })
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const filename = url.split('/').pop() || 'auto-subs'
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } catch (e) {
+      // Fallback: try anchor with download attribute to avoid navigation
+      const a = document.createElement('a')
+      a.href = url
+      a.setAttribute('download', url.split('/').pop() || 'auto-subs')
+      a.rel = 'noopener'
+      a.target = '_self'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+    
+    finally {
+      // Keep indicator visible briefly for UX even if browser saves instantly
+      setTimeout(() => setDownloading(false), 2500)
+    }
+  }
   return (
     <section 
       id="hero"
@@ -158,11 +192,21 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button 
                   size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full h-14"
-                  onClick={() => window.open(downloadLink, '_blank')}
+                  className={`bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full h-14 ${downloading ? 'opacity-80 cursor-not-allowed' : ''}`}
+                  onClick={() => handlePrimaryDownload(downloadLink)}
+                  disabled={downloading}
                 >
-                  <Download size={20} />
-                  Download AutoSubs - It&apos;s free
+                  {downloading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={20} />
+                      Download AutoSubs - It&apos;s free
+                    </>
+                  )}
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
