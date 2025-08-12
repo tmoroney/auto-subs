@@ -6,9 +6,10 @@ use serde_json::json;
 use std::time::Duration;
 use tauri::RunEvent;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 // Import plugins
-use tauri_plugin_dialog::init as dialog_plugin;
 use tauri_plugin_fs::init as fs_plugin;
 use tauri_plugin_http::init as http_plugin;
 use tauri_plugin_process::init as process_plugin;
@@ -28,16 +29,65 @@ fn main() {
     whisper_rs::install_logging_hooks();
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .plugin(StoreBuilder::default().build())
         // Register each plugin
         .plugin(http_plugin())
         .plugin(fs_plugin())
-        .plugin(dialog_plugin())
         .plugin(process_plugin())
         .plugin(shell_plugin())
-        .setup(|_app| {
-            // Any additional setup logic if needed
+        .setup(|app| {
+            // Check for updates in the background on startup (Tauri v2 Updater)
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(builder) = handle.updater_builder().build() {
+                  if let Ok(Some(info)) = builder.check().await {
+                    // Show a non-blocking confirmation dialog
+                    let title = "Update available".to_string();
+                    let message = format!("Version {} is available.\nInstall now?", info.version);
+                    let handle_for_cb = handle.clone();
+                    handle
+                      .dialog()
+                      .message(message)
+                      .title(title)
+                      .buttons(MessageDialogButtons::OkCancelCustom("Install".to_string(), "Later".to_string()))
+                      .show(move |should_update| {
+                        if should_update {
+                          // Perform download+install asynchronously
+                          let handle_for_dl = handle_for_cb.clone();
+                          tauri::async_runtime::spawn(async move {
+                            if let Ok(builder2) = handle_for_dl.updater_builder().build() {
+                              if let Ok(Some(update2)) = builder2.check().await {
+                                if let Err(e) = update2
+                                  .download_and_install(
+                                    |chunk, total| eprintln!("Downloading update: {} / {:?}", chunk, total),
+                                    || eprintln!("Download finished"),
+                                  )
+                                  .await
+                                {
+                                  eprintln!("Update failed: {e}");
+                                  return;
+                                }
+
+                                // Inform user of success (non-blocking message)
+                                handle_for_dl
+                                  .dialog()
+                                  .message("Update installed. It will take effect the next time you open the app.")
+                                  .title("AutoSubs updated")
+                                  .buttons(MessageDialogButtons::Ok)
+                                  .show(|_| {});
+                                // Optional: restart immediately
+                                // handle_for_dl.restart();
+                              }
+                            }
+                          });
+                        }
+                      });
+                  }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
