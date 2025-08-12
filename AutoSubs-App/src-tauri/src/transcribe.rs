@@ -656,20 +656,23 @@ fn get_word_timestamps(
                               _token_idx: i32,
                               start: i64,
                               end: i64,
-                              prob: f32|
-     -> i64 {
+                              prob: f32| {
         if !word.is_empty() {
-            let end_frame = end.min(end_of_segment);
+            let start_frame_clamped = start.max(start_of_segment).min(end_of_segment);
+            // Enforce word duration bounds to avoid zero-length or excessively long words
+            let min_word_dur_frames: i64 = 3;   // ~30ms (10ms frames)
+            let max_word_dur_frames: i64 = 150; // ~1.5s cap
+            let mut end_frame = end
+                .max(start_frame_clamped + min_word_dur_frames)
+                .min(end_of_segment);
+            end_frame = end_frame.min(start_frame_clamped + max_word_dur_frames);
             timestamps.push(crate::transcript::WordTimestamp {
                 word: word.clone(),
-                start: (start as f64) * 0.01,
+                start: (start_frame_clamped as f64) * 0.01,
                 end: (end_frame as f64) * 0.01,
                 probability: Some(prob),
             });
             word.clear();
-            end
-        } else {
-            start
         }
     };
 
@@ -683,7 +686,7 @@ fn get_word_timestamps(
         if is_special {
             if is_last && !current_word.is_empty() {
                 let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
-                start_frame = close_current_word(
+                close_current_word(
                     &mut current_word,
                     &mut word_timestamps,
                     i as i32,
@@ -698,7 +701,7 @@ fn get_word_timestamps(
         // New word starts at tokens with leading space or if first token
         if token_text.starts_with(' ') && !current_word.is_empty() {
             let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
-            start_frame = close_current_word(
+            close_current_word(
                 &mut current_word,
                 &mut word_timestamps,
                 i as i32,
@@ -708,12 +711,51 @@ fn get_word_timestamps(
             );
         }
 
+        // Whitespace-only tokens act as boundaries: if we have an open word, close it; otherwise skip.
+        if token_text.trim().is_empty() {
+            if !current_word.is_empty() {
+                let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+                close_current_word(
+                    &mut current_word,
+                    &mut word_timestamps,
+                    i as i32,
+                    start_frame,
+                    prev_end_frame,
+                    prev_data.p,
+                );
+            }
+            continue;
+        }
+
+        // If starting a new word, set start strictly from token t0 to avoid systemic delay
+        if current_word.is_empty() {
+            start_frame = data.t0.max(start_of_segment).min(end_of_segment);
+            // In DTW mode, counteract typical alignment lag with a small pre-roll advance,
+            // but never overlap the previous word or exceed segment bounds.
+            if matches!(enable_dtw, Some(true)) {
+                let dtw_preroll_frames: i64 = 10; // ~100ms
+                let candidate = (start_frame - dtw_preroll_frames).max(start_of_segment);
+                if let Some(last) = word_timestamps.last() {
+                    let prev_end_frames = (last.end * 100.0).round() as i64;
+                    start_frame = candidate.max(prev_end_frames);
+                } else {
+                    start_frame = candidate;
+                }
+            }
+        }
+
         current_word.push_str(&token_text);
-        prev_end_frame = if let Some(true) = enable_dtw {
-            data.t_dtw
+        // Prefer token end t1; when DTW is enabled, trust DTW to avoid trailing into silence,
+        // but cap the adjustment so ends aren't pulled too far earlier.
+        let mut token_end = if matches!(enable_dtw, Some(true)) && data.t_dtw > 0 {
+            let dtw_end_cap_frames: i64 = if is_last { 6 } else { 10 }; // ~60-100ms
+            // bound end by the minimum of model end and (dtw + cap)
+            std::cmp::min(data.t1, data.t_dtw + dtw_end_cap_frames)
         } else {
             data.t1
         };
+        // Ensure monotonic and clamp within segment bounds
+        prev_end_frame = token_end.max(start_frame).min(end_of_segment);
 
         // If last token, push the final word
         if is_last && !current_word.is_empty() {
@@ -729,6 +771,134 @@ fn get_word_timestamps(
     }
 
     word_timestamps
+}
+
+// Detect the first speech onset (non-silent region) after a given time using
+// a lightweight energy threshold on 10ms frames. Returns the detected onset
+// time in seconds if found within the search window.
+fn detect_speech_onset_after(
+    samples: &[i16],
+    sample_rate: usize,
+    start_time_s: f64,
+    max_search_s: f64,
+) -> Option<f64> {
+    if samples.is_empty() || sample_rate == 0 || max_search_s <= 0.0 {
+        return None;
+    }
+    let sr = sample_rate as f64;
+    let mut idx = (start_time_s * sr).round() as usize;
+    if idx >= samples.len() { return None; }
+
+    let frame_len = ((sr * 0.010).round() as usize).max(1); // 10ms frames
+    let end_idx = ((start_time_s + max_search_s) * sr).round() as usize;
+    let end_idx = end_idx.min(samples.len());
+    if idx + frame_len >= end_idx { return None; }
+
+    // Calibrate dynamic threshold from local max abs in the scan window
+    let mut local_max_abs: i32 = 0;
+    let mut j = idx;
+    while j < end_idx {
+        let v = samples[j].abs() as i32;
+        if v > local_max_abs { local_max_abs = v; }
+        j += 1;
+    }
+    // Dynamic threshold: 5% of local peak, but not lower than an absolute floor
+    let thresh_abs: f64 = (local_max_abs as f64 * 0.05).max(200.0);
+
+    // Require a few consecutive frames above threshold to confirm speech onset
+    // and a short preceding silence window to avoid premature triggers.
+    let mut consec_above = 0usize;
+    let mut consec_below = 0usize;
+    let mut allow_onset = false;
+    while idx + frame_len <= end_idx {
+        let mut sum_abs: u64 = 0;
+        for k in idx..(idx + frame_len) {
+            sum_abs += samples[k].abs() as u64;
+        }
+        let mean_abs = (sum_abs as f64) / (frame_len as f64);
+        if mean_abs >= thresh_abs {
+            // Only start counting above-threshold after we've seen a bit of silence
+            if consec_below >= 3 { allow_onset = true; }
+            if allow_onset {
+                consec_above += 1;
+                if consec_above >= 4 {
+                    // Onset at the boundary after confirmed frames
+                    let onset_idx = idx + frame_len; // slight bias forward for stability
+                    return Some(onset_idx as f64 / sr);
+                }
+            }
+        } else {
+            // track consecutive below-threshold frames to ensure a prior quiet period
+            consec_below = (consec_below + 1).min(1000);
+            consec_above = 0;
+        }
+        idx += frame_len; // hop 10ms
+    }
+    None
+}
+
+// Adjust starts of segments to preserve short silences between them when the
+// model underestimates gaps. We look for speech onset after the previous
+// segment's end and, if it's later than the current start by a meaningful
+// margin, shift the whole next segment (and its words) forward by that delta.
+fn adjust_small_gaps_with_silence(
+    segments: &mut Vec<Segment>,
+    samples: &[i16],
+    sample_rate: usize,
+) {
+    if segments.len() < 2 { return; }
+
+    for i in 0..(segments.len() - 1) {
+        let prev_end = segments[i].end;
+        let cur_start = segments[i + 1].start;
+        if cur_start <= prev_end { continue; }
+
+        // Preserve a proportional portion of the observed gap to feel natural
+        // Preserve ~60% of gap, clamped to [250ms, 700ms]
+        let raw_gap = cur_start - prev_end; // observed model gap (positive)
+        let preserve = (raw_gap * 0.60).clamp(0.25, 0.70);
+        let desired_min_start = prev_end + preserve;
+
+        // Search up to 2.5s after prev_end for speech onset
+        let detected_onset = detect_speech_onset_after(samples, sample_rate, prev_end, 2.5);
+        let target_start = detected_onset.unwrap_or(cur_start).max(desired_min_start);
+
+        // Only adjust if target start is meaningfully later than current start
+        let mut delta = target_start - cur_start;
+        if delta > 0.08 { // >80ms change to avoid jitter
+                // Cap the shift so we don't overlap the following segment
+                if i + 2 < segments.len() {
+                    let next_next_start = segments[i + 2].start;
+                    let max_delta = (next_next_start - segments[i + 1].end - 0.02).max(0.0);
+                    if max_delta <= 0.0 { continue; }
+                    delta = delta.min(max_delta);
+                }
+
+                // Shift the i+1 segment and its words forward by delta
+                segments[i + 1].start += delta;
+                segments[i + 1].end += delta;
+                if let Some(words) = &mut segments[i + 1].words {
+                    for w in words.iter_mut() {
+                        w.start += delta;
+                        w.end += delta;
+                    }
+                }
+
+                // Ensure previous segment doesn't overlap the adjusted one
+                let new_end_limit = segments[i + 1].start;
+                if segments[i].end > new_end_limit {
+                    // Clamp the last word before setting the new end to avoid borrow conflicts
+                    if let Some(words) = &mut segments[i].words {
+                        if let Some(last_word) = words.last_mut() {
+                            if last_word.end > new_end_limit {
+                                last_word.end = new_end_limit;
+                            }
+                        }
+                    }
+                    segments[i].end = new_end_limit;
+                }
+        }
+    }
 }
 
 /// Aggregates speakers from transcript segments, similar to the frontend logic
@@ -1155,6 +1325,10 @@ pub async fn run_transcription_pipeline(
             // No speaker aggregation needed for non-diarized transcripts
             (Vec::new(), segments)
         };
+
+        // Preserve short gaps: shift next segment to detected speech onset after the previous end
+        // Uses raw PCM samples at 16kHz (post-normalization) to detect onsets
+        adjust_small_gaps_with_silence(&mut segments, &original_samples, 16000);
 
         let offset = options.offset.unwrap_or(0.0);
 

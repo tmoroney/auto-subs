@@ -254,7 +254,7 @@ jobs:
             pkg-config \
             libvulkan-dev \
             mesa-vulkan-drivers \
-            shaderc-utils
+            libshaderc-dev
 
       - name: Install NPM deps
         run: |

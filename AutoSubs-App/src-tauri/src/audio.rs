@@ -96,9 +96,9 @@ pub async fn normalize(
             "-y".into(),
             output.to_str().unwrap().into(),
         ];
-        // Add any extra arguments if they exist
-        if let Some(additional_args) = additional_ffmpeg_args {
-            args.extend(additional_args);
+        // Add any extra arguments if they exist (clone to avoid moving)
+        if let Some(ref additional_args) = additional_ffmpeg_args {
+            args.extend(additional_args.clone());
         }
         // Note: output path and global flags are already included above; no further args appended here
 
@@ -121,6 +121,109 @@ pub async fn normalize(
         // Final check to ensure the file was actually created
         if !output.exists() {
             bail!("ffmpeg seemed to succeed, but the output file was not created.");
+        }
+
+        // --- Post-conditions sanity checks ---
+        // 1) File size must be greater than WAV header (44 bytes)
+        let out_meta = fs::metadata(&output).context("failed to stat normalized output file")?;
+        if out_meta.len() <= 44 {
+            tracing::warn!("Normalized WAV is header-only (0 samples): {:?}", output);
+        }
+
+        // helper to open WAV and compute quick amplitude stats over a limited window
+        fn wav_quick_silence_check(path: &PathBuf) -> eyre::Result<(bool, usize, f64)> {
+            let mut reader = WavReader::open(path).context("failed to open normalized WAV for validation")?;
+            let spec = reader.spec();
+            // Ensure expected output format
+            if !(spec.channels == 1
+                && spec.sample_format == SampleFormat::Int
+                && spec.sample_rate == 16000
+                && spec.bits_per_sample == 16)
+            {
+                bail!("normalized WAV has unexpected format: {:?}", spec);
+            }
+            let mut count: usize = 0;
+            let mut sum_sq: f64 = 0.0;
+            let mut max_abs: i32 = 0;
+            for s in reader.samples::<i16>().take(16000 * 5) { // up to first 5 seconds
+                let v = s.context("sample")? as i32;
+                let abs = v.abs();
+                if abs > max_abs { max_abs = abs; }
+                sum_sq += (v as f64) * (v as f64);
+                count += 1;
+            }
+            if count == 0 {
+                return Ok((true, 0, 0.0));
+            }
+            let rms = (sum_sq / count as f64).sqrt();
+            // Treat as (near) silence if max amplitude is extremely low and RMS very small
+            // thresholds are conservative: ~1/1000 of full-scale 16-bit
+            let is_silent = max_abs < 32 && rms < 10.0;
+            Ok((is_silent, count, rms))
+        }
+
+        let (is_silent, first_count, first_rms) = wav_quick_silence_check(&output)
+            .unwrap_or_else(|e| {
+                tracing::warn!("WAV validation failed: {}", e);
+                // If we cannot validate, proceed to fallback attempt below.
+                (false, 0, 0.0)
+            });
+
+        // If the output looks empty or (near) silent, attempt a fallback without '-map a:0'
+        if out_meta.len() <= 44 || is_silent {
+            tracing::warn!(
+                "Normalized audio appears empty/silent (bytes={}, samples_checked={}, rms={:.3}). Retrying without explicit -map a:0",
+                out_meta.len(),
+                first_count,
+                first_rms
+            );
+
+            // Re-run ffmpeg WITHOUT the strict stream mapping to let it pick the default/best audio stream.
+            let mut args_fb = vec![
+                "-nostdin".into(),
+                "-hide_banner".into(),
+                "-loglevel".into(),
+                "error".into(),
+                "-vn".into(),
+                "-sn".into(),
+                "-dn".into(),
+                "-i".into(),
+                input.to_str().unwrap().into(),
+                "-ar".into(),
+                "16000".into(),
+                "-ac".into(),
+                "1".into(),
+                "-c:a".into(),
+                "pcm_s16le".into(),
+                "-map_metadata".into(),
+                "-1".into(),
+                "-f".into(),
+                "wav".into(),
+                "-nostats".into(),
+                "-y".into(),
+                output.to_str().unwrap().into(),
+            ];
+            if let Some(additional_args) = additional_ffmpeg_args.clone() {
+                args_fb.extend(additional_args);
+            }
+            tracing::debug!("Fallback ffmpeg args (no -map a:0): {:?}", args_fb);
+            let fb_out = app.shell().sidecar("ffmpeg")?.args(args_fb).output().await?;
+            if !fb_out.status.success() {
+                let err = String::from_utf8_lossy(&fb_out.stderr);
+                bail!("ffmpeg fallback run failed: {}", err);
+            }
+
+            // Re-validate after fallback
+            let out_meta2 = fs::metadata(&output).context("failed to stat fallback output file")?;
+            let (is_silent2, count2, rms2) = wav_quick_silence_check(&output).unwrap_or((false, 0, 0.0));
+            if out_meta2.len() <= 44 || is_silent2 {
+                bail!(
+                    "Audio normalization produced empty/silent audio even after fallback (bytes={}, samples_checked={}, rms={:.3}).",
+                    out_meta2.len(),
+                    count2,
+                    rms2
+                );
+            }
         }
 
         println!("Normalization successful for {:?}", output);
