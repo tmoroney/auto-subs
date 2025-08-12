@@ -4,7 +4,7 @@ Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, ac
 ### 📥 One-Click Installer: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [MacOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg)
 **💡 100,000+ downloads so far!**
 
-<a href="https://www.buymeacoffee.com/tmoroney"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=tmoroney&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+<a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## 🚀 What’s New in V3
 - **Complete UI Overhaul** — Cleaner, more consistent, and more discoverable controls.
