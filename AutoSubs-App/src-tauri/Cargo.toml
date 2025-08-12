@@ -66,6 +66,6 @@ vulkan = ["whisper-rs/vulkan"]
 
 # Platform/arch presets
 mac-aarch = ["coreml", "metal"]
-mac-x86_64 = ["metal", "openblas"]
+mac-x86_64 = ["metal"]
 windows = ["vulkan", "directml"]  # All GPU acceleration (AMD/Intel/NVIDIA via Vulkan + DirectML)
-linux = ["vulkan", "openblas"]
+linux = ["vulkan"]

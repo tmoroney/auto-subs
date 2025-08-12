@@ -1,4 +1,4 @@
-import { Clock } from "lucide-react"
+import { Zap } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 
 interface WordTimestampsCardProps {
@@ -15,8 +15,8 @@ export const WordTimestampsCard = ({
       <div className="p-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-              <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+              <Zap className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div>
               <div className="flex items-center gap-1">

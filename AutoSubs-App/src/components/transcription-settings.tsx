@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Switch } from "@/components/ui/switch"
 import { Card } from "@/components/ui/card"
 import {
     AlertDialog,
@@ -43,6 +44,9 @@ import { SpeakerEditor } from "./speaker-editor"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { SurveyNotification } from "./survey-notification";
 import { WordTimestampsCard } from "./settings-cards/word-timestamps-card"
+import { Gauge } from "lucide-react"
+import { platform } from "@tauri-apps/plugin-os"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
@@ -88,6 +92,8 @@ export const TranscriptionSettings = ({
         isDiarizing,
         pushToTimeline,
         cancelRequestedRef,
+        gpuFallback,
+        dismissGpuFallback,
     } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
@@ -347,12 +353,6 @@ export const TranscriptionSettings = ({
                                     onMaxSpeakersChange={(value) => updateSetting("maxSpeakers", value)}
                                 />
 
-                                {/* Word Timestamps */}
-                                <WordTimestampsCard
-                                    enableDTW={settings.enableDTW}
-                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
-                                />
-
                                 {/* Model */}
                                 <ModelSelectionCard
                                     language={settings.language}
@@ -363,10 +363,60 @@ export const TranscriptionSettings = ({
                                     onModelChange={(model) => updateSetting('model', model)}
                                     onDeleteModel={(model) => handleDeleteModel(model)}
                                 />
+
                             </div>
 
                         </CollapsibleContent>
                     </Collapsible>
+
+                    <Collapsible defaultOpen className="space-y-3">
+                        <div className="flex items-center gap-4">
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
+                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        Experimental
+                                    </h3>
+                                </Button>
+                            </CollapsibleTrigger>
+                            <div className="flex-1 h-px bg-border"></div>
+                        </div>
+                        <CollapsibleContent>
+                            <div className="space-y-3">
+                                {/* Word Timestamps */}
+                                <WordTimestampsCard
+                                    enableDTW={settings.enableDTW}
+                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
+                                />
+
+                                {/* GPU Acceleration (only show on windows) */}
+                                {platform() === "windows" && (
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <div className="p-3.5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                                                        <Gauge className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-1">
+                                                            <p className="text-sm font-medium">GPU Acceleration</p>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                           Improves transcription speed
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Switch checked={settings.enableGpu} onCheckedChange={(checked) => updateSetting("enableGpu", checked)} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
+
+
 
 
 
@@ -499,6 +549,28 @@ export const TranscriptionSettings = ({
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
                 >
+                    {/* GPU Fallback Notice */}
+                    {gpuFallback && (
+                        <Alert className="pt-3 relative bg-amber-50/90 border border-amber-200 dark:bg-amber-950/50 dark:border-amber-700">
+                            <div className="flex items-start justify-between gap-2">
+                                <div>
+                                    <AlertTitle>Retrying on CPU for better accuracy</AlertTitle>
+                                    <AlertDescription>
+                                        GPU transcription looked low quality (avg word prob {Math.round(gpuFallback.avgWordProb * 100) / 100}). This run is on CPU.
+                                    </AlertDescription>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Dismiss GPU fallback notice"
+                                    onClick={dismissGpuFallback}
+                                    className="rounded-full"
+                                >
+                                    <XCircle className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </Alert>
+                    )}
 
                     {/* Model Download Progress */}
                     {isModelDownloading && (
@@ -582,15 +654,17 @@ export const TranscriptionSettings = ({
                         )}
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Mobile Subtitles Viewer */}
             {isMobile && <MobileSubtitleViewer isOpen={showMobileSubtitles} onClose={() => setShowMobileSubtitles(false)} />}
 
             {/* Speaker Editor */}
-            {showSpeakerEditor && (
-                <SpeakerEditor afterTranscription={true} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-            )}
+            {
+                showSpeakerEditor && (
+                    <SpeakerEditor afterTranscription={true} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
+                )
+            }
 
             {/* Non-diarized completion dialog */}
             <AlertDialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>

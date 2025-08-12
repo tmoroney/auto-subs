@@ -4,6 +4,7 @@ use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript};
 use eyre::{bail, eyre, Context, OptionExt, Result};
 use hound::WavReader;
 use serde::Deserialize;
+use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -41,6 +42,25 @@ fn round_to_places(val: f64, places: u32) -> f64 {
     (val * factor).trunc() / factor
 }
 
+// Compute average word probability across all segments (if available)
+fn average_word_probability(segments: &[crate::transcript::Segment]) -> Option<f32> {
+    let mut sum = 0.0f32;
+    let mut count = 0usize;
+    for seg in segments.iter() {
+        if let Some(words) = &seg.words {
+            for w in words {
+                if let Some(p) = w.probability {
+                    if p.is_finite() { // guard against NaN/inf
+                        sum += p;
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+    if count > 0 { Some(sum / (count as f32)) } else { None }
+}
+
 // --- Frontend Options Struct ---
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -51,6 +71,7 @@ pub struct FrontendTranscribeOptions {
     pub lang: Option<String>,
     pub translate: Option<bool>,
     pub enable_dtw: Option<bool>,
+    pub enable_gpu: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
 }
@@ -87,11 +108,22 @@ pub async fn transcribe_audio(
         .await
         .map_err(|e| format!("Failed to get audio duration: {}", e))?;
 
+    // GPU policy: only Windows may disable; others forced ON
+    let is_windows = tauri_plugin_os::platform() == "windows";
+    let enable_gpu = if is_windows {
+        // Respect user toggle; default OFF if not provided
+        options.enable_gpu.or(Some(false))
+    } else {
+        // Force ON on non-Windows
+        Some(true)
+    };
+    let used_gpu_initial = enable_gpu == Some(true);
+
     let ctx = create_context(
-        &PathBuf::from(model_path),
+        model_path.as_path(),
         &options.model,
         None,
-        Some(true),
+        enable_gpu,
         options.enable_dtw, // improved word timestamps
         Some(audio_duration),
     )
@@ -100,7 +132,7 @@ pub async fn transcribe_audio(
     let transcribe_options = TranscribeOptions {
         path: options.audio_path.clone().into(),
         offset: options.offset,
-        lang: options.lang,
+        lang: options.lang.clone(),
         init_prompt: None,
         max_sentence_len: None,
         verbose: None,
@@ -199,13 +231,13 @@ pub async fn transcribe_audio(
 
     // Await the async pipeline
     let res = run_transcription_pipeline(
-        app,
+        app.clone(),
         ctx,
         transcribe_options,
         progress_callback,
         None,
         abort_callback,
-        diarize_options,
+        diarize_options.clone(),
         None,
         options.enable_diarize,
     )
@@ -222,6 +254,137 @@ pub async fn transcribe_audio(
                 "Transcription successful in {:.2}s",
                 transcript.processing_time_sec
             );
+            // On Windows with GPU enabled, evaluate quality and optionally fallback to CPU
+            if is_windows && used_gpu_initial {
+                if let Some(avg_p) = average_word_probability(&transcript.segments) {
+                    println!("Average word probability (GPU): {:.3}", avg_p);
+                    // Heuristic threshold: if very low average confidence, try CPU fallback
+                    if avg_p < 0.35 {
+                        println!("Low confidence detected on GPU. Falling back to CPU for re-run...");
+
+                        // Inform frontend about fallback with basic metrics
+                        let _ = app.emit(
+                            "gpu-fallback",
+                            json!({
+                                "reason": "low_confidence",
+                                "avgWordProb": avg_p,
+                            }),
+                        );
+
+                        // Re-create Whisper context for CPU
+                        let cpu_ctx = match create_context(
+                            model_path.as_path(),
+                            &options.model,
+                            None,
+                            Some(false), // force CPU
+                            options.enable_dtw,
+                            Some(audio_duration),
+                        ) {
+                            Ok(c) => c,
+                            Err(e) => {
+                                eprintln!("CPU context creation failed, keeping GPU transcript: {}", e);
+                                return Ok(transcript);
+                            }
+                        };
+
+                        // Reset progress and spawn a fresh emitter for fallback run
+                        LATEST_TRANSCRIBE_PROGRESS.store(0, Ordering::Relaxed);
+                        LATEST_DIARIZE_PROGRESS.store(0, Ordering::Relaxed);
+                        let emit_app_fb = app.clone();
+                        let (stop_tx_fb, mut stop_rx_fb) = tokio::sync::oneshot::channel::<()>();
+                        let emitter_handle_fb = tokio::spawn(async move {
+                            let mut last_t = -1;
+                            let mut last_d = -1;
+                            let mut interval = tokio::time::interval(Duration::from_millis(250));
+                            loop {
+                                tokio::select! {
+                                    _ = interval.tick() => {
+                                        let t = LATEST_TRANSCRIBE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
+                                        if t != last_t {
+                                            let _ = emit_app_fb.emit("transcription-progress", t);
+                                            last_t = t;
+                                        }
+                                        let d = LATEST_DIARIZE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
+                                        if d != last_d {
+                                            let _ = emit_app_fb.emit("diarization-progress", d);
+                                            last_d = d;
+                                        }
+                                    }
+                                    _ = &mut stop_rx_fb => {
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+
+                        // Recreate callbacks
+                        let progress_callback_fb = Some(Box::new(move |progress: i32| {
+                            LATEST_TRANSCRIBE_PROGRESS.store(progress, Ordering::Relaxed);
+                        }) as Box<dyn Fn(i32) + Send + Sync>);
+
+                        let abort_callback_fb = Some(Box::new(|| {
+                            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+                                let cancelled = *should_cancel;
+                                if cancelled {
+                                    println!("Transcription cancelled by user (CPU fallback)");
+                                }
+                                cancelled
+                            } else {
+                                false
+                            }
+                        }) as Box<dyn Fn() -> bool + Send>);
+
+                        // Run CPU fallback
+                        // Build fresh transcribe options for fallback (original was moved)
+                        let transcribe_options_fb = TranscribeOptions {
+                            path: options.audio_path.clone().into(),
+                            offset: options.offset,
+                            lang: options.lang.clone(),
+                            init_prompt: None,
+                            max_sentence_len: None,
+                            verbose: None,
+                            max_text_ctx: None,
+                            n_threads: None,
+                            temperature: None,
+                            translate: options.translate,
+                            enable_dtw: options.enable_dtw,
+                            sampling_bestof_or_beam_size: None,
+                            sampling_strategy: None,
+                        };
+
+                        let cpu_res = run_transcription_pipeline(
+                            app,
+                            cpu_ctx,
+                            transcribe_options_fb,
+                            progress_callback_fb,
+                            None,
+                            abort_callback_fb,
+                            diarize_options,
+                            None,
+                            options.enable_diarize,
+                        )
+                        .await;
+
+                        // Stop fallback emitter
+                        let _ = stop_tx_fb.send(());
+                        let _ = emitter_handle_fb.await;
+
+                        match cpu_res {
+                            Ok(mut cpu_transcript) => {
+                                cpu_transcript.processing_time_sec = start_time.elapsed().as_secs();
+                                println!("CPU fallback transcription successful in {:.2}s", cpu_transcript.processing_time_sec);
+                                return Ok(cpu_transcript);
+                            }
+                            Err(e) => {
+                                eprintln!("CPU fallback failed (keeping GPU transcript): {}", e);
+                                return Ok(transcript);
+                            }
+                        }
+                    }
+                } else {
+                    println!("No word probabilities available to evaluate quality; skipping fallback.");
+                }
+            }
             Ok(transcript)
         }
         Err(e) => {
@@ -260,9 +423,9 @@ pub fn create_context(
         bail!("whisper file doesn't exist")
     }
     let mut ctx_params = WhisperContextParameters::default();
-    if let Some(use_gpu) = use_gpu {
-        ctx_params.use_gpu = use_gpu;
-    }
+    // Resolve GPU usage (Windows default OFF, others forced ON upstream)
+    let using_gpu = use_gpu.unwrap_or(false);
+    ctx_params.use_gpu = using_gpu;
     // set GPU device number from preference
     if let Some(gpu_device) = gpu_device {
         ctx_params.gpu_device = gpu_device;
@@ -311,7 +474,12 @@ pub fn create_context(
             dtw_mem_size,
         });
     } else {
-        ctx_params.flash_attn(true);
+        // No DTW: allow flash-attn only on GPU
+        if using_gpu {
+            ctx_params.flash_attn(true);
+        } else {
+            ctx_params.flash_attn(false);
+        }
     }
 
     // Print actual DTW state from ctx_params

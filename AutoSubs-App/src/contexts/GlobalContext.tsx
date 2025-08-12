@@ -14,6 +14,8 @@ import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/res
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
+// Backend emits a 'gpu-fallback' event when GPU output quality is low
+type GpuFallbackPayload = { reason: string; avgWordProb: number };
 
 interface GlobalContextType {
   settings: Settings;
@@ -67,6 +69,9 @@ interface GlobalContextType {
   handleDeleteModel: (modelValue: string) => Promise<void>;
   getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   cancelExport: () => Promise<any>;
+  // GPU fallback notification
+  gpuFallback: { reason: string; avgWordProb: number } | null;
+  dismissGpuFallback: () => void;
 }
 
 export const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -88,6 +93,7 @@ const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   translate: false,
   enableDTW: false,
+  enableGpu: false, // gpu enabled by default on mac and linux, disabled by default on windows
   enableDiarize: false,
   maxSpeakers: null,
 
@@ -132,6 +138,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [diarizationProgress, setDiarizationProgress] = useState<number>(0);
   const [isDiarizing, setIsDiarizing] = useState<boolean>(false);
+  const [gpuFallback, setGpuFallback] = useState<GpuFallbackPayload | null>(null);
 
   // Export state
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -496,6 +503,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     let unlistenDiarization: (() => void) | null = null;
     let unlistenDiarizationStart: (() => void) | null = null;
     let unlistenDiarizationComplete: (() => void) | null = null;
+    let unlistenGpuFallback: (() => void) | null = null;
 
     const setup = async () => {
       try {
@@ -557,6 +565,12 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           setIsDiarizing(false);
           setDiarizationProgress(100);
         });
+
+        // GPU fallback notification listener
+        unlistenGpuFallback = await listen<GpuFallbackPayload>('gpu-fallback', (event) => {
+          console.log('GPU fallback triggered:', event.payload);
+          setGpuFallback(event.payload);
+        });
       } catch (error) {
         console.error('Failed to setup event listeners:', error);
       }
@@ -575,6 +589,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       if (unlistenDiarization) unlistenDiarization();
       if (unlistenDiarizationStart) unlistenDiarizationStart();
       if (unlistenDiarizationComplete) unlistenDiarizationComplete();
+      if (unlistenGpuFallback) unlistenGpuFallback();
     };
   }, []);
 
@@ -649,6 +664,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     lang: settings.language,
     translate: settings.translate,
     enableDtw: settings.enableDTW,
+    enableGpu: settings.enableGpu,
     enableDiarize: settings.enableDiarize,
     maxSpeakers: settings.maxSpeakers,
   })
@@ -748,6 +764,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       handleDeleteModel,
       getSourceAudio,
       cancelExport,
+      // GPU fallback
+      gpuFallback,
+      dismissGpuFallback: () => setGpuFallback(null),
       // Export state
       isExporting,
       setIsExporting,

@@ -92,6 +92,7 @@ export interface Settings {
     enableDiarize: boolean,
     maxSpeakers: number | null,
     enableDTW: boolean,
+    enableGpu: boolean,
 
     // Text settings
     maxWordsPerLine: number,
@@ -121,6 +122,7 @@ export interface TranscriptionOptions {
     lang: string,
     translate: boolean,
     enableDtw: boolean,
+    enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
 }

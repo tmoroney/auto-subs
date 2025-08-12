@@ -39,6 +39,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
+    "lucide": "^0.539.0",
     "lucide-react": "^0.451.0",
     "next-themes": "^0.4.4",
     "react": "^18.2.0",
