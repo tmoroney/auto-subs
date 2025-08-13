@@ -115,7 +115,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(objectUrl)
-    } catch (e) {
+    } catch {
       // Fallback: try anchor with download attribute to avoid navigation
       const a = document.createElement('a')
       a.href = url

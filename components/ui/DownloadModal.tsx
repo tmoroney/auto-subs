@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Download, Check, Loader2 } from 'lucide-react'
+import { X, Download, Loader2 } from 'lucide-react'
 
 import { DownloadOption } from '@/types/interfaces'
 import { downloads } from '@/data/downloads'
@@ -36,12 +36,11 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       // macOS architecture heuristic
       if (os === 'macOS') {
         // Prefer User-Agent Client Hints if available (Chromium)
-        // @ts-ignore - not all browsers expose userAgentData
-        const uad = navigator.userAgentData
+        type UAData = { getHighEntropyValues?: (keys: string[]) => Promise<{ architecture?: string }> };
+        const uad: UAData | undefined = (navigator as unknown as { userAgentData?: UAData }).userAgentData
         if (uad && typeof uad.getHighEntropyValues === 'function') {
           // Best effort, non-blocking
           try {
-            // @ts-ignore
             uad.getHighEntropyValues(['architecture']).then((hints: { architecture?: string }) => {
               const arch = hints?.architecture?.toLowerCase()
               if (arch?.includes('arm')) setMacArch('arm64')
@@ -103,7 +102,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(objectUrl)
-    } catch (e) {
+    } catch {
       // Fallback: try direct anchor click without navigation side-effects
       const a = document.createElement('a')
       a.href = url

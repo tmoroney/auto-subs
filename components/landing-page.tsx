@@ -15,7 +15,6 @@ export default function LandingPage() {
 
   useEffect(() => {
     const ua = window.navigator.userAgent;
-    const uaLower = ua.toLowerCase();
     const setMacLink = (arch: 'arm' | 'intel') => {
       setDownloadLink(
         arch === 'arm'
@@ -31,15 +30,15 @@ export default function LandingPage() {
 
     if (ua.indexOf('Mac') !== -1) {
       // Default heuristic first
-      const likelyArm = /arm64|apple\s*silicon|apple\s?m\d/i.test(ua) || (navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 0);
+      const nav = navigator as Navigator & { maxTouchPoints?: number };
+      const likelyArm = /arm64|apple\s*silicon|apple\s?m\d/i.test(ua) || (navigator.platform === 'MacIntel' && (nav.maxTouchPoints ?? 0) > 0);
       setMacLink(likelyArm ? 'arm' : 'intel');
 
       // Try User-Agent Client Hints (Chromium) to refine
-      // @ts-ignore
-      const uad = navigator.userAgentData;
+      type UAData = { getHighEntropyValues?: (keys: string[]) => Promise<{ architecture?: string }> };
+      const uad: UAData | undefined = (navigator as unknown as { userAgentData?: UAData }).userAgentData;
       if (uad && typeof uad.getHighEntropyValues === 'function') {
         try {
-          // @ts-ignore
           uad.getHighEntropyValues(['architecture']).then((hints: { architecture?: string }) => {
             const arch = hints?.architecture?.toLowerCase();
             if (arch?.includes('arm')) setMacLink('arm');
