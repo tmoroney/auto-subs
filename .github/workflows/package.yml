@@ -350,6 +350,7 @@ jobs:
             --arg notes "$NOTES" \
             --arg arm_sig "$ARM_SIG" \
             --arg intel_sig "$INTEL_SIG" \
+            --arg windows_sig "$WINDOWS_SIG" \
             --arg tag "$TAG" \
             '{
               version: $version,
