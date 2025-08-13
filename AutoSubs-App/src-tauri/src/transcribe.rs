@@ -395,19 +395,43 @@ pub async fn transcribe_audio(
 }
 
 fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
-    // Base memory: 16MB (for very short audio)
-    // Add ~4MB per second of audio
-    let base_mb = 16.0;
-    let mb_per_second = 4.0;
-    let estimated_mb = (base_mb + (audio_duration_secs * mb_per_second)).ceil() as usize;
+    // Estimate DTW memory using a banded DP model.
+    // DTW in whisper.cpp uses memory-limited alignment where memory roughly scales with:
+    //   lanes * band_frames * num_frames * sizeof(f32) + base_overhead
+    // where:
+    //   - num_frames ~= duration * 100 (10 ms frames)
+    //   - band_frames is the half-band/window size in frames (conservative fixed value)
+    //   - lanes accounts for a few rolling buffers and auxiliaries (cost rows, backtrack, etc.)
 
-    // Ensure we have at least the minimum required
-    let min_mb = 16; // 16MB minimum
-    let max_mb = 1024; // 1GB maximum to prevent excessive memory usage
+    const BASE_OVERHEAD_MB: usize = 16; // baseline for internal buffers and overhead
+    const FRAME_RATE: f64 = 100.0; // 10ms frames
+    const BYTES_PER_F32: usize = 4;
+    const LANES: usize = 3; // conservative: cost/current/aux
+    const BAND_FRAMES: usize = 128; // conservative window; keeps quality while bounding memory
 
-    // Convert to bytes and ensure it's a multiple of 4MB (alignment)
-    let bytes = (estimated_mb.max(min_mb).min(max_mb) * 1024 * 1024) & !0x3FFFFF;
-    bytes
+    let num_frames = (audio_duration_secs * FRAME_RATE).ceil() as usize;
+
+    // Core DP working set
+    let dp_bytes = num_frames
+        .saturating_mul(BAND_FRAMES)
+        .saturating_mul(BYTES_PER_F32)
+        .saturating_mul(LANES);
+
+    // Add fixed overhead
+    let base_bytes = BASE_OVERHEAD_MB * 1024 * 1024;
+
+    let total = base_bytes.saturating_add(dp_bytes);
+
+    // Clamp to sane bounds
+    let min_bytes = 16 * 1024 * 1024;  // 16MB minimum
+    let max_bytes = 512 * 1024 * 1024; // 512MB cap to avoid excessive usage
+    let clamped = total.clamp(min_bytes, max_bytes);
+
+    // Align UP to a 4MB boundary to avoid rounding down below requirement
+    let align = 4 * 1024 * 1024; // 4MB
+    let aligned = (clamped + (align - 1)) & !(align - 1);
+
+    aligned
 }
 
 pub fn create_context(
@@ -641,7 +665,7 @@ fn get_word_timestamps(
     seg: i32,
     enable_dtw: Option<bool>,
 ) -> Vec<crate::transcript::WordTimestamp> {
-    let ntok = state.full_n_tokens(seg).unwrap() as usize;
+    let ntok = state.full_n_tokens(seg).unwrap_or(0) as usize;
     let mut word_timestamps = Vec::with_capacity(ntok);
 
     let start_of_segment = state.full_get_segment_t0(seg).unwrap_or(0);
@@ -677,15 +701,29 @@ fn get_word_timestamps(
     };
 
     for i in 0..ntok {
-        let token_text = state.full_get_token_text(seg, i as i32).unwrap();
-        let data = state.full_get_token_data(seg, i as i32).unwrap();
+        let token_text = match state.full_get_token_text(seg, i as i32) {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::warn!("Skipping token {} in seg {} due to invalid UTF-8: {}", i, seg, e);
+                continue;
+            }
+        };
+        let data = match state.full_get_token_data(seg, i as i32) {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::warn!("Skipping token {} in seg {} due to missing token data: {}", i, seg, e);
+                continue;
+            }
+        };
         let is_special = token_text.starts_with('[') || token_text == "<|endoftext|>";
         let is_last = i == ntok - 1;
 
         // Handle special tokens
         if is_special {
             if is_last && !current_word.is_empty() {
-                let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+                let prev_data = state
+                    .full_get_token_data(seg, (i - 1) as i32)
+                    .unwrap_or(data);
                 close_current_word(
                     &mut current_word,
                     &mut word_timestamps,
@@ -700,7 +738,9 @@ fn get_word_timestamps(
 
         // New word starts at tokens with leading space or if first token
         if token_text.starts_with(' ') && !current_word.is_empty() {
-            let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+            let prev_data = state
+                .full_get_token_data(seg, (i - 1) as i32)
+                .unwrap_or(data);
             close_current_word(
                 &mut current_word,
                 &mut word_timestamps,
@@ -714,7 +754,9 @@ fn get_word_timestamps(
         // Whitespace-only tokens act as boundaries: if we have an open word, close it; otherwise skip.
         if token_text.trim().is_empty() {
             if !current_word.is_empty() {
-                let prev_data = state.full_get_token_data(seg, (i - 1) as i32).unwrap();
+                let prev_data = state
+                    .full_get_token_data(seg, (i - 1) as i32)
+                    .unwrap_or(data);
                 close_current_word(
                     &mut current_word,
                     &mut word_timestamps,
@@ -1259,9 +1301,18 @@ pub async fn run_transcription_pipeline(
             // Get word timestamps if DTW is enabled
             let words = {
                 let word_timestamps = get_word_timestamps(&state, seg_idx as i32, options.enable_dtw);
-                seg_start = word_timestamps.first().unwrap().start;
-                seg_end = word_timestamps.last().unwrap().end;
-                Some(word_timestamps)
+                if word_timestamps.is_empty() {
+                    // Fall back to segment-level times if no words detected
+                    let t0_frames = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0);
+                    let t1_frames = state.full_get_segment_t1(seg_idx as i32).unwrap_or(t0_frames);
+                    seg_start = (t0_frames as f64) * 0.01;
+                    seg_end = (t1_frames as f64) * 0.01;
+                    None
+                } else {
+                    seg_start = word_timestamps.first().map(|w| w.start).unwrap_or(0.0);
+                    seg_end = word_timestamps.last().map(|w| w.end).unwrap_or(seg_start);
+                    Some(word_timestamps)
+                }
             };
 
             // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)

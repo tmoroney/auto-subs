@@ -254,7 +254,11 @@ jobs:
             libvulkan-dev \
             mesa-vulkan-drivers \
             libshaderc-dev \
-            google-shaderc-tools
+            shaderc \
+            spirv-tools \
+            glslang-tools
+          # optional:
+          #  vulkan-validationlayers
 
       - name: Install NPM deps
         run: |
@@ -290,7 +294,7 @@ jobs:
           tag_name: ${{ env.TAG }}
 
   compose-latest-json:
-    needs: [build-mac, build-linux]
+    needs: [build-mac]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

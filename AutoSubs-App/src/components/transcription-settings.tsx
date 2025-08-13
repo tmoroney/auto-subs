@@ -10,6 +10,8 @@ import {
     History,
     LoaderCircle,
     CirclePlay,
+    Copy,
+    FolderOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -46,6 +48,8 @@ import { SurveyNotification } from "./survey-notification";
 import { WordTimestampsCard } from "./settings-cards/word-timestamps-card"
 import { Gauge } from "lucide-react"
 import { platform } from "@tauri-apps/plugin-os"
+import { writeText } from "@tauri-apps/plugin-clipboard-manager"
+import { openPath } from "@tauri-apps/plugin-opener"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TranscriptionSettingsProps {
@@ -98,6 +102,7 @@ export const TranscriptionSettings = ({
     // Ref to track cancellation requests - allows interrupting polling loops
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
     const [showNonDiarizedDialog, setShowNonDiarizedDialog] = React.useState(false)
+    const [copiedLogs, setCopiedLogs] = React.useState(false)
 
     // Set up event listeners from global context
     React.useEffect(() => {
@@ -165,6 +170,29 @@ export const TranscriptionSettings = ({
         setTranscriptionProgress(0)
         setIsExporting(false)
         setExportProgress(0)
+    }
+
+    // Diagnostics helpers
+    const handleCopyBackendLogs = async () => {
+        try {
+            const logs = await invoke<string>("get_backend_logs")
+            await writeText(logs || "")
+            setCopiedLogs(true)
+            setTimeout(() => setCopiedLogs(false), 1800)
+        } catch (e) {
+            console.error("Failed to copy backend logs:", e)
+        }
+    }
+
+    const handleOpenLogsFolder = async () => {
+        try {
+            const dir = await invoke<string>("get_log_dir")
+            if (dir) {
+                await openPath(dir)
+            }
+        } catch (e) {
+            console.error("Failed to open logs folder:", e)
+        }
     }
 
     /**
@@ -621,6 +649,18 @@ export const TranscriptionSettings = ({
                             <Progress value={diarizationProgress} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-400 [&>div]:to-purple-600" />
                         </div>
                     )}
+
+                    {/* Diagnostics */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" onClick={handleCopyBackendLogs} className="w-full">
+                            <Copy className="h-4 w-4 mr-2" />
+                            {copiedLogs ? "Copied Logs" : "Copy Backend Logs"}
+                        </Button>
+                        <Button variant="outline" onClick={handleOpenLogsFolder} className="w-full">
+                            <FolderOpen className="h-4 w-4 mr-2" />
+                            Open Logs Folder
+                        </Button>
+                    </div>
 
                     {/* Mobile Subtitles Viewer Button */}
                     {isMobile && (

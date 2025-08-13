@@ -184,12 +184,9 @@ pub async fn normalize(
 
         let input_lossy = input.to_string_lossy().into_owned();
         let output_lossy = output.to_string_lossy().into_owned();
-
-        // Probe for the best audio stream (highest short-window RMS)
-        let best_stream = pick_best_audio_stream(app, &input).await.unwrap_or(Some(0));
-        let map_arg = best_stream.map(|i| format!("a:{}", i)).unwrap_or_else(|| "a:0".into());
-
-        // --- Argument Construction ---
+        
+        // --- Minimal conversion: mono 16kHz PCM16 WAV (simple mode enabled by default) ---
+        // No explicit stream mapping; let ffmpeg choose the default audio stream.
         let mut args = vec![
             "-nostdin".into(),
             "-hide_banner".into(),
@@ -200,8 +197,6 @@ pub async fn normalize(
             "-dn".into(),
             "-i".into(),
             input_lossy,
-            "-map".into(),
-            map_arg,
             "-ar".into(),
             "16000".into(),
             "-ac".into(),
@@ -222,6 +217,7 @@ pub async fn normalize(
         args.push("-y".into());
         args.push(output_lossy);
 
+        tracing::info!("Audio normalization: SIMPLE MODE active (mono 16kHz PCM16, no stream mapping, no normalization)");
         tracing::debug!("Running sidecar command: ffmpeg with args: {:?}", args);
 
         // --- Execution ---
@@ -250,158 +246,8 @@ pub async fn normalize(
             tracing::warn!("Normalized WAV is header-only (0 samples): {:?}", output);
         }
 
-        // helper to open WAV and compute quick amplitude stats over multiple windows
-        // Returns (is_silent_overall, total_samples_checked, max_rms_among_windows)
-        fn wav_quick_silence_check(path: &PathBuf) -> eyre::Result<(bool, usize, f64)> {
-            // Open once to validate and get duration
-            let mut reader = WavReader::open(path)
-                .context("failed to open normalized WAV for validation")?;
-            let spec = reader.spec();
-            // Ensure expected output format
-            if !(spec.channels == 1
-                && spec.sample_format == SampleFormat::Int
-                && spec.sample_rate == 16000
-                && spec.bits_per_sample == 16)
-            {
-                bail!("normalized WAV has unexpected format: {:?}", spec);
-            }
-            // hound::WavReader::duration() returns total samples per channel
-            let total_samples = reader.duration() as usize;
-            drop(reader);
-
-            // Examine up to 3 windows: start, middle, end. Each up to 5s (80k samples)
-            let window_len = (16000 * 5).min(total_samples);
-            if window_len == 0 {
-                return Ok((true, 0, 0.0));
-            }
-
-            let mut starts: Vec<usize> = Vec::new();
-            // Start window
-            starts.push(0usize);
-            // Middle window
-            let mid_start = total_samples.saturating_sub(window_len).min(
-                total_samples.saturating_sub(window_len / 2),
-            );
-            let mid_start = (total_samples / 2).saturating_sub(window_len / 2).min(
-                total_samples.saturating_sub(window_len),
-            );
-            if mid_start > 0 && mid_start + 1 < total_samples {
-                starts.push(mid_start);
-            }
-            // End window
-            let end_start = total_samples.saturating_sub(window_len);
-            if end_start > 0 {
-                starts.push(end_start);
-            }
-
-            // Deduplicate in case of tiny files where windows overlap
-            starts.sort_unstable();
-            starts.dedup();
-
-            let mut total_checked = 0usize;
-            let mut windows_silent = 0usize;
-            let mut max_rms_overall = 0.0f64;
-
-            for &start in &starts {
-                let mut reader = WavReader::open(path)
-                    .context("failed to reopen WAV for window scan")?;
-                let mut count: usize = 0;
-                let mut sum_sq: f64 = 0.0;
-                let mut max_abs: i32 = 0;
-                for s in reader
-                    .samples::<i16>()
-                    .skip(start)
-                    .take(window_len)
-                {
-                    let v = s.context("sample")? as i32;
-                    let abs = v.abs();
-                    if abs > max_abs {
-                        max_abs = abs;
-                    }
-                    sum_sq += (v as f64) * (v as f64);
-                    count += 1;
-                }
-                total_checked += count;
-                let rms = if count > 0 { (sum_sq / count as f64).sqrt() } else { 0.0 };
-                if rms > max_rms_overall {
-                    max_rms_overall = rms;
-                }
-                // Treat as (near) silence if max amplitude is extremely low and RMS very small
-                // thresholds are conservative: ~1/1000 of full-scale 16-bit
-                let is_window_silent = max_abs < 32 && rms < 10.0;
-                if is_window_silent {
-                    windows_silent += 1;
-                }
-            }
-
-            // Consider overall silent only if all tested windows are silent
-            let is_silent = windows_silent == starts.len();
-            Ok((is_silent, total_checked, max_rms_overall))
-        }
-
-        let (is_silent, first_count, first_rms) = wav_quick_silence_check(&output)
-            .unwrap_or_else(|e| {
-                tracing::warn!("WAV validation failed: {}", e);
-                // If we cannot validate, proceed to fallback attempt below.
-                (false, 0, 0.0)
-            });
-
-        // If the output looks empty or (near) silent, attempt a fallback without '-map a:0'
-        if out_meta.len() <= 44 || is_silent {
-            tracing::warn!(
-                "Normalized audio appears empty/silent (bytes={}, samples_checked={}, rms={:.3}). Retrying without explicit -map a:0",
-                out_meta.len(),
-                first_count,
-                first_rms
-            );
-
-            // Re-run ffmpeg WITHOUT the strict stream mapping to let it pick the default/best audio stream.
-            let input_lossy = input.to_string_lossy().into_owned();
-            let output_lossy = output.to_string_lossy().into_owned();
-            let mut args_fb = vec![
-                "-nostdin".into(),
-                "-hide_banner".into(),
-                "-loglevel".into(),
-                "error".into(),
-                "-vn".into(),
-                "-sn".into(),
-                "-dn".into(),
-                "-i".into(),
-                input_lossy,
-                "-ar".into(),
-                "16000".into(),
-                "-ac".into(),
-                "1".into(),
-                "-c:a".into(),
-                "pcm_s16le".into(),
-                "-map_metadata".into(),
-                "-1".into(),
-                "-f".into(),
-                "wav".into(),
-                "-nostats".into(),
-            ];
-            if let Some(additional_args) = additional_ffmpeg_args.clone() { args_fb.extend(additional_args); }
-            args_fb.push("-y".into());
-            args_fb.push(output_lossy);
-            tracing::debug!("Fallback ffmpeg args (no -map a:0): {:?}", args_fb);
-            let fb_out = app.shell().sidecar("ffmpeg")?.args(args_fb).output().await?;
-            if !fb_out.status.success() {
-                let err = String::from_utf8_lossy(&fb_out.stderr);
-                bail!("ffmpeg fallback run failed: {}", err);
-            }
-
-            // Re-validate after fallback
-            let out_meta2 = fs::metadata(&output).context("failed to stat fallback output file")?;
-            let (is_silent2, count2, rms2) = wav_quick_silence_check(&output).unwrap_or((false, 0, 0.0));
-            if out_meta2.len() <= 44 || is_silent2 {
-                bail!(
-                    "Audio normalization produced empty/silent audio even after fallback (bytes={}, samples_checked={}, rms={:.3}).",
-                    out_meta2.len(),
-                    count2,
-                    rms2
-                );
-            }
-        }
+        // Simple mode: skip silence checks and stream-mapping fallbacks.
+        // We intentionally do not probe or remap streams here to reduce variables during debugging.
 
         println!("Normalization successful for {:?}", output);
         Ok(())

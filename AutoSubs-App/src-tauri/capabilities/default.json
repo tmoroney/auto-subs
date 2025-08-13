@@ -9,6 +9,7 @@
     "core:default",
     "updater:default",
     "shell:allow-open",
+    "clipboard-manager:allow-write-text",
     {
       "identifier": "http:default",
       "allow": [
@@ -88,6 +89,15 @@
     },
     "process:default",
     "shell:default",
-    "os:default"
+    "os:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$APPLOG/**" },
+        { "path": "$APPDATA/**" },
+        { "path": "$APPCACHE/**" },
+        { "path": "$APPLOCALDATA/**" }
+      ]
+    }
   ]
 }

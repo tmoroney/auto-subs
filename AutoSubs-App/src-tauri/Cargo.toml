@@ -1,6 +1,6 @@
 [package]
 name = "autosubs"
-version = "3.0.4"
+version = "3.0.5"
 description = "Transcribe and diarize audio files"
 authors = ["Tom Moroney"]
 edition = "2024"
@@ -27,6 +27,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-opener = "2"
 
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 
@@ -46,6 +48,7 @@ tempfile = "3.9.0"
 chrono = "0.4.38"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
+tracing-appender = "0.2"
 ort-sys = "=2.0.0-rc.9" # prevents error with pyannote-rs
 hf-hub = "0.4.3"
 dirs = "5.0"

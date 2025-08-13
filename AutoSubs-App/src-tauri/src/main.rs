@@ -15,12 +15,15 @@ use tauri_plugin_http::init as http_plugin;
 use tauri_plugin_process::init as process_plugin;
 use tauri_plugin_shell::init as shell_plugin;
 use tauri_plugin_store::Builder as StoreBuilder;
+use tauri_plugin_clipboard_manager::init as clipboard_plugin;
+use tauri_plugin_opener::init as opener_plugin;
 
 mod audio;
 mod config;
 mod models;
 mod transcribe;
 mod transcript;
+mod logging;
 
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
@@ -37,7 +40,12 @@ fn main() {
         .plugin(fs_plugin())
         .plugin(process_plugin())
         .plugin(shell_plugin())
+        .plugin(clipboard_plugin())
+        .plugin(opener_plugin())
         .setup(|app| {
+            // Initialize backend logging (file + in-memory ring buffer)
+            crate::logging::init_logging(&app.handle());
+
             // Check for updates in the background on startup (Tauri v2 Updater)
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -94,7 +102,10 @@ fn main() {
             transcribe::transcribe_audio,
             transcribe::cancel_transcription,
             models::get_downloaded_models,
-            models::delete_model
+            models::delete_model,
+            logging::get_backend_logs,
+            logging::clear_backend_logs,
+            logging::get_log_dir
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
