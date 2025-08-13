@@ -254,7 +254,6 @@ jobs:
             libvulkan-dev \
             mesa-vulkan-drivers \
             libshaderc-dev \
-            shaderc \
             spirv-tools \
             glslang-tools
           # optional:
