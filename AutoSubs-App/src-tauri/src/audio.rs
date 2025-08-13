@@ -124,6 +124,26 @@ async fn pick_best_audio_stream(app: &AppHandle, input: &PathBuf) -> eyre::Resul
     Ok(best_idx)
 }
 
+// Lightweight checksum over i16 samples using 64-bit FNV-1a
+pub fn hash_samples(samples: &[i16], max_samples: usize) -> u64 {
+    const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let mut hash = FNV_OFFSET;
+    let mut count = 0usize;
+    for &s in samples.iter() {
+        if count >= max_samples { break; }
+        // feed as little-endian bytes to be stable across platforms
+        let b0 = (s as u16 & 0x00FF) as u8;
+        let b1 = ((s as u16 >> 8) & 0x00FF) as u8;
+        hash ^= b0 as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= b1 as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        count += 1;
+    }
+    hash
+}
+
 // This function is now an `async` Tauri command.
 pub async fn normalize(
     app: AppHandle,
@@ -145,6 +165,16 @@ pub async fn normalize(
         }
 
         println!("Normalizing {:?} to {:?}", input, output);
+
+        // Log input file metadata for diagnostics
+        if let Ok(meta) = fs::metadata(&input) {
+            let modified = meta.modified().ok();
+            tracing::info!(
+                "Input file metadata: size={} bytes, modified={:?}",
+                meta.len(),
+                modified
+            );
+        }
 
         // Fast path: if input is already a 16kHz, mono, 16-bit PCM WAV, skip ffmpeg and just copy/no-op
         if input
@@ -185,6 +215,20 @@ pub async fn normalize(
         let input_lossy = input.to_string_lossy().into_owned();
         let output_lossy = output.to_string_lossy().into_owned();
         
+        // Diagnostics: probe available audio streams and measure short RMS per stream (no behavior change)
+        match list_audio_stream_indices(app, &input).await {
+            Ok(idxs) => {
+                tracing::info!("ffprobe audio streams detected: {:?}", idxs);
+                for idx in idxs.iter().take(6) {
+                    match measure_stream_energy(app, &input, *idx, 5).await {
+                        Ok(r) => tracing::info!("stream a:{} rms={:.2}", idx, r),
+                        Err(e) => tracing::debug!("stream a:{} rms probe failed: {}", idx, e),
+                    }
+                }
+            }
+            Err(e) => tracing::warn!("ffprobe stream probe failed: {}", e),
+        }
+
         // --- Minimal conversion: mono 16kHz PCM16 WAV (simple mode enabled by default) ---
         // No explicit stream mapping; let ffmpeg choose the default audio stream.
         let mut args = vec![
@@ -224,6 +268,19 @@ pub async fn normalize(
         // The `.output()` call is async, so we must `.await" it to get the result.
         let output_result = sidecar_command.args(args).output().await?;
 
+        // Log ffmpeg stdout/stderr for diagnostics even on success
+        tracing::debug!(
+            "ffmpeg completed: stdout_bytes={}, stderr_bytes={}",
+            output_result.stdout.len(),
+            output_result.stderr.len()
+        );
+        if !output_result.stdout.is_empty() {
+            tracing::debug!("ffmpeg stdout: {}", String::from_utf8_lossy(&output_result.stdout));
+        }
+        if !output_result.stderr.is_empty() {
+            tracing::debug!("ffmpeg stderr: {}", String::from_utf8_lossy(&output_result.stderr));
+        }
+
         // --- Error Handling ---
         if !output_result.status.success() {
             let error_message = String::from_utf8_lossy(&output_result.stderr);
@@ -244,6 +301,59 @@ pub async fn normalize(
         let out_meta = fs::metadata(&output).context("failed to stat normalized output file")?;
         if out_meta.len() <= 44 {
             tracing::warn!("Normalized WAV is header-only (0 samples): {:?}", output);
+        }
+
+        // Post-normalization WAV stats for diagnostics
+        if let Ok(reader) = WavReader::open(&output) {
+            let spec = reader.spec();
+            tracing::info!(
+                "Normalized WAV spec: channels={}, rate={}, bits_per_sample={}, sample_format={:?}",
+                spec.channels,
+                spec.sample_rate,
+                spec.bits_per_sample,
+                spec.sample_format
+            );
+            let samples: Vec<i16> = reader
+                .into_samples::<i16>()
+                .filter_map(|s| s.ok())
+                .collect();
+            let n = samples.len();
+            let mut min_v: i32 = i16::MAX as i32;
+            let mut max_v: i32 = i16::MIN as i32;
+            let mut sum: f64 = 0.0;
+            let mut sum_sq: f64 = 0.0;
+            let mut zeros: usize = 0;
+            for &s in &samples {
+                let v = s as i32;
+                if v < min_v { min_v = v; }
+                if v > max_v { max_v = v; }
+                sum += v as f64;
+                sum_sq += (v as f64) * (v as f64);
+                if v == 0 { zeros += 1; }
+            }
+            let mean = if n > 0 { sum / n as f64 } else { 0.0 };
+            let rms = if n > 0 { (sum_sq / n as f64).sqrt() } else { 0.0 };
+            let zero_frac = if n > 0 { zeros as f64 / n as f64 } else { 0.0 };
+            let duration_sec = if spec.sample_rate > 0 { n as f64 / spec.sample_rate as f64 } else { 0.0 };
+            // Compute checksum over first 5 seconds (or all samples)
+            let max_hash_samples = if spec.sample_rate > 0 {
+                usize::min(n, (spec.sample_rate as usize).saturating_mul(5))
+            } else { n };
+            let checksum = crate::audio::hash_samples(&samples, max_hash_samples);
+            tracing::info!(
+                "Normalized WAV stats: samples={}, dur={:.2}s, rms={:.2}, min={}, max={}, mean={:.2}, zero_frac={:.3}, checksum_5s=0x{:016x}",
+                n, duration_sec, rms, min_v, max_v, mean, zero_frac, checksum
+            );
+            if n >= 10 {
+                let preview: Vec<i16> = samples.iter().take(10).cloned().collect();
+                tracing::debug!("First 10 samples: {:?}", preview);
+            }
+            if n == 0 || rms == 0.0 {
+                tracing::warn!(
+                    "Normalized WAV appears silent or empty (rms={:.2}, samples={})",
+                    rms, n
+                );
+            }
         }
 
         // Simple mode: skip silence checks and stream-mapping fallbacks.
@@ -330,4 +440,116 @@ pub fn parse_wav_file(path: &PathBuf) -> Result<Vec<i16>> {
         .into_samples::<i16>()
         .map(|x| x.context("sample"))
         .collect()
+}
+
+// Robust decoder: use ffmpeg sidecar to decode any WAV to mono 16k PCM16 (s16le) and return samples.
+// This serves as a fallback in case WAV headers/metadata or reader quirks cause silent or truncated audio.
+pub async fn decode_pcm_mono16k_from_wav(
+    app: tauri::AppHandle,
+    path: PathBuf,
+)
+-> Result<Vec<i16>> {
+    use tauri::Manager;
+
+    // Try fast path via hound first
+    let parsed = parse_wav_file(&path);
+    if let Ok(samples) = parsed.as_ref() {
+        let n = samples.len();
+        let mut sum_sq: f64 = 0.0;
+        let mut zeros: usize = 0;
+        let mut min_v: i32 = i16::MAX as i32;
+        let mut max_v: i32 = i16::MIN as i32;
+        for &s in samples.iter() {
+            let v = s as i32;
+            if v < min_v { min_v = v; }
+            if v > max_v { max_v = v; }
+            sum_sq += (v as f64) * (v as f64);
+            if v == 0 { zeros += 1; }
+        }
+        let rms = if n > 0 { (sum_sq / n as f64).sqrt() } else { 0.0 };
+        let zero_frac = if n > 0 { zeros as f64 / n as f64 } else { 0.0 };
+        let duration_sec = n as f64 / 16000.0;
+        let checksum = hash_samples(samples, (16000usize).saturating_mul(5));
+        tracing::info!(
+            "Parsed WAV (hound) stats: samples={}, dur={:.2}s, rms={:.2}, min={}, max={}, zero_frac={:.3}, checksum_5s=0x{:016x}",
+            n, duration_sec, rms, min_v, max_v, zero_frac, checksum
+        );
+        // If audio looks healthy, return immediately
+        if n > 0 && rms > 0.5 && zero_frac < 0.98 {
+            return Ok(samples.clone());
+        } else {
+            tracing::warn!(
+                "Parsed WAV appears suspicious (rms={:.2}, zeros={:.3}). Falling back to ffmpeg raw decode for {:?}",
+                rms, zero_frac, path
+            );
+        }
+    } else if let Err(e) = parsed {
+        tracing::warn!("Hound parse failed for {:?}: {}. Falling back to ffmpeg raw decode.", path, e);
+    }
+
+    // Fallback: decode via ffmpeg to raw s16le mono 16k
+    let input_lossy = path.to_string_lossy().into_owned();
+    let sidecar = app
+        .shell()
+        .sidecar("ffmpeg")
+        .context("Failed to create sidecar command for 'ffmpeg' (fallback decode)")?;
+    let args = vec![
+        "-nostdin".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-vn".into(),
+        "-sn".into(),
+        "-dn".into(),
+        "-i".into(),
+        input_lossy,
+        "-ar".into(),
+        "16000".into(),
+        "-ac".into(),
+        "1".into(),
+        "-f".into(),
+        "s16le".into(),
+        "-".into(),
+    ];
+    let out = sidecar
+        .args(args)
+        .output()
+        .await
+        .context("ffmpeg raw decode failed to run")?;
+    if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        bail!("ffmpeg raw decode exited non-zero: {}", stderr);
+    }
+    let pcm = out.stdout;
+    if pcm.len() < 2 {
+        bail!("ffmpeg raw decode produced empty audio");
+    }
+    let mut samples = Vec::with_capacity(pcm.len() / 2);
+    for chunk in pcm.chunks_exact(2) {
+        samples.push(i16::from_le_bytes([chunk[0], chunk[1]]));
+    }
+
+    // Log stats/checksum for the ffmpeg-decoded samples
+    let n = samples.len();
+    let mut sum_sq: f64 = 0.0;
+    let mut zeros: usize = 0;
+    let mut min_v: i32 = i16::MAX as i32;
+    let mut max_v: i32 = i16::MIN as i32;
+    for &s in samples.iter() {
+        let v = s as i32;
+        if v < min_v { min_v = v; }
+        if v > max_v { max_v = v; }
+        sum_sq += (v as f64) * (v as f64);
+        if v == 0 { zeros += 1; }
+    }
+    let rms = if n > 0 { (sum_sq / n as f64).sqrt() } else { 0.0 };
+    let zero_frac = if n > 0 { zeros as f64 / n as f64 } else { 0.0 };
+    let duration_sec = n as f64 / 16000.0;
+    let checksum = hash_samples(&samples, (16000usize).saturating_mul(5));
+    tracing::info!(
+        "FFmpeg-decoded WAV stats: samples={}, dur={:.2}s, rms={:.2}, min={}, max={}, zero_frac={:.3}, checksum_5s=0x{:016x}",
+        n, duration_sec, rms, min_v, max_v, zero_frac, checksum
+    );
+
+    Ok(samples)
 }

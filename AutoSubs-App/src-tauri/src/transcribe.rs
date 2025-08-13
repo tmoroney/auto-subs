@@ -532,16 +532,29 @@ pub fn create_context(
     }
 }
 
-// Check if necessary to normalise the audio
 pub fn should_normalize(source: PathBuf) -> bool {
     if source.extension().unwrap_or_default() == "wav" {
         if let Ok(reader) = WavReader::open(source.clone()) {
             let spec = reader.spec();
-            tracing::debug!("wav spec: {:?}", spec);
+            tracing::debug!(
+                "Input WAV spec: channels={}, rate={}, bits={}, fmt={:?}",
+                spec.channels, spec.sample_rate, spec.bits_per_sample, spec.sample_format
+            );
             if spec.channels == 1 && spec.sample_rate == 16000 && spec.bits_per_sample == 16 {
+                tracing::info!("Input is already mono 16kHz 16-bit PCM WAV; skipping normalization");
                 return false;
+            } else {
+                tracing::info!(
+                    "Normalization needed: channels={} (want 1), rate={} (want 16000), bits={} (want 16)",
+                    spec.channels, spec.sample_rate, spec.bits_per_sample
+                );
             }
         }
+    } else {
+        tracing::debug!(
+            "Input extension is not WAV (ext={:?}); normalization will run",
+            source.extension()
+        );
     }
     true
 }
@@ -1227,11 +1240,47 @@ pub async fn run_transcription_pipeline(
     println!("out path is {}", out_path.display());
     tracing::debug!("out path is {}", out_path.display());
 
+    // Decode normalized WAV to mono 16k PCM16 samples with robust fallback (ffmpeg if needed)
+    let original_samples = audio::decode_pcm_mono16k_from_wav(app.clone(), out_path.clone())
+        .await
+        .context("failed to decode normalized WAV to PCM samples")?;
+
     // --- Transcription (Blocking) ---
     // This is a CPU-intensive task. We run it on a blocking thread
     // to avoid freezing the UI.
     let transcript = tokio::task::spawn_blocking(move || {
-        let original_samples = audio::parse_wav_file(&out_path)?;
+        // Diagnostics: sample stats from parsed WAV
+        let n = original_samples.len();
+        let mut min_v: i32 = i16::MAX as i32;
+        let mut max_v: i32 = i16::MIN as i32;
+        let mut sum: f64 = 0.0;
+        let mut sum_sq: f64 = 0.0;
+        let mut zeros: usize = 0;
+        for &s in &original_samples {
+            let v = s as i32;
+            if v < min_v { min_v = v; }
+            if v > max_v { max_v = v; }
+            sum += v as f64;
+            sum_sq += (v as f64) * (v as f64);
+            if v == 0 { zeros += 1; }
+        }
+        let mean = if n > 0 { sum / n as f64 } else { 0.0 };
+        let rms = if n > 0 { (sum_sq / n as f64).sqrt() } else { 0.0 };
+        let zero_frac = if n > 0 { zeros as f64 / n as f64 } else { 0.0 };
+        tracing::info!(
+            "Parsed WAV stats: samples={}, rms={:.2}, min={}, max={}, mean={:.2}, zero_frac={:.3}",
+            n, rms, min_v, max_v, mean, zero_frac
+        );
+        if n >= 10 {
+            let preview: Vec<i16> = original_samples.iter().take(10).cloned().collect();
+            tracing::debug!("Parsed WAV first 10 samples: {:?}", preview);
+        }
+        if n == 0 || rms == 0.0 {
+            tracing::warn!(
+                "Parsed WAV appears silent or empty (rms={:.2}, samples={})",
+                rms, n
+            );
+        }
         let mut state = ctx.create_state().context("failed to create key")?;
         let mut params = setup_params(&options);
         let st = std::time::Instant::now();
@@ -1289,6 +1338,8 @@ pub async fn run_transcription_pipeline(
 
         // Process each segment and collect word timestamps
         let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
+        let mut empty_segments: usize = 0;
+        let mut total_chars: usize = 0;
 
         for seg_idx in 0..num_segments {
             let (seg_start, seg_end);
@@ -1297,20 +1348,45 @@ pub async fn run_transcription_pipeline(
             let text = state
                 .full_get_segment_text_lossy(seg_idx as i32)
                 .context("failed to get segment")?;
+            total_chars += text.len();
+
+            // Pre-fetch t0/t1 for diagnostics
+            let t0_frames = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0);
+            let t1_frames = state.full_get_segment_t1(seg_idx as i32).unwrap_or(t0_frames);
+            let approx_start = (t0_frames as f64) * 0.01;
+            let approx_end = (t1_frames as f64) * 0.01;
+            let preview: String = text.chars().take(40).collect();
+            tracing::debug!(
+                "Seg {} approx [{:.2}-{:.2}] text_len={} preview={:?}",
+                seg_idx, approx_start, approx_end, text.len(), preview
+            );
+            if text.trim().is_empty() {
+                empty_segments += 1;
+                tracing::warn!(
+                    "Seg {} has empty/whitespace text in [{:.2}-{:.2}]",
+                    seg_idx, approx_start, approx_end
+                );
+            }
 
             // Get word timestamps if DTW is enabled
             let words = {
                 let word_timestamps = get_word_timestamps(&state, seg_idx as i32, options.enable_dtw);
                 if word_timestamps.is_empty() {
                     // Fall back to segment-level times if no words detected
-                    let t0_frames = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0);
-                    let t1_frames = state.full_get_segment_t1(seg_idx as i32).unwrap_or(t0_frames);
                     seg_start = (t0_frames as f64) * 0.01;
                     seg_end = (t1_frames as f64) * 0.01;
+                    tracing::debug!(
+                        "Seg {} word_timestamps empty; falling back to segment bounds [{:.2}-{:.2}]",
+                        seg_idx, seg_start, seg_end
+                    );
                     None
                 } else {
                     seg_start = word_timestamps.first().map(|w| w.start).unwrap_or(0.0);
                     seg_end = word_timestamps.last().map(|w| w.end).unwrap_or(seg_start);
+                    tracing::debug!(
+                        "Seg {} word_timestamps count={} bounds [{:.2}-{:.2}]",
+                        seg_idx, word_timestamps.len(), seg_start, seg_end
+                    );
                     Some(word_timestamps)
                 }
             };
@@ -1341,6 +1417,14 @@ pub async fn run_transcription_pipeline(
             };
 
             segments.push(segment);
+        }
+
+        tracing::info!(
+            "Transcription summary: segments={}, empty_segments={}, total_chars={}",
+            num_segments, empty_segments, total_chars
+        );
+        if empty_segments == num_segments as usize {
+            tracing::warn!("All segments are empty/whitespace. Upstream audio or decoding may be silent/corrupted.");
         }
 
         // Process with diarization if enabled

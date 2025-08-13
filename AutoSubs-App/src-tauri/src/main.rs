@@ -5,6 +5,7 @@ use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
 use tauri::RunEvent;
+use tauri::Emitter; // for app.emit
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
@@ -14,6 +15,7 @@ use tauri_plugin_fs::init as fs_plugin;
 use tauri_plugin_http::init as http_plugin;
 use tauri_plugin_process::init as process_plugin;
 use tauri_plugin_shell::init as shell_plugin;
+use tauri_plugin_shell::ShellExt; // for app.shell()
 use tauri_plugin_store::Builder as StoreBuilder;
 use tauri_plugin_clipboard_manager::init as clipboard_plugin;
 use tauri_plugin_opener::init as opener_plugin;
@@ -45,6 +47,79 @@ fn main() {
         .setup(|app| {
             // Initialize backend logging (file + in-memory ring buffer)
             crate::logging::init_logging(&app.handle());
+
+            // Startup sidecar health check: ffmpeg/ffprobe availability & versions
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use tauri::Manager;
+                    let mut ffmpeg_ok = false;
+                    let mut ffprobe_ok = false;
+                    let mut ffmpeg_version = String::new();
+                    let mut ffprobe_version = String::new();
+
+                    // ffmpeg -version
+                    match app_handle.shell().sidecar("ffmpeg") {
+                        Ok(cmd) => {
+                            match cmd.args(["-version"]).output().await {
+                                Ok(out) => {
+                                    ffmpeg_ok = out.status.success();
+                                    let stdout = String::from_utf8_lossy(&out.stdout);
+                                    ffmpeg_version = stdout.lines().next().unwrap_or("").to_string();
+                                    tracing::info!("ffmpeg check: ok={}, version=\"{}\"", ffmpeg_ok, ffmpeg_version);
+                                    if !ffmpeg_ok {
+                                        let stderr = String::from_utf8_lossy(&out.stderr);
+                                        tracing::warn!("ffmpeg -version exited non-zero. stderr: {}", stderr);
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("ffmpeg sidecar execution failed: {:?}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("ffmpeg sidecar not found/failed to init: {:?}", e);
+                        }
+                    }
+
+                    // ffprobe -version
+                    match app_handle.shell().sidecar("ffprobe") {
+                        Ok(cmd) => {
+                            match cmd.args(["-version"]).output().await {
+                                Ok(out) => {
+                                    ffprobe_ok = out.status.success();
+                                    let stdout = String::from_utf8_lossy(&out.stdout);
+                                    ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
+                                    tracing::info!("ffprobe check: ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
+                                    if !ffprobe_ok {
+                                        let stderr = String::from_utf8_lossy(&out.stderr);
+                                        tracing::warn!("ffprobe -version exited non-zero. stderr: {}", stderr);
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("ffprobe sidecar execution failed: {:?}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("ffprobe sidecar not found/failed to init: {:?}", e);
+                        }
+                    }
+
+                    // Emit an event to frontend so users can access diagnostics quickly
+                    let payload = json!({
+                        "ffmpeg_ok": ffmpeg_ok,
+                        "ffprobe_ok": ffprobe_ok,
+                        "ffmpeg_version": ffmpeg_version,
+                        "ffprobe_version": ffprobe_version,
+                    });
+                    let _ = app_handle.emit("sidecar-health", payload);
+
+                    if !(ffmpeg_ok && ffprobe_ok) {
+                        tracing::warn!("One or more sidecars appear unavailable. On Windows, AV or SmartScreen may block sidecars; try 'Open Logs Folder' for details.");
+                    }
+                });
+            }
 
             // Check for updates in the background on startup (Tauri v2 Updater)
             let handle = app.handle().clone();
