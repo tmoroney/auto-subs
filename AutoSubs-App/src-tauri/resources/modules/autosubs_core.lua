@@ -59,7 +59,7 @@ local function read_json_file(file_path)
 end
 
 local function join_path(dir, filename)
-    local sep = package.config:sub(1,1) -- returns '\\' on Windows, '/' elsewhere
+    local sep = package.config:sub(1, 1) -- returns '\\' on Windows, '/' elsewhere
     -- Remove trailing separator from dir, if any
     if dir:sub(-1) == sep then
         return dir .. filename
@@ -453,14 +453,24 @@ function ExportAudio(outputDir, inputTracks)
     -- mute all tracks except the selected one
     timeline = project:GetCurrentTimeline()
     audioTracks = timeline:GetTrackCount("audio")
+
+    -- Save track states
     for i = 1, audioTracks do
         local state = timeline:GetIsTrackEnabled("audio", i)
         trackStates[i] = state
-        if i == tonumber(inputTracks[i]) then
-            timeline:SetTrackEnable("audio", i, true)
-        else
-            timeline:SetTrackEnable("audio", i, false)
-        end
+    end
+
+    -- Build a set of selected track indices for O(1) membership checks
+    local selected = {}
+    for _, v in ipairs(inputTracks) do
+        local n = tonumber(v)
+        if n then selected[n] = true end
+    end
+
+    -- Enable only the tracks that are present in the selection set
+    for i = 1, audioTracks do
+        local isEnabled = selected[i] == true
+        timeline:SetTrackEnable("audio", i, isEnabled)
     end
 
     -- save track states for later use
@@ -750,8 +760,8 @@ function ExtractFrame(comp, exportDir, templateFrameRate)
         local success = comp:Render({
             Start = frameToExtract, -- Start rendering at this frame
             End = frameToExtract,   -- End rendering at this frame
-            Tool = mySaver,             -- Render up to this specific Saver tool [13]
-            Wait = true                 -- Wait for the render to complete before continuing the script [19]
+            Tool = mySaver,         -- Render up to this specific Saver tool [13]
+            Wait = true             -- Wait for the render to complete before continuing the script [19]
         })
 
         local outputFilename = "subtitle-preview-" .. frameToExtract .. ".png"
