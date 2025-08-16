@@ -25,9 +25,10 @@ export function joinWordsToText(words: Word[]): string {
     return result.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim();
 }
 
-function applyCaseToWord(word: string, mode: 'lowercase' | 'uppercase' | 'none'): string {
+function applyCaseToWord(word: string, mode: 'lowercase' | 'uppercase' | 'titlecase' | 'none'): string {
     if (mode === 'lowercase') return word.toLocaleLowerCase();
     if (mode === 'uppercase') return word.toLocaleUpperCase();
+    if (mode === 'titlecase') return word.toLocaleLowerCase().replace(/\b\w/g, c => c.toUpperCase());
     return word;
 }
 
@@ -71,7 +72,7 @@ function createCensorWord(censoredWords: string[]) {
 export function applyTextFormattingToSubtitle(
     subtitle: Subtitle,
     options: {
-        case: 'lowercase' | 'uppercase' | 'none';
+        case: 'lowercase' | 'uppercase' | 'titlecase' | 'none';
         removePunctuation: boolean;
         censoredWords: string[];
     }
@@ -171,7 +172,7 @@ function splitSubtitles(subtitles: Subtitle[], options: {
 export function splitAndFormatSubtitles(
     subtitles: Subtitle[],
     options: {
-        case: 'lowercase' | 'uppercase' | 'none';
+        case: 'none' | 'lowercase' | 'uppercase' | 'titlecase';
         removePunctuation: boolean;
         splitOnPunctuation: boolean;
         censoredWords: string[];

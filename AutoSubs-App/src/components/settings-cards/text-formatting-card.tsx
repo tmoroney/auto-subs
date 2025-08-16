@@ -1,11 +1,11 @@
-import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, CaseLower, CaseUpper, Settings, CircleFadingArrowUp } from "lucide-react"
+import { AArrowUp, Signature, ShieldX, WholeWord, CircleX, Settings, CircleFadingArrowUp } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
+ 
 import { useState } from "react";
 import { useGlobal } from "@/contexts/GlobalContext";
 
@@ -25,7 +25,7 @@ interface TextFormattingCardProps {
   maxWordsPerLine: number
   maxCharsPerLine: number
   maxLinesPerSubtitle: number
-  textCase: "none" | "uppercase" | "lowercase"
+  textCase: "none" | "uppercase" | "lowercase" | "titlecase"
   removePunctuation: boolean
   splitOnPunctuation: boolean
   enableCensor: boolean
@@ -33,7 +33,7 @@ interface TextFormattingCardProps {
   onMaxWordsPerLineChange: (value: number) => void
   onMaxCharsPerLineChange: (value: number) => void
   onMaxLinesPerSubtitleChange: (value: number) => void
-  onTextCaseChange: (textCase: "none" | "uppercase" | "lowercase") => void
+  onTextCaseChange: (textCase: "none" | "uppercase" | "lowercase" | "titlecase") => void
   onRemovePunctuationChange: (checked: boolean) => void
   onSplitOnPunctuationChange: (checked: boolean) => void
   onEnableCensorChange: (checked: boolean) => void
@@ -96,13 +96,13 @@ export const TextFormattingCard = ({
                   {/* Max Chars */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">Character Count</p>
+                      <p className="text-sm font-medium">Character Limit</p>
                       {maxCharsPerLine === 0 ? (
                         <p className="text-xs font-semibold text-orange-500 flex items-center gap-1">
                           <CircleX className="w-3 h-3 inline-block" /> Disabled (no character limit)
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground">Max characters per line</p>
+                        <p className="text-xs text-muted-foreground">Per line (0 = unlimited)</p>
                       )}
                     </div>
                     <Input
@@ -117,13 +117,13 @@ export const TextFormattingCard = ({
                   {/* Max Words */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">Word Count</p>
+                      <p className="text-sm font-medium">Word Limit</p>
                       {maxWordsPerLine === 0 ? (
-                        <p className="text-xs font-semibold text-orange-500 flex items-center gap-1">
+                        <p className="text-xs text-orange-500 flex items-center gap-1">
                           <CircleX className="w-3 h-3 inline-block" /> Disabled (no word limit)
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground">Max words per line</p>
+                        <p className="text-xs text-muted-foreground">Per line (0 = unlimited)</p>
                       )}
                     </div>
                     <Input
@@ -179,52 +179,24 @@ export const TextFormattingCard = ({
               </div>
               <div>
                 <p className="text-sm font-medium">Text Case</p>
-                <p className="text-xs text-muted-foreground">Modify subtitle text case</p>
+                <p className="text-xs text-muted-foreground">Modify subtitle case</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                      "w-12 p-0",
-                      textCase === "lowercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                    )}
-                    onClick={() => {
-                      const newFormat = textCase === "lowercase" ? "none" : "lowercase";
-                      onTextCaseChange(newFormat);
-                    }}
-                  >
-                    <CaseLower className="w-6 h-6" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" align="center">
-                  Lowercase All Text
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                      "w-12 p-0",
-                      textCase === "uppercase" && "bg-cyan-100 border-cyan-200 dark:bg-cyan-900/30 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
-                    )}
-                    onClick={() => {
-                      const newFormat = textCase === "uppercase" ? "none" : "uppercase";
-                      onTextCaseChange(newFormat);
-                    }}
-                  >
-                    <CaseUpper className="w-6 h-6" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" align="center">
-                  Uppercase All Text
-                </TooltipContent>
-              </Tooltip>
+            <div className="w-36">
+              <Select
+                value={textCase}
+                onValueChange={(val) => onTextCaseChange(val as "none" | "uppercase" | "lowercase" | "titlecase")}
+              >
+                <SelectTrigger className="">
+                  <SelectValue placeholder="Select text case" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="none">Normal</SelectItem>
+                  <SelectItem value="lowercase">lowercase</SelectItem>
+                  <SelectItem value="uppercase">UPPERCASE</SelectItem>
+                  <SelectItem value="titlecase">Title Case</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

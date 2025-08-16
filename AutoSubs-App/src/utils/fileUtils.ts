@@ -77,7 +77,7 @@ export async function saveTranscript(
   transcript: any,
   filename: string,
   formatOptions?: {
-    case: 'lowercase' | 'uppercase' | 'none';
+    case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
     removePunctuation: boolean;
     splitOnPunctuation: boolean;
     censoredWords: string[];
@@ -91,6 +91,10 @@ export async function saveTranscript(
     const filePath = await join(storageDir, filename);
 
     console.log('Saving transcript to:', filePath);
+
+    if (transcript.originalSegments) {
+      transcript.segments = transcript.originalSegments;
+    }
 
     const originalSegments: Subtitle[] = transcript.segments.map((segment: any, index: number) => {
       let words = segment.words && segment.words.length > 0

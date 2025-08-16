@@ -37,7 +37,7 @@ tokio = { version = "1", features = ["full"] }
 tauri-plugin-os = "2"
 
 # Add transcription and diarization dependencies
-whisper-rs = { version = "0.14.4", default-features = false }
+whisper-rs = { version = "0.15", default-features = false }
 pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
 num = "0.4.1"
 once_cell = "1.19.0"
@@ -53,6 +53,7 @@ ort-sys = "=2.0.0-rc.9" # prevents error with pyannote-rs
 hf-hub = "0.4.3"
 dirs = "5.0"
 zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
+regex = "1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

@@ -1,6 +1,6 @@
 use crate::audio;
 use crate::config::{DiarizeOptions, TranscribeOptions};
-use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript};
+use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript, WordTimestamp};
 use eyre::{bail, eyre, Context, OptionExt, Result};
 use hound::WavReader;
 use serde::Deserialize;
@@ -18,10 +18,9 @@ use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
 use whisper_rs::DtwParameters;
-pub use whisper_rs::SegmentCallbackData;
-pub use whisper_rs::WhisperContext;
-pub use whisper_rs::WhisperState;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, SegmentCallbackData, WhisperContext, WhisperState, WhisperSegment, WhisperTokenData};
+use regex::Regex;
+use once_cell::sync::Lazy;
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -242,44 +241,54 @@ pub async fn transcribe_audio<R: Runtime>(
     }
 }
 
+/// Estimate a safe DTW working-set size (in bytes) for whisper.cpp DTW.
+/// Pass the result to `DtwParameters { dtw_mem_size, .. }`.
 fn calculate_dtw_mem_size(audio_duration_secs: f64) -> usize {
-    // Estimate DTW memory using a banded DP model.
-    // DTW in whisper.cpp uses memory-limited alignment where memory roughly scales with:
-    //   lanes * band_frames * num_frames * sizeof(f32) + base_overhead
-    // where:
-    //   - num_frames ~= duration * 100 (10 ms frames)
-    //   - band_frames is the half-band/window size in frames (conservative fixed value)
-    //   - lanes accounts for a few rolling buffers and auxiliaries (cost rows, backtrack, etc.)
-
-    const BASE_OVERHEAD_MB: usize = 16; // baseline for internal buffers and overhead
-    const FRAME_RATE: f64 = 100.0; // 10ms frames
-    const BYTES_PER_F32: usize = 4;
-    const LANES: usize = 3; // conservative: cost/current/aux
-    const BAND_FRAMES: usize = 128; // conservative window; keeps quality while bounding memory
-
+    // Frame geometry
+    const FRAME_RATE: f64 = 100.0;      // 10 ms frames
     let num_frames = (audio_duration_secs * FRAME_RATE).ceil() as usize;
 
-    // Core DP working set
+    // Memory model bits
+    const BYTES_F32: usize = 4;
+    const BYTES_I32: usize = 4;
+
+    // Rolling buffers + auxiliaries (cost, prev, scratch, etc.)
+    // Use 4 lanes to leave headroom on long segments/presets.
+    const LANES: usize = 4;
+
+    // Dynamic band: narrow for short audio, wider for long audio.
+    // Keeps quality while bounding memory.
+    let band_frames = match num_frames {
+        0..=15_000 => 96,    // ≤150 s
+        15_001..=45_000 => 128, // 150–450 s
+        _ => 160,            // >450 s
+    };
+
+    // Core DP working set (float costs) plus an int32 backtrack-ish buffer
     let dp_bytes = num_frames
-        .saturating_mul(BAND_FRAMES)
-        .saturating_mul(BYTES_PER_F32)
-        .saturating_mul(LANES);
+        .saturating_mul(band_frames)
+        .saturating_mul(LANES)
+        .saturating_mul(BYTES_F32);
 
-    // Add fixed overhead
-    let base_bytes = BASE_OVERHEAD_MB * 1024 * 1024;
+    let bt_bytes = num_frames
+        .saturating_mul(BYTES_I32); // rough backtrack/indices budget
 
-    let total = base_bytes.saturating_add(dp_bytes);
+    // Fixed baseline for internal scratch
+    const BASELINE_MB: usize = 24;
+    let base_bytes = BASELINE_MB * 1024 * 1024;
 
-    // Clamp to sane bounds
-    let min_bytes = 16 * 1024 * 1024;  // 16MB minimum
-    let max_bytes = 512 * 1024 * 1024; // 512MB cap to avoid excessive usage
+    // Total and clamps
+    let total = base_bytes
+        .saturating_add(dp_bytes)
+        .saturating_add(bt_bytes);
+
+    let min_bytes = 24 * 1024 * 1024;   // 24 MB floor
+    let max_bytes = 768 * 1024 * 1024;  // 768 MB ceiling
     let clamped = total.clamp(min_bytes, max_bytes);
 
-    // Align UP to a 4MB boundary to avoid rounding down below requirement
-    let align = 4 * 1024 * 1024; // 4MB
-    let aligned = (clamped + (align - 1)) & !(align - 1);
-
-    aligned
+    // Align up to 8 MB so we never round *down* below requirement
+    const ALIGN: usize = 8 * 1024 * 1024;
+    (clamped + (ALIGN - 1)) & !(ALIGN - 1)
 }
 
 pub fn create_context(
@@ -305,27 +314,6 @@ pub fn create_context(
 
     // set enable_dtw from preference
     if let Some(true) = enable_dtw {
-        let dtw_mem_size = match audio_duration_secs {
-            Some(duration) => {
-                let mem_size = calculate_dtw_mem_size(duration);
-                tracing::debug!(
-                    "Audio duration: {:.2}s, Allocating DTW memory: {:.2}MB",
-                    duration,
-                    mem_size as f64 / (1024.0 * 1024.0)
-                );
-                mem_size
-            }
-            None => {
-                // Fallback to default if duration is not provided
-                let default_mb = 64;
-                tracing::warn!(
-                    "No audio duration provided, using default DTW memory: {}MB",
-                    default_mb
-                );
-                default_mb * 1024 * 1024
-            }
-        };
-
         ctx_params.flash_attn(false); // DTW requires flash_attn off
         let model_preset = match model {
             "tiny.en" => DtwModelPreset::TinyEn,
@@ -341,6 +329,7 @@ pub fn create_context(
             _ => DtwModelPreset::SmallEn, // Defaulting to SmallEn
         };
 
+        let dtw_mem_size = calculate_dtw_mem_size(audio_duration_secs.unwrap_or(0.0));
         ctx_params.dtw_parameters(DtwParameters {
             mode: DtwMode::ModelPreset { model_preset },
             dtw_mem_size,
@@ -520,290 +509,6 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     }
     params
 }
-
-fn get_word_timestamps(
-    state: &WhisperState,
-    seg: i32,
-    enable_dtw: Option<bool>,
-) -> Vec<crate::transcript::WordTimestamp> {
-    let ntok = state.full_n_tokens(seg).unwrap_or(0) as usize;
-    let mut word_timestamps = Vec::with_capacity(ntok);
-
-    let start_of_segment = state.full_get_segment_t0(seg).unwrap_or(0);
-    let end_of_segment = state.full_get_segment_t1(seg).unwrap_or(0);
-    let mut prev_end_frame = start_of_segment;
-    let mut current_word = String::new();
-    let mut start_frame = start_of_segment;
-
-    // Helper function to close the current word and add it to timestamps
-    let close_current_word = |word: &mut String,
-                              timestamps: &mut Vec<crate::transcript::WordTimestamp>,
-                              _token_idx: i32,
-                              start: i64,
-                              end: i64,
-                              prob: f32| {
-        if !word.is_empty() {
-            let start_frame_clamped = start.max(start_of_segment).min(end_of_segment);
-            // Enforce word duration bounds to avoid zero-length or excessively long words
-            let min_word_dur_frames: i64 = 3;   // ~30ms (10ms frames)
-            let max_word_dur_frames: i64 = 150; // ~1.5s cap
-            let mut end_frame = end
-                .max(start_frame_clamped + min_word_dur_frames)
-                .min(end_of_segment);
-            end_frame = end_frame.min(start_frame_clamped + max_word_dur_frames);
-            timestamps.push(crate::transcript::WordTimestamp {
-                word: word.clone(),
-                start: (start_frame_clamped as f64) * 0.01,
-                end: (end_frame as f64) * 0.01,
-                probability: Some(prob),
-            });
-            word.clear();
-        }
-    };
-
-    for i in 0..ntok {
-        let token_text = match state.full_get_token_text(seg, i as i32) {
-            Ok(t) => t,
-            Err(e) => {
-                tracing::warn!("Skipping token {} in seg {} due to invalid UTF-8: {}", i, seg, e);
-                continue;
-            }
-        };
-        let data = match state.full_get_token_data(seg, i as i32) {
-            Ok(d) => d,
-            Err(e) => {
-                tracing::warn!("Skipping token {} in seg {} due to missing token data: {}", i, seg, e);
-                continue;
-            }
-        };
-        let is_special = token_text.starts_with('[') || token_text == "<|endoftext|>";
-        let is_last = i == ntok - 1;
-
-        // Handle special tokens
-        if is_special {
-            if is_last && !current_word.is_empty() {
-                let prev_data = state
-                    .full_get_token_data(seg, (i - 1) as i32)
-                    .unwrap_or(data);
-                close_current_word(
-                    &mut current_word,
-                    &mut word_timestamps,
-                    i as i32,
-                    start_frame,
-                    prev_end_frame,
-                    prev_data.p,
-                );
-            }
-            continue;
-        }
-
-        // New word starts at tokens with leading space or if first token
-        if token_text.starts_with(' ') && !current_word.is_empty() {
-            let prev_data = state
-                .full_get_token_data(seg, (i - 1) as i32)
-                .unwrap_or(data);
-            close_current_word(
-                &mut current_word,
-                &mut word_timestamps,
-                i as i32,
-                start_frame,
-                prev_end_frame,
-                prev_data.p,
-            );
-        }
-
-        // Whitespace-only tokens act as boundaries: if we have an open word, close it; otherwise skip.
-        if token_text.trim().is_empty() {
-            if !current_word.is_empty() {
-                let prev_data = state
-                    .full_get_token_data(seg, (i - 1) as i32)
-                    .unwrap_or(data);
-                close_current_word(
-                    &mut current_word,
-                    &mut word_timestamps,
-                    i as i32,
-                    start_frame,
-                    prev_end_frame,
-                    prev_data.p,
-                );
-            }
-            continue;
-        }
-
-        // If starting a new word, set start strictly from token t0 to avoid systemic delay
-        if current_word.is_empty() {
-            start_frame = data.t0.max(start_of_segment).min(end_of_segment);
-            // In DTW mode, counteract typical alignment lag with a small pre-roll advance,
-            // but never overlap the previous word or exceed segment bounds.
-            if matches!(enable_dtw, Some(true)) {
-                let dtw_preroll_frames: i64 = 10; // ~100ms
-                let candidate = (start_frame - dtw_preroll_frames).max(start_of_segment);
-                if let Some(last) = word_timestamps.last() {
-                    let prev_end_frames = (last.end * 100.0).round() as i64;
-                    start_frame = candidate.max(prev_end_frames);
-                } else {
-                    start_frame = candidate;
-                }
-            }
-        }
-
-        current_word.push_str(&token_text);
-        // Prefer token end t1; when DTW is enabled, trust DTW to avoid trailing into silence,
-        // but cap the adjustment so ends aren't pulled too far earlier.
-        let mut token_end = if matches!(enable_dtw, Some(true)) && data.t_dtw > 0 {
-            let dtw_end_cap_frames: i64 = if is_last { 6 } else { 10 }; // ~60-100ms
-            // bound end by the minimum of model end and (dtw + cap)
-            std::cmp::min(data.t1, data.t_dtw + dtw_end_cap_frames)
-        } else {
-            data.t1
-        };
-        // Ensure monotonic and clamp within segment bounds
-        prev_end_frame = token_end.max(start_frame).min(end_of_segment);
-
-        // If last token, push the final word
-        if is_last && !current_word.is_empty() {
-            close_current_word(
-                &mut current_word,
-                &mut word_timestamps,
-                i as i32,
-                start_frame,
-                prev_end_frame,
-                data.p,
-            );
-        }
-    }
-
-    word_timestamps
-}
-
-// Detect the first speech onset (non-silent region) after a given time using
-// a lightweight energy threshold on 10ms frames. Returns the detected onset
-// time in seconds if found within the search window.
-fn detect_speech_onset_after(
-    samples: &[i16],
-    sample_rate: usize,
-    start_time_s: f64,
-    max_search_s: f64,
-) -> Option<f64> {
-    if samples.is_empty() || sample_rate == 0 || max_search_s <= 0.0 {
-        return None;
-    }
-    let sr = sample_rate as f64;
-    let mut idx = (start_time_s * sr).round() as usize;
-    if idx >= samples.len() { return None; }
-
-    let frame_len = ((sr * 0.010).round() as usize).max(1); // 10ms frames
-    let end_idx = ((start_time_s + max_search_s) * sr).round() as usize;
-    let end_idx = end_idx.min(samples.len());
-    if idx + frame_len >= end_idx { return None; }
-
-    // Calibrate dynamic threshold from local max abs in the scan window
-    let mut local_max_abs: i32 = 0;
-    let mut j = idx;
-    while j < end_idx {
-        let v = samples[j].abs() as i32;
-        if v > local_max_abs { local_max_abs = v; }
-        j += 1;
-    }
-    // Dynamic threshold: 5% of local peak, but not lower than an absolute floor
-    let thresh_abs: f64 = (local_max_abs as f64 * 0.05).max(200.0);
-
-    // Require a few consecutive frames above threshold to confirm speech onset
-    // and a short preceding silence window to avoid premature triggers.
-    let mut consec_above = 0usize;
-    let mut consec_below = 0usize;
-    let mut allow_onset = false;
-    while idx + frame_len <= end_idx {
-        let mut sum_abs: u64 = 0;
-        for k in idx..(idx + frame_len) {
-            sum_abs += samples[k].abs() as u64;
-        }
-        let mean_abs = (sum_abs as f64) / (frame_len as f64);
-        if mean_abs >= thresh_abs {
-            // Only start counting above-threshold after we've seen a bit of silence
-            if consec_below >= 3 { allow_onset = true; }
-            if allow_onset {
-                consec_above += 1;
-                if consec_above >= 4 {
-                    // Onset at the boundary after confirmed frames
-                    let onset_idx = idx + frame_len; // slight bias forward for stability
-                    return Some(onset_idx as f64 / sr);
-                }
-            }
-        } else {
-            // track consecutive below-threshold frames to ensure a prior quiet period
-            consec_below = (consec_below + 1).min(1000);
-            consec_above = 0;
-        }
-        idx += frame_len; // hop 10ms
-    }
-    None
-}
-
-// Adjust starts of segments to preserve short silences between them when the
-// model underestimates gaps. We look for speech onset after the previous
-// segment's end and, if it's later than the current start by a meaningful
-// margin, shift the whole next segment (and its words) forward by that delta.
-fn adjust_small_gaps_with_silence(
-    segments: &mut Vec<Segment>,
-    samples: &[i16],
-    sample_rate: usize,
-) {
-    if segments.len() < 2 { return; }
-
-    for i in 0..(segments.len() - 1) {
-        let prev_end = segments[i].end;
-        let cur_start = segments[i + 1].start;
-        if cur_start <= prev_end { continue; }
-
-        // Preserve a proportional portion of the observed gap to feel natural
-        // Preserve ~60% of gap, clamped to [250ms, 700ms]
-        let raw_gap = cur_start - prev_end; // observed model gap (positive)
-        let preserve = (raw_gap * 0.60).clamp(0.25, 0.70);
-        let desired_min_start = prev_end + preserve;
-
-        // Search up to 2.5s after prev_end for speech onset
-        let detected_onset = detect_speech_onset_after(samples, sample_rate, prev_end, 2.5);
-        let target_start = detected_onset.unwrap_or(cur_start).max(desired_min_start);
-
-        // Only adjust if target start is meaningfully later than current start
-        let mut delta = target_start - cur_start;
-        if delta > 0.08 { // >80ms change to avoid jitter
-                // Cap the shift so we don't overlap the following segment
-                if i + 2 < segments.len() {
-                    let next_next_start = segments[i + 2].start;
-                    let max_delta = (next_next_start - segments[i + 1].end - 0.02).max(0.0);
-                    if max_delta <= 0.0 { continue; }
-                    delta = delta.min(max_delta);
-                }
-
-                // Shift the i+1 segment and its words forward by delta
-                segments[i + 1].start += delta;
-                segments[i + 1].end += delta;
-                if let Some(words) = &mut segments[i + 1].words {
-                    for w in words.iter_mut() {
-                        w.start += delta;
-                        w.end += delta;
-                    }
-                }
-
-                // Ensure previous segment doesn't overlap the adjusted one
-                let new_end_limit = segments[i + 1].start;
-                if segments[i].end > new_end_limit {
-                    // Clamp the last word before setting the new end to avoid borrow conflicts
-                    if let Some(words) = &mut segments[i].words {
-                        if let Some(last_word) = words.last_mut() {
-                            if last_word.end > new_end_limit {
-                                last_word.end = new_end_limit;
-                            }
-                        }
-                    }
-                    segments[i].end = new_end_limit;
-                }
-        }
-    }
-}
-
 /// Aggregates speakers from transcript segments, similar to the frontend logic
 fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
@@ -1054,6 +759,166 @@ fn process_and_align_segments(
     Ok(aligned_segments)
 }
 
+
+fn cs_to_s(cs: i64) -> f64 { (cs as f64) * 0.01 } // centiseconds → seconds
+
+// Strip *embedded* control markers like "[_TT_320]", "[_EOT_]" anywhere in the token.
+static CTRL_RE: Lazy<Regex> = Lazy::new(|| {
+    // matches:  [_WORD] or [_WORD_123]   (greedy enough for current whisper.cpp markers)
+    Regex::new(r"\[_[A-Z]+(?:_[0-9]+)?\]").unwrap()
+});
+
+// Returns true if `s` is *only* a control marker like "[_BEG_]" or "[_TT_320]".
+fn is_whole_control_token(s: &str) -> bool {
+    let t = s.trim_matches('\0').trim();
+    if !(t.starts_with("[_") && t.ends_with(']')) { return false; }
+    // ensure inner is all A–Z / 0–9 / '_' (how whisper.cpp prints its markers)
+    let inner = &t[2..t.len()-1];
+    !inner.is_empty() && inner.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+}
+
+// Strips *embedded* control markers anywhere in the string.
+fn strip_embedded_control_markers(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    let mut out = String::with_capacity(chars.len());
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '[' && i + 2 < chars.len() && chars[i + 1] == '_' {
+            // find the closing ']'
+            if let Some(rel_end) = chars[i + 2..].iter().position(|&c| c == ']') {
+                let end = i + 2 + rel_end;
+                // validate inner
+                let valid_inner = chars[i + 2..end]
+                    .iter()
+                    .all(|&c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_');
+                if valid_inner {
+                    i = end + 1; // skip whole marker
+                    continue;
+                }
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+pub fn get_word_timestamps_from_segment(seg: &WhisperSegment, enable_dtw: bool) -> Vec<WordTimestamp> {
+    #[derive(Clone)]
+    struct Tok {
+        text: String,
+        p: f32,
+        t0: f64,
+        t1: f64,
+        anchor: Option<f64>,
+    }
+
+    // 1) Collect tokens, skipping whole control tokens and stripping embedded markers.
+    let n = seg.n_tokens() as usize;
+    let mut toks: Vec<Tok> = Vec::with_capacity(n);
+
+    for i in 0..n {
+        if let Some(tok) = seg.get_token(i as i32) {
+            let raw = tok.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
+
+            // Skip if token is purely a control marker like "[_BEG_]" or "[_TT_320]"
+            if is_whole_control_token(&raw) {
+                continue;
+            }
+
+            // Remove any embedded markers that hitchhike inside printable tokens
+            let clean = strip_embedded_control_markers(&raw);
+
+            // Skip if nothing printable remains
+            if clean.trim_matches('\0').trim().is_empty() {
+                continue;
+            }
+
+            let td = tok.token_data();
+            toks.push(Tok {
+                text: clean,
+                p: td.p,
+                t0: cs_to_s(td.t0),
+                t1: cs_to_s(td.t1),
+                anchor: if enable_dtw && td.t_dtw > 0 { Some(cs_to_s(td.t_dtw)) } else { None },
+            });
+        }
+    }
+
+    if toks.is_empty() {
+        return Vec::new();
+    }
+
+    // 2) Token bounds via DTW midpoints (safe neighbor lookups), fallback to t0/t1.
+    let mut bounds = Vec::with_capacity(toks.len());
+    for i in 0..toks.len() {
+        let a_prev = i.checked_sub(1).and_then(|j| toks.get(j)).and_then(|t| t.anchor);
+        let a_here = toks[i].anchor;
+        let a_next = toks.get(i + 1).and_then(|t| t.anchor);
+
+        let start = match (a_prev, a_here) { (Some(l), Some(c)) => 0.5 * (l + c), _ => toks[i].t0 };
+        let end   = match (a_here, a_next) { (Some(c), Some(r)) => 0.5 * (c + r), _ => toks[i].t1 };
+        bounds.push((start, end));
+    }
+
+    // 3) Group into words using "leading space/newline starts a new word".
+    let mut words = Vec::<WordTimestamp>::new();
+    let mut cur = String::new();
+    let mut ps: Vec<f32> = Vec::new();
+    let mut w_start = bounds[0].0;
+    let mut w_end = bounds[0].1;
+    let mut started = false;
+
+    for (i, t) in toks.iter().enumerate() {
+        let s = t.text.as_str();
+        let new_word_boundary = s.starts_with(' ') || s.starts_with('\n');
+
+        if new_word_boundary && started {
+            let w = cur.trim();
+            if !w.is_empty() {
+                let p = (!ps.is_empty()).then(|| ps.iter().copied().sum::<f32>() / ps.len() as f32);
+                words.push(WordTimestamp { word: w.to_string(), start: w_start, end: w_end, probability: p });
+            }
+            cur.clear();
+            ps.clear();
+            started = false;
+        }
+
+        if !started {
+            w_start = bounds[i].0;
+            started = true;
+        }
+        w_end = bounds[i].1;
+        cur.push_str(s);
+        ps.push(t.p);
+    }
+
+    if started {
+        let w = cur.trim();
+        if !w.is_empty() {
+            let p = (!ps.is_empty()).then(|| ps.iter().copied().sum::<f32>() / ps.len() as f32);
+            words.push(WordTimestamp { word: w.to_string(), start: w_start, end: w_end, probability: p });
+        }
+    }
+
+    words
+}
+
+// Optional: sentence-case helper for segment text (and first word if you want).
+fn sentence_case_first_alpha(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut done = false;
+    for ch in s.chars() {
+        if !done && ch.is_alphabetic() {
+            for up in ch.to_uppercase() { out.push(up); }
+            done = true;
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
 pub async fn run_transcription_pipeline<R: Runtime>(
     app: AppHandle<R>,
     ctx: WhisperContext,
@@ -1172,42 +1037,40 @@ pub async fn run_transcription_pipeline<R: Runtime>(
         let _et = std::time::Instant::now();
 
         tracing::debug!("getting segments count...");
-        let num_segments = state
-            .full_n_segments()
-            .context("failed to get number of segments")?;
+        let num_segments = state.full_n_segments();
         if num_segments == 0 {
             bail!("no segments found!")
         }
         tracing::debug!("found {} sentence segments", num_segments);
 
-        // Process segments with or without diarization
-        let num_segments = state.full_n_segments()?;
-        tracing::debug!("found {} sentence segments", num_segments);
+        let mut segments_out: Vec<Segment> = Vec::with_capacity(num_segments as usize);
+        let mut empty_segments = 0usize;
+        let mut total_chars = 0usize;
 
-        // Process each segment and collect word timestamps
-        let mut segments: Vec<Segment> = Vec::with_capacity(num_segments as usize);
-        let mut empty_segments: usize = 0;
-        let mut total_chars: usize = 0;
+        for (seg_idx, seg) in state.as_iter().enumerate() { // iterator over `WhisperSegment`
+            // segment text
+            // If you want “Have” instead of “ have”, do a tiny sentence-case pass:
+            let mut text = seg.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
+            text = text.trim_start().to_string(); // remove Whisper’s typical leading space
+            // For the very first segment (or if prev ended with .?!), capitalize:
+            if seg_idx == 0 /* or your prev-ender test */ {
+                text = sentence_case_first_alpha(&text);
+            }
 
-        for seg_idx in 0..num_segments {
-            let (seg_start, seg_end);
-
-            // Get the segment text
-            let text = state
-                .full_get_segment_text_lossy(seg_idx as i32)
-                .context("failed to get segment")?;
             total_chars += text.len();
 
-            // Pre-fetch t0/t1 for diagnostics
-            let t0_frames = state.full_get_segment_t0(seg_idx as i32).unwrap_or(0);
-            let t1_frames = state.full_get_segment_t1(seg_idx as i32).unwrap_or(t0_frames);
-            let approx_start = (t0_frames as f64) * 0.01;
-            let approx_end = (t1_frames as f64) * 0.01;
+            // quick t0/t1 preview (centiseconds → seconds)
+            let t0_frames = seg.start_timestamp();
+            let t1_frames = seg.end_timestamp();
+            let approx_start = cs_to_s(t0_frames);
+            let approx_end   = cs_to_s(t1_frames);
             let preview: String = text.chars().take(40).collect();
+        
             tracing::debug!(
                 "Seg {} approx [{:.2}-{:.2}] text_len={} preview={:?}",
                 seg_idx, approx_start, approx_end, text.len(), preview
             );
+        
             if text.trim().is_empty() {
                 empty_segments += 1;
                 tracing::warn!(
@@ -1215,37 +1078,33 @@ pub async fn run_transcription_pipeline<R: Runtime>(
                     seg_idx, approx_start, approx_end
                 );
             }
-
-            // Get word timestamps if DTW is enabled
-            let words = {
-                let word_timestamps = get_word_timestamps(&state, seg_idx as i32, options.enable_dtw);
-                if word_timestamps.is_empty() {
-                    // Fall back to segment-level times if no words detected
-                    seg_start = (t0_frames as f64) * 0.01;
-                    seg_end = (t1_frames as f64) * 0.01;
-                    tracing::debug!(
-                        "Seg {} word_timestamps empty; falling back to segment bounds [{:.2}-{:.2}]",
-                        seg_idx, seg_start, seg_end
-                    );
-                    None
-                } else {
-                    seg_start = word_timestamps.first().map(|w| w.start).unwrap_or(0.0);
-                    seg_end = word_timestamps.last().map(|w| w.end).unwrap_or(seg_start);
-                    tracing::debug!(
-                        "Seg {} word_timestamps count={} bounds [{:.2}-{:.2}]",
-                        seg_idx, word_timestamps.len(), seg_start, seg_end
-                    );
-                    Some(word_timestamps)
+        
+            // word timestamps (DTW if enabled at context creation)
+            let mut word_timestamps = get_word_timestamps_from_segment(&seg, options.enable_dtw.unwrap_or(false));
+            let (seg_start, seg_end, words_opt) = if word_timestamps.is_empty() {
+                tracing::debug!(
+                    "Seg {} word_timestamps empty; falling back to segment bounds [{:.2}-{:.2}]",
+                    seg_idx, approx_start, approx_end
+                );
+                (approx_start, approx_end, None)
+            } else {
+                if seg_idx == 0 {
+                    word_timestamps.first_mut().unwrap().word = sentence_case_first_alpha(&word_timestamps.first().unwrap().word);
                 }
+                let s = word_timestamps.first().map(|w| w.start).unwrap_or(approx_start);
+                let e = word_timestamps.last().map(|w| w.end).unwrap_or(s);
+                tracing::debug!(
+                    "Seg {} word_timestamps count={} bounds [{:.2}-{:.2}]",
+                    seg_idx, word_timestamps.len(), s, e
+                );
+                (s, e, Some(word_timestamps))
             };
-
-            // Check that end time of previous segment is less than start time of current segment (fixes some edge cases where segments overlap)
-            if let Some(last) = segments.last_mut() {
+        
+            // prevent slight overlaps with previous segment
+            if let Some(last) = segments_out.last_mut() {
                 if last.end > seg_start {
                     last.end = seg_start;
                 }
-
-                // If word-level enabled, clamp the last word's end to the previous segment's (possibly adjusted) end
                 if let Some(words) = &mut last.words {
                     if let Some(last_word) = words.last_mut() {
                         if last_word.end > last.end {
@@ -1254,17 +1113,14 @@ pub async fn run_transcription_pipeline<R: Runtime>(
                     }
                 }
             }
-
-            // Create the segment after we're done printing
-            let segment = Segment {
-                speaker_id: None, // No speaker info in non-diarized mode
+        
+            segments_out.push(Segment {
+                speaker_id: None,
                 start: seg_start,
                 end: seg_end,
                 text,
-                words,
-            };
-
-            segments.push(segment);
+                words: words_opt,
+            });
         }
 
         tracing::info!(
@@ -1294,7 +1150,7 @@ pub async fn run_transcription_pipeline<R: Runtime>(
                 }
             };
             let result = process_diarization(
-                segments,
+                segments_out,
                 &original_samples,
                 diarize_opts,
                 diarize_progress_callback,
@@ -1306,12 +1162,8 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             result
         } else {
             // No speaker aggregation needed for non-diarized transcripts
-            (Vec::new(), segments)
+            (Vec::new(), segments_out)
         };
-
-        // Preserve short gaps: shift next segment to detected speech onset after the previous end
-        // Uses raw PCM samples at 16kHz (post-normalization) to detect onsets
-        adjust_small_gaps_with_silence(&mut segments, &original_samples, 16000);
 
         let offset = options.offset.unwrap_or(0.0);
 

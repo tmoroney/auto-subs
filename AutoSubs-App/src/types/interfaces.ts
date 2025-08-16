@@ -99,7 +99,7 @@ export interface Settings {
     maxCharsPerLine: number,
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,
-    textCase: "none" | "uppercase" | "lowercase";
+    textCase: "none" | "uppercase" | "lowercase" | "titlecase";
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
