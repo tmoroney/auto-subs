@@ -2,11 +2,11 @@ use crate::transcribe::SHOULD_CANCEL;
 use hf_hub::api::Progress;
 use std::io::copy;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Emitter, Manager};
+use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 
 // Progress tracker for model downloads that emits events to the frontend
-struct ModelDownloadProgress {
-    app: AppHandle,
+struct ModelDownloadProgress<R: Runtime> {
+    app: AppHandle<R>,
     current: usize,
     total: usize,
     model_name: String,
@@ -14,8 +14,8 @@ struct ModelDownloadProgress {
     scale: f32,  // Scale factor (50.0 for main model, 50.0 for CoreML)
 }
 
-impl ModelDownloadProgress {
-    fn new(app: AppHandle, model_name: String) -> Self {
+impl<R: Runtime> ModelDownloadProgress<R> {
+    fn new(app: AppHandle<R>, model_name: String) -> Self {
         Self {
             app,
             current: 0,
@@ -26,7 +26,7 @@ impl ModelDownloadProgress {
         }
     }
 
-    fn new_with_offset(app: AppHandle, model_name: String, offset: f32, scale: f32) -> Self {
+    fn new_with_offset(app: AppHandle<R>, model_name: String, offset: f32, scale: f32) -> Self {
         Self {
             app,
             current: 0,
@@ -47,7 +47,7 @@ impl ModelDownloadProgress {
     }
 }
 
-impl Progress for ModelDownloadProgress {
+impl<R: Runtime> Progress for ModelDownloadProgress<R> {
     fn init(&mut self, size: usize, filename: &str) {
         self.total = size;
         self.current = 0;
@@ -64,7 +64,7 @@ impl Progress for ModelDownloadProgress {
         if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
             if *should_cancel {
                 // Clean up any stale lock files when cancellation is detected
-                let _ = cleanup_stale_lock_files(self.app.clone());
+                let _ = cleanup_stale_lock_files::<R>(self.app.clone());
                 // Emit cancellation event and return early
                 let _ = self.app.emit("model-download-cancelled", &self.model_name);
                 // We can't directly abort the download here, but we can stop updating progress
@@ -105,7 +105,7 @@ impl<P: Progress> Progress for SilentFinish<P> {
 }
 
 /// Returns the path to the app's model cache directory, creating it if it doesn't exist.
-fn get_model_cache_dir(app: AppHandle) -> Result<PathBuf, String> {
+fn get_model_cache_dir<R: Runtime>(app: AppHandle<R>) -> Result<PathBuf, String> {
     let cache_dir = app
         .path()
         .app_cache_dir()
@@ -118,8 +118,8 @@ fn get_model_cache_dir(app: AppHandle) -> Result<PathBuf, String> {
     Ok(model_dir)
 }
 
-fn get_snapshots_dir(app: AppHandle) -> PathBuf {
-    let cache_dir = get_model_cache_dir(app.clone()).unwrap();
+fn get_snapshots_dir<R: Runtime>(app: AppHandle<R>) -> PathBuf {
+    let cache_dir = get_model_cache_dir::<R>(app.clone()).unwrap();
     cache_dir
         .join("models--ggerganov--whisper.cpp")
         .join("snapshots")
@@ -127,8 +127,8 @@ fn get_snapshots_dir(app: AppHandle) -> PathBuf {
 
 /// Cleans up stale lock files in the model cache directory
 /// This is called when model downloads are cancelled to prevent lock file issues
-fn cleanup_stale_lock_files(app: AppHandle) -> Result<(), String> {
-    let cache_dir = get_model_cache_dir(app.clone())?;
+fn cleanup_stale_lock_files<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let cache_dir = get_model_cache_dir::<R>(app.clone())?;
     let blobs_dir = cache_dir
         .join("models--ggerganov--whisper.cpp")
         .join("blobs");
@@ -177,7 +177,7 @@ fn cleanup_stale_lock_files(app: AppHandle) -> Result<(), String> {
 
 /// Checks if a model exists in the cache, and if not, downloads it from the Hugging Face Hub.
 /// Returns the path to the model file in the cache.
-pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, String> {
+pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> Result<PathBuf, String> {
     // Check for cancellation at the start
     if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
         if *should_cancel {
@@ -188,7 +188,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, 
     }
 
     let filename = format!("ggml-{}.bin", model);
-    let model_cache = get_model_cache_dir(app.clone())?;
+    let model_cache = get_model_cache_dir::<R>(app.clone())?;
     let snapshots_dir = get_snapshots_dir(app.clone());
 
     println!("Checking for model '{}' in cache...", filename);
@@ -405,7 +405,7 @@ pub fn download_model_if_needed(app: AppHandle, model: &str) -> Result<PathBuf, 
 }
 
 #[command]
-pub fn delete_model(model: &str, app: AppHandle) -> Result<(), String> {
+pub fn delete_model<R: Runtime>(model: &str, app: AppHandle<R>) -> Result<(), String> {
     let snapshots_dir = get_snapshots_dir(app.clone());
 
     if !snapshots_dir.exists() {
@@ -489,7 +489,7 @@ pub fn delete_model(model: &str, app: AppHandle) -> Result<(), String> {
 }
 
 #[command]
-pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
+pub fn get_downloaded_models<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
     use std::fs;
     let snapshots_dir = get_snapshots_dir(app.clone());
     let mut found_files = Vec::new();
@@ -531,12 +531,12 @@ pub fn get_downloaded_models(app: AppHandle) -> Result<Vec<String>, String> {
 }
 
 /// Downloads a file from a URL to a local cache if it doesn't already exist.
-pub async fn download_diarize_model_if_needed(
-    app: AppHandle,
+pub async fn download_diarize_model_if_needed<R: Runtime>(
+    app: AppHandle<R>,
     file_name: &str,
     url: &str,
 ) -> Result<PathBuf, String> {
-    let model_dir = get_model_cache_dir(app.clone())?;
+    let model_dir = get_model_cache_dir::<R>(app.clone())?;
     let local_path = model_dir.join(file_name);
 
     if local_path.exists() {

@@ -4,7 +4,6 @@ use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript};
 use eyre::{bail, eyre, Context, OptionExt, Result};
 use hound::WavReader;
 use serde::Deserialize;
-use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -15,7 +14,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Instant;
 use std::time::SystemTime;
 use std::time::Duration;
-use tauri::{command, AppHandle, Emitter, Manager};
+use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
 use whisper_rs::DtwParameters;
@@ -40,25 +39,6 @@ static LATEST_DIARIZE_PROGRESS: AtomicI32 = AtomicI32::new(0);
 fn round_to_places(val: f64, places: u32) -> f64 {
     let factor = 10f64.powi(places as i32);
     (val * factor).trunc() / factor
-}
-
-// Compute average word probability across all segments (if available)
-fn average_word_probability(segments: &[crate::transcript::Segment]) -> Option<f32> {
-    let mut sum = 0.0f32;
-    let mut count = 0usize;
-    for seg in segments.iter() {
-        if let Some(words) = &seg.words {
-            for w in words {
-                if let Some(p) = w.probability {
-                    if p.is_finite() { // guard against NaN/inf
-                        sum += p;
-                        count += 1;
-                    }
-                }
-            }
-        }
-    }
-    if count > 0 { Some(sum / (count as f32)) } else { None }
 }
 
 // --- Frontend Options Struct ---
@@ -89,8 +69,8 @@ pub async fn cancel_transcription() -> Result<(), String> {
 }
 
 #[command]
-pub async fn transcribe_audio(
-    app: AppHandle,
+pub async fn transcribe_audio<R: Runtime>(
+    app: AppHandle<R>,
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
     let start_time = Instant::now();
@@ -111,13 +91,12 @@ pub async fn transcribe_audio(
     // GPU policy: only Windows may disable; others forced ON
     let is_windows = tauri_plugin_os::platform() == "windows";
     let enable_gpu = if is_windows {
-        // Respect user toggle; default OFF if not provided
+        // Default OFF on Windows if not provided
         options.enable_gpu.or(Some(false))
     } else {
         // Force ON on non-Windows
         Some(true)
     };
-    let used_gpu_initial = enable_gpu == Some(true);
 
     let ctx = create_context(
         model_path.as_path(),
@@ -254,137 +233,6 @@ pub async fn transcribe_audio(
                 "Transcription successful in {:.2}s",
                 transcript.processing_time_sec
             );
-            // On Windows with GPU enabled, evaluate quality and optionally fallback to CPU
-            if is_windows && used_gpu_initial {
-                if let Some(avg_p) = average_word_probability(&transcript.segments) {
-                    println!("Average word probability (GPU): {:.3}", avg_p);
-                    // Heuristic threshold: if very low average confidence, try CPU fallback
-                    if avg_p < 0.35 {
-                        println!("Low confidence detected on GPU. Falling back to CPU for re-run...");
-
-                        // Inform frontend about fallback with basic metrics
-                        let _ = app.emit(
-                            "gpu-fallback",
-                            json!({
-                                "reason": "low_confidence",
-                                "avgWordProb": avg_p,
-                            }),
-                        );
-
-                        // Re-create Whisper context for CPU
-                        let cpu_ctx = match create_context(
-                            model_path.as_path(),
-                            &options.model,
-                            None,
-                            Some(false), // force CPU
-                            options.enable_dtw,
-                            Some(audio_duration),
-                        ) {
-                            Ok(c) => c,
-                            Err(e) => {
-                                eprintln!("CPU context creation failed, keeping GPU transcript: {}", e);
-                                return Ok(transcript);
-                            }
-                        };
-
-                        // Reset progress and spawn a fresh emitter for fallback run
-                        LATEST_TRANSCRIBE_PROGRESS.store(0, Ordering::Relaxed);
-                        LATEST_DIARIZE_PROGRESS.store(0, Ordering::Relaxed);
-                        let emit_app_fb = app.clone();
-                        let (stop_tx_fb, mut stop_rx_fb) = tokio::sync::oneshot::channel::<()>();
-                        let emitter_handle_fb = tokio::spawn(async move {
-                            let mut last_t = -1;
-                            let mut last_d = -1;
-                            let mut interval = tokio::time::interval(Duration::from_millis(250));
-                            loop {
-                                tokio::select! {
-                                    _ = interval.tick() => {
-                                        let t = LATEST_TRANSCRIBE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
-                                        if t != last_t {
-                                            let _ = emit_app_fb.emit("transcription-progress", t);
-                                            last_t = t;
-                                        }
-                                        let d = LATEST_DIARIZE_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
-                                        if d != last_d {
-                                            let _ = emit_app_fb.emit("diarization-progress", d);
-                                            last_d = d;
-                                        }
-                                    }
-                                    _ = &mut stop_rx_fb => {
-                                        break;
-                                    }
-                                }
-                            }
-                        });
-
-                        // Recreate callbacks
-                        let progress_callback_fb = Some(Box::new(move |progress: i32| {
-                            LATEST_TRANSCRIBE_PROGRESS.store(progress, Ordering::Relaxed);
-                        }) as Box<dyn Fn(i32) + Send + Sync>);
-
-                        let abort_callback_fb = Some(Box::new(|| {
-                            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
-                                let cancelled = *should_cancel;
-                                if cancelled {
-                                    println!("Transcription cancelled by user (CPU fallback)");
-                                }
-                                cancelled
-                            } else {
-                                false
-                            }
-                        }) as Box<dyn Fn() -> bool + Send>);
-
-                        // Run CPU fallback
-                        // Build fresh transcribe options for fallback (original was moved)
-                        let transcribe_options_fb = TranscribeOptions {
-                            path: options.audio_path.clone().into(),
-                            offset: options.offset,
-                            lang: options.lang.clone(),
-                            init_prompt: None,
-                            max_sentence_len: None,
-                            verbose: None,
-                            max_text_ctx: None,
-                            n_threads: None,
-                            temperature: None,
-                            translate: options.translate,
-                            enable_dtw: options.enable_dtw,
-                            sampling_bestof_or_beam_size: None,
-                            sampling_strategy: None,
-                        };
-
-                        let cpu_res = run_transcription_pipeline(
-                            app,
-                            cpu_ctx,
-                            transcribe_options_fb,
-                            progress_callback_fb,
-                            None,
-                            abort_callback_fb,
-                            diarize_options,
-                            None,
-                            options.enable_diarize,
-                        )
-                        .await;
-
-                        // Stop fallback emitter
-                        let _ = stop_tx_fb.send(());
-                        let _ = emitter_handle_fb.await;
-
-                        match cpu_res {
-                            Ok(mut cpu_transcript) => {
-                                cpu_transcript.processing_time_sec = start_time.elapsed().as_secs();
-                                println!("CPU fallback transcription successful in {:.2}s", cpu_transcript.processing_time_sec);
-                                return Ok(cpu_transcript);
-                            }
-                            Err(e) => {
-                                eprintln!("CPU fallback failed (keeping GPU transcript): {}", e);
-                                return Ok(transcript);
-                            }
-                        }
-                    }
-                } else {
-                    println!("No word probabilities available to evaluate quality; skipping fallback.");
-                }
-            }
             Ok(transcript)
         }
         Err(e) => {
@@ -488,8 +336,8 @@ pub fn create_context(
             "small" => DtwModelPreset::Small,
             "medium.en" => DtwModelPreset::MediumEn,
             "medium" => DtwModelPreset::Medium,
-            "large" => DtwModelPreset::LargeV3,
-            "large-turbo" => DtwModelPreset::LargeV3Turbo,
+            "large-v3" => DtwModelPreset::LargeV3,
+            "large-v3-turbo" => DtwModelPreset::LargeV3Turbo,
             _ => DtwModelPreset::SmallEn, // Defaulting to SmallEn
         };
 
@@ -579,8 +427,8 @@ fn generate_cache_key(source: &Path) -> u64 {
 }
 
 // This function must now be `async` because it calls the async `normalize` function.
-pub async fn create_normalized_audio(
-    app: AppHandle,
+pub async fn create_normalized_audio<R: Runtime>(
+    app: AppHandle<R>,
     source: PathBuf,
     additional_ffmpeg_args: Option<Vec<String>>,
 ) -> Result<PathBuf> {
@@ -1206,8 +1054,8 @@ fn process_and_align_segments(
     Ok(aligned_segments)
 }
 
-pub async fn run_transcription_pipeline(
-    app: AppHandle,
+pub async fn run_transcription_pipeline<R: Runtime>(
+    app: AppHandle<R>,
     ctx: WhisperContext,
     options: TranscribeOptions,
     progress_callback: Option<Box<dyn Fn(i32) + Send + Sync>>,
@@ -1281,7 +1129,7 @@ pub async fn run_transcription_pipeline(
                 rms, n
             );
         }
-        let mut state = ctx.create_state().context("failed to create key")?;
+        let mut state = ctx.create_state().context("failed to create state")?;
         let mut params = setup_params(&options);
         let st = std::time::Instant::now();
 

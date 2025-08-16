@@ -2,8 +2,9 @@ use eyre::{bail, Context, Result};
 use hound::{SampleFormat, WavReader};
 use std::fs;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt; // You need to bring the ShellExt trait into scope // Command is now accessed via the app handle
+use tokio::process::Command as TokioCommand;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -13,11 +14,8 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 // --- Helpers: stream probing and energy measurement ---
 // List available audio stream indices using ffprobe.
-async fn list_audio_stream_indices(app: &AppHandle, input: &PathBuf) -> eyre::Result<Vec<usize>> {
-    let sidecar = app
-        .shell()
-        .sidecar("ffprobe")
-        .context("Failed to create sidecar command for 'ffprobe'")?;
+async fn list_audio_stream_indices<R: Runtime>(app: &AppHandle<R>, input: &PathBuf) -> eyre::Result<Vec<usize>> {
+    let sidecar = app.shell().sidecar("ffprobe");
     let input_lossy = input.to_string_lossy().into_owned();
     let args = vec![
         "-v".into(),
@@ -30,13 +28,36 @@ async fn list_audio_stream_indices(app: &AppHandle, input: &PathBuf) -> eyre::Re
         "csv=p=0".into(),
         input_lossy,
     ];
-    let out = sidecar.args(args).output().await.context("ffprobe failed to run")?;
-    if !out.status.success() {
-        let err = String::from_utf8_lossy(&out.stderr);
+    // Try sidecar first; if it fails or exits non-zero, fallback to system ffprobe
+    let (success, _code, stdout, stderr) = match sidecar {
+        Ok(cmd) => match cmd.args(args.clone()).output().await {
+            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Err(_) => {
+                tracing::warn!("ffprobe sidecar unavailable/failed, falling back to system ffprobe");
+                let sys = TokioCommand::new("ffprobe")
+                    .args(args.clone())
+                    .output()
+                    .await
+                    .context("system ffprobe failed to run")?;
+                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            }
+        },
+        Err(e) => {
+            tracing::warn!("ffprobe sidecar init error: {}. Falling back to system ffprobe", e);
+            let sys = TokioCommand::new("ffprobe")
+                .args(args.clone())
+                .output()
+                .await
+                .context("system ffprobe failed to run")?;
+            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+        }
+    };
+    if !success {
+        let err = String::from_utf8_lossy(&stderr);
         tracing::warn!("ffprobe stream list failed: {}", err);
         return Ok(vec![0]);
     }
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = String::from_utf8_lossy(&stdout);
     let mut indices = Vec::new();
     for line in stdout.lines() {
         let t = line.trim();
@@ -48,17 +69,14 @@ async fn list_audio_stream_indices(app: &AppHandle, input: &PathBuf) -> eyre::Re
 }
 
 // Measure RMS energy of the first `seconds` of a specific audio stream by decoding to raw PCM via ffmpeg to stdout.
-async fn measure_stream_energy(
-    app: &AppHandle,
+async fn measure_stream_energy<R: Runtime>(
+    app: &AppHandle<R>,
     input: &PathBuf,
     stream_idx: usize,
     seconds: u32,
 ) -> eyre::Result<f64> {
     let input_lossy = input.to_string_lossy().into_owned();
-    let sidecar = app
-        .shell()
-        .sidecar("ffmpeg")
-        .context("Failed to create sidecar command for 'ffmpeg'")?;
+    let sidecar = app.shell().sidecar("ffmpeg");
     let args = vec![
         "-nostdin".into(),
         "-hide_banner".into(),
@@ -81,12 +99,35 @@ async fn measure_stream_energy(
         "s16le".into(),
         "-".into(),
     ];
-    let out = sidecar.args(args).output().await.context("ffmpeg energy probe failed to run")?;
-    if !out.status.success() {
+    // Try sidecar first, fallback to system ffmpeg on error or non-zero
+    let (success, _code, stdout, _stderr) = match sidecar {
+        Ok(cmd) => match cmd.args(args.clone()).output().await {
+            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Err(_) => {
+                tracing::warn!("ffmpeg sidecar unavailable/failed, falling back to system ffmpeg (energy probe)");
+                let sys = TokioCommand::new("ffmpeg")
+                    .args(args.clone())
+                    .output()
+                    .await
+                    .context("system ffmpeg energy probe failed to run")?;
+                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            }
+        },
+        Err(e) => {
+            tracing::warn!("ffmpeg sidecar init error: {}. Falling back to system ffmpeg (energy probe)", e);
+            let sys = TokioCommand::new("ffmpeg")
+                .args(args.clone())
+                .output()
+                .await
+                .context("system ffmpeg energy probe failed to run")?;
+            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+        }
+    };
+    if !success {
         // Treat as unusable stream
         return Ok(0.0);
     }
-    let pcm = &out.stdout; // little-endian i16 mono
+    let pcm = &stdout; // little-endian i16 mono
     if pcm.len() < 2 {
         return Ok(0.0);
     }
@@ -103,7 +144,7 @@ async fn measure_stream_energy(
 }
 
 // Pick the best audio stream index by comparing short-window RMS across all audio streams.
-async fn pick_best_audio_stream(app: &AppHandle, input: &PathBuf) -> eyre::Result<Option<usize>> {
+async fn pick_best_audio_stream<R: Runtime>(app: &AppHandle<R>, input: &PathBuf) -> eyre::Result<Option<usize>> {
     let indices_res = list_audio_stream_indices(app, input).await;
     let indices = match indices_res {
         Ok(v) if v.len() > 1 => v,          // use reported list when multiple streams
@@ -145,16 +186,16 @@ pub fn hash_samples(samples: &[i16], max_samples: usize) -> u64 {
 }
 
 // This function is now an `async` Tauri command.
-pub async fn normalize(
-    app: AppHandle,
+pub async fn normalize<R: Runtime>(
+    app: AppHandle<R>,
     input: PathBuf,
     output: PathBuf,
     additional_ffmpeg_args: Option<Vec<String>>,
 ) -> std::result::Result<(), String> {
     // We use a helper async function to keep using eyre's `Result` for cleaner error handling with `?`
     // and then map the final result to the `Result<(), String>` that Tauri expects for commands.
-    async fn normalize_inner(
-        app: &AppHandle,
+    async fn normalize_inner<R: Runtime>(
+        app: &AppHandle<R>,
         input: PathBuf,
         output: PathBuf,
         additional_ffmpeg_args: Option<Vec<String>>,
@@ -208,9 +249,7 @@ pub async fn normalize(
         }
 
         // The `Command` is accessed through the `shell()` method on the app handle.
-        let sidecar_command = app.shell().sidecar("ffmpeg").context(
-            "Failed to create sidecar command for 'ffmpeg'. Is it configured in tauri.conf.json?",
-        )?;
+        let sidecar_command = app.shell().sidecar("ffmpeg");
 
         let input_lossy = input.to_string_lossy().into_owned();
         let output_lossy = output.to_string_lossy().into_owned();
@@ -262,31 +301,46 @@ pub async fn normalize(
         args.push(output_lossy);
 
         tracing::info!("Audio normalization: SIMPLE MODE active (mono 16kHz PCM16, no stream mapping, no normalization)");
-        tracing::debug!("Running sidecar command: ffmpeg with args: {:?}", args);
+        tracing::debug!("Running ffmpeg with args: {:?}", args);
 
         // --- Execution ---
         // The `.output()` call is async, so we must `.await" it to get the result.
-        let output_result = sidecar_command.args(args).output().await?;
+        // Try sidecar, then fallback to system ffmpeg. Normalize outputs.
+        let (success, code, stdout, stderr) = match sidecar_command {
+            Ok(cmd) => match cmd.args(args.clone()).output().await {
+                Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+                Err(_) => {
+                    tracing::warn!("ffmpeg sidecar unavailable/failed, falling back to system ffmpeg (normalize)");
+                    let sys = TokioCommand::new("ffmpeg").args(args.clone()).output().await?;
+                    (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+                }
+            },
+            Err(e) => {
+                tracing::warn!("ffmpeg sidecar init error: {}. Falling back to system ffmpeg (normalize)", e);
+                let sys = TokioCommand::new("ffmpeg").args(args.clone()).output().await?;
+                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            }
+        };
 
         // Log ffmpeg stdout/stderr for diagnostics even on success
         tracing::debug!(
             "ffmpeg completed: stdout_bytes={}, stderr_bytes={}",
-            output_result.stdout.len(),
-            output_result.stderr.len()
+            stdout.len(),
+            stderr.len()
         );
-        if !output_result.stdout.is_empty() {
-            tracing::debug!("ffmpeg stdout: {}", String::from_utf8_lossy(&output_result.stdout));
+        if !stdout.is_empty() {
+            tracing::debug!("ffmpeg stdout: {}", String::from_utf8_lossy(&stdout));
         }
-        if !output_result.stderr.is_empty() {
-            tracing::debug!("ffmpeg stderr: {}", String::from_utf8_lossy(&output_result.stderr));
+        if !stderr.is_empty() {
+            tracing::debug!("ffmpeg stderr: {}", String::from_utf8_lossy(&stderr));
         }
 
         // --- Error Handling ---
-        if !output_result.status.success() {
-            let error_message = String::from_utf8_lossy(&output_result.stderr);
+        if !success {
+            let error_message = String::from_utf8_lossy(&stderr);
             bail!(
                 "ffmpeg sidecar process failed with exit code: {:?}\nStderr: {}",
-                output_result.status.code(),
+                code,
                 error_message
             );
         }
@@ -370,16 +424,9 @@ pub async fn normalize(
 }
 
 // Uses ffprobe to get duration of any audio/video file (async, Tauri sidecar)
-pub async fn get_audio_duration(app: AppHandle, path: String) -> std::result::Result<f64, String> {
-    use eyre::Context;
-    // Prepare ffprobe sidecar
-    let sidecar_command = app
-        .shell()
-        .sidecar("ffprobe")
-        .context(
-            "Failed to create sidecar command for 'ffprobe'. Is it configured in tauri.conf.json?",
-        )
-        .map_err(|e| e.to_string())?;
+pub async fn get_audio_duration<R: Runtime>(app: AppHandle<R>, path: String) -> std::result::Result<f64, String> {
+    // Prepare ffprobe sidecar, but fallback to system ffprobe on failure or non-zero
+    let sidecar_command = app.shell().sidecar("ffprobe");
 
     let args = vec![
         "-v".to_string(),
@@ -391,22 +438,40 @@ pub async fn get_audio_duration(app: AppHandle, path: String) -> std::result::Re
         path.clone(),
     ];
 
-    let output_result = sidecar_command
-        .args(args)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
+    let (success, _code, stdout, stderr) = match sidecar_command {
+        Ok(cmd) => match cmd.args(args.clone()).output().await {
+            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Err(_) => {
+                tracing::warn!("ffprobe sidecar unavailable/failed, falling back to system ffprobe (get_audio_duration)");
+                let sys = TokioCommand::new("ffprobe")
+                    .args(args.clone())
+                    .output()
+                    .await
+                    .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
+                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            }
+        },
+        Err(e) => {
+            tracing::warn!("ffprobe sidecar init error: {}. Falling back to system ffprobe (get_audio_duration)", e);
+            let sys = TokioCommand::new("ffprobe")
+                .args(args.clone())
+                .output()
+                .await
+                .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
+            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+        }
+    };
 
-    if !output_result.status.success() {
-        let error_message = String::from_utf8_lossy(&output_result.stderr);
+    if !success {
+        let error_message = String::from_utf8_lossy(&stderr);
         return Err(format!(
             "ffprobe failed with exit code: {:?}\nStderr: {}",
-            output_result.status.code(),
+            _code,
             error_message
         ));
     }
 
-    let stdout = String::from_utf8_lossy(&output_result.stdout);
+    let stdout = String::from_utf8_lossy(&stdout);
     let duration_str = stdout.trim();
     let duration = duration_str.parse::<f64>().map_err(|e| {
         format!(
@@ -444,12 +509,12 @@ pub fn parse_wav_file(path: &PathBuf) -> Result<Vec<i16>> {
 
 // Robust decoder: use ffmpeg sidecar to decode any WAV to mono 16k PCM16 (s16le) and return samples.
 // This serves as a fallback in case WAV headers/metadata or reader quirks cause silent or truncated audio.
-pub async fn decode_pcm_mono16k_from_wav(
-    app: tauri::AppHandle,
+pub async fn decode_pcm_mono16k_from_wav<R: Runtime>(
+    app: tauri::AppHandle<R>,
     path: PathBuf,
 )
 -> Result<Vec<i16>> {
-    use tauri::Manager;
+    
 
     // Try fast path via hound first
     let parsed = parse_wav_file(&path);
@@ -489,10 +554,7 @@ pub async fn decode_pcm_mono16k_from_wav(
 
     // Fallback: decode via ffmpeg to raw s16le mono 16k
     let input_lossy = path.to_string_lossy().into_owned();
-    let sidecar = app
-        .shell()
-        .sidecar("ffmpeg")
-        .context("Failed to create sidecar command for 'ffmpeg' (fallback decode)")?;
+    let sidecar = app.shell().sidecar("ffmpeg");
     let args = vec![
         "-nostdin".into(),
         "-hide_banner".into(),
@@ -511,16 +573,35 @@ pub async fn decode_pcm_mono16k_from_wav(
         "s16le".into(),
         "-".into(),
     ];
-    let out = sidecar
-        .args(args)
-        .output()
-        .await
-        .context("ffmpeg raw decode failed to run")?;
-    if !out.status.success() {
-        let stderr = String::from_utf8_lossy(&out.stderr);
+    // Try sidecar then system ffmpeg
+    let (success, _code, stdout, stderr) = match sidecar {
+        Ok(cmd) => match cmd.args(args.clone()).output().await {
+            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Err(_) => {
+                tracing::warn!("ffmpeg sidecar unavailable/failed, falling back to system ffmpeg (raw decode)");
+                let sys = TokioCommand::new("ffmpeg")
+                    .args(args.clone())
+                    .output()
+                    .await
+                    .context("system ffmpeg raw decode failed to run")?;
+                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            }
+        },
+        Err(e) => {
+            tracing::warn!("ffmpeg sidecar init error: {}. Falling back to system ffmpeg (raw decode)", e);
+            let sys = TokioCommand::new("ffmpeg")
+                .args(args.clone())
+                .output()
+                .await
+                .context("system ffmpeg raw decode failed to run")?;
+            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+        }
+    };
+    if !success {
+        let stderr = String::from_utf8_lossy(&stderr);
         bail!("ffmpeg raw decode exited non-zero: {}", stderr);
     }
-    let pcm = out.stdout;
+    let pcm = stdout;
     if pcm.len() < 2 {
         bail!("ffmpeg raw decode produced empty audio");
     }

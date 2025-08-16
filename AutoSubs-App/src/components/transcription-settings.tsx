@@ -5,13 +5,13 @@ import {
     Github,
     Captions,
     HelpCircle,
-    XCircle,
     RefreshCcw,
     History,
     LoaderCircle,
     CirclePlay,
     Copy,
     FolderOpen,
+    XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -50,7 +50,6 @@ import { Gauge } from "lucide-react"
 import { platform } from "@tauri-apps/plugin-os"
 import { writeText } from "@tauri-apps/plugin-clipboard-manager"
 import { openPath } from "@tauri-apps/plugin-opener"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
@@ -96,8 +95,6 @@ export const TranscriptionSettings = ({
         isDiarizing,
         pushToTimeline,
         cancelRequestedRef,
-        gpuFallback,
-        dismissGpuFallback,
     } = useGlobal()
     // Ref to track cancellation requests - allows interrupting polling loops
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
@@ -577,28 +574,7 @@ export const TranscriptionSettings = ({
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
                 >
-                    {/* GPU Fallback Notice */}
-                    {gpuFallback && (
-                        <Alert className="pt-3 relative bg-amber-50/90 border border-amber-200 dark:bg-amber-950/50 dark:border-amber-700">
-                            <div className="flex items-start justify-between gap-2">
-                                <div>
-                                    <AlertTitle>Retrying on CPU for better accuracy</AlertTitle>
-                                    <AlertDescription>
-                                        GPU transcription looked low quality (avg word prob {Math.round(gpuFallback.avgWordProb * 100) / 100}). This run is on CPU.
-                                    </AlertDescription>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label="Dismiss GPU fallback notice"
-                                    onClick={dismissGpuFallback}
-                                    className="rounded-full"
-                                >
-                                    <XCircle className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </Alert>
-                    )}
+                    
 
                     {/* Model Download Progress */}
                     {isModelDownloading && (

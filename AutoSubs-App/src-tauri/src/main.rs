@@ -4,7 +4,7 @@
 use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
-use tauri::RunEvent;
+use tauri::{EventLoopMessage, RunEvent};
 use tauri::Emitter; // for app.emit
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use tauri_plugin_updater::UpdaterExt;
@@ -19,6 +19,7 @@ use tauri_plugin_shell::ShellExt; // for app.shell()
 use tauri_plugin_store::Builder as StoreBuilder;
 use tauri_plugin_clipboard_manager::init as clipboard_plugin;
 use tauri_plugin_opener::init as opener_plugin;
+use tokio::process::Command as TokioCommand;
 
 mod audio;
 mod config;
@@ -26,6 +27,10 @@ mod models;
 mod transcribe;
 mod transcript;
 mod logging;
+
+// Include integration-like tests that need crate visibility
+#[cfg(test)]
+mod tests;
 
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
@@ -58,51 +63,88 @@ fn main() {
                     let mut ffmpeg_version = String::new();
                     let mut ffprobe_version = String::new();
 
-                    // ffmpeg -version
+                    // ffmpeg -version (sidecar first, then system fallback)
                     match app_handle.shell().sidecar("ffmpeg") {
                         Ok(cmd) => {
                             match cmd.args(["-version"]).output().await {
-                                Ok(out) => {
-                                    ffmpeg_ok = out.status.success();
+                                Ok(out) if out.status.success() => {
+                                    ffmpeg_ok = true;
                                     let stdout = String::from_utf8_lossy(&out.stdout);
                                     ffmpeg_version = stdout.lines().next().unwrap_or("").to_string();
-                                    tracing::info!("ffmpeg check: ok={}, version=\"{}\"", ffmpeg_ok, ffmpeg_version);
-                                    if !ffmpeg_ok {
-                                        let stderr = String::from_utf8_lossy(&out.stderr);
-                                        tracing::warn!("ffmpeg -version exited non-zero. stderr: {}", stderr);
+                                    tracing::info!("ffmpeg check (sidecar): ok=true, version=\"{}\"", ffmpeg_version);
+                                }
+                                Ok(out) => {
+                                    let stderr = String::from_utf8_lossy(&out.stderr);
+                                    tracing::warn!("ffmpeg sidecar -version exited non-zero. stderr: {}", stderr);
+                                    // fallback to system
+                                    if let Ok(sys) = TokioCommand::new("ffmpeg").arg("-version").output().await {
+                                        ffmpeg_ok = sys.status.success();
+                                        let stdout = String::from_utf8_lossy(&sys.stdout);
+                                        ffmpeg_version = stdout.lines().next().unwrap_or("").to_string();
+                                        tracing::info!("ffmpeg check (system): ok={}, version=\"{}\"", ffmpeg_ok, ffmpeg_version);
                                     }
                                 }
                                 Err(e) => {
                                     tracing::warn!("ffmpeg sidecar execution failed: {:?}", e);
+                                    if let Ok(sys) = TokioCommand::new("ffmpeg").arg("-version").output().await {
+                                        ffmpeg_ok = sys.status.success();
+                                        let stdout = String::from_utf8_lossy(&sys.stdout);
+                                        ffmpeg_version = stdout.lines().next().unwrap_or("").to_string();
+                                        tracing::info!("ffmpeg check (system): ok={}, version=\"{}\"", ffmpeg_ok, ffmpeg_version);
+                                    }
                                 }
                             }
                         }
                         Err(e) => {
                             tracing::warn!("ffmpeg sidecar not found/failed to init: {:?}", e);
+                            if let Ok(sys) = TokioCommand::new("ffmpeg").arg("-version").output().await {
+                                ffmpeg_ok = sys.status.success();
+                                let stdout = String::from_utf8_lossy(&sys.stdout);
+                                ffmpeg_version = stdout.lines().next().unwrap_or("").to_string();
+                                tracing::info!("ffmpeg check (system): ok={}, version=\"{}\"", ffmpeg_ok, ffmpeg_version);
+                            }
                         }
                     }
 
-                    // ffprobe -version
+                    // ffprobe -version (sidecar first, then system fallback)
                     match app_handle.shell().sidecar("ffprobe") {
                         Ok(cmd) => {
                             match cmd.args(["-version"]).output().await {
-                                Ok(out) => {
-                                    ffprobe_ok = out.status.success();
+                                Ok(out) if out.status.success() => {
+                                    ffprobe_ok = true;
                                     let stdout = String::from_utf8_lossy(&out.stdout);
                                     ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                    tracing::info!("ffprobe check: ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                                    if !ffprobe_ok {
-                                        let stderr = String::from_utf8_lossy(&out.stderr);
-                                        tracing::warn!("ffprobe -version exited non-zero. stderr: {}", stderr);
+                                    tracing::info!("ffprobe check (sidecar): ok=true, version=\"{}\"", ffprobe_version);
+                                }
+                                Ok(out) => {
+                                    let stderr = String::from_utf8_lossy(&out.stderr);
+                                    tracing::warn!("ffprobe sidecar -version exited non-zero. stderr: {}", stderr);
+                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
+                                        ffprobe_ok = sys.status.success();
+                                        let stdout = String::from_utf8_lossy(&sys.stdout);
+                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
+                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
                                     }
                                 }
                                 Err(e) => {
                                     tracing::warn!("ffprobe sidecar execution failed: {:?}", e);
+                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
+                                        ffprobe_ok = sys.status.success();
+                                        let stdout = String::from_utf8_lossy(&sys.stdout);
+                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
+                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
+                                    }
                                 }
                             }
                         }
                         Err(e) => {
                             tracing::warn!("ffprobe sidecar not found/failed to init: {:?}", e);
+                            if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
+                                ffprobe_ok = sys.status.success();
+                                let stdout = String::from_utf8_lossy(&sys.stdout);
+                                ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
+                                tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
+                            }
                         }
                     }
 

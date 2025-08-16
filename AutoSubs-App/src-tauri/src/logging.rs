@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, RwLock};
 
 use once_cell::sync::Lazy;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 use tracing_subscriber::{fmt, layer::SubscriberExt, Registry};
 
 // Keep the non-blocking worker guard alive for the lifetime of the app
@@ -58,7 +58,7 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn resolve_log_dir(app: &AppHandle) -> PathBuf {
+fn resolve_log_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
     let pr = app.path();
     let mut dir = pr
         .app_log_dir()
@@ -69,7 +69,7 @@ fn resolve_log_dir(app: &AppHandle) -> PathBuf {
     dir
 }
 
-pub fn init_logging(app: &AppHandle) {
+pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
     // Prevent double init
     static INIT_ONCE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
     if let Ok(mut inited) = INIT_ONCE.lock() {
@@ -123,7 +123,7 @@ pub fn clear_backend_logs() {
 }
 
 #[tauri::command]
-pub fn get_log_dir(app: AppHandle) -> Result<String, String> {
+pub fn get_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     let dir = resolve_log_dir(&app);
     ensure_dir(&dir).map_err(|e| e.to_string())?;
     Ok(dir.to_string_lossy().to_string())
