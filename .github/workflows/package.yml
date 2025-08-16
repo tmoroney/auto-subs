@@ -1,7 +1,7 @@
 name: Package AutoSubs for MacOS and Linux
 on:
   release:
-    types: [published, prereleased, created, released]
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
