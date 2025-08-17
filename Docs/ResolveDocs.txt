@@ -1,4 +1,4 @@
-Last Updated: 7 May 2025
+Last Updated: 6 Jun 2025
 ------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
@@ -403,6 +403,8 @@ Timeline
                                                                          # {'video': {'in': 0, 'out': 134}, 'audio': {'in': 0, 'out': 134}}
   SetMarkInOut(in, out, type="all")               --> Bool               # Sets mark in/out of type "video", "audio" or "all" (default).
   ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
+  GetVoiceIsolationState(trackIndex)              --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the given track index
+  SetVoiceIsolationState(trackIndex, {VoiceIsolationState}) --> Bool      # Sets Voice Isolation state of audio track with given trackIndex (int) to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100] and 1 <= trackIndex <= GetTrackCount("audio"). Returns True if successful.
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
@@ -490,6 +492,8 @@ TimelineItem
   GetIsFusionOutputCacheEnabled()                 --> cache_value        # Returns if the cache corresponding to cache_type is enabled (or auto)
   SetColorOutputCache(cache_value)                --> Bool               # Sets caching to enabled or disabled. Equivalent to clip context menu action 'Render Cache Color Output'.
   SetFusionOutputCache(cache_value)               --> Bool               # Sets caching to auto, enabled or disabled. Equivalent to clip context menu action 'Render Cache Fusion Output'.
+  GetVoiceIsolationState()                        --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the timelineItem
+  SetVoiceIsolationState({VoiceIsolationState})    --> Bool               # Sets Voice Isolation state of the timelineItem to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100]. Returns True if successful.
 
 Gallery
   GetAlbumName(galleryStillAlbum)                 --> string              # Returns the name of the GalleryStillAlbum object 'galleryStillAlbum'.
