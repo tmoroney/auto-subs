@@ -146,10 +146,23 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
-    - name: Configure ggml (disable i8mm) – ARM only
+    - name: Configure whisper/ggml (ARM only)
       if: matrix.arch == 'arm64'
       run: |
-        echo "CMAKE_CONFIGURE_ARGS=-DGGML_I8MM=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3" >> $GITHUB_ENV
+        {
+          echo 'WHISPER_CMAKE_ARGS=-DGGML_I8MM=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3';
+          echo 'MACOSX_DEPLOYMENT_TARGET=13.3';
+        } >> "$GITHUB_ENV"
+
+    - name: Force-disable i8mm via macro (ARM only)
+      if: matrix.arch == 'arm64'
+      run: |
+        echo 'CFLAGS=-D__ARM_FEATURE_MATMUL_INT8=0' >> "$GITHUB_ENV"
+        echo 'CXXFLAGS=-D__ARM_FEATURE_MATMUL_INT8=0' >> "$GITHUB_ENV"
+
+    - name: Clear whisper-rs-sys cmake cache (ARM only)
+      if: matrix.arch == 'arm64'
+      run: rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
 
     - name: Build Tauri
       env:
@@ -159,7 +172,6 @@ jobs:
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
         export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
         export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-        echo "CMAKE_CONFIGURE_ARGS=${CMAKE_CONFIGURE_ARGS}"   # sanity log
         npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
