@@ -27,11 +27,13 @@ jobs:
             target: aarch64-apple-darwin
             features: mac-aarch
             pkg_suffix: ARM
+            cmake_extra: "-DCMAKE_C_FLAGS=-mno-i8mm -DCMAKE_CXX_FLAGS=-mno-i8mm"
           - platform: macos-13
             arch: x86_64
             target: x86_64-apple-darwin
             features: mac-x86_64
             pkg_suffix: Intel
+            cmake_extra: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -147,12 +149,17 @@ jobs:
         rm -f "$ZIP_NAME"
 
     - name: Build Tauri
+      env:
+        MACOSX_DEPLOYMENT_TARGET: "13.3"
+        CMAKE_ARGS: >-
+          -DGGML_I8MM=OFF
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3
+            ${{ matrix.cmake_extra }}
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
         export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
         export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-        # Build with explicit features and explicit Rust target from matrix
         npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
