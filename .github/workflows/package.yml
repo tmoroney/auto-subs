@@ -148,16 +148,25 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
+    - name: ARM compile flags (disable i8mm)
+      if: matrix.arch == 'arm64'
+      run: |
+        echo "CFLAGS=-mno-i8mm" >> $GITHUB_ENV
+        echo "CXXFLAGS=-mno-i8mm" >> $GITHUB_ENV
+        # optional but nice to have:
+        echo "MACOSX_DEPLOYMENT_TARGET=13.3" >> $GITHUB_ENV
+
     - name: Build Tauri
       env:
         MACOSX_DEPLOYMENT_TARGET: "13.3"
-        CMAKE_ARGS: "-DGGML_I8MM=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 ${{ matrix.cmake_extra }}"
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-        npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
+          export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+          echo "CFLAGS=$CFLAGS"
+          echo "CXXFLAGS=$CXXFLAGS"
+          npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
       run: |
