@@ -1,7 +1,7 @@
 name: Package AutoSubs for MacOS and Linux
 on:
   release:
-    types: [published]
+    types: [released]
   workflow_dispatch:
     inputs:
       tag:
@@ -45,6 +45,16 @@ jobs:
           echo "ERROR: TAG is empty. Trigger this workflow from a Release event or provide the 'tag' input when using workflow_dispatch."
           exit 1
         fi
+        
+    - name: Switch Xcode (ARM only)
+      if: matrix.arch == 'arm64'
+      run: |
+        sudo xcode-select -s /Applications/Xcode_16.4.app
+        xcodebuild -version
+        xcrun --sdk macosx --show-sdk-version
+        xcrun --sdk macosx --show-sdk-path
+        xcrun -find clang
+        xcrun clang --version
         
 
     - name: Import Apple Certificates
@@ -239,6 +249,34 @@ jobs:
     steps:
       - name: Checkout AutoSubs Repo Code
         uses: actions/checkout@v4
+ 
+      - name: Install Vulkan SDK (for glslc)
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release
+          CODENAME="$(. /etc/os-release && echo "${VERSION_CODENAME:-}")"
+          if [ -z "$CODENAME" ]; then
+            CODENAME="$(lsb_release -cs || echo noble)"
+          fi
+
+          # Add LunarG signing key to a keyring
+          curl -fsSL https://packages.lunarg.com/lunarg-signing-key-pub.asc \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/lunarg-archive-keyring.gpg >/dev/null
+
+          # Install the codename-specific repo list locally for apt
+          curl -fsSL "https://packages.lunarg.com/vulkan/lunarg-vulkan-$CODENAME.list" \
+            | sudo tee "/etc/apt/sources.list.d/lunarg-vulkan-$CODENAME.list" >/dev/null
+
+          # Ensure the repo entry references the keyring (in case the list lacks it)
+          sudo sed -i 's|^deb https://packages.lunarg.com/vulkan |deb [signed-by=/usr/share/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan |' \
+            "/etc/apt/sources.list.d/lunarg-vulkan-$CODENAME.list"
+
+          sudo apt-get update
+          sudo apt-get install -y vulkan-sdk
+
+          glslc --version
 
       - name: Install Linux dependencies
         run: |
@@ -254,7 +292,6 @@ jobs:
             libvulkan-dev \
             mesa-vulkan-drivers \
             libshaderc-dev \
-            shaderc \
             spirv-tools \
             glslang-tools
           # optional:
