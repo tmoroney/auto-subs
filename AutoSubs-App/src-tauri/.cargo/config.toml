@@ -1,0 +1,9 @@
+[target.aarch64-apple-darwin]
+# Ensure the linker targets macOS 13.3 or newer
+rustflags = ["-C", "link-arg=-mmacosx-version-min=13.3"]
+
+[env]
+# Propagate deployment target to build scripts and C/C++ compilers
+MACOSX_DEPLOYMENT_TARGET = "13.3"
+# Ensure CMake-based native builds (whisper-rs-sys/ggml) use the same target
+CMAKE_ARGS = "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3"
