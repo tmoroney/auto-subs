@@ -3,7 +3,7 @@ Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, ac
 
 ### 📥 One‑Click Installer: [Windows](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [macOS (Apple Silicon)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [macOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg)
 
-### 🐧 [Linux (.deb): see install commands below](#linux-deb-install)
+### 🐧 [Linux (.deb): see install commands below](#quick-start)
 
 **💡 100,000+ downloads so far!**
 
