@@ -1,7 +1,10 @@
 # AutoSubs – Subtitles Made Simple
 Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, accurate, and fully customisable** subtitles in a sleek, intuitive interface. Now works with Davinci Resolve and standalone.
 
-### 📥 One-Click Installer: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [MacOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg) ✨ [Linux (.deb)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.deb)
+### 📥 One‑Click Installer: [Windows](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [macOS (Apple Silicon)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [macOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg)
+
+### 🐧 [Linux (.deb): see install commands below](#linux-deb-install)
+
 **💡 100,000+ downloads so far!**
 
 <a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
@@ -28,16 +31,18 @@ Generate Subtitles & Label Speakers |  Advanced Settings
 
 ## Quick Start
 ### 1) Download & Install
-- Use the installer links above for your OS.
-- Open the installer and follow the prompts.
 
- - Linux (.deb): download and install from the latest release
-   ```bash
-   wget https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.deb
-   sudo apt install ./AutoSubs-linux-x86_64.deb
-   # or
-   # sudo dpkg -i AutoSubs-linux-x86_64.deb && sudo apt -f install
-   ```
+**🪟 Windows + 🍎 macOS:** 
+Download the installer for your platform from the links above and follow the prompts.
+
+**🐧 Linux (.deb):**
+Download and install the latest release with:
+```bash
+wget https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.deb
+sudo apt install ./AutoSubs-linux-x86_64.deb
+# If you see dependency errors, run:
+sudo dpkg -i AutoSubs-linux-x86_64.deb && sudo apt -f install
+```
 
 ### 2) Choose a Workflow
 #### Standalone Mode (no Resolve required)
