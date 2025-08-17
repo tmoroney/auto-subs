@@ -53,7 +53,7 @@
       "binaries/ffprobe"
     ],
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.3"
     },
     "linux": {
       "deb": {
