@@ -18,7 +18,7 @@ use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
 use whisper_rs::DtwParameters;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, SegmentCallbackData, WhisperContext, WhisperState, WhisperSegment, WhisperTokenData};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, WhisperContext, WhisperSegment};
 use regex::Regex;
 use once_cell::sync::Lazy;
 
@@ -761,12 +761,6 @@ fn process_and_align_segments(
 
 
 fn cs_to_s(cs: i64) -> f64 { (cs as f64) * 0.01 } // centiseconds → seconds
-
-// Strip *embedded* control markers like "[_TT_320]", "[_EOT_]" anywhere in the token.
-static CTRL_RE: Lazy<Regex> = Lazy::new(|| {
-    // matches:  [_WORD] or [_WORD_123]   (greedy enough for current whisper.cpp markers)
-    Regex::new(r"\[_[A-Z]+(?:_[0-9]+)?\]").unwrap()
-});
 
 // Returns true if `s` is *only* a control marker like "[_BEG_]" or "[_TT_320]".
 fn is_whole_control_token(s: &str) -> bool {

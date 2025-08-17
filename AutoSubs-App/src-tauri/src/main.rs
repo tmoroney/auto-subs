@@ -4,7 +4,7 @@
 use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
-use tauri::{EventLoopMessage, RunEvent};
+use tauri::{RunEvent};
 use tauri::Emitter; // for app.emit
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use tauri_plugin_updater::UpdaterExt;
@@ -57,7 +57,6 @@ fn main() {
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    use tauri::Manager;
                     let mut ffmpeg_ok = false;
                     let mut ffprobe_ok = false;
                     let mut ffmpeg_version = String::new();
