@@ -146,6 +146,22 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
+    - name: Configure ggml/whisper for ARM (disable i8mm)
+      if: matrix.arch == 'arm64'
+      run: |
+        # Prevent the preprocessor from enabling i8mm paths
+        echo 'CFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
+        echo 'CXXFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
+        # Also disable ggml i8mm + native flags (deterministic across runners)
+        echo 'CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3' >> "$GITHUB_ENV"
+
+    - name: Clear whisper-rs-sys CMake cache (ARM only)
+      if: matrix.arch == 'arm64'
+      run: |
+        find AutoSubs-App/src-tauri/target/release/build -type f -name CMakeCache.txt -delete || true
+        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/build || true
+        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
+
     - name: Build Tauri
       run: |
         cd AutoSubs-App
