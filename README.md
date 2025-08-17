@@ -60,6 +60,9 @@ sudo dpkg -i AutoSubs-linux-x86_64.deb && sudo apt -f install
 4. Click Transcribe. Edit speakers/subtitles as needed.
 5. Send styled subtitles back to Resolve.
 
+> [!WARNING]
+> AutoSubs will not work with the Mac App Store version of DaVinci Resolve.
+
 # Contribute to AutoSubs
 PRs are welcome!
 
