@@ -61,7 +61,7 @@ sudo dpkg -i AutoSubs-linux-x86_64.deb && sudo apt -f install
 5. Send styled subtitles back to Resolve.
 
 > [!WARNING]
-> AutoSubs will not work with the Mac App Store version of DaVinci Resolve.
+> AutoSubs will not work with the Mac App Store version of DaVinci Resolve. If you have the App Store version, you must re-install from the [official website](https://www.blackmagicdesign.com/products/davinciresolve/) for AutoSubs to be visible in Resolve.
 
 # Contribute to AutoSubs
 PRs are welcome!
