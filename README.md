@@ -1,28 +1,25 @@
 # AutoSubs – Subtitles Made Simple
 Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, accurate, and fully customisable** subtitles in a sleek, intuitive interface. Now works with Davinci Resolve and standalone.
 
-### 📥 One-Click Installer: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [MacOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg)
+### 📥 One-Click Installer: [Windows ](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-windows-x86_64.exe) ✨ [MacOS (ARM)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-ARM.pkg) ✨ [MacOS (Intel)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-Mac-Intel.pkg) ✨ [Linux (.deb)](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.deb)
 **💡 100,000+ downloads so far!**
 
 <a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## 🚀 What’s New in V3
-- **Complete UI Overhaul** — Cleaner, more consistent, and more discoverable controls.
-- **Performance Improvements** — Faster speaker diarization/labeling with negligible added time; ~3× lower idle memory via the Rust backend.
-- **Expanded Model Management** — More model options, easy in‑UI deletion, clearer status indicators.
-- **Timing Fixes** — Correct subtitle timing for variable frame rates and drop‑frame scenarios.
-- **Rust Backend (replaces Python)** — Faster, leaner, and more reliable foundation for future features.
-- **Standalone Mode** — Use AutoSubs on any audio/video file without DaVinci Resolve.
-- **New Subtitle Editor** — Modern, responsive editor with a resizable caption viewer.
-- **Advanced Speaker Editor** — Per‑speaker styles (fill/outline/border) with live preview; choose different output track per speaker.
-- **Multi‑line Subtitles** — Pick how many lines to show per subtitle.
-- **Resizable Subtitle Viewer** — Desktop layout supports side‑by‑side editing and review.
+- **New, cleaner UI** — Easier to use and more consistent.
+- **Faster + lighter** — Quicker diarization and ~3× lower idle memory on a new Rust backend.
+- **Smarter models** — More choices, easy delete, and clear status badges.
+- **Better timing** — Accurate with variable frame rates and drop‑frame.
+- **Standalone mode** — Transcribe any audio/video file, no Resolve required.
+- **Powerful editors** — Modern subtitle editor and advanced speaker styling (per‑speaker tracks, fill/outline/border).
+- **Flexible viewing** — Multi‑line subtitles and a resizable desktop viewer.
 
 ## ⭐ Core Capabilities
-- **Blazing Fast Transcription** in many languages.
-- **Speaker Diarization & Labeling** with automatic color coding.
-- **English Translation** (more languages coming soon).
-- **Modern, Creator‑Focused UI** with thoughtful defaults and power‑user controls.
+- **Fast, accurate transcription** in many languages.
+- **Speaker diarization & labels** with automatic colors.
+- **English translation** (more languages coming soon).
+- **Creator‑friendly UI** with smart defaults and pro controls.
 
 Generate Subtitles & Label Speakers |  Advanced Settings
 :-------------------------:|:-------------------------:
@@ -33,6 +30,14 @@ Generate Subtitles & Label Speakers |  Advanced Settings
 ### 1) Download & Install
 - Use the installer links above for your OS.
 - Open the installer and follow the prompts.
+
+ - Linux (.deb): download and install from the latest release
+   ```bash
+   wget https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.deb
+   sudo apt install ./AutoSubs-linux-x86_64.deb
+   # or
+   # sudo dpkg -i AutoSubs-linux-x86_64.deb && sudo apt -f install
+   ```
 
 ### 2) Choose a Workflow
 #### Standalone Mode (no Resolve required)
