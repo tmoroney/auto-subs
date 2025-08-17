@@ -48,7 +48,23 @@ fn main() {
         // Ensure compiler-rt builtins are available at link time. Newer SDKs expect
         // ___isPlatformVersionAtLeast from libclang_rt.osx.a; in some Rust link invocations
         // the driver may not add it automatically. We add it explicitly if found.
-        let clang_res_dir = std::process::Command::new("clang")
+        // Resolve the clang driver path in a CI-friendly way:
+        // 1) CC env (if provided), 2) xcrun -f clang, 3) bare "clang".
+        let clang_path = std::env::var("CC")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                std::process::Command::new("xcrun")
+                    .args(["-f", "clang"])
+                    .output()
+                    .ok()
+                    .and_then(|o| if o.status.success() { Some(String::from_utf8_lossy(&o.stdout).trim().to_string()) } else { None })
+            })
+            .unwrap_or_else(|| "clang".to_string());
+
+        println!("cargo:warning=Using clang driver: {}", clang_path);
+
+        let clang_res_dir = std::process::Command::new(&clang_path)
             .arg("-print-resource-dir")
             .output()
             .ok()
@@ -66,7 +82,11 @@ fn main() {
                 // archive resolution order or dead_strip behavior.
                 println!("cargo:rustc-link-arg=-Wl,-force_load,{}", crt);
                 println!("cargo:warning=Linking compiler-rt archive: {}", crt);
+            } else {
+                println!("cargo:warning=compiler-rt archive not found at {} (skipping explicit link)", crt);
             }
+        } else {
+            println!("cargo:warning=Failed to query clang resource dir via {} -print-resource-dir", clang_path);
         }
 
         // Safe duplicates: ensure required frameworks and C++ are linked at the final step.
