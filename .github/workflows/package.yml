@@ -360,8 +360,9 @@ jobs:
           LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
           # Debian package lives under bundle/deb
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
+          OUT_NAME="AutoSubs-linux-x86_64.deb"
           if [ -n "$DEB_FILE" ]; then
-            cp "$DEB_FILE" .
+            cp "$DEB_FILE" "$OUT_NAME"
           else
             echo "WARNING: .deb package not found in $LINUX_BUNDLE_DIR/deb"
           fi
