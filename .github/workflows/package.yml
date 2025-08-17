@@ -27,13 +27,11 @@ jobs:
             target: aarch64-apple-darwin
             features: mac-aarch
             pkg_suffix: ARM
-            cmake_extra: "-DCMAKE_C_FLAGS=-mno-i8mm -DCMAKE_CXX_FLAGS=-mno-i8mm"
           - platform: macos-13
             arch: x86_64
             target: x86_64-apple-darwin
             features: mac-x86_64
             pkg_suffix: Intel
-            cmake_extra: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -148,13 +146,10 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
-    - name: ARM compile flags (disable i8mm)
+    - name: Configure ggml (disable i8mm) – ARM only
       if: matrix.arch == 'arm64'
       run: |
-        echo "CFLAGS=-mno-i8mm" >> $GITHUB_ENV
-        echo "CXXFLAGS=-mno-i8mm" >> $GITHUB_ENV
-        # optional but nice to have:
-        echo "MACOSX_DEPLOYMENT_TARGET=13.3" >> $GITHUB_ENV
+        echo "CMAKE_CONFIGURE_ARGS=-DGGML_I8MM=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3" >> $GITHUB_ENV
 
     - name: Build Tauri
       env:
@@ -162,11 +157,10 @@ jobs:
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-          export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-          export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-          echo "CFLAGS=$CFLAGS"
-          echo "CXXFLAGS=$CXXFLAGS"
-          npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
+        export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+        echo "CMAKE_CONFIGURE_ARGS=${CMAKE_CONFIGURE_ARGS}"   # sanity log
+        npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
       run: |
@@ -308,9 +302,32 @@ jobs:
             build-essential \
             pkg-config \
             libvulkan-dev \
-            mesa-vulkan-drivers
+            mesa-vulkan-drivers \
+            unzip
           # optional:
           #  vulkan-validationlayers
+
+      - name: Download ffmpeg/ffprobe binaries (Linux)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd AutoSubs-App/src-tauri
+          mkdir -p binaries
+          cd binaries
+
+          ZIP_NAME="ffmpeg-x86_64-unknown-linux-gnu.zip"
+          FFMPEG_SRC="ffmpeg-x86_64-unknown-linux-gnu"
+          FFPROBE_SRC="ffprobe-x86_64-unknown-linux-gnu"
+
+          gh release download \
+            --repo tmoroney/ffmpeg-binaries \
+            --pattern "$ZIP_NAME" \
+            --clobber
+
+          unzip -jo "$ZIP_NAME"
+          chmod +x "$FFMPEG_SRC" "$FFPROBE_SRC"
+          rm -f "$ZIP_NAME"
 
       - name: Install NPM deps
         run: |
