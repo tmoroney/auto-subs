@@ -146,39 +146,7 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
-    - name: Configure ggml/whisper for ARM (disable i8mm)
-      if: matrix.arch == 'arm64'
-      run: |
-        # Make sure these propagate into the *first* CMake configure
-        echo 'CFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
-        echo 'CXXFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
-
-        # Also pass proper CMake cache variables (not WHISPER_CMAKE_ARGS)
-        echo 'CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3' >> "$GITHUB_ENV"
-
-    - name: Clear whisper-rs-sys CMake cache (ARM only)
-      if: matrix.arch == 'arm64'
-      run: |
-        # Wipe *all* possible cmake build dirs and caches created by whisper-rs-sys
-        find AutoSubs-App/src-tauri/target/release/build -type f -name CMakeCache.txt -delete || true
-        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/build || true
-        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
-
-    # Add this before “Build Tauri” (ARM job only)
-    - name: Configure Rust linker with SDK + platform (ARM only)
-      if: matrix.arch == 'arm64'
-      run: |
-        SDK="$(xcrun --sdk macosx --show-sdk-path)"
-        # Make rustc use clang as the linker and point it at the SDK + platform version.
-        echo "RUSTFLAGS=-C linker=$(xcrun -f clang) \
-          -C link-arg=-isysroot -C link-arg=$SDK \
-          -C link-arg=-Wl,-syslibroot,$SDK \
-          -C link-arg=-Wl,-platform_version,macos,13.3.0,13.3.0 \
-          -C link-arg=-mmacosx-version-min=13.3" >> "$GITHUB_ENV"
-
     - name: Build Tauri
-      env:
-        MACOSX_DEPLOYMENT_TARGET: "13.3"
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
