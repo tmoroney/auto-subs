@@ -146,17 +146,23 @@ jobs:
         # Cleanup archive
         rm -f "$ZIP_NAME"
 
-    - name: Configure whisper/ggml (ARM only)
+    - name: Configure ggml/whisper for ARM (disable i8mm)
       if: matrix.arch == 'arm64'
       run: |
-        {
-          echo 'MACOSX_DEPLOYMENT_TARGET=13.3';
-          echo 'WHISPER_CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DCMAKE_C_FLAGS=-U__ARM_FEATURE_MATMUL_INT8 -DCMAKE_CXX_FLAGS=-U__ARM_FEATURE_MATMUL_INT8';
-        } >> "$GITHUB_ENV"
+        # Make sure these propagate into the *first* CMake configure
+        echo 'CFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
+        echo 'CXXFLAGS=-U__ARM_FEATURE_MATMUL_INT8' >> "$GITHUB_ENV"
 
-    - name: Clear whisper-rs-sys cmake cache (ARM only)
+        # Also pass proper CMake cache variables (not WHISPER_CMAKE_ARGS)
+        echo 'CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3' >> "$GITHUB_ENV"
+
+    - name: Clear whisper-rs-sys CMake cache (ARM only)
       if: matrix.arch == 'arm64'
-      run: rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
+      run: |
+        # Wipe *all* possible cmake build dirs and caches created by whisper-rs-sys
+        find AutoSubs-App/src-tauri/target/release/build -type f -name CMakeCache.txt -delete || true
+        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/build || true
+        rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
 
     - name: Build Tauri
       env:
