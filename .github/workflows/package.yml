@@ -165,13 +165,16 @@ jobs:
         rm -rf AutoSubs-App/src-tauri/target/release/build/whisper-rs-sys-*/out/whisper.cpp/build || true
 
     # Add this before “Build Tauri” (ARM job only)
-    - name: Ensure linker target macOS 13.3 for Rust (ARM only)
+    - name: Configure Rust linker with SDK + platform (ARM only)
       if: matrix.arch == 'arm64'
       run: |
-        # For rustc's final link:
-        echo 'RUSTFLAGS=-C link-arg=-Wl,-platform_version,macos,13.3.0,13.3.0 -C link-arg=-mmacosx-version-min=13.3' >> "$GITHUB_ENV"
-        # Also help any cc invocations the toolchain might spawn:
-        echo 'LDFLAGS=-Wl,-platform_version,macos,13.3.0,13.3.0 -mmacosx-version-min=13.3' >> "$GITHUB_ENV"
+        SDK="$(xcrun --sdk macosx --show-sdk-path)"
+        # Make rustc use clang as the linker and point it at the SDK + platform version.
+        echo "RUSTFLAGS=-C linker=$(xcrun -f clang) \
+          -C link-arg=-isysroot -C link-arg=$SDK \
+          -C link-arg=-Wl,-syslibroot,$SDK \
+          -C link-arg=-Wl,-platform_version,macos,13.3.0,13.3.0 \
+          -C link-arg=-mmacosx-version-min=13.3" >> "$GITHUB_ENV"
 
     - name: Build Tauri
       env:
