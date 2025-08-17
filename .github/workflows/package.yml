@@ -150,15 +150,9 @@ jobs:
       if: matrix.arch == 'arm64'
       run: |
         {
-          echo 'WHISPER_CMAKE_ARGS=-DGGML_I8MM=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3';
           echo 'MACOSX_DEPLOYMENT_TARGET=13.3';
+          echo 'WHISPER_CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DCMAKE_C_FLAGS=-U__ARM_FEATURE_MATMUL_INT8 -DCMAKE_CXX_FLAGS=-U__ARM_FEATURE_MATMUL_INT8';
         } >> "$GITHUB_ENV"
-
-    - name: Force-disable i8mm via macro (ARM only)
-      if: matrix.arch == 'arm64'
-      run: |
-        echo 'CFLAGS=-D__ARM_FEATURE_MATMUL_INT8=0' >> "$GITHUB_ENV"
-        echo 'CXXFLAGS=-D__ARM_FEATURE_MATMUL_INT8=0' >> "$GITHUB_ENV"
 
     - name: Clear whisper-rs-sys cmake cache (ARM only)
       if: matrix.arch == 'arm64'
