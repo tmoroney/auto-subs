@@ -18,7 +18,7 @@ use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
 use whisper_rs::DtwParameters;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, WhisperContext, WhisperSegment};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, WhisperContext, WhisperSegment, WhisperVadContext, WhisperVadContextParams, WhisperVadParams};
 use regex::Regex;
 use once_cell::sync::Lazy;
 
@@ -72,6 +72,8 @@ pub async fn transcribe_audio<R: Runtime>(
     app: AppHandle<R>,
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
+    tracing::info!("whisper.cpp {}", whisper_rs::WHISPER_CPP_VERSION);
+    println!("whisper.cpp {}", whisper_rs::WHISPER_CPP_VERSION);
     let start_time = Instant::now();
     println!("Starting transcription with options: {:?}", options);
 
@@ -107,10 +109,14 @@ pub async fn transcribe_audio<R: Runtime>(
     )
     .map_err(|e| format!("Failed to create Whisper context: {}", e))?;
 
+    let vad_model_path = crate::models::get_vad_model_path(app.clone());
+    println!("vad model path: {:?}", vad_model_path);
+
     let transcribe_options = TranscribeOptions {
         path: options.audio_path.clone().into(),
         offset: options.offset,
         lang: options.lang.clone(),
+        vad_model_path: vad_model_path,
         init_prompt: None,
         max_sentence_len: None,
         verbose: None,
@@ -480,6 +486,18 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     params.set_suppress_blank(true);
     params.set_token_timestamps(true);
 
+    let vad_model_path = options.vad_model_path.as_deref();
+
+    params.set_vad_model_path(vad_model_path);
+    params.enable_vad(true);
+
+    let mut vadp = WhisperVadParams::default();
+    vadp.set_threshold(0.5);
+    vadp.set_min_speech_duration(250);
+    vadp.set_min_silence_duration(100);
+    vadp.set_speech_pad(30);
+    params.set_vad_params(vadp);
+
     if let Some(temperature) = options.temperature {
         tracing::debug!("setting temperature to {temperature}");
         params.set_temperature(temperature);
@@ -509,6 +527,7 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     }
     params
 }
+
 /// Aggregates speakers from transcript segments, similar to the frontend logic
 fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
@@ -898,6 +917,45 @@ pub fn get_word_timestamps_from_segment(seg: &WhisperSegment, enable_dtw: bool) 
     words
 }
 
+/// Detect speech segments with Silero VAD via whisper-rs.
+/// `samples` must be mono f32 at 16_000 Hz in [-1.0, 1.0].
+fn detect_speech_segments(vad_model: &str, samples: &[f32]) -> Result<Vec<(usize, usize)>> {
+    // 1) Configure the VAD execution context (CPU is fine; GPU here means CUDA-only).
+    let ctx = WhisperVadContextParams::new();
+
+    // 2) Create the VAD context with the Silero model path
+    let mut vad = WhisperVadContext::new(vad_model, ctx)?; // segments_from_samples needs &mut self.
+
+    // 3) Tune VAD behavior (defaults are reasonable; adjust if needed)
+    let vadp = WhisperVadParams::new();
+    // Examples:
+    // vadp.set_threshold(0.5);
+    // vadp.set_min_speech_duration(250);    // ms
+    // vadp.set_min_silence_duration(100);   // ms
+    // vadp.set_speech_pad(30);              // ms
+    // vadp.set_samples_overlap(0.10);       // seconds of overlap between segments
+    // vadp.set_max_speech_duration(f32::MAX);
+    // (See docs for meanings / defaults - https://docs.rs/whisper-rs/latest/x86_64-apple-darwin/whisper_rs/struct.WhisperVadParams.html)
+
+    // 4) Run the whole pipeline
+    let segs = vad.segments_from_samples(vadp, samples)?; // returns an iterator over segments (https://docs.rs/whisper-rs/latest/x86_64-apple-darwin/whisper_rs/struct.WhisperVadContext.html)
+
+    // 5) Convert centiseconds → sample indices at 16 kHz, clamp, and drop degenerate ranges
+    const SR: f32 = 16_000.0;
+    let n = samples.len() as f32;
+
+    let out: Vec<(usize, usize)> = segs
+        .map(|s| {
+            let start = ((s.start / 100.0) * SR).round().clamp(0.0, n) as usize;
+            let end   = ((s.end   / 100.0) * SR).round().clamp(0.0, n) as usize;
+            (start, end)
+        })
+        .filter(|(a, b)| b > a)
+        .collect();
+
+    Ok(out)
+}
+
 // Optional: sentence-case helper for segment text (and first word if you want).
 fn sentence_case_first_alpha(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -956,40 +1014,9 @@ pub async fn run_transcription_pipeline<R: Runtime>(
     // This is a CPU-intensive task. We run it on a blocking thread
     // to avoid freezing the UI.
     let transcript = tokio::task::spawn_blocking(move || {
-        // Diagnostics: sample stats from parsed WAV
-        let n = original_samples.len();
-        let mut min_v: i32 = i16::MAX as i32;
-        let mut max_v: i32 = i16::MIN as i32;
-        let mut sum: f64 = 0.0;
-        let mut sum_sq: f64 = 0.0;
-        let mut zeros: usize = 0;
-        for &s in &original_samples {
-            let v = s as i32;
-            if v < min_v { min_v = v; }
-            if v > max_v { max_v = v; }
-            sum += v as f64;
-            sum_sq += (v as f64) * (v as f64);
-            if v == 0 { zeros += 1; }
-        }
-        let mean = if n > 0 { sum / n as f64 } else { 0.0 };
-        let rms = if n > 0 { (sum_sq / n as f64).sqrt() } else { 0.0 };
-        let zero_frac = if n > 0 { zeros as f64 / n as f64 } else { 0.0 };
-        tracing::info!(
-            "Parsed WAV stats: samples={}, rms={:.2}, min={}, max={}, mean={:.2}, zero_frac={:.3}",
-            n, rms, min_v, max_v, mean, zero_frac
-        );
-        if n >= 10 {
-            let preview: Vec<i16> = original_samples.iter().take(10).cloned().collect();
-            tracing::debug!("Parsed WAV first 10 samples: {:?}", preview);
-        }
-        if n == 0 || rms == 0.0 {
-            tracing::warn!(
-                "Parsed WAV appears silent or empty (rms={:.2}, samples={})",
-                rms, n
-            );
-        }
         let mut state = ctx.create_state().context("failed to create state")?;
         let mut params = setup_params(&options);
+        
         let st = std::time::Instant::now();
 
         // Only set up Whisper's internal progress callback when diarization is NOT enabled
@@ -1002,6 +1029,10 @@ pub async fn run_transcription_pipeline<R: Runtime>(
         let mut samples = vec![0.0f32; original_samples.len()];
 
         whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
+
+        // let vad_model_path = options.vad_model_path.as_deref().unwrap();
+        // let speech_segments = detect_speech_segments(vad_model_path, &samples)?;
+        // println!("speech segments: {:#?}", speech_segments);
 
         if let Some(abort_callback) = abort_callback {
             params.set_abort_callback_safe(abort_callback);
@@ -1022,12 +1053,7 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             });
         }
 
-        tracing::debug!("set start time...");
-
-        tracing::debug!("setting state full...");
-        state
-            .full(params, &samples)
-            .context("failed to transcribe")?;
+        state.full(params, &samples).context("failed to transcribe")?;
         let _et = std::time::Instant::now();
 
         tracing::debug!("getting segments count...");
@@ -1046,6 +1072,12 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             // If you want “Have” instead of “ have”, do a tiny sentence-case pass:
             let mut text = seg.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
             text = text.trim_start().to_string(); // remove Whisper’s typical leading space
+
+            // Filter out [BLANK_AUDIO]
+            if text == "[BLANK_AUDIO]" {
+                continue;
+            }
+
             // For the very first segment (or if prev ended with .?!), capitalize:
             if seg_idx == 0 /* or your prev-ender test */ {
                 text = sentence_case_first_alpha(&text);

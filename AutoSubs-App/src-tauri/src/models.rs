@@ -1,7 +1,11 @@
 use crate::transcribe::SHOULD_CANCEL;
 use hf_hub::api::Progress;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
 use std::io::copy;
 use std::path::PathBuf;
+use tauri::path::BaseDirectory;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 
 // Progress tracker for model downloads that emits events to the frontend
@@ -146,16 +150,19 @@ fn cleanup_stale_lock_files<R: Runtime>(app: AppHandle<R>) -> Result<(), String>
                 if let Ok(entry) = entry {
                     let path = entry.path();
                     if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
-                        // Remove .lock files
-                        if filename.ends_with(".lock") {
+                        // Remove lock/partial/incomplete files
+                        if filename.ends_with(".lock")
+                            || filename.ends_with(".incomplete")
+                            || filename.ends_with(".part")
+                        {
                             if let Err(e) = std::fs::remove_file(&path) {
                                 println!(
-                                    "Warning: Failed to remove lock file {}: {}",
+                                    "Warning: Failed to remove cache artifact {}: {}",
                                     path.display(),
                                     e
                                 );
                             } else {
-                                println!("Cleaned up stale lock file: {}", filename);
+                                println!("Cleaned up stale cache artifact: {}", filename);
                                 cleaned_count += 1;
                             }
                         }
@@ -169,10 +176,23 @@ fn cleanup_stale_lock_files<R: Runtime>(app: AppHandle<R>) -> Result<(), String>
     }
 
     if cleaned_count > 0 {
-        println!("Cleaned up {} stale lock files", cleaned_count);
+        println!("Cleaned up {} stale cache artifacts", cleaned_count);
     }
 
     Ok(())
+}
+
+/// If a String is required (lossy if path isn’t valid UTF-8).
+pub fn get_vad_model_path<R: Runtime>(app: AppHandle<R>) -> Option<String> {
+    // Try bundled resource path first
+    app
+        .path()
+        .resolve(
+            "models/ggml-silero-v5.1.2.bin",
+            BaseDirectory::Resource,
+        )
+        .ok()
+        .and_then(|p| p.to_str().map(|s| s.to_string()))
 }
 
 /// Checks if a model exists in the cache, and if not, downloads it from the Hugging Face Hub.
@@ -213,6 +233,15 @@ pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> R
             if snapshot_dir.is_dir() {
                 let potential_path = snapshot_dir.join(&filename);
                 if potential_path.exists() {
+                    // Validate cached file; if invalid, remove and continue searching
+                    if let Err(e) = validate_model_file(&potential_path) {
+                        println!(
+                            "Found cached model but validation failed ({}). Removing and continuing...",
+                            e
+                        );
+                        let _ = remove_snapshot_file_and_blob(&potential_path);
+                        continue;
+                    }
                     let _ = app.emit("model-found-in-cache", model);
                     model_path = Some(potential_path);
                     break;
@@ -221,7 +250,7 @@ pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> R
         }
     }
 
-    let model_path = match model_path {
+    let mut model_path = match model_path {
         Some(path) => path,
         None => {
             // Check for cancellation before starting download
@@ -268,6 +297,31 @@ pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> R
             model_path
         }
     };
+
+    // Validate the resolved model path; if invalid, clean and retry download once
+    if let Err(e) = validate_model_file(&model_path) {
+        println!(
+            "Model file validation failed after initial retrieval ({}). Attempting one re-download...",
+            e
+        );
+        let _ = remove_snapshot_file_and_blob(&model_path);
+        let _ = cleanup_stale_lock_files(app.clone());
+
+        let progress = ModelDownloadProgress::new(app.clone(), model.to_string());
+        let redownloaded = repo
+            .download_with_progress(&filename, progress)
+            .map_err(|e| e.to_string())?;
+        let _ = app.emit("model-download-progress", 100);
+        let _ = app.emit("model-download-complete", &model);
+
+        if let Err(e2) = validate_model_file(&redownloaded) {
+            return Err(format!(
+                "Model file appears corrupted or incomplete even after re-download: {}",
+                e2
+            ));
+        }
+        model_path = redownloaded;
+    }
 
     // If on mac, also download the corresponding coreml encoder if it exists
     #[cfg(target_os = "macos")]
@@ -374,14 +428,14 @@ pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> R
                         extract_dir.join(target_path)
                     };
                     if blob_path.exists() {
-                        std::fs::remove_file(&blob_path)
+                        fs::remove_file(&blob_path)
                             .map_err(|e| format!("Failed to delete zip blob: {}", e))?;
                     }
-                    std::fs::remove_file(&coreml_zip_path)
+                    fs::remove_file(&coreml_zip_path)
                         .map_err(|e| format!("Failed to delete zip symlink: {}", e))?;
                 } else {
                     // If it's not a symlink, just delete the file itself
-                    std::fs::remove_file(&coreml_zip_path)
+                    fs::remove_file(&coreml_zip_path)
                         .map_err(|e| format!("Failed to delete zip file: {}", e))?;
                 }
             }
@@ -404,10 +458,76 @@ pub fn download_model_if_needed<R: Runtime>(app: AppHandle<R>, model: &str) -> R
     Ok(model_path)
 }
 
+/// --- Helpers to validate and clean cached model files ---
+fn resolve_symlink_target(path: &Path) -> Result<PathBuf, String> {
+    let metadata = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
+    if metadata.file_type().is_symlink() {
+        let target = fs::read_link(path).map_err(|e| e.to_string())?;
+        let base = path.parent().ok_or_else(|| "Failed to get parent directory".to_string())?;
+        Ok(if target.is_absolute() { target } else { base.join(target) })
+    } else {
+        Ok(path.to_path_buf())
+    }
+}
+
+fn validate_model_file(path: &Path) -> Result<(), String> {
+    let blob_path = resolve_symlink_target(path)?;
+    if !blob_path.exists() {
+        return Err(format!(
+            "Model blob target does not exist: {}",
+            blob_path.display()
+        ));
+    }
+    let md = fs::metadata(&blob_path).map_err(|e| e.to_string())?;
+    // Basic sanity: should be non-trivial size (> 1MB)
+    if md.len() < 1_000_000 {
+        return Err(format!(
+            "Model blob seems too small ({} bytes): {}",
+            md.len(),
+            blob_path.display()
+        ));
+    }
+
+    // Optional: try reading a few bytes to ensure file is readable
+    let mut f = fs::File::open(&blob_path).map_err(|e| e.to_string())?;
+    let mut buf = [0u8; 16];
+    let _ = f.read(&mut buf).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+fn remove_snapshot_file_and_blob(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let metadata = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
+    if metadata.file_type().is_symlink() {
+        let target_path = fs::read_link(path).map_err(|e| e.to_string())?;
+        let base = path.parent().ok_or_else(|| "Failed to get parent directory".to_string())?;
+        let blob_path = if target_path.is_absolute() {
+            target_path
+        } else {
+            base.join(target_path)
+        };
+        if blob_path.exists() {
+            fs::remove_file(&blob_path)
+                .map_err(|e| format!("Failed to delete blob file {}: {}", blob_path.display(), e))?;
+        }
+        fs::remove_file(path)
+            .map_err(|e| format!("Failed to delete snapshot symlink {}: {}", path.display(), e))?;
+    } else if metadata.is_dir() {
+        fs::remove_dir_all(path)
+            .map_err(|e| format!("Failed to delete directory {}: {}", path.display(), e))?;
+    } else {
+        fs::remove_file(path)
+            .map_err(|e| format!("Failed to delete file {}: {}", path.display(), e))?;
+    }
+    Ok(())
+}
+
 #[command]
 pub fn delete_model<R: Runtime>(model: &str, app: AppHandle<R>) -> Result<(), String> {
     let snapshots_dir = get_snapshots_dir(app.clone());
-
     if !snapshots_dir.exists() {
         return Ok(()); // No models to delete
     }
@@ -432,41 +552,31 @@ pub fn delete_model<R: Runtime>(model: &str, app: AppHandle<R>) -> Result<(), St
                 let file_path = snapshot_dir.join(pattern);
                 if file_path.exists() {
                     // Use symlink_metadata to check the file type without following the link.
-                    let metadata =
-                        std::fs::symlink_metadata(&file_path).map_err(|e| e.to_string())?;
+                    let metadata = fs::symlink_metadata(&file_path).map_err(|e| e.to_string())?;
 
                     if metadata.file_type().is_symlink() {
                         // It's a symlink. Read the link to get the path to the actual file (the blob).
-                        let target_path =
-                            std::fs::read_link(&file_path).map_err(|e| e.to_string())?;
+                        let target_path = fs::read_link(&file_path).map_err(|e| e.to_string())?;
                         let blob_path = if target_path.is_absolute() {
                             target_path
                         } else {
                             // hf-hub links are relative, so we resolve them from the snapshot dir.
                             snapshot_dir.join(target_path)
                         };
-
-                        // Delete the actual blob file if it exists.
                         if blob_path.exists() {
-                            std::fs::remove_file(&blob_path).map_err(|e| {
-                                format!("Failed to delete blob file {}: {}", blob_path.display(), e)
-                            })?;
+                            fs::remove_file(&blob_path)
+                                .map_err(|e| format!("Failed to delete blob file {}: {}", blob_path.display(), e))?;
                         }
-
-                        // Finally, delete the symlink itself.
-                        std::fs::remove_file(&file_path).map_err(|e| {
-                            format!("Failed to delete symlink {}: {}", file_path.display(), e)
-                        })?;
+                        fs::remove_file(&file_path)
+                            .map_err(|e| format!("Failed to delete snapshot symlink {}: {}", file_path.display(), e))?;
                     } else if metadata.is_dir() {
                         // It's a directory (e.g., extracted CoreML model), remove it recursively.
-                        std::fs::remove_dir_all(&file_path).map_err(|e| {
-                            format!("Failed to delete directory {}: {}", file_path.display(), e)
-                        })?;
+                        fs::remove_dir_all(&file_path)
+                            .map_err(|e| format!("Failed to delete directory {}: {}", file_path.display(), e))?;
                     } else {
                         // It's a regular file, not a symlink or directory.
-                        std::fs::remove_file(&file_path).map_err(|e| {
-                            format!("Failed to delete file {}: {}", file_path.display(), e)
-                        })?;
+                        fs::remove_file(&file_path)
+                            .map_err(|e| format!("Failed to delete file {}: {}", file_path.display(), e))?;
                     }
 
                     deleted_files.push(pattern.clone());

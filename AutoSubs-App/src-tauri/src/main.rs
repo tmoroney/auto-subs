@@ -221,7 +221,8 @@ fn main() {
             models::delete_model,
             logging::get_backend_logs,
             logging::clear_backend_logs,
-            logging::get_log_dir
+            logging::get_log_dir,
+            logging::export_backend_logs
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")

@@ -4,21 +4,27 @@
 INSTALL_PATH="/Applications"
 APP_PATH="$INSTALL_PATH/AutoSubs.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
-UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+OLD_UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+UTILITY_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
 WORKFLOW_INTEGRATION_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
 TEXT_FILE="$UTILITY_PATH/AutoSubs/install_path.txt"
+
+# Ensure user-level Utility directory exists
+mkdir -p "$UTILITY_PATH"
 
 # Copy Lua file
 cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
 cp -r "$RESOURCES_PATH/AutoSubs" "$UTILITY_PATH"
 
 # Write JSON file with installation path
-echo $INSTALL_PATH > "$TEXT_FILE"
+echo "$INSTALL_PATH" > "$TEXT_FILE"
+
+# Remove legacy Lua scripts if present
+rm -f "$UTILITY_PATH/AutoSubs V2.lua"
+rm -f "$OLD_UTILITY_PATH/AutoSubs V2.lua"
+rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
 
 # Also copy lua file to Workflow Integration Plugin for ease of use
 cp "$RESOURCES_PATH/AutoSubs.lua" "$WORKFLOW_INTEGRATION_PATH"
-
-# Remove legacy V2 Lua script if present
-rm -f "$UTILITY_PATH/AutoSubs V2.lua"
 
 exit 0

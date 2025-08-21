@@ -8,6 +8,7 @@ pub struct TranscribeOptions {
     pub offset: Option<f64>,
     pub lang: Option<String>,
     pub verbose: Option<bool>,
+    pub vad_model_path: Option<String>,
 
     pub n_threads: Option<i32>,
     pub init_prompt: Option<String>,

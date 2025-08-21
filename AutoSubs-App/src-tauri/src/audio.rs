@@ -514,8 +514,6 @@ pub async fn decode_pcm_mono16k_from_wav<R: Runtime>(
     path: PathBuf,
 )
 -> Result<Vec<i16>> {
-    
-
     // Try fast path via hound first
     let parsed = parse_wav_file(&path);
     if let Ok(samples) = parsed.as_ref() {

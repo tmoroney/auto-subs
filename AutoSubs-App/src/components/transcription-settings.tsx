@@ -183,6 +183,14 @@ export const TranscriptionSettings = ({
 
     const handleOpenLogsFolder = async () => {
         try {
+            // Export current backend logs to a file to ensure something is present
+            try {
+                await invoke<string>("export_backend_logs")
+            } catch (e) {
+                // Non-fatal: still attempt to open folder
+                console.warn("Failed to export backend logs before opening folder:", e)
+            }
+
             const dir = await invoke<string>("get_log_dir")
             if (dir) {
                 await openPath(dir)

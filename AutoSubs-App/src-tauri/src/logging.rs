@@ -128,3 +128,23 @@ pub fn get_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     ensure_dir(&dir).map_err(|e| e.to_string())?;
     Ok(dir.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub fn export_backend_logs<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
+    // Ensure log directory exists
+    let dir = resolve_log_dir(&app);
+    ensure_dir(&dir).map_err(|e| e.to_string())?;
+
+    // Collect logs from in-memory ring buffer
+    let content = if let Ok(guard) = MEMORY_LOGS.read() {
+        guard.iter().cloned().collect::<Vec<_>>().join("\n")
+    } else {
+        String::new()
+    };
+
+    // Write to a deterministic filename so users can find it easily
+    let out_path = dir.join("autosubs-logs.txt");
+    fs::write(&out_path, content).map_err(|e| e.to_string())?;
+
+    Ok(out_path.to_string_lossy().to_string())
+}
