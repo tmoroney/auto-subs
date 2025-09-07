@@ -16,5 +16,15 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
+  },
+  "registries": {
+    "@animate-ui": "https://animate-ui.com/r/{name}.json",
+    "@magicui": "https://magicui.dev/r/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json",
+    "@kibo-ui": "https://www.kibo-ui.com/r/{name}.json",
+    "@motion-primitives": "https://motion-primitives.com/c/{name}.json",
+    "@prompt-kit": "https://prompt-kit.com/c/{name}.json",
+    "@elements": "https://tryelements.dev/r/{name}.json",
+    "@plateui": "https://platejs.org/r/{name}.json"
   }
 }

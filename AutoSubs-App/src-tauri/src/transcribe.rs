@@ -99,6 +99,7 @@ pub async fn transcribe_audio<R: Runtime>(
         Some(true)
     };
 
+    // do this after reading audio instead so that we can calculate dtw mem size based on log mel size (no ffprobe needed)
     let ctx = create_context(
         model_path.as_path(),
         &options.model,
@@ -451,34 +452,24 @@ pub async fn create_normalized_audio<R: Runtime>(
 }
 
 fn setup_params(options: &TranscribeOptions) -> FullParams {
-    let mut beam_size_or_best_of = options.sampling_bestof_or_beam_size.unwrap_or(5);
-    if beam_size_or_best_of < 1 {
-        beam_size_or_best_of = 5;
-    }
+    // Determine the beam size or best_of value, defaulting to 5
+    let mut beam_size_or_best_of = options.sampling_bestof_or_beam_size.unwrap_or(5).max(1);
 
-    // Beam search by default
-    let mut sampling_strategy = SamplingStrategy::BeamSearch {
-        beam_size: beam_size_or_best_of,
-        patience: -1.0,
-    };
-    // ^ Experimental, idk if it will be slower/faster/accurate https://github.com/ggml-org/whisper.cpp/blob/8b92060a10a89cd3e8ec6b4bb22cdc1af67c5667/src/whisper.cpp#L4867-L4882
-    if options.sampling_strategy == Some("greedy".to_string()) {
-        sampling_strategy = SamplingStrategy::Greedy {
+    // Decide on the sampling strategy
+    let sampling_strategy = match options.sampling_strategy.as_deref() {
+        Some("greedy") => SamplingStrategy::Greedy {
             best_of: beam_size_or_best_of,
-        };
-    }
+        },
+        _ => SamplingStrategy::BeamSearch {
+            beam_size: beam_size_or_best_of,
+            patience: -1.0,
+        },
+    };
     tracing::debug!("sampling strategy: {:?}", sampling_strategy);
 
     let mut params = FullParams::new(sampling_strategy);
-    tracing::debug!("set language to {:?}", options.lang);
 
-    if let Some(true) = options.translate {
-        params.set_translate(true);
-    }
-    if options.lang.is_some() {
-        params.set_language(options.lang.as_deref());
-    }
-
+    // Basic config
     params.set_print_special(false);
     params.set_print_progress(true);
     params.set_print_realtime(false);
@@ -486,45 +477,38 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     params.set_suppress_blank(true);
     params.set_token_timestamps(true);
 
-    let vad_model_path = options.vad_model_path.as_deref();
-
-    params.set_vad_model_path(vad_model_path);
-    params.enable_vad(true);
-
-    let mut vadp = WhisperVadParams::default();
-    vadp.set_threshold(0.5);
-    vadp.set_min_speech_duration(250);
-    vadp.set_min_silence_duration(100);
-    vadp.set_speech_pad(30);
-    params.set_vad_params(vadp);
-
-    if let Some(temperature) = options.temperature {
-        tracing::debug!("setting temperature to {temperature}");
-        params.set_temperature(temperature);
+    // Set input language
+    if let Some(ref lang) = options.lang {
+        params.set_language(Some(lang));
     }
 
-    if let Some(max_text_ctx) = options.max_text_ctx {
-        tracing::debug!("setting n_max_text_ctx to {}", max_text_ctx);
-        params.set_n_max_text_ctx(max_text_ctx)
+    // Set translation options
+    if options.translate.unwrap_or(false) {
+        params.set_translate(true);
     }
 
-    // handle args
-    if let Some(init_prompt) = options.init_prompt.to_owned() {
-        tracing::debug!("setting init prompt to {init_prompt}");
-        params.set_initial_prompt(&init_prompt);
+    // Optional temperature (only greedy sampling supports temperature > 0)
+    if options.sampling_strategy.as_deref() == Some("greedy") {
+        if let Some(temp) = options.temperature {
+            params.set_temperature(temp);
+        }
     }
 
-    if let Some(n_threads) = options.n_threads {
-        tracing::debug!("setting n threads to {n_threads}");
-        params.set_n_threads(n_threads);
-    } else {
-        // Leave one core for UI/IPC to improve responsiveness in release builds
-        let threads = std::thread::available_parallelism()
-            .map(|n| n.get().saturating_sub(1).max(1))
-            .unwrap_or(1) as i32;
-        tracing::debug!("setting default n threads to {threads}");
+    // Optional max text context
+    if let Some(ctx) = options.max_text_ctx {
+        params.set_n_max_text_ctx(ctx);
+    }
+
+    // Optional initial prompt
+    if let Some(ref prompt) = options.init_prompt {
+        params.set_initial_prompt(prompt);
+    }
+
+    // Optional thread count
+    if let Some(threads) = options.n_threads {
         params.set_n_threads(threads);
     }
+
     params
 }
 
