@@ -54,7 +54,7 @@ export default function HowItWorksSection() {
       if (!sectionRef.current) return
       
       const rect = sectionRef.current.getBoundingClientRect()
-      const isInView = rect.top <= 100 && rect.bottom >= window.innerHeight - 100
+      const isInView = rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2
       
       if (isInView && !hasScrolled.current) {
         e.preventDefault()
@@ -62,11 +62,11 @@ export default function HowItWorksSection() {
         if (e.deltaY > 0 && activeStep < steps.length - 1) {
           setActiveStep(prev => prev + 1)
           hasScrolled.current = true
-          setTimeout(() => { hasScrolled.current = false }, 1500) // I've made ts higher so you need to scroll a bit more to go to the next step
+          setTimeout(() => { hasScrolled.current = false }, 2500)
         } else if (e.deltaY < 0 && activeStep > 0) {
           setActiveStep(prev => prev - 1)
           hasScrolled.current = true
-          setTimeout(() => { hasScrolled.current = false }, 1500)
+          setTimeout(() => { hasScrolled.current = false }, 2500)
         } else if (e.deltaY > 0 && activeStep === steps.length - 1) {
           // normal scroll after last step
           return
@@ -92,7 +92,7 @@ export default function HowItWorksSection() {
             How It Works
           </motion.h2>
         </div>
-        <div className="grid md:grid-cols-2 gap-x-20 h-[calc(100vh-200px)]">
+        <div className="grid md:grid-cols-2 gap-x-20 h-[50vh]">
           <div className="flex flex-col justify-center">
             {steps.map((step, index) => (
               <StepItem 

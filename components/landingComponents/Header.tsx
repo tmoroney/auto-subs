@@ -37,7 +37,7 @@ export default function Header() {
         >
           <a className="flex items-center justify-center flex-shrink-0 min-w-0" href="#">
             <Image src="/auto-subs/assets/logo.png" alt="AutoSubs Logo" width={32} height={32} className="w-7 h-7 sm:w-9 sm:h-9" />
-            <span className="ml-1.5 sm:ml-2 text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100 font-['Poppins'] hidden sm:block">AutoSubs</span>
+            <span className="ml-1.5 sm:ml-2 text-base sm:text-xl font-semibold text-gray-900 dark:text-gray-100 font-['Poppins'] hidden sm:block">AutoSubs</span>
           </a>
           <nav className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
             <ThemeToggle />
