@@ -8,7 +8,6 @@ import { Download, Github, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { DownloadModal } from '@/components/ui/DownloadModal'
 import { motion } from 'framer-motion'
-import AutoSubsInterface from './AutoSubsInterface'
 // import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 const containerVariants = {
