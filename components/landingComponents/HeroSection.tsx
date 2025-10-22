@@ -81,7 +81,7 @@ function AnimatedCounter({ endValue, label, suffix, delay = 0 }: AnimatedCounter
   return (
     <div className="text-center">
       <motion.span
-        className="text-4xl font-bold"
+        className="text-2xl sm:text-3xl lg:text-4xl font-bold"
         variants={itemVariants}
         initial="hidden"
         animate={isVisible ? "visible" : "hidden"}
@@ -89,7 +89,7 @@ function AnimatedCounter({ endValue, label, suffix, delay = 0 }: AnimatedCounter
         {count}
         {suffix}
       </motion.span>
-      <span className="block text-lg text-blue-100 dark:text-gray-300 mt-1">
+      <span className="block text-sm sm:text-base lg:text-lg text-blue-100 dark:text-gray-300 mt-0.5 sm:mt-1">
         {label}
       </span>
     </div>
@@ -135,7 +135,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
   return (
     <section 
       id="hero"
-      className="relative w-full h-screen min-h-[750px] bg-gradient-to-br from-[#1E40AF] to-[#4F46E5] dark:from-gray-900 dark:to-gray-800 text-white overflow-hidden flex items-center transition-colors duration-300"
+      className="relative w-full max-w-screen h-screen min-h-[750px] bg-gradient-to-br from-[#1E40AF] to-[#4F46E5] dark:from-gray-900 dark:to-gray-800 text-white overflow-hidden flex items-start sm:items-center transition-colors duration-300 pt-32 sm:pt-0"
     >
       <div className="absolute top-0 left-0 w-full h-full">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-lighten filter blur-3xl opacity-40 animate-blob"></div>
@@ -143,15 +143,15 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
         <div className="absolute top-1/2 right-1/3 w-80 h-80 bg-indigo-400 rounded-full mix-blend-lighten filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="container mx-auto px-6 lg:px-8 relative z-10">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
         <motion.div 
-          className="grid lg:grid-cols-2 gap-16 items-center"
+          className="grid lg:grid-cols-2 gap-0 lg:gap-16 items-center"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* left column */}
-          <div className="text-center lg:text-left space-y-6">
+          <div className="text-center lg:text-left space-y-4 sm:space-y-6">
             {/* <motion.div
               className="flex justify-center lg:justify-start"
               variants={itemVariants}
@@ -186,13 +186,13 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
             </motion.p>
 
             <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start pt-4"
               variants={itemVariants}
             >
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="hidden sm:block w-full">
                 <Button 
                   size="lg" 
-                  className={`bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full h-14 ${downloading ? 'opacity-80 cursor-not-allowed' : ''}`}
+                  className={`bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 font-bold text-sm sm:text-base shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex items-center gap-2 w-full h-12 sm:h-14 ${downloading ? 'opacity-80 cursor-not-allowed' : ''}`}
                   onClick={() => handlePrimaryDownload(downloadLink)}
                   disabled={downloading}
                 >
@@ -213,7 +213,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white/50 dark:border-white/50 bg-transparent text-white hover:bg-white/10 dark:hover:bg-white/10 font-bold text-base transition-all duration-300 flex items-center gap-2 w-full h-14"
+                  className="border-white/50 dark:border-white/50 bg-transparent text-white hover:bg-white/10 dark:hover:bg-white/10 font-bold text-sm sm:text-base transition-all duration-300 flex items-center gap-2 w-full h-12 sm:h-14"
                   onClick={() => window.open('https://github.com/tmoroney/auto-subs', '_blank')}
                 >
                   <Github size={20} />
@@ -223,7 +223,7 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
             </motion.div>
 
             <motion.div 
-              className="grid grid-cols-3 gap-6 pt-8 max-w-2xl mx-auto lg:mx-0 border-t border-white/10 mt-8"
+              className="grid grid-cols-3 gap-3 sm:gap-6 pt-6 sm:pt-8 max-w-2xl mx-auto lg:mx-0 border-t border-white/10 mt-6 sm:mt-8"
               variants={itemVariants}
             >
               <AnimatedCounter endValue={50} suffix="+" label="Languages" delay={100} />
@@ -233,14 +233,9 @@ export default function HeroSection({ downloadLink }: HeroSectionProps) {
           </div>
 
           {/* desktop: interactive interface */}
-          <div className="hidden lg:block relative rounded-xl overflow-hidden">
-            <AutoSubsInterface/>
-          </div>
-          
-          {/* mobile: img */}
-          <div className="lg:hidden relative rounded-xl overflow-hidden">
+          <div className="relative rounded-xl overflow-hidden">
             <Image
-              src="/auto-subs/assets/AutoSubs.png"
+              src="/auto-subs/assets/preview.png"
               alt="AutoSubs Interface Preview for DaVinci Resolve"
               width={1200}
               height={782}
