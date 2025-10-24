@@ -49,8 +49,7 @@
       "resources/"
     ],
     "externalBin": [
-      "binaries/ffmpeg",
-      "binaries/ffprobe"
+      "binaries/ffmpeg"
     ],
     "macOS": {
       "minimumSystemVersion": "13.3"

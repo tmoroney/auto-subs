@@ -325,6 +325,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "which 6.0.3",
+ "whisper-diarize-rs",
  "whisper-rs",
  "zip",
 ]
@@ -6548,6 +6549,22 @@ dependencies = [
  "home",
  "rustix 0.38.44",
  "winsafe",
+]
+
+[[package]]
+name = "whisper-diarize-rs"
+version = "0.1.0"
+dependencies = [
+ "dirs 5.0.1",
+ "eyre",
+ "hf-hub",
+ "ort-sys",
+ "pyannote-rs",
+ "regex",
+ "reqwest 0.11.27",
+ "serde",
+ "whisper-rs",
+ "zip",
 ]
 
 [[package]]
