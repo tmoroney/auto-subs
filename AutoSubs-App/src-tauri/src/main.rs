@@ -36,7 +36,7 @@ mod tests;
 static EXITING: AtomicBool = AtomicBool::new(false);
 
 fn main() {
-    whisper_rs::install_logging_hooks();
+    // Note: whisper-diarize-rs handles whisper_rs logging internally
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())

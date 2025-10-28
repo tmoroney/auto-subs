@@ -297,13 +297,7 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "eyre",
- "hf-hub",
- "hound",
- "num",
  "once_cell",
- "ort-sys",
- "pyannote-rs",
- "regex",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -326,8 +320,6 @@ dependencies = [
  "tracing-subscriber",
  "which 6.0.3",
  "whisper-diarize-rs",
- "whisper-rs",
- "zip",
 ]
 
 [[package]]
@@ -1051,7 +1043,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.8",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -2522,7 +2514,7 @@ dependencies = [
 [[package]]
 name = "knf-rs"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#546f35bc96a5d6104ff769ebd5e77ebcd47dff6e"
 dependencies = [
  "eyre",
  "knf-rs-sys",
@@ -2532,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "knf-rs-sys"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#546f35bc96a5d6104ff769ebd5e77ebcd47dff6e"
 dependencies = [
  "bindgen 0.69.5",
  "cmake",
@@ -2907,30 +2899,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
-dependencies = [
- "num-bigint",
- "num-complex",
- "num-integer",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-complex"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2951,28 +2919,6 @@ version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
 dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "num-iter"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1429034a0490724d0075ebb2bc9e875d6503c3cf69e235a8941aa757d83ef5bf"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
-dependencies = [
- "num-bigint",
- "num-integer",
  "num-traits",
 ]
 
@@ -3407,7 +3353,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52afb44b6b0cffa9bf45e4d37e5a4935b0334a51570658e279e9e3e6cf324aa5"
 dependencies = [
  "half",
- "libloading 0.8.8",
  "ndarray",
  "ort-sys",
  "tracing",
@@ -3880,7 +3825,7 @@ dependencies = [
 [[package]]
 name = "pyannote-rs"
 version = "0.3.1"
-source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#296f5162541e87812ba9f5ab8fe3c3ad900a9a2a"
+source = "git+https://github.com/tmoroney/pyannote-rs?branch=main#546f35bc96a5d6104ff769ebd5e77ebcd47dff6e"
 dependencies = [
  "eyre",
  "hound",
@@ -6554,33 +6499,40 @@ dependencies = [
 [[package]]
 name = "whisper-diarize-rs"
 version = "0.1.0"
+source = "git+https://github.com/tmoroney/whisper-diarize-rs?branch=main#e8d4949f5b4a925c748d3f716d1b3d0061738a89"
 dependencies = [
  "dirs 5.0.1",
  "eyre",
+ "futures",
  "hf-hub",
+ "hound",
+ "once_cell",
  "ort-sys",
  "pyannote-rs",
  "regex",
  "reqwest 0.11.27",
  "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "unicode-segmentation",
  "whisper-rs",
  "zip",
 ]
 
 [[package]]
 name = "whisper-rs"
-version = "0.15.0"
-source = "git+https://codeberg.org/tazz4843/whisper-rs.git#3e6d3da162146e8697fc39c4a81e66a339f14bc6"
+version = "0.15.1"
+source = "git+https://codeberg.org/tazz4843/whisper-rs.git#a23990c563330251c37c9a83fd5fab5e472fcb1f"
 dependencies = [
- "libc",
  "tracing",
  "whisper-rs-sys",
 ]
 
 [[package]]
 name = "whisper-rs-sys"
-version = "0.14.0"
-source = "git+https://codeberg.org/tazz4843/whisper-rs.git#3e6d3da162146e8697fc39c4a81e66a339f14bc6"
+version = "0.14.1"
+source = "git+https://codeberg.org/tazz4843/whisper-rs.git#a23990c563330251c37c9a83fd5fab5e472fcb1f"
 dependencies = [
  "bindgen 0.71.1",
  "cfg-if",

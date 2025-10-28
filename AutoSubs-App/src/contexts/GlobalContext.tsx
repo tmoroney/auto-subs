@@ -26,11 +26,10 @@ interface GlobalContextType {
   fileInput: string | null;
   // Event listener states
   transcriptionProgress: number;
+  labeledProgress: { progress: number, type?: string, label?: string } | null;
   downloadingModel: string | null;
   isModelDownloading: boolean;
   downloadProgress: number;
-  diarizationProgress: number;
-  isDiarizing: boolean;
   // Export state
   isExporting: boolean;
   setIsExporting: (isExporting: boolean) => void;
@@ -50,6 +49,7 @@ interface GlobalContextType {
   showMobileSubtitles: boolean;
   setShowMobileSubtitles: (showMobileSubtitles: boolean) => void;
   setTranscriptionProgress: (progress: number) => void;
+  setLabeledProgress: (progress: { progress: number, type?: string, label?: string } | null) => void;
   checkDownloadedModels: () => Promise<void>;
   setFileInput: (fileInput: string | null) => void;
   updateSetting: (key: keyof Settings, value: any) => void
@@ -128,11 +128,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   // Event listener states
   const [transcriptionProgress, setTranscriptionProgress] = useState<number>(0);
+  const [labeledProgress, setLabeledProgress] = useState<{ progress: number, type?: string, label?: string } | null>(null);
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [isModelDownloading, setIsModelDownloading] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [diarizationProgress, setDiarizationProgress] = useState<number>(0);
-  const [isDiarizing, setIsDiarizing] = useState<boolean>(false);
 
   // Export state
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -486,78 +485,35 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   };
 
-  // Set up event listeners for transcription and model download progress
+  // Set up event listeners for whisper progress
   const setupEventListeners = useCallback(() => {
-    let unlistenTranscription: (() => void) | null = null;
-    let unlistenModelStart: (() => void) | null = null;
-    let unlistenModelProgress: (() => void) | null = null;
-    let unlistenModelComplete: (() => void) | null = null;
-    let unlistenModelCache: (() => void) | null = null;
-    let unlistenModelCancelled: (() => void) | null = null;
-    let unlistenDiarization: (() => void) | null = null;
-    let unlistenDiarizationStart: (() => void) | null = null;
-    let unlistenDiarizationComplete: (() => void) | null = null;
+    let unlistenProgress: (() => void) | null = null;
 
     const setup = async () => {
       try {
-        // Transcription progress listener
-        unlistenTranscription = await listen<number>('transcription-progress', (event: { payload: number }) => {
-          console.log('Received transcription progress:', event.payload);
-          setTranscriptionProgress(event.payload);
+        // Single progress listener for all whisper operations
+        unlistenProgress = await listen<{ progress: number, type?: string, label?: string }>('labeled-progress', (event: { payload: any }) => {
+          console.log('Received progress:', event.payload);
+          setLabeledProgress(event.payload);
+          
+          // Handle model downloading
+          if (event.payload.type === 'Download') {
+            setDownloadingModel(event.payload.label?.replace('Downloading ', '').replace(' model...', '') || null);
+            setIsModelDownloading(true);
+            setDownloadProgress(event.payload.progress);
+          } else {
+            // Clear model download state when not downloading
+            if (isModelDownloading) {
+              setDownloadingModel(null);
+              setIsModelDownloading(false);
+              setDownloadProgress(0);
+            }
+          }
+          
+          // Update transcription progress for backward compatibility
+          setTranscriptionProgress(event.payload.progress);
         });
 
-        // Model download start listener
-        unlistenModelStart = await listen<[string, string, number]>('model-download-start', (event: { payload: [string, string, number] }) => {
-          const [modelName] = event.payload;
-          setDownloadingModel(modelName);
-          setIsModelDownloading(true);
-          setDownloadProgress(0);
-        });
-
-        // Model download progress listener
-        unlistenModelProgress = await listen<number>('model-download-progress', (event: { payload: number }) => {
-          setDownloadProgress(event.payload);
-        });
-
-        // Model download complete listener
-        unlistenModelComplete = await listen<string>('model-download-complete', () => {
-          setDownloadingModel(null);
-          setIsModelDownloading(false);
-          setDownloadProgress(0);
-        });
-
-        // Model found in cache listener
-        unlistenModelCache = await listen<string>('model-found-in-cache', () => {
-          // No action needed when model is found in cache
-        });
-
-        // Model download cancelled listener
-        unlistenModelCancelled = await listen<string>('model-download-cancelled', (event: { payload: string }) => {
-          console.log('Model download cancelled:', event.payload);
-          setDownloadingModel(null);
-          setIsModelDownloading(false);
-          setDownloadProgress(0);
-        });
-
-        // Diarization progress listener
-        unlistenDiarization = await listen<number>('diarization-progress', (event: { payload: number }) => {
-          console.log('Received diarization progress:', event.payload);
-          setDiarizationProgress(event.payload);
-        });
-
-        // Diarization start listener
-        unlistenDiarizationStart = await listen('diarization-start', () => {
-          console.log('Diarization started');
-          setIsDiarizing(true);
-          setDiarizationProgress(0);
-        });
-
-        // Diarization complete listener
-        unlistenDiarizationComplete = await listen('diarization-complete', () => {
-          console.log('Diarization completed');
-          setIsDiarizing(false);
-          setDiarizationProgress(100);
-        });
       } catch (error) {
         console.error('Failed to setup event listeners:', error);
       }
@@ -567,15 +523,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
     // Return cleanup function
     return () => {
-      if (unlistenTranscription) unlistenTranscription();
-      if (unlistenModelStart) unlistenModelStart();
-      if (unlistenModelProgress) unlistenModelProgress();
-      if (unlistenModelComplete) unlistenModelComplete();
-      if (unlistenModelCache) unlistenModelCache();
-      if (unlistenModelCancelled) unlistenModelCancelled();
-      if (unlistenDiarization) unlistenDiarization();
-      if (unlistenDiarizationStart) unlistenDiarizationStart();
-      if (unlistenDiarizationComplete) unlistenDiarizationComplete();
+      if (unlistenProgress) unlistenProgress();
     };
   }, []);
 
@@ -740,12 +688,12 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       resetSettings,
       // Event listener states
       transcriptionProgress,
+      labeledProgress,
       downloadingModel,
       isModelDownloading,
       downloadProgress,
-      diarizationProgress,
-      isDiarizing,
       setTranscriptionProgress,
+      setLabeledProgress,
       setupEventListeners,
       handleDeleteModel,
       getSourceAudio,

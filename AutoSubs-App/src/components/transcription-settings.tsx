@@ -51,6 +51,20 @@ import { platform } from "@tauri-apps/plugin-os"
 import { writeText } from "@tauri-apps/plugin-clipboard-manager"
 import { openPath } from "@tauri-apps/plugin-opener"
 
+// Helper function to get progress bar color based on progress type
+function getProgressColorClass(progressType?: string) {
+    switch (progressType) {
+        case "Download":
+            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500"
+        case "Transcribe":
+            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600"
+        case "Translate":
+            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-600"
+        default:
+            return "h-2"
+    }
+}
+
 interface TranscriptionSettingsProps {
     onShowTutorial?: () => void
 }
@@ -74,11 +88,8 @@ export const TranscriptionSettings = ({
         resetSettings,
         setFileInput,
         fileInput,
-        transcriptionProgress,
         setTranscriptionProgress,
-        downloadingModel,
-        isModelDownloading,
-        downloadProgress,
+        setLabeledProgress,
         setupEventListeners,
         cancelExport,
         isExporting,
@@ -91,8 +102,7 @@ export const TranscriptionSettings = ({
         setIsTranscribing,
         showMobileSubtitles,
         setShowMobileSubtitles,
-        diarizationProgress,
-        isDiarizing,
+        labeledProgress,
         pushToTimeline,
         cancelRequestedRef,
     } = useGlobal()
@@ -155,8 +165,7 @@ export const TranscriptionSettings = ({
             // Handle error, e.g., show an error message to the user
         } finally {
             // Reset UI state
-            setIsTranscribing(false)
-            setTranscriptionProgress(0) // Reset progress
+            resetUIState()
             // Update model download status
             await checkDownloadedModels()
         }
@@ -167,6 +176,7 @@ export const TranscriptionSettings = ({
         setTranscriptionProgress(0)
         setIsExporting(false)
         setExportProgress(0)
+        setLabeledProgress(null)
     }
 
     // Diagnostics helpers
@@ -391,8 +401,8 @@ export const TranscriptionSettings = ({
                                     language={settings.language}
                                     selectedModel={settings.model}
                                     models={modelsState}
-                                    downloadingModel={downloadingModel}
-                                    downloadProgress={downloadProgress}
+                                    downloadingModel={labeledProgress?.type === 'Download' ? labeledProgress.label?.replace('Downloading ', '').replace(' model...', '') : null}
+                                    downloadProgress={labeledProgress?.type === 'Download' ? labeledProgress.progress : 0}
                                     onModelChange={(model) => updateSetting('model', model)}
                                     onDeleteModel={(model) => handleDeleteModel(model)}
                                 />
@@ -582,18 +592,16 @@ export const TranscriptionSettings = ({
                 <div
                     className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
                 >
-                    
-
-                    {/* Model Download Progress */}
-                    {isModelDownloading && (
+                    {/* Whisper Progress (includes download, transcribe, translate) */}
+                    {isTranscribing && labeledProgress && (
                         <div className="space-y-1">
                             <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Downloading {downloadingModel} model...</span>
-                                <span>{downloadProgress}%</span>
+                                <span>{labeledProgress.label || "Processing"}</span>
+                                <span>{labeledProgress.progress}%</span>
                             </div>
-                            <Progress
-                                value={downloadProgress}
-                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500"
+                            <Progress 
+                                value={labeledProgress.progress} 
+                                className={getProgressColorClass(labeledProgress.type)} 
                             />
                         </div>
                     )}
@@ -609,28 +617,6 @@ export const TranscriptionSettings = ({
                                 value={exportProgress}
                                 className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-600"
                             />
-                        </div>
-                    )}
-
-                    {/* Transcription Progress */}
-                    {isTranscribing && !isModelDownloading && !isDiarizing && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Transcription Progress</span>
-                                <span>{transcriptionProgress}%</span>
-                            </div>
-                            <Progress value={transcriptionProgress} className="h-2" />
-                        </div>
-                    )}
-
-                    {/* Diarization Progress */}
-                    {isDiarizing && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Diarization Progress</span>
-                                <span>{diarizationProgress}%</span>
-                            </div>
-                            <Progress value={diarizationProgress} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-purple-400 [&>div]:to-purple-600" />
                         </div>
                     )}
 
@@ -658,12 +644,12 @@ export const TranscriptionSettings = ({
                     <div className="flex gap-2">
                         <Button
                             onClick={handleStartTranscription}
-                            disabled={isTranscribing || isExporting || downloadingModel !== null || (settings.selectedInputTracks.length === 0 && !settings.isStandaloneMode) || (fileInput === null && settings.isStandaloneMode)}
+                            disabled={isTranscribing || isExporting || labeledProgress?.type === 'Download' || (settings.selectedInputTracks.length === 0 && !settings.isStandaloneMode) || (fileInput === null && settings.isStandaloneMode)}
                             className="flex-1"
                             size={isMobile ? undefined : "lg"}
                         >
                             {isTranscribing || isExporting ? <LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> : <CirclePlay className="mr-2 h-5 w-5" />}
-                            {isExporting ? "Exporting Audio..." : isTranscribing ? (isModelDownloading ? "Downloading Model..." : "Processing...") : "Start Transcription"}
+                            {isExporting ? "Exporting Audio..." : isTranscribing ? (labeledProgress?.type === 'Download' ? "Downloading Model..." : "Processing...") : "Start Transcription"}
                         </Button>
 
                         {(isTranscribing || isExporting) && (
