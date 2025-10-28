@@ -51,18 +51,18 @@ import { platform } from "@tauri-apps/plugin-os"
 import { writeText } from "@tauri-apps/plugin-clipboard-manager"
 import { openPath } from "@tauri-apps/plugin-opener"
 
-// Helper function to get progress bar color based on progress type
+// Pre-computed progress bar color classes (constant lookup, no string comparison)
+const PROGRESS_COLOR_CLASSES: Record<string, string> = {
+    "Download": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500",
+    "Transcribe": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600",
+    "Translate": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-600",
+} as const;
+
+const DEFAULT_PROGRESS_CLASS = "h-2";
+
+// Helper function to get progress bar color based on progress type (O(1) lookup)
 function getProgressColorClass(progressType?: string) {
-    switch (progressType) {
-        case "Download":
-            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500"
-        case "Transcribe":
-            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600"
-        case "Translate":
-            return "h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-600"
-        default:
-            return "h-2"
-    }
+    return progressType ? (PROGRESS_COLOR_CLASSES[progressType] || DEFAULT_PROGRESS_CLASS) : DEFAULT_PROGRESS_CLASS;
 }
 
 interface TranscriptionSettingsProps {

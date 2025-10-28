@@ -488,6 +488,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   // Set up event listeners for whisper progress
   const setupEventListeners = useCallback(() => {
     let unlistenProgress: (() => void) | null = null;
+    let lastDownloadingModel: string | null = null;
 
     const setup = async () => {
       try {
@@ -498,12 +499,18 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           
           // Handle model downloading
           if (event.payload.type === 'Download') {
-            setDownloadingModel(event.payload.label?.replace('Downloading ', '').replace(' model...', '') || null);
+            // Only extract model name when label changes to avoid repeated string operations
+            if (event.payload.label !== lastDownloadingModel) {
+              const modelName = event.payload.label?.replace('Downloading ', '').replace(' model...', '') || null;
+              lastDownloadingModel = event.payload.label;
+              setDownloadingModel(modelName);
+            }
             setIsModelDownloading(true);
             setDownloadProgress(event.payload.progress);
           } else {
             // Clear model download state when not downloading
             if (isModelDownloading) {
+              lastDownloadingModel = null;
               setDownloadingModel(null);
               setIsModelDownloading(false);
               setDownloadProgress(0);
