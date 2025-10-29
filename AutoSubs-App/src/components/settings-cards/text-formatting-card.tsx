@@ -22,7 +22,6 @@ import { useState } from "react";
 import { useGlobal } from "@/contexts/GlobalContext";
 
 interface TextFormattingCardProps {
-  maxWordsPerLine: number
   maxCharsPerLine: number
   maxLinesPerSubtitle: number
   textCase: "none" | "uppercase" | "lowercase" | "titlecase"
@@ -30,7 +29,6 @@ interface TextFormattingCardProps {
   splitOnPunctuation: boolean
   enableCensor: boolean
   censoredWords: string[]
-  onMaxWordsPerLineChange: (value: number) => void
   onMaxCharsPerLineChange: (value: number) => void
   onMaxLinesPerSubtitleChange: (value: number) => void
   onTextCaseChange: (textCase: "none" | "uppercase" | "lowercase" | "titlecase") => void
@@ -42,7 +40,6 @@ interface TextFormattingCardProps {
 }
 
 export const TextFormattingCard = ({
-  maxWordsPerLine,
   maxCharsPerLine,
   maxLinesPerSubtitle,
   textCase,
@@ -50,7 +47,6 @@ export const TextFormattingCard = ({
   splitOnPunctuation,
   enableCensor,
   censoredWords,
-  onMaxWordsPerLineChange,
   onMaxCharsPerLineChange,
   onMaxLinesPerSubtitleChange,
   onTextCaseChange,
@@ -76,7 +72,6 @@ export const TextFormattingCard = ({
                 <p className="text-sm font-medium">Subtitle Line Rules</p>
                 <p className="text-xs text-muted-foreground">
                   {`${maxLinesPerSubtitle} line${maxLinesPerSubtitle !== 1 ? 's' : ''}`}
-                  {maxWordsPerLine === 0 ? '' : ` • ${maxWordsPerLine} word${maxWordsPerLine !== 1 ? 's' : ''}`}
                   {maxCharsPerLine === 0 ? '' : ` • ${maxCharsPerLine} char${maxCharsPerLine !== 1 ? 's' : ''}`}
                   {splitOnPunctuation ? ' • split on punctuation' : ''}
                 </p>
@@ -110,27 +105,6 @@ export const TextFormattingCard = ({
                       min="0"
                       value={maxCharsPerLine}
                       onChange={(e) => onMaxCharsPerLineChange(Number(e.target.value))}
-                      className="w-20"
-                    />
-                  </div>
-
-                  {/* Max Words */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Word Limit</p>
-                      {maxWordsPerLine === 0 ? (
-                        <p className="text-xs text-orange-500 flex items-center gap-1">
-                          <CircleX className="w-3 h-3 inline-block" /> Disabled (no word limit)
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Per line (0 = unlimited)</p>
-                      )}
-                    </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={maxWordsPerLine}
-                      onChange={(e) => onMaxWordsPerLineChange(Number(e.target.value))}
                       className="w-20"
                     />
                   </div>

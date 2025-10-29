@@ -94,7 +94,6 @@ const DEFAULT_SETTINGS: Settings = {
   maxSpeakers: null,
 
   // Text settings
-  maxWordsPerLine: 0,
   maxCharsPerLine: 34,
   maxLinesPerSubtitle: 1,
   splitOnPunctuation: true,
@@ -365,7 +364,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         removePunctuation: settings.removePunctuation,
         splitOnPunctuation: settings.splitOnPunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
-        maxWordsPerLine: settings.maxWordsPerLine,
         maxCharsPerLine: settings.maxCharsPerLine,
         maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
       });
@@ -631,7 +629,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       removePunctuation: settings.removePunctuation,
       splitOnPunctuation: settings.splitOnPunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxWordsPerLine: settings.maxWordsPerLine,
       maxCharsPerLine: settings.maxCharsPerLine,
       maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
     })
@@ -657,7 +654,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       removePunctuation: settings.removePunctuation,
       splitOnPunctuation: settings.splitOnPunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxWordsPerLine: settings.maxWordsPerLine,
       maxCharsPerLine: settings.maxCharsPerLine,
       maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
     });

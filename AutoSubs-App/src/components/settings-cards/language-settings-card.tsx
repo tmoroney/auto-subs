@@ -117,7 +117,7 @@ export const LanguageSettingsCard = ({
                   <p className="text-xs text-left">
                     {targetLanguage === 'en' 
                       ? "Translates during transcription with Whisper. Fast, high quality, offline."
-                      : "Translates after transcription. Internet/API key required. Can create multiple languages without re-transcribing."
+                      : "Uses Google Translate to translate after transcription. Internet required and may slightly increase processing time."
                     }
                   </p>
                 </TooltipContent>

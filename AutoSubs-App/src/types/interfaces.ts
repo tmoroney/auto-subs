@@ -96,7 +96,6 @@ export interface Settings {
     enableGpu: boolean,
 
     // Text settings
-    maxWordsPerLine: number,
     maxCharsPerLine: number,
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,

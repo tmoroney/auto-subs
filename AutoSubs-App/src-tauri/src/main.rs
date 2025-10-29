@@ -22,7 +22,6 @@ use tauri_plugin_opener::init as opener_plugin;
 use tokio::process::Command as TokioCommand;
 
 mod audio;
-mod config;
 mod models;
 mod transcribe;
 mod transcript;

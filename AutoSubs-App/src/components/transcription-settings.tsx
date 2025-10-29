@@ -482,7 +482,6 @@ export const TranscriptionSettings = ({
                         </div>
                         <CollapsibleContent>
                             <TextFormattingCard
-                                maxWordsPerLine={settings.maxWordsPerLine}
                                 maxCharsPerLine={settings.maxCharsPerLine}
                                 maxLinesPerSubtitle={settings.maxLinesPerSubtitle}
                                 textCase={settings.textCase}
@@ -490,7 +489,6 @@ export const TranscriptionSettings = ({
                                 splitOnPunctuation={settings.splitOnPunctuation}
                                 enableCensor={settings.enableCensor}
                                 censoredWords={settings.censoredWords}
-                                onMaxWordsPerLineChange={(value) => updateSetting("maxWordsPerLine", value)}
                                 onMaxCharsPerLineChange={(value) => updateSetting("maxCharsPerLine", value)}
                                 onMaxLinesPerSubtitleChange={(value) => updateSetting("maxLinesPerSubtitle", value)}
                                 onTextCaseChange={(textCase) => updateSetting("textCase", textCase)}

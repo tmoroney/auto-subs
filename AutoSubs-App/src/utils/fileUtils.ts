@@ -81,7 +81,6 @@ export async function saveTranscript(
     removePunctuation: boolean;
     splitOnPunctuation: boolean;
     censoredWords: string[];
-    maxWordsPerLine: number;
     maxCharsPerLine: number;
     maxLinesPerSubtitle: number;
   }

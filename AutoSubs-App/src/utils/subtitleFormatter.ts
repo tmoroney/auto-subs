@@ -93,12 +93,10 @@ function splitSubtitles(subtitles: Subtitle[], options: {
     splitOnPunctuation: boolean;
     maxLinesPerSubtitle: number;
     maxCharsPerLine?: number;
-    maxWordsPerLine?: number;
 }): Subtitle[] {
     const result: Subtitle[] = [];
 
     // Ensure none of the options are set to 0 (not allowed)
-    options.maxWordsPerLine = options.maxWordsPerLine ? (options.maxWordsPerLine === 0 ? undefined : options.maxWordsPerLine) : undefined;
     options.maxCharsPerLine = options.maxCharsPerLine ? (options.maxCharsPerLine === 0 ? undefined : options.maxCharsPerLine) : undefined;
     options.maxLinesPerSubtitle = options.maxLinesPerSubtitle && options.maxLinesPerSubtitle !== 0 ? options.maxLinesPerSubtitle : 1;
 
@@ -117,11 +115,10 @@ function splitSubtitles(subtitles: Subtitle[], options: {
             const space = currentLine.length > 0 ? 1 : 0;
             const prospectiveCharCount = currentLineCharCount + wordText.length + space;
             const wouldExceedCharLimit = options.maxCharsPerLine !== undefined && prospectiveCharCount > options.maxCharsPerLine;
-            const isLineFull = options.maxWordsPerLine !== undefined && currentLine.length === options.maxWordsPerLine;
             const isLastWord = i === words.length - 1;
 
             // Check if we must split due to hard limits
-            if ((isLineFull || wouldExceedCharLimit) && currentLine.length > 0) {
+            if (wouldExceedCharLimit && currentLine.length > 0) {
                 lines.push(currentLine);
                 currentLine = [];
                 lineNumber++;
@@ -177,7 +174,6 @@ export function splitAndFormatSubtitles(
         splitOnPunctuation: boolean;
         censoredWords: string[];
         maxLinesPerSubtitle: number;
-        maxWordsPerLine?: number;
         maxCharsPerLine?: number;
     }
 ): Subtitle[] {
