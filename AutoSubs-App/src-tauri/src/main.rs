@@ -53,14 +53,12 @@ fn main() {
             // Initialize backend logging (file + in-memory ring buffer)
             crate::logging::init_logging(&app.handle());
 
-            // Startup sidecar health check: ffmpeg/ffprobe availability & versions
+            // Startup sidecar health check: ffmpeg availability & version
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     let mut ffmpeg_ok = false;
-                    let mut ffprobe_ok = false;
                     let mut ffmpeg_version = String::new();
-                    let mut ffprobe_version = String::new();
 
                     // ffmpeg -version (sidecar first, then system fallback)
                     match app_handle.shell().sidecar("ffmpeg") {
@@ -105,58 +103,14 @@ fn main() {
                         }
                     }
 
-                    // ffprobe -version (sidecar first, then system fallback)
-                    match app_handle.shell().sidecar("ffprobe") {
-                        Ok(cmd) => {
-                            match cmd.args(["-version"]).output().await {
-                                Ok(out) if out.status.success() => {
-                                    ffprobe_ok = true;
-                                    let stdout = String::from_utf8_lossy(&out.stdout);
-                                    ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                    tracing::info!("ffprobe check (sidecar): ok=true, version=\"{}\"", ffprobe_version);
-                                }
-                                Ok(out) => {
-                                    let stderr = String::from_utf8_lossy(&out.stderr);
-                                    tracing::warn!("ffprobe sidecar -version exited non-zero. stderr: {}", stderr);
-                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                        ffprobe_ok = sys.status.success();
-                                        let stdout = String::from_utf8_lossy(&sys.stdout);
-                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::warn!("ffprobe sidecar execution failed: {:?}", e);
-                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                        ffprobe_ok = sys.status.success();
-                                        let stdout = String::from_utf8_lossy(&sys.stdout);
-                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("ffprobe sidecar not found/failed to init: {:?}", e);
-                            if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                ffprobe_ok = sys.status.success();
-                                let stdout = String::from_utf8_lossy(&sys.stdout);
-                                ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                            }
-                        }
-                    }
-
                     // Emit an event to frontend so users can access diagnostics quickly
                     let payload = json!({
                         "ffmpeg_ok": ffmpeg_ok,
-                        "ffprobe_ok": ffprobe_ok,
                         "ffmpeg_version": ffmpeg_version,
-                        "ffprobe_version": ffprobe_version,
                     });
                     let _ = app_handle.emit("sidecar-health", payload);
 
-                    if !(ffmpeg_ok && ffprobe_ok) {
+                    if !ffmpeg_ok {
                         tracing::warn!("One or more sidecars appear unavailable. On Windows, AV or SmartScreen may block sidecars; try 'Open Logs Folder' for details.");
                     }
                 });
