@@ -380,11 +380,15 @@ export const TranscriptionSettings = ({
                                 <LanguageSettingsCard
                                     sourceLanguage={settings.language}
                                     translate={settings.translate}
+                                    targetLanguage={settings.targetLanguage}
                                     onSourceLanguageChange={(language: string) => {
                                         updateSetting('language', language);
                                     }}
                                     onTranslateChange={(translate: boolean) => {
                                         updateSetting('translate', translate);
+                                    }}
+                                    onTargetLanguageChange={(targetLanguage: string) => {
+                                        updateSetting('targetLanguage', targetLanguage);
                                     }}
                                 />
 

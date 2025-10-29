@@ -87,6 +87,7 @@ const DEFAULT_SETTINGS: Settings = {
   model: 0,
   language: "auto",
   translate: false,
+  targetLanguage: "en",
   enableDTW: false,
   enableGpu: false, // gpu enabled by default on mac and linux, disabled by default on windows
   enableDiarize: false,
@@ -604,6 +605,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     model: modelsState[settings.model].value,
     lang: settings.language,
     translate: settings.translate,
+    targetLanguage: settings.targetLanguage,
     enableDtw: settings.enableDTW,
     enableGpu: settings.enableGpu,
     enableDiarize: settings.enableDiarize,

@@ -106,8 +106,10 @@ export const SetupWalkthrough = ({
             <LanguageSettingsCard
               sourceLanguage={settings.language}
               translate={settings.translate}
+              targetLanguage={settings.targetLanguage}
               onSourceLanguageChange={(language) => updateSetting("language", language)}
               onTranslateChange={(translate) => updateSetting("translate", translate)}
+              onTargetLanguageChange={(targetLanguage) => updateSetting("targetLanguage", targetLanguage)}
             />
           </div>
         ),

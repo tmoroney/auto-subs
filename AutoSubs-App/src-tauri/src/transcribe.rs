@@ -54,6 +54,7 @@ pub struct FrontendTranscribeOptions {
     pub model: String, // e.g., "tiny", "base", "small", "medium", "large"
     pub lang: Option<String>,
     pub translate: Option<bool>,
+    pub target_language: Option<String>,
     pub enable_dtw: Option<bool>,
     pub enable_gpu: Option<bool>,
     pub enable_diarize: Option<bool>,
@@ -163,9 +164,27 @@ pub async fn transcribe_audio<R: Runtime>(
         transcribe_options.max_speakers = options.max_speakers;
         // DTW is enabled in engine config for better word timestamps
         
-        // Handle translation - frontend only has boolean, hardcode to "en" for now
+        // Handle translation - use target_language from frontend
         if options.translate.unwrap_or(false) {
-            transcribe_options.translate_target = Some("en".into());
+            if let Some(target) = options.target_language {
+                if target == "en" {
+                    // English: use Whisper's built-in translation
+                    transcribe_options.whisper_to_english = Some(true);
+                    transcribe_options.translate_target = None;
+                } else {
+                    // Non-English: use post-translation via Google Translate
+                    transcribe_options.whisper_to_english = Some(false);
+                    transcribe_options.translate_target = Some(target);
+                }
+            } else {
+                // Default to English for backward compatibility
+                transcribe_options.whisper_to_english = Some(true);
+                transcribe_options.translate_target = None;
+            }
+        } else {
+            // Translation disabled
+            transcribe_options.whisper_to_english = Some(false);
+            transcribe_options.translate_target = None;
         }
 
         // Note: GPU is handled internally by the crate based on platform

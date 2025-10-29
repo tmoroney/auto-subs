@@ -89,6 +89,7 @@ export interface Settings {
     model: number; // index of model in models array
     language: string,
     translate: boolean,
+    targetLanguage: string,
     enableDiarize: boolean,
     maxSpeakers: number | null,
     enableDTW: boolean,
@@ -121,6 +122,7 @@ export interface TranscriptionOptions {
     model: string,
     lang: string,
     translate: boolean,
+    targetLanguage: string,
     enableDtw: boolean,
     enableGpu: boolean,
     enableDiarize: boolean,
