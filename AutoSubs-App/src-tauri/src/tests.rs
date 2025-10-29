@@ -18,14 +18,6 @@ mod tests {
             .expect("failed to build test app");
         let handle = app.handle().clone();
 
-        // Ensure ffprobe is available in PATH (sidecars are not used under mock runtime)
-        let has_ffprobe = Command::new("ffprobe").arg("-version").output().is_ok();
-
-        if !has_ffprobe {
-            eprintln!("Skipping transcribe_audio_smoke: ffprobe not found in PATH.");
-            return;
-        }
-
         // Use a portable test asset path (avoid absolute machine paths)
         let wav = format!("{}/tests/data/test-audio.wav", env!("CARGO_MANIFEST_DIR"));
 
@@ -67,13 +59,6 @@ mod tests {
             .build(mock_context(noop_assets()))
             .expect("failed to build test app");
         let handle = app.handle().clone();
-
-        // Ensure ffprobe is available in PATH (sidecars are not used under mock runtime)
-        let has_ffprobe = Command::new("ffprobe").arg("-version").output().is_ok();
-        if !has_ffprobe {
-            eprintln!("Skipping transcribe_audio_with_vad: ffprobe not found in PATH.");
-            return;
-        }
 
         let wav = format!("{}/tests/data/jfk.wav", env!("CARGO_MANIFEST_DIR"));
 
