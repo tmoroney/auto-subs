@@ -5,6 +5,7 @@ import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionSettings } from "@/components/transcription-settings"
+import { BottomBarTranscription } from "@/components/bottom-bar-transcription"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
@@ -36,7 +37,7 @@ export function ThemeToggle() {
 function App() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
-  const { settings, updateSetting } = useGlobal()
+  const { settings, updateSetting, isTranscribing, setIsTranscribing, validateTranscriptionInput } = useGlobal()
   const isMobile = useIsMobile()
 
   // Check if this is the first time the user opens the app
@@ -54,6 +55,18 @@ function App() {
 
   const handleShowTutorial = () => {
     setShowWalkthrough(true)
+  }
+
+  const handleTranscribe = () => {
+    if (validateTranscriptionInput()) {
+      setIsTranscribing(true)
+      // TODO: Add actual transcription logic
+    }
+  }
+
+  const handleCancel = () => {
+    setIsTranscribing(false)
+    // TODO: Add actual cancellation logic
   }
 
   return (
@@ -93,7 +106,7 @@ function App() {
 
 
           {/* Main Content Area with Resizable Panels */}
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 pb-0">
             {isMobile ? (
               // Mobile: Just show transcription settings
               <div className="h-full overflow-hidden">
@@ -105,44 +118,6 @@ function App() {
               // Desktop: Resizable panels with transcription settings and subtitle viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 <ResizablePanel defaultSize={55} className="min-w-[360px]">
-                  {!isMobile && (
-                    <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
-                      <ThemeToggle />
-                      {/* Left side - Mode switcher (desktop) */}
-                      <div className="flex-1 flex justify-center px-2">
-                        <Tabs
-                          value={settings.isStandaloneMode ? "standalone" : "resolve"}
-                          onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")}
-                          className="w-full max-w-[400px]"
-                        >
-                          <TabsList className="w-full rounded-full bg-muted">
-                            <TabsTrigger value="resolve" className="flex-1 rounded-full text-sm">
-                              Resolve
-                            </TabsTrigger>
-                            <TabsTrigger value="standalone" className="flex-1 rounded-full text-sm">
-                              Standalone
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="group rounded-full bg-background hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-all"
-                        asChild
-                      >
-                        <a
-                          href="https://buymeacoffee.com/tmoroney"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="Support on Buy Me a Coffee"
-                        >
-                          <Heart className="h-5 w-5 fill-background group-hover:fill-pink-500 group-hover:text-pink-500 group-hover:animate-pulse transition-all"/>
-                        </a>
-                      </Button>
-                    </header>
-                  )}
-
                   <TranscriptionSettings
                     onShowTutorial={handleShowTutorial}
                   />

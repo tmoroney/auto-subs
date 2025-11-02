@@ -13,12 +13,15 @@ import {
     FolderOpen,
     XCircle,
 } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Switch } from "@/components/ui/switch"
 import { Card } from "@/components/ui/card"
+import { ActionBar } from "./action-bar"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -252,9 +255,13 @@ export const TranscriptionSettings = ({
 
     return (
         <>
-            <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
-                {/* Main Content - Scrollable area */}
-                <div className="flex-1 p-4 space-y-5 overflow-y-auto">
+            <div className="h-full flex flex-col">
+                {/* Main Content */}
+                <div className="flex-1 p-4 space-y-5 overflow-auto pb-8"
+                    style={{
+                        maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)'
+                    }}>
                     {/* Survey Notification */}
                     {(() => {
                         const SURVEY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdt8RyGXsriQA8gH7VVJqua9xPXSuZvjdjH5tKHz8nN3NhT6A/viewform?usp=dialog"; // <-- Replace with your survey link
@@ -450,7 +457,7 @@ export const TranscriptionSettings = ({
                                                             <p className="text-sm font-medium">GPU Acceleration</p>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                           Improves transcription speed
+                                                            Improves transcription speed
                                                         </p>
                                                     </div>
                                                 </div>
@@ -591,81 +598,18 @@ export const TranscriptionSettings = ({
                 </div>
 
                 {/* Footer */}
-                <div
-                    className="sticky bottom-0 p-4 border-t bg-background/5 backdrop-blur-lg shadow-2xl space-y-3.5"
-                >
-                    {/* Whisper Progress (includes download, transcribe, translate) */}
-                    {isTranscribing && labeledProgress && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>{labeledProgress.label || "Processing"}</span>
-                                <span>{labeledProgress.progress}%</span>
-                            </div>
-                            <Progress 
-                                value={labeledProgress.progress} 
-                                className={getProgressColorClass(labeledProgress.type)} 
-                            />
-                        </div>
-                    )}
-
-                    {/* Export Progress (DaVinci Resolve mode only) */}
-                    {isExporting && !settings.isStandaloneMode && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Exporting Audio from Timeline</span>
-                                <span>{exportProgress}%</span>
-                            </div>
-                            <Progress
-                                value={exportProgress}
-                                className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-600"
-                            />
-                        </div>
-                    )}
-
-                    {/* Diagnostics */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" onClick={handleCopyBackendLogs} className="w-full">
-                            <Copy className="h-4 w-4 mr-2" />
-                            {copiedLogs ? "Copied Logs" : "Copy Backend Logs"}
-                        </Button>
-                        <Button variant="outline" onClick={handleOpenLogsFolder} className="w-full">
-                            <FolderOpen className="h-4 w-4 mr-2" />
-                            Open Logs Folder
-                        </Button>
-                    </div>
-
-                    {/* Mobile Subtitles Viewer Button */}
-                    {isMobile && (
-                        <Button onClick={() => setShowMobileSubtitles(true)} variant="secondary" className="w-full">
-                            <Captions className="h-5 w-5 mr-2" />
-                            View Subtitles
-                        </Button>
-                    )}
-
-                    {/* Start Transcription Button */}
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={handleStartTranscription}
-                            disabled={isTranscribing || isExporting || labeledProgress?.type === 'Download' || (settings.selectedInputTracks.length === 0 && !settings.isStandaloneMode) || (fileInput === null && settings.isStandaloneMode)}
-                            className="flex-1"
-                            size={isMobile ? undefined : "lg"}
-                        >
-                            {isTranscribing || isExporting ? <LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> : <CirclePlay className="mr-2 h-5 w-5" />}
-                            {isExporting ? "Exporting Audio..." : isTranscribing ? (labeledProgress?.type === 'Download' ? "Downloading Model..." : "Processing...") : "Start Transcription"}
-                        </Button>
-
-                        {(isTranscribing || isExporting) && (
-                            <Button
-                                onClick={handleCancelTranscription}
-                                variant="destructive"
-                                size={isMobile ? undefined : "lg"}
-                                className="px-3"
-                            >
-                                <XCircle className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                </div>
+                <ActionBar
+                    isTranscribing={isTranscribing}
+                    isExporting={isExporting}
+                    labeledProgress={labeledProgress}
+                    exportProgress={exportProgress}
+                    isMobile={isMobile}
+                    fileInput={fileInput}
+                    onShowMobileSubtitles={() => setShowMobileSubtitles(true)}
+                    onStartTranscription={handleStartTranscription}
+                    onCancelTranscription={handleCancelTranscription}
+                    getProgressColorClass={getProgressColorClass}
+                />
             </div >
 
             {/* Mobile Subtitles Viewer */}

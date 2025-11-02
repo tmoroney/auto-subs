@@ -6499,7 +6499,6 @@ dependencies = [
 [[package]]
 name = "whisper-diarize-rs"
 version = "0.1.0"
-source = "git+https://github.com/tmoroney/whisper-diarize-rs?branch=main#e8d4949f5b4a925c748d3f716d1b3d0061738a89"
 dependencies = [
  "dirs 5.0.1",
  "eyre",
@@ -6514,6 +6513,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-util",
  "tracing",
  "unicode-segmentation",
  "whisper-rs",
