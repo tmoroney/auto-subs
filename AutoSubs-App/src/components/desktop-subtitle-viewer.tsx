@@ -15,7 +15,7 @@ export function DesktopSubtitleViewer() {
   const [isPushing, setIsPushing] = React.useState(false)
 
   return (
-    <div className="flex flex-col h-full border-l bg-sidebar">
+    <div className="flex flex-col h-full border-l">
 
       {/* Import/Export Popover & Edit Speakers */}
       <div className="shrink-0 p-3 pb-0 flex gap-2">
@@ -79,9 +79,9 @@ export function DesktopSubtitleViewer() {
       {!settings.isStandaloneMode && (
         <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
           <Button
-            variant="default"
+            variant="secondary"
             size="default"
-            className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
+            className="w-full"
             disabled={isPushing}
             onClick={async () => {
               try {

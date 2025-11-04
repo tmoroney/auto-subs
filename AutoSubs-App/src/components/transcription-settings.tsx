@@ -255,7 +255,7 @@ export const TranscriptionSettings = ({
 
     return (
         <>
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col bg-card/50">
                 {/* Main Content */}
                 <div className="flex-1 p-4 space-y-5 overflow-auto pb-8"
                     style={{
