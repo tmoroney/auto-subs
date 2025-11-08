@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowUpIcon, Upload, FileUp, Speech, Text, Languages, Ligature, Type, ArrowUp, AudioLines, Play, Globe, Check } from "lucide-react"
+import { ArrowUpIcon, Upload, FileUp, Speech, Text, Languages, Ligature, Type, ArrowUp, AudioLines, Play, Globe, Check, Brain } from "lucide-react"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Tabs as ModelTabs, TabsList as ModelTabsList, TabsTrigger as ModelTabsTrigger } from "@/components/ui/tabs"
-import { Brain, Download, HardDrive, MemoryStick } from "lucide-react"
+import { Download, HardDrive, MemoryStick } from "lucide-react"
 import { Model, Track } from "@/types/interfaces"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { languages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
 
@@ -153,6 +154,36 @@ export function ActionBar({
                                         </div>
                                     </div>
 
+                                    {/* Character Limit */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-sm font-medium">Character Limit</Label>
+                                            <p className="text-xs text-muted-foreground">Per line (0 = auto)</p>
+                                        </div>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={settings.maxCharsPerLine}
+                                            onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
+                                            className="w-20"
+                                        />
+                                    </div>
+
+                                    {/* Line Count */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-sm font-medium">Line Count</Label>
+                                            <p className="text-xs text-muted-foreground">Max lines per subtitle</p>
+                                        </div>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={settings.maxLinesPerSubtitle}
+                                            onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
+                                            className="w-20"
+                                        />
+                                    </div>
+
                                     {/* Split on Punctuation */}
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -242,35 +273,6 @@ export function ActionBar({
                                                 </ScrollArea>
                                             </div>
                                         )}
-                                    </div>
-                                    {/* Character Limit */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">Character Limit</Label>
-                                            <p className="text-xs text-muted-foreground">Per line (0 = unlimited)</p>
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            value={settings.maxCharsPerLine}
-                                            onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
-                                            className="w-20"
-                                        />
-                                    </div>
-
-                                    {/* Line Count */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">Line Count</Label>
-                                            <p className="text-xs text-muted-foreground">Max lines per subtitle</p>
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            value={settings.maxLinesPerSubtitle}
-                                            onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
-                                            className="w-20"
-                                        />
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -635,17 +637,19 @@ export function ActionBar({
                                         }).map((model) => {
                                             const originalIndex = modelsState.findIndex(m => m.value === model.value);
                                             return (
-                                                <div
-                                                    key={originalIndex}
-                                                    className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
-                                                        ? "bg-blue-50 dark:bg-blue-900/20"
-                                                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                                        }`}
-                                                    onClick={() => {
-                                                        updateSetting("model", originalIndex)
-                                                        setOpenModelSelector(false)
-                                                    }}
-                                                >
+                                                <TooltipProvider key={originalIndex}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div
+                                                                className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
+                                                                    ? "bg-blue-50 dark:bg-blue-900/20"
+                                                                    : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                                                    }`}
+                                                                onClick={() => {
+                                                                    updateSetting("model", originalIndex)
+                                                                    setOpenModelSelector(false)
+                                                                }}
+                                                            >
                                                     <div className="flex items-center gap-2">
                                                         <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded" />
                                                         <div className="flex flex-col">
@@ -679,6 +683,13 @@ export function ActionBar({
                                                         )}
                                                     </div>
                                                 </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="max-w-xs">
+                                                                <p className="text-sm font-medium">{model.label}</p>
+                                                                <p className="text-xs text-muted-foreground mt-1">{model.details}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                             );
                                         })}
                                     </div>
