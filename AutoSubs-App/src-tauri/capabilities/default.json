@@ -87,6 +87,15 @@
     {
       "identifier": "core:window:allow-close"
     },
+    {
+      "identifier": "core:window:allow-start-dragging"
+    },
+    {
+      "identifier": "core:window:allow-minimize"
+    },
+    {
+      "identifier": "core:window:allow-toggle-maximize"
+    },
     "process:default",
     "shell:default",
     "os:default",

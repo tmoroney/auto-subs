@@ -1,6 +1,6 @@
 // App.tsx
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
-import { Captions, Heart, Moon, Sun } from "lucide-react"
+import { Heart, Moon, Sun } from "lucide-react"
 import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button"
 import React from "react"
@@ -17,6 +17,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Titlebar } from "@/components/titlebar"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -39,6 +40,9 @@ function App() {
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
   const { settings, updateSetting, isTranscribing, setIsTranscribing, validateTranscriptionInput } = useGlobal()
   const isMobile = useIsMobile()
+  
+  // timelineInfo will come from your actual Resolve connection state
+  // For now, this will be null until connected
 
   // Check if this is the first time the user opens the app
   React.useEffect(() => {
@@ -73,36 +77,8 @@ function App() {
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <TooltipProvider>
         <div className="flex flex-col h-screen overflow-hidden">
-          {/* Top Menu Bar */}
-          {isMobile && (
-            <header className="sticky top-0 flex shrink-0 items-center justify-between border-b bg-background/80 backdrop-blur-sm p-2 sm:p-2.5 z-20 min-w-0">
-              <ThemeToggle />
-              {/* Left side - Mode switcher (desktop) */}
-              <div className="flex-1 flex justify-center px-2">
-                <Tabs
-                  value={settings.isStandaloneMode ? "standalone" : "resolve"}
-                  onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")}
-                  className="w-full max-w-[400px]"
-                >
-                  <TabsList className="w-full rounded-full bg-muted">
-                    <TabsTrigger value="resolve" className="flex-1 rounded-full text-sm">
-                      Resolve
-                    </TabsTrigger>
-                    <TabsTrigger value="standalone" className="flex-1 rounded-full text-sm">
-                      Standalone
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowMobileSubtitles(true)}
-              >
-                <Captions className="h-5 w-5" />
-              </Button>
-            </header>
-          )}
+          {/* Custom Titlebar for Overlay Mode - Desktop Only */}
+          <Titlebar timelineInfo={null} />
 
 
           {/* Main Content Area with Resizable Panels */}
@@ -117,7 +93,7 @@ function App() {
             ) : (
               // Desktop: Resizable panels with transcription settings and subtitle viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={55} className="min-w-[360px]">
+                <ResizablePanel defaultSize={55} className="min-w-[460px]">
                   <TranscriptionSettings
                     onShowTutorial={handleShowTutorial}
                   />

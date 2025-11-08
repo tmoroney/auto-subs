@@ -5,7 +5,6 @@ import {
     Github,
     Captions,
     HelpCircle,
-    RefreshCcw,
     History,
     LoaderCircle,
     CirclePlay,
@@ -18,9 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Switch } from "@/components/ui/switch"
-import { Card } from "@/components/ui/card"
 import { ActionBar } from "./action-bar"
 import {
     AlertDialog,
@@ -99,8 +96,6 @@ export const TranscriptionSettings = ({
         setIsExporting,
         exportProgress,
         setExportProgress,
-        isRefreshing,
-        setIsRefreshing,
         isTranscribing,
         setIsTranscribing,
         showMobileSubtitles,
@@ -305,42 +300,6 @@ export const TranscriptionSettings = ({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <Card className="flex items-center gap-2 px-1.5 py-1 shadow-none rounded bg-secondary">
-                                    <img
-                                        src="/davinci-resolve-logo.png"
-                                        alt="DaVinci Resolve Logo"
-                                        className="h-5 w-5 mr-0 inline-block"
-                                        style={{
-                                            verticalAlign: "middle",
-                                            filter: timelineInfo && timelineInfo.timelineId ? undefined : "grayscale(100%)",
-                                        }}
-                                    />
-                                    <div className="flex-1">
-                                        <div className="text-xs font-medium font-mono truncate dark:text-gray-300 text-gray-700">
-                                            {!timelineInfo || !timelineInfo.timelineId ? 'Open a timeline in Resolve.' : timelineInfo.name}
-                                        </div>
-                                    </div>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                onClick={async () => {
-                                                    setIsRefreshing(true);
-                                                    await refresh();
-                                                    setTimeout(() => setIsRefreshing(false), 400);
-                                                }}
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0"
-                                                disabled={isRefreshing}
-                                            >
-                                                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom" className="text-xs">
-                                            Refresh
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </Card>
                                 <AudioInputCard
                                     callRefresh={() => refresh()}
                                     selectedTracks={settings.selectedInputTracks}

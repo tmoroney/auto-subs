@@ -75,7 +75,7 @@ interface GlobalProviderProps {
   children: ReactNode;
 }
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   // Mode
   isStandaloneMode: false,
 
@@ -88,8 +88,8 @@ const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   translate: false,
   targetLanguage: "en",
-  enableDTW: false,
-  enableGpu: false, // gpu enabled by default on mac and linux, disabled by default on windows
+  enableDTW: true,
+  enableGpu: true, // gpu enabled by default on mac and linux, disabled by default on windows
   enableDiarize: false,
   maxSpeakers: null,
 

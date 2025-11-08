@@ -1,14 +1,12 @@
 import * as React from "react"
-import { ArrowUpIcon, Upload, FileUp, Speech, Text, Languages, Ligature, Type, ArrowUp, AudioLines, Play, Globe, Check, Brain } from "lucide-react"
+import { Upload, FileUp, Speech, Languages, Type, ArrowUp, AudioLines, Globe, Check, Brain } from "lucide-react"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Captions, LoaderCircle, CirclePlay, XCircle, Settings } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,11 +15,11 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { Tabs as ModelTabs, TabsList as ModelTabsList, TabsTrigger as ModelTabsTrigger } from "@/components/ui/tabs"
 import { Download, HardDrive, MemoryStick } from "lucide-react"
-import { Model, Track } from "@/types/interfaces"
+import { Track } from "@/types/interfaces"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Switch } from "@/components/ui/switch"
@@ -30,7 +28,18 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { useMediaQuery } from "../hooks/use-media-query";
 import { languages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
 
@@ -55,20 +64,19 @@ export function ActionBar({
     isMobile = false,
     fileInput = null,
     onShowMobileSubtitles,
-    onStartTranscription,
-    onCancelTranscription,
-    getProgressColorClass = () => ""
 }: ActionBarProps) {
     const { settings, updateSetting, modelsState, downloadingModel, downloadProgress, timelineInfo } = useGlobal()
-    const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
+    const [openTargetLanguage, setOpenTargetLanguage] = React.useState(false)
+    const [activeTab, setActiveTab] = React.useState('all')
+    const isSmallScreen = useMediaQuery('(max-width: 640px)')
+    const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
     const [openInputLanguage, setOpenInputLanguage] = React.useState(false)
-    const [openTargetLanguage, setOpenTargetLanguage] = React.useState(false)
     const [openSpeakerPopover, setOpenSpeakerPopover] = React.useState(false)
     const [openTextFormattingPopover, setOpenTextFormattingPopover] = React.useState(false)
+    const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
-    const [activeTab, setActiveTab] = React.useState("all")
 
     // Get input tracks from timeline info
     const inputTracks: Track[] = React.useMemo(() => {
@@ -154,6 +162,30 @@ export function ActionBar({
                                         </div>
                                     </div>
 
+                                    {/* Split on Punctuation */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-sm font-medium">Split on Punctuation</Label>
+                                            <p className="text-xs text-muted-foreground">Natural line breaks</p>
+                                        </div>
+                                        <Switch
+                                            checked={settings.splitOnPunctuation}
+                                            onCheckedChange={(checked) => updateSetting("splitOnPunctuation", checked)}
+                                        />
+                                    </div>
+
+                                    {/* Remove Punctuation */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-sm font-medium">Remove Punctuation</Label>
+                                            <p className="text-xs text-muted-foreground">Removes commas, periods, etc.</p>
+                                        </div>
+                                        <Switch
+                                            checked={settings.removePunctuation}
+                                            onCheckedChange={(checked) => updateSetting("removePunctuation", checked)}
+                                        />
+                                    </div>
+
                                     {/* Character Limit */}
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -184,95 +216,114 @@ export function ActionBar({
                                         />
                                     </div>
 
-                                    {/* Split on Punctuation */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">Split on Punctuation</Label>
-                                            <p className="text-xs text-muted-foreground">Natural line breaks</p>
-                                        </div>
-                                        <Switch
-                                            checked={settings.splitOnPunctuation}
-                                            onCheckedChange={(checked) => updateSetting("splitOnPunctuation", checked)}
-                                        />
-                                    </div>
-
-                                    {/* Remove Punctuation */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">Remove Punctuation</Label>
-                                            <p className="text-xs text-muted-foreground">Removes commas, periods, etc.</p>
-                                        </div>
-                                        <Switch
-                                            checked={settings.removePunctuation}
-                                            onCheckedChange={(checked) => updateSetting("removePunctuation", checked)}
-                                        />
-                                    </div>
-
                                     {/* Censor Words */}
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <Label className="text-sm font-medium">Censor Sensitive Words</Label>
-                                                <p className="text-xs text-muted-foreground">Replace with asterisks</p>
-                                            </div>
-                                            <Switch
-                                                checked={settings.enableCensor}
-                                                onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
-                                            />
-                                        </div>
-
-                                        {settings.enableCensor && (
-                                            <div className="space-y-2">
-                                                <form
-                                                    className="flex gap-2"
-                                                    onSubmit={(e) => {
-                                                        e.preventDefault();
-                                                        if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
-                                                        updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
-                                                        setNewCensoredWord("");
-                                                    }}
+                                        <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-start"
                                                 >
-                                                    <Input
-                                                        value={newCensoredWord}
-                                                        onChange={(e) => setNewCensoredWord(e.target.value)}
-                                                        placeholder="Add word to censor"
-                                                        className="flex-1"
-                                                    />
-                                                    <Button
-                                                        type="submit"
-                                                        size="sm"
-                                                        disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
-                                                    >
-                                                        Add
-                                                    </Button>
-                                                </form>
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-2 h-2 rounded-full ${settings.enableCensor ? "bg-primary" : "bg-gray-300"}`} />
+                                                            <span className={`text-sm ${!settings.enableCensor ? "text-muted-foreground" : ""}`}>Censor Words</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {(settings.censoredWords || []).length} words
+                                                            </span>
+                                                            {!settings.enableCensor && (
+                                                                <span className="text-xs text-red-500">Off</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Censor Sensitive Words</DialogTitle>
+                                                    <DialogDescription>
+                                                        Add words to be censored in the subtitles.
+                                                    </DialogDescription>
+                                                </DialogHeader>
 
-                                                <ScrollArea className="max-h-[100px]">
-                                                    {(settings.censoredWords || []).length === 0 ? (
-                                                        <div className="text-xs text-muted-foreground p-2 text-center">
-                                                            No words selected to censor
+                                                <div className="space-y-4">
+                                                    <form
+                                                        className="flex gap-2"
+                                                        onSubmit={(e) => {
+                                                            e.preventDefault();
+                                                            if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
+                                                            updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
+                                                            setNewCensoredWord("");
+                                                        }}
+                                                    >
+                                                        <Input
+                                                            value={newCensoredWord}
+                                                            onChange={(e) => setNewCensoredWord(e.target.value)}
+                                                            placeholder="Add word to censor"
+                                                            className="flex-1"
+                                                        />
+                                                        <Button
+                                                            type="submit"
+                                                            size="sm"
+                                                            disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
+                                                        >
+                                                            Add
+                                                        </Button>
+                                                    </form>
+
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-sm font-medium">Censored Words</Label>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {(settings.censoredWords || []).length} words
+                                                            </span>
                                                         </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-1 p-1">
-                                                            {(settings.censoredWords || []).map((word: string, index: number) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    variant="secondary"
-                                                                    className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
-                                                                    onClick={() => {
-                                                                        const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
-                                                                        updateSetting("censoredWords", updatedWords);
-                                                                    }}
-                                                                >
-                                                                    {word}
-                                                                    <span className="ml-1">×</span>
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </ScrollArea>
-                                            </div>
-                                        )}
+                                                        <ScrollArea className="max-h-[200px] border rounded-lg p-2">
+                                                            {(settings.censoredWords || []).length === 0 ? (
+                                                                <div className="text-xs text-muted-foreground text-center py-4">
+                                                                    No words selected to censor
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {(settings.censoredWords || []).map((word: string, index: number) => (
+                                                                        <Badge
+                                                                            key={index}
+                                                                            variant="secondary"
+                                                                            className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                                                                            onClick={() => {
+                                                                                const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
+                                                                                updateSetting("censoredWords", updatedWords);
+                                                                            }}
+                                                                        >
+                                                                            {word}
+                                                                            <span className="ml-2">×</span>
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </ScrollArea>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button
+                                                        variant={settings.enableCensor ? "destructive" : "default"}
+                                                        onClick={() => {
+                                                            updateSetting("enableCensor", !settings.enableCensor);
+                                                            if (settings.enableCensor) {
+                                                                setOpenCensorDialog(false);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {settings.enableCensor ? "Disable Censoring" : "Enable Censoring"}
+                                                    </Button>
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline">Close</Button>
+                                                    </DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -291,13 +342,13 @@ export function ActionBar({
                                     {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : ""}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-64 p-0" side="top">
-                                <div className="space-y-4 p-4">
+                            <PopoverContent className="w-72 p-0" side="top">
+                                <div className="p-4 space-y-4">
                                     {/* Speaker Count Slider */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-sm">Number of Speakers</Label>
-                                            <span className="text-xs text-muted-foreground">
+                                            <Label className="text-sm font-medium">Number of Speakers</Label>
+                                            <span className={`text-sm font-medium ${settings.enableDiarize ? "text-primary" : "text-red-500"}`}>
                                                 {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Off"}
                                             </span>
                                         </div>
@@ -308,6 +359,7 @@ export function ActionBar({
                                             min={0}
                                             step={1}
                                             className="w-full"
+                                            disabled={!settings.enableDiarize}
                                         />
                                         <div className="flex justify-between text-xs text-muted-foreground">
                                             <span>Auto</span>
@@ -315,13 +367,19 @@ export function ActionBar({
                                         </div>
                                     </div>
                                 </div>
-                                <div className="border-t">
-                                    <div className="flex items-center justify-between px-4 py-3">
-                                        <Label className="text-sm">Speaker Labels {settings.enableDiarize ? "On" : "Off"}</Label>
-                                        <Switch
-                                            checked={settings.enableDiarize}
-                                            onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
-                                        />
+                                <div className="border-t bg-muted/30">
+                                    <div className="p-4 pt-2 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-sm font-medium">Speaker Labels</Label>
+                                                <p className="text-xs text-muted-foreground">Identify different speakers</p>
+                                            </div>
+                                            <Switch
+                                                checked={settings.enableDiarize}
+                                                onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
+                                                className={settings.enableDiarize ? "" : "data-[state=unchecked]:bg-red-500"}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -344,7 +402,7 @@ export function ActionBar({
                                     }
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="p-0 w-full">
+                            <PopoverContent className="p-0 w-72">
                                 <Command className="max-h-[250px]">
                                     <CommandInput placeholder="Search target languages..." />
                                     <CommandList>
@@ -377,13 +435,19 @@ export function ActionBar({
                                         </CommandGroup>
                                     </CommandList>
                                 </Command>
-                                <div className="border-t">
-                                    <div className="flex items-center justify-between px-4 py-3">
-                                        <Label className="text-sm">Translation {settings.translate ? "On" : "Off"}</Label>
-                                        <Switch
-                                            checked={settings.translate}
-                                            onCheckedChange={(checked) => updateSetting("translate", checked)}
-                                        />
+                                <div className="border-t bg-muted/30">
+                                    <div className="p-4 pt-2 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-sm font-medium">Translate Subtitles</Label>
+                                                <p className="text-xs text-muted-foreground">From {languages.find(l => l.value === settings.language)?.label} to {languages.find(l => l.value === settings.targetLanguage)?.label}</p>
+                                            </div>
+                                            <Switch
+                                                checked={settings.translate}
+                                                onCheckedChange={(checked) => updateSetting("translate", checked)}
+                                                className={settings.translate ? "" : "data-[state=unchecked]:bg-red-500"}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -620,13 +684,13 @@ export function ActionBar({
                                 </div>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[280px] p-2" align="end">
-                            <ModelTabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-                                <ModelTabsList className="grid w-full grid-cols-2 px-1">
-                                    <ModelTabsTrigger value="all" className="text-xs">All Languages</ModelTabsTrigger>
-                                    <ModelTabsTrigger value="en" className="text-xs">English-Only</ModelTabsTrigger>
-                                </ModelTabsList>
-                                <ScrollArea className="h-[180px] mt-1">
+                        <PopoverContent className="p-1">
+                            <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="all" className="text-xs p-2">All Languages</TabsTrigger>
+                                    <TabsTrigger value="en" className="text-xs p-2">English-Only</TabsTrigger>
+                                </TabsList>
+                                <ScrollArea className="my-1.5">
                                     <div className="space-y-1 pr-0">
                                         {modelsState.filter(model => {
                                             if (activeTab === 'all') {
@@ -637,64 +701,81 @@ export function ActionBar({
                                         }).map((model) => {
                                             const originalIndex = modelsState.findIndex(m => m.value === model.value);
                                             return (
-                                                <TooltipProvider key={originalIndex}>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div
-                                                                className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
-                                                                    ? "bg-blue-50 dark:bg-blue-900/20"
-                                                                    : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                                                    }`}
-                                                                onClick={() => {
-                                                                    updateSetting("model", originalIndex)
-                                                                    setOpenModelSelector(false)
-                                                                }}
-                                                            >
-                                                    <div className="flex items-center gap-2">
-                                                        <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded" />
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium text-xs">{model.label}</span>
-                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                <div className="flex items-center gap-1">
-                                                                    <HardDrive className="h-2 w-2" />
-                                                                    <span>{model.size}</span>
+                                                <HoverCard key={originalIndex}>
+                                                    <HoverCardTrigger asChild>
+                                                        <div
+                                                            className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
+                                                                ? "bg-blue-50 dark:bg-blue-900/20"
+                                                                : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                                                }`}
+                                                            onClick={() => {
+                                                                updateSetting("model", originalIndex)
+                                                                setOpenModelSelector(false)
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium text-xs">{model.label}</span>
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <HardDrive className="h-3 w-3" />
+                                                                            <span>{model.size}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <MemoryStick className="h-3 w-3" />
+                                                                            <span>{model.ram}</span>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <MemoryStick className="h-2 w-2" />
-                                                                    <span>{model.ram}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {downloadingModel === model.value ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Progress value={downloadProgress} className="h-1 w-12" />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
+                                                                    </div>
+                                                                ) : model.isDownloaded ? (
+                                                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                        Cached
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                                                        Available
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </HoverCardTrigger>
+                                                    <HoverCardContent className="w-80" side={isSmallScreen ? "top" : "right"}>
+                                                        <div className="flex items-start gap-3">
+                                                            <img
+                                                                src={model.image}
+                                                                alt={model.label + " icon"}
+                                                                className="h-12 w-12 object-contain rounded"
+                                                            />
+                                                            <div className="space-y-1">
+                                                                <h4 className="text-sm font-semibold">{model.label}</h4>
+                                                                <p className="text-xs text-muted-foreground">{model.details}</p>
+                                                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <HardDrive className="h-3 w-3" />
+                                                                        <span>{model.size}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <MemoryStick className="h-3 w-3" />
+                                                                        <span>{model.ram}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {downloadingModel === model.value ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <Progress value={downloadProgress} className="h-1 w-12" />
-                                                                <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                            </div>
-                                                        ) : model.isDownloaded ? (
-                                                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                Cached
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                                                Available
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="max-w-xs">
-                                                                <p className="text-sm font-medium">{model.label}</p>
-                                                                <p className="text-xs text-muted-foreground mt-1">{model.details}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                                    </HoverCardContent>
+                                                </HoverCard>
                                             );
                                         })}
                                     </div>
                                 </ScrollArea>
-                            </ModelTabs>
+                            </Tabs>
                         </PopoverContent>
                     </Popover>
                 </div>

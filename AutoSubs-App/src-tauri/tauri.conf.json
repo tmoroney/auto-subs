@@ -12,10 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "AutoSubs",
-        "width": 750,
-        "height": 740,
-        "closable": true
+        "titleBarStyle": "Overlay",
+        "decorations": true,
+        "height": 600,
+        "width": 410,
+        "acceptFirstMouse": true,
+        "title": ""
       }
     ],
     "security": {
