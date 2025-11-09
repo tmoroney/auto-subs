@@ -5,7 +5,7 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
@@ -135,6 +135,10 @@ pub async fn transcribe_audio<R: Runtime>(
     };
     println!("Normalized audio path: {}", audio_path.display());
 
+    // Clone app handle for segment callback and wrap in Arc for thread-safe sharing
+    let segment_emit_app = Arc::new(app.clone());
+    let segment_emit_app_clone = Arc::clone(&segment_emit_app);
+
     // Run transcription using the whisper-diarize-rs crate (it's async)
     let res = async move {
         // Get the proper cache directory for models
@@ -191,6 +195,13 @@ pub async fn transcribe_audio<R: Runtime>(
         // For now, we pass the enable_gpu option if the crate supports it in the future
 
         // Set up callbacks using whisper-diarize-rs built-in cancellation
+        let segment_callback = move |segment: &WDSegment| {
+            println!("New segment: {}", segment.text);
+            
+            // Emit the segment text to frontend for live preview
+            let _ = segment_emit_app_clone.emit("new-segment", segment.text.clone());
+        };
+        
         let callbacks = Callbacks {
             progress: Some(&|percent: i32, progress_type: ProgressType, label: &str| {
                 println!("{}: {}% - {:?}", label, percent, progress_type);
@@ -204,9 +215,7 @@ pub async fn transcribe_audio<R: Runtime>(
                     *progress_label_lock = Some(label.to_string());
                 }
             }),
-            new_segment_callback: Some(&|segment: &WDSegment| {
-                println!("New segment: {}", segment.text);
-            }),
+            new_segment_callback: Some(&segment_callback),
             is_cancelled: Some(Box::new(|| {
                 if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
                     *should_cancel

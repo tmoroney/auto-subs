@@ -133,7 +133,7 @@ const SubtitleList = ({
     
     // Constants for virtualization - using adaptive height estimation
     const ESTIMATED_ITEM_HEIGHT = 100; // Conservative estimate for variable heights
-    const BUFFER_SIZE = 3; // Smaller buffer for better performance
+    const BUFFER_SIZE = 5; // Increased buffer for smoother scrolling
 
     // Add subtitle content hash to force re-render when content changes
     const subtitleContentHash = useMemo(() => {
@@ -154,16 +154,18 @@ const SubtitleList = ({
         const itemCount = filteredSubtitles.length;
         if (itemCount === 0) return { startIndex: 0, endIndex: 0, totalHeight: 0 };
         
+        // Calculate visible range more accurately
         const visibleStart = Math.floor(scrollTop / ESTIMATED_ITEM_HEIGHT);
         const visibleEnd = Math.min(
             itemCount - 1,
             Math.ceil((scrollTop + containerHeight) / ESTIMATED_ITEM_HEIGHT)
         );
         
+        // Add buffer to prevent empty space during scroll
         const start = Math.max(0, visibleStart - BUFFER_SIZE);
         const end = Math.min(itemCount - 1, visibleEnd + BUFFER_SIZE);
         
-        // Use a more conservative total height to prevent large blank space
+        // Use conservative height estimate to account for variable content
         const averageItemHeight = ESTIMATED_ITEM_HEIGHT - 20; // Match the minHeight we use for items
         
         return {
@@ -347,7 +349,7 @@ const SubtitleList = ({
                                     key={`${actualIndex}-${subtitle.text.slice(0, 20)}`} // Include content in key for proper re-rendering
                                     className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
                                     style={{ 
-                                        minHeight: ESTIMATED_ITEM_HEIGHT - 20 // Allow natural height with minimum
+                                        minHeight: `${ESTIMATED_ITEM_HEIGHT - 20}px` // Allow natural height with minimum
                                     }}
                                 >
                                     <div className="flex w-full items-center gap-2">

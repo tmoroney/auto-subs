@@ -5,17 +5,14 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
-import { SpeakerEditor } from "./speaker-editor"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { SettingsDialog } from "./settings-dialog"
 import { ActionBar } from "./action-bar"
-import { MobileSubtitleViewer } from "./mobile-subtitle-viewer"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ProcessingStepItem } from "./processing-step-item"
 
@@ -107,35 +104,11 @@ function ManageModelsDialog({ models, onDeleteModel }: {
     );
 }
 
-// Pre-computed progress bar color classes (constant lookup, no string comparison)
-const PROGRESS_COLOR_CLASSES: Record<string, string> = {
-    "Download": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-amber-400 [&>div]:to-orange-500",
-    "Transcribe": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600",
-    "Translate": "h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-600",
-} as const;
-
-const DEFAULT_PROGRESS_CLASS = "h-2";
-
-// Helper function to get progress bar color based on progress type (O(1) lookup)
-function getProgressColorClass(progressType?: string) {
-    return progressType ? (PROGRESS_COLOR_CLASSES[progressType] || DEFAULT_PROGRESS_CLASS) : DEFAULT_PROGRESS_CLASS;
-}
-
 export const TranscriptionSettings = () => {
-    const isMobile = useIsMobile()
     const {
         settings,
         updateSetting,
         modelsState,
-        downloadingModel,
-        downloadProgress,
-        checkDownloadedModels,
-        handleDeleteModel,
-        getSourceAudio,
-        validateTranscriptionInput,
-        createTranscriptionOptions,
-        processTranscriptionResults,
-        exportSubtitlesAs,
         fileInput,
         setTranscriptionProgress,
         setLabeledProgress,
@@ -143,26 +116,44 @@ export const TranscriptionSettings = () => {
         cancelExport,
         isExporting,
         setIsExporting,
-        exportProgress,
         setExportProgress,
         processingSteps,
-        clearProcessingSteps,
-        completeAllProcessingSteps,
+        livePreviewSegments,
+        clearProgressSteps,
+        completeAllProgressSteps,
+        cancelAllProgressSteps,
         isProcessing,
         setIsProcessing,
         showMobileSubtitles,
         setShowMobileSubtitles,
         pushToTimeline,
         cancelRequestedRef,
+        exportSubtitlesAs,
+        validateTranscriptionInput,
+        getSourceAudio,
+        createTranscriptionOptions,
+        processTranscriptionResults,
+        checkDownloadedModels,
+        downloadingModel,
+        downloadProgress,
+        handleDeleteModel,
     } = useGlobal()
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
     const [activeTab, setActiveTab] = React.useState('all')
     const isSmallScreen = useMediaQuery('(max-width: 640px)')
-    // Ref to track cancellation requests - allows interrupting polling loops
-    const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
-    const [showNonDiarizedDialog, setShowNonDiarizedDialog] = React.useState(false)
+    
+    // Ref for auto-scrolling progress steps
+    const progressContainerRef = React.useRef<HTMLDivElement>(null)
+
+    // Auto-scroll to bottom when new steps are added
+    React.useEffect(() => {
+        if (progressContainerRef.current && processingSteps.length > 0) {
+            // Scroll to the bottom smoothly
+            progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
+        }
+    }, [processingSteps])
 
 
     // Set up event listeners from global context
@@ -215,7 +206,7 @@ export const TranscriptionSettings = () => {
         setTranscriptionProgress(0)
 
         // Clear any previous processing steps before starting new transcription
-        clearProcessingSteps()
+        clearProgressSteps()
 
         try {
             // Create and log transcription options
@@ -227,18 +218,10 @@ export const TranscriptionSettings = () => {
             console.log("Transcription successful:", transcript)
 
             // Complete all remaining processing steps since transcription is finished
-            completeAllProcessingSteps()
+            completeAllProgressSteps()
 
             // Process results and get filename
             await processTranscriptionResults(transcript as any)
-
-            if (!settings.isStandaloneMode && options.enableDiarize) {
-                console.log("Enabling speaker editor")
-                setShowSpeakerEditor(true)
-            } else if (!settings.isStandaloneMode && !options.enableDiarize) {
-                console.log("Showing non-diarized dialog")
-                setShowNonDiarizedDialog(true)
-            }
         } catch (error) {
             console.error("Transcription failed:", error)
             // Handle error, e.g., show an error message to the user
@@ -282,6 +265,9 @@ export const TranscriptionSettings = () => {
                 console.log("Export cancellation result:", cancelResult)
             }
 
+            // Mark progress steps as cancelled
+            cancelAllProgressSteps()
+
             // Reset UI state
             resetUIState()
         } catch (error) {
@@ -298,15 +284,15 @@ export const TranscriptionSettings = () => {
         <>
             <div className="h-full flex flex-col bg-card/50">
                 {/* Fixed Top Controls Bar */}
-                <div className="sticky top-0 z-10 flex items-center justify-between px-3 pt-3 pb-1 bg-transparent">
+                <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-3 bg-transparent">
                     {/* Model Selector */}
                     <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
                         <PopoverTrigger asChild>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="default"
                                 role="combobox"
-                                className="p-3"
+                                className="p-2"
                                 aria-expanded={openModelSelector}
                             >
                                 <div className="flex items-center gap-2">
@@ -429,92 +415,84 @@ export const TranscriptionSettings = () => {
                     </div>
                 </div>
 
-                {/* Main Content - with top padding for fixed header */}
-                <div className="flex-1 p-2 space-y-5 pb-8"
-                    style={{
+                {/* Progress Indicators Top Bar */}
+                {(isProcessing || processingSteps.length > 0) ? (
+                    <div ref={progressContainerRef} className="w-full px-4 pb-8 overflow-y-auto h-full" style={{
                         maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)'
                     }}>
-                    {/* Progress Indicators Top Bar */}
-                    {(isProcessing || processingSteps.length > 0) && (
-                        <div className="max-w-full overflow-auto">
-                            <div className="flex flex-col gap-2 p-1">
-                                {processingSteps.map((step) => (
-                                    <div key={step.id} className="w-full">
-                                        <ProcessingStepItem
-                                            id={step.id}
-                                            title={step.title}
-                                            description={step.description}
-                                            progress={step.progress}
-                                            isActive={step.isActive}
-                                            isCompleted={step.isCompleted}
-                                            onExportToFile={handleExportToFile}
-                                            onAddToTimeline={handleAddToTimeline}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Content - Welcome or Main Area */}
-                    <div className="flex flex-col items-center justify-center h-full">
-                        {processingSteps.length === 0 && (
-                            /* Welcome Content */
-                            <div className="flex flex-col items-center justify-center h-full space-y-3">
-                                <img
-                                    src="/autosubs-logo.png"
-                                    alt="AutoSubs"
-                                    className="w-20 h-20"
-                                />
-                                <div className="text-center space-y-3">
-                                    <h2 className="text-2xl font-semibold text-foreground">
-                                        Welcome to AutoSubs
-                                    </h2>
-                                    <p className="text-muted-foreground max-w-72">
-                                        Select an audio source to start generating subtitles.
-                                    </p>
-
-                                    {/* Support Button */}
-                                    <a
-                                        href="https://buymeacoffee.com/tmoroney"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-full border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
-                                    >
-                                        <Heart className="h-3 w-3 group-hover:fill-pink-500 fill-background transition-colors" />
-                                        Support AutoSubs
-
-                                        {/* Bursting hearts animation */}
-                                        <div className="absolute inset-0 pointer-events-none">
-                                            {[
-                                                { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
-                                                { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
-                                                { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
-                                                { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
-                                                { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
-                                                { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
-                                                { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
-                                            ].map((p, i) => (
-                                                <Heart
-                                                    key={i}
-                                                    className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
-                                                    style={{
-                                                        '--tx': p.tx,
-                                                        '--ty': p.ty,
-                                                        '--s': p.s,
-                                                        '--r': p.r,
-                                                        animationDelay: p.d,
-                                                    } as React.CSSProperties}
-                                                />
-                                            ))}
-                                        </div>
-                                    </a>
+                        <div className="flex flex-col gap-3">
+                            {processingSteps.map((step) => (
+                                <div key={step.id} className="w-full">
+                                    <ProcessingStepItem
+                                        id={step.id}
+                                        title={step.title}
+                                        description={step.description}
+                                        progress={step.progress}
+                                        isActive={step.isActive}
+                                        isCompleted={step.isCompleted}
+                                        isCancelled={step.isCancelled}
+                                        onExportToFile={handleExportToFile}
+                                        onAddToTimeline={handleAddToTimeline}
+                                        livePreviewSegments={livePreviewSegments}
+                                    />
                                 </div>
-                            </div>
-                        )}
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-3 pb-14">
+                        <img
+                            src="/autosubs-logo.png"
+                            alt="AutoSubs"
+                            className="w-20 h-20"
+                        />
+                        <div className="text-center space-y-3">
+                            <h2 className="text-2xl font-semibold text-foreground">
+                                Welcome to AutoSubs
+                            </h2>
+                            <p className="text-muted-foreground max-w-72">
+                                Select an audio source to start generating subtitles.
+                            </p>
+
+                            {/* Support Button */}
+                            <a
+                                href="https://buymeacoffee.com/tmoroney"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-full border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
+                            >
+                                <Heart className="h-3 w-3 group-hover:fill-pink-500 fill-background transition-colors" />
+                                Support AutoSubs
+
+                                {/* Bursting hearts animation */}
+                                <div className="absolute inset-0 pointer-events-none">
+                                    {[
+                                        { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
+                                        { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
+                                        { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
+                                        { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
+                                        { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
+                                        { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
+                                        { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
+                                    ].map((p, i) => (
+                                        <Heart
+                                            key={i}
+                                            className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
+                                            style={{
+                                                '--tx': p.tx,
+                                                '--ty': p.ty,
+                                                '--s': p.s,
+                                                '--r': p.r,
+                                                animationDelay: p.d,
+                                            } as React.CSSProperties}
+                                        />
+                                    ))}
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                )}
 
                 {/* Footer */}
                 <ActionBar
@@ -522,44 +500,7 @@ export const TranscriptionSettings = () => {
                     onStart={handleStartTranscription}
                     onCancel={handleCancelTranscription}
                 />
-            </div >
-
-            {/* Mobile Subtitles Viewer */}
-            {isMobile && <MobileSubtitleViewer isOpen={showMobileSubtitles} onClose={() => setShowMobileSubtitles(false)} />}
-
-            {/* Speaker Editor */}
-            {
-                showSpeakerEditor && (
-                    <SpeakerEditor afterTranscription={true} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-                )
-            }
-
-            {/* Non-diarized completion dialog */}
-            <AlertDialog open={showNonDiarizedDialog} onOpenChange={setShowNonDiarizedDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Transcription Complete</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            If you would like to edit the subtitles, click continue editing. When you're ready, click the orange button to add them to the timeline.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel asChild>
-                            <Button variant="outline" onClick={() => setShowNonDiarizedDialog(false)}>
-                                Continue Editing
-                            </Button>
-                        </AlertDialogCancel>
-                        <AlertDialogAction asChild>
-                            <Button onClick={() => {
-                                setShowNonDiarizedDialog(false)
-                                pushToTimeline()
-                            }}>
-                                Add to Timeline
-                            </Button>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            </div>
         </>
     )
 }

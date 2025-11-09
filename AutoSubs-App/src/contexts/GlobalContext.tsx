@@ -22,6 +22,7 @@ interface ProcessingStep {
   progress: number;
   isActive: boolean;
   isCompleted: boolean;
+  isCancelled?: boolean;
 }
 
 interface GlobalContextType {
@@ -47,6 +48,7 @@ interface GlobalContextType {
   cancelRequestedRef: React.MutableRefObject<boolean>;
   // Processing steps state
   processingSteps: ProcessingStep[];
+  livePreviewSegments: Subtitle[];
   // Transcription utils
   validateTranscriptionInput: () => boolean;
   createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
@@ -79,10 +81,9 @@ interface GlobalContextType {
   getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   cancelExport: () => Promise<any>;
   // Processing step management
-  addProcessingStep: (step: Omit<ProcessingStep, 'progress' | 'isActive' | 'isCompleted'>) => void;
-  updateProcessingStep: (id: string, updates: Partial<ProcessingStep>) => void;
-  clearProcessingSteps: () => void;
-  completeAllProcessingSteps: () => void;
+  clearProgressSteps: () => void;
+  completeAllProgressSteps: () => void;
+  cancelAllProgressSteps: () => void;
 }
 
 export const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -110,7 +111,7 @@ export const DEFAULT_SETTINGS: Settings = {
   maxSpeakers: null,
 
   // Text settings
-  maxCharsPerLine: 34,
+  maxCharsPerLine: 0,
   maxLinesPerSubtitle: 1,
   splitOnPunctuation: true,
   textCase: "none",
@@ -142,20 +143,19 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [error, setError] = useState<ErrorMsg>({ title: "", desc: "" });
   const [fileInput, setFileInput] = useState<string | null>(null);
 
-  // Event listener states
-  const [transcriptionProgress, setTranscriptionProgress] = useState<number>(0);
-  const [labeledProgress, setLabeledProgress] = useState<{ progress: number, type?: string, label?: string } | null>(null);
-  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
-  const [isModelDownloading, setIsModelDownloading] = useState<boolean>(false);
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  // Simplified progress management
+  const [progressSteps, setProgressSteps] = useState<ProcessingStep[]>([]);
+  
+  // Live subtitle preview state
+  const [livePreviewSegments, setLivePreviewSegments] = useState<Subtitle[]>([]);
+  
+  // Track seen segments to prevent duplicates across multiple listener setups
+  const seenSegmentsRef = useRef<Set<string>>(new Set());
 
   // Export state
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
   const cancelRequestedRef = useRef<boolean>(false);
-
-  // Processing steps state
-  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
 
   // UI state
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -503,199 +503,306 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   };
 
-  // Processing step management functions
-  const addProcessingStep = (step: Omit<ProcessingStep, 'progress' | 'isActive' | 'isCompleted'>) => {
-    setProcessingSteps(prev => {
-      // Check if step already exists
-      if (prev.some(s => s.id === step.id)) {
-        return prev;
+  // Simplified progress step management
+  const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
+    setProgressSteps(prev => {
+      const stepId = event.type || 'Unknown'
+      const stepTitle = getStepTitle(event.type)
+      const stepOrder = getStepOrder()
+      
+      // Normalize step ID for ordering - treat unknown types as "Warming Up"
+      const normalizedStepId = stepOrder.includes(stepId) ? stepId : 'Warming Up'
+      
+      // Start artificial warming up progress if this is a warming up step and not already animating
+      if (normalizedStepId === 'Warming Up' && event.progress < 100 && !warmingUpIntervalRef.current) {
+        // Check if we already have a warming up step in the array
+        const existingWarmingUpStep = prev.find(s => {
+          const stepNormalizedId = stepOrder.includes(s.id) ? s.id : 'Warming Up'
+          return stepNormalizedId === 'Warming Up'
+        })
+        
+        if (!existingWarmingUpStep) {
+          // Only start animation if no warming up step exists yet
+          startWarmingUpProgress()
+          return prev // Don't update yet, let the animation handle it
+        }
       }
       
-      return [...prev, {
-        ...step,
-        progress: 0,
-        isActive: false,
-        isCompleted: false
-      }];
-    });
-  };
-
-  const updateProcessingStep = (id: string, updates: Partial<ProcessingStep>) => {
-    setProcessingSteps(prev => prev.map(step => {
-      if (step.id === id) {
-        const updated = { ...step, ...updates };
-        
-        // Auto-mark as completed if progress reaches 100
-        if (updates.progress === 100 || (updated.progress >= 100 && !updated.isCompleted)) {
-          updated.isCompleted = true;
-          updated.isActive = false;
+      // Stop warming up progress if we're moving to a different step
+      if (normalizedStepId !== 'Warming Up' && warmingUpIntervalRef.current) {
+        stopWarmingUpProgress()
+      }
+      
+      // Find existing step (by original ID, not normalized)
+      const existingStepIndex = prev.findIndex(s => s.id === stepId)
+      
+      if (existingStepIndex >= 0) {
+        // Update existing step
+        const updated = [...prev]
+        updated[existingStepIndex] = {
+          ...updated[existingStepIndex],
+          progress: event.progress,
+          description: `${Math.round(event.progress)}%`,
+          isActive: event.progress < 100,
+          isCompleted: event.progress >= 100
         }
         
-        return updated;
+        // When this step is active (progress < 100), set all previous steps to completed
+        if (event.progress < 100) {
+          const currentStepOrderIndex = stepOrder.indexOf(normalizedStepId)
+          
+          return updated.map((step, index) => {
+            const stepNormalizedId = stepOrder.includes(step.id) ? step.id : 'Warming Up'
+            const stepOrderIndex = stepOrder.indexOf(stepNormalizedId)
+            const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
+            
+            return {
+              ...step,
+              isActive: index === existingStepIndex,
+              isCompleted: isPreviousStep || (index === existingStepIndex && event.progress >= 100),
+              progress: isPreviousStep ? 100 : step.progress,
+              description: isPreviousStep ? '100%' : step.description
+            }
+          })
+        }
+        
+        return updated
+      } else {
+        // Add new step
+        const newStep: ProcessingStep = {
+          id: stepId,
+          title: stepTitle,
+          description: `${Math.round(event.progress)}%`,
+          progress: event.progress,
+          isActive: event.progress < 100,
+          isCompleted: event.progress >= 100
+        }
+        
+        // When adding new active step, set all previous steps to completed
+        if (event.progress < 100) {
+          const currentStepOrderIndex = stepOrder.indexOf(normalizedStepId)
+          
+          return prev.map(step => {
+            const stepNormalizedId = stepOrder.includes(step.id) ? step.id : 'Warming Up'
+            const stepOrderIndex = stepOrder.indexOf(stepNormalizedId)
+            const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
+            
+            return {
+              ...step,
+              isActive: false,
+              isCompleted: isPreviousStep || step.isCompleted,
+              progress: isPreviousStep ? 100 : step.progress,
+              description: isPreviousStep ? '100%' : step.description
+            }
+          }).concat(newStep)
+        }
+        
+        return [...prev, newStep]
       }
-      // Deactivate other steps when one becomes active
-      if (updates.isActive && step.id !== id) {
-        return { ...step, isActive: false };
+    })
+  }
+  
+  const getStepTitle = (type?: string): string => {
+    switch (type) {
+      case 'Download': return 'Downloading Model'
+      case 'Transcribe': return 'Transcribing Audio'
+      case 'Translate': return `Translating to ${settings.targetLanguage}`
+      default: return type || 'Warming Up'
+    }
+  }
+
+  // Warming up progress animation state
+  const warmingUpIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Start artificial warming up progress
+  const startWarmingUpProgress = useCallback(() => {
+    // Clear any existing interval
+    if (warmingUpIntervalRef.current) {
+      clearInterval(warmingUpIntervalRef.current)
+    }
+
+    let progress = 0
+    const duration = 5000 // 5 seconds
+    const interval = 100 // Update every 100ms
+    const increment = (interval / duration) * 100
+
+    warmingUpIntervalRef.current = setInterval(() => {
+      progress += increment
+      if (progress >= 100) {
+        progress = 100
+        if (warmingUpIntervalRef.current) {
+          clearInterval(warmingUpIntervalRef.current)
+          warmingUpIntervalRef.current = null
+        }
       }
-      return step;
-    }));
-  };
 
-  const clearProcessingSteps = () => {
-    setProcessingSteps([]);
-  };
+      // Find any existing warming up step and update it
+      setProgressSteps(prev => {
+        const warmingUpStepIndex = prev.findIndex(s => {
+          const stepOrder = getStepOrder()
+          const stepNormalizedId = stepOrder.includes(s.id) ? s.id : 'Warming Up'
+          return stepNormalizedId === 'Warming Up'
+        })
 
-  const completeAllProcessingSteps = () => {
-    setProcessingSteps(prev => {
-      // First, complete all existing steps
-      const completedSteps = prev.map(step => ({
+        if (warmingUpStepIndex >= 0) {
+          const updated = [...prev]
+          updated[warmingUpStepIndex] = {
+            ...updated[warmingUpStepIndex],
+            progress: Math.round(progress),
+            description: `${Math.round(progress)}%`,
+            isActive: progress < 100,
+            isCompleted: progress >= 100
+          }
+          return updated
+        } else {
+          // Create warming up step if it doesn't exist
+          const newStep: ProcessingStep = {
+            id: 'Warming Up',
+            title: 'Warming Up',
+            description: `${Math.round(progress)}%`,
+            progress: Math.round(progress),
+            isActive: progress < 100,
+            isCompleted: progress >= 100
+          }
+          return [...prev, newStep]
+        }
+      })
+    }, interval)
+  }, [])
+
+  // Stop warming up progress
+  const stopWarmingUpProgress = useCallback(() => {
+    if (warmingUpIntervalRef.current) {
+      clearInterval(warmingUpIntervalRef.current)
+      warmingUpIntervalRef.current = null
+    }
+  }, [])
+
+  // Define the order of progress steps
+  const getStepOrder = (): string[] => {
+    // Include common step types that might appear before the main ones
+    const order = ['Warming Up', 'Download', 'Transcribe']
+    if (settings.targetLanguage && settings.targetLanguage !== settings.language) {
+      order.push('Translate')
+    }
+    return order
+  }
+  
+  const clearProgressSteps = () => {
+    // Stop warming up progress animation
+    stopWarmingUpProgress()
+    
+    setProgressSteps([])
+    // Also clear live preview segments when starting new transcription
+    setLivePreviewSegments([])
+    seenSegmentsRef.current.clear()
+    console.log('Cleared progress steps and live preview segments');
+  }
+  
+  const completeAllProgressSteps = () => {
+    // Stop warming up progress animation
+    stopWarmingUpProgress()
+    
+    setProgressSteps(prev => [
+      ...prev.map(step => ({
         ...step,
         progress: 100,
         isActive: false,
         isCompleted: true
-      }));
-      
-      // Then add the final completion step
-      return [...completedSteps, {
-        id: 'completion',
+      })),
+      {
+        id: 'Complete',
         title: 'Transcription Complete',
         description: 'Choose how to use your transcript',
         progress: 100,
         isActive: false,
         isCompleted: true
-      }];
-    });
-  };
+      }
+    ])
+  }
 
-  // Set up event listeners for whisper progress
+  // Cancel all progress steps and show cancelled state
+  const cancelAllProgressSteps = () => {
+    // Stop warming up progress animation
+    stopWarmingUpProgress()
+    
+    setProgressSteps(prev => 
+      prev.map(step => ({
+        ...step,
+        isActive: false,
+        isCancelled: step.isActive && !step.isCompleted, // Mark active steps as cancelled
+        // Keep completed steps as completed, don't change them
+        isCompleted: step.isCompleted
+      }))
+    )
+  }
+
+  // Set up simplified event listener
   const setupEventListeners = useCallback(() => {
-    let unlistenProgress: (() => void) | null = null;
-    let lastDownloadingModel: string | null = null;
-
     const setup = async () => {
       try {
-        // Single progress listener for all whisper operations
-        unlistenProgress = await listen<{ progress: number, type?: string, label?: string }>('labeled-progress', (event: { payload: any }) => {
+        // Single progress listener that directly updates steps array
+        await listen<{ progress: number, type?: string, label?: string }>('labeled-progress', (event: { payload: any }) => {
           console.log('Received progress event:', JSON.stringify(event.payload, null, 2));
-          setLabeledProgress(event.payload);
+          updateProgressStep(event.payload);
+        });
+        
+        // New segment listener for live preview
+        await listen<string>('new-segment', (event: { payload: any }) => {
+          console.log('Received new segment:', event.payload);
           
-          // Helper function to complete all active steps except the current one
-          const completePreviousSteps = (currentStepId: string) => {
-            setProcessingSteps(prev => prev.map(step => {
-              if (step.id !== currentStepId && step.isActive && !step.isCompleted) {
-                return {
-                  ...step,
-                  progress: 100,
-                  isActive: false,
-                  isCompleted: true,
-                  description: step.description.replace(/\d+%/, '100%')
-                };
-              }
-              return step;
-            }));
+          // Check if this segment text already exists to prevent duplicates
+          const segmentText = event.payload.trim();
+          if (!segmentText) {
+            console.log('Skipping empty segment');
+            return;
+          }
+          
+          // Use the Set to track segments across all listener instances
+          if (seenSegmentsRef.current.has(segmentText)) {
+            console.log('Skipping duplicate segment (Set):', segmentText);
+            return;
+          }
+          
+          // Add to seen segments
+          seenSegmentsRef.current.add(segmentText);
+          console.log('Adding new segment:', segmentText);
+          
+          // Create a simple subtitle object from the text
+          const newSegment: Subtitle = {
+            id: livePreviewSegments.length + 1,
+            start: 0,
+            end: 0,
+            text: event.payload,
+            words: [], // Empty array for live preview
+            speaker_id: undefined
           };
           
-          // Handle different types of progress events
-          if (event.payload.type === 'Download') {
-            // Complete any previous steps before starting download
-            completePreviousSteps('download');
-            
-            // Only extract model name when label changes to avoid repeated string operations
-            if (event.payload.label !== lastDownloadingModel) {
-              const modelName = event.payload.label?.replace('Downloading ', '').replace(' model...', '') || null;
-              lastDownloadingModel = event.payload.label;
-              setDownloadingModel(modelName);
-              
-              // Add download step (addProcessingStep will prevent duplicates)
-              addProcessingStep({
-                id: 'download',
-                title: 'Downloading Model',
-                description: `${modelName || 'Model'} - ${Math.round(event.payload.progress)}%`
-              });
-            }
-            setIsModelDownloading(true);
-            setDownloadProgress(event.payload.progress);
-            
-            // Update download step progress
-            updateProcessingStep('download', {
-              progress: event.payload.progress,
-              isActive: true,
-              description: `${downloadingModel || 'Model'} - ${Math.round(event.payload.progress)}%`
-            });
-          } else if (event.payload.type === 'Transcription') {
-            // Complete any previous steps before starting transcription
-            completePreviousSteps('transcription');
-            
-            // Handle transcription step
-            addProcessingStep({
-              id: 'transcription',
-              title: 'Transcribing Audio',
-              description: 'Processing audio with Whisper'
-            });
-            
-            updateProcessingStep('transcription', {
-              progress: event.payload.progress,
-              isActive: true,
-              description: `Processing audio - ${Math.round(event.payload.progress)}%`
-            });
-          } else if (event.payload.type === 'Export') {
-            // Complete any previous steps before starting export
-            completePreviousSteps('export');
-            
-            // Handle audio export step (for DaVinci Resolve)
-            addProcessingStep({
-              id: 'export',
-              title: 'Exporting Audio',
-              description: 'Extracting audio from timeline'
-            });
-            
-            updateProcessingStep('export', {
-              progress: event.payload.progress,
-              isActive: true,
-              description: `Extracting audio - ${Math.round(event.payload.progress)}%`
-            });
-          } else if (event.payload.type) {
-            // Complete any previous steps before starting this step
-            completePreviousSteps(event.payload.type);
-            
-            // Handle any other types that might come from the backend
-            addProcessingStep({
-              id: event.payload.type,
-              title: event.payload.type,
-              description: event.payload.label || 'Processing...'
-            });
-            
-            updateProcessingStep(event.payload.type, {
-              progress: event.payload.progress,
-              isActive: true,
-              description: event.payload.label || `${event.payload.type} - ${Math.round(event.payload.progress)}%`
-            });
-          }
-          
-          // Clear model download state when not downloading
-          if (isModelDownloading && event.payload.type !== 'Download') {
-            lastDownloadingModel = null;
-            setDownloadingModel(null);
-            setIsModelDownloading(false);
-            setDownloadProgress(0);
-          }
-          
-          // Update transcription progress for backward compatibility
-          setTranscriptionProgress(event.payload.progress);
+          setLivePreviewSegments(prev => {
+            console.log('Current segments count:', prev.length);
+            return [...prev, newSegment];
+          });
         });
-
+        
+        // Clear live preview and seen segments when transcription completes
+        await listen('transcription-complete', () => {
+          console.log('Transcription complete, clearing live preview');
+          setLivePreviewSegments([]);
+          seenSegmentsRef.current.clear();
+        });
+        
       } catch (error) {
-        console.error('Failed to setup event listeners:', error);
+        console.error('Failed to set up progress listener:', error);
       }
     };
-
+    
     setup();
-
+    
     // Return cleanup function
     return () => {
-      if (unlistenProgress) unlistenProgress();
+      // Cleanup handled automatically by Tauri when component unmounts
     };
-  }, [addProcessingStep, updateProcessingStep, isModelDownloading, downloadingModel]);
+  }, []);
 
   async function refresh() {
     try {
@@ -856,23 +963,23 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       pushToTimeline,
       resetSettings,
       // Event listener states
-      transcriptionProgress,
-      labeledProgress,
-      downloadingModel,
-      isModelDownloading,
-      downloadProgress,
-      setTranscriptionProgress,
-      setLabeledProgress,
+      transcriptionProgress: 0,
+      labeledProgress: null,
+      downloadingModel: null,
+      isModelDownloading: false,
+      downloadProgress: 0,
+      setTranscriptionProgress: () => {},
+      setLabeledProgress: () => {},
       setupEventListeners,
       handleDeleteModel,
       getSourceAudio,
       cancelExport,
-      // Processing steps state
-      processingSteps,
-      addProcessingStep,
-      updateProcessingStep,
-      clearProcessingSteps,
-      completeAllProcessingSteps,
+      // Progress state
+      processingSteps: progressSteps,
+      livePreviewSegments,
+      clearProgressSteps,
+      completeAllProgressSteps,
+      cancelAllProgressSteps,
       // Export state
       isExporting,
       setIsExporting,

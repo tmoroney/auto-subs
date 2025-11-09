@@ -324,7 +324,7 @@ export function ActionBar({
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-72 p-0" side="top">
-                                <div className="px-4 py-3">
+                                <div className="px-4 py-4">
                                     {/* Speaker Count Slider */}
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between">

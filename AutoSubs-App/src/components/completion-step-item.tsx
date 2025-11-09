@@ -21,23 +21,16 @@ export function CompletionStepItem({
     return (
         <div className="flex w-full flex-col gap-2">
             <Item variant="default" className="bg-muted/30 border-muted-foreground/20">
-                <ItemMedia variant="icon">
-                    <div className="w-4 h-4 rounded-full bg-muted-foreground/60 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-background" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                </ItemMedia>
-                <ItemContent>
-                    <ItemTitle className="text-muted-foreground">
-                        Transcription Complete
+                <ItemContent className="px-2">
+                    <ItemTitle>
+                        Processing Complete
                     </ItemTitle>
                     <ItemDescription>
-                        Choose how to use your transcript
+                        Your subtitles are ready to use!
                     </ItemDescription>
                 </ItemContent>
                 <ItemFooter>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2">
                         <Button
                             variant="outline"
                             size="sm"
