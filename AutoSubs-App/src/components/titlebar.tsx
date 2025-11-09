@@ -27,7 +27,7 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
       <HoverCardTrigger asChild>
         <Button 
           variant="ghost" 
-          className={`flex items-center gap-2 px-3 py-1 h-6 text-xs ${
+          className={`flex items-center gap-2 h-7 text-xs ${
             isConnected 
               ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300" 
               : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
@@ -39,7 +39,7 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
           {isConnected ? "Connected" : "Disconnected"}
         </Button>
       </HoverCardTrigger>
-      <HoverCardContent className="w-72 z-50 bg-card">
+      <HoverCardContent className="w-72 z-50">
         <div className="flex items-start gap-3">
           <img
             src="/davinci-resolve-logo.png"
@@ -102,7 +102,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
+      className="titlebar flex items-center justify-between h-10 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
       data-tauri-drag-region
       onMouseDown={() => getCurrentWindow().startDragging()}
     >

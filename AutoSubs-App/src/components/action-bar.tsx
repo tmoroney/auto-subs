@@ -343,13 +343,13 @@ export function ActionBar({
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-72 p-0" side="top">
-                                <div className="p-4 space-y-4">
+                                <div className="px-4 py-3">
                                     {/* Speaker Count Slider */}
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between">
                                             <Label className="text-sm font-medium">Number of Speakers</Label>
                                             <span className={`text-sm font-medium ${settings.enableDiarize ? "text-primary" : "text-red-500"}`}>
-                                                {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Off"}
+                                                {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Disabled"}
                                             </span>
                                         </div>
                                         <Slider
@@ -377,7 +377,6 @@ export function ActionBar({
                                             <Switch
                                                 checked={settings.enableDiarize}
                                                 onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
-                                                className={settings.enableDiarize ? "" : "data-[state=unchecked]:bg-red-500"}
                                             />
                                         </div>
                                     </div>
@@ -418,6 +417,9 @@ export function ActionBar({
                                                         key={language.value}
                                                         onSelect={() => {
                                                             updateSetting("targetLanguage", language.value);
+                                                            if (!settings.translate) {
+                                                                updateSetting("translate", true);
+                                                            }
                                                             setOpenTargetLanguage(false);
                                                         }}
                                                     >
@@ -445,7 +447,6 @@ export function ActionBar({
                                             <Switch
                                                 checked={settings.translate}
                                                 onCheckedChange={(checked) => updateSetting("translate", checked)}
-                                                className={settings.translate ? "" : "data-[state=unchecked]:bg-red-500"}
                                             />
                                         </div>
                                     </div>

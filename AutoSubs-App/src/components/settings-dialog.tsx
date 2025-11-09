@@ -1,4 +1,4 @@
-import { Settings, Moon, Sun, Gauge, Clock, Github, Heart } from "lucide-react";
+import { Heart, Github, Moon, Sun, Settings, Gauge, Clock, ChevronRight } from "lucide-react";
 import { useGlobal } from "@/contexts/GlobalContext";
 import { useTheme } from "@/components/theme-provider";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -22,14 +22,7 @@ export function SettingsDialog() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  const handleSupportAutoSubs = () => {
-    window.open("https://github.com/sponsors/tmoroney", "_blank");
-  };
-
-  const handleViewSource = () => {
-    window.open("https://github.com/tmoroney/auto-subs", "_blank");
-  };
-
+  
   const handleResetSettings = async () => {
     const shouldReset = await ask("Are you sure you want to reset all settings to default? This cannot be undone.", {
       title: "Reset Settings",
@@ -50,12 +43,10 @@ export function SettingsDialog() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="default"
-          className="gap-2 h-7 text-xs px-3"
+          size="icon-sm"
           data-tauri-drag-region="false"
         >
-          <Settings className="h-3 w-3" />
-          Settings
+          <Settings />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -66,13 +57,17 @@ export function SettingsDialog() {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6 py-4 overflow-y-auto max-h-[70vh]">
+        <div className="space-y-5 py-4 overflow-y-auto max-h-[70vh]">
+
           {/* Appearance Section */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Appearance</h4>
             
             {/* Theme Card */}
-            <div className="border rounded-lg overflow-hidden">
+            <button
+              onClick={toggleTheme}
+              className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50 w-full text-left transition-colors"
+            >
               <div className="p-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -90,13 +85,15 @@ export function SettingsDialog() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={theme === "dark"}
-                    onCheckedChange={toggleTheme}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {theme === "dark" ? "Light" : "Dark"}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Transcription Settings */}
@@ -155,15 +152,20 @@ export function SettingsDialog() {
             <h4 className="text-sm font-medium">Support</h4>
             
             {/* Support AutoSubs Card */}
-            <div className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50 group relative" onClick={handleSupportAutoSubs}>
+            <a
+              href="https://buymeacoffee.com/tmoroney"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50 group relative block transition-colors"
+            >
               <div className="p-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
+                  <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30 group-hover:bg-pink-200 dark:group-hover:bg-pink-800/50 transition-colors">
                     <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400 group-hover:fill-pink-500 fill-background transition-colors" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Support AutoSubs</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium group-hover:text-foreground">Support AutoSubs</p>
+                    <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                       Help support development
                     </p>
                   </div>
@@ -194,24 +196,29 @@ export function SettingsDialog() {
                   />
                 ))}
               </div>
-            </div>
+            </a>
 
             {/* View Source Card */}
-            <div className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50" onClick={handleViewSource}>
+            <a
+              href="https://github.com/tmoroney/auto-subs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50 group relative block transition-colors"
+            >
               <div className="p-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-900/30">
-                    <Github className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                  <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-900/30 group-hover:bg-slate-200 dark:group-hover:bg-slate-800/50 transition-colors">
+                    <Github className="h-5 w-5 text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">View Source Code</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium group-hover:text-foreground">View Source Code</p>
+                    <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                       Check out the GitHub repository
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
+            </a>
           </div>
 
           {/* Reset Section */}

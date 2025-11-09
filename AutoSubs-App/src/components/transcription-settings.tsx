@@ -243,11 +243,6 @@ export const TranscriptionSettings = ({
         }
     }
 
-    function onDismissSurvey() {
-        updateSetting("timesDismissedSurvey", settings.timesDismissedSurvey + 1)
-        updateSetting("lastSurveyDate", new Date().toISOString())
-    }
-
     return (
         <>
             <div className="h-full flex flex-col bg-card/50">
@@ -257,303 +252,27 @@ export const TranscriptionSettings = ({
                         maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)'
                     }}>
-                    {/* Survey Notification */}
-                    {(() => {
-                        const SURVEY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdt8RyGXsriQA8gH7VVJqua9xPXSuZvjdjH5tKHz8nN3NhT6A/viewform?usp=dialog"; // <-- Replace with your survey link
-                        const SURVEY_INTERVAL_DAYS = 10; // Show every 10 days
-                        const lastSurveyDate = new Date(settings.lastSurveyDate);
-                        const now = new Date();
-                        const daysSinceLastSurvey = Math.floor((now.getTime() - lastSurveyDate.getTime()) / (1000 * 60 * 60 * 24));
-                        const shouldShowSurvey = settings.timesDismissedSurvey < 3 && (isNaN(daysSinceLastSurvey) || daysSinceLastSurvey >= SURVEY_INTERVAL_DAYS);
-                        if (!shouldShowSurvey) return null;
-                        return (
-                            <SurveyNotification
-                                surveyUrl={SURVEY_URL}
-                                onDismiss={onDismissSurvey}
-                            />
-                        );
-                    })()}
-
-
-                    {/* File Source / DaVinci Resolve */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                                {settings.isStandaloneMode ? "File Source" : "DaVinci Resolve"}
-                            </h3>
-                            {!settings.isStandaloneMode && (
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${!timelineInfo || !timelineInfo.timelineId ? 'bg-red-500' : 'bg-green-500'}`} />
-                                    <span className="text-xs font-medium text-muted-foreground truncate max-w-[120px]">
-                                        {!timelineInfo || !timelineInfo.timelineId ? 'Disconnected' : 'Connected'}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="flex-1 h-px bg-border ml-1"></div>
+                    <div className="flex flex-col items-center justify-center h-full space-y-3">
+                        <img 
+                            src="/autosubs-logo.png" 
+                            alt="AutoSubs" 
+                            className="w-20 h-20 opacity-80"
+                        />
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-semibold text-foreground">
+                                Welcome to AutoSubs
+                            </h2>
+                            <p className="text-muted-foreground max-w-72">
+                                Select an audio source to start generating subtitles.
+                            </p>
+                            <div className="flex items-center justify-center gap-2 pt-2 pb-8">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-sm text-muted-foreground">
+                                    Ready to generate
+                                </span>
+                            </div>
                         </div>
-                        {settings.isStandaloneMode ? (
-                            <div>
-                                <AudioFileCard
-                                    selectedFile={fileInput}
-                                    onFileSelect={(file) => setFileInput(file)}
-                                />
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                <AudioInputCard
-                                    callRefresh={() => refresh()}
-                                    selectedTracks={settings.selectedInputTracks}
-                                    inputTracks={timelineInfo?.inputTracks || []}
-                                    onTracksChange={(tracks) => {
-                                        updateSetting("selectedInputTracks", tracks)
-                                    }}
-                                />
-                                <SubtitleSettingsCard
-                                    selectedTemplate={settings.selectedTemplate}
-                                    onTemplateChange={(template) => {
-                                        updateSetting("selectedTemplate", template)
-                                    }}
-                                    outputTracks={timelineInfo?.outputTracks || []}
-                                    templates={timelineInfo?.templates || []}
-                                    selectedOutputTrack={settings.selectedOutputTrack}
-                                    onOutputTrackChange={(track) => {
-                                        updateSetting("selectedOutputTrack", track)
-                                    }}
-                                />
-                            </div>
-                        )}
                     </div>
-
-
-
-                    {/* Processing */}
-                    <Collapsible defaultOpen className="space-y-3">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        Processing
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <div className="space-y-3">
-
-                                {/* Language */}
-                                <LanguageSettingsCard
-                                    sourceLanguage={settings.language}
-                                    translate={settings.translate}
-                                    targetLanguage={settings.targetLanguage}
-                                    onSourceLanguageChange={(language: string) => {
-                                        updateSetting('language', language);
-                                    }}
-                                    onTranslateChange={(translate: boolean) => {
-                                        updateSetting('translate', translate);
-                                    }}
-                                    onTargetLanguageChange={(targetLanguage: string) => {
-                                        updateSetting('targetLanguage', targetLanguage);
-                                    }}
-                                />
-
-                                {/* Speaker Labeling */}
-                                <SpeakerLabelingCard
-                                    diarize={settings.enableDiarize}
-                                    maxSpeakers={settings.maxSpeakers}
-                                    onDiarizeChange={(checked) => updateSetting("enableDiarize", checked)}
-                                    onMaxSpeakersChange={(value) => updateSetting("maxSpeakers", value)}
-                                />
-
-                                {/* Model */}
-                                <ModelSelectionCard
-                                    language={settings.language}
-                                    selectedModel={settings.model}
-                                    models={modelsState}
-                                    downloadingModel={labeledProgress?.type === 'Download' ? labeledProgress.label?.replace('Downloading ', '').replace(' model...', '') : null}
-                                    downloadProgress={labeledProgress?.type === 'Download' ? labeledProgress.progress : 0}
-                                    onModelChange={(model) => updateSetting('model', model)}
-                                    onDeleteModel={(model) => handleDeleteModel(model)}
-                                />
-
-                            </div>
-
-                        </CollapsibleContent>
-                    </Collapsible>
-
-                    <Collapsible defaultOpen className="space-y-3">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        Experimental
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <div className="space-y-3">
-                                {/* Word Timestamps */}
-                                <WordTimestampsCard
-                                    enableDTW={settings.enableDTW}
-                                    onEnableDTWChange={(checked) => updateSetting("enableDTW", checked)}
-                                />
-
-                                {/* GPU Acceleration (only show on windows) */}
-                                {platform() === "windows" && (
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <div className="p-3.5">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                                                        <Gauge className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-1">
-                                                            <p className="text-sm font-medium">GPU Acceleration</p>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Improves transcription speed
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <Switch checked={settings.enableGpu} onCheckedChange={(checked) => updateSetting("enableGpu", checked)} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
-
-
-
-
-
-                    {/* Text Formatting */}
-                    <Collapsible defaultOpen className="space-y-3">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        Text Formatting
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <TextFormattingCard
-                                maxCharsPerLine={settings.maxCharsPerLine}
-                                maxLinesPerSubtitle={settings.maxLinesPerSubtitle}
-                                textCase={settings.textCase}
-                                removePunctuation={settings.removePunctuation}
-                                splitOnPunctuation={settings.splitOnPunctuation}
-                                enableCensor={settings.enableCensor}
-                                censoredWords={settings.censoredWords}
-                                onMaxCharsPerLineChange={(value) => updateSetting("maxCharsPerLine", value)}
-                                onMaxLinesPerSubtitleChange={(value) => updateSetting("maxLinesPerSubtitle", value)}
-                                onTextCaseChange={(textCase) => updateSetting("textCase", textCase)}
-                                onRemovePunctuationChange={(checked) => updateSetting("removePunctuation", checked)}
-                                onSplitOnPunctuationChange={(checked) => updateSetting("splitOnPunctuation", checked)}
-                                onEnableCensorChange={(checked) => updateSetting("enableCensor", checked)}
-                                onCensoredWordsChange={(words) => updateSetting("censoredWords", words)}
-                                isWalkthroughMode={false}
-                            />
-                        </CollapsibleContent>
-                    </Collapsible>
-
-                    {/* About & Support */}
-                    <Collapsible defaultOpen className="space-y-3">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto group">
-                                    <ChevronDownIcon className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                    <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                        About & Support
-                                    </h3>
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div className="flex-1 h-px bg-border"></div>
-                        </div>
-                        <CollapsibleContent>
-                            <div className="space-y-3.5">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        onClick={onShowTutorial}
-                                    >
-                                        <HelpCircle className="h-4 w-4 mr-2" />
-                                        Tutorial
-                                    </Button>
-                                    <Button variant="outline" size="default" onClick={resetSettings}>
-                                        <History className="h-4 w-4 mr-2" />
-                                        Reset Settings
-                                    </Button>
-                                </div>
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="w-full text-pink-500 border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/50 transition-colors relative overflow-hidden group"
-                                >
-                                    <a
-                                        href="https://buymeacoffee.com/tmoroney"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center w-full h-full"
-                                    >
-                                        <Heart className="h-4 w-4 mr-2 group-hover:fill-pink-500 fill-background text-pink-500 transition-colors" />
-                                        <span>Support AutoSubs</span>
-
-                                        {/* Bursting hearts animation */}
-                                        <div className="absolute inset-0 pointer-events-none">
-                                            {[
-                                                { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
-                                                { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
-                                                { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
-                                                { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
-                                                { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
-                                                { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
-                                                { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
-                                            ].map((p, i) => (
-                                                <Heart
-                                                    key={i}
-                                                    className="heart-anim absolute top-1/2 left-1/2 h-3 w-3 text-pink-400 opacity-0"
-                                                    style={{
-                                                        '--tx': p.tx,
-                                                        '--ty': p.ty,
-                                                        '--s': p.s,
-                                                        '--r': p.r,
-                                                        animationDelay: p.d,
-                                                    } as React.CSSProperties}
-                                                />
-                                            ))}
-                                        </div>
-                                    </a>
-                                </Button>
-                                <Button
-                                    size="default"
-                                    className="w-full bg-[#24292f] text-white hover:bg-[#57606a] hover:text-white dark:bg-[#161b22] dark:text-[#e6edf3] dark:hover:bg-[#24292f] dark:hover:text-white border border-[#24292f] dark:border-[#30363d] shadow-sm"
-                                    asChild
-                                >
-                                    <a
-                                        href="https://github.com/tmoroney/auto-subs"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center w-full h-full"
-                                    >
-                                        <Github className="h-4 w-4 mr-2" />
-                                        Source Code
-                                    </a>
-                                </Button>
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
                 </div>
 
                 {/* Footer */}
