@@ -15,6 +15,15 @@ import { generateTranscriptFilename, readTranscript, saveTranscript, updateTrans
 import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
 
+interface ProcessingStep {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  isActive: boolean;
+  isCompleted: boolean;
+}
+
 interface GlobalContextType {
   settings: Settings;
   modelsState: Model[];
@@ -36,14 +45,16 @@ interface GlobalContextType {
   exportProgress: number;
   setExportProgress: (progress: number) => void;
   cancelRequestedRef: React.MutableRefObject<boolean>;
+  // Processing steps state
+  processingSteps: ProcessingStep[];
   // Transcription utils
   validateTranscriptionInput: () => boolean;
   createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   pushToTimeline: () => Promise<void>;
   // UI state
-  isTranscribing: boolean;
-  setIsTranscribing: (isTranscribing: boolean) => void;
+  isProcessing: boolean;
+  setIsProcessing: (isProcessing: boolean) => void;
   isRefreshing: boolean;
   setIsRefreshing: (isRefreshing: boolean) => void;
   showMobileSubtitles: boolean;
@@ -67,6 +78,11 @@ interface GlobalContextType {
   handleDeleteModel: (modelValue: string) => Promise<void>;
   getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   cancelExport: () => Promise<any>;
+  // Processing step management
+  addProcessingStep: (step: Omit<ProcessingStep, 'progress' | 'isActive' | 'isCompleted'>) => void;
+  updateProcessingStep: (id: string, updates: Partial<ProcessingStep>) => void;
+  clearProcessingSteps: () => void;
+  completeAllProcessingSteps: () => void;
 }
 
 export const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -138,8 +154,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [exportProgress, setExportProgress] = useState<number>(0);
   const cancelRequestedRef = useRef<boolean>(false);
 
+  // Processing steps state
+  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+
   // UI state
-  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showMobileSubtitles, setShowMobileSubtitles] = useState<boolean>(false);
 
@@ -484,6 +503,70 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     }
   };
 
+  // Processing step management functions
+  const addProcessingStep = (step: Omit<ProcessingStep, 'progress' | 'isActive' | 'isCompleted'>) => {
+    setProcessingSteps(prev => {
+      // Check if step already exists
+      if (prev.some(s => s.id === step.id)) {
+        return prev;
+      }
+      
+      return [...prev, {
+        ...step,
+        progress: 0,
+        isActive: false,
+        isCompleted: false
+      }];
+    });
+  };
+
+  const updateProcessingStep = (id: string, updates: Partial<ProcessingStep>) => {
+    setProcessingSteps(prev => prev.map(step => {
+      if (step.id === id) {
+        const updated = { ...step, ...updates };
+        
+        // Auto-mark as completed if progress reaches 100
+        if (updates.progress === 100 || (updated.progress >= 100 && !updated.isCompleted)) {
+          updated.isCompleted = true;
+          updated.isActive = false;
+        }
+        
+        return updated;
+      }
+      // Deactivate other steps when one becomes active
+      if (updates.isActive && step.id !== id) {
+        return { ...step, isActive: false };
+      }
+      return step;
+    }));
+  };
+
+  const clearProcessingSteps = () => {
+    setProcessingSteps([]);
+  };
+
+  const completeAllProcessingSteps = () => {
+    setProcessingSteps(prev => {
+      // First, complete all existing steps
+      const completedSteps = prev.map(step => ({
+        ...step,
+        progress: 100,
+        isActive: false,
+        isCompleted: true
+      }));
+      
+      // Then add the final completion step
+      return [...completedSteps, {
+        id: 'completion',
+        title: 'Transcription Complete',
+        description: 'Choose how to use your transcript',
+        progress: 100,
+        isActive: false,
+        isCompleted: true
+      }];
+    });
+  };
+
   // Set up event listeners for whisper progress
   const setupEventListeners = useCallback(() => {
     let unlistenProgress: (() => void) | null = null;
@@ -493,27 +576,108 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       try {
         // Single progress listener for all whisper operations
         unlistenProgress = await listen<{ progress: number, type?: string, label?: string }>('labeled-progress', (event: { payload: any }) => {
-          console.log('Received progress:', event.payload);
+          console.log('Received progress event:', JSON.stringify(event.payload, null, 2));
           setLabeledProgress(event.payload);
           
-          // Handle model downloading
+          // Helper function to complete all active steps except the current one
+          const completePreviousSteps = (currentStepId: string) => {
+            setProcessingSteps(prev => prev.map(step => {
+              if (step.id !== currentStepId && step.isActive && !step.isCompleted) {
+                return {
+                  ...step,
+                  progress: 100,
+                  isActive: false,
+                  isCompleted: true,
+                  description: step.description.replace(/\d+%/, '100%')
+                };
+              }
+              return step;
+            }));
+          };
+          
+          // Handle different types of progress events
           if (event.payload.type === 'Download') {
+            // Complete any previous steps before starting download
+            completePreviousSteps('download');
+            
             // Only extract model name when label changes to avoid repeated string operations
             if (event.payload.label !== lastDownloadingModel) {
               const modelName = event.payload.label?.replace('Downloading ', '').replace(' model...', '') || null;
               lastDownloadingModel = event.payload.label;
               setDownloadingModel(modelName);
+              
+              // Add download step (addProcessingStep will prevent duplicates)
+              addProcessingStep({
+                id: 'download',
+                title: 'Downloading Model',
+                description: `${modelName || 'Model'} - ${Math.round(event.payload.progress)}%`
+              });
             }
             setIsModelDownloading(true);
             setDownloadProgress(event.payload.progress);
-          } else {
-            // Clear model download state when not downloading
-            if (isModelDownloading) {
-              lastDownloadingModel = null;
-              setDownloadingModel(null);
-              setIsModelDownloading(false);
-              setDownloadProgress(0);
-            }
+            
+            // Update download step progress
+            updateProcessingStep('download', {
+              progress: event.payload.progress,
+              isActive: true,
+              description: `${downloadingModel || 'Model'} - ${Math.round(event.payload.progress)}%`
+            });
+          } else if (event.payload.type === 'Transcription') {
+            // Complete any previous steps before starting transcription
+            completePreviousSteps('transcription');
+            
+            // Handle transcription step
+            addProcessingStep({
+              id: 'transcription',
+              title: 'Transcribing Audio',
+              description: 'Processing audio with Whisper'
+            });
+            
+            updateProcessingStep('transcription', {
+              progress: event.payload.progress,
+              isActive: true,
+              description: `Processing audio - ${Math.round(event.payload.progress)}%`
+            });
+          } else if (event.payload.type === 'Export') {
+            // Complete any previous steps before starting export
+            completePreviousSteps('export');
+            
+            // Handle audio export step (for DaVinci Resolve)
+            addProcessingStep({
+              id: 'export',
+              title: 'Exporting Audio',
+              description: 'Extracting audio from timeline'
+            });
+            
+            updateProcessingStep('export', {
+              progress: event.payload.progress,
+              isActive: true,
+              description: `Extracting audio - ${Math.round(event.payload.progress)}%`
+            });
+          } else if (event.payload.type) {
+            // Complete any previous steps before starting this step
+            completePreviousSteps(event.payload.type);
+            
+            // Handle any other types that might come from the backend
+            addProcessingStep({
+              id: event.payload.type,
+              title: event.payload.type,
+              description: event.payload.label || 'Processing...'
+            });
+            
+            updateProcessingStep(event.payload.type, {
+              progress: event.payload.progress,
+              isActive: true,
+              description: event.payload.label || `${event.payload.type} - ${Math.round(event.payload.progress)}%`
+            });
+          }
+          
+          // Clear model download state when not downloading
+          if (isModelDownloading && event.payload.type !== 'Download') {
+            lastDownloadingModel = null;
+            setDownloadingModel(null);
+            setIsModelDownloading(false);
+            setDownloadProgress(0);
           }
           
           // Update transcription progress for backward compatibility
@@ -531,7 +695,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     return () => {
       if (unlistenProgress) unlistenProgress();
     };
-  }, []);
+  }, [addProcessingStep, updateProcessingStep, isModelDownloading, downloadingModel]);
 
   async function refresh() {
     try {
@@ -703,6 +867,12 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       handleDeleteModel,
       getSourceAudio,
       cancelExport,
+      // Processing steps state
+      processingSteps,
+      addProcessingStep,
+      updateProcessingStep,
+      clearProcessingSteps,
+      completeAllProcessingSteps,
       // Export state
       isExporting,
       setIsExporting,
@@ -714,8 +884,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       createTranscriptionOptions,
       processTranscriptionResults,
       // UI state
-      isTranscribing,
-      setIsTranscribing,
+      isProcessing,
+      setIsProcessing,
       isRefreshing,
       setIsRefreshing,
       showMobileSubtitles,

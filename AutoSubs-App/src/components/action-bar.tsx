@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Upload, FileUp, Speech, Languages, Type, ArrowUp, AudioLines, Globe, Check } from "lucide-react"
+import { Upload, FileUp, Speech, Languages, Type, ArrowUp, AudioLines, Globe, Check, X } from "lucide-react"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
@@ -33,32 +33,21 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { languages } from "@/lib/languages"
+import { languages, translateLanguages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
 
 interface ActionBarProps {
-    isTranscribing?: boolean
-    isExporting?: boolean
-    labeledProgress?: any
-    exportProgress?: number
-    isMobile?: boolean
-    fileInput?: string | null
-    onShowMobileSubtitles?: () => void
-    onStartTranscription?: () => void
-    onCancelTranscription?: () => void
-    getProgressColorClass?: (type: string) => string
+    onStart?: () => void
+    onCancel?: () => void
+    isProcessing?: boolean
 }
 
 export function ActionBar({
-    isTranscribing = false,
-    isExporting = false,
-    labeledProgress,
-    exportProgress = 0,
-    isMobile = false,
-    fileInput = null,
-    onShowMobileSubtitles,
+    onStart,
+    onCancel,
+    isProcessing,
 }: ActionBarProps) {
-    const { settings, updateSetting, timelineInfo } = useGlobal()
+    const { settings, updateSetting, timelineInfo, setFileInput} = useGlobal()
     const [openTargetLanguage, setOpenTargetLanguage] = React.useState(false)
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
@@ -84,6 +73,7 @@ export function ActionBar({
                     if (files && files.length > 0) {
                         const file = files[0];
                         setSelectedFile(file);
+                        setFileInput(file)
                     }
                 }
             });
@@ -106,6 +96,7 @@ export function ActionBar({
             defaultPath: await downloadDir()
         })
         setSelectedFile(file)
+        setFileInput(file)
     }
 
     return (
@@ -375,13 +366,24 @@ export function ActionBar({
                         </Popover>
                     </div>
                     <div>
-                        <Button
-                            onClick={onShowMobileSubtitles}
-                            size="default"
-                            variant="default"
-                        >
-                            <ArrowUp />
-                        </Button>
+                        {isProcessing ? (
+                            <Button
+                                onClick={onCancel}
+                                size="default"
+                                variant="destructive"
+                            >
+                                <X />
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={onStart}
+                                size="default"
+                                variant="default"
+                                disabled={isProcessing}
+                            >
+                                <ArrowUp />
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -505,7 +507,7 @@ export function ActionBar({
                 ) : (
                     // Standalone Mode: File Drop Box
                     <div
-                        className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted/50 outline-none"
+                        className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted outline-none"
                         tabIndex={0}
                         role="button"
                         aria-label="Drop audio file here or click to select"
@@ -555,11 +557,6 @@ export function ActionBar({
                                     <CommandGroup>
                                         {languages
                                             .slice()
-                                            .sort((a, b) => {
-                                                if (a.value === 'en') return -1;
-                                                if (b.value === 'en') return 1;
-                                                return a.label.localeCompare(b.label);
-                                            })
                                             .map((language) => (
                                                 <CommandItem
                                                     value={language.label}
@@ -611,10 +608,8 @@ export function ActionBar({
                                 <CommandList>
                                     <CommandEmpty>No language found.</CommandEmpty>
                                     <CommandGroup>
-                                        {languages
-                                            .filter(l => l.value !== 'auto')
-                                            .slice()
-                                            .sort((a, b) => a.label.localeCompare(b.label))
+                                        {
+                                            translateLanguages
                                             .map((language) => (
                                                 <CommandItem
                                                     value={language.label}

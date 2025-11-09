@@ -1,12 +1,9 @@
 // App.tsx
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
-import { Heart, Moon, Sun } from "lucide-react"
-import { useGlobal } from "@/contexts/GlobalContext";
+import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionSettings } from "@/components/transcription-settings"
-import { BottomBarTranscription } from "@/components/bottom-bar-transcription"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
@@ -38,7 +35,6 @@ export function ThemeToggle() {
 function App() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const [showWalkthrough, setShowWalkthrough] = React.useState(false)
-  const { settings, updateSetting, isTranscribing, setIsTranscribing, validateTranscriptionInput } = useGlobal()
   const isMobile = useIsMobile()
   
   // timelineInfo will come from your actual Resolve connection state
@@ -55,19 +51,6 @@ function App() {
   const handleWalkthroughClose = () => {
     setShowWalkthrough(false)
     localStorage.setItem('autosubs-setup-completed', 'true')
-  }
-
-  
-  const handleTranscribe = () => {
-    if (validateTranscriptionInput()) {
-      setIsTranscribing(true)
-      // TODO: Add actual transcription logic
-    }
-  }
-
-  const handleCancel = () => {
-    setIsTranscribing(false)
-    // TODO: Add actual cancellation logic
   }
 
   return (
@@ -92,7 +75,7 @@ function App() {
                   <TranscriptionSettings />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={45} minSize={45}>
+                <ResizablePanel defaultSize={50} minSize={45}>
                   <DesktopSubtitleViewer />
                 </ResizablePanel>
               </ResizablePanelGroup>
