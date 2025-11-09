@@ -57,10 +57,7 @@ function App() {
     localStorage.setItem('autosubs-setup-completed', 'true')
   }
 
-  const handleShowTutorial = () => {
-    setShowWalkthrough(true)
-  }
-
+  
   const handleTranscribe = () => {
     if (validateTranscriptionInput()) {
       setIsTranscribing(true)
@@ -86,17 +83,13 @@ function App() {
             {isMobile ? (
               // Mobile: Just show transcription settings
               <div className="h-full overflow-hidden">
-                <TranscriptionSettings
-                  onShowTutorial={handleShowTutorial}
-                />
+                <TranscriptionSettings />
               </div>
             ) : (
               // Desktop: Resizable panels with transcription settings and subtitle viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={55} className="min-w-[460px]">
-                  <TranscriptionSettings
-                    onShowTutorial={handleShowTutorial}
-                  />
+                <ResizablePanel defaultSize={55} className="min-w-[400px]">
+                  <TranscriptionSettings />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={45} minSize={45}>

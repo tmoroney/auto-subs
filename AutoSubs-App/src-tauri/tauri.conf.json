@@ -14,8 +14,8 @@
       {
         "titleBarStyle": "Overlay",
         "decorations": true,
-        "height": 600,
-        "width": 410,
+        "height": 700,
+        "width": 380,
         "acceptFirstMouse": true,
         "title": ""
       }

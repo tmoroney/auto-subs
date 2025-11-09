@@ -1,6 +1,5 @@
-import { Heart, Github, Moon, Sun, Settings, Gauge, Clock, ChevronRight } from "lucide-react";
+import { Heart, Github, Settings, Gauge, Clock } from "lucide-react";
 import { useGlobal } from "@/contexts/GlobalContext";
-import { useTheme } from "@/components/theme-provider";
 import { ask } from "@tauri-apps/plugin-dialog";
 import {
   Dialog,
@@ -16,12 +15,8 @@ import { DEFAULT_SETTINGS } from "@/contexts/GlobalContext";
 
 export function SettingsDialog() {
   const { settings, updateSetting } = useGlobal();
-  const { theme, setTheme } = useTheme();
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
+  
   
   const handleResetSettings = async () => {
     const shouldReset = await ask("Are you sure you want to reset all settings to default? This cannot be undone.", {
@@ -43,7 +38,7 @@ export function SettingsDialog() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           data-tauri-drag-region="false"
         >
           <Settings />
@@ -57,45 +52,9 @@ export function SettingsDialog() {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-5 py-4 overflow-y-auto max-h-[70vh]">
+        <div className="space-y-5 py-1 overflow-y-auto max-h-[70vh]">
 
-          {/* Appearance Section */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Appearance</h4>
-            
-            {/* Theme Card */}
-            <button
-              onClick={toggleTheme}
-              className="border rounded-lg overflow-hidden cursor-pointer hover:bg-accent/50 w-full text-left transition-colors"
-            >
-              <div className="p-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                      {theme === "dark" ? (
-                        <Moon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      ) : (
-                        <Sun className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Theme</p>
-                      <p className="text-xs text-muted-foreground">
-                        {theme === "dark" ? "Dark mode" : "Light mode"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {theme === "dark" ? "Light" : "Dark"}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </div>
-            </button>
-          </div>
-
+          
           {/* Transcription Settings */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Transcription</h4>

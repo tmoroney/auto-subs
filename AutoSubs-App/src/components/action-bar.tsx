@@ -1,24 +1,19 @@
 import * as React from "react"
-import { Upload, FileUp, Speech, Languages, Type, ArrowUp, AudioLines, Globe, Check, Brain } from "lucide-react"
+import { Upload, FileUp, Speech, Languages, Type, ArrowUp, AudioLines, Globe, Check } from "lucide-react"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
 import { Card } from "@/components/ui/card"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { Download, HardDrive, MemoryStick } from "lucide-react"
 import { Track } from "@/types/interfaces"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -28,7 +23,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import {
     Dialog,
     DialogClose,
@@ -39,7 +33,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { useMediaQuery } from "../hooks/use-media-query";
 import { languages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
 
@@ -65,11 +58,8 @@ export function ActionBar({
     fileInput = null,
     onShowMobileSubtitles,
 }: ActionBarProps) {
-    const { settings, updateSetting, modelsState, downloadingModel, downloadProgress, timelineInfo } = useGlobal()
-    const [openModelSelector, setOpenModelSelector] = React.useState(false)
+    const { settings, updateSetting, timelineInfo } = useGlobal()
     const [openTargetLanguage, setOpenTargetLanguage] = React.useState(false)
-    const [activeTab, setActiveTab] = React.useState('all')
-    const isSmallScreen = useMediaQuery('(max-width: 640px)')
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
     const [openInputLanguage, setOpenInputLanguage] = React.useState(false)
@@ -339,7 +329,7 @@ export function ActionBar({
                                     aria-expanded={openSpeakerPopover}
                                 >
                                     <Speech />
-                                    {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : ""}
+                                    {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Off"}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-72 p-0" side="top">
@@ -377,76 +367,6 @@ export function ActionBar({
                                             <Switch
                                                 checked={settings.enableDiarize}
                                                 onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-
-                        {/* translation button */}
-                        <Popover open={openTargetLanguage} onOpenChange={setOpenTargetLanguage}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="default"
-                                    role="combobox"
-                                    aria-expanded={openTargetLanguage}
-                                >
-                                    <Languages />
-                                    {settings.translate &&
-                                        <span>
-                                            {languages.find(l => l.value === settings.targetLanguage)?.label}
-                                        </span>
-                                    }
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0 w-72">
-                                <Command className="max-h-[250px]">
-                                    <CommandInput placeholder="Search target languages..." />
-                                    <CommandList>
-                                        <CommandEmpty>No language found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {languages
-                                                .filter(l => l.value !== 'auto')
-                                                .slice()
-                                                .sort((a, b) => a.label.localeCompare(b.label))
-                                                .map((language) => (
-                                                    <CommandItem
-                                                        value={language.label}
-                                                        key={language.value}
-                                                        onSelect={() => {
-                                                            updateSetting("targetLanguage", language.value);
-                                                            if (!settings.translate) {
-                                                                updateSetting("translate", true);
-                                                            }
-                                                            setOpenTargetLanguage(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                language.value === settings.targetLanguage
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {language.label}
-                                                    </CommandItem>
-                                                ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                                <div className="border-t bg-muted/30">
-                                    <div className="p-4 pt-2 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-sm font-medium">Translate Subtitles</Label>
-                                                <p className="text-xs text-muted-foreground">From {languages.find(l => l.value === settings.language)?.label} to {languages.find(l => l.value === settings.targetLanguage)?.label}</p>
-                                            </div>
-                                            <Switch
-                                                checked={settings.translate}
-                                                onCheckedChange={(checked) => updateSetting("translate", checked)}
                                             />
                                         </div>
                                     </div>
@@ -666,117 +586,75 @@ export function ActionBar({
                         </PopoverContent>
                     </Popover>
 
-                    <Popover open={openModelSelector} onOpenChange={setOpenModelSelector}>
+                    {/* translation button */}
+                    <Popover open={openTargetLanguage} onOpenChange={setOpenTargetLanguage}>
                         <PopoverTrigger asChild>
                             <Button
                                 variant="outline"
                                 size="default"
                                 role="combobox"
-                                aria-expanded={openModelSelector}
+                                aria-expanded={openTargetLanguage}
                             >
-                                <div className="flex items-center gap-2">
-                                    <Brain className="w-3 h-3" />
-                                    <span className="truncate max-w-20">{modelsState[settings.model].label}</span>
-                                    {modelsState[settings.model].isDownloaded ? (
-                                        <Check className="h-3 w-3 text-green-600" />
-                                    ) : (
-                                        <Download className="h-3 w-3 text-gray-500" />
-                                    )}
-                                </div>
+                                <Languages />
+                                {settings.translate ? (
+                                    <span>
+                                        {languages.find(l => l.value === settings.targetLanguage)?.label}
+                                    </span>
+                                ) : (
+                                    <span>Off</span>
+                                )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="p-1">
-                            <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="all" className="text-xs p-2">All Languages</TabsTrigger>
-                                    <TabsTrigger value="en" className="text-xs p-2">English-Only</TabsTrigger>
-                                </TabsList>
-                                <ScrollArea className="my-1.5">
-                                    <div className="space-y-1 pr-0">
-                                        {modelsState.filter(model => {
-                                            if (activeTab === 'all') {
-                                                return !model.value.includes('.en');
-                                            } else {
-                                                return model.value.includes('.en') || model.value === 'large-v3' || model.value === 'large-v3-turbo';
-                                            }
-                                        }).map((model) => {
-                                            const originalIndex = modelsState.findIndex(m => m.value === model.value);
-                                            return (
-                                                <HoverCard key={originalIndex}>
-                                                    <HoverCardTrigger asChild>
-                                                        <div
-                                                            className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
-                                                                ? "bg-blue-50 dark:bg-blue-900/20"
-                                                                : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                                                }`}
-                                                            onClick={() => {
-                                                                updateSetting("model", originalIndex)
-                                                                setOpenModelSelector(false)
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded" />
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium text-xs">{model.label}</span>
-                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <HardDrive className="h-3 w-3" />
-                                                                            <span>{model.size}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <MemoryStick className="h-3 w-3" />
-                                                                            <span>{model.ram}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {downloadingModel === model.value ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Progress value={downloadProgress} className="h-1 w-12" />
-                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
-                                                                    </div>
-                                                                ) : model.isDownloaded ? (
-                                                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                                        Cached
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                                                        Available
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </HoverCardTrigger>
-                                                    <HoverCardContent className="w-80" side={isSmallScreen ? "top" : "right"}>
-                                                        <div className="flex items-start gap-3">
-                                                            <img
-                                                                src={model.image}
-                                                                alt={model.label + " icon"}
-                                                                className="h-12 w-12 object-contain rounded"
-                                                            />
-                                                            <div className="space-y-1">
-                                                                <h4 className="text-sm font-semibold">{model.label}</h4>
-                                                                <p className="text-xs text-muted-foreground">{model.details}</p>
-                                                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <HardDrive className="h-3 w-3" />
-                                                                        <span>{model.size}</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <MemoryStick className="h-3 w-3" />
-                                                                        <span>{model.ram}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </HoverCardContent>
-                                                </HoverCard>
-                                            );
-                                        })}
+                        <PopoverContent className="p-0 w-72">
+                            <Command className="max-h-[250px]">
+                                <CommandInput placeholder="Search target languages..." />
+                                <CommandList>
+                                    <CommandEmpty>No language found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {languages
+                                            .filter(l => l.value !== 'auto')
+                                            .slice()
+                                            .sort((a, b) => a.label.localeCompare(b.label))
+                                            .map((language) => (
+                                                <CommandItem
+                                                    value={language.label}
+                                                    key={language.value}
+                                                    onSelect={() => {
+                                                        updateSetting("targetLanguage", language.value);
+                                                        if (!settings.translate) {
+                                                            updateSetting("translate", true);
+                                                        }
+                                                        setOpenTargetLanguage(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            language.value === settings.targetLanguage
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {language.label}
+                                                </CommandItem>
+                                            ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                            <div className="border-t bg-muted/30">
+                                <div className="p-4 pt-2 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-medium">Translate Subtitles</Label>
+                                            <p className="text-xs text-muted-foreground">From {languages.find(l => l.value === settings.language)?.label} to {languages.find(l => l.value === settings.targetLanguage)?.label}</p>
+                                        </div>
+                                        <Switch
+                                            checked={settings.translate}
+                                            onCheckedChange={(checked) => updateSetting("translate", checked)}
+                                        />
                                     </div>
-                                </ScrollArea>
-                            </Tabs>
+                                </div>
+                            </div>
                         </PopoverContent>
                     </Popover>
                 </div>

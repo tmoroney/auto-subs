@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X } from "lucide-react";
+import { Minus, Square, X, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { SettingsDialog } from "@/components/settings-dialog";
+import { useTheme } from "@/components/theme-provider";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -17,6 +17,26 @@ interface TimelineInfo {
 
 interface ResolveStatusProps {
   timelineInfo: TimelineInfo | null;
+}
+
+function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme();
+  
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={toggleTheme}
+      data-tauri-drag-region="false"
+      className="gap-2"
+    >
+      {theme === "dark" ? <Sun /> : <Moon />}
+    </Button>
+  );
 }
 
 function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
@@ -102,7 +122,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="titlebar flex items-center justify-between h-10 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
+      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
       data-tauri-drag-region
       onMouseDown={() => getCurrentWindow().startDragging()}
     >
@@ -117,21 +137,21 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
             <ResolveStatus timelineInfo={timelineInfo} />
           </div>
 
-          {/* Right side - Settings dialog */}
-          <div className="flex items-center gap-2" data-tauri-drag-region>
-            <SettingsDialog />
+          {/* Right side - Theme switcher */}
+          <div className="flex items-center gap-2 w-20 justify-end" data-tauri-drag-region>
+            <ThemeSwitcher />
           </div>
         </>
       ) : (
         // Windows/Linux layout: Settings on left, status in center, window buttons on right
         <>
-          {/* Left side - Settings dialog */}
+          {/* Left side - Theme switcher */}
           <div className="flex items-center gap-2" data-tauri-drag-region>
-            <SettingsDialog />
+            <ThemeSwitcher />
           </div>
 
           {/* Center - Resolve status */}
-          <div className="flex justify-center" data-tauri-drag-region>
+          <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
             <ResolveStatus timelineInfo={timelineInfo} />
           </div>
 

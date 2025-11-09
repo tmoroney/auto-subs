@@ -13,7 +13,7 @@ export const models: Model[] = [
     size: "80MB",
     ram: "1GB",
     image: "/hummingbird.png",
-    details: "Lightweight and fast. Good for simple audio and low-resource devices.",
+    details: "This model is lightweight and fast. Good for simple audio and low-resource devices.",
     isDownloaded: false,
   },
   {
@@ -23,7 +23,7 @@ export const models: Model[] = [
     size: "80MB",
     ram: "1GB",
     image: "/hummingbird.png",
-    details: "Lightweight and fast. Good for simple audio, with enhanced English accuracy.",
+    details: "This model is lightweight and fast. Good for simple audio, with enhanced English accuracy.",
     isDownloaded: false,
   },
   {
@@ -33,7 +33,7 @@ export const models: Model[] = [
     size: "150MB",
     ram: "1GB",
     image: "/otter.png",
-    details: "Reliable for everyday transcription with good speed and accuracy.",
+    details: "This model is reliable for everyday transcription with good speed and accuracy.",
     isDownloaded: false,
   },
   {
@@ -43,7 +43,7 @@ export const models: Model[] = [
     size: "150MB",
     ram: "1GB",
     image: "/otter.png",
-    details: "Reliable for everyday transcription, with enhanced English accuracy.",
+    details: "This model is reliable for everyday transcription, with enhanced English accuracy.",
     isDownloaded: false,
   },
   {
@@ -53,7 +53,7 @@ export const models: Model[] = [
     size: "480MB",
     ram: "2GB",
     image: "/fox.png",
-    details: "Better accuracy than smaller models. Good for varied accents and conditions.",
+    details: "This model offers better accuracy than smaller models. Good for varied accents and conditions.",
     isDownloaded: false,
   },
   {
@@ -63,7 +63,7 @@ export const models: Model[] = [
     size: "480MB",
     ram: "2GB",
     image: "/fox.png",
-    details: "Better accuracy than smaller models, with enhanced English performance.",
+    details: "This model offers better accuracy than smaller models, with enhanced English performance.",
     isDownloaded: false,
   },
   {
@@ -73,7 +73,7 @@ export const models: Model[] = [
     size: "1.5GB",
     ram: "5GB",
     image: "/owl.png",
-    details: "High accuracy for challenging audio. A balanced precision choice.",
+    details: "This model provides high accuracy for challenging audio. A balanced precision choice.",
     isDownloaded: false,
   },
   {
@@ -83,7 +83,7 @@ export const models: Model[] = [
     size: "1.5GB",
     ram: "5GB",
     image: "/owl.png",
-    details: "High accuracy for challenging audio, with enhanced English precision.",
+    details: "This model provides high accuracy for challenging audio, with enhanced English precision.",
     isDownloaded: false,
   },
   {
@@ -93,7 +93,7 @@ export const models: Model[] = [
     size: "1.6GB",
     ram: "6GB",
     image: "/phoenix.png",
-    details: "Swift and efficient like a phoenix rising. Delivers near-Large accuracy at significantly higher speed.",
+    details: "This model is swift and efficient. Delivers near-Large accuracy at significantly higher speed.",
     isDownloaded: false,
   },
   {
@@ -103,7 +103,7 @@ export const models: Model[] = [
     size: "3.1GB",
     ram: "10GB",
     image: "/elephant.png",
-    details: "Powerful and thorough as an elephant. Most accurate, best for complex audio or many speakers. Requires lots of RAM and a strong GPU.",
+    details: "This model is powerful and thorough. Most accurate, best for complex audio or many speakers. Requires lots of RAM and a strong GPU.",
     isDownloaded: false,
   },
 ];
