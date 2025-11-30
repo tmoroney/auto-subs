@@ -6499,6 +6499,7 @@ dependencies = [
 [[package]]
 name = "whisper-diarize-rs"
 version = "0.1.0"
+source = "git+https://github.com/tmoroney/whisper-diarize-rs#c234d5321224efc076c14a1a6f5e2542ebf56232"
 dependencies = [
  "dirs 5.0.1",
  "eyre",
@@ -6525,6 +6526,7 @@ name = "whisper-rs"
 version = "0.15.1"
 source = "git+https://codeberg.org/tazz4843/whisper-rs.git#a23990c563330251c37c9a83fd5fab5e472fcb1f"
 dependencies = [
+ "libc",
  "tracing",
  "whisper-rs-sys",
 ]

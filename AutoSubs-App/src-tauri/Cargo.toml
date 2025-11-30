@@ -37,7 +37,7 @@ tokio = { version = "1", features = ["full"] }
 tauri-plugin-os = "2"
 
 # Transcription engine
-whisper-diarize-rs = { path = "../../../whisper-diarize-rs" }
+whisper-diarize-rs = { git = "https://github.com/tmoroney/whisper-diarize-rs" }
 
 # Core utilities
 eyre = "0.6"
@@ -58,4 +58,8 @@ tracing-appender = "0.2"
 tauri-plugin-updater = "2"
 
 [features]
-default = ["whisper-diarize-rs/mac-aarch"]
+default = ["mac-aarch"]
+mac-aarch = ["whisper-diarize-rs/mac-aarch"]
+mac-x86_64 = ["whisper-diarize-rs/mac-x86_64"]
+windows = ["whisper-diarize-rs/windows"]
+linux = ["whisper-diarize-rs/linux"]

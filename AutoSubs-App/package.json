@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "build:win": "tauri build -- --no-default-features --features windows",
+    "build:win": "npm run tauri build -- --no-default-features --features windows",
     "build:linux": "npm run tauri build -- --no-default-features --features linux",
     "build:mac:arm64": "npm run tauri build -- -- --no-default-features --features mac-aarch",
     "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64"
