@@ -4,9 +4,10 @@ import { ReactNode, createContext, useContext, useState, useEffect, useCallback,
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { invoke } from '@tauri-apps/api/core';
-import { downloadDir } from '@tauri-apps/api/path';
-import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { downloadDir } from '@tauri-apps/api/path'
+import { translateLanguages } from '../lib/languages';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
@@ -133,6 +134,12 @@ export const DEFAULT_SETTINGS: Settings = {
 export function GlobalProvider({ children }: GlobalProviderProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [store, setStore] = useState<Store | null>(null);
+  
+  // Ref to track latest settings for use in closures/callbacks
+  const settingsRef = useRef<Settings>(DEFAULT_SETTINGS);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // App state
   const [modelsState, setModelsState] = useState(models)
@@ -602,11 +609,16 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     })
   }
   
+  const getLanguageDisplayName = (languageCode: string): string => {
+    const language = translateLanguages.find(lang => lang.value === languageCode)
+    return language ? language.label : languageCode
+  }
+  
   const getStepTitle = (type?: string): string => {
     switch (type) {
       case 'Download': return 'Downloading Model'
       case 'Transcribe': return 'Transcribing Audio'
-      case 'Translate': return `Translating to ${settings.targetLanguage}`
+      case 'Translate': return `Translating to ${getLanguageDisplayName(settingsRef.current.targetLanguage)}`
       default: return type || 'Warming Up'
     }
   }
@@ -682,7 +694,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const getStepOrder = (): string[] => {
     // Include common step types that might appear before the main ones
     const order = ['Warming Up', 'Download', 'Transcribe']
-    if (settings.targetLanguage && settings.targetLanguage !== settings.language) {
+    if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
       order.push('Translate')
     }
     return order

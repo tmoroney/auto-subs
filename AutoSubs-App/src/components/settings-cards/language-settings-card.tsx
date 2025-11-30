@@ -6,7 +6,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { languages } from "@/lib/languages"
+import { languages, translateLanguages } from "@/lib/languages"
 
 interface LanguageSettingsCardProps {
   sourceLanguage: string
@@ -141,7 +141,7 @@ export const LanguageSettingsCard = ({
                   className="w-full justify-between font-normal"
                 >
                   {targetLanguage
-                    ? languages.find((language) => language.value === targetLanguage)?.label
+                    ? translateLanguages.find((language) => language.value === targetLanguage)?.label
                     : "Select target language..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -152,7 +152,7 @@ export const LanguageSettingsCard = ({
                   <CommandList>
                     <CommandEmpty>No language found.</CommandEmpty>
                     <CommandGroup>
-                      {languages
+                      {translateLanguages
                         .slice()
                         .sort((a, b) => {
                           if (a.value === 'en') return -1;
