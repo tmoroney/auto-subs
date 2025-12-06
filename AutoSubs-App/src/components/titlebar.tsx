@@ -43,7 +43,7 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
   const isConnected = timelineInfo && timelineInfo.timelineId;
   
   return (
-    <HoverCard>
+    <HoverCard openDelay={400}>
       <HoverCardTrigger asChild>
         <Button 
           variant="ghost" 

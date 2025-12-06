@@ -143,18 +143,6 @@ export function ActionBar({
                                         </div>
                                     </div>
 
-                                    {/* Split on Punctuation */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">Split on Punctuation</Label>
-                                            <p className="text-xs text-muted-foreground">Natural line breaks</p>
-                                        </div>
-                                        <Switch
-                                            checked={settings.splitOnPunctuation}
-                                            onCheckedChange={(checked) => updateSetting("splitOnPunctuation", checked)}
-                                        />
-                                    </div>
-
                                     {/* Remove Punctuation */}
                                     <div className="flex items-center justify-between">
                                         <div>

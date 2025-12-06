@@ -512,35 +512,19 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   // Simplified progress step management
   const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
+    // Only process events with known step types - ignore unknown/null types
+    const knownTypes = ['Download', 'Transcribe', 'Translate']
+    if (!event.type || !knownTypes.includes(event.type)) {
+      console.log('Ignoring progress event with unknown type:', event.type)
+      return
+    }
+    
     setProgressSteps(prev => {
-      const stepId = event.type || 'Unknown'
+      const stepId = event.type!
       const stepTitle = getStepTitle(event.type)
       const stepOrder = getStepOrder()
       
-      // Normalize step ID for ordering - treat unknown types as "Warming Up"
-      const normalizedStepId = stepOrder.includes(stepId) ? stepId : 'Warming Up'
-      
-      // Start artificial warming up progress if this is a warming up step and not already animating
-      if (normalizedStepId === 'Warming Up' && event.progress < 100 && !warmingUpIntervalRef.current) {
-        // Check if we already have a warming up step in the array
-        const existingWarmingUpStep = prev.find(s => {
-          const stepNormalizedId = stepOrder.includes(s.id) ? s.id : 'Warming Up'
-          return stepNormalizedId === 'Warming Up'
-        })
-        
-        if (!existingWarmingUpStep) {
-          // Only start animation if no warming up step exists yet
-          startWarmingUpProgress()
-          return prev // Don't update yet, let the animation handle it
-        }
-      }
-      
-      // Stop warming up progress if we're moving to a different step
-      if (normalizedStepId !== 'Warming Up' && warmingUpIntervalRef.current) {
-        stopWarmingUpProgress()
-      }
-      
-      // Find existing step (by original ID, not normalized)
+      // Find existing step
       const existingStepIndex = prev.findIndex(s => s.id === stepId)
       
       if (existingStepIndex >= 0) {
@@ -556,11 +540,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         
         // When this step is active (progress < 100), set all previous steps to completed
         if (event.progress < 100) {
-          const currentStepOrderIndex = stepOrder.indexOf(normalizedStepId)
+          const currentStepOrderIndex = stepOrder.indexOf(stepId)
           
           return updated.map((step, index) => {
-            const stepNormalizedId = stepOrder.includes(step.id) ? step.id : 'Warming Up'
-            const stepOrderIndex = stepOrder.indexOf(stepNormalizedId)
+            const stepOrderIndex = stepOrder.indexOf(step.id)
             const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
             
             return {
@@ -587,11 +570,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         
         // When adding new active step, set all previous steps to completed
         if (event.progress < 100) {
-          const currentStepOrderIndex = stepOrder.indexOf(normalizedStepId)
+          const currentStepOrderIndex = stepOrder.indexOf(stepId)
           
           return prev.map(step => {
-            const stepNormalizedId = stepOrder.includes(step.id) ? step.id : 'Warming Up'
-            const stepOrderIndex = stepOrder.indexOf(stepNormalizedId)
+            const stepOrderIndex = stepOrder.indexOf(step.id)
             const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
             
             return {
@@ -617,83 +599,15 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const getStepTitle = (type?: string): string => {
     switch (type) {
       case 'Download': return 'Downloading Model'
-      case 'Transcribe': return 'Transcribing Audio'
+      case 'Transcribe': return 'Speech to Text'
       case 'Translate': return `Translating to ${getLanguageDisplayName(settingsRef.current.targetLanguage)}`
-      default: return type || 'Warming Up'
+      default: return type || 'Processing'
     }
   }
 
-  // Warming up progress animation state
-  const warmingUpIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Start artificial warming up progress
-  const startWarmingUpProgress = useCallback(() => {
-    // Clear any existing interval
-    if (warmingUpIntervalRef.current) {
-      clearInterval(warmingUpIntervalRef.current)
-    }
-
-    let progress = 0
-    const duration = 5000 // 5 seconds
-    const interval = 100 // Update every 100ms
-    const increment = (interval / duration) * 100
-
-    warmingUpIntervalRef.current = setInterval(() => {
-      progress += increment
-      if (progress >= 100) {
-        progress = 100
-        if (warmingUpIntervalRef.current) {
-          clearInterval(warmingUpIntervalRef.current)
-          warmingUpIntervalRef.current = null
-        }
-      }
-
-      // Find any existing warming up step and update it
-      setProgressSteps(prev => {
-        const warmingUpStepIndex = prev.findIndex(s => {
-          const stepOrder = getStepOrder()
-          const stepNormalizedId = stepOrder.includes(s.id) ? s.id : 'Warming Up'
-          return stepNormalizedId === 'Warming Up'
-        })
-
-        if (warmingUpStepIndex >= 0) {
-          const updated = [...prev]
-          updated[warmingUpStepIndex] = {
-            ...updated[warmingUpStepIndex],
-            progress: Math.round(progress),
-            description: `${Math.round(progress)}%`,
-            isActive: progress < 100,
-            isCompleted: progress >= 100
-          }
-          return updated
-        } else {
-          // Create warming up step if it doesn't exist
-          const newStep: ProcessingStep = {
-            id: 'Warming Up',
-            title: 'Warming Up',
-            description: `${Math.round(progress)}%`,
-            progress: Math.round(progress),
-            isActive: progress < 100,
-            isCompleted: progress >= 100
-          }
-          return [...prev, newStep]
-        }
-      })
-    }, interval)
-  }, [])
-
-  // Stop warming up progress
-  const stopWarmingUpProgress = useCallback(() => {
-    if (warmingUpIntervalRef.current) {
-      clearInterval(warmingUpIntervalRef.current)
-      warmingUpIntervalRef.current = null
-    }
-  }, [])
-
   // Define the order of progress steps
   const getStepOrder = (): string[] => {
-    // Include common step types that might appear before the main ones
-    const order = ['Warming Up', 'Download', 'Transcribe']
+    const order = ['Download', 'Transcribe']
     if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
       order.push('Translate')
     }
@@ -701,9 +615,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
   
   const clearProgressSteps = () => {
-    // Stop warming up progress animation
-    stopWarmingUpProgress()
-    
     setProgressSteps([])
     // Also clear live preview segments when starting new transcription
     setLivePreviewSegments([])
@@ -712,9 +623,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   }
   
   const completeAllProgressSteps = () => {
-    // Stop warming up progress animation
-    stopWarmingUpProgress()
-    
     setProgressSteps(prev => [
       ...prev.map(step => ({
         ...step,
@@ -735,9 +643,6 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   // Cancel all progress steps and show cancelled state
   const cancelAllProgressSteps = () => {
-    // Stop warming up progress animation
-    stopWarmingUpProgress()
-    
     setProgressSteps(prev => 
       prev.map(step => ({
         ...step,

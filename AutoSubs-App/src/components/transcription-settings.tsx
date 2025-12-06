@@ -15,6 +15,7 @@ import { SettingsDialog } from "./settings-dialog"
 import { ActionBar } from "./action-bar"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ProcessingStepItem } from "./processing-step-item"
+import PixelOverlay, { PixelOverlayRef } from "./PixelOverlay"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
     models: any[],
@@ -146,12 +147,24 @@ export const TranscriptionSettings = () => {
     
     // Ref for auto-scrolling progress steps
     const progressContainerRef = React.useRef<HTMLDivElement>(null)
+    
+    // Ref for pixel overlay animation
+    const pixelOverlayRef = React.useRef<PixelOverlayRef>(null)
+    
+    // State for showing loading message during model warmup
+    const [showLoadingMessage, setShowLoadingMessage] = React.useState(false)
 
-    // Auto-scroll to bottom when new steps are added
+    // Auto-scroll to bottom when new steps are added, and stop animation when first step appears
     React.useEffect(() => {
-        if (progressContainerRef.current && processingSteps.length > 0) {
+        if (processingSteps.length > 0) {
+            // Stop the pixel animation and hide loading message when steps start appearing
+            pixelOverlayRef.current?.stopAnimation()
+            setShowLoadingMessage(false)
+            
             // Scroll to the bottom smoothly
-            progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
+            if (progressContainerRef.current) {
+                progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
+            }
         }
     }, [processingSteps])
 
@@ -161,6 +174,15 @@ export const TranscriptionSettings = () => {
         const cleanup = setupEventListeners();
         return cleanup;
     }, [setupEventListeners]);
+
+    // Preload model images on mount to prevent loading delay when popover opens
+    React.useEffect(() => {
+        const uniqueImages = [...new Set(modelsState.map(m => m.image))];
+        uniqueImages.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+    }, []);
 
     /**
      * Main function to handle the transcription process
@@ -185,10 +207,14 @@ export const TranscriptionSettings = () => {
     };
 
     const handleStartTranscription = async () => {
-        // Validate input requirements
+        // Validate input requirements first - only proceed if valid
         if (!validateTranscriptionInput()) {
             return
         }
+        
+        // Trigger pixel animation and show loading message only after validation passes
+        pixelOverlayRef.current?.triggerAnimation()
+        setShowLoadingMessage(true)
 
         // Get audio path based on mode
         const audioInfo = await getSourceAudio(
@@ -239,6 +265,8 @@ export const TranscriptionSettings = () => {
         setIsExporting(false)
         setExportProgress(0)
         setLabeledProgress(null)
+        // Also hide loading message when resetting
+        setShowLoadingMessage(false)
     }
 
 
@@ -251,6 +279,10 @@ export const TranscriptionSettings = () => {
         console.log("Cancelling process...")
         // Set cancellation flag immediately to interrupt any polling loops
         cancelRequestedRef.current = true
+        
+        // Stop pixel animation immediately
+        pixelOverlayRef.current?.stopAnimation()
+        setShowLoadingMessage(false)
 
         try {
             // If transcription is active, cancel it
@@ -282,7 +314,9 @@ export const TranscriptionSettings = () => {
 
     return (
         <>
-            <div className="h-full flex flex-col bg-card/50">
+            <div className="h-full flex flex-col bg-card/50 relative">
+                {/* Pixel Animation Overlay */}
+                <PixelOverlay ref={pixelOverlayRef} />
                 {/* Fixed Top Controls Bar */}
                 <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-3 bg-transparent">
                     {/* Model Selector */}
@@ -301,7 +335,7 @@ export const TranscriptionSettings = () => {
                                         alt={modelsState[settings.model].label + " icon"}
                                         className="w-6 h-6 object-contain rounded"
                                     />
-                                    <span className="truncate max-w-20">{modelsState[settings.model].label}</span>
+                                    <span className="truncate">{modelsState[settings.model].label}</span>
                                     {modelsState[settings.model].isDownloaded ? (
                                         <Check className="h-3 w-3 text-green-600" />
                                     ) : (
@@ -310,7 +344,7 @@ export const TranscriptionSettings = () => {
                                 </div>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="p-1" align="start">
+                        <PopoverContent className="p-1" align="start" forceMount style={{ display: openModelSelector ? undefined : 'none' }}>
                             <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
                                 <TabsList className="grid w-full grid-cols-2">
                                     <TabsTrigger value="all" className="text-xs p-2">All Languages</TabsTrigger>
@@ -318,22 +352,23 @@ export const TranscriptionSettings = () => {
                                 </TabsList>
                                 <ScrollArea className="my-1.5">
                                     <div className="space-y-1 pr-0">
-                                        {modelsState.filter(model => {
-                                            if (activeTab === 'all') {
-                                                return !model.value.includes('.en');
-                                            } else {
-                                                return model.value.includes('.en') || model.value === 'large-v3' || model.value === 'large-v3-turbo';
-                                            }
-                                        }).map((model) => {
-                                            const originalIndex = modelsState.findIndex(m => m.value === model.value);
+                                        {modelsState.map((model, originalIndex) => {
+                                            // Determine visibility based on active tab
+                                            const isEnglishOnly = model.value.includes('.en');
+                                            const isLargeModel = model.value === 'large-v3' || model.value === 'large-v3-turbo';
+                                            const isVisible = activeTab === 'all' 
+                                                ? !isEnglishOnly 
+                                                : (isEnglishOnly || isLargeModel);
+                                            
                                             return (
-                                                <HoverCard key={originalIndex}>
+                                                <HoverCard key={originalIndex} openDelay={400}>
                                                     <HoverCardTrigger asChild>
                                                         <div
                                                             className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
                                                                 ? "bg-blue-50 dark:bg-blue-900/20"
                                                                 : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                                                 }`}
+                                                            style={{ display: isVisible ? undefined : 'none' }}
                                                             onClick={() => {
                                                                 updateSetting("model", originalIndex)
                                                                 setOpenModelSelector(false)
@@ -416,8 +451,8 @@ export const TranscriptionSettings = () => {
                 </div>
 
                 {/* Progress Indicators Top Bar */}
-                {(isProcessing || processingSteps.length > 0) ? (
-                    <div ref={progressContainerRef} className="w-full px-4 pb-8 overflow-y-auto h-full" style={{
+                {processingSteps.length > 0 ? (
+                    <div ref={progressContainerRef} className="w-full px-4 pb-8 overflow-y-auto h-full relative z-10" style={{
                         maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)'
                     }}>
@@ -438,6 +473,14 @@ export const TranscriptionSettings = () => {
                                     />
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                ) : showLoadingMessage ? (
+                    <div className="flex flex-col items-center justify-center h-full space-y-3 pb-14 relative z-10">
+                        <div className="bg-background/10 backdrop-blur-sm rounded-md px-3 py-2">
+                            <p className="text-base font-medium text-foreground animate-pulse">
+                                Loading model into memory...
+                            </p>
                         </div>
                     </div>
                 ) : (

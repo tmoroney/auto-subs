@@ -12,6 +12,17 @@ export function SegmentPreview({ segments, isActive }: SegmentPreviewProps) {
     const [isStreaming, setIsStreaming] = useState(false)
     const streamingRef = useRef(false)
     
+    // Track if user has manually scrolled away from bottom
+    const userScrolledRef = useRef(false)
+    const scrollCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    
+    // Check if scrolled to bottom (within threshold)
+    const isAtBottom = useCallback(() => {
+        if (!scrollRef.current) return true
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+        return scrollHeight - scrollTop - clientHeight < 40 // 40px threshold
+    }, [])
+    
     // Memoize full text calculation
     const fullText = useMemo(() => 
         segments.map(segment => segment.text).join(' ').trim(),
@@ -26,10 +37,52 @@ export function SegmentPreview({ segments, isActive }: SegmentPreviewProps) {
     
     // Optimized scroll to bottom
     const scrollToBottom = useCallback(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (scrollRef.current && !userScrolledRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
     }, [])
+    
+    // Handle user scroll - detect manual scrolling via wheel/touch
+    useEffect(() => {
+        const element = scrollRef.current
+        if (!element) return
+        
+        const handleUserScroll = () => {
+            // User is manually scrolling - disable auto-scroll
+            userScrolledRef.current = true
+            
+            // Clear any pending check
+            if (scrollCheckTimeoutRef.current) {
+                clearTimeout(scrollCheckTimeoutRef.current)
+            }
+            
+            // After user stops scrolling, check if they're at bottom
+            scrollCheckTimeoutRef.current = setTimeout(() => {
+                if (isAtBottom()) {
+                    // User scrolled back to bottom - re-enable auto-scroll
+                    userScrolledRef.current = false
+                }
+            }, 150) // 150ms debounce - enough time to not fight the user
+        }
+        
+        element.addEventListener('wheel', handleUserScroll, { passive: true })
+        element.addEventListener('touchmove', handleUserScroll, { passive: true })
+        
+        return () => {
+            element.removeEventListener('wheel', handleUserScroll)
+            element.removeEventListener('touchmove', handleUserScroll)
+            if (scrollCheckTimeoutRef.current) {
+                clearTimeout(scrollCheckTimeoutRef.current)
+            }
+        }
+    }, [isAtBottom])
+    
+    // Reset userScrolled when segments are cleared (new transcription)
+    useEffect(() => {
+        if (segments.length === 0) {
+            userScrolledRef.current = false
+        }
+    }, [segments.length])
     
     useEffect(() => {
         scrollToBottom()
