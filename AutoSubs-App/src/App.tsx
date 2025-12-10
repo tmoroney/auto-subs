@@ -7,7 +7,6 @@ import { TranscriptionSettings } from "@/components/transcription-settings"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
-import { SetupWalkthrough } from "@/components/setup-walkthrough"
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -89,12 +88,6 @@ function App() {
               onClose={() => setShowMobileSubtitles(false)}
             />
           )}
-
-          {/* Setup Walkthrough */}
-          <SetupWalkthrough
-            isOpen={showWalkthrough}
-            onClose={handleWalkthroughClose}
-          />
         </div>
       </TooltipProvider>
     </ThemeProvider>

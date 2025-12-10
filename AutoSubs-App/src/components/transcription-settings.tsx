@@ -1,19 +1,20 @@
 import * as React from "react"
-import { Trash2, AlertTriangle, Check, Download, HardDrive, MemoryStick, Heart } from "lucide-react"
+import { Trash2, AlertTriangle, Check, Download, HardDrive, MemoryStick, Heart, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { SettingsDialog } from "./settings-dialog"
 import { ActionBar } from "./action-bar"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { ProcessingStepItem } from "./processing-step-item"
 import PixelOverlay, { PixelOverlayRef } from "./PixelOverlay"
 
@@ -22,6 +23,17 @@ function ManageModelsDialog({ models, onDeleteModel }: {
     onDeleteModel: (modelValue: string) => void
 }) {
     const downloadedModels = models.filter(model => model.isDownloaded);
+    
+    // Helper function to check if model is English-only
+    const isEnglishOnlyModel = (modelValue: string) => modelValue.includes('.en')
+    
+    // Helper function to get language badge
+    const getLanguageBadge = (modelValue: string) => {
+        if (isEnglishOnlyModel(modelValue)) {
+            return <Badge variant="secondary" className="text-xs py-0 px-1.5 ml-1.5">EN</Badge>
+        }
+        return null
+    }
 
     return (
         <Dialog>
@@ -57,7 +69,10 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                                         className="w-10 h-10 object-contain rounded"
                                     />
                                     <div>
-                                        <p className="font-medium">{model.label}</p>
+                                        <div className="flex items-center">
+                                            <p className="font-medium">{model.label}</p>
+                                            {getLanguageBadge(model.value)}
+                                        </div>
                                         <p className="text-xs text-muted-foreground">{model.size}</p>
                                     </div>
                                 </div>
@@ -125,7 +140,6 @@ export const TranscriptionSettings = () => {
         cancelAllProgressSteps,
         isProcessing,
         setIsProcessing,
-        showMobileSubtitles,
         setShowMobileSubtitles,
         pushToTimeline,
         cancelRequestedRef,
@@ -142,17 +156,45 @@ export const TranscriptionSettings = () => {
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
-    const [activeTab, setActiveTab] = React.useState('all')
+    const [showEnglishOnly, setShowEnglishOnly] = React.useState(false)
     const isSmallScreen = useMediaQuery('(max-width: 640px)')
-    
+
     // Ref for auto-scrolling progress steps
     const progressContainerRef = React.useRef<HTMLDivElement>(null)
-    
+
     // Ref for pixel overlay animation
     const pixelOverlayRef = React.useRef<PixelOverlayRef>(null)
-    
+
     // State for showing loading message during model warmup
     const [showLoadingMessage, setShowLoadingMessage] = React.useState(false)
+
+    // Helper functions for model categorization
+    const isEnglishOnlyModel = (modelValue: string) => modelValue.includes('.en')
+
+    // Check if a model has an English-only variant (e.g., "tiny" has "tiny.en")
+    const hasEnglishOnlyVariant = (modelValue: string) => {
+        return modelsState.some(m => m.value === `${modelValue}.en`)
+    }
+
+    // Filter models based on English-only switch
+    const getFilteredModels = (models: any[]) => {
+        if (showEnglishOnly) {
+            // Show English-only models + models that don't have an English-only variant (like large models)
+            return models.filter(model =>
+                isEnglishOnlyModel(model.value) || !hasEnglishOnlyVariant(model.value)
+            )
+        } else {
+            // Show all models except English-only ones
+            return models.filter(model => !isEnglishOnlyModel(model.value))
+        }
+    }
+
+    const getLanguageBadge = (modelValue: string) => {
+        if (isEnglishOnlyModel(modelValue)) {
+            return <Badge variant="secondary" className="text-xs py-0 px-1.5">EN</Badge>
+        }
+        return null
+    }
 
     // Auto-scroll to bottom when new steps are added, and stop animation when first step appears
     React.useEffect(() => {
@@ -160,7 +202,7 @@ export const TranscriptionSettings = () => {
             // Stop the pixel animation and hide loading message when steps start appearing
             pixelOverlayRef.current?.stopAnimation()
             setShowLoadingMessage(false)
-            
+
             // Scroll to the bottom smoothly
             if (progressContainerRef.current) {
                 progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
@@ -211,7 +253,7 @@ export const TranscriptionSettings = () => {
         if (!validateTranscriptionInput()) {
             return
         }
-        
+
         // Trigger pixel animation and show loading message only after validation passes
         pixelOverlayRef.current?.triggerAnimation()
         setShowLoadingMessage(true)
@@ -279,7 +321,7 @@ export const TranscriptionSettings = () => {
         console.log("Cancelling process...")
         // Set cancellation flag immediately to interrupt any polling loops
         cancelRequestedRef.current = true
-        
+
         // Stop pixel animation immediately
         pixelOverlayRef.current?.stopAnimation()
         setShowLoadingMessage(false)
@@ -335,7 +377,10 @@ export const TranscriptionSettings = () => {
                                         alt={modelsState[settings.model].label + " icon"}
                                         className="w-6 h-6 object-contain rounded"
                                     />
-                                    <span className="truncate">{modelsState[settings.model].label}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="truncate">{modelsState[settings.model].label}</span>
+                                        {getLanguageBadge(modelsState[settings.model].value)}
+                                    </div>
                                     {modelsState[settings.model].isDownloaded ? (
                                         <Check className="h-3 w-3 text-green-600" />
                                     ) : (
@@ -344,53 +389,62 @@ export const TranscriptionSettings = () => {
                                 </div>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="p-1" align="start" forceMount style={{ display: openModelSelector ? undefined : 'none' }}>
-                            <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="all" className="text-xs p-2">All Languages</TabsTrigger>
-                                    <TabsTrigger value="en" className="text-xs p-2">English-Only</TabsTrigger>
-                                </TabsList>
-                                <ScrollArea className="my-1.5">
-                                    <div className="space-y-1 pr-0">
-                                        {modelsState.map((model, originalIndex) => {
-                                            // Determine visibility based on active tab
-                                            const isEnglishOnly = model.value.includes('.en');
-                                            const isLargeModel = model.value === 'large-v3' || model.value === 'large-v3-turbo';
-                                            const isVisible = activeTab === 'all' 
-                                                ? !isEnglishOnly 
-                                                : (isEnglishOnly || isLargeModel);
-                                            
+                        <PopoverContent className="p-2 w-72" align="start" forceMount style={{ display: openModelSelector ? undefined : 'none' }}>
+                            <div className="space-y-0">
+                                {/* English-Only Switch */}
+                                <div className="flex items-center justify-between px-1 py-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                        <Label htmlFor="english-only-switch" className="text-xs font-medium cursor-pointer pl-1">
+                                            English-Only Models
+                                        </Label>
+                                        <HoverCard>
+                                            <HoverCardTrigger asChild>
+                                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                            </HoverCardTrigger>
+                                            <HoverCardContent className="w-56 p-3 text-xs">
+                                                Show specialised English models with higher accuracy for English transcription.
+                                            </HoverCardContent>
+                                        </HoverCard>
+                                    </div>
+                                    <Switch
+                                        id="english-only-switch"
+                                        checked={showEnglishOnly}
+                                        onCheckedChange={setShowEnglishOnly}
+                                    />
+                                </div>
+
+                                {/* Model List */}
+                                <ScrollArea className="h-64">
+                                    <div className="space-y-1">
+                                        {getFilteredModels(modelsState).map((model, idx) => {
+                                            const actualModelIndex = modelsState.findIndex(m => m.value === model.value)
+
                                             return (
-                                                <HoverCard key={originalIndex} openDelay={400}>
+                                                <HoverCard key={idx} openDelay={500}>
                                                     <HoverCardTrigger asChild>
                                                         <div
-                                                            className={`flex items-center justify-between p-2 cursor-pointer rounded-lg transition-colors duration-200 ${settings.model === originalIndex
+                                                            className={`flex items-center justify-between p-2 cursor-pointer rounded-sm transition-colors duration-200 ${settings.model === actualModelIndex
                                                                 ? "bg-blue-50 dark:bg-blue-900/20"
                                                                 : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                                                 }`}
-                                                            style={{ display: isVisible ? undefined : 'none' }}
                                                             onClick={() => {
-                                                                updateSetting("model", originalIndex)
+                                                                updateSetting("model", actualModelIndex)
                                                                 setOpenModelSelector(false)
                                                             }}
                                                         >
                                                             <div className="flex items-center gap-2">
-                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded" />
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium text-xs">{model.label}</span>
-                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <HardDrive className="h-3 w-3" />
-                                                                            <span>{model.size}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <MemoryStick className="h-3 w-3" />
-                                                                            <span>{model.ram}</span>
-                                                                        </div>
+                                                                <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="font-medium text-xs">{model.label}</span>
+                                                                        {getLanguageBadge(model.value)}
                                                                     </div>
+                                                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                                                        {model.description}
+                                                                    </p>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center ml-2 flex-shrink-0">
                                                                 {downloadingModel === model.value ? (
                                                                     <div className="flex items-center gap-2">
                                                                         <Progress value={downloadProgress} className="h-1 w-12" />
@@ -415,8 +469,11 @@ export const TranscriptionSettings = () => {
                                                                 alt={model.label + " icon"}
                                                                 className="h-12 w-12 object-contain rounded"
                                                             />
-                                                            <div className="space-y-1">
-                                                                <h4 className="text-sm font-semibold">{model.label}</h4>
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <h4 className="text-sm font-semibold">{model.label}</h4>
+                                                                    {getLanguageBadge(model.value)}
+                                                                </div>
                                                                 <p className="text-xs text-muted-foreground">{model.details}</p>
                                                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                                                     <div className="flex items-center gap-1">
@@ -436,7 +493,7 @@ export const TranscriptionSettings = () => {
                                         })}
                                     </div>
                                 </ScrollArea>
-                            </Tabs>
+                            </div>
                         </PopoverContent>
                     </Popover>
 
