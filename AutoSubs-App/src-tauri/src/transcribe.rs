@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
-use whisper_diarize_rs::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType};
+use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType};
 
 // Frontend-compatible progress data type
 #[derive(Serialize, Deserialize, Clone, Debug)]

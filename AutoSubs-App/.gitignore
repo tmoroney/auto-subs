@@ -7,6 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Test files
+*.wav
+*.mp3
+*.mp4
+
 node_modules
 dist
 dist-ssr

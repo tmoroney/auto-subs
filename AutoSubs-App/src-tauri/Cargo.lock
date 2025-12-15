@@ -318,8 +318,8 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "transcription-engine",
  "which 6.0.3",
- "whisper-diarize-rs",
 ]
 
 [[package]]
@@ -3353,6 +3353,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52afb44b6b0cffa9bf45e4d37e5a4935b0334a51570658e279e9e3e6cf324aa5"
 dependencies = [
  "half",
+ "libloading 0.8.8",
  "ndarray",
  "ort-sys",
  "tracing",
@@ -5912,6 +5913,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "transcription-engine"
+version = "0.1.0"
+dependencies = [
+ "dirs 5.0.1",
+ "eyre",
+ "futures",
+ "hf-hub",
+ "hound",
+ "once_cell",
+ "ort-sys",
+ "pyannote-rs",
+ "regex",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "unicode-segmentation",
+ "whisper-rs",
+ "zip",
+]
+
+[[package]]
 name = "tray-icon"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6494,31 +6519,6 @@ dependencies = [
  "home",
  "rustix 0.38.44",
  "winsafe",
-]
-
-[[package]]
-name = "whisper-diarize-rs"
-version = "0.1.0"
-source = "git+https://github.com/tmoroney/whisper-diarize-rs#c234d5321224efc076c14a1a6f5e2542ebf56232"
-dependencies = [
- "dirs 5.0.1",
- "eyre",
- "futures",
- "hf-hub",
- "hound",
- "once_cell",
- "ort-sys",
- "pyannote-rs",
- "regex",
- "reqwest 0.11.27",
- "serde",
- "serde_json",
- "tokio",
- "tokio-util",
- "tracing",
- "unicode-segmentation",
- "whisper-rs",
- "zip",
 ]
 
 [[package]]
