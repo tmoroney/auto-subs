@@ -2,7 +2,7 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
-import { splitAndFormatSubtitles } from "./subtitleFormatter";
+import { splitAndFormatSubtitles } from "./subtitle-formatter";
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {

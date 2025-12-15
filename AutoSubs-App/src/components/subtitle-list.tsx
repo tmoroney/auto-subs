@@ -14,7 +14,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { joinWordsToText } from "@/utils/subtitleFormatter"
+import { joinWordsToText } from "@/utils/subtitle-formatter"
 
 import { SpeakerEditor } from "@/components/speaker-editor"
 
@@ -107,7 +107,7 @@ interface SubtitleListProps {
 import {
     DialogClose,
 } from "@/components/ui/dialog"
-import { jumpToTime } from "@/api/resolveAPI";
+import { jumpToTime } from "@/api/resolve-api";
 
 const SubtitleList = ({
     searchQuery = "",

@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { DialogDescription } from "@radix-ui/react-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { jumpToTime } from "@/api/resolveAPI"
+import { jumpToTime } from "@/api/resolve-api"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { generatePreview } from "@/api/resolveAPI"
+import { generatePreview } from "@/api/resolve-api"
 import { downloadDir } from "@tauri-apps/api/path"
 import { convertFileSrc } from "@tauri-apps/api/core"
 

@@ -11,9 +11,9 @@ import { translateLanguages } from '../lib/languages';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
-import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
-import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
-import { generateSrt, parseSrt } from '@/utils/srtUtils';
+import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
+import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/file-utils';
+import { generateSrt, parseSrt } from '@/utils/srt-utils';
 import { models } from '@/lib/models';
 
 interface ProcessingStep {
@@ -442,7 +442,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
       try {
         // Import the required functions directly
-        const { exportAudio, getExportProgress } = await import('@/api/resolveAPI');
+        const { exportAudio, getExportProgress } = await import('@/api/resolve-api');
 
         // Start the export (non-blocking)
         const exportResult = await exportAudio(inputTracks);

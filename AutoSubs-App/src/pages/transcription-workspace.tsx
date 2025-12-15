@@ -16,7 +16,7 @@ import { TranscriptionOptions } from "@/types/interfaces"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ActionBar } from "@/components/action-bar"
 import { ProcessingStepItem } from "@/components/processing-step-item"
-import PixelOverlay, { PixelOverlayRef } from "@/components/PixelOverlay"
+import PixelOverlay, { PixelOverlayRef } from "@/components/pixel-overlay"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
     models: any[],
