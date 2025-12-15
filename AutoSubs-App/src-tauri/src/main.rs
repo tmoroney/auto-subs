@@ -21,10 +21,10 @@ use tauri_plugin_clipboard_manager::init as clipboard_plugin;
 use tauri_plugin_opener::init as opener_plugin;
 use tokio::process::Command as TokioCommand;
 
-mod audio;
+mod audio_preprocess;
 mod models;
-mod transcribe;
-mod transcript;
+mod transcription_api;
+mod transcript_types;
 mod logging;
 
 // Include integration-like tests that need crate visibility
@@ -168,8 +168,8 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            transcribe::transcribe_audio,
-            transcribe::cancel_transcription,
+            transcription_api::transcribe_audio,
+            transcription_api::cancel_transcription,
             models::get_downloaded_models,
             models::delete_model,
             logging::get_backend_logs,
@@ -191,7 +191,7 @@ fn main() {
                     api.prevent_exit();
 
                     // Proactively cancel any active long-running tasks (e.g., transcription)
-                    if let Ok(mut should_cancel) = crate::transcribe::SHOULD_CANCEL.lock() {
+                    if let Ok(mut should_cancel) = crate::transcription_api::SHOULD_CANCEL.lock() {
                         *should_cancel = true;
                     }
 

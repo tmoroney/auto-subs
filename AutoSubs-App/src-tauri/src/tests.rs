@@ -1,4 +1,4 @@
-use crate::transcribe::{transcribe_audio, FrontendTranscribeOptions};
+use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
 use tauri::test::{mock_builder, mock_context, noop_assets};
 use std::process::Command;
 use std::fs;

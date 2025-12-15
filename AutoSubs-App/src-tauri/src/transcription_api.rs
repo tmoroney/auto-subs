@@ -1,6 +1,6 @@
-use crate::audio;
+use crate::audio_preprocess as audio;
 use crate::models::get_cache_dir;
-use crate::transcript::{ColorModifier, Sample, Segment, Speaker, Transcript, WordTimestamp};
+use crate::transcript_types::{ColorModifier, Sample, Segment, Speaker, Transcript, WordTimestamp};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
