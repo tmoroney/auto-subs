@@ -1,4 +1,3 @@
-import { Progress } from "@/components/ui/progress"
 import {
     Item,
     ItemContent,
@@ -12,7 +11,6 @@ import { SegmentPreview } from "./segment-preview"
 
 export interface ProcessingStepProps {
     title: string;
-    description: string;
     progress: number;
     isActive: boolean;
     isCompleted: boolean;
@@ -25,7 +23,6 @@ export interface ProcessingStepProps {
 
 export function ProcessingStepItem({
     title,
-    description,
     progress,
     isActive,
     isCompleted,

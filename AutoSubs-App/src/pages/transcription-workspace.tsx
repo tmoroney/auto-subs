@@ -13,10 +13,10 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { invoke } from "@tauri-apps/api/core"
 import { TranscriptionOptions } from "@/types/interfaces"
-import { SettingsDialog } from "./settings-dialog"
-import { ActionBar } from "./action-bar"
-import { ProcessingStepItem } from "./processing-step-item"
-import PixelOverlay, { PixelOverlayRef } from "./PixelOverlay"
+import { SettingsDialog } from "@/components/settings-dialog"
+import { ActionBar } from "@/components/action-bar"
+import { ProcessingStepItem } from "@/components/processing-step-item"
+import PixelOverlay, { PixelOverlayRef } from "@/components/PixelOverlay"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
     models: any[],
@@ -120,7 +120,7 @@ function ManageModelsDialog({ models, onDeleteModel }: {
     );
 }
 
-export const TranscriptionSettings = () => {
+export const TranscriptionWorkspace = () => {
     const {
         settings,
         updateSetting,
@@ -140,7 +140,6 @@ export const TranscriptionSettings = () => {
         cancelAllProgressSteps,
         isProcessing,
         setIsProcessing,
-        setShowMobileSubtitles,
         pushToTimeline,
         cancelRequestedRef,
         exportSubtitlesAs,
@@ -519,7 +518,6 @@ export const TranscriptionSettings = () => {
                                     <ProcessingStepItem
                                         id={step.id}
                                         title={step.title}
-                                        description={step.description}
                                         progress={step.progress}
                                         isActive={step.isActive}
                                         isCompleted={step.isCompleted}

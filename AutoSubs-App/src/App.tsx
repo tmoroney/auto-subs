@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
-import { TranscriptionSettings } from "@/components/transcription-settings"
+import { TranscriptionWorkspace } from "@/pages/transcription-workspace"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
@@ -33,30 +33,13 @@ export function ThemeToggle() {
 
 function App() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
-  const [showWalkthrough, setShowWalkthrough] = React.useState(false)
   const isMobile = useIsMobile()
-  
-  // timelineInfo will come from your actual Resolve connection state
-  // For now, this will be null until connected
-
-  // Check if this is the first time the user opens the app
-  React.useEffect(() => {
-    const hasCompletedSetup = localStorage.getItem('autosubs-setup-completed')
-    if (!hasCompletedSetup) {
-      setShowWalkthrough(true)
-    }
-  }, [])
-
-  const handleWalkthroughClose = () => {
-    setShowWalkthrough(false)
-    localStorage.setItem('autosubs-setup-completed', 'true')
-  }
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <TooltipProvider>
         <div className="flex flex-col h-screen overflow-hidden">
-          {/* Custom Titlebar for Overlay Mode - Desktop Only */}
+          {/* timelineInfo remains null until connected to Resolve */}
           <Titlebar timelineInfo={null} />
 
 
@@ -65,13 +48,13 @@ function App() {
             {isMobile ? (
               // Mobile: Just show transcription settings
               <div className="h-full overflow-hidden">
-                <TranscriptionSettings />
+                <TranscriptionWorkspace />
               </div>
             ) : (
               // Desktop: Resizable panels with transcription settings and subtitle viewer
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 <ResizablePanel defaultSize={55} className="min-w-[400px]">
-                  <TranscriptionSettings />
+                  <TranscriptionWorkspace />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={50} minSize={45}>
