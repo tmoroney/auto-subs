@@ -1,5 +1,5 @@
 import { Heart, Github, Settings, Gauge, Clock } from "lucide-react";
-import { useGlobal } from "@/contexts/GlobalContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 import {
   Dialog,
@@ -11,10 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { DEFAULT_SETTINGS } from "@/contexts/GlobalContext";
 
 export function SettingsDialog() {
-  const { settings, updateSetting } = useGlobal();
+  const { settings, updateSetting, resetSettings } = useSettings();
 
   
   
@@ -25,11 +24,8 @@ export function SettingsDialog() {
     });
     
     if (shouldReset) {
-      // Reset all settings to default values using DEFAULT_SETTINGS
-      const settingsKeys = Object.keys(DEFAULT_SETTINGS) as Array<keyof typeof DEFAULT_SETTINGS>;
-      settingsKeys.forEach((key) => {
-        updateSetting(key, DEFAULT_SETTINGS[key]);
-      });
+      // Use the resetSettings function instead of manually resetting
+      resetSettings();
     }
   };
 

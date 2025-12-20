@@ -4,7 +4,8 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
 import { Card } from "@/components/ui/card"
-import { useGlobal } from "@/contexts/GlobalContext"
+import { useSettings } from "@/contexts/SettingsContext"
+import { useResolve } from "@/contexts/ResolveContext"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -47,7 +48,8 @@ export function ActionBar({
     onCancel,
     isProcessing,
 }: ActionBarProps) {
-    const { settings, updateSetting, timelineInfo, setFileInput} = useGlobal()
+    const { settings, updateSetting } = useSettings()
+    const { timelineInfo } = useResolve()
     const [openTargetLanguage, setOpenTargetLanguage] = React.useState(false)
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
@@ -73,7 +75,6 @@ export function ActionBar({
                     if (files && files.length > 0) {
                         const file = files[0];
                         setSelectedFile(file);
-                        setFileInput(file)
                     }
                 }
             });
@@ -96,7 +97,6 @@ export function ActionBar({
             defaultPath: await downloadDir()
         })
         setSelectedFile(file)
-        setFileInput(file)
     }
 
     return (

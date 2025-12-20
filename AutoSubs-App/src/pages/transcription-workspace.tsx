@@ -1,45 +1,52 @@
 import * as React from "react"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { useGlobal } from "@/contexts/GlobalContext"
+import { useSettings } from "@/contexts/SettingsContext"
+import { useModels } from "@/contexts/ModelsContext"
+import { useResolve } from "@/contexts/ResolveContext"
+import { useTranscript } from "@/contexts/TranscriptContext"
+import { useProgress } from "@/contexts/ProgressContext"
 import { invoke } from "@tauri-apps/api/core"
 import { TranscriptionOptions } from "@/types/interfaces"
+import { generateTranscriptFilename } from "@/utils/file-utils"
 import { ActionBar } from "@/components/action-bar"
 import PixelOverlay, { PixelOverlayRef } from "@/components/pixel-overlay"
 import { WorkspaceHeader } from "@/components/workspace/workspace-header"
 import { WorkspaceBody } from "@/components/workspace/workspace-body"
 
 export const TranscriptionWorkspace = () => {
-    const {
-        settings,
-        updateSetting,
-        modelsState,
-        fileInput,
-        setTranscriptionProgress,
-        setLabeledProgress,
-        setupEventListeners,
-        cancelExport,
-        isExporting,
-        setIsExporting,
-        setExportProgress,
-        processingSteps,
-        livePreviewSegments,
-        clearProgressSteps,
-        completeAllProgressSteps,
-        cancelAllProgressSteps,
-        isProcessing,
-        setIsProcessing,
-        pushToTimeline,
-        cancelRequestedRef,
-        exportSubtitlesAs,
-        validateTranscriptionInput,
-        getSourceAudio,
-        createTranscriptionOptions,
-        processTranscriptionResults,
-        checkDownloadedModels,
-        downloadingModel,
-        downloadProgress,
-        handleDeleteModel,
-    } = useGlobal()
+    const { subtitles, speakers } = useTranscript()
+    const { settings, updateSetting } = useSettings()
+    const { modelsState, checkDownloadedModels, handleDeleteModel } = useModels()
+    const { 
+        timelineInfo, 
+        pushToTimeline, 
+        cancelExport, 
+        isExporting, 
+        setIsExporting, 
+        setExportProgress, 
+        cancelRequestedRef, 
+        getSourceAudio 
+    } = useResolve()
+    const { 
+        processTranscriptionResults, 
+        exportSubtitlesAs 
+    } = useTranscript()
+    const { 
+        processingSteps, 
+        livePreviewSegments, 
+        clearProgressSteps, 
+        completeAllProgressSteps, 
+        cancelAllProgressSteps, 
+        setupEventListeners 
+    } = useProgress()
+    
+    // Local state that was previously in GlobalContext
+    const [isProcessing, setIsProcessing] = React.useState(false)
+    const [, setTranscriptionProgress] = React.useState(0)
+    const [, setLabeledProgress] = React.useState<{ progress: number, type?: string, label?: string } | null>(null)
+    const [,] = React.useState<string | null>(null)
+    const [,] = React.useState(0)
+    const [fileInput] = React.useState<string | null>(null)
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
@@ -69,11 +76,14 @@ export const TranscriptionWorkspace = () => {
         }
     }, [processingSteps])
 
-    // Set up event listeners from global context
+    // Set up event listeners from progress context
     React.useEffect(() => {
-        const cleanup = setupEventListeners();
+        const cleanup = setupEventListeners({
+            targetLanguage: settings.targetLanguage,
+            language: settings.language
+        });
         return cleanup;
-    }, [setupEventListeners]);
+    }, [setupEventListeners, settings.targetLanguage, settings.language]);
 
     /**
      * Main function to handle the transcription process
@@ -82,7 +92,7 @@ export const TranscriptionWorkspace = () => {
     const handleExportToFile = async () => {
         try {
             // Trigger export dialog - this will use existing export functionality
-            await exportSubtitlesAs('srt', settings.enableDiarize);
+            await exportSubtitlesAs('srt', settings.enableDiarize, subtitles, speakers);
         } catch (error) {
             console.error("Export failed:", error);
         }
@@ -91,7 +101,11 @@ export const TranscriptionWorkspace = () => {
     // Handle add to timeline
     const handleAddToTimeline = async () => {
         try {
-            await pushToTimeline();
+            await pushToTimeline(
+                generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId),
+                settings.selectedTemplate.value,
+                settings.selectedOutputTrack
+            );
         } catch (error) {
             console.error("Failed to add to timeline:", error);
         }
@@ -99,7 +113,12 @@ export const TranscriptionWorkspace = () => {
 
     const handleStartTranscription = async () => {
         // Validate input requirements first - only proceed if valid
-        if (!validateTranscriptionInput()) {
+        if (!settings.isStandaloneMode && !timelineInfo.timelineId) {
+            console.error("No timeline selected")
+            return
+        }
+        if (settings.isStandaloneMode && !fileInput) {
+            console.error("No file selected")
             return
         }
 
@@ -126,8 +145,19 @@ export const TranscriptionWorkspace = () => {
         clearProgressSteps()
 
         try {
-            // Create and log transcription options
-            const options: TranscriptionOptions = createTranscriptionOptions(audioInfo)
+            // Create transcription options
+            const options: TranscriptionOptions = {
+                audioPath: audioInfo.path,
+                offset: Math.round(audioInfo.offset * 1000) / 1000,
+                model: modelsState[settings.model].value,
+                lang: settings.language,
+                translate: settings.translate,
+                targetLanguage: settings.targetLanguage,
+                enableDtw: settings.enableDTW,
+                enableGpu: settings.enableGpu,
+                enableDiarize: settings.enableDiarize,
+                maxSpeakers: settings.maxSpeakers,
+            }
             console.log("Invoking transcribe_audio with options:", options)
 
             // Perform transcription
@@ -138,7 +168,12 @@ export const TranscriptionWorkspace = () => {
             completeAllProgressSteps()
 
             // Process results and get filename
-            await processTranscriptionResults(transcript as any)
+            await processTranscriptionResults(
+                transcript as any, 
+                settings, 
+                fileInput, 
+                timelineInfo.timelineId
+            )
         } catch (error) {
             console.error("Transcription failed:", error)
             // Handle error, e.g., show an error message to the user
@@ -218,8 +253,8 @@ export const TranscriptionWorkspace = () => {
                     onSelectModel={(modelIndex) => {
                         updateSetting("model", modelIndex)
                     }}
-                    downloadingModel={downloadingModel}
-                    downloadProgress={downloadProgress}
+                    downloadingModel={null}
+                    downloadProgress={0}
                     openModelSelector={openModelSelector}
                     onOpenModelSelectorChange={setOpenModelSelector}
                     showEnglishOnly={showEnglishOnly}

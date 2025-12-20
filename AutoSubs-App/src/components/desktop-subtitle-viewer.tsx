@@ -3,14 +3,18 @@ import { Layers2, Users, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
-import { useGlobal } from "@/contexts/GlobalContext"
+import { useTranscript } from "@/contexts/TranscriptContext"
+import { useResolve } from "@/contexts/ResolveContext"
+import { useSettings } from "@/contexts/SettingsContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
 
 export function DesktopSubtitleViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline, settings } = useGlobal()
+  const { subtitles, exportSubtitlesAs, importSubtitles } = useTranscript()
+  const { pushToTimeline } = useResolve()
+  const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [isPushing, setIsPushing] = React.useState(false)
 
@@ -20,8 +24,8 @@ export function DesktopSubtitleViewer() {
       {/* Import/Export Popover & Edit Speakers */}
       <div className="shrink-0 p-3 pb-0 flex gap-2">
         <ImportExportPopover
-          onImport={importSubtitles}
-          onExport={exportSubtitlesAs}
+          onImport={() => importSubtitles(settings, null, '')}
+          onExport={(format, includeSpeakers) => exportSubtitlesAs(format, includeSpeakers, subtitles, [])}
           hasSubtitles={subtitles.length > 0}
         />
         <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
@@ -86,7 +90,10 @@ export function DesktopSubtitleViewer() {
             onClick={async () => {
               try {
                 setIsPushing(true)
-                await pushToTimeline()
+                // Generate filename and call pushToTimeline with proper parameters
+                const { generateTranscriptFilename } = await import('@/utils/file-utils')
+                const filename = generateTranscriptFilename(settings.isStandaloneMode, null, '')
+                await pushToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack)
               } finally {
                 setIsPushing(false)
               }

@@ -5,7 +5,9 @@ import { ColorPopover } from "@/components/color-popover"
 import { Speech, ChevronDown, ChevronRight, LoaderPinwheel, LoaderCircle, Palette } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Speaker } from "@/types/interfaces"
-import { useGlobal } from "@/contexts/GlobalContext"
+import { useTranscript } from "@/contexts/TranscriptContext"
+import { useResolve } from "@/contexts/ResolveContext"
+import { useSettings } from "@/contexts/SettingsContext"
 import { useState, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,7 +27,9 @@ interface SpeakerEditorProps {
 }
 
 export function SpeakerEditor({ afterTranscription = false, open = false, onOpenChange, expandedSpeakerIndex }: SpeakerEditorProps) {
-    const { speakers, timelineInfo, settings, updateSpeakers, pushToTimeline } = useGlobal();
+    const { speakers, updateSpeakers } = useTranscript();
+    const { timelineInfo, pushToTimeline } = useResolve();
+    const { settings } = useSettings();
     const [localSpeakers, setLocalSpeakers] = useState(speakers);
     const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
     const [previews, setPreviews] = useState<{ [index: number]: string }>({});
@@ -289,7 +293,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                     </DialogClose>
                     <DialogClose asChild>
                         {afterTranscription ? (
-                            <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers); pushToTimeline() }}>
+                            <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers); pushToTimeline('', '', '') }}>
                                 Save & Add to Timeline
                             </Button>
                         ) : (

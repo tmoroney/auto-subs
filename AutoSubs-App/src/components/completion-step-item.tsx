@@ -4,7 +4,6 @@ import {
     ItemContent,
     ItemDescription,
     ItemFooter,
-    ItemMedia,
     ItemTitle,
 } from "@/components/ui/item"
 import { Download, Plus } from "lucide-react"

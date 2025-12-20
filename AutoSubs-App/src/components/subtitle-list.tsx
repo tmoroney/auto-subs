@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useGlobal } from "@/contexts/GlobalContext"
+import { useTranscript } from "@/contexts/TranscriptContext"
 import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ArrowRight, Pencil, XCircle as XCircleIcon } from "lucide-react"
@@ -116,7 +116,7 @@ const SubtitleList = ({
     isLoading = false,
     error = null
 }: SubtitleListProps) => {
-    const { subtitles, updateSubtitles, speakers } = useGlobal();
+    const { subtitles, updateSubtitles, speakers } = useTranscript();
     const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
     const [editingWords, setEditingWords] = useState<Word[]>([]);
     const [editingWordIndex, setEditingWordIndex] = useState<number | null>(null);

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/titlebar"
+import { GlobalProvider } from "@/contexts/GlobalProvider"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -37,42 +38,44 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden">
-          {/* timelineInfo remains null until connected to Resolve */}
-          <Titlebar timelineInfo={null} />
+      <GlobalProvider>
+        <TooltipProvider>
+          <div className="flex flex-col h-screen overflow-hidden">
+            {/* timelineInfo remains null until connected to Resolve */}
+            <Titlebar timelineInfo={null} />
 
 
-          {/* Main Content Area with Resizable Panels */}
-          <div className="flex-1 min-h-0 pb-0">
-            {isMobile ? (
-              // Mobile: Just show transcription settings
-              <div className="h-full overflow-hidden">
-                <TranscriptionWorkspace />
-              </div>
-            ) : (
-              // Desktop: Resizable panels with transcription settings and subtitle viewer
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={55} className="min-w-[400px]">
+            {/* Main Content Area with Resizable Panels */}
+            <div className="flex-1 min-h-0 pb-0">
+              {isMobile ? (
+                // Mobile: Just show transcription settings
+                <div className="h-full overflow-hidden">
                   <TranscriptionWorkspace />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={50} minSize={45}>
-                  <DesktopSubtitleViewer />
-                </ResizablePanel>
-              </ResizablePanelGroup>
+                </div>
+              ) : (
+                // Desktop: Resizable panels with transcription settings and subtitle viewer
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  <ResizablePanel defaultSize={55} className="min-w-[400px]">
+                    <TranscriptionWorkspace />
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={50} minSize={45}>
+                    <DesktopSubtitleViewer />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              )}
+            </div>
+
+            {/* Mobile Subtitles Viewer */}
+            {isMobile && (
+              <MobileSubtitleViewer
+                isOpen={showMobileSubtitles}
+                onClose={() => setShowMobileSubtitles(false)}
+              />
             )}
           </div>
-
-          {/* Mobile Subtitles Viewer */}
-          {isMobile && (
-            <MobileSubtitleViewer
-              isOpen={showMobileSubtitles}
-              onClose={() => setShowMobileSubtitles(false)}
-            />
-          )}
-        </div>
-      </TooltipProvider>
+        </TooltipProvider>
+      </GlobalProvider>
     </ThemeProvider>
   );
 }
