@@ -1,14 +1,16 @@
-import { Trash2, AlertTriangle, Check, Download, HardDrive, MemoryStick, Info } from "lucide-react"
+import { Trash2, AlertTriangle, Check, Download, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { ModelStatusIndicator } from "@/components/ui/model-status-indicator"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
   models: any[]
@@ -166,7 +168,8 @@ export function WorkspaceHeader({
   }
 
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-3 bg-transparent">
+    <TooltipProvider>
+      <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-3 bg-transparent">
       {/* Model Selector */}
       <Popover open={openModelSelector} onOpenChange={onOpenModelSelectorChange}>
         <PopoverTrigger asChild>
@@ -222,13 +225,11 @@ export function WorkspaceHeader({
             {/* Model List */}
             <ScrollArea className="h-64">
               <div className="space-y-1">
-                {getFilteredModels(modelsState).map((model, idx) => {
+                {getFilteredModels(modelsState).map((model) => {
                   const actualModelIndex = modelsState.findIndex(m => m.value === model.value)
 
                   return (
-                    <HoverCard key={idx} openDelay={500}>
-                      <HoverCardTrigger asChild>
-                        <div
+                    <div
                           className={`flex items-center justify-between p-2 cursor-pointer rounded-sm transition-colors duration-200 ${selectedModelIndex === actualModelIndex
                             ? "bg-blue-50 dark:bg-blue-900/20"
                             : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
@@ -256,46 +257,16 @@ export function WorkspaceHeader({
                                 <Progress value={downloadProgress} className="h-1 w-12" />
                                 <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
                               </div>
-                            ) : model.isDownloaded ? (
-                              <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                Cached
-                              </span>
                             ) : (
-                              <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                Available
-                              </span>
+                              <ModelStatusIndicator 
+                                model={model} 
+                                isDownloaded={model.isDownloaded} 
+                                isSmallScreen={isSmallScreen} 
+                              />
                             )}
                           </div>
                         </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-80" side={isSmallScreen ? "top" : "right"}>
-                        <div className="flex items-start gap-3">
-                          <img
-                            src={model.image}
-                            alt={model.label + " icon"}
-                            className="h-12 w-12 object-contain rounded"
-                          />
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="text-sm font-semibold">{model.label}</h4>
-                              {getLanguageBadge(model.value)}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{model.details}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <HardDrive className="h-3 w-3" />
-                                <span>{model.size}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <MemoryStick className="h-3 w-3" />
-                                <span>{model.ram}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  )
+                    )
                 })}
               </div>
             </ScrollArea>
@@ -312,5 +283,6 @@ export function WorkspaceHeader({
         <SettingsDialog />
       </div>
     </div>
+    </TooltipProvider>
   )
 }

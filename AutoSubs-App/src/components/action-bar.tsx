@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogClose,
@@ -43,7 +44,7 @@ export function ActionBar({
     isProcessing,
 }: ActionBarProps) {
     const { settings, updateSetting } = useSettings()
-    const { timelineInfo } = useResolve()
+    const { timelineInfo, refresh } = useResolve()
     const [openLanguage, setOpenLanguage] = React.useState(false)
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
@@ -91,6 +92,17 @@ export function ActionBar({
             defaultPath: await downloadDir()
         })
         setSelectedFile(file)
+    }
+
+    const handleTrackSelectorOpen = async (open: boolean) => {
+        setOpenTrackSelector(open)
+        if (open && !settings.isStandaloneMode) {
+            try {
+                await refresh()
+            } catch (error) {
+                console.error("Failed to refresh timeline info:", error)
+            }
+        }
     }
 
     return (
@@ -359,7 +371,7 @@ export function ActionBar({
                 {/* Conditional rendering: Track Selector for Timeline mode, File Drop for Standalone mode */}
                 {!settings.isStandaloneMode ? (
                     // Timeline Mode: Track Selector
-                    <Popover open={openTrackSelector} onOpenChange={setOpenTrackSelector}>
+                    <Popover open={openTrackSelector} onOpenChange={handleTrackSelectorOpen}>
                         <PopoverTrigger asChild>
                             <Button
                                 variant="outline"
@@ -522,27 +534,84 @@ export function ActionBar({
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="p-0 w-72" align="start">
-                            {/* Source Language Tab */}
-                            {languageTab === 'source' && (
-                                <Command className="max-h-[250px]">
-                                    <CommandInput placeholder="Search languages..." />
-                                    <CommandList>
-                                        <CommandEmpty>No language found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {languages
-                                                .slice()
-                                                .map((language) => (
+                            <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
+                                <TabsList className="w-full h-auto rounded-sm rounded-b-none py-1.5">
+                                    <TabsTrigger value="source" className="flex-1 gap-1.5">
+                                        <Globe className="h-4 w-4" />
+                                        Source
+                                    </TabsTrigger>
+                                    <TabsTrigger value="translate" className="flex-1 gap-1.5">
+                                        <Languages className="h-4 w-4" />
+                                        Translate
+                                        {settings.translate && (
+                                            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                                        )}
+                                    </TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="source" className="mt-0">
+                                    <Command className="max-h-[250px]">
+                                        <CommandInput placeholder="Search languages..." />
+                                        <CommandList>
+                                            <CommandEmpty>No language found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {languages
+                                                    .slice()
+                                                    .map((language) => (
+                                                        <CommandItem
+                                                            value={language.label}
+                                                            key={language.value}
+                                                            onSelect={() => {
+                                                                updateSetting("language", language.value);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    language.value === settings.language
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {language.label}
+                                                        </CommandItem>
+                                                    ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </TabsContent>
+
+                                <TabsContent value="translate" className="mt-0">
+                                    <Command className="max-h-[250px] relative">
+                                        <div className="relative">
+                                            <CommandInput placeholder="Search target languages..." className="border-0 focus-visible:ring-0 px-0 pr-12" />
+                                            <Button
+                                                size="sm"
+                                                variant={settings.translate ? "default" : "outline"}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
+                                                onClick={() => updateSetting("translate", !settings.translate)}
+                                            >
+                                                {settings.translate ? "On" : "Off"}
+                                            </Button>
+                                        </div>
+                                        <CommandList>
+                                            <CommandEmpty>No language found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {translateLanguages.map((language) => (
                                                     <CommandItem
                                                         value={language.label}
                                                         key={language.value}
                                                         onSelect={() => {
-                                                            updateSetting("language", language.value);
+                                                            updateSetting("targetLanguage", language.value);
+                                                            if (!settings.translate) {
+                                                                updateSetting("translate", true);
+                                                            }
                                                         }}
                                                     >
                                                         <Check
                                                             className={cn(
                                                                 "mr-2 h-4 w-4",
-                                                                language.value === settings.language
+                                                                language.value === settings.targetLanguage
                                                                     ? "opacity-100"
                                                                     : "opacity-0"
                                                             )}
@@ -550,87 +619,11 @@ export function ActionBar({
                                                         {language.label}
                                                     </CommandItem>
                                                 ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            )}
-
-                            {/* Translate Language Tab */}
-                            {languageTab === 'translate' && (
-                                <Command className="max-h-[250px] relative">
-                                    <div className="relative">
-                                        <CommandInput placeholder="Search target languages..." className="border-0 focus-visible:ring-0 px-0 pr-12" />
-                                        <Button
-                                            size="sm"
-                                            variant={settings.translate ? "default" : "outline"}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
-                                            onClick={() => updateSetting("translate", !settings.translate)}
-                                        >
-                                            {settings.translate ? "On" : "Off"}
-                                        </Button>
-                                    </div>
-                                    <CommandList>
-                                        <CommandEmpty>No language found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {translateLanguages.map((language) => (
-                                                <CommandItem
-                                                    value={language.label}
-                                                    key={language.value}
-                                                    onSelect={() => {
-                                                        updateSetting("targetLanguage", language.value);
-                                                        if (!settings.translate) {
-                                                            updateSetting("translate", true);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            language.value === settings.targetLanguage
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {language.label}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            )}
-
-                            {/* Tab Navigation at Bottom */}
-                            <div className="border-t">
-                                <div className="p-1.5 flex gap-1 bg-muted/50">
-                                    <button
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all",
-                                            languageTab === 'source'
-                                                ? "bg-background text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                                        )}
-                                        onClick={() => setLanguageTab('source')}
-                                    >
-                                        <Globe className="h-4 w-4" />
-                                        Source
-                                    </button>
-                                    <button
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all",
-                                            languageTab === 'translate'
-                                                ? "bg-background text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                                        )}
-                                        onClick={() => setLanguageTab('translate')}
-                                    >
-                                        <Languages className="h-4 w-4" />
-                                        Translate
-                                        {settings.translate && (
-                                            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </TabsContent>
+                            </Tabs>
                         </PopoverContent>
                     </Popover>
                 </div>

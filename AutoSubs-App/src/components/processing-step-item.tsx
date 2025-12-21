@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
 import { SegmentPreview } from "./segment-preview"
+import { Settings, TimelineInfo } from "@/types/interfaces"
 
 export interface ProcessingStepProps {
     title: string;
@@ -17,8 +18,10 @@ export interface ProcessingStepProps {
     isCancelled?: boolean;
     id?: string;
     onExportToFile?: () => void;
-    onAddToTimeline?: () => void;
+    onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
     livePreviewSegments?: any[];
+    settings?: Settings;
+    timelineInfo?: TimelineInfo;
 }
 
 export function ProcessingStepItem({
@@ -30,11 +33,13 @@ export function ProcessingStepItem({
     id,
     onExportToFile,
     onAddToTimeline,
-    livePreviewSegments = []
+    livePreviewSegments = [],
+    settings,
+    timelineInfo
 }: ProcessingStepProps) {
     // If this is the completion step, render the special completion component
-    if (id === 'Complete' && onExportToFile && onAddToTimeline) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} />;
+    if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
+        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} settings={settings} timelineInfo={timelineInfo} />;
     }
 
     return (

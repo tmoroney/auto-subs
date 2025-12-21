@@ -702,7 +702,8 @@ function AddSubtitles(filePath, trackIndex, templateName)
             local subtitleText = subtitle["text"]
 
             -- Skip if text is not TextPlus (TODO: Add support for other types of text if possible)
-            if timelineItem:GetFusionCompCount() > 0 then
+            local fusionCompCount = timelineItem:GetFusionCompCount()
+            if fusionCompCount and fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local tool = comp:FindToolByID("TextPlus")
                 tool:SetInput("StyledText", subtitleText)

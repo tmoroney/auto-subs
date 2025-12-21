@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Heart } from "lucide-react"
 import { ProcessingStepItem } from "@/components/processing-step-item"
+import { Settings, TimelineInfo } from "@/types/interfaces"
 
 export function WorkspaceBody({
   processingSteps,
@@ -9,13 +10,17 @@ export function WorkspaceBody({
   onExportToFile,
   onAddToTimeline,
   livePreviewSegments,
+  settings,
+  timelineInfo,
 }: {
   processingSteps: any[]
   showLoadingMessage: boolean
   progressContainerRef: React.RefObject<HTMLDivElement>
   onExportToFile: () => void
-  onAddToTimeline: () => void
+  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
   livePreviewSegments: any
+  settings: Settings
+  timelineInfo: TimelineInfo
 }) {
   return (
     <>
@@ -37,6 +42,8 @@ export function WorkspaceBody({
                   onExportToFile={onExportToFile}
                   onAddToTimeline={onAddToTimeline}
                   livePreviewSegments={livePreviewSegments}
+                  settings={settings}
+                  timelineInfo={timelineInfo}
                 />
               </div>
             ))}

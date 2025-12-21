@@ -13,7 +13,7 @@ export const models: Model[] = [
     size: "80MB",
     ram: "1GB",
     image: "/hummingbird.png",
-    details: "Lightning fast transcription with minimal memory usage. Perfect for quick drafts and simple audio.",
+    details: "Fastest transcription with minimal memory. Ideal for quick drafts.",
     isDownloaded: false,
   },
   {
@@ -23,7 +23,7 @@ export const models: Model[] = [
     size: "80MB",
     ram: "1GB",
     image: "/hummingbird.png",
-    details: "Lightning fast English transcription with minimal memory usage. Perfect for quick English drafts.",
+    details: "Fastest English transcription with minimal memory. Ideal for quick drafts.",
     isDownloaded: false,
   },
   {
@@ -33,7 +33,7 @@ export const models: Model[] = [
     size: "150MB",
     ram: "1GB",
     image: "/otter.png",
-    details: "Fast and reliable transcription with low memory requirements. Great for everyday use.",
+    details: "Reliable transcription with low memory requirements. Great for everyday use.",
     isDownloaded: false,
   },
   {
@@ -43,7 +43,7 @@ export const models: Model[] = [
     size: "150MB",
     ram: "1GB",
     image: "/otter.png",
-    details: "Fast and reliable English transcription with low memory requirements. Great for everyday English use.",
+    details: "Reliable English transcription with low memory. Great for everyday use.",
     isDownloaded: false,
   },
   {
@@ -53,7 +53,7 @@ export const models: Model[] = [
     size: "480MB",
     ram: "2GB",
     image: "/fox.png",
-    details: "Good balance of speed and accuracy with moderate memory usage. Handles varied accents well.",
+    details: "Balanced speed and accuracy with moderate memory. Handles varied accents well.",
     isDownloaded: false,
   },
   {
@@ -63,7 +63,7 @@ export const models: Model[] = [
     size: "480MB",
     ram: "2GB",
     image: "/fox.png",
-    details: "Good balance of speed and English accuracy with moderate memory usage. Handles varied accents well.",
+    details: "Balanced speed and English accuracy with moderate memory. Handles varied accents.",
     isDownloaded: false,
   },
   {
@@ -73,7 +73,7 @@ export const models: Model[] = [
     size: "1.5GB",
     ram: "5GB",
     image: "/owl.png",
-    details: "High accuracy transcription with moderate speed and memory usage. Good for challenging audio.",
+    details: "High accuracy transcription with moderate speed and memory. Good for challenging audio.",
     isDownloaded: false,
   },
   {
@@ -83,7 +83,7 @@ export const models: Model[] = [
     size: "1.5GB",
     ram: "5GB",
     image: "/owl.png",
-    details: "High accuracy English transcription with moderate speed and memory usage. Good for challenging English audio.",
+    details: "High accuracy English transcription with moderate speed. Good for challenging audio.",
     isDownloaded: false,
   },
   {
@@ -93,7 +93,7 @@ export const models: Model[] = [
     size: "1.6GB",
     ram: "6GB",
     image: "/phoenix.png",
-    details: "Excellent accuracy with much faster speed than Large model and moderate memory usage.",
+    details: "Excellent accuracy with faster speed than Large model and moderate memory.",
     isDownloaded: false,
   },
   {
@@ -103,7 +103,7 @@ export const models: Model[] = [
     size: "3.1GB",
     ram: "10GB",
     image: "/elephant.png",
-    details: "Highest accuracy for complex audio, but very slow and requires significant memory.",
+    details: "Highest accuracy for complex audio, but slower and requires significant memory.",
     isDownloaded: false,
   },
 ];

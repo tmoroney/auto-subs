@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Layers2, Users, X, Loader2 } from "lucide-react"
+import { Layers2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
@@ -8,6 +8,7 @@ import { useResolve } from "@/contexts/ResolveContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
+import { AddToTimelineDialog } from "@/components/add-to-timeline-dialog"
 
 interface MobileSubtitleViewerProps {
   isOpen: boolean
@@ -18,10 +19,21 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const { exportSubtitlesAs, importSubtitles, subtitles } = useTranscript()
-  const { pushToTimeline } = useResolve()
+  const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
-  const [isPushing, setIsPushing] = React.useState(false)
+
+  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
+    try {
+      // Generate filename and call pushToTimeline with proper parameters
+      const { generateTranscriptFilename } = await import('@/utils/file-utils')
+      const filename = generateTranscriptFilename(settings.isStandaloneMode, null, timelineInfo.timelineId || '')
+      await pushToTimeline(filename, selectedTemplate, selectedOutputTrack)
+    } catch (error) {
+      console.error("Failed to add to timeline:", error);
+      throw error; // Re-throw to let the dialog handle the error
+    }
+  }
 
   // Close on escape key
   React.useEffect(() => {
@@ -116,35 +128,20 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
       {/* Footer */}
       {!settings.isStandaloneMode && (
       <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
-        <Button
-          variant="default"
-          size="default"
-          className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
-          disabled={isPushing}
-          onClick={async () => {
-            try {
-              setIsPushing(true)
-              // Generate filename and call pushToTimeline with proper parameters
-              const { generateTranscriptFilename } = await import('@/utils/file-utils')
-              const filename = generateTranscriptFilename(settings.isStandaloneMode, null, '')
-              await pushToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack)
-            } finally {
-              setIsPushing(false)
-            }
-          }}
+        <AddToTimelineDialog
+          settings={settings}
+          timelineInfo={timelineInfo}
+          onAddToTimeline={handleAddToTimeline}
         >
-          {isPushing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Adding...
-            </>
-          ) : (
-            <>
-              <Layers2 className="w-4 h-4 mr-2" />
-              Add to Timeline
-            </>
-          )}
-        </Button>
+          <Button
+            variant="default"
+            size="default"
+            className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
+          >
+            <Layers2 className="w-4 h-4 mr-2" />
+            Add to Timeline
+          </Button>
+        </AddToTimelineDialog>
       </div>
       )}
     </div>

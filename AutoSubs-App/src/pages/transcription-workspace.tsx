@@ -99,12 +99,12 @@ export const TranscriptionWorkspace = () => {
     };
 
     // Handle add to timeline
-    const handleAddToTimeline = async () => {
+    const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
         try {
             await pushToTimeline(
                 generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId),
-                settings.selectedTemplate.value,
-                settings.selectedOutputTrack
+                selectedTemplate,
+                selectedOutputTrack
             );
         } catch (error) {
             console.error("Failed to add to timeline:", error);
@@ -270,6 +270,8 @@ export const TranscriptionWorkspace = () => {
                     onExportToFile={handleExportToFile}
                     onAddToTimeline={handleAddToTimeline}
                     livePreviewSegments={livePreviewSegments}
+                    settings={settings}
+                    timelineInfo={timelineInfo}
                 />
 
                 {/* Footer */}

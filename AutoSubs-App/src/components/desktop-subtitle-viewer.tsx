@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Layers2, Users, X, Loader2 } from "lucide-react"
+import { Layers2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
@@ -8,15 +8,27 @@ import { useResolve } from "@/contexts/ResolveContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
+import { AddToTimelineDialog } from "@/components/add-to-timeline-dialog"
 
 export function DesktopSubtitleViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const { subtitles, exportSubtitlesAs, importSubtitles } = useTranscript()
-  const { pushToTimeline } = useResolve()
+  const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
-  const [isPushing, setIsPushing] = React.useState(false)
+
+  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
+    try {
+      // Generate filename and call pushToTimeline with proper parameters
+      const { generateTranscriptFilename } = await import('@/utils/file-utils')
+      const filename = generateTranscriptFilename(settings.isStandaloneMode, null, timelineInfo.timelineId || '')
+      await pushToTimeline(filename, selectedTemplate, selectedOutputTrack)
+    } catch (error) {
+      console.error("Failed to add to timeline:", error);
+      throw error; // Re-throw to let the dialog handle the error
+    }
+  }
 
   return (
     <div className="flex flex-col h-full border-l">
@@ -82,35 +94,20 @@ export function DesktopSubtitleViewer() {
       {/* Footer */}
       {!settings.isStandaloneMode && (
         <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
-          <Button
-            variant="secondary"
-            size="default"
-            className="w-full"
-            disabled={isPushing}
-            onClick={async () => {
-              try {
-                setIsPushing(true)
-                // Generate filename and call pushToTimeline with proper parameters
-                const { generateTranscriptFilename } = await import('@/utils/file-utils')
-                const filename = generateTranscriptFilename(settings.isStandaloneMode, null, '')
-                await pushToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack)
-              } finally {
-                setIsPushing(false)
-              }
-            }}
+          <AddToTimelineDialog
+            settings={settings}
+            timelineInfo={timelineInfo}
+            onAddToTimeline={handleAddToTimeline}
           >
-            {isPushing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Layers2 className="w-4 h-4 mr-2" />
-                Add to Timeline
-              </>
-            )}
-          </Button>
+            <Button
+              variant="secondary"
+              size="default"
+              className="w-full"
+            >
+              <Layers2 className="w-4 h-4 mr-2" />
+              Add to Timeline
+            </Button>
+          </AddToTimelineDialog>
         </div>
       )}
     </div>

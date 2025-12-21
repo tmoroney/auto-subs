@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Subtitle, Speaker, Settings } from '@/types/interfaces';
+import { useResolve } from '@/contexts/ResolveContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
@@ -32,6 +34,24 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [markIn, setMarkIn] = useState(0);
+  const { timelineInfo } = useResolve();
+  const { settings } = useSettings();
+
+  // Auto-load subtitles when timeline changes
+  useEffect(() => {
+    const loadSubtitlesForTimeline = async () => {
+      if (timelineInfo?.timelineId) {
+        console.log("Timeline changed, loading subtitles for:", timelineInfo.timelineId);
+        await loadSubtitles(settings.isStandaloneMode, null, timelineInfo.timelineId);
+      } else {
+        console.log("No timeline, clearing subtitles");
+        setSubtitles([]);
+        setSpeakers([]);
+      }
+    };
+
+    loadSubtitlesForTimeline();
+  }, [timelineInfo?.timelineId, settings.isStandaloneMode]);
 
   // Load subtitles when timelineId or fileInput changes
   const loadSubtitles = async (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => {

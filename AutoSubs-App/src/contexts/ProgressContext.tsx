@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { Subtitle } from '@/types/interfaces';
+import { translateLanguages } from '@/lib/languages';
 
 interface ProcessingStep {
   id: string;
@@ -115,8 +116,6 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
   
   const getLanguageDisplayName = (languageCode: string): string => {
-    // Import dynamically to avoid circular dependency
-    const { translateLanguages } = require('@/lib/languages');
     const language = translateLanguages.find((lang: any) => lang.value === languageCode)
     return language ? language.label : languageCode
   }

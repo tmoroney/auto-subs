@@ -7,15 +7,21 @@ import {
     ItemTitle,
 } from "@/components/ui/item"
 import { Download, Plus } from "lucide-react"
+import { AddToTimelineDialog } from "./add-to-timeline-dialog"
+import { Settings, TimelineInfo } from "@/types/interfaces"
 
 export interface CompletionStepProps {
     onExportToFile: () => void;
-    onAddToTimeline: () => void;
+    onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
+    settings: Settings;
+    timelineInfo: TimelineInfo;
 }
 
 export function CompletionStepItem({
     onExportToFile,
-    onAddToTimeline
+    onAddToTimeline,
+    settings,
+    timelineInfo
 }: CompletionStepProps) {
     return (
         <div className="flex w-full flex-col gap-2">
@@ -39,15 +45,20 @@ export function CompletionStepItem({
                             <Download className="h-3 w-3" />
                             Export to File
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={onAddToTimeline}
-                            className="flex items-center gap-2"
+                        <AddToTimelineDialog
+                            settings={settings}
+                            timelineInfo={timelineInfo}
+                            onAddToTimeline={onAddToTimeline}
                         >
-                            <Plus className="h-3 w-3" />
-                            Add to Timeline
-                        </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-2"
+                            >
+                                <Plus className="h-3 w-3" />
+                                Add to Timeline
+                            </Button>
+                        </AddToTimelineDialog>
                     </div>
                 </ItemFooter>
             </Item>

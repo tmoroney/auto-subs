@@ -15,6 +15,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/titlebar"
 import { GlobalProvider } from "@/contexts/GlobalProvider"
+import { useResolve } from "@/contexts/ResolveContext"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -32,17 +33,16 @@ export function ThemeToggle() {
   )
 }
 
-function App() {
+function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
+  const { timelineInfo } = useResolve()
 
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <GlobalProvider>
-        <TooltipProvider>
-          <div className="flex flex-col h-screen overflow-hidden">
-            {/* timelineInfo remains null until connected to Resolve */}
-            <Titlebar timelineInfo={null} />
+    <TooltipProvider>
+      <div className="flex flex-col h-screen overflow-hidden">
+        {/* Use actual timeline info from Resolve context */}
+        <Titlebar timelineInfo={timelineInfo} />
 
 
             {/* Main Content Area with Resizable Panels */}
@@ -75,6 +75,14 @@ function App() {
             )}
           </div>
         </TooltipProvider>
+  )
+}
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <GlobalProvider>
+        <AppContent />
       </GlobalProvider>
     </ThemeProvider>
   );
