@@ -1,3 +1,5 @@
+import { SupportedUiLanguage } from '@/i18n';
+
 // Error message interface
 export interface ErrorMsg {
     title: string;
@@ -82,8 +84,9 @@ export interface Settings {
     isStandaloneMode: boolean,
 
     // UI settings
-    uiLanguage: string;
+    uiLanguage: SupportedUiLanguage;
     uiLanguagePromptCompleted: boolean;
+    showEnglishOnlyModels: boolean;
 
     // Survey notification settings
     timesDismissedSurvey: number;

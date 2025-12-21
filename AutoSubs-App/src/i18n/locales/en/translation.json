@@ -17,7 +17,7 @@
     },
     "uiLanguage": {
       "title": "App Language",
-      "description": "Change the language used in the interface",
+      "description": "Updates menus and buttons",
       "showPickerAgain": "Show language picker again"
     },
     "reset": {
@@ -28,8 +28,7 @@
     "support": {
       "supportAutoSubs": "Support AutoSubs",
       "helpSupportDevelopment": "Help support development",
-      "viewSource": "View Source Code",
-      "viewSourceDescription": "Check out the GitHub repository"
+      "viewSource": "View Source Code"
     }
   },
   "common": {
@@ -108,8 +107,8 @@
     },
     "fileDrop": {
       "aria": "Drop audio file here or click to select",
-      "prompt": "Drop file here or click to select",
-      "supports": "Supports most media formats"
+      "prompt": "Drop file or click",
+      "supports": "Most formats"
     },
     "language": {
       "source": "Source",
@@ -223,6 +222,12 @@
     "exportToFile": "Export to File",
     "addToTimeline": "Add to Timeline"
   },
+  "progressSteps": {
+    "download": "Downloading model",
+    "transcribe": "Speech to text",
+    "translate": "Translating to {{language}}",
+    "processing": "Processing"
+  },
   "subtitles": {
     "title": "Subtitles",
     "speakers": "Speakers",
@@ -252,6 +257,28 @@
     "title": "Choose your language",
     "description": "Select the language you want to use in the app.",
     "continue": "Continue"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "close": "Close"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Connected",
+        "disconnected": "Disconnected"
+      },
+      "tooltip": {
+        "connected": "Connected",
+        "currentlyViewing": "Currently viewing: {{name}}",
+        "ready": "Ready to access timeline",
+        "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
+        "cantConnect": "Can't connect to timeline",
+        "openResolve": "Open DaVinci Resolve and go to Workspace → Scripts → AutoSubs"
+      }
+    }
   },
   "theme": {
     "toggle": "Toggle theme"

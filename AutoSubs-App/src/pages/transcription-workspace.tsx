@@ -50,7 +50,6 @@ export const TranscriptionWorkspace = () => {
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
-    const [showEnglishOnly, setShowEnglishOnly] = React.useState(false)
     const isSmallScreen = useMediaQuery('(max-width: 640px)')
 
     // Ref for auto-scrolling progress steps
@@ -257,8 +256,8 @@ export const TranscriptionWorkspace = () => {
                     downloadProgress={0}
                     openModelSelector={openModelSelector}
                     onOpenModelSelectorChange={setOpenModelSelector}
-                    showEnglishOnly={showEnglishOnly}
-                    onShowEnglishOnlyChange={setShowEnglishOnly}
+                    showEnglishOnly={settings.showEnglishOnlyModels}
+                    onShowEnglishOnlyChange={(value) => updateSetting("showEnglishOnlyModels", value)}
                     isSmallScreen={isSmallScreen}
                     onDeleteModel={handleDeleteModel}
                 />

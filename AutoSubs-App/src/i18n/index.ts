@@ -5,9 +5,10 @@ import en from "./locales/en/translation.json";
 import es from "./locales/es/translation.json";
 import fr from "./locales/fr/translation.json";
 import de from "./locales/de/translation.json";
+import zh from "./locales/zh/translation.json";
 
 export const DEFAULT_UI_LANGUAGE = "en";
-export const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de"] as const;
+export const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "zh"] as const;
 export type SupportedUiLanguage = (typeof SUPPORTED_UI_LANGUAGES)[number];
 
 export function normalizeUiLanguage(lang: string | null | undefined): SupportedUiLanguage {
@@ -38,6 +39,7 @@ export function initI18n(uiLanguage: string) {
           es: { translation: es },
           fr: { translation: fr },
           de: { translation: de },
+          zh: { translation: zh },
         },
         lng: normalized,
         fallbackLng: DEFAULT_UI_LANGUAGE,

@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { platform } from "@tauri-apps/plugin-os";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -40,6 +41,7 @@ function ThemeSwitcher() {
 }
 
 function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
+  const { t } = useTranslation();
   const isConnected = timelineInfo && timelineInfo.timelineId;
   
   return (
@@ -56,37 +58,41 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
           <div 
             className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
           />
-          {isConnected ? (timelineInfo?.name || "Connected") : "Disconnected"}
+          {isConnected
+            ? (timelineInfo?.name || t("titlebar.resolve.status.connected"))
+            : t("titlebar.resolve.status.disconnected")}
         </Button>
       </HoverCardTrigger>
       <HoverCardContent className="w-72 z-50">
         <div className="flex items-start gap-3">
           <img
             src="/davinci-resolve-logo.png"
-            alt="DaVinci Resolve"
+            alt={t("titlebar.resolve.productName")}
             className="h-8 w-8"
           />
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold">DaVinci Resolve</h4>
+            <h4 className="text-sm font-semibold">{t("titlebar.resolve.productName")}</h4>
             {isConnected ? (
               <div className="space-y-1">
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  ✓ Connected
+                  ✓ {t("titlebar.resolve.tooltip.connected")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {timelineInfo?.name ? `Currently viewing: ${timelineInfo.name}` : "Ready to access timeline"}
+                  {timelineInfo?.name
+                    ? t("titlebar.resolve.tooltip.currentlyViewing", { name: timelineInfo.name })
+                    : t("titlebar.resolve.tooltip.ready")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  You can get audio from the timeline and add subtitles back to it.
+                  {t("titlebar.resolve.tooltip.canGetAudio")}
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
                 <p className="text-xs text-red-600 dark:text-red-400">
-                  Can't connect to timeline
+                  {t("titlebar.resolve.tooltip.cantConnect")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Open DaVinci Resolve and go to Workspace → Scripts → AutoSubs
+                  {t("titlebar.resolve.tooltip.openResolve")}
                 </p>
               </div>
             )}
@@ -98,6 +104,7 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
 }
 
 export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }) {
+  const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
 
   useEffect(() => {
@@ -161,7 +168,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
               className="hover:bg-accent rounded px-2 h-7 flex items-center justify-center transition-colors"
               onClick={handleMinimize}
               data-tauri-drag-region="false"
-              aria-label="Minimize"
+              aria-label={t("titlebar.windowControls.minimize")}
             >
               <Minus className="h-3 w-3" />
             </button>
@@ -169,7 +176,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
               className="hover:bg-accent rounded px-2 h-7 flex items-center justify-center transition-colors"
               onClick={handleMaximize}
               data-tauri-drag-region="false"
-              aria-label="Maximize"
+              aria-label={t("titlebar.windowControls.maximize")}
             >
               <Square className="h-3 w-3" />
             </button>
@@ -177,7 +184,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
               className="hover:bg-destructive hover:text-destructive-foreground rounded px-2 h-7 flex items-center justify-center transition-colors"
               onClick={handleClose}
               data-tauri-drag-region="false"
-              aria-label="Close"
+              aria-label={t("titlebar.windowControls.close")}
             >
               <X className="h-3 w-3" />
             </button>

@@ -17,7 +17,7 @@
     },
     "uiLanguage": {
       "title": "App-Sprache",
-      "description": "Ändere die Sprache der Benutzeroberfläche",
+      "description": "Aktualisiert Menüs und Buttons",
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
     "reset": {
@@ -28,8 +28,7 @@
     "support": {
       "supportAutoSubs": "AutoSubs unterstützen",
       "helpSupportDevelopment": "Unterstütze die Entwicklung",
-      "viewSource": "Quellcode ansehen",
-      "viewSourceDescription": "GitHub-Repository ansehen"
+      "viewSource": "Quellcode ansehen"
     }
   },
   "common": {
@@ -108,8 +107,8 @@
     },
     "fileDrop": {
       "aria": "Audio-Datei hier ablegen oder klicken zum Auswählen",
-      "prompt": "Datei hier ablegen oder klicken zum Auswählen",
-      "supports": "Unterstützt die meisten Medienformate"
+      "prompt": "Ablegen oder klicken",
+      "supports": "Die meisten Formate"
     },
     "language": {
       "source": "Quelle",
@@ -223,6 +222,12 @@
     "exportToFile": "In Datei exportieren",
     "addToTimeline": "Zur Timeline hinzufügen"
   },
+  "progressSteps": {
+    "download": "Modell wird geladen",
+    "transcribe": "Sprache zu Text",
+    "translate": "Übersetze nach {{language}}",
+    "processing": "Verarbeite"
+  },
   "subtitles": {
     "title": "Untertitel",
     "speakers": "Sprecher",
@@ -252,6 +257,28 @@
     "title": "Sprache auswählen",
     "description": "Wähle die Sprache aus, die du in der App verwenden möchtest.",
     "continue": "Weiter"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Minimieren",
+      "maximize": "Maximieren",
+      "close": "Schließen"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Verbunden",
+        "disconnected": "Getrennt"
+      },
+      "tooltip": {
+        "connected": "Verbunden",
+        "currentlyViewing": "Aktuell angezeigt: {{name}}",
+        "ready": "Bereit für Zugriff auf die Timeline",
+        "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
+        "cantConnect": "Keine Verbindung zur Timeline möglich",
+        "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
+      }
+    }
   },
   "theme": {
     "toggle": "Theme umschalten"

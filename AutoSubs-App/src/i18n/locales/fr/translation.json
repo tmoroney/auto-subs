@@ -17,7 +17,7 @@
     },
     "uiLanguage": {
       "title": "Langue de l’application",
-      "description": "Changer la langue utilisée dans l’interface",
+      "description": "Met à jour menus et boutons",
       "showPickerAgain": "Réafficher le sélecteur de langue"
     },
     "reset": {
@@ -28,8 +28,7 @@
     "support": {
       "supportAutoSubs": "Soutenir AutoSubs",
       "helpSupportDevelopment": "Aider à soutenir le développement",
-      "viewSource": "Voir le code source",
-      "viewSourceDescription": "Consulter le dépôt GitHub"
+      "viewSource": "Voir le code source"
     }
   },
   "common": {
@@ -108,8 +107,8 @@
     },
     "fileDrop": {
       "aria": "Déposez un fichier audio ici ou cliquez pour sélectionner",
-      "prompt": "Déposez un fichier ici ou cliquez pour sélectionner",
-      "supports": "Prend en charge la plupart des formats"
+      "prompt": "Déposez ou cliquez",
+      "supports": "La plupart des formats"
     },
     "language": {
       "source": "Source",
@@ -223,6 +222,12 @@
     "exportToFile": "Exporter vers un fichier",
     "addToTimeline": "Ajouter à la timeline"
   },
+  "progressSteps": {
+    "download": "Téléchargement du modèle",
+    "transcribe": "Voix en texte",
+    "translate": "Traduction vers {{language}}",
+    "processing": "Traitement"
+  },
   "subtitles": {
     "title": "Sous-titres",
     "speakers": "Intervenants",
@@ -252,6 +257,28 @@
     "title": "Choisissez votre langue",
     "description": "Sélectionnez la langue que vous souhaitez utiliser dans l’application.",
     "continue": "Continuer"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Réduire",
+      "maximize": "Agrandir",
+      "close": "Fermer"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Connecté",
+        "disconnected": "Déconnecté"
+      },
+      "tooltip": {
+        "connected": "Connecté",
+        "currentlyViewing": "Affichage actuel : {{name}}",
+        "ready": "Prêt à accéder à la timeline",
+        "canGetAudio": "Vous pouvez récupérer l’audio depuis la timeline et y réajouter des sous-titres.",
+        "cantConnect": "Impossible de se connecter à la timeline",
+        "openResolve": "Ouvrez DaVinci Resolve et allez dans Espace de travail → Scripts → AutoSubs"
+      }
+    }
   },
   "theme": {
     "toggle": "Basculer le thème"

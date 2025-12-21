@@ -17,19 +17,18 @@
     },
     "uiLanguage": {
       "title": "Idioma de la aplicación",
-      "description": "Cambia el idioma usado en la interfaz",
+      "description": "Actualiza menús y botones",
       "showPickerAgain": "Mostrar selector de idioma otra vez"
     },
     "reset": {
-      "button": "Restablecer todos los ajustes a los valores predeterminados",
+      "button": "Restablecer ajustes",
       "confirm": "¿Seguro que quieres restablecer todos los ajustes a los valores predeterminados? Esto no se puede deshacer.",
       "confirmTitle": "Restablecer ajustes"
     },
     "support": {
       "supportAutoSubs": "Apoyar AutoSubs",
       "helpSupportDevelopment": "Ayuda a apoyar el desarrollo",
-      "viewSource": "Ver código fuente",
-      "viewSourceDescription": "Visita el repositorio en GitHub"
+      "viewSource": "Ver código fuente"
     }
   },
   "common": {
@@ -108,8 +107,8 @@
     },
     "fileDrop": {
       "aria": "Suelta un archivo de audio aquí o haz clic para seleccionar",
-      "prompt": "Suelta el archivo aquí o haz clic para seleccionarlo",
-      "supports": "Compatible con la mayoría de formatos"
+      "prompt": "Suelta o haz clic",
+      "supports": "La mayoría de formatos"
     },
     "language": {
       "source": "Origen",
@@ -223,6 +222,12 @@
     "exportToFile": "Exportar a archivo",
     "addToTimeline": "Añadir a la línea de tiempo"
   },
+  "progressSteps": {
+    "download": "Descargando modelo",
+    "transcribe": "Voz a texto",
+    "translate": "Traduciendo a {{language}}",
+    "processing": "Procesando"
+  },
   "subtitles": {
     "title": "Subtítulos",
     "speakers": "Hablantes",
@@ -252,6 +257,28 @@
     "title": "Elige tu idioma",
     "description": "Selecciona el idioma que quieres usar en la aplicación.",
     "continue": "Continuar"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "close": "Cerrar"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Conectado",
+        "disconnected": "Desconectado"
+      },
+      "tooltip": {
+        "connected": "Conectado",
+        "currentlyViewing": "Viendo actualmente: {{name}}",
+        "ready": "Listo para acceder a la línea de tiempo",
+        "canGetAudio": "Puedes obtener el audio de la línea de tiempo y añadirle subtítulos.",
+        "cantConnect": "No se puede conectar a la línea de tiempo",
+        "openResolve": "Abre DaVinci Resolve y ve a Workspace → Scripts → AutoSubs"
+      }
+    }
   },
   "theme": {
     "toggle": "Cambiar tema"

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { listen } from '@tauri-apps/api/event';
 import { Subtitle } from '@/types/interfaces';
 import { translateLanguages } from '@/lib/languages';
+import i18n from '@/i18n';
 
 interface ProcessingStep {
   id: string;
@@ -122,10 +123,16 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   
   const getStepTitle = (type?: string): string => {
     switch (type) {
-      case 'Download': return 'Downloading Model'
-      case 'Transcribe': return 'Speech to Text'
-      case 'Translate': return `Translating to ${getLanguageDisplayName(settingsRef.current.targetLanguage)}`
-      default: return type || 'Processing'
+      case 'Download':
+        return i18n.t('progressSteps.download');
+      case 'Transcribe':
+        return i18n.t('progressSteps.transcribe');
+      case 'Translate':
+        return i18n.t('progressSteps.translate', {
+          language: getLanguageDisplayName(settingsRef.current.targetLanguage),
+        });
+      default:
+        return type || i18n.t('progressSteps.processing');
     }
   }
 
@@ -156,8 +163,8 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       })),
       {
         id: 'Complete',
-        title: 'Transcription Complete',
-        description: 'Choose how to use your transcript',
+        title: i18n.t('completion.processingComplete'),
+        description: i18n.t('completion.subtitlesReady'),
         progress: 100,
         isActive: false,
         isCompleted: true

@@ -19,13 +19,14 @@ const UI_LANGUAGE_OPTIONS = [
   { value: "es", label: "Español" },
   { value: "fr", label: "Français" },
   { value: "de", label: "Deutsch" },
+  { value: "zh", label: "中文" },
 ] as const;
 
 export function LanguagePickerModal() {
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, isHydrated } = useSettings();
   const { t } = useTranslation();
 
-  const shouldShow = !settings.uiLanguagePromptCompleted;
+  const shouldShow = isHydrated && !settings.uiLanguagePromptCompleted;
 
   const [selection, setSelection] = React.useState(() => {
     return normalizeUiLanguage(settings.uiLanguage);

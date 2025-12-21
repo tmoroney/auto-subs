@@ -139,6 +139,100 @@ export function ActionBar({
                                         />
                                     </div>
 
+                                    {/* Censor */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                {t("actionBar.censor.wordCount", { count: (settings.censoredWords || []).length })}
+                                                {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
+                                                <DialogTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                    >
+                                                        <Settings2 className="h-4 w-4" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-[520px]">
+                                                    <DialogHeader>
+                                                        <DialogTitle>{t("actionBar.censor.dialogTitle")}</DialogTitle>
+                                                        <DialogDescription>
+                                                            {t("actionBar.censor.dialogDescription")}
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+
+                                                    <div className="grid gap-4">
+                                                        <form
+                                                            className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2"
+                                                            onSubmit={(e) => {
+                                                                e.preventDefault();
+                                                                if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
+                                                                updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
+                                                                setNewCensoredWord("");
+                                                            }}
+                                                        >
+                                                            <Input
+                                                                value={newCensoredWord}
+                                                                onChange={(e) => setNewCensoredWord(e.target.value)}
+                                                                placeholder={t("actionBar.censor.inputPlaceholder")}
+                                                                className="flex-1 h-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                            />
+                                                            <Button
+                                                                type="submit"
+                                                                size="sm"
+                                                                disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
+                                                            >
+                                                                {t("common.add")}
+                                                            </Button>
+                                                        </form>
+
+                                                        <div className="space-y-2">
+                                                            <ScrollArea className="max-h-[220px] rounded-lg border bg-muted/20 p-3">
+                                                                {(settings.censoredWords || []).length === 0 ? (
+                                                                    <div className="text-sm text-muted-foreground text-center py-6">
+                                                                        {t("actionBar.censor.empty")}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {(settings.censoredWords || []).map((word: string, index: number) => (
+                                                                            <Badge
+                                                                                key={index}
+                                                                                variant="secondary"
+                                                                                className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
+                                                                                onClick={() => {
+                                                                                    const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
+                                                                                    updateSetting("censoredWords", updatedWords);
+                                                                                }}
+                                                                            >
+                                                                                {word}
+                                                                                <X className="ml-1.5 opacity-50 w-4 h-4" />
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </ScrollArea>
+                                                        </div>
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <DialogClose asChild>
+                                                            <Button variant="outline" onClick={() => setNewCensoredWord("")}>{t("common.done")}</Button>
+                                                        </DialogClose>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+                                            <Switch
+                                                checked={settings.enableCensor}
+                                                onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
+                                            />
+                                        </div>
+                                    </div>
+
                                     {/* Text Case */}
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -191,104 +285,6 @@ export function ActionBar({
                                             onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
                                             className="w-20"
                                         />
-                                    </div>
-                                </div>
-
-                                {/* Censor Words Section at Bottom */}
-                                <div className="border-t bg-muted/30">
-                                    <div className="p-4 pt-2 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {t("actionBar.censor.wordCount", { count: (settings.censoredWords || []).length })}
-                                                    {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
-                                                    <DialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                        >
-                                                            <Settings2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="sm:max-w-[520px]">
-                                                        <DialogHeader>
-                                                            <DialogTitle>{t("actionBar.censor.dialogTitle")}</DialogTitle>
-                                                            <DialogDescription>
-                                                                {t("actionBar.censor.dialogDescription")}
-                                                            </DialogDescription>
-                                                        </DialogHeader>
-
-                                                        <div className="grid gap-4">
-                                                            <form
-                                                                className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2"
-                                                                onSubmit={(e) => {
-                                                                    e.preventDefault();
-                                                                    if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
-                                                                    updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
-                                                                    setNewCensoredWord("");
-                                                                }}
-                                                            >
-                                                                <Input
-                                                                    value={newCensoredWord}
-                                                                    onChange={(e) => setNewCensoredWord(e.target.value)}
-                                                                    placeholder={t("actionBar.censor.inputPlaceholder")}
-                                                                    className="flex-1 h-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                                                                />
-                                                                <Button
-                                                                    type="submit"
-                                                                    size="sm"
-                                                                    disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
-                                                                >
-                                                                    {t("common.add")}
-                                                                </Button>
-                                                            </form>
-
-                                                            <div className="space-y-2">
-                                                                <ScrollArea className="max-h-[220px] rounded-lg border bg-muted/20 p-3">
-                                                                    {(settings.censoredWords || []).length === 0 ? (
-                                                                        <div className="text-sm text-muted-foreground text-center py-6">
-                                                                            {t("actionBar.censor.empty")}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="flex flex-wrap gap-2">
-                                                                            {(settings.censoredWords || []).map((word: string, index: number) => (
-                                                                                <Badge
-                                                                                    key={index}
-                                                                                    variant="secondary"
-                                                                                    className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
-                                                                                    onClick={() => {
-                                                                                        const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
-                                                                                        updateSetting("censoredWords", updatedWords);
-                                                                                    }}
-                                                                                >
-                                                                                    {word}
-                                                                                    <X className="ml-1.5 opacity-50 w-4 h-4" />
-                                                                                </Badge>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </ScrollArea>
-                                                            </div>
-                                                        </div>
-                                                        <DialogFooter>
-                                                            <DialogClose asChild>
-                                                                <Button variant="outline" onClick={() => setNewCensoredWord("")}>{t("common.done")}</Button>
-                                                            </DialogClose>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                </Dialog>
-                                                <Switch
-                                                    checked={settings.enableCensor}
-                                                    onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
-                                                />
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -405,7 +401,7 @@ export function ActionBar({
                                                 ? (settings.selectedInputTracks.length === 1
                                                     ? t("actionBar.tracks.selectedLabel", {
                                                         label: inputTracks.find(track => track.value === settings.selectedInputTracks[0])?.label || t("actionBar.tracks.trackN", { n: settings.selectedInputTracks[0] })
-                                                      })
+                                                    })
                                                     : t("actionBar.tracks.countSelected", { count: settings.selectedInputTracks.length }))
                                                 : t("actionBar.tracks.noneSelected")}
                                         </span>
@@ -531,7 +527,7 @@ export function ActionBar({
                             >
                                 <Globe />
                                 <span>
-                                    {settings.translate 
+                                    {settings.translate
                                         ? `${settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label} → ${translateLanguages.find(l => l.value === settings.targetLanguage)?.label}`
                                         : settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label
                                     }
