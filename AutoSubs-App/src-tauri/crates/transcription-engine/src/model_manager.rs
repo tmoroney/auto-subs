@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 use tokio_util::sync::CancellationToken;
 use once_cell::sync::Lazy;
 
@@ -327,26 +328,55 @@ impl ModelManager {
     ) -> Result<(PathBuf, PathBuf)> {
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
-        let model_dir = self.model_cache_dir()?;
-        let seg_name = url_filename(seg_url).ok_or_else(|| eyre!("Invalid seg_url"))?;
-        let emb_name = url_filename(emb_url).ok_or_else(|| eyre!("Invalid emb_url"))?;
-
-        let seg_path = model_dir.join(&seg_name);
-        if !seg_path.exists() {
-            if let Some(cb) = progress { cb(5, ProgressType::Download, "Downloading Diarize Models"); }
-            download_to(&seg_path, seg_url).await?;
-            if let Some(cb) = progress { cb(50, ProgressType::Download, "Downloading Diarize Models"); }
-        }
+        let seg_path = if let Some((repo_id, filename)) = parse_hf_blob_url(seg_url) {
+            self
+                .ensure_hub_model(
+                    &repo_id,
+                    &filename,
+                    progress,
+                    is_cancelled,
+                    0.0,
+                    50.0,
+                    "Downloading Diarize Models",
+                )
+                .await?
+        } else {
+            let model_dir = self.model_cache_dir()?;
+            let seg_name = url_filename(seg_url).ok_or_else(|| eyre!("Invalid seg_url"))?;
+            let seg_path = model_dir.join(&seg_name);
+            if !seg_path.exists() {
+                if let Some(cb) = progress { cb(5, ProgressType::Download, "Downloading Diarize Models"); }
+                download_to(&seg_path, seg_url).await?;
+            }
+            seg_path
+        };
 
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
-        let emb_path = model_dir.join(&emb_name);
-        if !emb_path.exists() {
-            if let Some(cb) = progress { cb(55, ProgressType::Download, "Downloading Diarize Models"); }
-            download_to(&emb_path, emb_url).await?;
-            if let Some(cb) = progress { cb(100, ProgressType::Download, "Downloaded Diarize Models"); }
-        }
+        let emb_path = if let Some((repo_id, filename)) = parse_hf_blob_url(emb_url) {
+            self
+                .ensure_hub_model(
+                    &repo_id,
+                    &filename,
+                    progress,
+                    is_cancelled,
+                    50.0,
+                    50.0,
+                    "Downloading Diarize Models",
+                )
+                .await?
+        } else {
+            let model_dir = self.model_cache_dir()?;
+            let emb_name = url_filename(emb_url).ok_or_else(|| eyre!("Invalid emb_url"))?;
+            let emb_path = model_dir.join(&emb_name);
+            if !emb_path.exists() {
+                if let Some(cb) = progress { cb(55, ProgressType::Download, "Downloading Diarize Models"); }
+                download_to(&emb_path, emb_url).await?;
+            }
+            emb_path
+        };
 
+        if let Some(cb) = progress { cb(100, ProgressType::Download, "Downloaded Diarize Models"); }
         Ok((seg_path, emb_path))
     }
 
@@ -668,71 +698,42 @@ impl ModelManager {
         }
         let base = cache_root.join(format!("models--{}--{}", owner, repo)).join("snapshots");
         if !base.exists() { return Ok(None); }
-        
-        // First pass: check if symlink already exists
+
+        // IMPORTANT: snapshots are revision-hash directories and fs::read_dir order is arbitrary.
+        // If we return the first match, we can accidentally use an older model even after a newer
+        // revision has been downloaded (same filename). Instead, pick the most recently modified
+        // candidate.
+        let mut best: Option<(SystemTime, PathBuf)> = None;
         for entry in fs::read_dir(&base).context("Failed to read snapshots dir")? {
             let entry = entry?;
             let snap = entry.path();
-            if !snap.is_dir() { continue; }
+            if !snap.is_dir() {
+                continue;
+            }
+
             let candidate = snap.join(filename);
-            if candidate.exists() {
-                return Ok(Some(candidate));
+            if !candidate.exists() {
+                continue;
             }
-        }
-        
-        // Second pass: if symlink missing, try to find orphaned blob and recreate symlink
-        let blobs_dir = cache_root.join(format!("models--{}--{}", owner, repo)).join("blobs");
-        if !blobs_dir.exists() { return Ok(None); }
-        
-        // Find a valid blob by checking file size (models are typically > 1MB)
-        let mut valid_blob: Option<PathBuf> = None;
-        if let Ok(blob_entries) = fs::read_dir(&blobs_dir) {
-            for blob_entry in blob_entries.flatten() {
-                let blob_path = blob_entry.path();
-                if blob_path.is_file() {
-                    if let Ok(metadata) = fs::metadata(&blob_path) {
-                        // Skip small files (likely not model files)
-                        if metadata.len() > 1_000_000 {
-                            // Quick validation: try to read first few bytes
-                            if fs::File::open(&blob_path).is_ok() {
-                                valid_blob = Some(blob_path);
-                                break;
-                            }
-                        }
+
+            let modified = fs::metadata(&candidate)
+                .and_then(|m| m.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+
+            match &best {
+                None => best = Some((modified, candidate)),
+                Some((best_modified, _)) => {
+                    if modified > *best_modified {
+                        best = Some((modified, candidate));
                     }
                 }
             }
         }
-        
-        // If we found a valid blob, create symlink in the first snapshot directory
-        if let Some(blob_path) = valid_blob {
-            if let Ok(mut snapshot_entries) = fs::read_dir(&base) {
-                if let Some(Ok(snap_entry)) = snapshot_entries.next() {
-                    let snap = snap_entry.path();
-                    if snap.is_dir() {
-                        let symlink_path = snap.join(filename);
-                        let relative_blob = PathBuf::from("../../blobs").join(blob_path.file_name().unwrap());
-                        
-                        #[cfg(unix)]
-                        {
-                            if std::os::unix::fs::symlink(&relative_blob, &symlink_path).is_ok() {
-                                eprintln!("Recreated missing symlink: {} -> {}", symlink_path.display(), relative_blob.display());
-                                return Ok(Some(symlink_path));
-                            }
-                        }
-                        
-                        #[cfg(windows)]
-                        {
-                            if std::os::windows::fs::symlink_file(&relative_blob, &symlink_path).is_ok() {
-                                eprintln!("Recreated missing symlink: {} -> {}", symlink_path.display(), relative_blob.display());
-                                return Ok(Some(symlink_path));
-                            }
-                        }
-                    }
-                }
-            }
+
+        if let Some((_, path)) = best {
+            return Ok(Some(path));
         }
-        
+
         Ok(None)
     }
 }
@@ -764,6 +765,11 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let mut f = fs::File::open(&blob_path).context("open failed")?;
     let mut buf = [0u8; 16];
     let _ = f.read(&mut buf).context("read failed")?;
+
+    if blob_path.extension().and_then(|e| e.to_str()) == Some("zip") {
+        let file = fs::File::open(&blob_path).context("open failed")?;
+        let _ = zip::ZipArchive::new(file).context("invalid zip archive")?;
+    }
     Ok(())
 }
 
@@ -786,6 +792,23 @@ fn remove_snapshot_file_and_blob(path: &Path) -> Result<()> {
 
 fn url_filename(url: &str) -> Option<String> {
     url.rsplit('/').next().map(|s| s.to_string())
+}
+
+fn parse_hf_blob_url(url: &str) -> Option<(String, String)> {
+    let trimmed = url.strip_prefix("https://huggingface.co/")?;
+    let mut parts = trimmed.split('/');
+    let owner = parts.next()?;
+    let repo = parts.next()?;
+    let blob = parts.next()?;
+    if blob != "blob" {
+        return None;
+    }
+    let _rev = parts.next()?;
+    let filename = parts.next()?;
+    if owner.is_empty() || repo.is_empty() || filename.is_empty() {
+        return None;
+    }
+    Some((format!("{}/{}", owner, repo), filename.to_string()))
 }
 
 async fn download_to(dest_path: &Path, url: &str) -> Result<()> {

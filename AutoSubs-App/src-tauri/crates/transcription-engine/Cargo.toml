@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 whisper-rs = { git = "https://codeberg.org/tazz4843/whisper-rs.git", default-features = false, features = ["tracing_backend"] }
 pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
-ort-sys = "=2.0.0-rc.9" # prevents error with pyannote-rs
+ort-sys = "=2.0.0-rc.10" # prevents error with pyannote-rs
 hf-hub = "0.4.3"
 dirs = "5.0"
 regex = "1"

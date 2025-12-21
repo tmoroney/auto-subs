@@ -367,6 +367,13 @@ pub async fn run_transcription_pipeline(
     let mut previous_text: Option<String> = None;
     let mut detected_lang: Option<String> = None;
 
+    let mut diarize_total_segments: usize = 0;
+    let mut diarize_embedding_errors: usize = 0;
+    let mut diarize_unknown_speakers: usize = 0;
+    let mut diarize_match_misses: usize = 0;
+    let mut diarize_first_embedding_error: Option<String> = None;
+    let mut diarize_models_printed: bool = false;
+
     if let Some(lang) = options.lang.as_deref() {
         if lang != "auto" {
             detected_lang = Some(lang.to_string());
@@ -461,11 +468,26 @@ pub async fn run_transcription_pipeline(
             // Embedding and speaker identification (speaker diarization) - if enabled
             let mut speaker_id = None;
             if num_segments > 0 && let Some(ref diarize_options) = diarize_options {
+                diarize_total_segments += 1;
+                if !diarize_models_printed {
+                    diarize_models_printed = true;
+                    println!(
+                        "Diarization enabled: segment_model_path={}, embedding_model_path={}, threshold={}, max_speakers={}",
+                        diarize_options.segment_model_path,
+                        diarize_options.embedding_model_path,
+                        diarize_options.threshold,
+                        diarize_options.max_speakers
+                    );
+                }
                 // Compute embedding
                 let extractor = extractor.as_mut().unwrap();
                 let embedding_result = match extractor.compute(&original_samples) {
-                    Ok(result) => Some(result.collect()),
+                    Ok(result) => Some(result),
                     Err(error) => {
+                        diarize_embedding_errors += 1;
+                        if diarize_first_embedding_error.is_none() {
+                            diarize_first_embedding_error = Some(format!("{:?}", error));
+                        }
                         tracing::error!("error: {:?}", error);
                         tracing::trace!(
                             "start = {:.2}, end = {:.2}, speaker = ?",
@@ -478,21 +500,32 @@ pub async fn run_transcription_pipeline(
 
                 // Find speaker
                 let embedding_manager = embedding_manager.as_mut().unwrap();
-                let speaker = if let Some(embedding_result) = embedding_result {
+                let had_embedding = embedding_result.is_some();
+                let speaker = if let Some(embedding_vec) = embedding_result.as_ref() {
+                    // The embedding manager API takes ownership of the embedding vector.
+                    // Clone here to avoid moving `embedding_result` so we can use it for diagnostics.
+                    let embedding_vec = embedding_vec.clone();
                     if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
                         embedding_manager
-                            .get_best_speaker_match(embedding_result)
+                            .get_best_speaker_match(embedding_vec)
                             .map(|r| r.to_string())
                             .unwrap_or("?".into())
                     } else {
                         embedding_manager
-                            .search_speaker(embedding_result, diarize_options.threshold)
+                            .search_speaker(embedding_vec, diarize_options.threshold)
                             .map(|r| r.to_string())
                             .unwrap_or("?".into())
                     }
                 } else {
                     "?".into()
                 };
+
+                if speaker.trim() == "?" {
+                    diarize_unknown_speakers += 1;
+                    if had_embedding {
+                        diarize_match_misses += 1;
+                    }
+                }
                 speaker_id = Some(speaker);
             }
 
@@ -527,6 +560,17 @@ pub async fn run_transcription_pipeline(
     tracing::debug!("Empty segments: {}", empty_segments);
     tracing::debug!("Total characters: {}", total_chars);
     tracing::debug!("Segments: {}", segments.len());
+
+    if diarize_total_segments > 0 {
+        println!(
+            "Diarization summary: diarize_total_segments={}, diarize_unknown_speakers={}, diarize_embedding_errors={}, diarize_match_misses={}, first_embedding_error={}",
+            diarize_total_segments,
+            diarize_unknown_speakers,
+            diarize_embedding_errors,
+            diarize_match_misses,
+            diarize_first_embedding_error.as_deref().unwrap_or("<none>")
+        );
+    }
 
     // Clear progress bridge to avoid dangling references beyond this async call
     if let Ok(mut slot) = PROGRESS_CALLBACK.lock() { *slot = None; }

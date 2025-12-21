@@ -46,7 +46,7 @@ export const TranscriptionWorkspace = () => {
     const [, setLabeledProgress] = React.useState<{ progress: number, type?: string, label?: string } | null>(null)
     const [,] = React.useState<string | null>(null)
     const [,] = React.useState(0)
-    const [fileInput] = React.useState<string | null>(null)
+    const [fileInput, setFileInput] = React.useState<string | null>(null)
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
@@ -278,6 +278,8 @@ export const TranscriptionWorkspace = () => {
                     isProcessing={isProcessing}
                     onStart={handleStartTranscription}
                     onCancel={handleCancelTranscription}
+                    selectedFile={fileInput}
+                    onSelectedFileChange={setFileInput}
                 />
             </div>
         </>

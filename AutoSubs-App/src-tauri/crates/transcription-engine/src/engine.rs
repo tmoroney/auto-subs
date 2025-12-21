@@ -87,8 +87,8 @@ impl Engine {
         let mut vad_mask: Option<VadMaskOracle> = None;
 
         if let Some(true) = options.enable_diarize {
-            let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
-            let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
+            let seg_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/segmentation-community-1.onnx";
+            let emb_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/embedding_model.onnx";
 
             // Ensure/download diarization models if not provided
             let (seg_path, emb_path) = match (&self.cfg.diarize_segment_model_path, &self.cfg.diarize_embedding_model_path) {

@@ -251,6 +251,7 @@ export function WorkspaceHeader({
 
                   return (
                     <div
+                          key={model.value}
                           className={`flex items-center justify-between p-2 cursor-pointer rounded-sm transition-colors duration-200 ${selectedModelIndex === actualModelIndex
                             ? "bg-blue-50 dark:bg-blue-900/20"
                             : "hover:bg-gray-50 dark:hover:bg-gray-800/50"

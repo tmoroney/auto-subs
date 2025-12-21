@@ -37,24 +37,35 @@ interface ActionBarProps {
     onStart?: () => void
     onCancel?: () => void
     isProcessing?: boolean
+    selectedFile?: string | null
+    onSelectedFileChange?: (file: string | null) => void
 }
 
 export function ActionBar({
     onStart,
     onCancel,
     isProcessing,
+    selectedFile: selectedFileProp,
+    onSelectedFileChange,
 }: ActionBarProps) {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
     const { timelineInfo, refresh } = useResolve()
     const [openLanguage, setOpenLanguage] = React.useState(false)
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
-    const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
+    const [localSelectedFile, setLocalSelectedFile] = React.useState<string | null>(null)
     const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
     const [openSpeakerPopover, setOpenSpeakerPopover] = React.useState(false)
     const [openTextFormattingPopover, setOpenTextFormattingPopover] = React.useState(false)
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
+
+    const selectedFile = selectedFileProp ?? localSelectedFile
+
+    const setSelectedFile = React.useCallback((file: string | null) => {
+        setLocalSelectedFile(file)
+        onSelectedFileChange?.(file)
+    }, [onSelectedFileChange])
 
     // Get input tracks from timeline info
     const inputTracks: Track[] = React.useMemo(() => {
@@ -79,7 +90,7 @@ export function ActionBar({
         return () => {
             if (unlisten) unlisten();
         };
-    }, []);
+    }, [setSelectedFile]);
 
     const handleFileSelect = async () => {
         const file = await open({

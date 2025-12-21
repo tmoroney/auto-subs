@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
 use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType};
@@ -38,6 +38,8 @@ pub static SHOULD_CANCEL: Mutex<bool> = Mutex::new(false);
 static LATEST_PROGRESS: AtomicI32 = AtomicI32::new(0);
 static LATEST_PROGRESS_TYPE: Mutex<Option<ProgressType>> = Mutex::new(None);
 static LATEST_PROGRESS_LABEL: Mutex<Option<String>> = Mutex::new(None);
+
+static NORMALIZED_AUDIO_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 // Utility function for rounding to n decimal places
 fn round_to_places(val: f64, places: u32) -> f64 {
@@ -165,7 +167,12 @@ pub async fn transcribe_audio<R: Runtime>(
         transcribe_options.lang = options.lang.clone().or(Some("auto".into()));
         transcribe_options.enable_vad = Some(true); // Always enable VAD
         transcribe_options.enable_diarize = options.enable_diarize;
-        transcribe_options.max_speakers = options.max_speakers;
+        // Guard against invalid values from the frontend. In the engine, max_speakers == 0
+        // effectively prevents creating any speakers and can lead to all segments being labeled "?".
+        transcribe_options.max_speakers = match options.max_speakers {
+            Some(0) => None,
+            other => other,
+        };
         // DTW is enabled in engine config for better word timestamps
         
         // Handle translation - use target_language from frontend
@@ -290,6 +297,20 @@ pub async fn transcribe_audio<R: Runtime>(
             })
             .collect();
 
+        if options.enable_diarize.unwrap_or(false) {
+            let total = app_segments.len();
+            let unknown = app_segments
+                .iter()
+                .filter(|s| s.speaker_id.as_deref().unwrap_or("").trim() == "?")
+                .count();
+
+            if total > 0 && unknown == total {
+                tracing::warn!(
+                    "Diarization enabled but all segments have unknown speaker_id ('?'). Check model availability and options.max_speakers."
+                );
+            }
+        }
+
         // Apply offset if provided
         if let Some(offset) = options.offset {
             for segment in app_segments.iter_mut() {
@@ -330,6 +351,42 @@ pub async fn transcribe_audio<R: Runtime>(
                 "Transcription successful in {:.2}s",
                 transcript.processing_time_sec
             );
+
+            // Debug: inspect what we're actually returning to the frontend.
+            // Set AUTOSUBS_DEBUG_TRANSCRIPT=1 to pretty-print the full JSON.
+            {
+                use std::collections::BTreeMap;
+
+                let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+                for seg in transcript.segments.iter() {
+                    let key = seg
+                        .speaker_id
+                        .as_deref()
+                        .unwrap_or("<none>")
+                        .trim()
+                        .to_string();
+                    *counts.entry(key).or_insert(0) += 1;
+                }
+
+                println!(
+                    "Returning transcript to frontend: segments={}, speakers={}, speaker_id_counts={:?}",
+                    transcript.segments.len(),
+                    transcript.speakers.len(),
+                    counts
+                );
+
+                if std::env::var("AUTOSUBS_DEBUG_TRANSCRIPT")
+                    .ok()
+                    .as_deref()
+                    == Some("1")
+                {
+                    match serde_json::to_string_pretty(&transcript) {
+                        Ok(json) => println!("Final transcript JSON:\n{}", json),
+                        Err(e) => eprintln!("Failed to serialize transcript for debug: {}", e),
+                    }
+                }
+            }
+
             Ok(transcript)
         }
         Err(e) => {
@@ -355,13 +412,19 @@ pub async fn create_normalized_audio<R: Runtime>(
     tracing::debug!("normalize {:?}", source.display());
 
     let path_resolver = app.path();
-    let out_path = path_resolver
-        .app_cache_dir()
-        .unwrap_or_else(|_| std::env::temp_dir())
-        .join("normalized_audio.wav");
 
-    // Always overwrite the same file to prevent cache buildup
-    tracing::info!("Normalizing audio to fixed path: {}", out_path.display());
+    let cache_dir = path_resolver
+        .app_cache_dir()
+        .unwrap_or_else(|_| std::env::temp_dir());
+
+    let out_path = if cfg!(test) {
+        let n = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);
+        cache_dir.join(format!("normalized_audio_{}.wav", n))
+    } else {
+        cache_dir.join("normalized_audio.wav")
+    };
+
+    tracing::info!("Normalizing audio to path: {}", out_path.display());
 
     audio::normalize(app, source, out_path.clone(), additional_ffmpeg_args)
         .await
@@ -375,45 +438,43 @@ pub async fn create_normalized_audio<R: Runtime>(
 fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
 
-    // Build speaker map: speaker_name -> (index, start_time, end_time)
+    // Build speaker map: raw_speaker_id -> (index, start_time, end_time)
     let mut speaker_info: HashMap<String, (usize, f64, f64)> = HashMap::new();
-    let mut speaker_counter = 0;
+    let mut next_index: usize = 0;
 
     // First pass: collect unique speakers and assign indices
     for segment in segments.iter() {
         if let Some(ref speaker_id) = segment.speaker_id {
-            let speaker_name = format!("Speaker {}", speaker_id.trim());
-            if !speaker_name.is_empty() {
-                if !speaker_info.contains_key(&speaker_name) {
-                    speaker_info.insert(
-                        speaker_name.clone(),
-                        (speaker_counter, segment.start, segment.end),
-                    );
-                    speaker_counter += 1;
-                }
+            let trimmed = speaker_id.trim();
+            if trimmed.is_empty() || trimmed == "?" {
+                continue;
+            }
+
+            let raw_id = if let Some(rest) = trimmed.strip_prefix("Speaker ") {
+                rest.trim().to_string()
+            } else {
+                trimmed.to_string()
+            };
+
+            if !speaker_info.contains_key(&raw_id) {
+                speaker_info.insert(raw_id, (next_index, segment.start, segment.end));
+                next_index += 1;
             }
         }
     }
 
-    // Create updated segments with new speaker IDs
-    let mut updated_segments = segments.to_vec();
-    for segment in updated_segments.iter_mut() {
-        if let Some(ref speaker_id) = segment.speaker_id {
-            let speaker_name = format!("Speaker {}", speaker_id.trim());
-            if let Some(&(index, _, _)) = speaker_info.get(&speaker_name) {
-                segment.speaker_id = Some(index.to_string());
-            }
-        }
-    }
+    // Do not rewrite segment speaker IDs. Preserve the engine's speaker_id values so the UI
+    // sees the same labels as the transcription engine output.
+    let updated_segments = segments.to_vec();
 
     // Convert speaker info to speakers array, sorted by index
     let mut speakers = Vec::new();
     let mut speaker_list: Vec<(String, (usize, f64, f64))> = speaker_info.into_iter().collect();
     speaker_list.sort_by_key(|(_, (index, _, _))| *index);
 
-    for (name, (_, start, end)) in speaker_list {
+    for (raw_id, (_, start, end)) in speaker_list {
         speakers.push(Speaker {
-            name,
+            name: format!("Speaker {}", raw_id),
             sample: Sample { start, end },
             fill: ColorModifier::default(),
             outline: ColorModifier::default(),

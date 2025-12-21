@@ -8,10 +8,10 @@ async fn main() -> Result<(), eyre::Report> {
     let mut engine = Engine::new(EngineConfig::default());
 
     let mut options = TranscribeOptions::default();
-    options.model = "small".into();
+    options.model = "tiny".into();
     options.lang = Some("auto".into());
     options.enable_vad = Some(true);
-    options.enable_diarize = Some(false);
+    options.enable_diarize = Some(true);
     //options.translate_target = Some("en".into());
     //options.whisper_to_english = Some(true);
 

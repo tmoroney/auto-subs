@@ -14,6 +14,8 @@ export function generateSrt(subtitles: Subtitle[], includeSpeakerLabels: boolean
     console.log('Generating SRT from subtitles:', subtitles);
     console.log('Include speaker labels in srt:', includeSpeakerLabels);
 
+    const speakerIdBase = subtitles.some(s => String(s.speaker_id) === "0") ? 0 : 1;
+
     if (!subtitles || !Array.isArray(subtitles)) {
         console.error('Invalid subtitles input:', subtitles);
         throw new Error('Subtitles must be an array');
@@ -40,8 +42,14 @@ export function generateSrt(subtitles: Subtitle[], includeSpeakerLabels: boolean
             }
 
             if (includeSpeakerLabels && sub.speaker_id) {
-                let speakerName = speakers?.[Number(sub.speaker_id)]?.name;
-                text = `[${speakerName}]: ${text}`;
+                const n = Number(sub.speaker_id);
+                const idx = Number.isFinite(n)
+                    ? (n - speakerIdBase)
+                    : 0;
+                const speakerName = speakers?.[idx]?.name;
+                if (speakerName) {
+                    text = `[${speakerName}]: ${text}`;
+                }
             }
 
             return `${i + 1}\n${formatTimecode(start)} --> ${formatTimecode(end)}\n${text}\n`;

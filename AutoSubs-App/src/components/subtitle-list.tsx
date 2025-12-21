@@ -151,6 +151,31 @@ const SubtitleList = ({
             (subtitle.speaker_id && subtitle.speaker_id.toLowerCase().includes(query))
         );
     }, [subtitles, searchQuery, subtitleContentHash]); // Include content hash
+
+    // speaker_id can be either 0-based ("0", "1", ...) or 1-based ("1", "2", ...).
+    // Detect base once per transcript so Speaker 1 doesn't get mislabeled as Speaker 2.
+    const speakerIdBase = useMemo(() => {
+        const hasZero = subtitles.some(s => {
+            const sid = s.speaker_id;
+            if (sid === undefined || sid === null) return false;
+            return String(sid) === "0";
+        });
+        return hasZero ? 0 : 1;
+    }, [subtitles, subtitleContentHash]);
+
+    const getSpeakerIndex = useCallback((speakerId: string | undefined) => {
+        if (!speakerId) return 0;
+        const n = Number(speakerId);
+        if (!Number.isFinite(n)) return 0;
+
+        const idx = n - speakerIdBase;
+        if (idx >= 0 && idx < speakers.length) return idx;
+
+        // Fallbacks for safety if the transcript is mixed/legacy.
+        if (n >= 0 && n < speakers.length) return n;
+        if (n - 1 >= 0 && n - 1 < speakers.length) return n - 1;
+        return 0;
+    }, [speakerIdBase, speakers.length]);
     
     // Calculate visible range with estimated heights
     const { startIndex, endIndex, totalHeight } = useMemo(() => {
@@ -372,11 +397,15 @@ const SubtitleList = ({
                                                     variant="outline"
                                                     className="ml-auto text-xs p-2 h-6"
                                                     onClick={() => {
-                                                        setExpandedSpeakerIndex(Number(subtitle.speaker_id));
+                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                        setExpandedSpeakerIndex(idx);
                                                         setShowSpeakerEditor(true);
                                                     }}
                                                 >
-                                                    {speakers[Number(subtitle.speaker_id)]?.name || t("subtitles.unknownSpeaker")}
+                                                    {(() => {
+                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                        return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                    })()}
                                                 </Button>
                                             </>
                                         ) : null}
