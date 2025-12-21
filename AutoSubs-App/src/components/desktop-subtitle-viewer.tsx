@@ -9,6 +9,7 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
 import { AddToTimelineDialog } from "@/components/add-to-timeline-dialog"
+import { useTranslation } from "react-i18next"
 
 export function DesktopSubtitleViewer() {
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -17,6 +18,7 @@ export function DesktopSubtitleViewer() {
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
+  const { t } = useTranslation()
 
   const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
     try {
@@ -42,7 +44,7 @@ export function DesktopSubtitleViewer() {
         />
         <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
           <Users className="w-4 h-4 mr-2" />
-          Speakers
+          {t("subtitles.speakers")}
         </Button>
         <SpeakerEditor afterTranscription={false} open={showSpeakerEditor} onOpenChange={() => setShowSpeakerEditor(false)} />
       </div>
@@ -52,11 +54,11 @@ export function DesktopSubtitleViewer() {
         <div className="relative">
           <Input
             ref={searchInputRef}
-            placeholder="Search subtitles..."
+            placeholder={t("subtitles.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
-            aria-label="Search subtitles"
+            aria-label={t("subtitles.searchAria")}
           />
           {searchQuery && (
             <Button
@@ -81,11 +83,11 @@ export function DesktopSubtitleViewer() {
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
-            <p className="text-lg font-medium mb-2">No subtitles found</p>
+            <p className="text-lg font-medium mb-2">{t("subtitles.empty.noSubtitlesFound")}</p>
             <p className="text-sm">
               {searchQuery
-                ? 'Try a different search term'
-                : 'No subtitles available. Try importing some first.'}
+                ? t("subtitles.empty.tryDifferentSearch")
+                : t("subtitles.empty.noSubtitlesAvailable")}
             </p>
           </div>
         )}
@@ -105,7 +107,7 @@ export function DesktopSubtitleViewer() {
               className="w-full"
             >
               <Layers2 className="w-4 h-4 mr-2" />
-              Add to Timeline
+              {t("subtitles.addToTimeline")}
             </Button>
           </AddToTimelineDialog>
         </div>

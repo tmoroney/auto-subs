@@ -81,6 +81,10 @@ export interface Settings {
     // Mode
     isStandaloneMode: boolean,
 
+    // UI settings
+    uiLanguage: string;
+    uiLanguagePromptCompleted: boolean;
+
     // Survey notification settings
     timesDismissedSurvey: number;
     lastSurveyDate: string;

@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { generatePreview } from "@/api/resolve-api"
 import { downloadDir } from "@tauri-apps/api/path"
 import { convertFileSrc } from "@tauri-apps/api/core"
+import { useTranslation } from "react-i18next"
 
 interface SpeakerEditorProps {
     afterTranscription?: boolean;
@@ -27,6 +28,7 @@ interface SpeakerEditorProps {
 }
 
 export function SpeakerEditor({ afterTranscription = false, open = false, onOpenChange, expandedSpeakerIndex }: SpeakerEditorProps) {
+    const { t } = useTranslation();
     const { speakers, updateSpeakers } = useTranscript();
     const { timelineInfo, pushToTimeline } = useResolve();
     const { settings } = useSettings();
@@ -81,8 +83,8 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[calc(100vh-2rem)]">
                 <DialogHeader>
-                    <DialogTitle>Edit Speakers</DialogTitle>
-                    <DialogDescription className="text-sm">These are the speakers detected in the audio.</DialogDescription>
+                    <DialogTitle>{t("speakerEditor.title")}</DialogTitle>
+                    <DialogDescription className="text-sm">{t("speakerEditor.description")}</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[calc(100vh-15rem)]">
                     <div className="space-y-4">
@@ -127,7 +129,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent side="bottom" align="center" className="text-xs">
-                                                    Jump to sample in timeline
+                                                    {t("speakerEditor.jumpToSample")}
                                                 </TooltipContent>
                                             </Tooltip>
                                             <span className="text-xs text-muted-foreground bg-muted rounded-md px-3 h-8 flex items-center">{speaker.track ? timelineInfo.outputTracks[Number(speaker.track)]?.label : timelineInfo.outputTracks[Number(settings.selectedOutputTrack)]?.label}</span>
@@ -140,25 +142,26 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {/* Speaker Name */}
                                             <div className="space-y-2">
-                                                <Label htmlFor={`name-${index}`}>Name</Label>
+                                                <Label htmlFor={`name-${index}`}>{t("speakerEditor.name")}</Label>
                                                 <Input
                                                     id={`name-${index}`}
                                                     value={speaker.name}
                                                     onChange={(e) => updateSpeaker(index, { ...speaker, name: e.target.value })}
-                                                    placeholder="Enter speaker name"
+                                                    placeholder={t("speakerEditor.namePlaceholder")}
                                                     className="w-full"
                                                 />
                                             </div>
 
                                             {/* Track Selection */}
                                             <div className="space-y-2">
-                                                <Label>Output Track</Label>
+                                                <Label>{t("speakerEditor.outputTrack")}</Label>
                                                 <Select
                                                     value={speaker.track || settings.selectedOutputTrack}
                                                     onValueChange={(value) => updateSpeaker(index, { ...speaker, track: value })}
                                                 >
                                                     <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select a track" />
+                                                        <SelectValue placeholder={t("speakerEditor.selectTrack")}
+                                                        />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {timelineInfo.outputTracks.map((track) => (
@@ -173,11 +176,11 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
 
                                         {/* Color Settings */}
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-medium">Appearance</Label>
+                                            <Label className="text-sm font-medium">{t("speakerEditor.appearance")}</Label>
                                             <div className="grid grid-cols-3 gap-4">
                                                 {/* Fill Color Popover */}
                                                 <ColorPopover
-                                                    label="Fill"
+                                                    label={t("speakerEditor.colors.fill")}
                                                     enabled={speaker.fill.enabled}
                                                     onEnabledChange={(enabled: boolean) =>
                                                         updateSpeaker(index, {
@@ -196,7 +199,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
 
                                                 {/* Outline Color Popover */}
                                                 <ColorPopover
-                                                    label="Outline"
+                                                    label={t("speakerEditor.colors.outline")}
                                                     enabled={speaker.outline.enabled}
                                                     onEnabledChange={(enabled: boolean) =>
                                                         updateSpeaker(index, {
@@ -215,7 +218,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
 
                                                 {/* Border Color Popover */}
                                                 <ColorPopover
-                                                    label="Border"
+                                                    label={t("speakerEditor.colors.border")}
                                                     enabled={speaker.border.enabled}
                                                     onEnabledChange={(enabled: boolean) =>
                                                         updateSpeaker(index, {
@@ -243,12 +246,12 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                             {loadingPreview[index] ? (
                                                 <>
                                                     <LoaderCircle className="h-4 w-4 animate-spin" />
-                                                    Generating Preview...
+                                                    {t("speakerEditor.generatingPreview")}
                                                 </>
                                             ) : (
                                                 <>
                                                     <Palette className="h-4 w-4" />
-                                                    Generate Preview
+                                                    {t("speakerEditor.generatePreview")}
                                                 </>
                                             )}
                                         </Button>
@@ -257,7 +260,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                                                 <div className="relative">
                                                     <img
                                                         src={previews[index]}
-                                                        alt="Subtitle Preview"
+                                                        alt={t("speakerEditor.subtitlePreview")}
                                                         className="max-w-full rounded-md shadow-none transition-all duration-500 ease-in-out transform -translate-y-4 opacity-0 border-2"
                                                         onLoad={e => {
                                                             e.currentTarget.classList.remove('-translate-y-4', 'opacity-0');
@@ -283,22 +286,22 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                     <DialogClose asChild>
                         {afterTranscription ? (
                             <Button variant="outline" className="w-full sm:w-auto" onClick={() => updateSpeakers(speakers)}>
-                                Continue Editing
+                                {t("speakerEditor.continueEditing")}
                             </Button>
                         ) : (
                             <Button variant="outline" className="w-full sm:w-auto">
-                                Cancel
+                                {t("common.cancel")}
                             </Button>
                         )}
                     </DialogClose>
                     <DialogClose asChild>
                         {afterTranscription ? (
                             <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers); pushToTimeline('', '', '') }}>
-                                Save & Add to Timeline
+                                {t("speakerEditor.saveAndAddToTimeline")}
                             </Button>
                         ) : (
                             <Button className="w-full sm:w-auto" onClick={() => { updateSpeakers(localSpeakers) }}>
-                                Save Changes
+                                {t("common.saveChanges")}
                             </Button>
                         )}
                     </DialogClose>

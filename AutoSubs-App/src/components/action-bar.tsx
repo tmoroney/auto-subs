@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { languages, translateLanguages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "react-i18next"
 
 interface ActionBarProps {
     onStart?: () => void
@@ -43,6 +44,7 @@ export function ActionBar({
     onCancel,
     isProcessing,
 }: ActionBarProps) {
+    const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
     const { timelineInfo, refresh } = useResolve()
     const [openLanguage, setOpenLanguage] = React.useState(false)
@@ -120,7 +122,7 @@ export function ActionBar({
                                     aria-expanded={openTextFormattingPopover}
                                 >
                                     <Type />
-                                    Format
+                                    {t("actionBar.format.button")}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-80 p-0" align="start">
@@ -128,8 +130,8 @@ export function ActionBar({
                                     {/* Remove Punctuation */}
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <Label className="text-sm font-medium">Remove Punctuation</Label>
-                                            <p className="text-xs text-muted-foreground">Removes commas, periods, etc.</p>
+                                            <Label className="text-sm font-medium">{t("actionBar.format.removePunctuationTitle")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.removePunctuationDescription")}</p>
                                         </div>
                                         <Switch
                                             checked={settings.removePunctuation}
@@ -140,8 +142,8 @@ export function ActionBar({
                                     {/* Text Case */}
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <Label className="text-sm font-medium">Text Case</Label>
-                                            <p className="text-xs text-muted-foreground">Modify subtitle case</p>
+                                            <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
                                         </div>
                                         <div className="w-36">
                                             <Select
@@ -152,10 +154,10 @@ export function ActionBar({
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent align="end">
-                                                    <SelectItem value="none">Normal</SelectItem>
-                                                    <SelectItem value="lowercase">lowercase</SelectItem>
-                                                    <SelectItem value="uppercase">UPPERCASE</SelectItem>
-                                                    <SelectItem value="titlecase">Title Case</SelectItem>
+                                                    <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
+                                                    <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
+                                                    <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
+                                                    <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -164,8 +166,8 @@ export function ActionBar({
                                     {/* Character Limit */}
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <Label className="text-sm font-medium">Character Limit</Label>
-                                            <p className="text-xs text-muted-foreground">Per line (0 = auto)</p>
+                                            <Label className="text-sm font-medium">{t("actionBar.format.characterLimitTitle")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.characterLimitDescription")}</p>
                                         </div>
                                         <Input
                                             type="number"
@@ -179,8 +181,8 @@ export function ActionBar({
                                     {/* Line Count */}
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <Label className="text-sm font-medium">Line Count</Label>
-                                            <p className="text-xs text-muted-foreground">Max lines per subtitle</p>
+                                            <Label className="text-sm font-medium">{t("actionBar.format.lineCountTitle")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.lineCountDescription")}</p>
                                         </div>
                                         <Input
                                             type="number"
@@ -197,9 +199,10 @@ export function ActionBar({
                                     <div className="p-4 pt-2 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-0.5">
-                                                <Label className="text-sm font-medium">Censor Words</Label>
+                                                <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {(settings.censoredWords || []).length} words {!settings.enableCensor && "· Off"}
+                                                    {t("actionBar.censor.wordCount", { count: (settings.censoredWords || []).length })}
+                                                    {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -215,9 +218,9 @@ export function ActionBar({
                                                     </DialogTrigger>
                                                     <DialogContent className="sm:max-w-[520px]">
                                                         <DialogHeader>
-                                                            <DialogTitle>Censor Sensitive Words</DialogTitle>
+                                                            <DialogTitle>{t("actionBar.censor.dialogTitle")}</DialogTitle>
                                                             <DialogDescription>
-                                                                Add words to be censored in the subtitles.
+                                                                {t("actionBar.censor.dialogDescription")}
                                                             </DialogDescription>
                                                         </DialogHeader>
 
@@ -234,7 +237,7 @@ export function ActionBar({
                                                                 <Input
                                                                     value={newCensoredWord}
                                                                     onChange={(e) => setNewCensoredWord(e.target.value)}
-                                                                    placeholder="Add word to censor"
+                                                                    placeholder={t("actionBar.censor.inputPlaceholder")}
                                                                     className="flex-1 h-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                                                                 />
                                                                 <Button
@@ -242,7 +245,7 @@ export function ActionBar({
                                                                     size="sm"
                                                                     disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
                                                                 >
-                                                                    Add
+                                                                    {t("common.add")}
                                                                 </Button>
                                                             </form>
 
@@ -250,7 +253,7 @@ export function ActionBar({
                                                                 <ScrollArea className="max-h-[220px] rounded-lg border bg-muted/20 p-3">
                                                                     {(settings.censoredWords || []).length === 0 ? (
                                                                         <div className="text-sm text-muted-foreground text-center py-6">
-                                                                            No censored words yet.
+                                                                            {t("actionBar.censor.empty")}
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex flex-wrap gap-2">
@@ -275,7 +278,7 @@ export function ActionBar({
                                                         </div>
                                                         <DialogFooter>
                                                             <DialogClose asChild>
-                                                                <Button variant="outline" onClick={() => setNewCensoredWord("")}>Done</Button>
+                                                                <Button variant="outline" onClick={() => setNewCensoredWord("")}>{t("common.done")}</Button>
                                                             </DialogClose>
                                                         </DialogFooter>
                                                     </DialogContent>
@@ -301,7 +304,7 @@ export function ActionBar({
                                     aria-expanded={openSpeakerPopover}
                                 >
                                     <Speech />
-                                    {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Off"}
+                                    {settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.common.off")}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-72 p-0" side="top">
@@ -309,9 +312,9 @@ export function ActionBar({
                                     {/* Speaker Count Slider */}
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-sm font-medium">Number of Speakers</Label>
+                                            <Label className="text-sm font-medium">{t("actionBar.speakers.countTitle")}</Label>
                                             <span className={`text-sm font-medium ${settings.enableDiarize ? "text-primary" : "text-red-500"}`}>
-                                                {settings.enableDiarize ? (settings.maxSpeakers === null ? "Auto" : settings.maxSpeakers) : "Disabled"}
+                                                {settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.speakers.disabled")}
                                             </span>
                                         </div>
                                         <Slider
@@ -324,7 +327,7 @@ export function ActionBar({
                                             disabled={!settings.enableDiarize}
                                         />
                                         <div className="flex justify-between text-xs text-muted-foreground">
-                                            <span>Auto</span>
+                                            <span>{t("actionBar.common.auto")}</span>
                                             <span>10</span>
                                         </div>
                                     </div>
@@ -333,8 +336,8 @@ export function ActionBar({
                                     <div className="p-4 pt-2 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-0.5">
-                                                <Label className="text-sm font-medium">Speaker Labels</Label>
-                                                <p className="text-xs text-muted-foreground">Identify different speakers</p>
+                                                <Label className="text-sm font-medium">{t("actionBar.speakers.title")}</Label>
+                                                <p className="text-xs text-muted-foreground">{t("actionBar.speakers.description")}</p>
                                             </div>
                                             <Switch
                                                 checked={settings.enableDiarize}
@@ -383,13 +386,13 @@ export function ActionBar({
                                     <AudioLines className="h-7 w-7 text-muted-foreground" />
                                     <div className="text-sm font-medium">
                                         {settings.selectedInputTracks.length === 0
-                                            ? "Select tracks..."
+                                            ? t("actionBar.tracks.selectTracks")
                                             : settings.selectedInputTracks.length === 1
-                                                ? `Track ${settings.selectedInputTracks[0]}`
-                                                : `${settings.selectedInputTracks.length} tracks selected`
+                                                ? t("actionBar.tracks.trackN", { n: settings.selectedInputTracks[0] })
+                                                : t("actionBar.tracks.countSelected", { count: settings.selectedInputTracks.length })
                                         }
                                     </div>
-                                    <span className="text-xs text-muted-foreground">Click to select audio tracks</span>
+                                    <span className="text-xs text-muted-foreground">{t("actionBar.tracks.clickToSelect")}</span>
                                 </div>
                             </Button>
                         </PopoverTrigger>
@@ -400,9 +403,11 @@ export function ActionBar({
                                         <span className="text-sm text-muted-foreground">
                                             {settings.selectedInputTracks.length > 0
                                                 ? (settings.selectedInputTracks.length === 1
-                                                    ? `${inputTracks.find(track => track.value === settings.selectedInputTracks[0])?.label || `Track ${settings.selectedInputTracks[0]}`} selected`
-                                                    : `${settings.selectedInputTracks.length} tracks selected`)
-                                                : 'No tracks selected'}
+                                                    ? t("actionBar.tracks.selectedLabel", {
+                                                        label: inputTracks.find(track => track.value === settings.selectedInputTracks[0])?.label || t("actionBar.tracks.trackN", { n: settings.selectedInputTracks[0] })
+                                                      })
+                                                    : t("actionBar.tracks.countSelected", { count: settings.selectedInputTracks.length }))
+                                                : t("actionBar.tracks.noneSelected")}
                                         </span>
                                         <Button
                                             size="sm"
@@ -416,14 +421,14 @@ export function ActionBar({
                                                 }
                                             }}
                                         >
-                                            {settings.selectedInputTracks.length === inputTracks.length ? "Clear All" : "Select All"}
+                                            {settings.selectedInputTracks.length === inputTracks.length ? t("actionBar.tracks.clearAll") : t("actionBar.tracks.selectAll")}
                                         </Button>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="px-4 py-3 bg-red-50/30 dark:bg-red-900/10 border-b">
                                     <p className="text-sm text-center text-muted-foreground">
-                                        No audio tracks found.
+                                        {t("actionBar.tracks.noneFound")}
                                     </p>
                                 </div>
                             )}
@@ -479,7 +484,7 @@ export function ActionBar({
                             ) : (
                                 <div className="p-6 flex items-center justify-center">
                                     <p className="text-sm text-center text-muted-foreground">
-                                        Create an audio track in your current timeline to start transcribing.
+                                        {t("actionBar.tracks.createTrack")}
                                     </p>
                                 </div>
                             )}
@@ -491,7 +496,7 @@ export function ActionBar({
                         className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted outline-none"
                         tabIndex={0}
                         role="button"
-                        aria-label="Drop audio file here or click to select"
+                        aria-label={t("actionBar.fileDrop.aria")}
                         onClick={handleFileSelect}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleFileSelect(); }}
                     >
@@ -505,8 +510,8 @@ export function ActionBar({
                         ) : (
                             <div className="flex flex-col items-center gap-1">
                                 <Upload className="h-7 w-7 mb-1 text-muted-foreground" />
-                                <span className="text-sm font-medium text-muted-foreground">Drop file here or click to select</span>
-                                <span className="text-xs text-muted-foreground mt-1">Supports most media formats</span>
+                                <span className="text-sm font-medium text-muted-foreground">{t("actionBar.fileDrop.prompt")}</span>
+                                <span className="text-xs text-muted-foreground mt-1">{t("actionBar.fileDrop.supports")}</span>
                             </div>
                         )}
                     </div>
@@ -527,8 +532,8 @@ export function ActionBar({
                                 <Globe />
                                 <span>
                                     {settings.translate 
-                                        ? `${settings.language === 'auto' ? 'Auto' : languages.find(l => l.value === settings.language)?.label} → ${translateLanguages.find(l => l.value === settings.targetLanguage)?.label}`
-                                        : settings.language === 'auto' ? 'Auto' : languages.find(l => l.value === settings.language)?.label
+                                        ? `${settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label} → ${translateLanguages.find(l => l.value === settings.targetLanguage)?.label}`
+                                        : settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label
                                     }
                                 </span>
                             </Button>
@@ -538,11 +543,11 @@ export function ActionBar({
                                 <TabsList className="w-full h-auto rounded-sm rounded-b-none py-1.5">
                                     <TabsTrigger value="source" className="flex-1 gap-1.5">
                                         <Globe className="h-4 w-4" />
-                                        Source
+                                        {t("actionBar.language.source")}
                                     </TabsTrigger>
                                     <TabsTrigger value="translate" className="flex-1 gap-1.5">
                                         <Languages className="h-4 w-4" />
-                                        Translate
+                                        {t("actionBar.language.translate")}
                                         {settings.translate && (
                                             <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
                                         )}
@@ -551,9 +556,9 @@ export function ActionBar({
 
                                 <TabsContent value="source" className="mt-0">
                                     <Command className="max-h-[250px]">
-                                        <CommandInput placeholder="Search languages..." />
+                                        <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                                         <CommandList>
-                                            <CommandEmpty>No language found.</CommandEmpty>
+                                            <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                                             <CommandGroup>
                                                 {languages
                                                     .slice()
@@ -584,18 +589,18 @@ export function ActionBar({
                                 <TabsContent value="translate" className="mt-0">
                                     <Command className="max-h-[250px] relative">
                                         <div className="relative">
-                                            <CommandInput placeholder="Search target languages..." className="border-0 focus-visible:ring-0 px-0 pr-12" />
+                                            <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                                             <Button
                                                 size="sm"
                                                 variant={settings.translate ? "default" : "outline"}
                                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
                                                 onClick={() => updateSetting("translate", !settings.translate)}
                                             >
-                                                {settings.translate ? "On" : "Off"}
+                                                {settings.translate ? t("actionBar.common.on") : t("actionBar.common.off")}
                                             </Button>
                                         </div>
                                         <CommandList>
-                                            <CommandEmpty>No language found.</CommandEmpty>
+                                            <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                                             <CommandGroup>
                                                 {translateLanguages.map((language) => (
                                                     <CommandItem
@@ -635,7 +640,7 @@ export function ActionBar({
                         onClick={() => updateSetting("isStandaloneMode", !settings.isStandaloneMode)}
                     >
                         <AudioLines />
-                        {settings.isStandaloneMode ? "File Input" : "Timeline"}
+                        {settings.isStandaloneMode ? t("actionBar.mode.fileInput") : t("actionBar.mode.timeline")}
                     </Button>
                 </div>
             </div>

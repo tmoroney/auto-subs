@@ -11,11 +11,13 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ModelStatusIndicator } from "@/components/ui/model-status-indicator"
+import { useTranslation } from "react-i18next"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
   models: any[]
   onDeleteModel: (modelValue: string) => void
 }) {
+  const { t } = useTranslation()
   const downloadedModels = models.filter(model => model.isDownloaded)
 
   // Helper function to check if model is English-only
@@ -42,16 +44,16 @@ function ManageModelsDialog({ models, onDeleteModel }: {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Manage Downloaded Models</DialogTitle>
+          <DialogTitle>{t("models.manage.title")}</DialogTitle>
           <DialogDescription>
-            Delete cached models to free up disk space.
+            {t("models.manage.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
           {downloadedModels.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              No downloaded models found
+              {t("models.manage.empty")}
             </p>
           ) : (
             downloadedModels.map((model) => (
@@ -59,12 +61,12 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                 <div className="flex items-center gap-3">
                   <img
                     src={model.image}
-                    alt={model.label}
+                    alt={t(model.label)}
                     className="w-10 h-10 object-contain rounded"
                   />
                   <div>
                     <div className="flex items-center">
-                      <p className="font-medium">{model.label}</p>
+                      <p className="font-medium">{t(model.label)}</p>
                       {getLanguageBadge(model.value)}
                     </div>
                     <p className="text-xs text-muted-foreground">{model.size}</p>
@@ -76,7 +78,7 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 rounded-lg"
-                      title="Delete Model"
+                      title={t("models.manage.deleteModel")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -84,14 +86,14 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                   <DialogContent className="sm:w-[70vw] w-[90vw] p-4 flex flex-col gap-6" onOpenAutoFocus={e => e.preventDefault()}>
                     <DialogTitle className="flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-red-500" />
-                      <span className="font-semibold text-red-700 dark:text-red-400">Are you sure?</span>
+                      <span className="font-semibold text-red-700 dark:text-red-400">{t("models.manage.confirmTitle")}</span>
                     </DialogTitle>
                     <span className="text-sm text-muted-foreground">
-                      This will delete the <span className="font-bold">{model.label}</span> model from your device. <br /><br /> If you use this model in future it will need to be downloaded again.
+                      {t("models.manage.confirmBody", { model: t(model.label) })}
                     </span>
                     <div className="flex justify-end gap-2">
                       <DialogClose asChild>
-                        <Button variant="ghost" size="sm">Cancel</Button>
+                        <Button variant="ghost" size="sm">{t("common.cancel")}</Button>
                       </DialogClose>
                       <Button
                         variant="destructive"
@@ -100,7 +102,7 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                           onDeleteModel(model.value)
                         }}
                       >
-                        Delete
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </DialogContent>
@@ -139,6 +141,8 @@ export function WorkspaceHeader({
   isSmallScreen: boolean
   onDeleteModel: (modelValue: string) => void
 }) {
+  const { t } = useTranslation()
+
   // Helper functions for model categorization
   const isEnglishOnlyModel = (modelValue: string) => modelValue.includes('.en')
 
@@ -183,11 +187,11 @@ export function WorkspaceHeader({
             <div className="flex items-center gap-2">
               <img
                 src={modelsState[selectedModelIndex].image}
-                alt={modelsState[selectedModelIndex].label + " icon"}
+                alt={t(modelsState[selectedModelIndex].label) + " icon"}
                 className="w-6 h-6 object-contain rounded"
               />
               <div className="flex items-center gap-1.5">
-                <span className="truncate">{modelsState[selectedModelIndex].label}</span>
+                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
                 {getLanguageBadge(modelsState[selectedModelIndex].value)}
               </div>
               {modelsState[selectedModelIndex].isDownloaded ? (
@@ -204,14 +208,14 @@ export function WorkspaceHeader({
             <div className="flex items-center justify-between px-1 py-1.5">
               <div className="flex items-center gap-1.5">
                 <Label htmlFor="english-only-switch" className="text-xs font-medium cursor-pointer pl-1">
-                  English-Only Models
+                  {t("models.englishOnly.title")}
                 </Label>
                 <HoverCard>
                   <HoverCardTrigger asChild>
                     <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </HoverCardTrigger>
                   <HoverCardContent className="w-56 p-3 text-xs">
-                    Show specialised English models with higher accuracy for English transcription.
+                    {t("models.englishOnly.description")}
                   </HoverCardContent>
                 </HoverCard>
               </div>
@@ -240,14 +244,14 @@ export function WorkspaceHeader({
                           }}
                         >
                           <div className="flex items-center gap-2">
-                            <img src={model.image} alt={model.label + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />
+                            <img src={model.image} alt={t(model.label) + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-medium text-xs">{model.label}</span>
+                                <span className="font-medium text-xs">{t(model.label)}</span>
                                 {getLanguageBadge(model.value)}
                               </div>
                               <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                {model.description}
+                                {t(model.description)}
                               </p>
                             </div>
                           </div>

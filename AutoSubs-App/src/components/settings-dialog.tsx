@@ -1,25 +1,36 @@
+import React from "react";
 import { Heart, Github, Settings, Gauge, Clock } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { initI18n, normalizeUiLanguage } from "@/i18n";
 
 export function SettingsDialog() {
   const { settings, updateSetting, resetSettings } = useSettings();
+  const { t } = useTranslation();
 
-  
-  
   const handleResetSettings = async () => {
-    const shouldReset = await ask("Are you sure you want to reset all settings to default? This cannot be undone.", {
-      title: "Reset Settings",
+    const shouldReset = await ask(t("settings.reset.confirm"), {
+      title: t("settings.reset.confirmTitle"),
       kind: "warning"
     });
     
@@ -42,9 +53,9 @@ export function SettingsDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>{t("settings.title")}</DialogTitle>
           <DialogDescription>
-            Configure your AutoSubs preferences and options.
+            {t("settings.description")}
           </DialogDescription>
         </DialogHeader>
         
@@ -53,7 +64,7 @@ export function SettingsDialog() {
           
           {/* Transcription Settings */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Transcription</h4>
+            <h4 className="text-sm font-medium">{t("settings.sections.transcription")}</h4>
             
             {/* GPU Card */}
             <div className="border rounded-lg overflow-hidden">
@@ -64,9 +75,9 @@ export function SettingsDialog() {
                       <Gauge className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">GPU Acceleration</p>
+                      <p className="text-sm font-medium">{t("settings.gpu.title")}</p>
                       <p className="text-xs text-muted-foreground">
-                        Utilise GPU for faster transcription
+                        {t("settings.gpu.description")}
                       </p>
                     </div>
                   </div>
@@ -87,9 +98,9 @@ export function SettingsDialog() {
                       <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Dynamic Time Warping</p>
+                      <p className="text-sm font-medium">{t("settings.dtw.title")}</p>
                       <p className="text-xs text-muted-foreground">
-                        Improve word-level timing accuracy
+                        {t("settings.dtw.description")}
                       </p>
                     </div>
                   </div>
@@ -102,9 +113,48 @@ export function SettingsDialog() {
             </div>
           </div>
 
+          {/* Appearance */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">{t("settings.sections.appearance")}</h4>
+
+            <div className="border rounded-lg overflow-hidden">
+              <div className="p-3.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{t("settings.uiLanguage.title")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.uiLanguage.description")}
+                    </p>
+                  </div>
+
+                  <div className="w-[180px]">
+                    <Select
+                      value={normalizeUiLanguage(settings.uiLanguage)}
+                      onValueChange={(value) => {
+                        const normalized = normalizeUiLanguage(value);
+                        updateSetting("uiLanguage", normalized);
+                        initI18n(normalized);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="es">Español</SelectItem>
+                        <SelectItem value="fr">Français</SelectItem>
+                        <SelectItem value="de">Deutsch</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Support Section */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Support</h4>
+            <h4 className="text-sm font-medium">{t("settings.sections.support")}</h4>
             
             {/* Support AutoSubs Card */}
             <a
@@ -119,9 +169,9 @@ export function SettingsDialog() {
                     <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400 group-hover:fill-pink-500 fill-background transition-colors" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium group-hover:text-foreground">Support AutoSubs</p>
+                    <p className="text-sm font-medium group-hover:text-foreground">{t("settings.support.supportAutoSubs")}</p>
                     <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
-                      Help support development
+                      {t("settings.support.helpSupportDevelopment")}
                     </p>
                   </div>
                 </div>
@@ -166,27 +216,27 @@ export function SettingsDialog() {
                     <Github className="h-5 w-5 text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium group-hover:text-foreground">View Source Code</p>
+                    <p className="text-sm font-medium group-hover:text-foreground">{t("settings.support.viewSource")}</p>
                     <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
-                      Check out the GitHub repository
+                      {t("settings.support.viewSourceDescription")}
                     </p>
                   </div>
                 </div>
               </div>
             </a>
           </div>
-
-          {/* Reset Section */}
-          <div className="space-y-3">
-            <Button
+        </div>
+        <DialogFooter>
+        <DialogClose asChild>
+          <Button
               variant="destructive"
               onClick={handleResetSettings}
               className="w-full"
             >
-              Reset All Settings to Default
+              {t("settings.reset.button")}
             </Button>
-          </div>
-        </div>
+        </DialogClose>
+      </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,7 +1,49 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Settings } from '@/types/interfaces';
-import { DEFAULT_SETTINGS } from '@/contexts/GlobalContext';
+import { initI18n } from '@/i18n';
+
+export const DEFAULT_SETTINGS: Settings = {
+  // Mode
+  isStandaloneMode: false,
+
+  // UI settings
+  uiLanguage: "en",
+  uiLanguagePromptCompleted: false,
+
+  // Survey notification settings
+  timesDismissedSurvey: 0,
+  lastSurveyDate: new Date().toISOString(),
+
+  // Processing settings
+  model: 0,
+  language: "auto",
+  translate: false,
+  targetLanguage: "en",
+  enableDTW: true,
+  enableGpu: true, // gpu enabled by default on mac and linux, disabled by default on windows
+  enableDiarize: false,
+  maxSpeakers: null,
+
+  // Text settings
+  maxCharsPerLine: 0,
+  maxLinesPerSubtitle: 1,
+  splitOnPunctuation: true,
+  textCase: "none",
+  removePunctuation: false,
+  enableCensor: false,
+  censoredWords: [],
+
+  // Resolve settings
+  selectedInputTracks: ["1"],
+  selectedOutputTrack: "1",
+  selectedTemplate: { value: "Default Template", label: "Default Template" },
+
+  // Animation settings
+  animationType: "none",
+  highlightType: "none",
+  highlightColor: "#000000",
+};
 
 interface SettingsContextType {
   settings: Settings;
@@ -35,6 +77,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initializeStore();
   }, []);
+
+  useEffect(() => {
+    initI18n(settings.uiLanguage);
+  }, [settings.uiLanguage]);
 
   // Whenever settings change, persist them
   useEffect(() => {

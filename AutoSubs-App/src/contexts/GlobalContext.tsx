@@ -8,6 +8,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { downloadDir } from '@tauri-apps/api/path'
 import { translateLanguages } from '../lib/languages';
+import { DEFAULT_SETTINGS } from '@/contexts/SettingsContext';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
@@ -92,44 +93,6 @@ export const GlobalContext = createContext<GlobalContextType | null>(null);
 interface GlobalProviderProps {
   children: ReactNode;
 }
-
-export const DEFAULT_SETTINGS: Settings = {
-  // Mode
-  isStandaloneMode: false,
-
-  // Survey notification settings
-  timesDismissedSurvey: 0,
-  lastSurveyDate: new Date().toISOString(),
-
-  // Processing settings
-  model: 0,
-  language: "auto",
-  translate: false,
-  targetLanguage: "en",
-  enableDTW: true,
-  enableGpu: true, // gpu enabled by default on mac and linux, disabled by default on windows
-  enableDiarize: false,
-  maxSpeakers: null,
-
-  // Text settings
-  maxCharsPerLine: 0,
-  maxLinesPerSubtitle: 1,
-  splitOnPunctuation: true,
-  textCase: "none",
-  removePunctuation: false,
-  enableCensor: false,
-  censoredWords: [],
-
-  // Resolve settings
-  selectedInputTracks: ["1"],
-  selectedOutputTrack: "1",
-  selectedTemplate: { value: "Default Template", label: "Default Template" },
-
-  // Animation settings
-  animationType: "none",
-  highlightType: "none",
-  highlightColor: "#000000",
-};
 
 export function GlobalProvider({ children }: GlobalProviderProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);

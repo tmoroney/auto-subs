@@ -7,6 +7,8 @@ import { TranscriptionWorkspace } from "@/pages/transcription-workspace"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
+import { LanguagePickerModal } from "@/components/language-picker-modal"
+import { useTranslation } from "react-i18next"
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -14,11 +16,11 @@ import {
 } from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/titlebar"
-import { GlobalProvider } from "@/contexts/GlobalProvider"
 import { useResolve } from "@/contexts/ResolveContext"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
+  const { t } = useTranslation()
 
   const handleToggle = () => {
     setTheme(theme === "dark" ? "light" : "dark")
@@ -28,7 +30,7 @@ export function ThemeToggle() {
     <Button variant="ghost" size="icon" onClick={handleToggle} className="rounded-full">
       <Sun className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 h-5 w-5" />
       <Moon className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 h-5 w-5" />
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">{t("theme.toggle")}</span>
     </Button>
   )
 }
@@ -40,6 +42,7 @@ function AppContent() {
 
   return (
     <TooltipProvider>
+      <LanguagePickerModal />
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Use actual timeline info from Resolve context */}
         <Titlebar timelineInfo={timelineInfo} />
@@ -81,9 +84,7 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <GlobalProvider>
-        <AppContent />
-      </GlobalProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

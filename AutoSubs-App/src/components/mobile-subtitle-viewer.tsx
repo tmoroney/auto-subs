@@ -9,6 +9,7 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
 import { AddToTimelineDialog } from "@/components/add-to-timeline-dialog"
+import { useTranslation } from "react-i18next"
 
 interface MobileSubtitleViewerProps {
   isOpen: boolean
@@ -22,6 +23,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
+  const { t } = useTranslation()
 
   const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
     try {
@@ -58,13 +60,13 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
     <div className="fixed inset-0 z-50 bg-sidebar flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-2 pl-3 border-b bg-sidebar shrink-0">
-        <h1 className="text-xl font-medium">Subtitles</h1>
+        <h1 className="text-xl font-medium">{t("subtitles.title")}</h1>
         <Button
           onClick={onClose}
           variant="outline"
           size="icon"
           className="h-8"
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           <X className="h-5 w-5" />
         </Button>
@@ -80,25 +82,25 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
           />
           <Button variant="outline" className="w-full" onClick={() => setShowSpeakerEditor(true)}>
             <Users className="w-4 h-4 mr-2" />
-            Edit Speakers
+            {t("subtitles.editSpeakers")}
           </Button>
           <SpeakerEditor afterTranscription={false} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
         </div>
         <div className="relative">
           <Input
             ref={searchInputRef}
-            placeholder="Search subtitles..."
+            placeholder={t("subtitles.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
-            aria-label="Search subtitles"
+            aria-label={t("subtitles.searchAria")}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              aria-label={t("subtitles.clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -115,11 +117,11 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
-            <p className="text-lg font-medium mb-2">No subtitles found</p>
+            <p className="text-lg font-medium mb-2">{t("subtitles.empty.noSubtitlesFound")}</p>
             <p className="text-sm">
               {searchQuery
-                ? 'Try a different search term'
-                : 'No subtitles available. Try importing some first.'}
+                ? t("subtitles.empty.tryDifferentSearch")
+                : t("subtitles.empty.noSubtitlesAvailable")}
             </p>
           </div>
         )}
@@ -139,7 +141,7 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
             className="w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
           >
             <Layers2 className="w-4 h-4 mr-2" />
-            Add to Timeline
+            {t("subtitles.addToTimeline")}
           </Button>
         </AddToTimelineDialog>
       </div>

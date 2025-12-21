@@ -2,6 +2,7 @@ import * as React from "react"
 import { Heart } from "lucide-react"
 import { ProcessingStepItem } from "@/components/processing-step-item"
 import { Settings, TimelineInfo } from "@/types/interfaces"
+import { useTranslation } from "react-i18next"
 
 export function WorkspaceBody({
   processingSteps,
@@ -22,6 +23,8 @@ export function WorkspaceBody({
   settings: Settings
   timelineInfo: TimelineInfo
 }) {
+  const { t } = useTranslation()
+
   return (
     <>
       {processingSteps.length > 0 ? (
@@ -53,7 +56,7 @@ export function WorkspaceBody({
         <div className="flex flex-col items-center justify-center h-full space-y-3 pb-14 relative z-10">
           <div className="bg-background/10 backdrop-blur-sm rounded-md px-3 py-2">
             <p className="text-base font-medium text-foreground animate-pulse">
-              Loading model into memory...
+              {t("workspace.empty.loadingModel")}
             </p>
           </div>
         </div>
@@ -66,10 +69,10 @@ export function WorkspaceBody({
           />
           <div className="text-center space-y-3">
             <h2 className="text-2xl font-semibold text-foreground">
-              Welcome to AutoSubs
+              {t("workspace.empty.welcomeTitle")}
             </h2>
             <p className="text-muted-foreground max-w-72">
-              Select an audio source to start generating subtitles.
+              {t("workspace.empty.welcomeDescription")}
             </p>
 
             {/* Support Button */}
@@ -80,7 +83,7 @@ export function WorkspaceBody({
               className="group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-full border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
             >
               <Heart className="h-3 w-3 group-hover:fill-pink-500 fill-background transition-colors" />
-              Support AutoSubs
+              {t("workspace.empty.support")}
 
               {/* Bursting hearts animation */}
               <div className="absolute inset-0 pointer-events-none">

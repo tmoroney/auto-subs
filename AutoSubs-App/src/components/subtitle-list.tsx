@@ -4,6 +4,7 @@ import { useTranscript } from "@/contexts/TranscriptContext"
 import { Subtitle, type Word } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ArrowRight, Pencil, XCircle as XCircleIcon } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import {
     Dialog,
     DialogContent,
@@ -32,6 +33,7 @@ const Word = ({
     onStartEdit?: () => void;
     onEndEdit?: () => void;
 }) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(word);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ const Word = ({
             <button
                 onClick={onDelete}
                 className="absolute -top-2 -right-2 w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-all duration-150 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
-                title="Delete word"
+                title={t("subtitleEditor.deleteWord")}
             >
                 <XCircleIcon className="w-full h-full" />
             </button>
@@ -116,6 +118,7 @@ const SubtitleList = ({
     isLoading = false,
     error = null
 }: SubtitleListProps) => {
+    const { t } = useTranslation();
     const { subtitles, updateSubtitles, speakers } = useTranscript();
     const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
     const [editingWords, setEditingWords] = useState<Word[]>([]);
@@ -314,7 +317,7 @@ const SubtitleList = ({
     };
 
     if (isLoading) {
-        return <div className="p-4 text-center text-muted-foreground">Loading subtitles...</div>;
+        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.loading")}</div>;
     }
 
     if (error) {
@@ -322,7 +325,7 @@ const SubtitleList = ({
     }
 
     if (!filteredSubtitles || filteredSubtitles.length === 0) {
-        return <div className="p-4 text-center text-muted-foreground">No subtitles available</div>;
+        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.empty.noSubtitlesAvailableShort")}</div>;
     }
 
     return (
@@ -360,7 +363,7 @@ const SubtitleList = ({
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent side="right">
-                                                <p className="text-xs">Jump to point on timeline</p>
+                                                <p className="text-xs">{t("subtitles.jumpToTimeline")}</p>
                                             </TooltipContent>
                                         </Tooltip>
                                         {subtitle.speaker_id && speakers.length > 0 ? (
@@ -373,7 +376,7 @@ const SubtitleList = ({
                                                         setShowSpeakerEditor(true);
                                                     }}
                                                 >
-                                                    {speakers[Number(subtitle.speaker_id)]?.name || 'Unknown Speaker'}
+                                                    {speakers[Number(subtitle.speaker_id)]?.name || t("subtitles.unknownSpeaker")}
                                                 </Button>
                                             </>
                                         ) : null}
@@ -400,9 +403,9 @@ const SubtitleList = ({
                                                 </DialogTrigger>
                                                 <DialogContent className="max-h-[90vh] overflow-y-auto">
                                                     <DialogHeader>
-                                                        <DialogTitle>Edit Subtitle</DialogTitle>
+                                                        <DialogTitle>{t("subtitleEditor.title")}</DialogTitle>
                                                         <DialogDescription>
-                                                            Edit the subtitle text by modifying the words below
+                                                            {t("subtitleEditor.description")}
                                                         </DialogDescription>
                                                     </DialogHeader>
                                                     <div className="space-y-4">
@@ -416,7 +419,7 @@ const SubtitleList = ({
                                                                         onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
                                                                         onClick={() => handleMergeLeft(actualIndex)}
                                                                     >
-                                                                        <ArrowLeft className="h-4 w-4 mr-2" /> Merge Left
+                                                                        <ArrowLeft className="h-4 w-4 mr-2" /> {t("subtitleEditor.mergeLeft")}
                                                                     </Button>
                                                                 )}
                                                                 {editingWords.map((word, wordIndex) => (
@@ -458,7 +461,7 @@ const SubtitleList = ({
                                                                         onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
                                                                         onClick={() => handleMergeRight(actualIndex)}
                                                                     >
-                                                                        Merge Right<ArrowRight className="h-4 w-4 ml-2" /> 
+                                                                        {t("subtitleEditor.mergeRight")}<ArrowRight className="h-4 w-4 ml-2" /> 
                                                                     </Button>
                                                                 )}
                                                             </div>
@@ -471,7 +474,7 @@ const SubtitleList = ({
                                                                     size="sm"
                                                                     className="text-sm mt-2 sm:mt-0"
                                                                 >
-                                                                    Cancel
+                                                                    {t("common.cancel")}
                                                                 </Button>
                                                             </DialogClose>
                                                             <DialogClose asChild>
@@ -482,7 +485,7 @@ const SubtitleList = ({
                                                                     className="text-sm"
                                                                     onClick={() => handleSaveChanges(actualIndex)}
                                                                 >
-                                                                    Save Changes
+                                                                    {t("common.saveChanges")}
                                                                 </Button>
                                                             </DialogClose>
                                                         </DialogFooter>
