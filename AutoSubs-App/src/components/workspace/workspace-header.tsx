@@ -1,18 +1,17 @@
 import * as React from "react"
-import { Trash2, AlertTriangle, Check, Download, Info } from "lucide-react"
+import { Trash2, AlertTriangle, Check, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ModelStatusIndicator } from "@/components/ui/model-status-indicator"
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
+import { Model } from "@/types/interfaces"
 
 function ManageModelsDialog({ models, onDeleteModel }: {
   models: any[]
@@ -23,13 +22,13 @@ function ManageModelsDialog({ models, onDeleteModel }: {
   const [confirmOpenForModelValue, setConfirmOpenForModelValue] = React.useState<string | null>(null)
   const downloadedModels = models.filter(model => model.isDownloaded)
 
-  // Helper function to check if model is English-only
-  const isEnglishOnlyModel = (modelValue: string) => modelValue.includes('.en')
-
-  // Helper function to get language badge
-  const getLanguageBadge = (modelValue: string) => {
-    if (isEnglishOnlyModel(modelValue)) {
-      return <Badge variant="secondary" className="text-xs py-0 px-1.5 ml-1.5">EN</Badge>
+  const getLanguageBadge = (model: Model) => {
+    if (model.languageSupport.kind === "single_language") {
+      return (
+        <Badge variant="secondary" className="text-xs py-0 px-1.5 ml-1.5">
+          {model.languageSupport.language.toUpperCase()}
+        </Badge>
+      )
     }
     return null
   }
@@ -70,7 +69,7 @@ function ManageModelsDialog({ models, onDeleteModel }: {
                   <div>
                     <div className="flex items-center">
                       <p className="font-medium">{t(model.label)}</p>
-                      {getLanguageBadge(model.value)}
+                      {getLanguageBadge(model)}
                     </div>
                     <p className="text-xs text-muted-foreground">{model.size}</p>
                   </div>
@@ -136,137 +135,117 @@ function ManageModelsDialog({ models, onDeleteModel }: {
 export function WorkspaceHeader({
   modelsState,
   selectedModelIndex,
+  selectedLanguage,
   onSelectModel,
   downloadingModel,
   downloadProgress,
   openModelSelector,
   onOpenModelSelectorChange,
-  showEnglishOnly,
-  onShowEnglishOnlyChange,
   isSmallScreen,
   onDeleteModel,
 }: {
-  modelsState: any[]
+  modelsState: Model[]
   selectedModelIndex: number
+  selectedLanguage: string
   onSelectModel: (modelIndex: number) => void
   downloadingModel: string | null
   downloadProgress: number
   openModelSelector: boolean
   onOpenModelSelectorChange: (open: boolean) => void
-  showEnglishOnly: boolean
-  onShowEnglishOnlyChange: (value: boolean) => void
   isSmallScreen: boolean
   onDeleteModel: (modelValue: string) => void
 }) {
   const { t } = useTranslation()
 
-  // Helper functions for model categorization
-  const isEnglishOnlyModel = (modelValue: string) => modelValue.includes('.en')
+  const modelSupportsLanguage = React.useCallback((model: Model, lang: string) => {
+    if (lang === "auto") return true
 
-  // Check if a model has an English-only variant (e.g., "tiny" has "tiny.en")
-  const hasEnglishOnlyVariant = (modelValue: string) => {
-    return modelsState.some(m => m.value === `${modelValue}.en`)
-  }
-
-  // Filter models based on English-only switch
-  const getFilteredModels = (models: any[]) => {
-    if (showEnglishOnly) {
-      // Show English-only models + models that don't have an English-only variant (like large models)
-      return models.filter(model =>
-        isEnglishOnlyModel(model.value) || !hasEnglishOnlyVariant(model.value)
-      )
-    } else {
-      // Show all models except English-only ones
-      return models.filter(model => !isEnglishOnlyModel(model.value))
+    switch (model.languageSupport.kind) {
+      case "multilingual":
+        return true
+      case "single_language":
+        return model.languageSupport.language === lang
+      case "restricted":
+        return model.languageSupport.languages.includes(lang)
+      default:
+        return true
     }
-  }
+  }, [])
 
-  const getLanguageBadge = (modelValue: string) => {
-    if (isEnglishOnlyModel(modelValue)) {
-      return <Badge variant="secondary" className="text-xs py-0 px-1.5">EN</Badge>
+  const getLanguageBadge = (model: Model) => {
+    if (model.languageSupport.kind === "single_language") {
+      return (
+        <Badge variant="secondary" className="text-xs py-0 px-1.5">
+          {model.languageSupport.language.toUpperCase()}
+        </Badge>
+      )
     }
     return null
   }
 
+  const filteredModels = React.useMemo(() => {
+    return modelsState.filter((model) => modelSupportsLanguage(model, selectedLanguage))
+  }, [modelsState, modelSupportsLanguage, selectedLanguage])
+
   return (
     <TooltipProvider>
       <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-3 bg-transparent">
-      {/* Model Selector */}
-      <Popover open={openModelSelector} onOpenChange={onOpenModelSelectorChange}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="default"
-            role="combobox"
-            className="p-2"
-            aria-expanded={openModelSelector}
-          >
-            <div className="flex items-center gap-2">
-              <img
-                src={modelsState[selectedModelIndex].image}
-                alt={t(modelsState[selectedModelIndex].label) + " icon"}
-                className="w-6 h-6 object-contain rounded"
-              />
-              <div className="flex items-center gap-1.5">
-                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
-                {getLanguageBadge(modelsState[selectedModelIndex].value)}
+        {/* Model Selector */}
+        <Popover open={openModelSelector} onOpenChange={onOpenModelSelectorChange}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="default"
+              role="combobox"
+              className="p-2"
+              aria-expanded={openModelSelector}
+            >
+              <div className="flex items-center gap-2">
+                <img
+                  src={modelsState[selectedModelIndex].image}
+                  alt={t(modelsState[selectedModelIndex].label) + " icon"}
+                  className="w-6 h-6 object-contain rounded"
+                />
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
+                  {getLanguageBadge(modelsState[selectedModelIndex])}
+                </div>
+                {modelsState[selectedModelIndex].isDownloaded ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Download className="h-3 w-3 text-gray-500" />
+                )}
               </div>
-              {modelsState[selectedModelIndex].isDownloaded ? (
-                <Check className="h-3 w-3 text-green-600" />
-              ) : (
-                <Download className="h-3 w-3 text-gray-500" />
-              )}
-            </div>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="p-2 w-72" align="start" forceMount style={{ display: openModelSelector ? undefined : 'none' }}>
-          <div className="space-y-0">
-            {/* English-Only Switch */}
-            <div className="flex items-center justify-between px-1 py-1.5">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="english-only-switch" className="text-xs font-medium cursor-pointer pl-1">
-                  {t("models.englishOnly.title")}
-                </Label>
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-56 p-3 text-xs">
-                    {t("models.englishOnly.description")}
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
-              <Switch
-                id="english-only-switch"
-                checked={showEnglishOnly}
-                onCheckedChange={onShowEnglishOnlyChange}
-              />
-            </div>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-0 overflow-hidden" align="start">
+              <Command className="max-h-[350px]">
+                <CommandInput placeholder="Search models..." />
+                <CommandList>
+                  <CommandEmpty>{t("models.noResults")}</CommandEmpty>
+                  <CommandGroup>
+                    {filteredModels.map((model) => {
+                      const actualModelIndex = modelsState.findIndex(m => m.value === model.value)
 
-            {/* Model List */}
-            <ScrollArea className="h-64">
-              <div className="space-y-1">
-                {getFilteredModels(modelsState).map((model) => {
-                  const actualModelIndex = modelsState.findIndex(m => m.value === model.value)
-
-                  return (
-                    <div
+                      return (
+                        <CommandItem
                           key={model.value}
-                          className={`flex items-center justify-between p-2 cursor-pointer rounded-sm transition-colors duration-200 ${selectedModelIndex === actualModelIndex
-                            ? "bg-blue-50 dark:bg-blue-900/20"
-                            : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                            }`}
-                          onClick={() => {
+                          value={`${model.value} ${t(model.label)} ${t(model.description)}`}
+                          onSelect={() => {
                             onSelectModel(actualModelIndex)
                             onOpenModelSelectorChange(false)
                           }}
+                          className={`flex items-center justify-between p-2 cursor-pointer ${
+                            selectedModelIndex === actualModelIndex
+                              && "bg-gray-200 dark:bg-gray-800"
+                          }`}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             <img src={model.image} alt={t(model.label) + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-medium text-xs">{t(model.label)}</span>
-                                {getLanguageBadge(model.value)}
+                                {getLanguageBadge(model)}
                               </div>
                               <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                                 {t(model.description)}
@@ -280,31 +259,40 @@ export function WorkspaceHeader({
                                 <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
                               </div>
                             ) : (
-                              <ModelStatusIndicator 
-                                model={model} 
-                                isDownloaded={model.isDownloaded} 
-                                isSmallScreen={isSmallScreen} 
+                              <ModelStatusIndicator
+                                model={model}
+                                isDownloaded={model.isDownloaded}
+                                isSmallScreen={isSmallScreen}
                               />
                             )}
                           </div>
-                        </div>
-                    )
-                })}
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+              
+              {/* Bottom Section */}
+              <div className="border-t bg-muted/30">
+                <div className="px-4 pt-1 pb-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Models filtered by selected language
+                  </Label>
+                </div>
               </div>
-            </ScrollArea>
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
 
-      {/* Settings and Models Management */}
-      <div className="flex items-center">
-        <ManageModelsDialog
-          models={modelsState}
-          onDeleteModel={onDeleteModel}
-        />
-        <SettingsDialog />
+        {/* Settings and Models Management */}
+        <div className="flex items-center">
+          <ManageModelsDialog
+            models={modelsState}
+            onDeleteModel={onDeleteModel}
+          />
+          <SettingsDialog />
+        </div>
       </div>
-    </div>
     </TooltipProvider>
   )
 }

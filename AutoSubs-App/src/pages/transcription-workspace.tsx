@@ -249,6 +249,7 @@ export const TranscriptionWorkspace = () => {
                 <WorkspaceHeader
                     modelsState={modelsState}
                     selectedModelIndex={settings.model}
+                    selectedLanguage={settings.language}
                     onSelectModel={(modelIndex) => {
                         updateSetting("model", modelIndex)
                     }}
@@ -256,8 +257,6 @@ export const TranscriptionWorkspace = () => {
                     downloadProgress={0}
                     openModelSelector={openModelSelector}
                     onOpenModelSelectorChange={setOpenModelSelector}
-                    showEnglishOnly={settings.showEnglishOnlyModels}
-                    onShowEnglishOnlyChange={(value) => updateSetting("showEnglishOnlyModels", value)}
                     isSmallScreen={isSmallScreen}
                     onDeleteModel={handleDeleteModel}
                 />

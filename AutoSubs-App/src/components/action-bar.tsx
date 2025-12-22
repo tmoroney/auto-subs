@@ -547,20 +547,6 @@ export function ActionBar({
                         </PopoverTrigger>
                         <PopoverContent className="p-0 w-72" align="start">
                             <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
-                                <TabsList className="w-full h-auto rounded-sm rounded-b-none py-1.5">
-                                    <TabsTrigger value="source" className="flex-1 gap-1.5">
-                                        <Globe className="h-4 w-4" />
-                                        {t("actionBar.language.source")}
-                                    </TabsTrigger>
-                                    <TabsTrigger value="translate" className="flex-1 gap-1.5">
-                                        <Languages className="h-4 w-4" />
-                                        {t("actionBar.language.translate")}
-                                        {settings.translate && (
-                                            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                                        )}
-                                    </TabsTrigger>
-                                </TabsList>
-
                                 <TabsContent value="source" className="mt-0">
                                     <Command className="max-h-[250px]">
                                         <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
@@ -635,13 +621,26 @@ export function ActionBar({
                                         </CommandList>
                                     </Command>
                                 </TabsContent>
+                                <TabsList className="w-full h-auto rounded-sm rounded-t-none py-1.5">
+                                    <TabsTrigger value="source" className="flex-1 gap-1.5">
+                                        <Globe className="h-4 w-4" />
+                                        {t("actionBar.language.source")}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="translate" className="flex-1 gap-1.5">
+                                        <Languages className="h-4 w-4" />
+                                        {t("actionBar.language.translate")}
+                                        {settings.translate && (
+                                            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                                        )}
+                                    </TabsTrigger>
+                                </TabsList>
                             </Tabs>
                         </PopoverContent>
                     </Popover>
                 </div>
                 <div className="flex">
                     <Button
-                        variant="outline"
+                        variant="secondary"
                         size="default"
                         className="text-sm"
                         onClick={() => updateSetting("isStandaloneMode", !settings.isStandaloneMode)}

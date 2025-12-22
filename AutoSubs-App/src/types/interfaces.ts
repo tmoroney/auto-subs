@@ -75,6 +75,10 @@ export interface Model {
     ram: string
     image: string
     details: string
+    languageSupport: 
+        | { kind: "multilingual" }
+        | { kind: "single_language"; language: string }
+        | { kind: "restricted"; languages: string[] }
     isDownloaded: boolean
 }
 

@@ -14,6 +14,7 @@ export const models: Model[] = [
     ram: "1GB",
     image: "/hummingbird.png",
     details: "models.tiny.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
   {
@@ -24,6 +25,7 @@ export const models: Model[] = [
     ram: "1GB",
     image: "/hummingbird.png",
     details: "models.tiny_en.details",
+    languageSupport: { kind: "single_language", language: "en" },
     isDownloaded: false,
   },
   {
@@ -34,6 +36,7 @@ export const models: Model[] = [
     ram: "1GB",
     image: "/otter.png",
     details: "models.base.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
   {
@@ -44,6 +47,7 @@ export const models: Model[] = [
     ram: "1GB",
     image: "/otter.png",
     details: "models.base_en.details",
+    languageSupport: { kind: "single_language", language: "en" },
     isDownloaded: false,
   },
   {
@@ -54,6 +58,7 @@ export const models: Model[] = [
     ram: "2GB",
     image: "/fox.png",
     details: "models.small.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
   {
@@ -64,6 +69,7 @@ export const models: Model[] = [
     ram: "2GB",
     image: "/fox.png",
     details: "models.small_en.details",
+    languageSupport: { kind: "single_language", language: "en" },
     isDownloaded: false,
   },
   {
@@ -74,6 +80,7 @@ export const models: Model[] = [
     ram: "5GB",
     image: "/owl.png",
     details: "models.medium.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
   {
@@ -84,6 +91,7 @@ export const models: Model[] = [
     ram: "5GB",
     image: "/owl.png",
     details: "models.medium_en.details",
+    languageSupport: { kind: "single_language", language: "en" },
     isDownloaded: false,
   },
   {
@@ -94,6 +102,7 @@ export const models: Model[] = [
     ram: "6GB",
     image: "/phoenix.png",
     details: "models.large_v3_turbo.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
   {
@@ -104,6 +113,7 @@ export const models: Model[] = [
     ram: "10GB",
     image: "/elephant.png",
     details: "models.large_v3.details",
+    languageSupport: { kind: "multilingual" },
     isDownloaded: false,
   },
 ];
