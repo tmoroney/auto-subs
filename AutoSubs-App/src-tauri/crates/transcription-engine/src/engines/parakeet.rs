@@ -69,72 +69,74 @@ pub async fn transcribe_parakeet(
         // Base offset for this chunk
         let base_offset = speech_segment.start + user_offset;
 
-        // Convert transcribe-rs segments to our internal format
-        if let Some(transcribe_segments) = result.segments {
-            for seg in transcribe_segments {
-                let seg_start = base_offset + seg.start as f64;
-                let seg_end = base_offset + seg.end as f64;
-                let text = seg.text.trim().to_string();
+        // Convert transcribe-rs output to our internal format.
+        // We emit one Segment per input speech segment, and populate word timestamps
+        // from the word-level segments returned by transcribe-rs.
+        let text = result.text.trim().to_string();
+        if !text.is_empty() {
+            let mut words: Vec<WordTimestamp> = Vec::new();
 
-                if text.is_empty() {
-                    continue;
-                }
-
-                // For Parakeet, we get word-level segments directly
-                // Create word timestamps from the segment
-                let words = Some(vec![WordTimestamp {
-                    text: text.clone(),
-                    start: seg_start,
-                    end: seg_end,
-                    probability: None,
-                }]);
-
-                // Prevent overlaps with previous segment
-                if let Some(last) = segments.last_mut() {
-                    if last.end > seg_start {
-                        last.end = seg_start;
+            if let Some(transcribe_segments) = result.segments {
+                let mut is_first_word = true;
+                for w in transcribe_segments {
+                    // Preserve leading whitespace so the formatter can correctly re-insert spaces
+                    // between words (it inspects `WordTimestamp.text` for leading space/newline).
+                    // Only trim trailing whitespace/terminators.
+                    let mut w_text = w
+                        .text
+                        .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
+                        .to_string();
+                    if w_text.trim().is_empty() {
+                        continue;
                     }
-                    if let Some(last_words) = &mut last.words {
-                        if let Some(last_word) = last_words.last_mut() {
-                            if last_word.end > last.end {
-                                last_word.end = last.end;
-                            }
+
+                    // Parakeet word pieces often do not include leading space markers.
+                    // Our formatter uses leading spaces/newlines to decide inter-word spacing
+                    // and to avoid merging continuation pieces, so synthesize them.
+                    if !is_first_word && !w_text.starts_with(' ') && !w_text.starts_with('\n') {
+                        w_text.insert(0, ' ');
+                    }
+
+                    words.push(WordTimestamp {
+                        text: w_text,
+                        start: base_offset + w.start as f64,
+                        end: base_offset + w.end as f64,
+                        probability: None,
+                    });
+
+                    is_first_word = false;
+                }
+            }
+
+            let (seg_start, seg_end) = if let (Some(first), Some(last)) = (words.first(), words.last()) {
+                (first.start, last.end)
+            } else {
+                (
+                    base_offset,
+                    base_offset + (speech_segment.end - speech_segment.start),
+                )
+            };
+
+            // Prevent overlaps with previous segment
+            if let Some(last) = segments.last_mut() {
+                if last.end > seg_start {
+                    last.end = seg_start;
+                }
+                if let Some(last_words) = &mut last.words {
+                    if let Some(last_word) = last_words.last_mut() {
+                        if last_word.end > last.end {
+                            last_word.end = last.end;
                         }
                     }
                 }
-
-                let segment = Segment {
-                    speaker_id: speech_segment.speaker_id.clone(),
-                    start: seg_start,
-                    end: seg_end,
-                    text,
-                    words,
-                };
-
-                // Emit new segment callback
-                if let Some(cb) = new_segment_callback {
-                    cb(&segment);
-                }
-
-                segments.push(segment);
             }
-        } else if !result.text.trim().is_empty() {
-            // Fallback: if no segments but we have text, create a single segment
-            let text = result.text.trim().to_string();
-            let seg_start = base_offset;
-            let seg_end = base_offset + (speech_segment.end - speech_segment.start);
 
             let segment = Segment {
                 speaker_id: speech_segment.speaker_id.clone(),
                 start: seg_start,
                 end: seg_end,
-                text: text.clone(),
-                words: Some(vec![WordTimestamp {
-                    text,
-                    start: seg_start,
-                    end: seg_end,
-                    probability: None,
-                }]),
+                text,
+                words: (!words.is_empty()).then_some(words),
             };
 
             if let Some(cb) = new_segment_callback {

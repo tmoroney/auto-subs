@@ -967,7 +967,9 @@ fn validate_model_file(path: &Path) -> Result<()> {
         bail!("Model blob target does not exist: {}", blob_path.display());
     }
     let md = fs::metadata(&blob_path).context("metadata failed")?;
-    let min_bytes: u64 = match blob_path.extension().and_then(|e| e.to_str()).unwrap_or("") {
+    // IMPORTANT: use the *snapshot file* extension (the symlink name) to decide the threshold.
+    // The resolved blob path in HF caches is typically a hash with no extension.
+    let min_bytes: u64 = match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
         "json" => 1,
         "txt" => 1,
         _ => 100_000, // 100 KB

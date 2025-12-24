@@ -259,10 +259,12 @@ impl Engine {
         ))
     }
 
+    // TODO: Make equivalent functions for Parakeet and Moonshine models - also possibly merge with delete_cached_model
     pub async fn delete_whisper_model(&self, model_name: &str) -> eyre::Result<()> {
         self.models.delete_whisper_model(model_name)
     }
 
+    // TODO: Make equivalent functions for Parakeet and Moonshine models
     /// List all cached Whisper models in the cache directory.
     /// Returns a vector of model names (e.g., "tiny", "base", "small").
     pub fn list_cached_models(&self) -> eyre::Result<Vec<String>> {
