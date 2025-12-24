@@ -87,6 +87,7 @@ pub struct SpeechSegment {
     pub start: f64,
     pub end: f64,
     pub samples: Vec<i16>,
+    pub speaker_id: Option<String>,
 }
 
 #[derive(Clone, Debug)]

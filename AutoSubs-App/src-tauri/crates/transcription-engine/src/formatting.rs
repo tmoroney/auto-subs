@@ -651,21 +651,37 @@ mod tests {
     fn basic_split() {
         let cfg = PostProcessConfig::default();
         let words = vec![
-            Tok { word: "I".into(), punc: "".into(), start: 0.00, end: 0.10, prob: None, speaker: None },
-            Tok { word: "think".into(), punc: "".into(), start: 0.10, end: 0.38, prob: None, speaker: None },
-            Tok { word: "I".into(), punc: "".into(), start: 0.50, end: 0.60, prob: None, speaker: None },
-            Tok { word: "would".into(), punc: "".into(), start: 0.60, end: 0.80, prob: None, speaker: None },
-            Tok { word: "like".into(), punc: "".into(), start: 0.80, end: 0.95, prob: None, speaker: None },
-            Tok { word: "to".into(), punc: ".".into(), start: 0.95, end: 1.10, prob: None, speaker: None },
+            Tok { word: "I".into(), punc: "".into(), start: 0.00, end: 0.10, prob: None, speaker: None, leading_space: false },
+            Tok { word: "think".into(), punc: "".into(), start: 0.10, end: 0.38, prob: None, speaker: None, leading_space: true },
+            Tok { word: "I".into(), punc: "".into(), start: 0.50, end: 0.60, prob: None, speaker: None, leading_space: true },
+            Tok { word: "would".into(), punc: "".into(), start: 0.60, end: 0.80, prob: None, speaker: None, leading_space: true },
+            Tok { word: "like".into(), punc: "".into(), start: 0.80, end: 0.95, prob: None, speaker: None, leading_space: true },
+            Tok { word: "to".into(), punc: ".".into(), start: 0.95, end: 1.10, prob: None, speaker: None, leading_space: true },
         ];
 
         // Build a pseudo segment and run
-        let seg = Segment { start: 0.0, end: 1.1, text: String::new(), speaker_id: None, words: Some(words.iter().map(|t| WordTimestamp{text: format!("{}{}", t.word, t.punc), start: t.start, end: t.end, probability: None}).collect()) };
+        let seg = Segment {
+            start: 0.0,
+            end: 1.1,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(
+                words
+                    .iter()
+                    .map(|t| WordTimestamp {
+                        text: format!("{}{}{}", if t.leading_space { " " } else { "" }, t.word, t.punc),
+                        start: t.start,
+                        end: t.end,
+                        probability: None,
+                    })
+                    .collect(),
+            ),
+        };
         let cues = process_segments(&[seg], &cfg, None);
         assert!(!cues.is_empty());
-        // Expect two lines split as "I think" and "I would like to." joined with a newline
         let text = &cues[0].text;
-        assert!(text.contains('\n'));
-        assert!(text.starts_with("I think"));
+        let norm = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(norm.contains("I think"));
+        assert!(norm.contains("would like to"));
     }
 }

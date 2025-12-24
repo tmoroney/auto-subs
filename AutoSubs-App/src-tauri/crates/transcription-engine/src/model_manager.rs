@@ -299,6 +299,175 @@ impl ModelManager {
         Ok(model_path)
     }
 
+
+    pub async fn ensure_parakeet_v3_model(
+        &self,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        // Early cancellation
+        if let Some(is_cancelled) = is_cancelled {
+            if is_cancelled() {
+                self.cleanup_stale_locks().ok();
+                bail!("Model download cancelled");
+            }
+        }
+
+        let repo_id = "istupakov/parakeet-tdt-0.6b-v3-onnx";
+        // Minimal set required by transcribe-rs Parakeet loader in int8 mode.
+        let required_files = [
+            "encoder-model.int8.onnx",
+            "decoder_joint-model.int8.onnx",
+            "nemo128.onnx",
+            "vocab.txt",
+            "config.json",
+        ];
+
+        // Fast path: find a snapshot dir that already contains all required files.
+        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, &required_files)? {
+            let mut ok = true;
+            for f in required_files {
+                let p = snapshot_dir.join(f);
+                if !p.exists() || validate_model_file(&p).is_err() {
+                    ok = false;
+                    break;
+                }
+            }
+            if ok {
+                return Ok(snapshot_dir);
+            }
+        }
+
+        // Download required files. We do this sequentially so we can show progress.
+        // Note: ensure_hub_model handles caching and will no-op if everything is already cached.
+        let total = required_files.len() as f32;
+        for (idx, filename) in required_files.iter().enumerate() {
+            // Start progress at 0 only if a download occurs; ensure_hub_model itself avoids emitting
+            // progress if it returns from cache.
+            let offset = (idx as f32 / total) * 100.0;
+            let scale = (1.0 / total) * 100.0;
+            let _ = self
+                .ensure_hub_model(
+                    repo_id,
+                    filename,
+                    progress,
+                    is_cancelled,
+                    offset,
+                    scale,
+                    "Downloading Parakeet v3 model",
+                )
+                .await?;
+        }
+
+        // After downloading, locate a snapshot that contains everything.
+        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, &required_files)? {
+            // Validate again to be safe.
+            for f in required_files {
+                let p = snapshot_dir.join(f);
+                validate_model_file(&p)
+                    .with_context(|| format!("Model validation failed for '{}' from '{}'", f, repo_id))?;
+            }
+            if let Some(cb) = progress {
+                cb(100, ProgressType::Download, "Downloaded Parakeet v3 model");
+            }
+            return Ok(snapshot_dir);
+        }
+
+        bail!("Failed to locate Parakeet model snapshot after download");
+    }
+
+    pub async fn ensure_moonshine_model(
+        &self,
+        model: &str,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        // Early cancellation
+        if let Some(is_cancelled) = is_cancelled {
+            if is_cancelled() {
+                bail!("Model download cancelled");
+            }
+        }
+
+        let folder = match model.to_lowercase().as_str() {
+            "moonshine-tiny" => "tiny",
+            "moonshine-tiny-ar" => "tiny-ar",
+            "moonshine-tiny-zh" => "tiny-zh",
+            "moonshine-tiny-ja" => "tiny-ja",
+            "moonshine-tiny-ko" => "tiny-ko",
+            "moonshine-tiny-uk" => "tiny-uk",
+            "moonshine-tiny-vi" => "tiny-vi",
+            "moonshine-base" => "base",
+            "moonshine-base-es" => "base-es",
+            _ => bail!("Unknown Moonshine model: {}", model),
+        };
+
+        let cache_root = self.model_cache_dir()?;
+        let model_dir = cache_root.join("moonshine").join(folder);
+        if !model_dir.exists() {
+            fs::create_dir_all(&model_dir).context("Failed to create Moonshine model directory")?;
+        }
+
+        let required_files = [
+            "encoder_model.onnx",
+            "decoder_model_merged.onnx",
+            "tokenizer.json",
+        ];
+
+        // Fast path: if all required files exist and validate, return immediately.
+        let mut ok = true;
+        for f in required_files {
+            let p = model_dir.join(f);
+            if !p.exists() || validate_model_file(&p).is_err() {
+                ok = false;
+                break;
+            }
+        }
+        if ok {
+            return Ok(model_dir);
+        }
+
+        // Download missing/invalid files.
+        let total = required_files.len() as f32;
+        for (idx, filename) in required_files.iter().enumerate() {
+            if let Some(is_cancelled) = is_cancelled {
+                if is_cancelled() {
+                    bail!("Model download cancelled");
+                }
+            }
+
+            let dest = model_dir.join(filename);
+            if dest.exists() && validate_model_file(&dest).is_ok() {
+                continue;
+            }
+
+            let offset = (idx as f32 / total) * 100.0;
+            let scale = (1.0 / total) * 100.0;
+
+            if let Some(cb) = progress {
+                cb(offset as i32, ProgressType::Download, "Downloading Moonshine model");
+            }
+
+            let url = format!(
+                "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}",
+                folder, filename
+            );
+            download_to(&dest, &url).await?;
+            validate_model_file(&dest)
+                .with_context(|| format!("Model validation failed for '{}' from Moonshine {}", filename, folder))?;
+
+            if let Some(cb) = progress {
+                cb((offset + scale) as i32, ProgressType::Download, "Downloading Moonshine model");
+            }
+        }
+
+        if let Some(cb) = progress {
+            cb(100, ProgressType::Download, "Downloaded Moonshine model");
+        }
+
+        Ok(model_dir)
+    }
+
     /// Ensure the Silero VAD model exists locally. If not, download via hf-hub.
     /// Uses the ggml-org/whisper-vad repository and the file `ggml-silero-v5.1.2.bin`.
     pub async fn ensure_vad_model(
@@ -736,6 +905,48 @@ impl ModelManager {
 
         Ok(None)
     }
+
+    fn find_cached_snapshot_with_files(&self, repo_id: &str, filenames: &[&str]) -> Result<Option<PathBuf>> {
+        let cache_root = self.model_cache_dir()?;
+        let mut parts = repo_id.splitn(2, '/');
+        let owner = parts.next().unwrap_or("");
+        let repo = parts.next().unwrap_or("");
+        if owner.is_empty() || repo.is_empty() {
+            return Ok(None);
+        }
+
+        let base = cache_root.join(format!("models--{}--{}", owner, repo)).join("snapshots");
+        if !base.exists() {
+            return Ok(None);
+        }
+
+        let mut best: Option<(SystemTime, PathBuf)> = None;
+        for entry in fs::read_dir(&base).context("Failed to read snapshots dir")? {
+            let entry = entry?;
+            let snap = entry.path();
+            if !snap.is_dir() {
+                continue;
+            }
+
+            if !filenames.iter().all(|f| snap.join(f).exists()) {
+                continue;
+            }
+
+            let modified = fs::metadata(&snap)
+                .and_then(|m| m.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+            match &best {
+                None => best = Some((modified, snap)),
+                Some((best_modified, _)) => {
+                    if modified > *best_modified {
+                        best = Some((modified, snap));
+                    }
+                }
+            }
+        }
+
+        Ok(best.map(|(_, p)| p))
+    }
 }
 
 // ---- Helpers to validate and clean cached model files ----
@@ -756,10 +967,12 @@ fn validate_model_file(path: &Path) -> Result<()> {
         bail!("Model blob target does not exist: {}", blob_path.display());
     }
     let md = fs::metadata(&blob_path).context("metadata failed")?;
-    // Note: Some valid models (e.g., Silero VAD) are quite small (< 1 MB). Use a conservative
-    // lower bound to catch obviously truncated files while permitting small, valid models.
-    const MIN_BYTES: u64 = 100_000; // 100 KB
-    if md.len() < MIN_BYTES {
+    let min_bytes: u64 = match blob_path.extension().and_then(|e| e.to_str()).unwrap_or("") {
+        "json" => 1,
+        "txt" => 1,
+        _ => 100_000, // 100 KB
+    };
+    if md.len() < min_bytes {
         bail!("Model blob seems too small ({} bytes): {}", md.len(), blob_path.display());
     }
     let mut f = fs::File::open(&blob_path).context("open failed")?;

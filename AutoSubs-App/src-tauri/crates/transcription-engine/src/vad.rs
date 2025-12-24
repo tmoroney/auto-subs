@@ -75,7 +75,7 @@ pub fn get_segments(
                 Vec::new()
             };
 
-            SpeechSegment { start: start_sec, end: end_sec, samples: seg_samples }
+            SpeechSegment { start: start_sec, end: end_sec, samples: seg_samples, speaker_id: None }
         })
         .filter(|seg| seg.end > seg.start && !seg.samples.is_empty())
         .collect();

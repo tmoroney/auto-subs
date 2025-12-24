@@ -1,12 +1,13 @@
 pub mod audio;
 pub mod engine;
+pub mod engines;
 pub mod model_manager;
-pub mod transcribe;
 pub mod vad;
 pub mod types;
 pub mod translate;
 pub mod utils;
 pub mod formatting;
+pub mod speaker;
 
 // Re-exports (crate users only need these)
 pub use engine::{Engine, EngineConfig, Callbacks};

@@ -1,10 +1,9 @@
-use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, DiarizeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
+use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use eyre::{Result, bail, WrapErr, OptionExt};
 use std::path::Path;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperSegment, DtwParameters, DtwMode, DtwModelPreset};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Mutex;
-use eyre::eyre;
 use crate::utils::{cs_to_s, calculate_dtw_mem_size};
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
@@ -324,7 +323,6 @@ pub async fn run_transcription_pipeline(
     ctx: WhisperContext,
     speech_segments: Vec<SpeechSegment>,
     options: TranscribeOptions,
-    diarize_options: Option<DiarizeOptions>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -335,14 +333,6 @@ pub async fn run_transcription_pipeline(
     let mut state = ctx.create_state().context("failed to create state")?;
     let mut params = setup_params(&options);
 
-    // Initialize diarize components if diarize is enabled
-    let mut embedding_manager: Option<pyannote_rs::EmbeddingManager> = None;
-    let mut extractor: Option<pyannote_rs::EmbeddingExtractor> = None;
-    if let Some(ref diarize_options) = diarize_options {
-        embedding_manager = Some(pyannote_rs::EmbeddingManager::new(diarize_options.max_speakers));
-        extractor = Some(pyannote_rs::EmbeddingExtractor::new(&diarize_options.embedding_model_path)
-            .map_err(|e| eyre!("{:?}", e))?);
-    }
 
     // DEFINE ABORT CALLBACK
     if let Some(abort_callback) = abort_callback {
@@ -367,12 +357,6 @@ pub async fn run_transcription_pipeline(
     let mut previous_text: Option<String> = None;
     let mut detected_lang: Option<String> = None;
 
-    let mut diarize_total_segments: usize = 0;
-    let mut diarize_embedding_errors: usize = 0;
-    let mut diarize_unknown_speakers: usize = 0;
-    let mut diarize_match_misses: usize = 0;
-    let mut diarize_first_embedding_error: Option<String> = None;
-    let mut diarize_models_printed: bool = false;
 
     if let Some(lang) = options.lang.as_deref() {
         if lang != "auto" {
@@ -383,7 +367,7 @@ pub async fn run_transcription_pipeline(
     for (i, speech_segment) in speech_segments.iter().enumerate() {
         let original_samples = speech_segment.samples.clone();
 
-        // Convert float samples back to integer samples for embedding
+        // Convert integer samples to float for Whisper
         let mut samples = vec![0.0f32; original_samples.len()];
         whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
 
@@ -467,66 +451,8 @@ pub async fn run_transcription_pipeline(
 
             // Embedding and speaker identification (speaker diarization) - if enabled
             let mut speaker_id = None;
-            if num_segments > 0 && let Some(ref diarize_options) = diarize_options {
-                diarize_total_segments += 1;
-                if !diarize_models_printed {
-                    diarize_models_printed = true;
-                    println!(
-                        "Diarization enabled: segment_model_path={}, embedding_model_path={}, threshold={}, max_speakers={}",
-                        diarize_options.segment_model_path,
-                        diarize_options.embedding_model_path,
-                        diarize_options.threshold,
-                        diarize_options.max_speakers
-                    );
-                }
-                // Compute embedding
-                let extractor = extractor.as_mut().unwrap();
-                let embedding_result = match extractor.compute(&original_samples) {
-                    Ok(result) => Some(result),
-                    Err(error) => {
-                        diarize_embedding_errors += 1;
-                        if diarize_first_embedding_error.is_none() {
-                            diarize_first_embedding_error = Some(format!("{:?}", error));
-                        }
-                        tracing::error!("error: {:?}", error);
-                        tracing::trace!(
-                            "start = {:.2}, end = {:.2}, speaker = ?",
-                            seg.start_timestamp(),
-                            seg.end_timestamp()
-                        );
-                        None
-                    }
-                };
-
-                // Find speaker
-                let embedding_manager = embedding_manager.as_mut().unwrap();
-                let had_embedding = embedding_result.is_some();
-                let speaker = if let Some(embedding_vec) = embedding_result.as_ref() {
-                    // The embedding manager API takes ownership of the embedding vector.
-                    // Clone here to avoid moving `embedding_result` so we can use it for diagnostics.
-                    let embedding_vec = embedding_vec.clone();
-                    if embedding_manager.get_all_speakers().len() == diarize_options.max_speakers {
-                        embedding_manager
-                            .get_best_speaker_match(embedding_vec)
-                            .map(|r| r.to_string())
-                            .unwrap_or("?".into())
-                    } else {
-                        embedding_manager
-                            .search_speaker(embedding_vec, diarize_options.threshold)
-                            .map(|r| r.to_string())
-                            .unwrap_or("?".into())
-                    }
-                } else {
-                    "?".into()
-                };
-
-                if speaker.trim() == "?" {
-                    diarize_unknown_speakers += 1;
-                    if had_embedding {
-                        diarize_match_misses += 1;
-                    }
-                }
-                speaker_id = Some(speaker);
+            if num_segments > 0 {
+                speaker_id = speech_segment.speaker_id.clone();
             }
 
             total_chars += text.len();
@@ -560,17 +486,6 @@ pub async fn run_transcription_pipeline(
     tracing::debug!("Empty segments: {}", empty_segments);
     tracing::debug!("Total characters: {}", total_chars);
     tracing::debug!("Segments: {}", segments.len());
-
-    if diarize_total_segments > 0 {
-        println!(
-            "Diarization summary: diarize_total_segments={}, diarize_unknown_speakers={}, diarize_embedding_errors={}, diarize_match_misses={}, first_embedding_error={}",
-            diarize_total_segments,
-            diarize_unknown_speakers,
-            diarize_embedding_errors,
-            diarize_match_misses,
-            diarize_first_embedding_error.as_deref().unwrap_or("<none>")
-        );
-    }
 
     // Clear progress bridge to avoid dangling references beyond this async call
     if let Ok(mut slot) = PROGRESS_CALLBACK.lock() { *slot = None; }

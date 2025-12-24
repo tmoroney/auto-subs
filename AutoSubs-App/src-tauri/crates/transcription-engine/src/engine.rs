@@ -3,6 +3,11 @@ use eyre::eyre;
 use crate::types::{SpeechSegment, DiarizeOptions, LabeledProgressFn, NewSegmentFn, Segment};
 use crate::formatting::{VadMaskOracle, process_segments, SilenceOracle, PostProcessConfig, FormattingOverrides, apply_overrides};
 
+use crate::engines::moonshine::{is_moonshine_model, moonshine_variant_from_model_name};
+
+use crate::engines::parakeet::is_parakeet_model;
+use crate::speaker::label_speakers;
+
 // callback type aliases are defined in crate::types
 
 #[derive(Clone, Debug)]
@@ -74,16 +79,31 @@ impl Engine {
             eyre::bail!("audio file doesn't exist")
         }
 
-        // Ensure/download Whisper model
-        let _model_path = self
-            .models
-            .ensure_whisper_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
-            .await?;
+        // Route to appropriate engine based on model name
+        let is_moonshine = is_moonshine_model(&options.model);
+        let is_parakeet = is_parakeet_model(&options.model);
+
+        // Ensure/download the appropriate model
+        let _model_path = if is_moonshine {
+            self
+                .models
+                .ensure_moonshine_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
+                .await?
+        } else if is_parakeet {
+            self
+                .models
+                .ensure_parakeet_v3_model(cb.progress, cb.is_cancelled.as_deref())
+                .await?
+        } else {
+            self
+                .models
+                .ensure_whisper_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
+                .await?
+        };
 
         let original_samples = crate::audio::read_wav(&audio_path)?;
 
         let mut speech_segments: Vec<SpeechSegment> = Vec::new();
-        let mut diarize_options: Option<DiarizeOptions> = None;
         let mut vad_mask: Option<VadMaskOracle> = None;
 
         if let Some(true) = options.enable_diarize {
@@ -101,7 +121,7 @@ impl Engine {
 
             // Set diarize options
             let threshold = options.advanced.as_ref().and_then(|a| a.diarize_threshold).unwrap_or(0.5);
-            diarize_options = Some(DiarizeOptions {
+            let diarize_options = DiarizeOptions {
                 segment_model_path: seg_path.to_string_lossy().to_string(),
                 embedding_model_path: emb_path.to_string_lossy().to_string(),
                 threshold,
@@ -109,7 +129,7 @@ impl Engine {
                     Some(0) | None => usize::MAX,
                     Some(n) => n,
                 },
-            });
+            };
 
             // Consume the lazy pyannote_rs iterator: the for-loop calls `next()` under the hood,
             // forcing evaluation as we go. Each yielded pyannote_rs::Segment is converted into
@@ -118,8 +138,16 @@ impl Engine {
                 .map_err(|e| eyre!("{:?}", e))?;
             for seg_res in diarize_segments_iter {
                 let seg = seg_res.map_err(|e| eyre!("{:?}", e))?;
-                speech_segments.push(SpeechSegment { start: seg.start, end: seg.end, samples: seg.samples });
+                speech_segments.push(SpeechSegment { start: seg.start, end: seg.end, samples: seg.samples, speaker_id: None });
             }
+
+            // Compute speaker IDs once and propagate to all engines
+            label_speakers(
+                speech_segments.as_mut_slice(),
+                &diarize_options,
+                cb.progress,
+                cb.is_cancelled.as_deref(),
+            )?;
         } else if let Some(true) = options.enable_vad {
             // Use provided VAD model path if present; otherwise download via ModelManager
             let vad_model_path: PathBuf = if let Some(ref p) = self.cfg.vad_model_path {
@@ -143,44 +171,76 @@ impl Engine {
                 start: 0.0,
                 end: original_samples.len() as f64 / 16000.0,
                 samples: original_samples.clone(),
+                speaker_id: None,
             }];
         }
 
-        let num_samples = speech_segments.iter().map(|s| s.samples.len()).sum();
+        let num_samples: usize = speech_segments.iter().map(|s| s.samples.len()).sum();
 
         println!("Transcribing {} segments", speech_segments.len());
-
-        let ctx = crate::transcribe::create_context(
-            _model_path.as_path(),
-            &options.model,
-            self.cfg.gpu_device,
-            self.cfg.use_gpu,
-            self.cfg.enable_dtw,
-            self.cfg.enable_flash_attn,
-            Some(num_samples),
-        )
-        .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
 
         // Capture translation options before moving `options` into the pipeline
         let translate_to = options.translate_target.clone();
         let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
         let whisper_to_en = options.whisper_to_english.unwrap_or(false);
 
-        let (mut segments, detected_lang) = crate::transcribe::run_transcription_pipeline(
-            ctx,
-            speech_segments,
-            options,
-            diarize_options,
-            cb.progress,
-            cb.new_segment_callback,
-            cb.is_cancelled,
-        )
-        .await?;
+        let (mut segments, detected_lang) = if is_parakeet {
+            // Use Parakeet engine
+            crate::engines::parakeet::transcribe_parakeet(
+                _model_path.as_path(),
+                speech_segments,
+                &options,
+                cb.progress,
+                cb.new_segment_callback,
+                cb.is_cancelled,
+            )
+            .await?
+        } else if is_moonshine {
+            let (variant, _lang) = moonshine_variant_from_model_name(&options.model)
+                .ok_or_else(|| eyre!("Unknown Moonshine model: {}", options.model))?;
+
+            crate::engines::moonshine::transcribe_moonshine(
+                _model_path.as_path(),
+                variant,
+                speech_segments,
+                &options,
+                cb.progress,
+                cb.new_segment_callback,
+                cb.is_cancelled,
+            )
+            .await?
+        } else {
+            // Use Whisper engine
+            let ctx = crate::engines::whisper::create_context(
+                _model_path.as_path(),
+                &options.model,
+                self.cfg.gpu_device,
+                self.cfg.use_gpu,
+                self.cfg.enable_dtw,
+                self.cfg.enable_flash_attn,
+                Some(num_samples),
+            )
+            .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
+
+            crate::engines::whisper::run_transcription_pipeline(
+                ctx,
+                speech_segments,
+                options,
+                cb.progress,
+                cb.new_segment_callback,
+                cb.is_cancelled,
+            )
+            .await?
+        };
 
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
 
-        if !whisper_to_en {
+        // `whisper_to_english` only applies to Whisper models (they can do built-in translate-to-English).
+        // If a non-Whisper model is used, we should not suppress the normal post-translation step.
+        let suppress_post_translation = !is_parakeet && !is_moonshine && whisper_to_en;
+
+        if !suppress_post_translation {
             if let Some(to_lang) = translate_to.as_deref() {
                 crate::translate::translate_segments(segments.as_mut_slice(), effective_lang, to_lang, cb.progress)
                     .await
