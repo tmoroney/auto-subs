@@ -36,7 +36,14 @@ fn interpolate_word_timestamps(line: &str, start: f64, end: f64) -> Vec<WordTime
             start + ((acc + weights[i]) as f64 / total_w as f64) * dur
         };
         acc += weights[i];
-        out.push(WordTimestamp { text: (*tok).to_string(), start: t0, end: t1, probability: None });
+        // formatting.rs infers `leading_space` from WordTimestamp.text starting with a space/newline.
+        // Without this, it treats every token as a continuation piece and may merge whole sentences.
+        let text = if i == 0 {
+            (*tok).to_string()
+        } else {
+            format!(" {}", tok)
+        };
+        out.push(WordTimestamp { text, start: t0, end: t1, probability: None });
     }
     out
 }

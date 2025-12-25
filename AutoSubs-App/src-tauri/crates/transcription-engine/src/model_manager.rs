@@ -414,6 +414,12 @@ impl ModelManager {
             "tokenizer.json",
         ];
 
+        let onnx_subdir = if folder == "tiny" || folder == "base" {
+            "quantized"
+        } else {
+            "float"
+        };
+
         // Fast path: if all required files exist and validate, return immediately.
         let mut ok = true;
         for f in required_files {
@@ -448,10 +454,16 @@ impl ModelManager {
                 cb(offset as i32, ProgressType::Download, "Downloading Moonshine model");
             }
 
-            let url = format!(
-                "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}",
-                folder, filename
-            );
+            let url = if *filename == "tokenizer.json" {
+                // The HF repo currently does not provide tokenizer.json under tiny/* variants.
+                // Tokenizer assets live under base/float and appear to be shared.
+                "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/base/float/tokenizer.json".to_string()
+            } else {
+                format!(
+                    "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}/{}",
+                    folder, onnx_subdir, filename
+                )
+            };
             download_to(&dest, &url).await?;
             validate_model_file(&dest)
                 .with_context(|| format!("Model validation failed for '{}' from Moonshine {}", filename, folder))?;
