@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Subtitle, Speaker, Settings } from '@/types/interfaces';
 import { useResolve } from '@/contexts/ResolveContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -54,7 +54,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   }, [timelineInfo?.timelineId, settings.isStandaloneMode]);
 
   // Load subtitles when timelineId or fileInput changes
-  const loadSubtitles = async (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => {
+  const loadSubtitles = useCallback(async (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => {
     let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineId);
     if (filename && filename.length > 0) {
       console.log("Loading subtitles:", filename);
@@ -72,7 +72,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       console.log("No timelineId, clearing subtitles");
       setSubtitles([]);
     }
-  };
+  }, []);
 
   async function updateSpeakers(newSpeakers: Speaker[]) {
     console.log("Updating speakers:", newSpeakers);

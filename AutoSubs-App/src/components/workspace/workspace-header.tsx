@@ -235,10 +235,7 @@ export function WorkspaceHeader({
                             onSelectModel(actualModelIndex)
                             onOpenModelSelectorChange(false)
                           }}
-                          className={`flex items-center justify-between p-2 cursor-pointer ${
-                            selectedModelIndex === actualModelIndex
-                              && "bg-gray-200 dark:bg-gray-800"
-                          }`}
+                          className="flex items-center justify-between p-2 cursor-pointer"
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <img src={model.image} alt={t(model.label) + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />

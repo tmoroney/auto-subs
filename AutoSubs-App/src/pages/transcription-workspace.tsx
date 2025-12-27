@@ -27,9 +27,10 @@ export const TranscriptionWorkspace = () => {
         cancelRequestedRef, 
         getSourceAudio 
     } = useResolve()
-    const { 
-        processTranscriptionResults, 
-        exportSubtitlesAs 
+    const {
+        processTranscriptionResults,
+        exportSubtitlesAs,
+        loadSubtitles,
     } = useTranscript()
     const { 
         processingSteps, 
@@ -47,6 +48,27 @@ export const TranscriptionWorkspace = () => {
     const [,] = React.useState<string | null>(null)
     const [,] = React.useState(0)
     const [fileInput, setFileInput] = React.useState<string | null>(null)
+    const [fileInputSelectionId, setFileInputSelectionId] = React.useState(0)
+
+    const handleSelectedFileChange = React.useCallback((file: string | null) => {
+        setFileInput(file)
+        setFileInputSelectionId((v) => v + 1)
+    }, [])
+
+    React.useEffect(() => {
+        const run = async () => {
+            if (!settings.isStandaloneMode) return
+            if (!fileInput) return
+
+            try {
+                await loadSubtitles(true, fileInput, timelineInfo?.timelineId ?? 'standalone')
+            } catch (error) {
+                console.error('Failed to load subtitles for selected file:', error)
+            }
+        }
+
+        run()
+    }, [fileInputSelectionId, fileInput, loadSubtitles, settings.isStandaloneMode, timelineInfo?.timelineId])
 
     // Model selector state
     const [openModelSelector, setOpenModelSelector] = React.useState(false)
@@ -278,7 +300,7 @@ export const TranscriptionWorkspace = () => {
                     onStart={handleStartTranscription}
                     onCancel={handleCancelTranscription}
                     selectedFile={fileInput}
-                    onSelectedFileChange={setFileInput}
+                    onSelectedFileChange={handleSelectedFileChange}
                 />
             </div>
         </>
