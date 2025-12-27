@@ -1,8 +1,9 @@
 import * as React from "react"
-import { Layers2, Users, X } from "lucide-react"
+import { Layers2, Repeat2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { useResolve } from "@/contexts/ResolveContext"
 import { useSettings } from "@/contexts/SettingsContext"
@@ -18,12 +19,40 @@ interface MobileSubtitleViewerProps {
 
 export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [searchCaseSensitive, setSearchCaseSensitive] = React.useState(false)
+  const [searchWholeWord, setSearchWholeWord] = React.useState(false)
+  const [showReplace, setShowReplace] = React.useState(false)
+  const [replaceValue, setReplaceValue] = React.useState("")
+  const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { exportSubtitlesAs, importSubtitles, subtitles } = useTranscript()
+  const { exportSubtitlesAs, importSubtitles, subtitles, updateSubtitles } = useTranscript()
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const { t } = useTranslation()
+
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+  const buildFindRegExp = React.useCallback(() => {
+    const q = (searchQuery ?? "").trim()
+    if (!q) return null
+    const escaped = escapeRegExp(q)
+    const pattern = searchWholeWord ? `\\b${escaped}\\b` : escaped
+    const flags = searchCaseSensitive ? "g" : "gi"
+    return new RegExp(pattern, flags)
+  }, [searchCaseSensitive, searchQuery, searchWholeWord])
+
+  const canReplace = Boolean(searchQuery.trim())
+
+  const handleReplaceAll = () => {
+    const re = buildFindRegExp()
+    if (!re) return
+    const next = subtitles.map((s) => ({
+      ...s,
+      text: (s.text ?? "").replace(re, replaceValue),
+    }))
+    updateSubtitles(next)
+  }
 
   const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
     try {
@@ -92,19 +121,88 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
             placeholder={t("subtitles.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10"
+            className="pr-28"
             aria-label={t("subtitles.searchAria")}
           />
-          {searchQuery && (
-            <button
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {searchQuery && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Clear</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={searchCaseSensitive ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7 text-xs"
+                  onClick={() => setSearchCaseSensitive((v) => !v)}
+                >
+                  Aa
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Case match</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={searchWholeWord ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7 text-xs"
+                  onClick={() => setSearchWholeWord((v) => !v)}
+                >
+                  W
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Whole word</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={showReplace ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setShowReplace((v) => !v)}
+                >
+                  <Repeat2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Replace all</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        <div className={`transition-all duration-200 ease-out ${showReplace ? "max-h-20 opacity-100" : "max-h-0 opacity-0"}`}>
+          <div className="flex items-center gap-2 py-1">
+            <Input
+              placeholder="Replace with..."
+              value={replaceValue}
+              onChange={(e) => setReplaceValue(e.target.value)}
+            />
+            <Button
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={t("subtitles.clearSearch")}
+              variant="secondary"
+              disabled={!canReplace}
+              onClick={handleReplaceAll}
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+              Replace All
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -113,6 +211,10 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
         {subtitles.length > 0 ? (
           <SubtitleList
             searchQuery={searchQuery}
+            searchCaseSensitive={searchCaseSensitive}
+            searchWholeWord={searchWholeWord}
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
           />
         ) : (

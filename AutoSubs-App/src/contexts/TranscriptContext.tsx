@@ -20,7 +20,7 @@ interface TranscriptContextType {
   setSubtitles: (subtitles: Subtitle[]) => void;
   setSpeakers: (speakers: Speaker[]) => void;
   updateSpeakers: (newSpeakers: Speaker[]) => Promise<void>;
-  updateSubtitles: (newSubtitles: Subtitle[]) => Promise<void>;
+  updateSubtitles: (newSubtitles: Subtitle[], filename?: string) => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'json', includeSpeakerLabels: boolean, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
@@ -34,6 +34,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [markIn, setMarkIn] = useState(0);
+  const [currentTranscriptFilename, setCurrentTranscriptFilename] = useState<string | null>(null);
   const { timelineInfo } = useResolve();
   const { settings } = useSettings();
 
@@ -61,15 +62,18 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       const transcript = await readTranscript(filename);
       if (transcript) {
         console.log("Transcript loaded:", transcript);
+        setCurrentTranscriptFilename(filename);
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
       } else {
         console.warn("No transcript found for:", filename);
+        setCurrentTranscriptFilename(null);
         setSubtitles([]);
       }
     } else {
       console.log("No timelineId, clearing subtitles");
+      setCurrentTranscriptFilename(null);
       setSubtitles([]);
     }
   }, []);
@@ -88,8 +92,9 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
 
     // Save to JSON file if we have the necessary context
     try {
-      if (filename) {
-        await updateTranscript(filename, {
+      const targetFilename = filename ?? currentTranscriptFilename;
+      if (targetFilename) {
+        await updateTranscript(targetFilename, {
           subtitles: newSubtitles
         });
         console.log('Subtitle updated in both UI and file');
@@ -114,6 +119,8 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       fileInput,
       timelineId
     )
+
+    setCurrentTranscriptFilename(filename);
 
     // Save transcript to JSON file
     const { segments, speakers } = await saveTranscript(transcript, filename, {
@@ -141,6 +148,8 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       console.error("Failed to read transcript");
       return;
     }
+
+    setCurrentTranscriptFilename(filename);
     const { segments, speakers } = await saveTranscript(transcript, filename, {
       case: settings.textCase,
       removePunctuation: settings.removePunctuation,
