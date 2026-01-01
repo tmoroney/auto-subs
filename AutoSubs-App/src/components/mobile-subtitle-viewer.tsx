@@ -1,11 +1,11 @@
 import * as React from "react"
 import { Layers2, Users, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
 import { useGlobal } from "@/contexts/GlobalContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
+import { ReplaceStringsPanel } from "@/components/replace-strings-dialog"
 
 interface MobileSubtitleViewerProps {
   isOpen: boolean
@@ -13,11 +13,12 @@ interface MobileSubtitleViewerProps {
 }
 
 export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerProps) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const { exportSubtitlesAs, importSubtitles, subtitles, pushToTimeline, settings } = useGlobal()
+  const { exportSubtitlesAs, importSubtitles, subtitles, pushToTimeline, settings, updateSubtitles } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [isPushing, setIsPushing] = React.useState(false)
+  const [highlightText, setHighlightText] = React.useState("")
+  const [highlightedSubtitleIndex, setHighlightedSubtitleIndex] = React.useState<number | undefined>(undefined)
+  const [matchCase, setMatchCase] = React.useState(false)
 
   // Close on escape key
   React.useEffect(() => {
@@ -54,8 +55,8 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
         </Button>
       </div>
 
-      {/* Search & Import/Export & Speakers */}
-      <div className="p-2 border-b shrink-0 sticky top-0 bg-sidebar space-y-1.5">
+      {/* Import/Export & Speakers */}
+      <div className="p-2 border-b shrink-0 sticky top-0 bg-sidebar">
         <div className="flex space-x-2 items-center">
           <ImportExportPopover
             onImport={importSubtitles}
@@ -68,46 +69,47 @@ export function MobileSubtitleViewer({ isOpen, onClose }: MobileSubtitleViewerPr
           </Button>
           <SpeakerEditor afterTranscription={false} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
         </div>
-        <div className="relative">
-          <Input
-            ref={searchInputRef}
-            placeholder="Search subtitles..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10"
-            aria-label="Search subtitles"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto min-h-0 px-0 pb-2 pt-2">
         {subtitles.length > 0 ? (
           <SubtitleList
-            searchQuery={searchQuery}
             itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
+            highlightText={highlightText}
+            highlightedSubtitleIndex={highlightedSubtitleIndex}
+            matchCase={matchCase}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
             <p className="text-lg font-medium mb-2">No subtitles found</p>
             <p className="text-sm">
-              {searchQuery
-                ? 'Try a different search term'
-                : 'No subtitles available. Try importing some first.'}
+              No subtitles available. Try importing some first.
             </p>
           </div>
         )}
       </div>
+
+      {/* Search/Replace Words Panel */}
+      {subtitles.length > 0 && (
+        <ReplaceStringsPanel
+          subtitles={subtitles}
+          onReplace={async (newSubtitles) => {
+            await updateSubtitles(newSubtitles)
+            setHighlightText("")
+            setHighlightedSubtitleIndex(undefined)
+          }}
+          onNavigateToOccurrence={(subtitleIndex) => {
+            setHighlightedSubtitleIndex(subtitleIndex)
+          }}
+          onHighlightChange={(text) => {
+            setHighlightText(text)
+          }}
+          onMatchCaseChange={(matchCase) => {
+            setMatchCase(matchCase)
+          }}
+        />
+      )}
 
       {/* Footer */}
       {!settings.isStandaloneMode && (

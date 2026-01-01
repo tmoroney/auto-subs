@@ -102,6 +102,9 @@ interface SubtitleListProps {
     itemClassName?: string;
     isLoading?: boolean;
     error?: string | null;
+    highlightText?: string;
+    highlightedSubtitleIndex?: number;
+    matchCase?: boolean;
 }
 
 import {
@@ -114,7 +117,10 @@ const SubtitleList = ({
     className = "",
     itemClassName = "",
     isLoading = false,
-    error = null
+    error = null,
+    highlightText = "",
+    highlightedSubtitleIndex,
+    matchCase = false
 }: SubtitleListProps) => {
     const { subtitles, updateSubtitles, speakers } = useGlobal();
     const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
@@ -125,12 +131,13 @@ const SubtitleList = ({
     // Staged merge changes (applied on Save)
     const [pendingPrevWords, setPendingPrevWords] = useState<Word[] | null>(null);
     const [pendingNextWords, setPendingNextWords] = useState<Word[] | null>(null);
-    
+
     // Virtual scrolling state
     const containerRef = useRef<HTMLDivElement>(null);
+    const subtitleRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(0);
-    
+
     // Constants for virtualization - using adaptive height estimation
     const ESTIMATED_ITEM_HEIGHT = 100; // Conservative estimate for variable heights
     const BUFFER_SIZE = 3; // Smaller buffer for better performance
@@ -148,41 +155,33 @@ const SubtitleList = ({
             (subtitle.speaker_id && subtitle.speaker_id.toLowerCase().includes(query))
         );
     }, [subtitles, searchQuery, subtitleContentHash]); // Include content hash
-    
     // Calculate visible range with estimated heights
     const { startIndex, endIndex, totalHeight } = useMemo(() => {
         const itemCount = filteredSubtitles.length;
         if (itemCount === 0) return { startIndex: 0, endIndex: 0, totalHeight: 0 };
-        
         const visibleStart = Math.floor(scrollTop / ESTIMATED_ITEM_HEIGHT);
         const visibleEnd = Math.min(
             itemCount - 1,
             Math.ceil((scrollTop + containerHeight) / ESTIMATED_ITEM_HEIGHT)
         );
-        
         const start = Math.max(0, visibleStart - BUFFER_SIZE);
         const end = Math.min(itemCount - 1, visibleEnd + BUFFER_SIZE);
-        
         // Use a more conservative total height to prevent large blank space
         const averageItemHeight = ESTIMATED_ITEM_HEIGHT - 20; // Match the minHeight we use for items
-        
         return {
             startIndex: start,
             endIndex: end,
             totalHeight: itemCount * averageItemHeight
         };
     }, [scrollTop, containerHeight, filteredSubtitles.length, subtitleContentHash]);
-    
     // Get visible items with content hash dependency
     const visibleItems = useMemo(() => {
         return filteredSubtitles.slice(startIndex, endIndex + 1);
     }, [filteredSubtitles, startIndex, endIndex, subtitleContentHash]);
-    
     // Handle scroll
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         setScrollTop(e.currentTarget.scrollTop);
     }, []);
-    
     // Handle container resize
     useEffect(() => {
         const updateContainerHeight = () => {
@@ -190,12 +189,67 @@ const SubtitleList = ({
                 setContainerHeight(containerRef.current.clientHeight);
             }
         };
-        
         updateContainerHeight();
         window.addEventListener('resize', updateContainerHeight);
         return () => window.removeEventListener('resize', updateContainerHeight);
     }, []);
 
+    //Track previous highlighted index to trigger animation
+    const prevHighlightedIndexRef = useRef<number | undefined>(undefined);
+    const [animatingIndex, setAnimatingIndex] = useState<number | undefined>(undefined);
+
+    //Scroll to subtitle
+    useEffect(() => {
+        if (highlightedSubtitleIndex !== undefined && containerRef.current) {
+            const element = subtitleRefs.current.get(highlightedSubtitleIndex);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            //if new highlight, trigger animation
+            if (prevHighlightedIndexRef.current !== highlightedSubtitleIndex) {
+                setAnimatingIndex(highlightedSubtitleIndex);
+                const timer = setTimeout(() => {
+                    setAnimatingIndex(undefined);
+                }, 2000);
+                prevHighlightedIndexRef.current = highlightedSubtitleIndex;
+                return () => clearTimeout(timer);
+            }
+        } else {
+            prevHighlightedIndexRef.current = undefined;
+            setAnimatingIndex(undefined);
+        }
+    }, [highlightedSubtitleIndex]);
+
+    //Helper func to highlight text in the subtitle
+    const highlightTextInSubtitle = (text: string, highlight: string, caseSensitive: boolean) => {
+        if (!highlight.trim()) {
+            return <span>{text}</span>;
+        }
+
+        const flags = caseSensitive ? 'g' : 'gi';
+        const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags));
+        return (
+            <>
+                {parts.map((part, index) => {
+                    const isMatch = caseSensitive 
+                        ? part === highlight 
+                        : part.toLowerCase() === highlight.toLowerCase();
+                    if (isMatch) {
+                        return (
+                            <mark
+                                key={index}
+                                className="bg-yellow-300 dark:bg-yellow-600 text-foreground px-0.5 rounded"
+                            >
+                                {part}
+                            </mark>
+                        );
+                    }
+                    return <span key={index}>{part}</span>;
+                })}
+            </>
+        );
+    };
     const handleOpenEdit = (subtitle: Subtitle) => {
         setEditingSubtitle(subtitle);
         // Populate editor with words array from the subtitle object
@@ -326,27 +380,35 @@ const SubtitleList = ({
     return (
         <div className={className}>
             <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={expandedSpeakerIndex} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-            <div 
+            <div
                 ref={containerRef}
                 className="h-full"
                 onScroll={handleScroll}
                 style={{ height: '100%', overflow: 'visible' }}
             >
                 <div style={{ height: totalHeight, position: 'relative' }}>
-                    <div 
-                        style={{ 
+                    <div
+                        style={{
                             transform: `translateY(${startIndex * ESTIMATED_ITEM_HEIGHT}px)`,
                             position: 'relative'
                         }}
                     >
                         {visibleItems.map((subtitle: Subtitle, virtualIndex: number) => {
                             const actualIndex = startIndex + virtualIndex;
-                            
+                            const isHighlighted = highlightedSubtitleIndex === actualIndex;
+                            const isAnimating = animatingIndex === actualIndex;
                             return (
                                 <div
                                     key={`${actualIndex}-${subtitle.text.slice(0, 20)}`} // Include content in key for proper re-rendering
-                                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName}`}
-                                    style={{ 
+                                    ref={(el) => {
+                                        if (el) {
+                                            subtitleRefs.current.set(actualIndex, el);
+                                        } else {
+                                            subtitleRefs.current.delete(actualIndex);
+                                        }
+                                    }}
+                                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName} ${isAnimating ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600 animate-highlight-fade dark:animate-highlight-fade-dark' : ''}`}
+                                    style={{
                                         minHeight: ESTIMATED_ITEM_HEIGHT - 20 // Allow natural height with minimum
                                     }}
                                 >
@@ -378,7 +440,9 @@ const SubtitleList = ({
 
                                     </div>
                                     <div className="relative w-full pr-8">
-                                        <span className="text-foreground leading-relaxed whitespace-pre-line">{subtitle.text}</span>
+                                        <span className="text-foreground leading-relaxed whitespace-pre-line">
+                                            {highlightText ? highlightTextInSubtitle(subtitle.text, highlightText, matchCase) : subtitle.text}
+                                        </span>
                                         <div
                                             className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
                                         >
@@ -456,7 +520,7 @@ const SubtitleList = ({
                                                                         onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
                                                                         onClick={() => handleMergeRight(actualIndex)}
                                                                     >
-                                                                        Merge Right<ArrowRight className="h-4 w-4 ml-2" /> 
+                                                                        Merge Right<ArrowRight className="h-4 w-4 ml-2" />
                                                                     </Button>
                                                                 )}
                                                             </div>
