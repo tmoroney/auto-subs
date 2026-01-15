@@ -6,9 +6,21 @@ import { useGlobal } from "@/contexts/GlobalContext"
 import { ImportExportPopover } from "@/components/import-export-popover"
 import { SpeakerEditor } from "@/components/speaker-editor"
 import { ReplaceStringsPanel } from "@/components/replace-strings-dialog"
+import { TrackConflictDialog } from "@/components/track-conflict-dialog"
 
 export function DesktopSubtitleViewer() {
-  const { subtitles, exportSubtitlesAs, importSubtitles, pushToTimeline, settings, updateSubtitles } = useGlobal()
+  const { 
+    subtitles, 
+    exportSubtitlesAs, 
+    importSubtitles, 
+    pushToTimeline, 
+    settings, 
+    updateSubtitles,
+    conflictInfo,
+    showConflictDialog,
+    setShowConflictDialog,
+    resolveConflictAndPush,
+  } = useGlobal()
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [isPushing, setIsPushing] = React.useState(false)
   const [highlightText, setHighlightText] = React.useState("")
@@ -103,6 +115,21 @@ export function DesktopSubtitleViewer() {
           </Button>
         </div>
       )}
+
+      {/* Track Conflict Resolution Dialog */}
+      <TrackConflictDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+        conflictInfo={conflictInfo}
+        onResolve={async (mode) => {
+          setIsPushing(true)
+          try {
+            await resolveConflictAndPush(mode)
+          } finally {
+            setIsPushing(false)
+          }
+        }}
+      />
     </div>
   )
 }

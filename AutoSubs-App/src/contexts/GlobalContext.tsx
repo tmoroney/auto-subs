@@ -10,7 +10,7 @@ import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
-import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
+import { getTimelineInfo, cancelExport, addSubtitlesToTimeline, checkTrackConflicts, ConflictInfo, ConflictMode } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -42,6 +42,11 @@ interface GlobalContextType {
   createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   pushToTimeline: () => Promise<void>;
+  // Conflict resolution state
+  conflictInfo: ConflictInfo | null;
+  showConflictDialog: boolean;
+  setShowConflictDialog: (show: boolean) => void;
+  resolveConflictAndPush: (mode: ConflictMode) => Promise<void>;
   // UI state
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
@@ -143,6 +148,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showMobileSubtitles, setShowMobileSubtitles] = useState<boolean>(false);
+  
+  // Conflict resolution state
+  const [conflictInfo, setConflictInfo] = useState<ConflictInfo | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState<boolean>(false);
 
   // Davinci Resolve state
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
@@ -711,7 +720,31 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   async function pushToTimeline() {
     let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
-    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack);
+    
+    // Check for conflicts on the target track (only for non-standalone mode with a specific track selected)
+    if (!settings.isStandaloneMode && settings.selectedOutputTrack && settings.selectedOutputTrack !== "0") {
+      try {
+        const conflicts = await checkTrackConflicts(filename, settings.selectedOutputTrack);
+        
+        if (conflicts.hasConflicts && conflicts.totalConflicts && conflicts.totalConflicts > 0) {
+          // Store conflict info and show dialog
+          setConflictInfo(conflicts);
+          setShowConflictDialog(true);
+          return; // Wait for user to resolve conflict via dialog
+        }
+      } catch (err) {
+        console.warn("Could not check track conflicts, proceeding with add:", err);
+      }
+    }
+    
+    // No conflicts or couldn't check, proceed directly
+    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack, null);
+  }
+  
+  async function resolveConflictAndPush(mode: ConflictMode) {
+    let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
+    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack, mode);
+    setConflictInfo(null);
   }
 
   return (
@@ -737,6 +770,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       exportSubtitlesAs,
       importSubtitles,
       pushToTimeline,
+      // Conflict resolution
+      conflictInfo,
+      showConflictDialog,
+      setShowConflictDialog,
+      resolveConflictAndPush,
       resetSettings,
       // Event listener states
       transcriptionProgress,
