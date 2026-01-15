@@ -19,8 +19,6 @@ use whisper_rs::DtwMode;
 use whisper_rs::DtwModelPreset;
 use whisper_rs::DtwParameters;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContextParameters, WhisperContext, WhisperSegment, WhisperVadContext, WhisperVadContextParams, WhisperVadParams};
-use regex::Regex;
-use once_cell::sync::Lazy;
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -40,6 +38,36 @@ fn round_to_places(val: f64, places: u32) -> f64 {
     (val * factor).trunc() / factor
 }
 
+// --- Audio Segment for segment-based transcription ---
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioSegment {
+    pub start: f64,           // Start time within audio file (seconds)
+    pub end: f64,             // End time within audio file (seconds)
+    pub timeline_offset: f64, // Offset to add for timeline placement (seconds)
+}
+
+
+const SAMPLE_RATE: usize = 16000; // 16kHz for Whisper
+
+/// Extract audio samples for a single clip segment
+/// Returns the samples for just that clip
+fn extract_clip_samples(
+    samples: &[f32],
+    segment: &crate::config::TranscribeSegment,
+) -> Option<Vec<f32>> {
+    let start_sample = (segment.start * SAMPLE_RATE as f64) as usize;
+    let end_sample = ((segment.end * SAMPLE_RATE as f64) as usize).min(samples.len());
+    
+    if start_sample >= samples.len() || start_sample >= end_sample {
+        tracing::warn!("Skipping clip outside audio bounds: start={:.2}s end={:.2}s", 
+            segment.start, segment.end);
+        return None;
+    }
+    
+    Some(samples[start_sample..end_sample].to_vec())
+}
+
 // --- Frontend Options Struct ---
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -53,14 +81,14 @@ pub struct FrontendTranscribeOptions {
     pub enable_gpu: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
+    pub segments: Option<Vec<AudioSegment>>,  // If provided, transcribe only these segments
 }
 
 #[command]
 pub async fn cancel_transcription() -> Result<(), String> {
-    println!("Cancellation requested");
+    tracing::info!("Transcription cancellation requested");
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = true;
-        println!("Cancellation flag set to true");
     } else {
         return Err("Failed to acquire cancellation lock".to_string());
     }
@@ -73,14 +101,12 @@ pub async fn transcribe_audio<R: Runtime>(
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
     tracing::info!("whisper.cpp {}", whisper_rs::WHISPER_CPP_VERSION);
-    println!("whisper.cpp {}", whisper_rs::WHISPER_CPP_VERSION);
     let start_time = Instant::now();
-    println!("Starting transcription with options: {:?}", options);
+    tracing::debug!("Starting transcription with options: {:?}", options);
 
     // Reset cancellation flag at the start of transcription
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = false;
-        println!("Cancellation flag reset to false");
     }
 
     let model_path = crate::models::download_model_if_needed(app.clone(), &options.model)?;
@@ -111,7 +137,15 @@ pub async fn transcribe_audio<R: Runtime>(
     .map_err(|e| format!("Failed to create Whisper context: {}", e))?;
 
     let vad_model_path = crate::models::get_vad_model_path(app.clone());
-    println!("vad model path: {:?}", vad_model_path);
+
+    // Convert frontend segments to config segments
+    let config_segments = options.segments.as_ref().map(|segs| {
+        segs.iter().map(|s| crate::config::TranscribeSegment {
+            start: s.start,
+            end: s.end,
+            timeline_offset: s.timeline_offset,
+        }).collect()
+    });
 
     let transcribe_options = TranscribeOptions {
         path: options.audio_path.clone().into(),
@@ -128,10 +162,11 @@ pub async fn transcribe_audio<R: Runtime>(
         enable_dtw: options.enable_dtw,
         sampling_bestof_or_beam_size: None,
         sampling_strategy: None,
+        segments: config_segments,
     };
 
     let diarize_options = if let Some(true) = options.enable_diarize {
-        println!("Diarization enabled, checking for models...");
+        tracing::debug!("Diarization enabled, checking for models...");
         let seg_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/segmentation-3.0.onnx";
         let emb_url = "https://github.com/thewh1teagle/pyannote-rs/releases/download/v0.1.0/wespeaker_en_voxceleb_CAM++.onnx";
 
@@ -206,7 +241,7 @@ pub async fn transcribe_audio<R: Runtime>(
         if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
             let cancelled = *should_cancel;
             if cancelled {
-                println!("Transcription cancelled by user");
+                tracing::info!("Transcription cancelled by user");
             }
             cancelled
         } else {
@@ -235,14 +270,14 @@ pub async fn transcribe_audio<R: Runtime>(
     match res {
         Ok(mut transcript) => {
             transcript.processing_time_sec = start_time.elapsed().as_secs();
-            println!(
-                "Transcription successful in {:.2}s",
+            tracing::info!(
+                "Transcription successful in {}s",
                 transcript.processing_time_sec
             );
             Ok(transcript)
         }
         Err(e) => {
-            eprintln!("Error during transcription pipeline: {}", e);
+            tracing::error!("Error during transcription pipeline: {}", e);
             Err(format!("Transcription failed: {}", e))
         }
     }
@@ -352,11 +387,8 @@ pub fn create_context(
 
     // Print actual DTW state from ctx_params
     let dtw_enabled = enable_dtw.unwrap_or(false);
-    // print as well
-    println!("gpu device: {:?}", ctx_params.gpu_device);
-    println!("use gpu: {:?}", ctx_params.use_gpu);
-    println!("DTW enabled: {}", dtw_enabled);
-    println!("flash attn: {}", ctx_params.flash_attn);
+    tracing::debug!("GPU device: {:?}, use_gpu: {:?}, DTW: {}, flash_attn: {}", 
+        ctx_params.gpu_device, ctx_params.use_gpu, dtw_enabled, ctx_params.flash_attn);
     let model_path = model_path
         .to_str()
         .ok_or_eyre("can't convert model option to str")?;
@@ -982,12 +1014,10 @@ pub async fn run_transcription_pipeline<R: Runtime>(
         )
         .await?
     } else {
-        println!("Skip normalize");
         tracing::debug!("Skip normalize");
         options.path.clone().into()
     };
-    println!("out path is {}", out_path.display());
-    tracing::debug!("out path is {}", out_path.display());
+    tracing::debug!("Audio path: {}", out_path.display());
 
     // Decode normalized WAV to mono 16k PCM16 samples with robust fallback (ffmpeg if needed)
     let original_samples = audio::decode_pcm_mono16k_from_wav(app.clone(), out_path.clone())
@@ -1010,13 +1040,9 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             let internal_progress_callback = move |progress: i32| callback(progress);
             *guard = Some(Box::new(internal_progress_callback));
         }
-        let mut samples = vec![0.0f32; original_samples.len()];
+        let mut full_samples = vec![0.0f32; original_samples.len()];
 
-        whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
-
-        // let vad_model_path = options.vad_model_path.as_deref().unwrap();
-        // let speech_segments = detect_speech_segments(vad_model_path, &samples)?;
-        // println!("speech segments: {:#?}", speech_segments);
+        whisper_rs::convert_integer_to_float_audio(&original_samples, &mut full_samples)?;
 
         if let Some(abort_callback) = abort_callback {
             params.set_abort_callback_safe(abort_callback);
@@ -1037,107 +1063,181 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             });
         }
 
-        state.full(params, &samples).context("failed to transcribe")?;
-        let _et = std::time::Instant::now();
-
-        tracing::debug!("getting segments count...");
-        let num_segments = state.full_n_segments();
-        if num_segments == 0 {
-            bail!("no segments found!")
-        }
-        tracing::debug!("found {} sentence segments", num_segments);
-
-        let mut segments_out: Vec<Segment> = Vec::with_capacity(num_segments as usize);
-        let mut empty_segments = 0usize;
+        // Determine if we need to transcribe multiple clips separately
+        let audio_clips = options.segments.clone();
+        let has_multiple_clips = audio_clips.as_ref().map(|c| c.len() > 0).unwrap_or(false);
+        
+        let mut segments_out: Vec<Segment> = Vec::new();
+        let mut total_empty_segments = 0usize;
         let mut total_chars = 0usize;
 
-        for (seg_idx, seg) in state.as_iter().enumerate() { // iterator over `WhisperSegment`
-            // segment text
-            // If you want “Have” instead of “ have”, do a tiny sentence-case pass:
-            let mut text = seg.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
-            text = text.trim_start().to_string(); // remove Whisper’s typical leading space
+        if has_multiple_clips {
+            // SEPARATE CLIP TRANSCRIPTION: Process each clip independently
+            // This ensures no segment can ever span across clips
+            let clips = audio_clips.unwrap();
+            tracing::info!("Transcribing {} clip(s) separately for accurate timing", clips.len());
+            
+            for (clip_idx, clip) in clips.iter().enumerate() {
+                // Extract this clip's audio samples
+                let clip_samples = match extract_clip_samples(&full_samples, clip) {
+                    Some(s) => s,
+                    None => {
+                        tracing::warn!("Skipping empty clip {}", clip_idx);
+                        continue;
+                    }
+                };
+                
+                // Create a fresh state for this clip
+                let mut clip_state = ctx.create_state().context("failed to create state for clip")?;
+                let clip_params = setup_params(&options);
+                
+                // Transcribe this clip
+                clip_state.full(clip_params, &clip_samples).context("failed to transcribe clip")?;
+                
+                let num_clip_segments = clip_state.full_n_segments();
+                tracing::debug!("Clip {} produced {} segments", clip_idx, num_clip_segments);
+                
+                // Extract segments from this clip and apply timeline offset
+                for (seg_idx, seg) in clip_state.as_iter().enumerate() {
+                    let mut text = seg.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
+                    text = text.trim_start().to_string();
 
-            // Filter out [BLANK_AUDIO]
-            if text == "[BLANK_AUDIO]" {
-                continue;
+                    if text == "[BLANK_AUDIO]" {
+                        continue;
+                    }
+
+                    if seg_idx == 0 && segments_out.is_empty() {
+                        text = sentence_case_first_alpha(&text);
+                    }
+
+                    total_chars += text.len();
+
+                    let t0_frames = seg.start_timestamp();
+                    let t1_frames = seg.end_timestamp();
+                    let approx_start = cs_to_s(t0_frames);
+                    let approx_end = cs_to_s(t1_frames);
+                    
+                    if text.trim().is_empty() {
+                        total_empty_segments += 1;
+                        continue;
+                    }
+
+                    // Get word timestamps
+                    let mut word_timestamps = get_word_timestamps_from_segment(&seg, options.enable_dtw.unwrap_or(false));
+                    let (seg_start, seg_end, words_opt) = if word_timestamps.is_empty() {
+                        (approx_start, approx_end, None)
+                    } else {
+                        if seg_idx == 0 && segments_out.is_empty() {
+                            word_timestamps.first_mut().unwrap().word = sentence_case_first_alpha(&word_timestamps.first().unwrap().word);
+                        }
+                        let s = word_timestamps.first().map(|w| w.start).unwrap_or(approx_start);
+                        let e = word_timestamps.last().map(|w| w.end).unwrap_or(s);
+                        (s, e, Some(word_timestamps))
+                    };
+
+                    // Apply timeline offset to this segment
+                    let timeline_offset = clip.timeline_offset;
+                    let final_start = round_to_places(seg_start + timeline_offset, 3);
+                    let final_end = round_to_places(seg_end + timeline_offset, 3);
+                    
+                    // Apply offset to word timestamps too
+                    let final_words = words_opt.map(|words| {
+                        words.into_iter().map(|mut w| {
+                            w.start = round_to_places(w.start + timeline_offset, 3);
+                            w.end = round_to_places(w.end + timeline_offset, 3);
+                            w
+                        }).collect()
+                    });
+
+                    segments_out.push(Segment {
+                        speaker_id: None,
+                        start: final_start,
+                        end: final_end,
+                        text,
+                        words: final_words,
+                    });
+                }
             }
-
-            // For the very first segment (or if prev ended with .?!), capitalize:
-            if seg_idx == 0 /* or your prev-ender test */ {
-                text = sentence_case_first_alpha(&text);
+            
+            tracing::info!("Transcribed {} segments from {} clips", segments_out.len(), clips.len());
+            
+        } else {
+            // SINGLE AUDIO TRANSCRIPTION: Original behavior
+            state.full(params, &full_samples).context("failed to transcribe")?;
+            
+            let num_segments = state.full_n_segments();
+            if num_segments == 0 {
+                bail!("no segments found!")
             }
+            tracing::debug!("found {} sentence segments", num_segments);
 
-            total_chars += text.len();
+            for (seg_idx, seg) in state.as_iter().enumerate() {
+                let mut text = seg.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
+                text = text.trim_start().to_string();
 
-            // quick t0/t1 preview (centiseconds → seconds)
-            let t0_frames = seg.start_timestamp();
-            let t1_frames = seg.end_timestamp();
-            let approx_start = cs_to_s(t0_frames);
-            let approx_end   = cs_to_s(t1_frames);
-            let preview: String = text.chars().take(40).collect();
-        
-            tracing::debug!(
-                "Seg {} approx [{:.2}-{:.2}] text_len={} preview={:?}",
-                seg_idx, approx_start, approx_end, text.len(), preview
-            );
-        
-            if text.trim().is_empty() {
-                empty_segments += 1;
-                tracing::warn!(
-                    "Seg {} has empty/whitespace text in [{:.2}-{:.2}]",
-                    seg_idx, approx_start, approx_end
-                );
-            }
-        
-            // word timestamps (DTW if enabled at context creation)
-            let mut word_timestamps = get_word_timestamps_from_segment(&seg, options.enable_dtw.unwrap_or(false));
-            let (seg_start, seg_end, words_opt) = if word_timestamps.is_empty() {
-                tracing::debug!(
-                    "Seg {} word_timestamps empty; falling back to segment bounds [{:.2}-{:.2}]",
-                    seg_idx, approx_start, approx_end
-                );
-                (approx_start, approx_end, None)
-            } else {
+                if text == "[BLANK_AUDIO]" {
+                    continue;
+                }
+
                 if seg_idx == 0 {
-                    word_timestamps.first_mut().unwrap().word = sentence_case_first_alpha(&word_timestamps.first().unwrap().word);
+                    text = sentence_case_first_alpha(&text);
                 }
-                let s = word_timestamps.first().map(|w| w.start).unwrap_or(approx_start);
-                let e = word_timestamps.last().map(|w| w.end).unwrap_or(s);
-                tracing::debug!(
-                    "Seg {} word_timestamps count={} bounds [{:.2}-{:.2}]",
-                    seg_idx, word_timestamps.len(), s, e
-                );
-                (s, e, Some(word_timestamps))
-            };
-        
-            // prevent slight overlaps with previous segment
-            if let Some(last) = segments_out.last_mut() {
-                if last.end > seg_start {
-                    last.end = seg_start;
+
+                total_chars += text.len();
+
+                let t0_frames = seg.start_timestamp();
+                let t1_frames = seg.end_timestamp();
+                let approx_start = cs_to_s(t0_frames);
+                let approx_end = cs_to_s(t1_frames);
+            
+                if text.trim().is_empty() {
+                    total_empty_segments += 1;
+                    tracing::warn!(
+                        "Seg {} has empty/whitespace text in [{:.2}-{:.2}]",
+                        seg_idx, approx_start, approx_end
+                    );
                 }
-                if let Some(words) = &mut last.words {
-                    if let Some(last_word) = words.last_mut() {
-                        if last_word.end > last.end {
-                            last_word.end = last.end;
+            
+                let mut word_timestamps = get_word_timestamps_from_segment(&seg, options.enable_dtw.unwrap_or(false));
+                let (seg_start, seg_end, words_opt) = if word_timestamps.is_empty() {
+                    (approx_start, approx_end, None)
+                } else {
+                    if seg_idx == 0 {
+                        word_timestamps.first_mut().unwrap().word = sentence_case_first_alpha(&word_timestamps.first().unwrap().word);
+                    }
+                    let s = word_timestamps.first().map(|w| w.start).unwrap_or(approx_start);
+                    let e = word_timestamps.last().map(|w| w.end).unwrap_or(s);
+                    (s, e, Some(word_timestamps))
+                };
+            
+                if let Some(last) = segments_out.last_mut() {
+                    if last.end > seg_start {
+                        last.end = seg_start;
+                    }
+                    if let Some(words) = &mut last.words {
+                        if let Some(last_word) = words.last_mut() {
+                            if last_word.end > last.end {
+                                last_word.end = last.end;
+                            }
                         }
                     }
                 }
+            
+                segments_out.push(Segment {
+                    speaker_id: None,
+                    start: seg_start,
+                    end: seg_end,
+                    text,
+                    words: words_opt,
+                });
             }
-        
-            segments_out.push(Segment {
-                speaker_id: None,
-                start: seg_start,
-                end: seg_end,
-                text,
-                words: words_opt,
-            });
         }
 
         tracing::info!(
             "Transcription summary: segments={}, empty_segments={}, total_chars={}",
-            num_segments, empty_segments, total_chars
+            segments_out.len(), total_empty_segments, total_chars
         );
-        if empty_segments == num_segments as usize {
+        if total_empty_segments == segments_out.len() {
             tracing::warn!("All segments are empty/whitespace. Upstream audio or decoding may be silent/corrupted.");
         }
 
@@ -1175,24 +1275,27 @@ pub async fn run_transcription_pipeline<R: Runtime>(
             (Vec::new(), segments_out)
         };
 
-        let offset = options.offset.unwrap_or(0.0);
+        // Apply offset for single-audio mode (multi-clip mode already applied offsets above)
+        if !has_multiple_clips {
+            let offset = options.offset.unwrap_or(0.0);
 
-        // loop through and offset to each word and segment, then round
-        for segment in segments.iter_mut() {
-            segment.start = round_to_places(segment.start + offset, 3);
-            segment.end = round_to_places(segment.end + offset, 3);
-            if let Some(words) = &mut segment.words {
-                for word in words.iter_mut() {
-                    word.start = round_to_places(word.start + offset, 3);
-                    word.end = round_to_places(word.end + offset, 3);
+            // Apply offset to each segment
+            for segment in segments.iter_mut() {
+                segment.start = round_to_places(segment.start + offset, 3);
+                segment.end = round_to_places(segment.end + offset, 3);
+                if let Some(words) = &mut segment.words {
+                    for word in words.iter_mut() {
+                        word.start = round_to_places(word.start + offset, 3);
+                        word.end = round_to_places(word.end + offset, 3);
+                    }
                 }
             }
-        }
 
-        // loop through and offset to each speaker, then round
-        for speaker in speakers.iter_mut() {
-            speaker.sample.start = round_to_places(speaker.sample.start + offset, 3);
-            speaker.sample.end = round_to_places(speaker.sample.end + offset, 3);
+            // Apply offset to each speaker
+            for speaker in speakers.iter_mut() {
+                speaker.sample.start = round_to_places(speaker.sample.start + offset, 3);
+                speaker.sample.end = round_to_places(speaker.sample.end + offset, 3);
+            }
         }
 
         let transcript = Transcript {

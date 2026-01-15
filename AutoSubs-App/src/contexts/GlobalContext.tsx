@@ -10,7 +10,7 @@ import { listen } from '@tauri-apps/api/event';
 
 // Import custom APIs and utilities
 import { Subtitle, Speaker, ErrorMsg, TimelineInfo, Settings, Model, TranscriptionOptions } from "@/types/interfaces";
-import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolveAPI';
+import { getTimelineInfo, cancelExport, addSubtitlesToTimeline, checkTrackConflicts, ConflictInfo, ConflictMode } from '@/api/resolveAPI';
 import { generateTranscriptFilename, readTranscript, saveTranscript, updateTranscript } from '../utils/fileUtils';
 import { generateSrt, parseSrt } from '@/utils/srtUtils';
 import { models } from '@/lib/models';
@@ -39,9 +39,14 @@ interface GlobalContextType {
   cancelRequestedRef: React.MutableRefObject<boolean>;
   // Transcription utils
   validateTranscriptionInput: () => boolean;
-  createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
+  createTranscriptionOptions: (audioInfo: { path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> }) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   pushToTimeline: () => Promise<void>;
+  // Conflict resolution state
+  conflictInfo: ConflictInfo | null;
+  showConflictDialog: boolean;
+  setShowConflictDialog: (show: boolean) => void;
+  resolveConflictAndPush: (mode: ConflictMode) => Promise<void>;
   // UI state
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
@@ -65,7 +70,7 @@ interface GlobalContextType {
   resetSettings: () => void;
   setupEventListeners: () => () => void; // Return cleanup function
   handleDeleteModel: (modelValue: string) => Promise<void>;
-  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
+  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> } | null>;
   cancelExport: () => Promise<any>;
 }
 
@@ -143,6 +148,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showMobileSubtitles, setShowMobileSubtitles] = useState<boolean>(false);
+  
+  // Conflict resolution state
+  const [conflictInfo, setConflictInfo] = useState<ConflictInfo | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState<boolean>(false);
 
   // Davinci Resolve state
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
@@ -409,7 +418,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     isStandaloneMode: boolean,
     fileInput: string | null,
     inputTracks: string[]
-  ): Promise<{ path: string, offset: number } | null> => {
+  ): Promise<{ path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> } | null> => {
     if (timelineInfo && !isStandaloneMode) {
       // Reset cancellation flag at the start of export
       cancelRequestedRef.current = false;
@@ -472,9 +481,10 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         setIsExporting(false);
         setExportProgress(100);
 
-        let audioPath = audioInfo["path"];
-        let audioOffset = audioInfo["offset"];
-        return { path: audioPath, offset: audioOffset };
+        const audioPath = audioInfo["path"] as string;
+        const audioOffset = audioInfo["offset"] as number;
+        const audioSegments = audioInfo["segments"] as Array<{ start: number, end: number, timelineStart: number }> | undefined;
+        return { path: audioPath, offset: audioOffset, segments: audioSegments };
 
       } catch (error) {
         setIsExporting(false);
@@ -482,7 +492,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         throw error;
       }
     } else {
-      return { path: fileInput || "", offset: 0 };
+      return { path: fileInput || "", offset: 0, segments: undefined };
     }
   };
 
@@ -640,20 +650,34 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   /**
    * Creates transcription options object
-   * @param {string} audioPath Path to audio file
-   * @returns {object} Options for transcription
+   * @param audioInfo Audio info with path, offset, and optional segments
+   * @returns Options for transcription
    */
-  const createTranscriptionOptions = (audioInfo: { path: string, offset: number }): TranscriptionOptions => ({
-    audioPath: audioInfo.path,
-    offset: Math.round(audioInfo.offset * 1000) / 1000,
-    model: modelsState[settings.model].value,
-    lang: settings.language,
-    translate: settings.translate,
-    enableDtw: settings.enableDTW,
-    enableGpu: settings.enableGpu,
-    enableDiarize: settings.enableDiarize,
-    maxSpeakers: settings.maxSpeakers,
-  })
+  const createTranscriptionOptions = (audioInfo: { 
+    path: string, 
+    offset: number, 
+    segments?: Array<{ start: number, end: number, timelineStart: number }> 
+  }): TranscriptionOptions => {
+    // Convert segments to transcription format if provided
+    const transcriptionSegments = audioInfo.segments?.map(seg => ({
+      start: seg.start,
+      end: seg.end,
+      timelineOffset: seg.timelineStart,  // Use timelineStart as the offset for subtitle placement
+    }));
+    
+    return {
+      audioPath: audioInfo.path,
+      offset: Math.round(audioInfo.offset * 1000) / 1000,
+      model: modelsState[settings.model].value,
+      lang: settings.language,
+      translate: settings.translate,
+      enableDtw: settings.enableDTW,
+      enableGpu: settings.enableGpu,
+      enableDiarize: settings.enableDiarize,
+      maxSpeakers: settings.maxSpeakers,
+      segments: transcriptionSegments,
+    };
+  }
 
   /**
    * Processes transcription results
@@ -711,7 +735,31 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   async function pushToTimeline() {
     let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
-    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack);
+    
+    // Check for conflicts on the target track (only for non-standalone mode with a specific track selected)
+    if (!settings.isStandaloneMode && settings.selectedOutputTrack && settings.selectedOutputTrack !== "0") {
+      try {
+        const conflicts = await checkTrackConflicts(filename, settings.selectedOutputTrack);
+        
+        if (conflicts.hasConflicts && conflicts.totalConflicts && conflicts.totalConflicts > 0) {
+          // Store conflict info and show dialog
+          setConflictInfo(conflicts);
+          setShowConflictDialog(true);
+          return; // Wait for user to resolve conflict via dialog
+        }
+      } catch (err) {
+        console.warn("Could not check track conflicts, proceeding with add:", err);
+      }
+    }
+    
+    // No conflicts or couldn't check, proceed directly
+    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack, null);
+  }
+  
+  async function resolveConflictAndPush(mode: ConflictMode) {
+    let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId);
+    await addSubtitlesToTimeline(filename, settings.selectedTemplate.value, settings.selectedOutputTrack, mode);
+    setConflictInfo(null);
   }
 
   return (
@@ -737,6 +785,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       exportSubtitlesAs,
       importSubtitles,
       pushToTimeline,
+      // Conflict resolution
+      conflictInfo,
+      showConflictDialog,
+      setShowConflictDialog,
+      resolveConflictAndPush,
       resetSettings,
       // Event listener states
       transcriptionProgress,

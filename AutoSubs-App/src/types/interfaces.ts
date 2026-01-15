@@ -5,11 +5,20 @@ export interface ErrorMsg {
 }
 
 // Resolve Interfaces
+export interface AudioSegment {
+    start: number;      // Start time within exported audio (seconds)
+    end: number;        // End time within exported audio (seconds)
+    timelineStart: number;  // Absolute start on timeline (seconds)
+    timelineEnd: number;    // Absolute end on timeline (seconds)
+    name: string;       // Clip name
+}
+
 export interface AudioInfo {
     path: string;
     markIn: number;
     markOut: number;
     offset: number;
+    segments?: AudioSegment[];  // Individual clip segments for segment-based transcription
 }
 
 export interface Template {
@@ -115,6 +124,12 @@ export interface Settings {
     highlightColor: string;
 }
 
+export interface TranscriptionSegment {
+    start: number;          // Start time within audio file (seconds)
+    end: number;            // End time within audio file (seconds)  
+    timelineOffset: number; // Offset to add for timeline placement (seconds)
+}
+
 export interface TranscriptionOptions {
     audioPath: string,
     offset: number,
@@ -125,4 +140,5 @@ export interface TranscriptionOptions {
     enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    segments?: TranscriptionSegment[],  // If provided, only transcribe these segments
 }

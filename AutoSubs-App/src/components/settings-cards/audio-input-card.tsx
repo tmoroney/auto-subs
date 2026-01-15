@@ -109,7 +109,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, callRefresh, wa
                 {selectedTracks.length === 0
                   ? "Select tracks..."
                   : selectedTracks.length === 1
-                    ? `Track ${selectedTracks[0]}`
+                    ? inputTracks.find(track => track.value === selectedTracks[0])?.label || `Track ${selectedTracks[0]}`
                     : `${selectedTracks.length} tracks selected`
                 }
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -150,7 +150,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, callRefresh, wa
                 </div>
               )}
               {inputTracks.length > 0 ? (
-                <ScrollArea style={{ maxHeight: '200px', width: '100%' }}>
+                <ScrollArea className="h-[200px] w-full">
                   <div className="flex flex-col gap-1 p-2">
                     {inputTracks.map((track) => {
                       const trackId = track.value;
