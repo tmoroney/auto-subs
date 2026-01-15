@@ -275,6 +275,7 @@ function ResetTracks()
     for i = 1, audioTracks do
         timeline:SetTrackEnable("audio", i, currentExportJob.trackStates[i])
     end
+    currentExportJob.clipBoundaries = nil
 end
 
 function CheckTrackEmpty(trackIndex, markIn, markOut)
@@ -422,6 +423,31 @@ function CancelExport()
     end
 end
 
+-- Helper function to find clip boundaries on selected audio tracks
+function GetClipBoundaries(timeline, selectedTracks)
+    local earliestStart = nil
+    local latestEnd = nil
+    
+    for trackIndex, _ in pairs(selectedTracks) do
+        local clips = timeline:GetItemListInTrack("audio", trackIndex)
+        if clips then
+            for _, clip in ipairs(clips) do
+                local clipStart = clip:GetStart()
+                local clipEnd = clip:GetEnd()
+                
+                if earliestStart == nil or clipStart < earliestStart then
+                    earliestStart = clipStart
+                end
+                if latestEnd == nil or clipEnd > latestEnd then
+                    latestEnd = clipEnd
+                end
+            end
+        end
+    end
+    
+    return earliestStart, latestEnd
+end
+
 -- Export audio from selected tracks
 -- inputTracks is a table of track indices to export
 function ExportAudio(outputDir, inputTracks)
@@ -476,10 +502,22 @@ function ExportAudio(outputDir, inputTracks)
     -- save track states for later use
     currentExportJob.trackStates = trackStates
 
+    -- Find clip boundaries on selected tracks to only export the relevant portion
+    local clipStart, clipEnd = GetClipBoundaries(timeline, selected)
+    
+    if clipStart and clipEnd then
+        print("[AutoSubs] Found clip boundaries: " .. clipStart .. " - " .. clipEnd)
+        currentExportJob.clipBoundaries = { start = clipStart, ["end"] = clipEnd }
+    else
+        print("[AutoSubs] No clips found on selected tracks, using full timeline")
+    end
+
     resolve:OpenPage("deliver")
 
     project:LoadRenderPreset('Audio Only')
-    project:SetRenderSettings({
+    
+    -- Build render settings
+    local renderSettings = {
         TargetDir = outputDir,
         CustomName = "autosubs-exported-audio",
         RenderMode = "Single clip",
@@ -487,7 +525,16 @@ function ExportAudio(outputDir, inputTracks)
         IsExportAudio = true,
         AudioBitDepth = 24,
         AudioSampleRate = 44100
-    })
+    }
+    
+    -- If we found clip boundaries, set the render range to only that portion
+    if clipStart and clipEnd then
+        renderSettings.MarkIn = clipStart
+        renderSettings.MarkOut = clipEnd
+        print("[AutoSubs] Setting render range in settings: " .. clipStart .. " - " .. clipEnd)
+    end
+    
+    project:SetRenderSettings(renderSettings)
 
     local success, err = pcall(function()
         local pid = project:AddRenderJob()
