@@ -150,7 +150,7 @@ export const AudioInputCard = ({ selectedTracks, onTracksChange, callRefresh, wa
                 </div>
               )}
               {inputTracks.length > 0 ? (
-                <ScrollArea style={{ maxHeight: '200px', width: '100%' }}>
+                <ScrollArea className="h-[200px] w-full">
                   <div className="flex flex-col gap-1 p-2">
                     {inputTracks.map((track) => {
                       const trackId = track.value;
