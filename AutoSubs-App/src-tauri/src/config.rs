@@ -1,8 +1,17 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+/// Audio segment for segment-based transcription
+/// When provided, only these portions of the audio are considered,
+/// and each segment gets its own timeline offset
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TranscribeSegment {
+    pub start: f64,           // Start time within audio file (seconds)
+    pub end: f64,             // End time within audio file (seconds)
+    pub timeline_offset: f64, // Offset to add for timeline placement (seconds)
+}
 
+#[derive(Deserialize, Serialize)]
 pub struct TranscribeOptions {
     pub path: String,
     pub offset: Option<f64>,
@@ -19,6 +28,9 @@ pub struct TranscribeOptions {
     pub max_sentence_len: Option<i32>,
     pub sampling_strategy: Option<String>,
     pub sampling_bestof_or_beam_size: Option<i32>,
+    
+    /// If provided, only transcribe these segments and apply their timeline offsets
+    pub segments: Option<Vec<TranscribeSegment>>,
 }
 
 impl fmt::Debug for TranscribeOptions {

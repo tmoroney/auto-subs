@@ -448,6 +448,57 @@ function GetClipBoundaries(timeline, selectedTracks)
     return earliestStart, latestEnd
 end
 
+-- Helper function to get individual clips with their boundaries (for segment-based transcription)
+-- Returns a sorted array of clip segments: { { start, end, name }, ... }
+function GetIndividualClips(timeline, selectedTracks)
+    local allClips = {}
+    local timelineStart = timeline:GetStartFrame()
+    local frameRate = timeline:GetSetting("timelineFrameRate")
+    
+    for trackIndex, _ in pairs(selectedTracks) do
+        local clips = timeline:GetItemListInTrack("audio", trackIndex)
+        if clips then
+            for _, clip in ipairs(clips) do
+                local clipStart = clip:GetStart()
+                local clipEnd = clip:GetEnd()
+                local clipName = clip:GetName() or "Unnamed"
+                
+                table.insert(allClips, {
+                    startFrame = clipStart,
+                    endFrame = clipEnd,
+                    -- Convert to seconds relative to timeline start
+                    start = (clipStart - timelineStart) / frameRate,
+                    ["end"] = (clipEnd - timelineStart) / frameRate,
+                    name = clipName
+                })
+            end
+        end
+    end
+    
+    -- Sort by start time
+    table.sort(allClips, function(a, b) return a.startFrame < b.startFrame end)
+    
+    -- Merge overlapping clips (in case clips from different tracks overlap)
+    local mergedClips = {}
+    for _, clip in ipairs(allClips) do
+        if #mergedClips == 0 then
+            table.insert(mergedClips, clip)
+        else
+            local lastClip = mergedClips[#mergedClips]
+            -- If this clip overlaps or is adjacent to the last one, merge them
+            if clip.startFrame <= lastClip.endFrame then
+                lastClip.endFrame = math.max(lastClip.endFrame, clip.endFrame)
+                lastClip["end"] = math.max(lastClip["end"], clip["end"])
+                lastClip.name = lastClip.name .. " + " .. clip.name
+            else
+                table.insert(mergedClips, clip)
+            end
+        end
+    end
+    
+    return mergedClips
+end
+
 -- Export audio from selected tracks
 -- inputTracks is a table of track indices to export
 function ExportAudio(outputDir, inputTracks)
@@ -505,6 +556,11 @@ function ExportAudio(outputDir, inputTracks)
     -- Find clip boundaries on selected tracks to only export the relevant portion
     local clipStart, clipEnd = GetClipBoundaries(timeline, selected)
     
+    -- Get individual clips for segment-based transcription
+    local individualClips = GetIndividualClips(timeline, selected)
+    currentExportJob.individualClips = individualClips
+    print("[AutoSubs] Found " .. #individualClips .. " individual clip(s) for transcription")
+    
     if clipStart and clipEnd then
         print("[AutoSubs] Found clip boundaries: " .. clipStart .. " - " .. clipEnd)
         currentExportJob.clipBoundaries = { start = clipStart, ["end"] = clipEnd }
@@ -544,11 +600,26 @@ function ExportAudio(outputDir, inputTracks)
         local renderJobList = project:GetRenderJobList()
         local renderSettings = renderJobList[#renderJobList]
 
+        local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
+        
+        -- Calculate relative offsets for each clip segment (relative to the exported audio start)
+        local segments = {}
+        for _, clip in ipairs(currentExportJob.individualClips or {}) do
+            table.insert(segments, {
+                start = clip.start - baseOffset,  -- Start time within the exported audio
+                ["end"] = clip["end"] - baseOffset,  -- End time within the exported audio
+                timelineStart = clip.start,  -- Absolute start on timeline (for subtitle placement)
+                timelineEnd = clip["end"],
+                name = clip.name
+            })
+        end
+        
         audioInfo = {
             path = join_path(renderSettings["TargetDir"], renderSettings["OutputFilename"]),
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"],
-            offset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
+            offset = baseOffset,
+            segments = segments  -- Individual clip segments for segment-based transcription
         }
         dump(audioInfo)
         currentExportJob.audioInfo = audioInfo

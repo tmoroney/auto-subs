@@ -39,7 +39,7 @@ interface GlobalContextType {
   cancelRequestedRef: React.MutableRefObject<boolean>;
   // Transcription utils
   validateTranscriptionInput: () => boolean;
-  createTranscriptionOptions: (audioInfo: { path: string, offset: number }) => TranscriptionOptions;
+  createTranscriptionOptions: (audioInfo: { path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> }) => TranscriptionOptions;
   processTranscriptionResults: (transcript: any) => Promise<string>;
   pushToTimeline: () => Promise<void>;
   // Conflict resolution state
@@ -70,7 +70,7 @@ interface GlobalContextType {
   resetSettings: () => void;
   setupEventListeners: () => () => void; // Return cleanup function
   handleDeleteModel: (modelValue: string) => Promise<void>;
-  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
+  getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> } | null>;
   cancelExport: () => Promise<any>;
 }
 
@@ -483,7 +483,8 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
         let audioPath = audioInfo["path"];
         let audioOffset = audioInfo["offset"];
-        return { path: audioPath, offset: audioOffset };
+        let audioSegments = audioInfo["segments"];
+        return { path: audioPath, offset: audioOffset, segments: audioSegments };
 
       } catch (error) {
         setIsExporting(false);
@@ -491,7 +492,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         throw error;
       }
     } else {
-      return { path: fileInput || "", offset: 0 };
+      return { path: fileInput || "", offset: 0, segments: undefined };
     }
   };
 
@@ -649,20 +650,34 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
 
   /**
    * Creates transcription options object
-   * @param {string} audioPath Path to audio file
-   * @returns {object} Options for transcription
+   * @param audioInfo Audio info with path, offset, and optional segments
+   * @returns Options for transcription
    */
-  const createTranscriptionOptions = (audioInfo: { path: string, offset: number }): TranscriptionOptions => ({
-    audioPath: audioInfo.path,
-    offset: Math.round(audioInfo.offset * 1000) / 1000,
-    model: modelsState[settings.model].value,
-    lang: settings.language,
-    translate: settings.translate,
-    enableDtw: settings.enableDTW,
-    enableGpu: settings.enableGpu,
-    enableDiarize: settings.enableDiarize,
-    maxSpeakers: settings.maxSpeakers,
-  })
+  const createTranscriptionOptions = (audioInfo: { 
+    path: string, 
+    offset: number, 
+    segments?: Array<{ start: number, end: number, timelineStart: number }> 
+  }): TranscriptionOptions => {
+    // Convert segments to transcription format if provided
+    const transcriptionSegments = audioInfo.segments?.map(seg => ({
+      start: seg.start,
+      end: seg.end,
+      timelineOffset: seg.timelineStart,  // Use timelineStart as the offset for subtitle placement
+    }));
+    
+    return {
+      audioPath: audioInfo.path,
+      offset: Math.round(audioInfo.offset * 1000) / 1000,
+      model: modelsState[settings.model].value,
+      lang: settings.language,
+      translate: settings.translate,
+      enableDtw: settings.enableDTW,
+      enableGpu: settings.enableGpu,
+      enableDiarize: settings.enableDiarize,
+      maxSpeakers: settings.maxSpeakers,
+      segments: transcriptionSegments,
+    };
+  }
 
   /**
    * Processes transcription results
