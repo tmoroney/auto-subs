@@ -395,7 +395,6 @@ const SubtitleList = ({
                     >
                         {visibleItems.map((subtitle: Subtitle, virtualIndex: number) => {
                             const actualIndex = startIndex + virtualIndex;
-                            const isHighlighted = highlightedSubtitleIndex === actualIndex;
                             const isAnimating = animatingIndex === actualIndex;
                             return (
                                 <div

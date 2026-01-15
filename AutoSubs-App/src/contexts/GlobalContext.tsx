@@ -418,7 +418,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
     isStandaloneMode: boolean,
     fileInput: string | null,
     inputTracks: string[]
-  ): Promise<{ path: string, offset: number } | null> => {
+  ): Promise<{ path: string, offset: number, segments?: Array<{ start: number, end: number, timelineStart: number }> } | null> => {
     if (timelineInfo && !isStandaloneMode) {
       // Reset cancellation flag at the start of export
       cancelRequestedRef.current = false;
@@ -481,9 +481,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         setIsExporting(false);
         setExportProgress(100);
 
-        let audioPath = audioInfo["path"];
-        let audioOffset = audioInfo["offset"];
-        let audioSegments = audioInfo["segments"];
+        const audioPath = audioInfo["path"] as string;
+        const audioOffset = audioInfo["offset"] as number;
+        const audioSegments = audioInfo["segments"] as Array<{ start: number, end: number, timelineStart: number }> | undefined;
         return { path: audioPath, offset: audioOffset, segments: audioSegments };
 
       } catch (error) {
