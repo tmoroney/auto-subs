@@ -1,0 +1,286 @@
+{
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Konfiguriere deine AutoSubs-Einstellungen und Optionen.",
+    "sections": {
+      "transcription": "Transkription",
+      "support": "Support",
+      "appearance": "Darstellung"
+    },
+    "gpu": {
+      "title": "GPU-Beschleunigung",
+      "description": "GPU für schnellere Transkription verwenden"
+    },
+    "dtw": {
+      "title": "Dynamisches Time Warping",
+      "description": "Verbessert die Wort-Timing-Genauigkeit"
+    },
+    "uiLanguage": {
+      "title": "App-Sprache",
+      "description": "Aktualisiert Menüs und Buttons",
+      "showPickerAgain": "Sprachauswahl erneut anzeigen"
+    },
+    "reset": {
+      "button": "Alle Einstellungen auf Standard zurücksetzen",
+      "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",
+      "confirmTitle": "Einstellungen zurücksetzen"
+    },
+    "support": {
+      "supportAutoSubs": "AutoSubs unterstützen",
+      "helpSupportDevelopment": "Unterstütze die Entwicklung",
+      "viewSource": "Quellcode ansehen"
+    }
+  },
+  "common": {
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "saveChanges": "Änderungen speichern",
+    "add": "Hinzufügen",
+    "done": "Fertig",
+    "delete": "Löschen"
+  },
+  "importExport": {
+    "button": "Import / Export",
+    "importTab": "Import",
+    "exportTab": "Export",
+    "dropHere": "Datei hier ablegen oder klicken zum Auswählen",
+    "supportsSrt": "Unterstützt .srt-Dateien",
+    "selected": "Ausgewählt:",
+    "importFile": "Datei importieren",
+    "includeSpeakerLabels": "Sprecher-Labels einbeziehen",
+    "exportAsSrt": "Als SRT exportieren",
+    "exportAsJson": "Als JSON exportieren",
+    "downloadFormat": "{{format}} herunterladen"
+  },
+  "actionBar": {
+    "common": {
+      "auto": "Auto",
+      "on": "An",
+      "off": "Aus"
+    },
+    "mode": {
+      "fileInput": "Datei",
+      "timeline": "Timeline"
+    },
+    "format": {
+      "button": "Format",
+      "removePunctuationTitle": "Interpunktion entfernen",
+      "removePunctuationDescription": "Entfernt Kommas, Punkte usw.",
+      "textCaseTitle": "Groß-/Kleinschreibung",
+      "textCaseDescription": "Untertitel-Schreibweise ändern",
+      "textCase": {
+        "normal": "Normal",
+        "lowercase": "kleinbuchstaben",
+        "uppercase": "GROSSBUCHSTABEN",
+        "titleCase": "Titel-Schreibweise"
+      },
+      "characterLimitTitle": "Zeichenlimit",
+      "characterLimitDescription": "Pro Zeile (0 = auto)",
+      "lineCountTitle": "Zeilenanzahl",
+      "lineCountDescription": "Max. Zeilen pro Untertitel"
+    },
+    "censor": {
+      "title": "Wörter zensieren",
+      "wordCount": "{{count}} Wörter",
+      "dialogTitle": "Sensible Wörter zensieren",
+      "dialogDescription": "Füge Wörter hinzu, die in Untertiteln zensiert werden sollen.",
+      "inputPlaceholder": "Wort zum Zensieren hinzufügen",
+      "empty": "Noch keine zensierten Wörter."
+    },
+    "speakers": {
+      "title": "Sprecher-Labels",
+      "description": "Unterschiedliche Sprecher erkennen",
+      "countTitle": "Anzahl der Sprecher",
+      "disabled": "Deaktiviert"
+    },
+    "tracks": {
+      "selectTracks": "Spuren auswählen...",
+      "trackN": "Spur {{n}}",
+      "countSelected": "{{count}} Spuren ausgewählt",
+      "selectedLabel": "{{label}} ausgewählt",
+      "noneSelected": "Keine Spuren ausgewählt",
+      "clickToSelect": "Klicken, um Audiospuren auszuwählen",
+      "selectAll": "Alle auswählen",
+      "clearAll": "Alle entfernen",
+      "noneFound": "Keine Audiospuren gefunden.",
+      "createTrack": "Erstelle eine Audiospur in deiner Timeline, um mit der Transkription zu beginnen."
+    },
+    "fileDrop": {
+      "aria": "Audio-Datei hier ablegen oder klicken zum Auswählen",
+      "prompt": "Ablegen oder klicken",
+      "supports": "Die meisten Formate"
+    },
+    "language": {
+      "source": "Quelle",
+      "translate": "Übersetzen",
+      "searchSourcePlaceholder": "Sprachen suchen...",
+      "searchTargetPlaceholder": "Zielsprachen suchen...",
+      "noLanguageFound": "Keine Sprache gefunden."
+    }
+  },
+  "speakerEditor": {
+    "title": "Sprecher bearbeiten",
+    "description": "Dies sind die im Audio erkannten Sprecher.",
+    "jumpToSample": "Zum Beispiel in der Timeline springen",
+    "name": "Name",
+    "namePlaceholder": "Sprechernamen eingeben",
+    "outputTrack": "Ausgabespur",
+    "selectTrack": "Spur auswählen",
+    "appearance": "Darstellung",
+    "colors": {
+      "fill": "Füllung",
+      "outline": "Kontur",
+      "border": "Rahmen"
+    },
+    "generatingPreview": "Vorschau wird erstellt...",
+    "generatePreview": "Vorschau erstellen",
+    "subtitlePreview": "Untertitel-Vorschau",
+    "continueEditing": "Weiter bearbeiten",
+    "saveAndAddToTimeline": "Speichern & zur Timeline hinzufügen"
+  },
+  "workspace": {
+    "empty": {
+      "loadingModel": "Modell wird in den Speicher geladen...",
+      "welcomeTitle": "Willkommen bei AutoSubs",
+      "welcomeDescription": "Wähle eine Audioquelle aus, um Untertitel zu generieren.",
+      "support": "AutoSubs unterstützen"
+    }
+  },
+  "modelStatus": {
+    "cached": "Im Cache",
+    "available": "Verfügbar",
+    "storage": "Speicher:",
+    "ram": "RAM:"
+  },
+  "models": {
+    "englishOnly": {
+      "title": "Nur-Englisch-Modelle",
+      "description": "Spezialisierte englische Modelle mit höherer Genauigkeit anzeigen."
+    },
+    "manage": {
+      "title": "Heruntergeladene Modelle verwalten",
+      "description": "Lösche gecachte Modelle, um Speicherplatz freizugeben.",
+      "empty": "Keine heruntergeladenen Modelle gefunden",
+      "deleteModel": "Modell löschen",
+      "confirmTitle": "Bist du sicher?",
+      "confirmBody": "Dadurch wird das Modell {{model}} von deinem Gerät gelöscht. Wenn du es später verwendest, muss es erneut heruntergeladen werden."
+    },
+    "tiny": {
+      "label": "Tiny",
+      "description": "Am schnellsten",
+      "details": "Schnellste Transkription mit minimalem Speicherbedarf. Ideal für schnelle Entwürfe."
+    },
+    "tiny_en": {
+      "label": "Tiny",
+      "description": "Am schnellsten",
+      "details": "Schnellste englische Transkription mit minimalem Speicherbedarf. Ideal für Entwürfe."
+    },
+    "base": {
+      "label": "Base",
+      "description": "Alltag",
+      "details": "Zuverlässige Transkription mit geringem Speicherbedarf."
+    },
+    "base_en": {
+      "label": "Base",
+      "description": "Alltag",
+      "details": "Zuverlässige englische Transkription mit geringem Speicherbedarf."
+    },
+    "small": {
+      "label": "Small",
+      "description": "Ausgewogen",
+      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und Genauigkeit bei moderatem Speicherbedarf."
+    },
+    "small_en": {
+      "label": "Small",
+      "description": "Ausgewogen",
+      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und englischer Genauigkeit bei moderatem Speicherbedarf."
+    },
+    "medium": {
+      "label": "Medium",
+      "description": "Genau",
+      "details": "Hohe Genauigkeit bei moderater Geschwindigkeit. Gut für schwieriges Audio."
+    },
+    "medium_en": {
+      "label": "Medium",
+      "description": "Genau",
+      "details": "Hohe englische Genauigkeit bei moderater Geschwindigkeit."
+    },
+    "large_v3_turbo": {
+      "label": "Large Turbo",
+      "description": "Schnell & genau",
+      "details": "Sehr gute Genauigkeit mit höherer Geschwindigkeit als das Large-Modell und moderatem Speicherbedarf."
+    },
+    "large_v3": {
+      "label": "Large",
+      "description": "Höchste Genauigkeit",
+      "details": "Höchste Genauigkeit für komplexes Audio, aber langsamer und mit hohem Speicherbedarf."
+    }
+  },
+  "completion": {
+    "processingComplete": "Verarbeitung abgeschlossen",
+    "subtitlesReady": "Deine Untertitel sind bereit!",
+    "exportToFile": "In Datei exportieren",
+    "addToTimeline": "Zur Timeline hinzufügen"
+  },
+  "progressSteps": {
+    "download": "Modell wird geladen",
+    "transcribe": "Sprache zu Text",
+    "translate": "Übersetze nach {{language}}",
+    "processing": "Verarbeite"
+  },
+  "subtitles": {
+    "title": "Untertitel",
+    "speakers": "Sprecher",
+    "editSpeakers": "Sprecher bearbeiten",
+    "searchPlaceholder": "Untertitel durchsuchen...",
+    "searchAria": "Untertitel durchsuchen",
+    "clearSearch": "Suche löschen",
+    "addToTimeline": "Zur Timeline hinzufügen",
+    "loading": "Untertitel werden geladen...",
+    "jumpToTimeline": "Zu diesem Punkt in der Timeline springen",
+    "unknownSpeaker": "Unbekannter Sprecher",
+    "empty": {
+      "noSubtitlesFound": "Keine Untertitel gefunden",
+      "tryDifferentSearch": "Versuche einen anderen Suchbegriff",
+      "noSubtitlesAvailable": "Keine Untertitel verfügbar. Versuche zuerst welche zu importieren.",
+      "noSubtitlesAvailableShort": "Keine Untertitel verfügbar"
+    }
+  },
+  "subtitleEditor": {
+    "title": "Untertitel bearbeiten",
+    "description": "Bearbeite den Untertiteltext, indem du die Wörter unten änderst",
+    "mergeLeft": "Nach links zusammenführen",
+    "mergeRight": "Nach rechts zusammenführen",
+    "deleteWord": "Wort löschen"
+  },
+  "languagePicker": {
+    "title": "Sprache auswählen",
+    "description": "Wähle die Sprache aus, die du in der App verwenden möchtest.",
+    "continue": "Weiter"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Minimieren",
+      "maximize": "Maximieren",
+      "close": "Schließen"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Verbunden",
+        "disconnected": "Getrennt"
+      },
+      "tooltip": {
+        "connected": "Verbunden",
+        "currentlyViewing": "Aktuell angezeigt: {{name}}",
+        "ready": "Bereit für Zugriff auf die Timeline",
+        "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
+        "cantConnect": "Keine Verbindung zur Timeline möglich",
+        "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
+      }
+    }
+  },
+  "theme": {
+    "toggle": "Theme umschalten"
+  }
+}

@@ -1,0 +1,50 @@
+[package]
+name = "transcription-engine"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Internal transcription engine for AutoSubs"
+publish = false
+
+[dependencies]
+whisper-rs = { git = "https://codeberg.org/tazz4843/whisper-rs.git", default-features = false, features = ["tracing_backend"] }
+pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
+transcribe-rs = { version = "0.2.1", features = ["parakeet", "moonshine"] }
+ort-sys = "=2.0.0-rc.10" # prevents error with pyannote-rs
+hf-hub = "0.4.3"
+dirs = "5.0"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
+reqwest = { version = "0.11", default-features = true }
+hound = "3.5"
+tracing = "0.1"
+eyre = "0.6"
+once_cell = "1.19.0"
+serde_json = "1.0"
+futures = "0.3"
+tokio = { version = "1", features = ["time", "macros", "rt-multi-thread", "sync"] }
+tokio-util = "0.7"
+unicode-segmentation = "1.11"
+
+[features]
+coreml = ["whisper-rs/coreml", "pyannote-rs/coreml"]
+directml = ["pyannote-rs/directml"]
+cuda = ["whisper-rs/cuda", "pyannote-rs/load-dynamic"]
+openblas = ["whisper-rs/openblas"]
+metal = ["whisper-rs/metal"]
+rocm = ["whisper-rs/hipblas"]
+vulkan = ["whisper-rs/vulkan"]
+
+# Platform/arch presets
+mac-aarch = ["coreml", "metal"]
+mac-x86_64 = ["metal"]
+windows = ["vulkan", "directml"]  # Whisper GPU acceleration via Vulkan (AMD/Intel/NVIDIA) + Pyannote acceleration via DirectML (Windows only)
+linux = ["vulkan"]
+
+# Note: Had issues with OpenBLAS + Vulkan, so removed it
+
+default = ["mac-aarch"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -21,11 +21,10 @@ use tauri_plugin_clipboard_manager::init as clipboard_plugin;
 use tauri_plugin_opener::init as opener_plugin;
 use tokio::process::Command as TokioCommand;
 
-mod audio;
-mod config;
+mod audio_preprocess;
 mod models;
-mod transcribe;
-mod transcript;
+mod transcription_api;
+mod transcript_types;
 mod logging;
 
 // Include integration-like tests that need crate visibility
@@ -36,7 +35,7 @@ mod tests;
 static EXITING: AtomicBool = AtomicBool::new(false);
 
 fn main() {
-    whisper_rs::install_logging_hooks();
+    // Note: whisper-diarize-rs handles whisper_rs logging internally
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -53,14 +52,12 @@ fn main() {
             // Initialize backend logging (file + in-memory ring buffer)
             crate::logging::init_logging(&app.handle());
 
-            // Startup sidecar health check: ffmpeg/ffprobe availability & versions
+            // Startup sidecar health check: ffmpeg availability & version
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     let mut ffmpeg_ok = false;
-                    let mut ffprobe_ok = false;
                     let mut ffmpeg_version = String::new();
-                    let mut ffprobe_version = String::new();
 
                     // ffmpeg -version (sidecar first, then system fallback)
                     match app_handle.shell().sidecar("ffmpeg") {
@@ -105,58 +102,14 @@ fn main() {
                         }
                     }
 
-                    // ffprobe -version (sidecar first, then system fallback)
-                    match app_handle.shell().sidecar("ffprobe") {
-                        Ok(cmd) => {
-                            match cmd.args(["-version"]).output().await {
-                                Ok(out) if out.status.success() => {
-                                    ffprobe_ok = true;
-                                    let stdout = String::from_utf8_lossy(&out.stdout);
-                                    ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                    tracing::info!("ffprobe check (sidecar): ok=true, version=\"{}\"", ffprobe_version);
-                                }
-                                Ok(out) => {
-                                    let stderr = String::from_utf8_lossy(&out.stderr);
-                                    tracing::warn!("ffprobe sidecar -version exited non-zero. stderr: {}", stderr);
-                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                        ffprobe_ok = sys.status.success();
-                                        let stdout = String::from_utf8_lossy(&sys.stdout);
-                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::warn!("ffprobe sidecar execution failed: {:?}", e);
-                                    if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                        ffprobe_ok = sys.status.success();
-                                        let stdout = String::from_utf8_lossy(&sys.stdout);
-                                        ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                        tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("ffprobe sidecar not found/failed to init: {:?}", e);
-                            if let Ok(sys) = TokioCommand::new("ffprobe").arg("-version").output().await {
-                                ffprobe_ok = sys.status.success();
-                                let stdout = String::from_utf8_lossy(&sys.stdout);
-                                ffprobe_version = stdout.lines().next().unwrap_or("").to_string();
-                                tracing::info!("ffprobe check (system): ok={}, version=\"{}\"", ffprobe_ok, ffprobe_version);
-                            }
-                        }
-                    }
-
                     // Emit an event to frontend so users can access diagnostics quickly
                     let payload = json!({
                         "ffmpeg_ok": ffmpeg_ok,
-                        "ffprobe_ok": ffprobe_ok,
                         "ffmpeg_version": ffmpeg_version,
-                        "ffprobe_version": ffprobe_version,
                     });
                     let _ = app_handle.emit("sidecar-health", payload);
 
-                    if !(ffmpeg_ok && ffprobe_ok) {
+                    if !ffmpeg_ok {
                         tracing::warn!("One or more sidecars appear unavailable. On Windows, AV or SmartScreen may block sidecars; try 'Open Logs Folder' for details.");
                     }
                 });
@@ -215,8 +168,8 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            transcribe::transcribe_audio,
-            transcribe::cancel_transcription,
+            transcription_api::transcribe_audio,
+            transcription_api::cancel_transcription,
             models::get_downloaded_models,
             models::delete_model,
             logging::get_backend_logs,
@@ -238,7 +191,7 @@ fn main() {
                     api.prevent_exit();
 
                     // Proactively cancel any active long-running tasks (e.g., transcription)
-                    if let Ok(mut should_cancel) = crate::transcribe::SHOULD_CANCEL.lock() {
+                    if let Ok(mut should_cancel) = crate::transcription_api::SHOULD_CANCEL.lock() {
                         *should_cancel = true;
                     }
 

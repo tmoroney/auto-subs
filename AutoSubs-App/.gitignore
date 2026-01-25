@@ -7,6 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Test files
+*.wav
+*.mp3
+*.mp4
+
 node_modules
 dist
 dist-ssr
@@ -14,6 +19,7 @@ dist-ssr
 
 # Editor directories and files
 .vscode/*
+.windsurf/*
 !.vscode/extensions.json
 .idea
 .DS_Store

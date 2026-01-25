@@ -1,3 +1,5 @@
+import { SupportedUiLanguage } from '@/i18n';
+
 // Error message interface
 export interface ErrorMsg {
     title: string;
@@ -73,6 +75,10 @@ export interface Model {
     ram: string
     image: string
     details: string
+    languageSupport: 
+        | { kind: "multilingual" }
+        | { kind: "single_language"; language: string }
+        | { kind: "restricted"; languages: string[] }
     isDownloaded: boolean
 }
 
@@ -80,6 +86,11 @@ export interface Model {
 export interface Settings {
     // Mode
     isStandaloneMode: boolean,
+
+    // UI settings
+    uiLanguage: SupportedUiLanguage;
+    uiLanguagePromptCompleted: boolean;
+    showEnglishOnlyModels: boolean;
 
     // Survey notification settings
     timesDismissedSurvey: number;
@@ -89,13 +100,13 @@ export interface Settings {
     model: number; // index of model in models array
     language: string,
     translate: boolean,
+    targetLanguage: string,
     enableDiarize: boolean,
     maxSpeakers: number | null,
     enableDTW: boolean,
     enableGpu: boolean,
 
     // Text settings
-    maxWordsPerLine: number,
     maxCharsPerLine: number,
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,
@@ -121,6 +132,7 @@ export interface TranscriptionOptions {
     model: string,
     lang: string,
     translate: boolean,
+    targetLanguage: string,
     enableDtw: boolean,
     enableGpu: boolean,
     enableDiarize: boolean,

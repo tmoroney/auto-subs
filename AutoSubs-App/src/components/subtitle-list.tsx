@@ -1,187 +1,155 @@
 import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useGlobal } from "@/contexts/GlobalContext"
-import { Subtitle, type Word } from "@/types/interfaces"
+import { useTranscript } from "@/contexts/TranscriptContext"
+import { Subtitle } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ArrowRight, Pencil, XCircle as XCircleIcon } from "lucide-react"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+import { ArrowDown, ArrowUp } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { joinWordsToText } from "@/utils/subtitleFormatter"
 
 import { SpeakerEditor } from "@/components/speaker-editor"
-
-// --- Word Component ---
-const Word = ({
-    word,
-    onUpdate,
-    onDelete,
-    onStartEdit,
-    onEndEdit,
-}: {
-    word: string;
-    onUpdate: (newWord: string) => void;
-    onDelete: () => void;
-    onStartEdit?: () => void;
-    onEndEdit?: () => void;
-}) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editValue, setEditValue] = useState(word);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (isEditing) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
-        }
-    }, [isEditing]);
-
-    const handleSave = () => {
-        onUpdate(editValue);
-        setIsEditing(false);
-        onEndEdit?.();
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSave();
-        } else if (e.key === 'Escape') {
-            setEditValue(word);
-            setIsEditing(false);
-            onEndEdit?.();
-        }
-    };
-
-    if (isEditing) {
-        return (
-            <input
-                ref={inputRef}
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleSave}
-                onKeyDown={handleKeyDown}
-                className="bg-blue-100 dark:bg-blue-900 border border-blue-500 rounded-md p-0 h-6 text-black dark:text-white outline-none"
-                style={{ width: `${Math.max(editValue.length, 0)}ch`, minWidth: '20px' }}
-            />
-        );
-    }
-    return (
-        <div className="relative group rounded-md cursor-pointer">
-            <span
-                onClick={() => {
-                    setIsEditing(true);
-                    onStartEdit?.();
-                }}
-                className="py-2 px-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
-            >
-                {word}
-            </span>
-            <button
-                onClick={onDelete}
-                className="absolute -top-2 -right-2 w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-all duration-150 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
-                title="Delete word"
-            >
-                <XCircleIcon className="w-full h-full" />
-            </button>
-        </div>
-    );
-};
 
 
 interface SubtitleListProps {
     searchQuery?: string;
+    searchCaseSensitive?: boolean;
+    searchWholeWord?: boolean;
     className?: string;
     itemClassName?: string;
     isLoading?: boolean;
     error?: string | null;
-    highlightText?: string;
-    highlightedSubtitleIndex?: number;
-    matchCase?: boolean;
+    selectedIndex?: number | null;
+    onSelectedIndexChange?: (index: number | null) => void;
 }
 
-import {
-    DialogClose,
-} from "@/components/ui/dialog"
-import { jumpToTime } from "@/api/resolveAPI";
+import { jumpToTime } from "@/api/resolve-api";
 
 const SubtitleList = ({
     searchQuery = "",
+    searchCaseSensitive = false,
+    searchWholeWord = false,
     className = "",
     itemClassName = "",
     isLoading = false,
     error = null,
-    highlightText = "",
-    highlightedSubtitleIndex,
-    matchCase = false
+    selectedIndex: controlledSelectedIndex,
+    onSelectedIndexChange,
 }: SubtitleListProps) => {
-    const { subtitles, updateSubtitles, speakers } = useGlobal();
-    const [editingSubtitle, setEditingSubtitle] = useState<Subtitle | null>(null);
-    const [editingWords, setEditingWords] = useState<Word[]>([]);
-    const [editingWordIndex, setEditingWordIndex] = useState<number | null>(null);
+    const { t } = useTranslation();
+    const { subtitles, updateSubtitles, speakers } = useTranscript();
+    const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
+    const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
+
+    const [draftText, setDraftText] = useState<string>("");
+    const [originalText, setOriginalText] = useState<string>("");
+    const inlineEditorRef = useRef<HTMLDivElement>(null);
     const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
     const [expandedSpeakerIndex, setExpandedSpeakerIndex] = React.useState<number | undefined>(undefined);
-    // Staged merge changes (applied on Save)
-    const [pendingPrevWords, setPendingPrevWords] = useState<Word[] | null>(null);
-    const [pendingNextWords, setPendingNextWords] = useState<Word[] | null>(null);
-
+    
     // Virtual scrolling state
     const containerRef = useRef<HTMLDivElement>(null);
-    const subtitleRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(0);
-
+    
     // Constants for virtualization - using adaptive height estimation
     const ESTIMATED_ITEM_HEIGHT = 100; // Conservative estimate for variable heights
-    const BUFFER_SIZE = 3; // Smaller buffer for better performance
+    const BUFFER_SIZE = 5; // Increased buffer for smoother scrolling
 
-    // Add subtitle content hash to force re-render when content changes
-    const subtitleContentHash = useMemo(() => {
-        return subtitles.map(s => `${s.text}-${s.start}-${s.end}`).join('|');
+    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const matchesQuery = useCallback((text: string, query: string) => {
+        if (!query.trim()) return true;
+        if (!text) return false;
+
+        if (searchWholeWord) {
+            const escaped = escapeRegExp(query.trim());
+            const flags = searchCaseSensitive ? "g" : "gi";
+            const re = new RegExp(`\\b${escaped}\\b`, flags);
+            return re.test(text);
+        }
+
+        if (searchCaseSensitive) {
+            return text.includes(query);
+        }
+        return text.toLowerCase().includes(query.toLowerCase());
+    }, [searchCaseSensitive, searchWholeWord]);
+
+    const filteredSubtitleItems = useMemo(() => {
+        const query = searchQuery ?? "";
+        return subtitles
+            .map((subtitle, index) => ({ subtitle, index }))
+            .filter(({ subtitle }) => {
+                if (!query.trim()) return true;
+                const speakerMatch = subtitle.speaker_id
+                    ? (searchCaseSensitive
+                        ? subtitle.speaker_id.includes(query)
+                        : subtitle.speaker_id.toLowerCase().includes(query.toLowerCase()))
+                    : false;
+                return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
+            });
+    }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive]);
+
+    // speaker_id can be either 0-based ("0", "1", ...) or 1-based ("1", "2", ...).
+    // Detect base once per transcript so Speaker 1 doesn't get mislabeled as Speaker 2.
+    const speakerIdBase = useMemo(() => {
+        const hasZero = subtitles.some(s => {
+            const sid = s.speaker_id;
+            if (sid === undefined || sid === null) return false;
+            return String(sid) === "0";
+        });
+        return hasZero ? 0 : 1;
     }, [subtitles]);
 
-    const filteredSubtitles = React.useMemo(() => {
-        if (!searchQuery.trim()) return subtitles;
-        const query = searchQuery.toLowerCase();
-        return subtitles.filter(subtitle =>
-            subtitle.text.toLowerCase().includes(query) ||
-            (subtitle.speaker_id && subtitle.speaker_id.toLowerCase().includes(query))
-        );
-    }, [subtitles, searchQuery, subtitleContentHash]); // Include content hash
+    const getSpeakerIndex = useCallback((speakerId: string | undefined) => {
+        if (!speakerId) return 0;
+        const n = Number(speakerId);
+        if (!Number.isFinite(n)) return 0;
+
+        const idx = n - speakerIdBase;
+        if (idx >= 0 && idx < speakers.length) return idx;
+
+        // Fallbacks for safety if the transcript is mixed/legacy.
+        if (n >= 0 && n < speakers.length) return n;
+        if (n - 1 >= 0 && n - 1 < speakers.length) return n - 1;
+        return 0;
+    }, [speakerIdBase, speakers.length]);
+    
     // Calculate visible range with estimated heights
     const { startIndex, endIndex, totalHeight } = useMemo(() => {
-        const itemCount = filteredSubtitles.length;
+        const itemCount = filteredSubtitleItems.length;
         if (itemCount === 0) return { startIndex: 0, endIndex: 0, totalHeight: 0 };
+        
+        // Calculate visible range more accurately
         const visibleStart = Math.floor(scrollTop / ESTIMATED_ITEM_HEIGHT);
         const visibleEnd = Math.min(
             itemCount - 1,
             Math.ceil((scrollTop + containerHeight) / ESTIMATED_ITEM_HEIGHT)
         );
+        
+        // Add buffer to prevent empty space during scroll
         const start = Math.max(0, visibleStart - BUFFER_SIZE);
         const end = Math.min(itemCount - 1, visibleEnd + BUFFER_SIZE);
-        // Use a more conservative total height to prevent large blank space
+        
+        // Use conservative height estimate to account for variable content
         const averageItemHeight = ESTIMATED_ITEM_HEIGHT - 20; // Match the minHeight we use for items
+        
         return {
             startIndex: start,
             endIndex: end,
             totalHeight: itemCount * averageItemHeight
         };
-    }, [scrollTop, containerHeight, filteredSubtitles.length, subtitleContentHash]);
+    }, [scrollTop, containerHeight, filteredSubtitleItems.length]);
+    
     // Get visible items with content hash dependency
     const visibleItems = useMemo(() => {
-        return filteredSubtitles.slice(startIndex, endIndex + 1);
-    }, [filteredSubtitles, startIndex, endIndex, subtitleContentHash]);
+        return filteredSubtitleItems.slice(startIndex, endIndex + 1);
+    }, [filteredSubtitleItems, startIndex, endIndex]);
+    
     // Handle scroll
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         setScrollTop(e.currentTarget.scrollTop);
     }, []);
+    
     // Handle container resize
     useEffect(() => {
         const updateContainerHeight = () => {
@@ -189,75 +157,56 @@ const SubtitleList = ({
                 setContainerHeight(containerRef.current.clientHeight);
             }
         };
+        
         updateContainerHeight();
         window.addEventListener('resize', updateContainerHeight);
         return () => window.removeEventListener('resize', updateContainerHeight);
     }, []);
 
-    //Track previous highlighted index to trigger animation
-    const prevHighlightedIndexRef = useRef<number | undefined>(undefined);
-    const [animatingIndex, setAnimatingIndex] = useState<number | undefined>(undefined);
+    const setSelectedIndex = (index: number | null) => {
+        if (controlledSelectedIndex !== undefined) {
+            onSelectedIndexChange?.(index);
+            return;
+        }
+        setUncontrolledSelectedIndex(index);
+        onSelectedIndexChange?.(index);
+    };
 
-    //Scroll to subtitle
+    const selectSubtitle = useCallback((index: number) => {
+        if (selectedIndex === index) return;
+        const initial = subtitles[index]?.text ?? "";
+        setSelectedIndex(index);
+        setDraftText(initial);
+        setOriginalText(initial);
+    }, [selectedIndex, subtitles]);
+
     useEffect(() => {
-        if (highlightedSubtitleIndex !== undefined && containerRef.current) {
-            const element = subtitleRefs.current.get(highlightedSubtitleIndex);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            //if new highlight, trigger animation
-            if (prevHighlightedIndexRef.current !== highlightedSubtitleIndex) {
-                setAnimatingIndex(highlightedSubtitleIndex);
-                const timer = setTimeout(() => {
-                    setAnimatingIndex(undefined);
-                }, 2000);
-                prevHighlightedIndexRef.current = highlightedSubtitleIndex;
-                return () => clearTimeout(timer);
-            }
-        } else {
-            prevHighlightedIndexRef.current = undefined;
-            setAnimatingIndex(undefined);
+        if (selectedIndex === null) return;
+        if (draftText !== originalText) return;
+        const latest = subtitles[selectedIndex]?.text ?? "";
+        if (latest !== draftText) {
+            setDraftText(latest);
+            setOriginalText(latest);
         }
-    }, [highlightedSubtitleIndex]);
+    }, [draftText, originalText, selectedIndex, subtitles]);
 
-    //Helper func to highlight text in the subtitle
-    const highlightTextInSubtitle = (text: string, highlight: string, caseSensitive: boolean) => {
-        if (!highlight.trim()) {
-            return <span>{text}</span>;
+    useEffect(() => {
+        if (selectedIndex === null) return;
+        inlineEditorRef.current?.focus();
+        if (inlineEditorRef.current && inlineEditorRef.current.innerText !== draftText) {
+            inlineEditorRef.current.innerText = draftText;
         }
 
-        const flags = caseSensitive ? 'g' : 'gi';
-        const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags));
-        return (
-            <>
-                {parts.map((part, index) => {
-                    const isMatch = caseSensitive 
-                        ? part === highlight 
-                        : part.toLowerCase() === highlight.toLowerCase();
-                    if (isMatch) {
-                        return (
-                            <mark
-                                key={index}
-                                className="bg-yellow-300 dark:bg-yellow-600 text-foreground px-0.5 rounded"
-                            >
-                                {part}
-                            </mark>
-                        );
-                    }
-                    return <span key={index}>{part}</span>;
-                })}
-            </>
-        );
-    };
-    const handleOpenEdit = (subtitle: Subtitle) => {
-        setEditingSubtitle(subtitle);
-        // Populate editor with words array from the subtitle object
-        setEditingWords(subtitle.words || []);
-        setEditingWordIndex(null);
-        setPendingPrevWords(null);
-        setPendingNextWords(null);
-    };
+        if (inlineEditorRef.current) {
+            const el = inlineEditorRef.current;
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        }
+    }, [selectedIndex]);
 
     const formatTimecode = (seconds: number | string): string => {
         const sec = typeof seconds === 'string' ? parseFloat(seconds) : seconds;
@@ -267,160 +216,127 @@ const SubtitleList = ({
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Merge currently edited first word into previous subtitle
-    const handleMergeLeft = (index: number) => {
-        if (editingSubtitle == null) return;
-        if (index <= 0) return; // no previous subtitle
-
-        const prevIdx = index - 1;
-        const movedWord = editingWords[0];
-        if (!movedWord) return;
-
-        // Stage prev words (append moved word to prev's end)
-        const prevBaseWords = pendingPrevWords ?? (subtitles[prevIdx].words || []);
-        const nextPrevWords = [...prevBaseWords, movedWord];
-        setPendingPrevWords(nextPrevWords);
-
-        // Update local editing state only
-        const currWords = editingWords.slice(1);
-        setEditingWords(currWords);
-        setEditingWordIndex(0);
+    const splitIntoWords = (text: string) => {
+        const trimmed = (text ?? "").trim();
+        if (!trimmed) return [] as string[];
+        return trimmed.split(/\s+/g);
     };
 
-    // Merge currently edited last word into next subtitle
-    const handleMergeRight = (index: number) => {
-        if (editingSubtitle == null) return;
-        if (editingWords.length === 0) return;
-        if (index >= subtitles.length - 1) return; // no next subtitle
+    const joinWords = (words: string[]) => words.join(" ");
 
-        const nextIdx = index + 1;
-        const movedWord = editingWords[editingWords.length - 1];
-        if (!movedWord) return;
+    const handleMoveFirstWordToPrev = (index: number) => {
+        if (index <= 0) return;
+        const words = splitIntoWords(draftText);
+        if (words.length === 0) return;
 
-        // Stage next words (prepend moved word to next's start)
-        const nextBaseWords = pendingNextWords ?? (subtitles[nextIdx].words || []);
-        const nextNextWords = [movedWord, ...nextBaseWords];
-        setPendingNextWords(nextNextWords);
+        const first = words.shift();
+        if (!first) return;
 
-        // Update local editing state only
-        const currWords = editingWords.slice(0, -1);
-        setEditingWords(currWords);
-        setEditingWordIndex(currWords.length - 1);
+        const newSubtitles = [...subtitles];
+        const prev = newSubtitles[index - 1];
+        const curr = newSubtitles[index];
+        if (!prev || !curr) return;
+
+        const prevWords = splitIntoWords(prev.text ?? "");
+        prevWords.push(first);
+
+        const nextCurrText = joinWords(words);
+        newSubtitles[index - 1] = { ...prev, text: joinWords(prevWords) };
+        newSubtitles[index] = { ...curr, text: nextCurrText };
+        updateSubtitles(newSubtitles);
+        setDraftText(nextCurrText);
+        setOriginalText(nextCurrText);
+
+        // keep contentEditable in sync immediately
+        if (inlineEditorRef.current) {
+            inlineEditorRef.current.innerText = nextCurrText;
+        }
     };
 
-    const handleSaveChanges = (index: number) => {
-        if (editingSubtitle) {
-            // Concatenate all word text to sync the text field with word data
-            const updatedText = joinWordsToText(editingWords);
+    const handleMoveLastWordToNext = (index: number) => {
+        if (index >= subtitles.length - 1) return;
+        const words = splitIntoWords(draftText);
+        if (words.length === 0) return;
 
-            const newSubtitles = [...subtitles];
-            const prevIdx = index - 1;
-            const nextIdx = index + 1;
+        const last = words.pop();
+        if (!last) return;
 
-            // Apply staged prev changes first
-            if (prevIdx >= 0 && pendingPrevWords) {
-                const prev = newSubtitles[prevIdx];
-                const updatedPrev = {
-                    ...prev,
-                    words: pendingPrevWords,
-                    text: joinWordsToText(pendingPrevWords),
-                    end: pendingPrevWords[pendingPrevWords.length - 1]?.end ?? prev.end,
-                } as Subtitle;
-                newSubtitles[prevIdx] = updatedPrev;
-            }
+        const newSubtitles = [...subtitles];
+        const next = newSubtitles[index + 1];
+        const curr = newSubtitles[index];
+        if (!next || !curr) return;
 
-            // Apply staged next changes (before possible removal of current to keep index stable)
-            if (nextIdx < newSubtitles.length && pendingNextWords) {
-                const next = newSubtitles[nextIdx];
-                const updatedNext = {
-                    ...next,
-                    words: pendingNextWords,
-                    text: joinWordsToText(pendingNextWords),
-                    start: pendingNextWords[0]?.start ?? next.start,
-                } as Subtitle;
-                newSubtitles[nextIdx] = updatedNext;
-            }
+        const nextWords = splitIntoWords(next.text ?? "");
+        nextWords.unshift(last);
 
-            // Apply current edits or remove if empty
-            if (editingWords.length > 0) {
-                newSubtitles[index] = {
-                    ...editingSubtitle,
-                    text: updatedText,
-                    words: editingWords,
-                    start: editingWords[0]?.start ?? editingSubtitle.start,
-                    end: editingWords[editingWords.length - 1]?.end ?? editingSubtitle.end,
-                };
-            } else {
-                // Remove empty subtitle
-                newSubtitles.splice(index, 1);
-            }
+        const nextCurrText = joinWords(words);
+        newSubtitles[index] = { ...curr, text: nextCurrText };
+        newSubtitles[index + 1] = { ...next, text: joinWords(nextWords) };
+        updateSubtitles(newSubtitles);
+        setDraftText(nextCurrText);
+        setOriginalText(nextCurrText);
 
-            updateSubtitles(newSubtitles);
-
-            setEditingSubtitle(null);
-            setEditingWords([]);
-            setEditingWordIndex(null);
-            setPendingPrevWords(null);
-            setPendingNextWords(null);
+        // keep contentEditable in sync immediately
+        if (inlineEditorRef.current) {
+            inlineEditorRef.current.innerText = nextCurrText;
         }
     };
 
     if (isLoading) {
-        return <div className="p-4 text-center text-muted-foreground">Loading subtitles...</div>;
+        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.loading")}</div>;
     }
 
     if (error) {
         return <div className="p-4 text-center text-destructive">{error}</div>;
     }
 
-    if (!filteredSubtitles || filteredSubtitles.length === 0) {
-        return <div className="p-4 text-center text-muted-foreground">No subtitles available</div>;
+    if (!filteredSubtitleItems || filteredSubtitleItems.length === 0) {
+        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.empty.noSubtitlesAvailableShort")}</div>;
     }
 
     return (
         <div className={className}>
             <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={expandedSpeakerIndex} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
-            <div
+            <div 
                 ref={containerRef}
                 className="h-full"
                 onScroll={handleScroll}
                 style={{ height: '100%', overflow: 'visible' }}
             >
                 <div style={{ height: totalHeight, position: 'relative' }}>
-                    <div
-                        style={{
+                    <div 
+                        style={{ 
                             transform: `translateY(${startIndex * ESTIMATED_ITEM_HEIGHT}px)`,
                             position: 'relative'
                         }}
                     >
-                        {visibleItems.map((subtitle: Subtitle, virtualIndex: number) => {
-                            const actualIndex = startIndex + virtualIndex;
-                            const isHighlighted = highlightedSubtitleIndex === actualIndex;
-                            const isAnimating = animatingIndex === actualIndex;
+                        {visibleItems.map(({ subtitle, index }: { subtitle: Subtitle; index: number }) => {
+                            const isSelected = selectedIndex === index;
+                            
                             return (
                                 <div
-                                    key={`${actualIndex}-${subtitle.text.slice(0, 20)}`} // Include content in key for proper re-rendering
-                                    ref={(el) => {
-                                        if (el) {
-                                            subtitleRefs.current.set(actualIndex, el);
-                                        } else {
-                                            subtitleRefs.current.delete(actualIndex);
-                                        }
-                                    }}
-                                    className={`group relative flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-muted/50 dark:hover:bg-muted/20 ${itemClassName} ${isAnimating ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600 animate-highlight-fade dark:animate-highlight-fade-dark' : ''}`}
-                                    style={{
-                                        minHeight: ESTIMATED_ITEM_HEIGHT - 20 // Allow natural height with minimum
+                                    key={subtitle.id}
+                                    className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-all duration-200 ease-out hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
+                                    onClick={() => selectSubtitle(index)}
+                                    style={{ 
+                                        minHeight: `${ESTIMATED_ITEM_HEIGHT - 20}px` // Allow natural height with minimum
                                     }}
                                 >
                                     <div className="flex w-full items-center gap-2">
                                         <Tooltip>
                                             <TooltipTrigger>
-                                                <div className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary" onClick={async () => await jumpToTime(subtitle.start)}>
+                                                <div
+                                                    className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await jumpToTime(subtitle.start);
+                                                    }}
+                                                >
                                                     {formatTimecode(subtitle.start)}
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent side="right">
-                                                <p className="text-xs">Jump to point on timeline</p>
+                                                <p className="text-xs">{t("subtitles.jumpToTimeline")}</p>
                                             </TooltipContent>
                                         </Tooltip>
                                         {subtitle.speaker_id && speakers.length > 0 ? (
@@ -428,129 +344,95 @@ const SubtitleList = ({
                                                 <Button
                                                     variant="outline"
                                                     className="ml-auto text-xs p-2 h-6"
-                                                    onClick={() => {
-                                                        setExpandedSpeakerIndex(Number(subtitle.speaker_id));
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                        setExpandedSpeakerIndex(idx);
                                                         setShowSpeakerEditor(true);
                                                     }}
                                                 >
-                                                    {speakers[Number(subtitle.speaker_id)]?.name || 'Unknown Speaker'}
+                                                    {(() => {
+                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                        return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                    })()}
                                                 </Button>
                                             </>
                                         ) : null}
 
                                     </div>
-                                    <div className="relative w-full pr-8">
-                                        <span className="text-foreground leading-relaxed whitespace-pre-line">
-                                            {highlightText ? highlightTextInSubtitle(subtitle.text, highlightText, matchCase) : subtitle.text}
-                                        </span>
+                                    <div className="relative w-full">
+                                        {isSelected ? (
+                                            <div
+                                                ref={inlineEditorRef}
+                                                contentEditable
+                                                suppressContentEditableWarning
+                                                onInput={(e) => {
+                                                    const nextText = (e.currentTarget.innerText ?? "").replace(/\r\n/g, "\n");
+                                                    setDraftText(nextText);
+                                                    const existing = subtitles[index];
+                                                    if (!existing) return;
+                                                    const next = [...subtitles];
+                                                    next[index] = { ...existing, text: nextText };
+                                                    updateSubtitles(next);
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Escape") {
+                                                        e.preventDefault();
+                                                        if (inlineEditorRef.current) {
+                                                            inlineEditorRef.current.innerText = originalText;
+                                                        }
+                                                        setDraftText(originalText);
+                                                        const existing = subtitles[index];
+                                                        if (existing) {
+                                                            const next = [...subtitles];
+                                                            next[index] = { ...existing, text: originalText };
+                                                            updateSubtitles(next);
+                                                        }
+                                                    }
+
+                                                    if (e.key === "Enter" && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        inlineEditorRef.current?.blur();
+                                                    }
+                                                }}
+                                                className="rounded-md text-foreground leading-relaxed whitespace-pre-line outline-none"
+                                            />
+                                        ) : (
+                                            <div className="rounded-md pr-1 text-foreground leading-relaxed whitespace-pre-line">
+                                                {subtitle.text}
+                                            </div>
+                                        )}
+
                                         <div
-                                            className={`absolute -right-2 -bottom-2 transition-opacity opacity-0 group-hover:opacity-100`}
+                                            className={`grid grid-cols-2 gap-2 overflow-hidden transition-all duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
                                         >
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleOpenEdit(subtitle);
-                                                        }}
-                                                        size="icon"
-                                                        variant="outline"
-                                                        className="h-8 w-8 rounded-full shadow-md bg-background hover:bg-background/50"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                                                    <DialogHeader>
-                                                        <DialogTitle>Edit Subtitle</DialogTitle>
-                                                        <DialogDescription>
-                                                            Edit the subtitle text by modifying the words below
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className="space-y-4">
-                                                        {editingSubtitle && (
-                                                            <div className="flex flex-wrap gap-0 m-0 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                                                                {editingWordIndex === 0 && (
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="text-xs h-6 mr-2"
-                                                                        onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
-                                                                        onClick={() => handleMergeLeft(actualIndex)}
-                                                                    >
-                                                                        <ArrowLeft className="h-4 w-4 mr-2" /> Merge Left
-                                                                    </Button>
-                                                                )}
-                                                                {editingWords.map((word, wordIndex) => (
-                                                                    <Word
-                                                                        key={`${word.start}-${word.end}-${word.word}`}
-                                                                        word={word.word}
-                                                                        onStartEdit={() => setEditingWordIndex(wordIndex)}
-                                                                        onEndEdit={() => setEditingWordIndex(null)}
-                                                                        onUpdate={(newWord) => {
-                                                                            setEditingWords(prev =>
-                                                                                prev.map((w, i) =>
-                                                                                    i === wordIndex ? { ...w, word: newWord } : w
-                                                                                )
-                                                                            );
-                                                                        }}
-                                                                        onDelete={() => {
-                                                                            setEditingWords(prev => {
-                                                                                const newWords = prev.filter((_, i) => i !== wordIndex);
-
-                                                                                // If this isn't the first word, update the previous word's end time
-                                                                                if (wordIndex > 0 && newWords.length > 0) {
-                                                                                    const deletedWord = prev[wordIndex];
-                                                                                    newWords[wordIndex - 1] = {
-                                                                                        ...newWords[wordIndex - 1],
-                                                                                        end: deletedWord.end
-                                                                                    };
-                                                                                }
-
-                                                                                return newWords;
-                                                                            });
-                                                                        }}
-                                                                    />
-                                                                ))}
-                                                                {editingWordIndex === editingWords.length - 1 && editingWords.length > 0 && (
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="text-xs h-6 ml-2"
-                                                                        onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur before click
-                                                                        onClick={() => handleMergeRight(actualIndex)}
-                                                                    >
-                                                                        Merge Right<ArrowRight className="h-4 w-4 ml-2" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        <DialogFooter>
-                                                            <DialogClose asChild>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    className="text-sm mt-2 sm:mt-0"
-                                                                >
-                                                                    Cancel
-                                                                </Button>
-                                                            </DialogClose>
-                                                            <DialogClose asChild>
-                                                                <Button
-                                                                    variant="default"
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    className="text-sm"
-                                                                    onClick={() => handleSaveChanges(actualIndex)}
-                                                                >
-                                                                    Save Changes
-                                                                </Button>
-                                                            </DialogClose>
-                                                        </DialogFooter>
-                                                    </div>
-                                                </DialogContent>
-                                            </Dialog>
+                                            <Button
+                                                variant="outline"
+                                                className="text-xs h-8"
+                                                disabled={!isSelected || index <= 0 || splitIntoWords(draftText).length === 0}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMoveFirstWordToPrev(index);
+                                                }}
+                                            >
+                                                <ArrowUp className="h-4 w-4" />
+                                                Move to prev
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="text-xs h-8"
+                                                disabled={!isSelected || index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMoveLastWordToNext(index);
+                                                }}
+                                            >
+                                                <ArrowDown className="h-4 w-4" />
+                                                Move to next
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>

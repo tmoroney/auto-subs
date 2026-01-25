@@ -1,0 +1,286 @@
+{
+  "settings": {
+    "title": "设置",
+    "description": "配置您的 AutoSubs 偏好和选项。",
+    "sections": {
+      "transcription": "转录",
+      "support": "支持",
+      "appearance": "外观"
+    },
+    "gpu": {
+      "title": "GPU 加速",
+      "description": "利用 GPU 进行更快的转录"
+    },
+    "dtw": {
+      "title": "动态时间规整",
+      "description": "提高词级时间准确性"
+    },
+    "uiLanguage": {
+      "title": "应用语言",
+      "description": "更新菜单和按钮",
+      "showPickerAgain": "再次显示语言选择器"
+    },
+    "reset": {
+      "button": "重置所有设置为默认值",
+      "confirm": "您确定要将所有设置重置为默认值吗？此操作无法撤销。",
+      "confirmTitle": "重置设置"
+    },
+    "support": {
+      "supportAutoSubs": "支持 AutoSubs",
+      "helpSupportDevelopment": "帮助支持开发",
+      "viewSource": "查看源代码"
+    }
+  },
+  "common": {
+    "close": "关闭",
+    "cancel": "取消",
+    "saveChanges": "保存更改",
+    "add": "添加",
+    "done": "完成",
+    "delete": "删除"
+  },
+  "importExport": {
+    "button": "导入 / 导出",
+    "importTab": "导入",
+    "exportTab": "导出",
+    "dropHere": "将文件拖放到此处或点击选择",
+    "supportsSrt": "支持 .srt 文件",
+    "selected": "已选择：",
+    "importFile": "导入文件",
+    "includeSpeakerLabels": "包含说话人标签",
+    "exportAsSrt": "导出为 SRT",
+    "exportAsJson": "导出为 JSON",
+    "downloadFormat": "下载 {{format}}"
+  },
+  "actionBar": {
+    "common": {
+      "auto": "自动",
+      "on": "开启",
+      "off": "关闭"
+    },
+    "mode": {
+      "fileInput": "文件输入",
+      "timeline": "时间线"
+    },
+    "format": {
+      "button": "格式",
+      "removePunctuationTitle": "移除标点符号",
+      "removePunctuationDescription": "移除逗号、句号等。",
+      "textCaseTitle": "文本大小写",
+      "textCaseDescription": "修改字幕大小写",
+      "textCase": {
+        "normal": "正常",
+        "lowercase": "小写",
+        "uppercase": "大写",
+        "titleCase": "标题大小写"
+      },
+      "characterLimitTitle": "字符限制",
+      "characterLimitDescription": "每行（0 = 自动）",
+      "lineCountTitle": "行数",
+      "lineCountDescription": "每个字幕的最大行数"
+    },
+    "censor": {
+      "title": "审查词汇",
+      "wordCount": "{{count}} 个词",
+      "dialogTitle": "审查敏感词汇",
+      "dialogDescription": "添加要在字幕中审查的词汇。",
+      "inputPlaceholder": "添加要审查的词汇",
+      "empty": "暂无审查词汇。"
+    },
+    "speakers": {
+      "title": "说话人标签",
+      "description": "识别不同的说话人",
+      "countTitle": "说话人数量",
+      "disabled": "已禁用"
+    },
+    "tracks": {
+      "selectTracks": "选择轨道...",
+      "trackN": "轨道 {{n}}",
+      "countSelected": "已选择 {{count}} 个轨道",
+      "selectedLabel": "已选择 {{label}}",
+      "noneSelected": "未选择轨道",
+      "clickToSelect": "点击选择音频轨道",
+      "selectAll": "全选",
+      "clearAll": "清除全部",
+      "noneFound": "未找到音频轨道。",
+      "createTrack": "在当前时间线中创建音频轨道以开始转录。"
+    },
+    "fileDrop": {
+      "aria": "将音频文件拖放到此处或点击选择",
+      "prompt": "拖放文件或点击",
+      "supports": "支持大多数格式"
+    },
+    "language": {
+      "source": "源语言",
+      "translate": "翻译",
+      "searchSourcePlaceholder": "搜索语言...",
+      "searchTargetPlaceholder": "搜索目标语言...",
+      "noLanguageFound": "未找到语言。"
+    }
+  },
+  "speakerEditor": {
+    "title": "编辑说话人",
+    "description": "这些是在音频中检测到的说话人。",
+    "jumpToSample": "跳转到时间线中的样本",
+    "name": "姓名",
+    "namePlaceholder": "输入说话人姓名",
+    "outputTrack": "输出轨道",
+    "selectTrack": "选择轨道",
+    "appearance": "外观",
+    "colors": {
+      "fill": "填充",
+      "outline": "轮廓",
+      "border": "边框"
+    },
+    "generatingPreview": "正在生成预览...",
+    "generatePreview": "生成预览",
+    "subtitlePreview": "字幕预览",
+    "continueEditing": "继续编辑",
+    "saveAndAddToTimeline": "保存并添加到时间线"
+  },
+  "workspace": {
+    "empty": {
+      "loadingModel": "正在将模型加载到内存...",
+      "welcomeTitle": "欢迎使用 AutoSubs",
+      "welcomeDescription": "选择音频源以开始生成字幕。",
+      "support": "支持 AutoSubs"
+    }
+  },
+  "modelStatus": {
+    "cached": "已缓存",
+    "available": "可用",
+    "storage": "存储：",
+    "ram": "内存："
+  },
+  "models": {
+    "englishOnly": {
+      "title": "英语专用模型",
+      "description": "显示专用的英语模型，英语转录准确性更高。"
+    },
+    "manage": {
+      "title": "管理已下载的模型",
+      "description": "删除缓存的模型以释放磁盘空间。",
+      "empty": "未找到已下载的模型",
+      "deleteModel": "删除模型",
+      "confirmTitle": "您确定吗？",
+      "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。"
+    },
+    "tiny": {
+      "label": "Tiny",
+      "description": "最快",
+      "details": "最快的转录，内存占用最小。适合快速草稿。"
+    },
+    "tiny_en": {
+      "label": "Tiny",
+      "description": "最快",
+      "details": "最快的英语转录，内存占用最小。适合快速草稿。"
+    },
+    "base": {
+      "label": "Base",
+      "description": "日常使用",
+      "details": "可靠的转录，内存要求低。适合日常使用。"
+    },
+    "base_en": {
+      "label": "Base",
+      "description": "日常使用",
+      "details": "可靠的英语转录，内存要求低。适合日常使用。"
+    },
+    "small": {
+      "label": "Small",
+      "description": "平衡",
+      "details": "平衡的速度和准确性，内存占用适中。能很好地处理各种口音。"
+    },
+    "small_en": {
+      "label": "Small",
+      "description": "平衡",
+      "details": "平衡的速度和英语准确性，内存占用适中。能处理各种口音。"
+    },
+    "medium": {
+      "label": "Medium",
+      "description": "准确",
+      "details": "高准确性转录，速度和内存适中。适合具有挑战性的音频。"
+    },
+    "medium_en": {
+      "label": "Medium",
+      "description": "准确",
+      "details": "高准确性英语转录，速度适中。适合具有挑战性的音频。"
+    },
+    "large_v3_turbo": {
+      "label": "Large Turbo",
+      "description": "快速且准确",
+      "details": "优秀的准确性，比 Large 模型速度更快，内存占用适中。"
+    },
+    "large_v3": {
+      "label": "Large",
+      "description": "最高准确性",
+      "details": "复杂音频的最高准确性，但速度较慢且需要大量内存。"
+    }
+  },
+  "completion": {
+    "processingComplete": "处理完成",
+    "subtitlesReady": "您的字幕已准备就绪！",
+    "exportToFile": "导出到文件",
+    "addToTimeline": "添加到时间线"
+  },
+  "progressSteps": {
+    "download": "正在下载模型",
+    "transcribe": "语音转文本",
+    "translate": "正在翻译为 {{language}}",
+    "processing": "正在处理"
+  },
+  "subtitles": {
+    "title": "字幕",
+    "speakers": "说话人",
+    "editSpeakers": "编辑说话人",
+    "searchPlaceholder": "搜索字幕...",
+    "searchAria": "搜索字幕",
+    "clearSearch": "清除搜索",
+    "addToTimeline": "添加到时间线",
+    "loading": "正在加载字幕...",
+    "jumpToTimeline": "跳转到时间线上的点",
+    "unknownSpeaker": "未知说话人",
+    "empty": {
+      "noSubtitlesFound": "未找到字幕",
+      "tryDifferentSearch": "尝试不同的搜索词",
+      "noSubtitlesAvailable": "没有可用的字幕。请先导入一些。",
+      "noSubtitlesAvailableShort": "没有可用的字幕"
+    }
+  },
+  "subtitleEditor": {
+    "title": "编辑字幕",
+    "description": "通过修改下面的词汇来编辑字幕文本",
+    "mergeLeft": "向左合并",
+    "mergeRight": "向右合并",
+    "deleteWord": "删除词汇"
+  },
+  "languagePicker": {
+    "title": "选择您的语言",
+    "description": "选择您要在应用中使用的语言。",
+    "continue": "继续"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "close": "关闭"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "已连接",
+        "disconnected": "未连接"
+      },
+      "tooltip": {
+        "connected": "已连接",
+        "currentlyViewing": "当前查看：{{name}}",
+        "ready": "已准备好访问时间线",
+        "canGetAudio": "您可以从时间线获取音频，并将字幕添加回时间线。",
+        "cantConnect": "无法连接到时间线",
+        "openResolve": "打开 DaVinci Resolve，然后前往 Workspace → Scripts → AutoSubs"
+      }
+    }
+  },
+  "theme": {
+    "toggle": "切换主题"
+  }
+}

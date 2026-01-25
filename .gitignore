@@ -25,3 +25,4 @@ AutoSubs-App/package-lock.json
 /AutoSubs-App/src-tauri/binaries
 /AutoSubs-App/.windsurf
 /AutoSubs-App/src-tauri/src/pyannote-rs
+/AutoSubs-App/src-tauri/crates/transcription-engine/cache

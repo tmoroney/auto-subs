@@ -1,6 +1,5 @@
-use crate::transcribe::{transcribe_audio, FrontendTranscribeOptions};
+use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
 use tauri::test::{mock_builder, mock_context, noop_assets};
-use std::process::Command;
 use std::fs;
 
 #[cfg(test)]
@@ -10,21 +9,11 @@ mod tests {
     // run with cargo test transcribe_audio_smoke -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
     async fn transcribe_audio_smoke() {
-        whisper_rs::install_logging_hooks();
-        println!("whisper.cpp version: {}", whisper_rs::WHISPER_CPP_VERSION);
         let app = mock_builder()
             .plugin(tauri_plugin_shell::init())
             .build(mock_context(noop_assets()))
             .expect("failed to build test app");
         let handle = app.handle().clone();
-
-        // Ensure ffprobe is available in PATH (sidecars are not used under mock runtime)
-        let has_ffprobe = Command::new("ffprobe").arg("-version").output().is_ok();
-
-        if !has_ffprobe {
-            eprintln!("Skipping transcribe_audio_smoke: ffprobe not found in PATH.");
-            return;
-        }
 
         // Use a portable test asset path (avoid absolute machine paths)
         let wav = format!("{}/tests/data/test-audio.wav", env!("CARGO_MANIFEST_DIR"));
@@ -35,6 +24,7 @@ mod tests {
             model: "tiny.en".into(),
             lang: Some("en".into()),
             translate: Some(false),
+            target_language: None,
             enable_dtw: Some(false),
             enable_gpu: Some(true),
             enable_diarize: Some(false),
@@ -61,19 +51,11 @@ mod tests {
     // run with: cargo test transcribe_audio_with_vad -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
     async fn transcribe_audio_with_vad() {
-        //whisper_rs::install_logging_hooks();
         let app = mock_builder()
             .plugin(tauri_plugin_shell::init())
             .build(mock_context(noop_assets()))
             .expect("failed to build test app");
         let handle = app.handle().clone();
-
-        // Ensure ffprobe is available in PATH (sidecars are not used under mock runtime)
-        let has_ffprobe = Command::new("ffprobe").arg("-version").output().is_ok();
-        if !has_ffprobe {
-            eprintln!("Skipping transcribe_audio_with_vad: ffprobe not found in PATH.");
-            return;
-        }
 
         let wav = format!("{}/tests/data/jfk.wav", env!("CARGO_MANIFEST_DIR"));
 
@@ -83,9 +65,10 @@ mod tests {
             model: "tiny.en".into(),
             lang: Some("en".into()),
             translate: Some(false),
-            enable_dtw: Some(false),
+            target_language: None,
+            enable_dtw: Some(true),
             enable_gpu: Some(true),
-            enable_diarize: Some(false),
+            enable_diarize: Some(true),
             max_speakers: None,
         };
 

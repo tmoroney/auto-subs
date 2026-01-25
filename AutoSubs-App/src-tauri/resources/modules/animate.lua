@@ -83,7 +83,7 @@ function AnimateGradual(follower, duration, wordTimings)
         if i == 1 then
             keyframes[0] = { startFrame, RH = { endIndex, animDuration } }
         else
-            local gapBefore = wordTimings[i-1].startFrame - startFrame
+            local gapBefore = wordTimings[i - 1].startFrame - startFrame
             if i < #wordTimings then
                 keyframes[startIndex] = { startFrame, LH = { -1, gapBefore }, RH = { charsToAdd, animDuration } }
             else
@@ -142,34 +142,75 @@ function AnimateStepIn(follower, duration)
     spline:SetKeyFrames(keyframes)
 end
 
-function HighlightWords(comp, follower, wordTimings, duration)
+function HighlightSpokenWords(comp, follower, wordTimings, duration)
     -- Ensure the StyledTextCLS modifier is added
-    follower:AddModifier("Text", "StyledTextCLS")
-
+    --follower:AddModifier("Text", "StyledTextCLS")
     -- Find the CharacterLevelStyling tool
-    local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
-
+    --local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
     -- Add the BezierSpline modifier to the CharacterLevelStyling tool
-    characterLevelStyling:AddModifier("CharacterLevelStyling", "BezierSpline")
+    --characterLevelStyling:AddModifier("CharacterLevelStyling", "BezierSpline")
     --local spline = characterLevelStyling.CharacterLevelStyling:GetConnectedOutput():GetTool()
 
     -- Extract existing settings for the specific tool
-    local settings = comp:CopySettings()
-    local characterLevelStylingSettings = settings.Tools["CharacterLevelStyling1RightclickHeretoAnimateCharacterLevelStyling"]
+    local splineKey = "CharacterLevelStyling1RightclickHeretoAnimateCharacterLevelStyling"
+    local compSettings = comp:CopySettings()
+    local settings = compSettings.Tools[splineKey]
+
+    -- if the spline doesn't exist, create it
+    if settings == nil then
+        local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
+        characterLevelStyling:AddModifier("CharacterLevelStyling", "BezierSpline")
+    end
+
+    -- should be passed in to functions (only setting the outline colour for testing)
+    local styleKey = "Outline"
+    local highlight = { Red = 0.8, Green = 0.2, Blue = 0.2, Opacity = 1.0 }
+
+    -- Global Constants
+    local styleIdMap = {
+        Fill = 1,
+        Outline = 2,
+        Shadow = 3,
+        Background = 4
+    }
+    local inputCodes = {
+        Red = 2401,
+        Green = 2402,
+        Blue = 2403,
+        Opacity = 2600
+    }
+    local styleId = styleIdMap[styleKey] or styleIdMap.Background
+
+    -- Get current style info (from inputs) - possibly not needed as could set to nil
+    local tool = comp:FindToolByID("TextPlus")
+    local original = {}
+    for key, _ in pairs(inputCodes) do
+        original[key] = tool:GetInput(key .. styleId)
+    end
+
+    -- Append all styling attributes for a word
+    local function appendWordColors(styledText, word, styleIndex, data)
+        for key, value in pairs(data) do
+            table.insert(styledText, {
+                inputCodes[key], -- get resolve internal id
+                word.startIndex,
+                word.endIndex,
+                __flags = 256,
+                Index = styleIndex,
+                Value = value
+            })
+        end
+    end
 
     local keyframes = {}
     for i, spokenWord in ipairs(wordTimings) do
         local styledText = {}
-        -- Set styled text properties for each word at the current frame
-        local charIndex = 0
         for j, word in ipairs(wordTimings) do
-            if i == j then
-                table.insert(styledText, { 2401, charIndex, word.endIndex, Value = word.value, __flags = 256, Index = 1 })
-            else
-                table.insert(styledText, { 2401, charIndex, word.endIndex, Value = 0, __flags = 256, Index = 1 })
-            end
-            charIndex = word.endIndex + 1
+            -- Highlight spoken word + Reset styling for all other words
+            appendWordColors(styledText, word, styleId, (i == j) and highlight or original)
         end
+
+        -- Create keyframe data with internal Resolve boilerplate
         local keyframeData = {
             i - 1,
             Value = {
@@ -178,16 +219,18 @@ function HighlightWords(comp, follower, wordTimings, duration)
                 Flags = { Linear = true, LockedY = false, __flags = 256 }
             }
         }
+
+        -- Set styling to show when word is spoken
         keyframes[spokenWord.startFrame] = keyframeData
+
         if i < #wordTimings then
-            keyframes[wordTimings[i+1].startFrame - animDurationShort] = keyframeData
+            -- Hold until just before next word (prevents unwanted interpolation)
+            keyframes[wordTimings[i + 1].startFrame - animDurationShort] = keyframeData
         end
     end
 
-    characterLevelStylingSettings.KeyFrames = keyframes
-
-    -- Delete existing tool and apply the updated settings back to the tool
-    characterLevelStyling:Delete()
+    -- Update keyframes
+    settings.KeyFrames = keyframes
     follower:LoadSettings(settings)
     print("Keyframes successfully updated.")
 end
@@ -240,7 +283,7 @@ function AddWordTiming(follower, framerate, wordTimings, clipDuration, animDurat
     local currentIndex = 0
     for i, word in ipairs(wordTimings) do
         -- Format: [index of first character of word in string] = { frame that word starts }
-        keyframes[currentIndex] = { word.start * framerate}
+        keyframes[currentIndex] = { word.start * framerate }
 
         -- Update start index for next word
         currentIndex = currentIndex + #word.word
@@ -255,7 +298,7 @@ function AddWordTiming(follower, framerate, wordTimings, clipDuration, animDurat
     end
     delaySpline:LoadSettings(settings)
 
-    -- Animate out all at once
+    -- Animate out all at once at the end of the clip
     follower:SetInput("DelayType", 0)
     follower:SetInput("Delay", 0.5)
     follower:AddModifier("Order", "BezierSpline")
@@ -266,7 +309,6 @@ function AddWordTiming(follower, framerate, wordTimings, clipDuration, animDurat
     }
     orderSpline:SetKeyFrames(keyframes)
 end
-
 
 -- Animation Plan
 -- 1. Add animation to follower
@@ -301,8 +343,6 @@ if timelineItem:GetFusionCompCount() > 0 then
     AddWordTiming(follower, framerate, wordData, clipDuration, animDuration)
     --BuildAnimation(follower, clipDuration, animDuration, { "fade", "popin" })
     Fade(follower, clipDuration, animDuration)
-    
-
     comp.CurrentTime = 0
 end
 

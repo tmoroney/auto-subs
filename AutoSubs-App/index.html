@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + React + Typescript</title>
+    <style>
+      html, body { height: 100%; }
+      body { margin: 0; background: #ffffff; }
+      html.dark body { background: #0b0b0c; }
+    </style>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('vite-ui-theme');
+          if (theme === 'dark') document.documentElement.classList.add('dark');
+          if (theme === 'light') document.documentElement.classList.remove('dark');
+          if (!theme || theme === 'system') {
+            var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
 
   <body>
