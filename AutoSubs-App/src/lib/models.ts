@@ -7,6 +7,17 @@ import { Model } from "@/types/interfaces";
  */
 export const models: Model[] = [
   {
+    value: "parakeet",
+    label: "models.parakeet.label",
+    description: "models.parakeet.description",
+    size: "700MB",
+    ram: "2GB",
+    image: "/parakeet.png",
+    details: "models.parakeet.details",
+    languageSupport: { kind: "multilingual" },
+    isDownloaded: false,
+  },
+  {
     value: "tiny",
     label: "models.tiny.label",
     description: "models.tiny.description",
@@ -115,5 +126,5 @@ export const models: Model[] = [
     details: "models.large_v3.details",
     languageSupport: { kind: "multilingual" },
     isDownloaded: false,
-  },
+  }
 ];

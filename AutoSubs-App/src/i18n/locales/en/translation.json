@@ -214,6 +214,11 @@
       "label": "Large",
       "description": "Highest Accuracy",
       "details": "Highest accuracy for complex audio, but slower and requires significant memory."
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Fast & Accurate",
+      "details": "Excellent accuracy and speed for European languages."
     }
   },
   "completion": {

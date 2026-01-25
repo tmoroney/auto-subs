@@ -122,7 +122,7 @@ export function ActionBar({
         <Card className="p-3 space-y-3 sticky bottom-4 mx-4">
             <div className="grid w-full gap-3">
                 <div className="flex justify-between items-center">
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                         {/* subtitle formatting options */}
                         <Popover open={openTextFormattingPopover} onOpenChange={setOpenTextFormattingPopover}>
                             <PopoverTrigger asChild>

@@ -27,9 +27,6 @@
         },
         {
           "url": "https://cdn-lfs-us-1.huggingface.co/*"
-        },
-        {
-          "url": "https://github.com/thewh1teagle/pyannote-rs/releases/*"
         }
       ],
       "deny": [

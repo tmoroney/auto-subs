@@ -214,6 +214,11 @@
       "label": "Large",
       "description": "Précision maximale",
       "details": "Précision maximale pour audio complexe, mais plus lent et gourmand en mémoire."
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Modèle neuronal avancé",
+      "details": "Modèle de transcription neuronal moderne avec excellente précision pour l'audio parlé."
     }
   },
   "completion": {
