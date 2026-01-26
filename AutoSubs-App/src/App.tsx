@@ -6,16 +6,13 @@ import React from "react"
 import { TranscriptionWorkspace } from "@/pages/transcription-workspace"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
-import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
 import { LanguagePickerModal } from "@/components/language-picker-modal"
 import { useTranslation } from "react-i18next"
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/titlebar"
+import { ResolveStatus } from "@/components/titlebar"
+import { getVersion } from "@tauri-apps/api/app"
+import { check } from "@tauri-apps/plugin-updater"
 import { useResolve } from "@/contexts/ResolveContext"
 
 export function ThemeToggle() {
@@ -35,38 +32,71 @@ export function ThemeToggle() {
   )
 }
 
+
 function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
+  const [appVersion, setAppVersion] = React.useState<string | null>(null)
+  const [updateInfo, setUpdateInfo] = React.useState<{ available: boolean; version?: string } | null>(null)
   const { timelineInfo } = useResolve()
+
+  React.useEffect(() => {
+    let isActive = true
+
+    const loadVersionInfo = async () => {
+      try {
+        const version = await getVersion()
+        if (isActive) {
+          setAppVersion(version)
+        }
+      } catch (error) {
+        console.error("Failed to load app version", error)
+      }
+    }
+
+    const checkForUpdates = async () => {
+      try {
+        const update = await check()
+        if (!isActive) return
+        if (update) {
+          setUpdateInfo({ available: true, version: update.version })
+        } else {
+          setUpdateInfo({ available: false })
+        }
+      } catch (error) {
+        console.error("Failed to check for updates", error)
+        if (isActive) {
+          setUpdateInfo({ available: false })
+        }
+      }
+    }
+
+    loadVersionInfo()
+    checkForUpdates()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  const updateLabel = updateInfo?.available
+    ? "Update available"
+    : "Up to date"
+  const updateClassName = updateInfo?.available
+    ? "text-pink-500"
+    : "text-muted-foreground"
 
   return (
     <TooltipProvider>
       <LanguagePickerModal />
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Use actual timeline info from Resolve context */}
-        <Titlebar timelineInfo={timelineInfo} />
-
-
-            {/* Main Content Area with Resizable Panels */}
+        <Titlebar />
+            {/* Main Content Area - Full Width Transcription Workspace */}
             <div className="flex-1 min-h-0 pb-0">
-              {isMobile ? (
-                // Mobile: Just show transcription settings
-                <div className="h-full overflow-hidden">
-                  <TranscriptionWorkspace />
-                </div>
-              ) : (
-                // Desktop: Resizable panels with transcription settings and subtitle viewer
-                <ResizablePanelGroup direction="horizontal" className="h-full">
-                  <ResizablePanel defaultSize={55} className="min-w-[400px]">
-                    <TranscriptionWorkspace />
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={50} minSize={45}>
-                    <DesktopSubtitleViewer />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
+              <div className="h-full overflow-hidden">
+                <TranscriptionWorkspace />
+              </div>
             </div>
 
             {/* Mobile Subtitles Viewer */}
@@ -76,6 +106,16 @@ function AppContent() {
                 onClose={() => setShowMobileSubtitles(false)}
               />
             )}
+
+            <footer className="h-10 border-t bg-card/50 px-4 flex items-center justify-between text-xs">
+              <ResolveStatus timelineInfo={timelineInfo} />
+              <div className="flex items-center gap-1 text-xs">
+                <span className={updateClassName}>{updateLabel}</span>
+                {appVersion && (
+                  <span className="text-muted-foreground">· v{appVersion}</span>
+                )}
+              </div>
+            </footer>
           </div>
         </TooltipProvider>
   )

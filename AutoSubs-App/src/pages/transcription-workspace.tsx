@@ -1,5 +1,4 @@
 import * as React from "react"
-import { useMediaQuery } from "@/hooks/use-media-query"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useModels } from "@/contexts/ModelsContext"
 import { useResolve } from "@/contexts/ResolveContext"
@@ -10,13 +9,12 @@ import { TranscriptionOptions } from "@/types/interfaces"
 import { generateTranscriptFilename } from "@/utils/file-utils"
 import { ActionBar } from "@/components/action-bar"
 import PixelOverlay, { PixelOverlayRef } from "@/components/pixel-overlay"
-import { WorkspaceHeader } from "@/components/workspace/workspace-header"
 import { WorkspaceBody } from "@/components/workspace/workspace-body"
 
 export const TranscriptionWorkspace = () => {
     const { subtitles, speakers } = useTranscript()
-    const { settings, updateSetting } = useSettings()
-    const { modelsState, checkDownloadedModels, handleDeleteModel } = useModels()
+    const { settings } = useSettings()
+    const { modelsState, checkDownloadedModels } = useModels()
     const { 
         timelineInfo, 
         pushToTimeline, 
@@ -70,10 +68,7 @@ export const TranscriptionWorkspace = () => {
         run()
     }, [fileInputSelectionId, fileInput, loadSubtitles, settings.isStandaloneMode, timelineInfo?.timelineId])
 
-    // Model selector state
-    const [openModelSelector, setOpenModelSelector] = React.useState(false)
-    const isSmallScreen = useMediaQuery('(max-width: 640px)')
-
+    
     // Ref for auto-scrolling progress steps
     const progressContainerRef = React.useRef<HTMLDivElement>(null)
 
@@ -268,21 +263,6 @@ export const TranscriptionWorkspace = () => {
             <div className="h-full flex flex-col bg-card/50 relative">
                 {/* Pixel Animation Overlay */}
                 <PixelOverlay ref={pixelOverlayRef} />
-                <WorkspaceHeader
-                    modelsState={modelsState}
-                    selectedModelIndex={settings.model}
-                    selectedLanguage={settings.language}
-                    onSelectModel={(modelIndex) => {
-                        updateSetting("model", modelIndex)
-                    }}
-                    downloadingModel={null}
-                    downloadProgress={0}
-                    openModelSelector={openModelSelector}
-                    onOpenModelSelectorChange={setOpenModelSelector}
-                    isSmallScreen={isSmallScreen}
-                    onDeleteModel={handleDeleteModel}
-                />
-
                 <WorkspaceBody
                     processingSteps={processingSteps}
                     showLoadingMessage={showLoadingMessage}
@@ -292,15 +272,15 @@ export const TranscriptionWorkspace = () => {
                     livePreviewSegments={livePreviewSegments}
                     settings={settings}
                     timelineInfo={timelineInfo}
-                />
-
-                {/* Footer */}
-                <ActionBar
-                    isProcessing={isProcessing}
-                    onStart={handleStartTranscription}
-                    onCancel={handleCancelTranscription}
-                    selectedFile={fileInput}
-                    onSelectedFileChange={handleSelectedFileChange}
+                    actionBar={
+                        <ActionBar
+                            isProcessing={isProcessing}
+                            onStart={handleStartTranscription}
+                            onCancel={handleCancelTranscription}
+                            selectedFile={fileInput}
+                            onSelectedFileChange={handleSelectedFileChange}
+                        />
+                    }
                 />
             </div>
         </>

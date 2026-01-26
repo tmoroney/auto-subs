@@ -40,7 +40,7 @@
     --font-sans: Open Sans, sans-serif;
     --font-serif: Georgia, serif;
     --font-mono: Menlo, monospace;
-    --radius: 1rem;
+    --radius: 0.7rem;
     --shadow-x: 0px;
     --shadow-y: 2px;
     --shadow-blur: 0px;
@@ -95,7 +95,7 @@
     --font-sans: Open Sans, sans-serif;
     --font-serif: Georgia, serif;
     --font-mono: Menlo, monospace;
-    --radius: 1.3rem;
+    --radius: 0.7rem;
     --shadow-x: 0px;
     --shadow-y: 2px;
     --shadow-blur: 0px;

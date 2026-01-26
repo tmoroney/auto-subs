@@ -1,24 +1,24 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Minus, Square, X, Moon, Sun, Plus } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/theme-provider";
+import { HistoryIcon, type HistoryIconHandle } from "@/components/ui/history";
+import { CogIcon, type CogIconHandle } from "@/components/ui/cog";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { useTheme } from "@/components/theme-provider";
-
-interface TimelineInfo {
-  timelineId?: string;
-  name?: string;
-}
-
-interface ResolveStatusProps {
-  timelineInfo: TimelineInfo | null;
-}
+} from "@/components/ui/hover-card"
+import {
+  Tabs,
+  TabsContent,
+  TabsContents,
+  TabsList,
+  TabsTrigger,
+} from '@/components/animate-ui/components/radix/tabs';
 
 function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
@@ -30,40 +30,39 @@ function ThemeSwitcher() {
   return (
     <Button
       variant="ghost"
-      size="icon-sm"
+      size="icon-lg"
       onClick={toggleTheme}
       data-tauri-drag-region="false"
-      className="gap-2"
+      className="gap-2 cursor-pointer"
     >
       {theme === "dark" ? <Sun /> : <Moon />}
     </Button>
   );
 }
 
-function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
-  const { t } = useTranslation();
-  const isConnected = timelineInfo && timelineInfo.timelineId;
-  
+export function ResolveStatus({ timelineInfo }: { timelineInfo: { timelineId?: string; name?: string } | null }) {
+  const { t } = useTranslation()
+  const isConnected = Boolean(timelineInfo?.timelineId)
+
   return (
-    <HoverCard openDelay={400}>
+    <HoverCard openDelay={300}>
       <HoverCardTrigger asChild>
-        <Button 
-          variant="ghost" 
-          className={`flex items-center gap-2 h-7 text-xs ${
-            isConnected 
-              ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300" 
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-7 p-3 text-xs gap-2 ${
+            isConnected
+              ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
               : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
           }`}
         >
-          <div 
-            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-          />
+          <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
           {isConnected
             ? (timelineInfo?.name || t("titlebar.resolve.status.connected"))
             : t("titlebar.resolve.status.disconnected")}
         </Button>
       </HoverCardTrigger>
-      <HoverCardContent className="w-72 z-50">
+      <HoverCardContent className="w-72 z-50" align="start">
         <div className="flex items-start gap-3">
           <img
             src="/davinci-resolve-logo.png"
@@ -100,12 +99,14 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
         </div>
       </HoverCardContent>
     </HoverCard>
-  );
+  )
 }
 
-export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }) {
+export function Titlebar() {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
+  const historyIconRef = useRef<HistoryIconHandle>(null);
+  const cogIconRef = useRef<CogIconHandle>(null);
 
   useEffect(() => {
     const checkPlatform = async () => {
@@ -129,7 +130,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
+      className="titlebar flex items-center justify-between h-14 px-1 border-b bg-card/50 backdrop-blur select-none relative z-40"
       data-tauri-drag-region
       onMouseDown={() => getCurrentWindow().startDragging()}
     >
@@ -137,15 +138,36 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
         // macOS layout: System handles traffic lights, status in center, settings on right
         <>
           {/* Left side - Empty spacer for system traffic lights */}
-          <div className="w-20" data-tauri-drag-region />
+          <div className="w-24" data-tauri-drag-region />
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
-            <ResolveStatus timelineInfo={timelineInfo} />
+          <div className="flex flex-1 justify-center">
+            <Tabs defaultValue="transcripts">
+              <TabsList>
+                <TabsTrigger 
+                  value="transcripts" 
+                  className="px-8"
+                  onMouseEnter={() => historyIconRef.current?.startAnimation()}
+                  onMouseLeave={() => historyIconRef.current?.stopAnimation()}
+                >
+                  <HistoryIcon ref={historyIconRef} />
+                  Transcripts
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="generate" 
+                  className="px-8"
+                  onMouseEnter={() => cogIconRef.current?.startAnimation()}
+                  onMouseLeave={() => cogIconRef.current?.stopAnimation()}
+                >
+                  <CogIcon ref={cogIconRef} />
+                  Generate
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Right side - Theme switcher */}
-          <div className="flex items-center gap-2 w-20 justify-end" data-tauri-drag-region>
+          <div className="flex items-center mr-1 gap-2 w-20 justify-end" data-tauri-drag-region>
             <ThemeSwitcher />
           </div>
         </>
@@ -157,9 +179,30 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
             <ThemeSwitcher />
           </div>
 
-          {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
-            <ResolveStatus timelineInfo={timelineInfo} />
+          {/* Center - Empty */}
+          <div className="flex flex-1 justify-center">
+            <Tabs defaultValue="transcripts">
+              <TabsList>
+                <TabsTrigger 
+                  value="transcripts" 
+                  className="px-8"
+                  onMouseEnter={() => historyIconRef.current?.startAnimation()}
+                  onMouseLeave={() => historyIconRef.current?.stopAnimation()}
+                >
+                  <HistoryIcon ref={historyIconRef} />
+                  Transcripts
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="generate" 
+                  className="px-8"
+                  onMouseEnter={() => cogIconRef.current?.startAnimation()}
+                  onMouseLeave={() => cogIconRef.current?.stopAnimation()}
+                >
+                  <CogIcon ref={cogIconRef} />
+                  Generate
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Right side - Window controls */}

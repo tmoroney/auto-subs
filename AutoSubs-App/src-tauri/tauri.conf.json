@@ -14,6 +14,10 @@
       {
         "titleBarStyle": "Overlay",
         "decorations": true,
+        "trafficLightPosition": {  
+          "x": 20,  
+          "y": 30
+        },
         "height": 700,
         "width": 380,
         "acceptFirstMouse": true,
