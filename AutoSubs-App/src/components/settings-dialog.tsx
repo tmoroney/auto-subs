@@ -1,5 +1,5 @@
 import React from "react";
-import { Heart, Github, Settings, Gauge, Clock } from "lucide-react";
+import { Heart, Github, Settings, Gauge, Clock, Moon, Sun } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
@@ -24,10 +24,12 @@ import {
 } from "@/components/ui/select";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
+import { useTheme } from "@/components/theme-provider";
 
 export function SettingsDialog() {
   const { settings, updateSetting, resetSettings } = useSettings();
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = React.useState(false);
 
   const handleResetSettings = async () => {
@@ -102,6 +104,28 @@ export function SettingsDialog() {
                     checked={settings.enableDTW}
                     onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
                   />
+                </ItemActions>
+              </Item>
+
+              <Item variant="outline" size="sm">
+                <ItemMedia variant="icon" className="bg-purple-100 dark:bg-purple-900/30">
+                  {theme === "dark" ? <Sun className="h-4 w-4 text-purple-600 dark:text-purple-400" /> : <Moon className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Theme</ItemTitle>
+                  <ItemDescription className="text-xs leading-tight line-clamp-1">
+                    Switch between light and dark mode
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="h-8 px-2"
+                  >
+                    {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
                 </ItemActions>
               </Item>
             </div>

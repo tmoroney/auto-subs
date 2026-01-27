@@ -1,6 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Minus, Square, X, History } from "lucide-react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,24 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { useTheme } from "@/components/theme-provider";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { getTranscriptsDir } from "@/utils/file-utils";
+import { readDir } from "@tauri-apps/plugin-fs";
+import { readTranscript } from "@/utils/file-utils";
+import { useTranscript } from "@/contexts/TranscriptContext";
+import { useState, useEffect } from "react";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -18,26 +34,6 @@ interface TimelineInfo {
 
 interface ResolveStatusProps {
   timelineInfo: TimelineInfo | null;
-}
-
-function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-  
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={toggleTheme}
-      data-tauri-drag-region="false"
-      className="gap-2"
-    >
-      {theme === "dark" ? <Sun /> : <Moon />}
-    </Button>
-  );
 }
 
 function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
@@ -103,6 +99,118 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
   );
 }
 
+interface TranscriptFile {
+  name: string;
+  lastModified: Date;
+}
+
+function TranscriptsButton() {
+  const [open, setOpen] = useState(false);
+  const [transcripts, setTranscripts] = useState<TranscriptFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { setSubtitles, setSpeakers, setCurrentTranscriptFilename } = useTranscript();
+
+  useEffect(() => {
+    if (open) {
+      loadTranscripts();
+    }
+  }, [open]);
+
+  const loadTranscripts = async () => {
+    setLoading(true);
+    try {
+      const transcriptsDir = await getTranscriptsDir();
+      const entries = await readDir(transcriptsDir);
+      
+      const transcriptFiles = await Promise.all(
+        entries
+          .filter(entry => entry.name.endsWith('.json'))
+          .map(async (entry) => {
+            // For now, just use current time as lastModified since the API doesn't expose it easily
+            const lastModified = new Date();
+            return {
+              name: entry.name,
+              lastModified
+            };
+          })
+      );
+
+      transcriptFiles.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+      setTranscripts(transcriptFiles);
+    } catch (error) {
+      console.error('Failed to load transcripts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          data-tauri-drag-region="false"
+          className="gap-2"
+        >
+          <History className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <Command>
+          <CommandInput placeholder="Search transcripts..." />
+          <CommandList>
+            {loading ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                Loading...
+              </div>
+            ) : transcripts.length === 0 ? (
+              <CommandEmpty>No transcripts found.</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {transcripts.map((transcript) => (
+                  <CommandItem
+                    key={transcript.name}
+                    value={transcript.name}
+                    onSelect={async () => {
+                      try {
+                        const transcriptData = await readTranscript(transcript.name);
+                        if (transcriptData) {
+                          setSubtitles(transcriptData.segments || []);
+                          setSpeakers(transcriptData.speakers || []);
+                          setCurrentTranscriptFilename(transcript.name);
+                        }
+                      } catch (error) {
+                        console.error('Failed to load transcript:', error);
+                      }
+                      setOpen(false);
+                    }}
+                  >
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium">
+                        {transcript.name.replace('.json', '')}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {transcript.lastModified.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
@@ -129,7 +237,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-background/95 backdrop-blur select-none relative z-40"
+      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-card/50 backdrop-blur select-none relative z-40"
       data-tauri-drag-region
       onMouseDown={() => getCurrentWindow().startDragging()}
     >
@@ -144,17 +252,17 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
             <ResolveStatus timelineInfo={timelineInfo} />
           </div>
 
-          {/* Right side - Theme switcher */}
+          {/* Right side - Transcripts button */}
           <div className="flex items-center gap-2 w-20 justify-end" data-tauri-drag-region>
-            <ThemeSwitcher />
+            <TranscriptsButton />
           </div>
         </>
       ) : (
         // Windows/Linux layout: Settings on left, status in center, window buttons on right
         <>
-          {/* Left side - Theme switcher */}
+          {/* Left side - Empty spacer */}
           <div className="flex items-center gap-2" data-tauri-drag-region>
-            <ThemeSwitcher />
+            <TranscriptsButton />
           </div>
 
           {/* Center - Resolve status */}

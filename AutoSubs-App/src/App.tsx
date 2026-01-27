@@ -47,37 +47,36 @@ function AppContent() {
         {/* Use actual timeline info from Resolve context */}
         <Titlebar timelineInfo={timelineInfo} />
 
-
-            {/* Main Content Area with Resizable Panels */}
-            <div className="flex-1 min-h-0 pb-0">
-              {isMobile ? (
-                // Mobile: Just show transcription settings
-                <div className="h-full overflow-hidden">
-                  <TranscriptionWorkspace />
-                </div>
-              ) : (
-                // Desktop: Resizable panels with transcription settings and subtitle viewer
-                <ResizablePanelGroup direction="horizontal" className="h-full">
-                  <ResizablePanel defaultSize={55} className="min-w-[400px]">
-                    <TranscriptionWorkspace />
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={50} minSize={45}>
-                    <DesktopSubtitleViewer />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
+        {/* Main Content Area with Resizable Panels */}
+        <div className="flex-1 min-h-0 pb-0">
+          {isMobile ? (
+            // Mobile: Just show transcription settings
+            <div className="h-full overflow-hidden">
+              <TranscriptionWorkspace />
             </div>
+          ) : (
+            // Desktop: Resizable panels with transcription settings and subtitle viewer
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={50} className="min-w-[380px]">
+                <TranscriptionWorkspace />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={50} minSize={45}>
+                <DesktopSubtitleViewer />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
+        </div>
 
-            {/* Mobile Subtitles Viewer */}
-            {isMobile && (
-              <MobileSubtitleViewer
-                isOpen={showMobileSubtitles}
-                onClose={() => setShowMobileSubtitles(false)}
-              />
-            )}
-          </div>
-        </TooltipProvider>
+        {/* Mobile Subtitles Viewer */}
+        {isMobile && (
+          <MobileSubtitleViewer
+            isOpen={showMobileSubtitles}
+            onClose={() => setShowMobileSubtitles(false)}
+          />
+        )}
+      </div>
+    </TooltipProvider>
   )
 }
 

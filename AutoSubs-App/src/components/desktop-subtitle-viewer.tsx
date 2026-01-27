@@ -62,7 +62,7 @@ export function DesktopSubtitleViewer() {
   }
 
   return (
-    <div className="flex flex-col h-full border-l">
+    <div className="flex flex-col h-full border-l bg-card/50">
 
       {/* Import/Export Popover & Edit Speakers */}
       <div className="shrink-0 p-3 pb-0 flex gap-2">

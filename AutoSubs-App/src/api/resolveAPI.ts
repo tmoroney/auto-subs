@@ -1,7 +1,7 @@
 // src/api/resolveApi.ts
 import { fetch } from '@tauri-apps/plugin-http';
 import { downloadDir } from '@tauri-apps/api/path';
-import { getTranscriptPath } from '@/utils/fileUtils';
+import { getTranscriptPath } from '@/utils/file-utils';
 import { Speaker } from '@/types/interfaces';
 
 const resolveAPI = "http://localhost:56002/";

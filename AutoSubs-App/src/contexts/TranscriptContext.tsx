@@ -19,6 +19,7 @@ interface TranscriptContextType {
   markIn: number;
   setSubtitles: (subtitles: Subtitle[]) => void;
   setSpeakers: (speakers: Speaker[]) => void;
+  setCurrentTranscriptFilename: (filename: string | null) => void;
   updateSpeakers: (newSpeakers: Speaker[]) => Promise<void>;
   updateSubtitles: (newSubtitles: Subtitle[], filename?: string) => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
@@ -290,6 +291,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       markIn,
       setSubtitles,
       setSpeakers,
+      setCurrentTranscriptFilename,
       updateSpeakers,
       updateSubtitles,
       processTranscriptionResults,
