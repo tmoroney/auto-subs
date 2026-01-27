@@ -139,6 +139,7 @@ export function SettingsDialog() {
                     <SelectItem value="fr">Français</SelectItem>
                     <SelectItem value="de">Deutsch</SelectItem>
                     <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="tr">Türkçe</SelectItem>
                   </SelectContent>
                 </Select>
               </ItemActions>
