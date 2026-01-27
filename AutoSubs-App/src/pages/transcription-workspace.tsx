@@ -16,7 +16,7 @@ import { WorkspaceBody } from "@/components/workspace/workspace-body"
 export const TranscriptionWorkspace = () => {
     const { subtitles, speakers } = useTranscript()
     const { settings, updateSetting } = useSettings()
-    const { modelsState, checkDownloadedModels, handleDeleteModel } = useModels()
+    const { modelsState, checkDownloadedModels } = useModels()
     const { 
         timelineInfo, 
         pushToTimeline, 
@@ -280,7 +280,9 @@ export const TranscriptionWorkspace = () => {
                     openModelSelector={openModelSelector}
                     onOpenModelSelectorChange={setOpenModelSelector}
                     isSmallScreen={isSmallScreen}
-                    onDeleteModel={handleDeleteModel}
+                    onStart={handleStartTranscription}
+                    onCancel={handleCancelTranscription}
+                    isProcessing={isProcessing}
                 />
 
                 <WorkspaceBody
@@ -296,9 +298,6 @@ export const TranscriptionWorkspace = () => {
 
                 {/* Footer */}
                 <ActionBar
-                    isProcessing={isProcessing}
-                    onStart={handleStartTranscription}
-                    onCancel={handleCancelTranscription}
                     selectedFile={fileInput}
                     onSelectedFileChange={handleSelectedFileChange}
                 />

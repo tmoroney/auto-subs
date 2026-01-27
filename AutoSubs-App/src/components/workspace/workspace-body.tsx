@@ -26,7 +26,7 @@ export function WorkspaceBody({
   const { t } = useTranslation()
 
   return (
-    <>
+    <div className="flex-1">
       {processingSteps.length > 0 ? (
         <div ref={progressContainerRef} className="w-full px-4 pb-8 overflow-y-auto h-full relative z-10" style={{
           maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
@@ -113,6 +113,6 @@ export function WorkspaceBody({
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

@@ -26,7 +26,14 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle }
 import { initI18n, normalizeUiLanguage } from "@/i18n";
 import { useTheme } from "@/components/theme-provider";
 
-export function SettingsDialog() {
+interface SettingsDialogProps {
+  variant?: "ghost" | "secondary" | "default" | "outline" | "destructive";
+  size?: "default" | "sm" | "lg" | "icon";
+  showIcon?: boolean;
+  showText?: boolean;
+}
+
+export function SettingsDialog({ variant = "ghost", size = "icon", showIcon = true, showText = false }: SettingsDialogProps = {}) {
   const { settings, updateSetting, resetSettings } = useSettings();
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -48,11 +55,13 @@ export function SettingsDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
-          size="icon"
+          variant={variant}
+          size={size}
           data-tauri-drag-region="false"
+          className="gap-2 text-muted-foreground hover:text-foreground"
         >
-          <Settings />
+          {showIcon && <Settings className="h-4 w-4" />}
+          {showText && <span className="text-xs">Settings</span>}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[560px]">

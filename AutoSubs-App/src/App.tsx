@@ -17,6 +17,8 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/titlebar"
 import { useResolve } from "@/contexts/ResolveContext"
+import { AppFooter } from "@/components/app-footer"
+import { useModels } from "@/contexts/ModelsContext"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -39,6 +41,7 @@ function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
   const { timelineInfo } = useResolve()
+  const { modelsState, handleDeleteModel } = useModels()
 
   return (
     <TooltipProvider>
@@ -57,7 +60,7 @@ function AppContent() {
           ) : (
             // Desktop: Resizable panels with transcription settings and subtitle viewer
             <ResizablePanelGroup direction="horizontal" className="h-full">
-              <ResizablePanel defaultSize={50} className="min-w-[380px]">
+              <ResizablePanel defaultSize={50} className="min-w-[400px]">
                 <TranscriptionWorkspace />
               </ResizablePanel>
               <ResizableHandle withHandle />
@@ -75,6 +78,12 @@ function AppContent() {
             onClose={() => setShowMobileSubtitles(false)}
           />
         )}
+
+        {/* Footer */}
+        <AppFooter 
+          models={modelsState}
+          onDeleteModel={handleDeleteModel}
+        />
       </div>
     </TooltipProvider>
   )
