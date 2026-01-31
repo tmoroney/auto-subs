@@ -61,56 +61,54 @@ export function WorkspaceBody({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full space-y-3 pb-14">
+        <div className="flex flex-col items-center justify-center h-full space-y-2 pb-14 text-center">
           <img
             src="/autosubs-logo.png"
             alt="AutoSubs"
-            className="w-20 h-20"
+            className="w-16 h-16"
           />
-          <div className="text-center space-y-3">
-            <h2 className="text-2xl font-semibold text-foreground">
-              {t("workspace.empty.welcomeTitle")}
-            </h2>
-            <p className="text-muted-foreground max-w-72">
-              {t("workspace.empty.welcomeDescription")}
-            </p>
+          <h2 className="text-lg font-semibold">
+            {t("workspace.empty.welcomeTitle")}
+          </h2>
+          <p className="max-w-72 pb-2">
+            {t("workspace.empty.welcomeDescription")}
+          </p>
 
-            {/* Support Button */}
-            <a
-              href="https://buymeacoffee.com/tmoroney"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-full border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
-            >
-              <Heart className="h-3 w-3 group-hover:fill-pink-500 fill-background transition-colors" />
-              {t("workspace.empty.support")}
+          {/* Support Button */}
+          <a
+            href="https://buymeacoffee.com/tmoroney"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-full border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
+          >
+            <Heart className="h-3 w-3 group-hover:fill-pink-500 fill-background transition-colors" />
+            {t("workspace.empty.support")}
 
-              {/* Bursting hearts animation */}
-              <div className="absolute inset-0 pointer-events-none">
-                {[
-                  { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
-                  { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
-                  { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
-                  { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
-                  { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
-                  { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
-                  { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
-                ].map((p, i) => (
-                  <Heart
-                    key={i}
-                    className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
-                    style={{
-                      '--tx': p.tx,
-                      '--ty': p.ty,
-                      '--s': p.s,
-                      '--r': p.r,
-                      animationDelay: p.d,
-                    } as React.CSSProperties}
-                  />
-                ))}
-              </div>
-            </a>
-          </div>
+            {/* Bursting hearts animation */}
+            <div className="absolute inset-0 pointer-events-none">
+              {[
+                { tx: '-80px', ty: '-80px', s: 1.5, r: '-20deg', d: '0s' },
+                { tx: '70px', ty: '-90px', s: 1.2, r: '25deg', d: '0.05s' },
+                { tx: '-30px', ty: '-120px', s: 1.4, r: '5deg', d: '0.1s' },
+                { tx: '90px', ty: '-70px', s: 1.1, r: '-15deg', d: '0.15s' },
+                { tx: '0px', ty: '-110px', s: 1.6, r: '0deg', d: '0.2s' },
+                { tx: '-90px', ty: '-60px', s: 1.2, r: '15deg', d: '0.25s' },
+                { tx: '60px', ty: '-110px', s: 1.3, r: '-5deg', d: '0.3s' },
+              ].map((p, i) => (
+                <Heart
+                  key={i}
+                  className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
+                  style={{
+                    '--tx': p.tx,
+                    '--ty': p.ty,
+                    '--s': p.s,
+                    '--r': p.r,
+                    animationDelay: p.d,
+                  } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          </a>
         </div>
       )}
     </div>

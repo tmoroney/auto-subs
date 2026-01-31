@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, History } from "lucide-react";
+import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Check, Trash2, AlertTriangle, Archive } from "lucide-react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,32 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { getTranscriptsDir } from "@/utils/file-utils";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { readTranscript } from "@/utils/file-utils";
 import { useTranscript } from "@/contexts/TranscriptContext";
+import { useTheme } from "@/components/theme-provider";
+import { useModels } from "@/contexts/ModelsContext";
+import { Model } from "@/types/interfaces";
 import { useState, useEffect } from "react";
+import { SettingsDialogControlled } from "@/components/settings-dialog";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -39,19 +60,18 @@ interface ResolveStatusProps {
 function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
   const { t } = useTranslation();
   const isConnected = timelineInfo && timelineInfo.timelineId;
-  
+
   return (
     <HoverCard openDelay={400}>
       <HoverCardTrigger asChild>
-        <Button 
-          variant="ghost" 
-          className={`flex items-center gap-2 h-7 text-xs ${
-            isConnected 
-              ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300" 
-              : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
-          }`}
+        <Button
+          variant="ghost"
+          className={`flex items-center gap-2 h-7 text-xs ${isConnected
+            ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+            : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
+            }`}
         >
-          <div 
+          <div
             className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
           />
           {isConnected
@@ -104,6 +124,196 @@ interface TranscriptFile {
   lastModified: Date;
 }
 
+function ManageModelsDialog({
+  open,
+  onOpenChange,
+  models,
+  onDeleteModel
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  models: Model[];
+  onDeleteModel: (modelValue: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [confirmOpenForModelValue, setConfirmOpenForModelValue] = useState<string | null>(null);
+  const downloadedModels = models.filter(model => model.isDownloaded);
+
+  const getLanguageBadge = (model: Model) => {
+    if (model.languageSupport.kind === "single_language") {
+      return (
+        <Badge variant="secondary" className="text-xs py-0 px-1.5 ml-1.5">
+          {model.languageSupport.language.toUpperCase()}
+        </Badge>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={e => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>{t("models.manage.title")}</DialogTitle>
+            <DialogDescription>
+              {t("models.manage.description")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {downloadedModels.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {t("models.manage.empty")}
+              </p>
+            ) : (
+              downloadedModels.map((model) => (
+                <div key={model.value} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={model.image}
+                      alt={t(model.label)}
+                      className="w-10 h-10 object-contain rounded"
+                    />
+                    <div>
+                      <div className="flex items-center">
+                        <p className="font-medium">{t(model.label)}</p>
+                        {getLanguageBadge(model)}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{model.size}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    title={t("models.manage.deleteModel")}
+                    onClick={() => setConfirmOpenForModelValue(model.value)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmOpenForModelValue !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setConfirmOpenForModelValue(null);
+        }}
+      >
+        <DialogContent
+          onOpenAutoFocus={e => e.preventDefault()}
+        >
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <span className="font-semibold text-red-500 dark:text-red-500">{t("models.manage.confirmTitle")}</span>
+          </DialogTitle>
+          <span className="text-sm text-muted-foreground">
+            {t("models.manage.confirmBody", {
+              model: confirmOpenForModelValue
+                ? t(models.find((m) => m.value === confirmOpenForModelValue)?.label || "")
+                : "",
+            })}
+          </span>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm">{t("common.cancel")}</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                if (!confirmOpenForModelValue) return;
+                onDeleteModel(confirmOpenForModelValue);
+                setConfirmOpenForModelValue(null);
+              }}
+            >
+              {t("common.delete")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function SettingsDropdown() {
+  const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const { modelsState, handleDeleteModel } = useModels();
+  const [manageModelsOpen, setManageModelsOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            data-tauri-drag-region="false"
+            className="gap-2 rounded-full"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-48 rounded-lg"
+          side="bottom"
+          align="end"
+          sideOffset={4}
+        >
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              <span>{t("settings.title", "Settings")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setManageModelsOpen(true)}>
+              <Archive className="h-4 w-4 mr-2" />
+              <span>{t("models.manage.title", "Manage Models")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => setTheme("light")}>
+              <Sun className="h-4 w-4 mr-2" />
+              <span>{t("settings.theme.light", "Light")}</span>
+              {theme === "light" && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")}>
+              <Moon className="h-4 w-4 mr-2" />
+              <span>{t("settings.theme.dark", "Dark")}</span>
+              {theme === "dark" && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("system")}>
+              <Monitor className="h-4 w-4 mr-2" />
+              <span>{t("settings.theme.system", "System")}</span>
+              {theme === "system" && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ManageModelsDialog
+        open={manageModelsOpen}
+        onOpenChange={setManageModelsOpen}
+        models={modelsState}
+        onDeleteModel={handleDeleteModel}
+      />
+
+      <SettingsDialogControlled
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+      />
+    </>
+  );
+}
+
 function TranscriptsButton() {
   const [open, setOpen] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptFile[]>([]);
@@ -121,7 +331,7 @@ function TranscriptsButton() {
     try {
       const transcriptsDir = await getTranscriptsDir();
       const entries = await readDir(transcriptsDir);
-      
+
       const transcriptFiles = await Promise.all(
         entries
           .filter(entry => entry.name.endsWith('.json'))
@@ -151,7 +361,7 @@ function TranscriptsButton() {
           variant="ghost"
           size="icon-sm"
           data-tauri-drag-region="false"
-          className="gap-2"
+          className="gap-2 rounded-full"
         >
           <History className="h-4 w-4" />
         </Button>
@@ -191,9 +401,9 @@ function TranscriptsButton() {
                         {transcript.name.replace('.json', '')}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {transcript.lastModified.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
+                        {transcript.lastModified.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
                           year: 'numeric',
                           hour: 'numeric',
                           minute: '2-digit'
@@ -252,17 +462,19 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
             <ResolveStatus timelineInfo={timelineInfo} />
           </div>
 
-          {/* Right side - Transcripts button */}
-          <div className="flex items-center gap-2 w-20 justify-end" data-tauri-drag-region>
+          {/* Right side - Transcripts and Settings buttons */}
+          <div className="flex items-center gap-1 w-24 justify-end" data-tauri-drag-region>
             <TranscriptsButton />
+            <SettingsDropdown />
           </div>
         </>
       ) : (
         // Windows/Linux layout: Settings on left, status in center, window buttons on right
         <>
-          {/* Left side - Empty spacer */}
-          <div className="flex items-center gap-2" data-tauri-drag-region>
+          {/* Left side - Transcripts and Settings */}
+          <div className="flex items-center gap-1" data-tauri-drag-region>
             <TranscriptsButton />
+            <SettingsDropdown />
           </div>
 
           {/* Center - Resolve status */}

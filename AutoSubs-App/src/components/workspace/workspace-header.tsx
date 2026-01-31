@@ -1,9 +1,13 @@
 import * as React from "react"
-import { Check, Download, ArrowUp, X, Play, PlayCircle } from "lucide-react"
+import { UploadIcon, type UploadIconHandle } from "@/components/ui/upload"
+import { RadioIcon, type RadioIconHandle } from "@/components/ui/radio"
+import { DownloadIcon, type DownloadIconHandle } from "@/components/ui/download"
+import { CheckIcon, type CheckIconHandle } from "@/components/ui/check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { ModelStatusIndicator } from "@/components/ui/model-status-indicator"
@@ -22,9 +26,8 @@ export function WorkspaceHeader({
   openModelSelector,
   onOpenModelSelectorChange,
   isSmallScreen,
-  onStart,
-  onCancel,
-  isProcessing,
+  isStandaloneMode,
+  onStandaloneModeChange,
 }: {
   modelsState: Model[]
   selectedModelIndex: number
@@ -35,11 +38,14 @@ export function WorkspaceHeader({
   openModelSelector: boolean
   onOpenModelSelectorChange: (open: boolean) => void
   isSmallScreen: boolean
-  onStart?: () => void
-  onCancel?: () => void
-  isProcessing?: boolean
+  isStandaloneMode: boolean
+  onStandaloneModeChange: (standalone: boolean) => void
 }) {
   const { t } = useTranslation()
+  const uploadIconRef = React.useRef<UploadIconHandle>(null)
+  const radioIconRef = React.useRef<RadioIconHandle>(null)
+  const checkIconRef = React.useRef<CheckIconHandle>(null)
+  const downloadIconRef = React.useRef<DownloadIconHandle>(null)
 
   const modelSupportsLanguage = React.useCallback((model: Model, lang: string) => {
     if (lang === "auto") return true
@@ -85,6 +91,20 @@ export function WorkspaceHeader({
                 role="combobox"
                 className="p-2"
                 aria-expanded={openModelSelector}
+                onMouseEnter={() => {
+                  if (modelsState[selectedModelIndex].isDownloaded) {
+                    checkIconRef.current?.startAnimation()
+                  } else {
+                    downloadIconRef.current?.startAnimation()
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (modelsState[selectedModelIndex].isDownloaded) {
+                    checkIconRef.current?.stopAnimation()
+                  } else {
+                    downloadIconRef.current?.stopAnimation()
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   <img
@@ -97,9 +117,9 @@ export function WorkspaceHeader({
                     {getLanguageBadge(modelsState[selectedModelIndex])}
                   </div>
                   {modelsState[selectedModelIndex].isDownloaded ? (
-                    <Check className="h-3 w-3 text-green-600" />
+                    <CheckIcon ref={checkIconRef} className="text-green-600" size={16} />
                   ) : (
-                    <Download className="h-3 w-3 text-gray-500" />
+                    <DownloadIcon ref={downloadIconRef} className="text-gray-500" size={16} />
                   )}
                 </div>
               </Button>
@@ -167,31 +187,33 @@ export function WorkspaceHeader({
           </PopoverContent>
         </Popover>
         </div>
-        
-        {/* Start/Cancel Button */}
-        {onStart && onCancel && (
-          <div className="flex items-center">
-            {isProcessing ? (
-              <Button
-                onClick={onCancel}
-                size="sm"
-                variant="destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={onStart}
-                size="sm"
-                variant="default"
-                disabled={isProcessing}
-              >
-                <PlayCircle className="h-4 w-4" />
-                Generate
-              </Button>
-            )}
-          </div>
-        )}
+
+        {/* Right side: File/Timeline Mode Tabs */}
+        <Tabs
+          value={isStandaloneMode ? "file" : "timeline"}
+          onValueChange={(value) => onStandaloneModeChange(value === "file")}
+        >
+          <TabsList className="p-1 h-auto">
+            <TabsTrigger 
+              value="file" 
+              className="text-sm"
+              onMouseEnter={() => uploadIconRef.current?.startAnimation()}
+              onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
+            >
+              <UploadIcon ref={uploadIconRef} size={14} />
+              File
+            </TabsTrigger>
+            <TabsTrigger 
+              value="timeline" 
+              className="text-sm"
+              onMouseEnter={() => radioIconRef.current?.startAnimation()}
+              onMouseLeave={() => radioIconRef.current?.stopAnimation()}
+            >
+              <RadioIcon ref={radioIconRef} size={14} />
+              Timeline
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
     </TooltipProvider>
   )

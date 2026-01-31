@@ -265,7 +265,7 @@ export const TranscriptionWorkspace = () => {
 
     return (
         <>
-            <div className="h-full flex flex-col bg-card/50 relative">
+            <div className="h-full flex flex-col relative">
                 {/* Pixel Animation Overlay */}
                 <PixelOverlay ref={pixelOverlayRef} />
                 <WorkspaceHeader
@@ -280,9 +280,8 @@ export const TranscriptionWorkspace = () => {
                     openModelSelector={openModelSelector}
                     onOpenModelSelectorChange={setOpenModelSelector}
                     isSmallScreen={isSmallScreen}
-                    onStart={handleStartTranscription}
-                    onCancel={handleCancelTranscription}
-                    isProcessing={isProcessing}
+                    isStandaloneMode={settings.isStandaloneMode}
+                    onStandaloneModeChange={(standalone) => updateSetting("isStandaloneMode", standalone)}
                 />
 
                 <WorkspaceBody
@@ -300,6 +299,9 @@ export const TranscriptionWorkspace = () => {
                 <ActionBar
                     selectedFile={fileInput}
                     onSelectedFileChange={handleSelectedFileChange}
+                    onStart={handleStartTranscription}
+                    onCancel={handleCancelTranscription}
+                    isProcessing={isProcessing}
                 />
             </div>
         </>

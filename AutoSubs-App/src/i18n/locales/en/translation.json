@@ -103,12 +103,13 @@
       "selectAll": "Select All",
       "clearAll": "Clear All",
       "noneFound": "No audio tracks found.",
-      "createTrack": "Create an audio track in your current timeline to start transcribing."
+      "createTrack": "Create an audio track in your current timeline to start transcribing.",
+      "selectMultiple": "Click to select multiple tracks"
     },
     "fileDrop": {
       "aria": "Drop audio file here or click to select",
       "prompt": "Drop file or click",
-      "supports": "Most formats"
+      "supports": "Supports most formats"
     },
     "language": {
       "source": "Source",
@@ -147,8 +148,8 @@
     }
   },
   "modelStatus": {
-    "cached": "Cached",
-    "available": "Available",
+    "cached": "Downloaded",
+    "available": "Not downloaded",
     "storage": "Storage:",
     "ram": "RAM:"
   },
@@ -158,7 +159,7 @@
       "description": "Show specialised English models with higher accuracy for English transcription."
     },
     "manage": {
-      "title": "Manage Downloaded Models",
+      "title": "Models",
       "description": "Delete cached models to free up disk space.",
       "empty": "No downloaded models found",
       "deleteModel": "Delete Model",

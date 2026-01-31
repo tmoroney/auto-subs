@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Upload, FileUp, Speech, Languages, Type, AudioLines, Globe, Check, X, Settings2, Link } from "lucide-react"
+import { Speech, Languages, Type, AudioLines, Globe, Check, X, Settings2, PlayCircle } from "lucide-react"
+import { UploadIcon, type UploadIconHandle } from "@/components/ui/upload"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
@@ -31,17 +32,22 @@ import {
 import { languages, translateLanguages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Tabs as AnimatedTabs, TabsList as AnimatedTabsList, TabsTrigger as AnimatedTabsTrigger } from "@/components/animate-ui/components/radix/tabs"
 import { useTranslation } from "react-i18next"
 
 interface ActionBarProps {
     selectedFile?: string | null
     onSelectedFileChange?: (file: string | null) => void
+    onStart?: () => void
+    onCancel?: () => void
+    isProcessing?: boolean
 }
 
 export function ActionBar({
     selectedFile: selectedFileProp,
     onSelectedFileChange,
+    onStart,
+    onCancel,
+    isProcessing,
 }: ActionBarProps) {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
@@ -54,6 +60,7 @@ export function ActionBar({
     const [openTextFormattingPopover, setOpenTextFormattingPopover] = React.useState(false)
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
+    const uploadIconRef = React.useRef<UploadIconHandle>(null)
 
     const selectedFile = selectedFileProp ?? localSelectedFile
 
@@ -116,91 +123,49 @@ export function ActionBar({
     return (
         <Card className="p-3 space-y-3 sticky bottom-4 mx-4">
             <div className="grid w-full gap-3">
-                <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                        {/* unified language button */}
-                        <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    role="combobox"
-                                    aria-expanded={openLanguage}
-                                >
-                                    <Globe className="h-4 w-4" />
-                                    <span className="text-xs">
-                                        {settings.translate
-                                            ? `${settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label} → ${translateLanguages.find(l => l.value === settings.targetLanguage)?.label}`
-                                            : settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label
-                                        }
-                                    </span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0 w-72" align="start">
-                                <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
-                                    <TabsContent value="source" className="mt-0">
-                                        <Command className="max-h-[250px]">
-                                            <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
-                                            <CommandList>
-                                                <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
-                                                <CommandGroup>
-                                                    {languages
-                                                        .slice()
-                                                        .map((language) => (
-                                                            <CommandItem
-                                                                value={language.label}
-                                                                key={language.value}
-                                                                onSelect={() => {
-                                                                    updateSetting("language", language.value);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        language.value === settings.language
-                                                                            ? "opacity-100"
-                                                                            : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {language.label}
-                                                            </CommandItem>
-                                                        ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </TabsContent>
-
-                                    <TabsContent value="translate" className="mt-0">
-                                        <Command className="max-h-[250px] relative">
-                                            <div className="relative">
-                                                <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
-                                                <Button
-                                                    size="sm"
-                                                    variant={settings.translate ? "default" : "outline"}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
-                                                    onClick={() => updateSetting("translate", !settings.translate)}
-                                                >
-                                                    {settings.translate ? t("actionBar.common.on") : t("actionBar.common.off")}
-                                                </Button>
-                                            </div>
-                                            <CommandList>
-                                                <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
-                                                <CommandGroup>
-                                                    {translateLanguages.map((language) => (
+                {/* 1. TRANSCRIPTION SETTINGS - All settings in one row at the top */}
+                <div className="flex items-center gap-2">
+                    {/* Language selector */}
+                    <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="default"
+                                role="combobox"
+                                aria-expanded={openLanguage}
+                                className="flex-1 dark:bg-transparent/50 dark:hover:bg-accent"
+                            >
+                                <Globe className="h-4 w-4" />
+                                <span className="text-xs truncate">
+                                    {settings.translate
+                                        ? `${settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label} → ${translateLanguages.find(l => l.value === settings.targetLanguage)?.label}`
+                                        : settings.language === 'auto' ? t('actionBar.common.auto') : languages.find(l => l.value === settings.language)?.label
+                                    }
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-72" align="start" side="top">
+                            <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
+                                <TabsContent value="source" className="mt-0 border-b">
+                                    <Command className="max-h-[250px]">
+                                        <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
+                                        <CommandList>
+                                            <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
+                                            <CommandGroup>
+                                                {languages
+                                                    .slice()
+                                                    .map((language) => (
                                                         <CommandItem
                                                             value={language.label}
                                                             key={language.value}
                                                             onSelect={() => {
-                                                                updateSetting("targetLanguage", language.value);
-                                                                if (!settings.translate) {
-                                                                    updateSetting("translate", true);
-                                                                }
+                                                                updateSetting("language", language.value);
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    language.value === settings.targetLanguage
+                                                                    language.value === settings.language
                                                                         ? "opacity-100"
                                                                         : "opacity-0"
                                                                 )}
@@ -208,263 +173,306 @@ export function ActionBar({
                                                             {language.label}
                                                         </CommandItem>
                                                     ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </TabsContent>
-                                    <TabsList className="w-full h-auto rounded-t-none py-1 gap-1">
-                                        <TabsTrigger value="source" className="flex-1 gap-1.5">
-                                            <Globe className="h-4 w-4" />
-                                            {t("actionBar.language.source")}
-                                        </TabsTrigger>
-                                        <TabsTrigger value="translate" className="flex-1 gap-1.5">
-                                            <Languages className="h-4 w-4" />
-                                            {t("actionBar.language.translate")}
-                                            {settings.translate && (
-                                                <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                                            )}
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </Tabs>
-                            </PopoverContent>
-                        </Popover>
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </TabsContent>
 
-                        {/* subtitle formatting options */}
-                        <Popover open={openTextFormattingPopover} onOpenChange={setOpenTextFormattingPopover}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    role="combobox"
-                                    aria-expanded={openTextFormattingPopover}
-                                >
-                                    <Type className="h-4 w-4" />
-                                    <span className="text-xs">{t("actionBar.format.button")}</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0" align="start">
-                                <div className="space-y-3 p-4">
-                                    {/* Remove Punctuation */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">{t("actionBar.format.removePunctuationTitle")}</Label>
-                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.removePunctuationDescription")}</p>
+                                <TabsContent value="translate" className="mt-0 border-b">
+                                    <Command className="max-h-[250px] relative">
+                                        <div className="relative">
+                                            <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
+                                            <Button
+                                                size="sm"
+                                                variant={settings.translate ? "default" : "outline"}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
+                                                onClick={() => updateSetting("translate", !settings.translate)}
+                                            >
+                                                {settings.translate ? t("actionBar.common.on") : t("actionBar.common.off")}
+                                            </Button>
                                         </div>
-                                        <Switch
-                                            checked={settings.removePunctuation}
-                                            onCheckedChange={(checked) => updateSetting("removePunctuation", checked)}
-                                        />
-                                    </div>
+                                        <CommandList>
+                                            <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
+                                            <CommandGroup>
+                                                {translateLanguages.map((language) => (
+                                                    <CommandItem
+                                                        value={language.label}
+                                                        key={language.value}
+                                                        onSelect={() => {
+                                                            updateSetting("targetLanguage", language.value);
+                                                            if (!settings.translate) {
+                                                                updateSetting("translate", true);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                language.value === settings.targetLanguage
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {language.label}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </TabsContent>
+                                <TabsList className="h-auto p-1 m-2 flex">
+                                    <TabsTrigger value="source" className="flex-1 gap-1.5 text-xs py-2">
+                                        <Globe size={14} />
+                                        {t("actionBar.language.source")}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="translate" className="flex-1 gap-1.5 text-xs py-2">
+                                        <Languages size={14} />
+                                        {t("actionBar.language.translate")}
+                                        {settings.translate && (
+                                            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                                        )}
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        </PopoverContent>
+                    </Popover>
 
-                                    {/* Censor */}
+                    {/* Speaker diarization */}
+                    <Popover open={openSpeakerPopover} onOpenChange={setOpenSpeakerPopover}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="default"
+                                role="combobox"
+                                aria-expanded={openSpeakerPopover}
+                                className="dark:bg-transparent/50 dark:hover:bg-accent"
+                            >
+                                <Speech className="h-4 w-4" />
+                                <span className="text-xs">{settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.common.off")}</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0" side="top">
+                            <div className="px-4 py-5">
+                                {/* Speaker Count Slider */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-medium">{t("actionBar.speakers.countTitle")}</Label>
+                                        <span className={`text-sm font-medium ${settings.enableDiarize ? "text-primary" : "text-red-500"}`}>
+                                            {settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.speakers.disabled")}
+                                        </span>
+                                    </div>
+                                    <Slider
+                                        value={[settings.enableDiarize ? (settings.maxSpeakers === null ? 0 : settings.maxSpeakers) : 0]}
+                                        onValueChange={([value]) => settings.enableDiarize && updateSetting("maxSpeakers", value === 0 ? null : value)}
+                                        max={10}
+                                        min={0}
+                                        step={1}
+                                        className="w-full"
+                                        disabled={!settings.enableDiarize}
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>{t("actionBar.common.auto")}</span>
+                                        <span>10</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="border-t bg-muted/30">
+                                <div className="p-4 pt-2 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-0.5">
-                                            <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                {t("actionBar.censor.wordCount", { count: (settings.censoredWords || []).length })}
-                                                {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
-                                            </p>
+                                            <Label className="text-sm font-medium">{t("actionBar.speakers.title")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("actionBar.speakers.description")}</p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
+                                        <Switch
+                                            checked={settings.enableDiarize}
+                                            onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Text formatting */}
+                    <Popover open={openTextFormattingPopover} onOpenChange={setOpenTextFormattingPopover}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="default"
+                                role="combobox"
+                                aria-expanded={openTextFormattingPopover}
+                                className="dark:bg-transparent/50 dark:hover:bg-accent"
+                            >
+                                <Type className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="end">
+                            <div className="space-y-3 p-4">
+                                {/* Remove Punctuation */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm font-medium">{t("actionBar.format.removePunctuationTitle")}</Label>
+                                        <p className="text-xs text-muted-foreground">{t("actionBar.format.removePunctuationDescription")}</p>
+                                    </div>
+                                    <Switch
+                                        checked={settings.removePunctuation}
+                                        onCheckedChange={(checked) => updateSetting("removePunctuation", checked)}
+                                    />
+                                </div>
+
+                                {/* Censor */}
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t("actionBar.censor.wordCount", { count: (settings.censoredWords || []).length })}
+                                            {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                >
+                                                    <Settings2 className="h-4 w-4" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[520px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>{t("actionBar.censor.dialogTitle")}</DialogTitle>
+                                                    <DialogDescription>
+                                                        {t("actionBar.censor.dialogDescription")}
+                                                    </DialogDescription>
+                                                </DialogHeader>
+
+                                                <div className="grid gap-4">
+                                                    <form
+                                                        className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2"
+                                                        onSubmit={(e) => {
+                                                            e.preventDefault();
+                                                            if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
+                                                            updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
+                                                            setNewCensoredWord("");
+                                                        }}
                                                     >
-                                                        <Settings2 className="h-4 w-4" />
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="sm:max-w-[520px]">
-                                                    <DialogHeader>
-                                                        <DialogTitle>{t("actionBar.censor.dialogTitle")}</DialogTitle>
-                                                        <DialogDescription>
-                                                            {t("actionBar.censor.dialogDescription")}
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-
-                                                    <div className="grid gap-4">
-                                                        <form
-                                                            className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2"
-                                                            onSubmit={(e) => {
-                                                                e.preventDefault();
-                                                                if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
-                                                                updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
-                                                                setNewCensoredWord("");
-                                                            }}
+                                                        <Input
+                                                            value={newCensoredWord}
+                                                            onChange={(e) => setNewCensoredWord(e.target.value)}
+                                                            placeholder={t("actionBar.censor.inputPlaceholder")}
+                                                            className="flex-1 h-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                        />
+                                                        <Button
+                                                            type="submit"
+                                                            size="sm"
+                                                            disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
                                                         >
-                                                            <Input
-                                                                value={newCensoredWord}
-                                                                onChange={(e) => setNewCensoredWord(e.target.value)}
-                                                                placeholder={t("actionBar.censor.inputPlaceholder")}
-                                                                className="flex-1 h-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                                                            />
-                                                            <Button
-                                                                type="submit"
-                                                                size="sm"
-                                                                disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
-                                                            >
-                                                                {t("common.add")}
-                                                            </Button>
-                                                        </form>
+                                                            {t("common.add")}
+                                                        </Button>
+                                                    </form>
 
-                                                        <div className="space-y-2">
-                                                            <ScrollArea className="max-h-[220px] rounded-lg border bg-muted/20 p-3">
-                                                                {(settings.censoredWords || []).length === 0 ? (
-                                                                    <div className="text-sm text-muted-foreground text-center py-6">
-                                                                        {t("actionBar.censor.empty")}
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {(settings.censoredWords || []).map((word: string, index: number) => (
-                                                                            <Badge
-                                                                                key={index}
-                                                                                variant="secondary"
-                                                                                className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
-                                                                                onClick={() => {
-                                                                                    const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
-                                                                                    updateSetting("censoredWords", updatedWords);
-                                                                                }}
-                                                                            >
-                                                                                {word}
-                                                                                <X className="ml-1.5 opacity-50 w-4 h-4" />
-                                                                            </Badge>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </ScrollArea>
-                                                        </div>
+                                                    <div className="space-y-2">
+                                                        <ScrollArea className="max-h-[220px] rounded-lg border bg-muted/20 p-3">
+                                                            {(settings.censoredWords || []).length === 0 ? (
+                                                                <div className="text-sm text-muted-foreground text-center py-6">
+                                                                    {t("actionBar.censor.empty")}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {(settings.censoredWords || []).map((word: string, index: number) => (
+                                                                        <Badge
+                                                                            key={index}
+                                                                            variant="secondary"
+                                                                            className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
+                                                                            onClick={() => {
+                                                                                const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
+                                                                                updateSetting("censoredWords", updatedWords);
+                                                                            }}
+                                                                        >
+                                                                            {word}
+                                                                            <X className="ml-1.5 opacity-50 w-4 h-4" />
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </ScrollArea>
                                                     </div>
-                                                    <DialogFooter>
-                                                        <DialogClose asChild>
-                                                            <Button variant="outline" onClick={() => setNewCensoredWord("")}>{t("common.done")}</Button>
-                                                        </DialogClose>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
-                                            <Switch
-                                                checked={settings.enableCensor}
-                                                onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Text Case */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
-                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
-                                        </div>
-                                        <div className="w-36">
-                                            <Select
-                                                value={settings.textCase}
-                                                onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent align="end">
-                                                    <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
-                                                    <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
-                                                    <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
-                                                    <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-
-                                    {/* Character Limit */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">{t("actionBar.format.characterLimitTitle")}</Label>
-                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.characterLimitDescription")}</p>
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            value={settings.maxCharsPerLine}
-                                            onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
-                                            className="w-20"
-                                        />
-                                    </div>
-
-                                    {/* Line Count */}
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <Label className="text-sm font-medium">{t("actionBar.format.lineCountTitle")}</Label>
-                                            <p className="text-xs text-muted-foreground">{t("actionBar.format.lineCountDescription")}</p>
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            value={settings.maxLinesPerSubtitle}
-                                            onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
-                                            className="w-20"
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline" onClick={() => setNewCensoredWord("")}>{t("common.done")}</Button>
+                                                    </DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                        <Switch
+                                            checked={settings.enableCensor}
+                                            onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
                                         />
                                     </div>
                                 </div>
-                            </PopoverContent>
-                        </Popover>
 
-                        {/* speaker diarization options */}
-                        <Popover open={openSpeakerPopover} onOpenChange={setOpenSpeakerPopover}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    role="combobox"
-                                    aria-expanded={openSpeakerPopover}
-                                >
-                                    <Speech className="h-4 w-4" />
-                                    <span className="text-xs">{settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.common.off")}</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-72 p-0" side="top">
-                                <div className="px-4 py-5">
-                                    {/* Speaker Count Slider */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-sm font-medium">{t("actionBar.speakers.countTitle")}</Label>
-                                            <span className={`text-sm font-medium ${settings.enableDiarize ? "text-primary" : "text-red-500"}`}>
-                                                {settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.speakers.disabled")}
-                                            </span>
-                                        </div>
-                                        <Slider
-                                            value={[settings.enableDiarize ? (settings.maxSpeakers === null ? 0 : settings.maxSpeakers) : 0]}
-                                            onValueChange={([value]) => settings.enableDiarize && updateSetting("maxSpeakers", value === 0 ? null : value)}
-                                            max={10}
-                                            min={0}
-                                            step={1}
-                                            className="w-full"
-                                            disabled={!settings.enableDiarize}
-                                        />
-                                        <div className="flex justify-between text-xs text-muted-foreground">
-                                            <span>{t("actionBar.common.auto")}</span>
-                                            <span>10</span>
-                                        </div>
+                                {/* Text Case */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
+                                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
+                                    </div>
+                                    <div className="w-36">
+                                        <Select
+                                            value={settings.textCase}
+                                            onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent align="end">
+                                                <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
+                                                <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
+                                                <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
+                                                <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
-                                <div className="border-t bg-muted/30">
-                                    <div className="p-4 pt-2 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-sm font-medium">{t("actionBar.speakers.title")}</Label>
-                                                <p className="text-xs text-muted-foreground">{t("actionBar.speakers.description")}</p>
-                                            </div>
-                                            <Switch
-                                                checked={settings.enableDiarize}
-                                                onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
-                                            />
-                                        </div>
+
+                                {/* Character Limit */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm font-medium">{t("actionBar.format.characterLimitTitle")}</Label>
+                                        <p className="text-xs text-muted-foreground">{t("actionBar.format.characterLimitDescription")}</p>
                                     </div>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        value={settings.maxCharsPerLine}
+                                        onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
+                                        className="w-20"
+                                    />
                                 </div>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+
+                                {/* Line Count */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm font-medium">{t("actionBar.format.lineCountTitle")}</Label>
+                                        <p className="text-xs text-muted-foreground">{t("actionBar.format.lineCountDescription")}</p>
+                                    </div>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        value={settings.maxLinesPerSubtitle}
+                                        onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
+                                        className="w-20"
+                                    />
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
-                {/* Conditional rendering: Track Selector for Timeline mode, File Drop for Standalone mode */}
+                {/* 2. INPUT SOURCE */}
                 {!settings.isStandaloneMode ? (
                     // Timeline Mode: Track Selector
                     <Popover open={openTrackSelector} onOpenChange={handleTrackSelectorOpen}>
@@ -473,12 +481,12 @@ export function ActionBar({
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={openTrackSelector}
-                                className="w-full h-[120px] justify-center"
+                                className="w-full h-[120px] justify-center dark:bg-transparent/50 dark:hover:bg-accent"
                                 size="sm"
                             >
                                 <div className="flex flex-col items-center gap-2">
-                                    <AudioLines className="h-7 w-7 text-muted-foreground" />
-                                    <div className="text-xs font-medium">
+                                    <AudioLines className="h-6 w-6" />
+                                    <div className="text-sm font-medium">
                                         {settings.selectedInputTracks.length === 0
                                             ? t("actionBar.tracks.selectTracks")
                                             : settings.selectedInputTracks.length === 1
@@ -587,48 +595,55 @@ export function ActionBar({
                 ) : (
                     // Standalone Mode: File Drop Box
                     <div
-                        className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-5 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted outline-none"
+                        className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-4 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted outline-none"
                         tabIndex={0}
                         role="button"
                         aria-label={t("actionBar.fileDrop.aria")}
                         onClick={handleFileSelect}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleFileSelect(); }}
+                        onMouseEnter={() => uploadIconRef.current?.startAnimation()}
+                        onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
                     >
                         {selectedFile ? (
-                            <div className="flex flex-col items-center gap-2">
-                                <FileUp className="h-7 w-7 text-green-500" />
-                                <span className="text-sm font-medium text-muted-foreground truncate">
+                            <div className="flex flex-col items-center gap-1">
+                                <UploadIcon ref={uploadIconRef} size={24} className="text-green-500" />
+                                <span className="text-sm font-medium text-muted-foreground truncate max-w-full px-2">
                                     {selectedFile.split('/').pop()}
                                 </span>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center gap-1">
-                                <Upload className="h-7 w-7 mb-1 text-muted-foreground" />
+                                <UploadIcon ref={uploadIconRef} size={24} className="text-muted-foreground" />
                                 <span className="text-sm font-medium text-muted-foreground">{t("actionBar.fileDrop.prompt")}</span>
-                                <span className="text-xs text-muted-foreground mt-1">{t("actionBar.fileDrop.supports")}</span>
+                                <span className="text-xs text-muted-foreground">{t("actionBar.fileDrop.supports")}</span>
                             </div>
                         )}
                     </div>
                 )}
-            </div>
 
-            {/* Mode Tabs */}
-            <div>
-                <div className="flex items-center gap-2">
-                    <AnimatedTabs defaultValue={settings.isStandaloneMode ? "standalone" : "resolve"} onValueChange={(value) => updateSetting("isStandaloneMode", value === "standalone")} className="flex-1">
-                        <AnimatedTabsList className="w-full">
-                            <AnimatedTabsTrigger value="standalone" className="flex-1 gap-2">
-                                <FileUp className="w-4 h-4" />
-                                {t("actionBar.mode.fileInput")}
-                            </AnimatedTabsTrigger>
-                            <AnimatedTabsTrigger value="resolve" className="flex-1 gap-2">
-                                <Link className="w-4 h-4" />
-                                {t("actionBar.mode.timeline")}
-                            </AnimatedTabsTrigger>
-                        </AnimatedTabsList>
-                    </AnimatedTabs>
-                    {/* <SettingsDialog variant="ghost" size="sm" showIcon={true} /> */}
-                </div>
+                {/* 3. ACTION - Primary action, full width */}
+                {isProcessing ? (
+                    <Button
+                        onClick={onCancel}
+                        size="default"
+                        variant="destructive"
+                        className="w-full"
+                    >
+                        <X className="h-4 w-4" />
+                        Cancel
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={onStart}
+                        size="default"
+                        variant="default"
+                        className="w-full"
+                        disabled={isProcessing}
+                    >
+                        <PlayCircle className="h-4 w-4" />
+                        Generate Subtitles
+                    </Button>
+                )}
             </div>
         </Card>
     )

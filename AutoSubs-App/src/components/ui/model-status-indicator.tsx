@@ -1,4 +1,4 @@
-import { HardDrive, MemoryStick, Info } from "lucide-react"
+import { HardDrive, MemoryStick, Info, Check, Download } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTranslation } from "react-i18next"
 
@@ -15,21 +15,32 @@ interface ModelStatusIndicatorProps {
 export function ModelStatusIndicator({ model, isDownloaded, isSmallScreen }: ModelStatusIndicatorProps) {
   const { t } = useTranslation()
 
-  const statusBadge = isDownloaded ? (
-    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-      {t("modelStatus.cached")}
-    </span>
+  const statusIcon = isDownloaded ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{t("modelStatus.cached")}</p>
+      </TooltipContent>
+    </Tooltip>
   ) : (
-    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-      {t("modelStatus.available")}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Download className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{t("modelStatus.available")}</p>
+      </TooltipContent>
+    </Tooltip>
   )
 
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
+        {statusIcon}
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger asChild className="m-2">
             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent side={isSmallScreen ? "top" : "right"} className="max-w-64 p-4">
@@ -50,7 +61,6 @@ export function ModelStatusIndicator({ model, isDownloaded, isSmallScreen }: Mod
             </div>
           </TooltipContent>
         </Tooltip>
-        {statusBadge}
       </div>
     </TooltipProvider>
   )
