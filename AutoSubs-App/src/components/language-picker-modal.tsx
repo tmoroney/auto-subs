@@ -20,6 +20,7 @@ const UI_LANGUAGE_OPTIONS = [
   { value: "fr", label: "Français" },
   { value: "de", label: "Deutsch" },
   { value: "zh", label: "中文" },
+  { value: "tr", label: "Türkçe" },
 ] as const;
 
 export function LanguagePickerModal() {

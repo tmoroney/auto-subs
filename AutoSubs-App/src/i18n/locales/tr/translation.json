@@ -1,0 +1,291 @@
+{
+  "settings": {
+    "title": "Ayarlar",
+    "description": "AutoSubs tercihlerinizi ve seçeneklerinizi yapılandırın.",
+    "sections": {
+      "transcription": "Transkripsiyon",
+      "support": "Destek",
+      "appearance": "Görünüm"
+    },
+    "gpu": {
+      "title": "GPU Hızlandırma",
+      "description": "Daha hızlı transkripsiyon için GPU kullan"
+    },
+    "dtw": {
+      "title": "Dinamik Zaman Çarpıtma",
+      "description": "Kelime düzeyinde zamanlama doğruluğunu iyileştir"
+    },
+    "uiLanguage": {
+      "title": "Uygulama Dili",
+      "description": "Menüleri ve düğmeleri günceller",
+      "showPickerAgain": "Dil seçiciyi tekrar göster"
+    },
+    "reset": {
+      "button": "Tüm Ayarları Varsayılana Sıfırla",
+      "confirm": "Tüm ayarları varsayılana sıfırlamak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "confirmTitle": "Ayarları Sıfırla"
+    },
+    "support": {
+      "supportAutoSubs": "AutoSubs'ı Destekle",
+      "helpSupportDevelopment": "Geliştirmeyi desteklemeye yardımcı ol",
+      "viewSource": "Kaynak Kodunu Görüntüle"
+    }
+  },
+  "common": {
+    "close": "Kapat",
+    "cancel": "İptal",
+    "saveChanges": "Değişiklikleri Kaydet",
+    "add": "Ekle",
+    "done": "Tamam",
+    "delete": "Sil"
+  },
+  "importExport": {
+    "button": "İçe / Dışa Aktar",
+    "importTab": "İçe Aktar",
+    "exportTab": "Dışa Aktar",
+    "dropHere": "Dosyayı buraya bırakın veya seçmek için tıklayın",
+    "supportsSrt": ".srt dosyalarını destekler",
+    "selected": "Seçilen:",
+    "importFile": "Dosyayı İçe Aktar",
+    "includeSpeakerLabels": "Konuşmacı etiketlerini dahil et",
+    "exportAsSrt": "SRT olarak dışa aktar",
+    "exportAsJson": "JSON olarak dışa aktar",
+    "downloadFormat": "{{format}} İndir"
+  },
+  "actionBar": {
+    "common": {
+      "auto": "Otomatik",
+      "on": "Açık",
+      "off": "Kapalı"
+    },
+    "mode": {
+      "fileInput": "Dosya Girişi",
+      "timeline": "Zaman Çizelgesi"
+    },
+    "format": {
+      "button": "Biçim",
+      "removePunctuationTitle": "Noktalama İşaretlerini Kaldır",
+      "removePunctuationDescription": "Virgül, nokta vb. kaldırır.",
+      "textCaseTitle": "Metin Büyük/Küçük Harf",
+      "textCaseDescription": "Altyazı büyük/küçük harf durumunu değiştir",
+      "textCase": {
+        "normal": "Normal",
+        "lowercase": "küçük harf",
+        "uppercase": "BÜYÜK HARF",
+        "titleCase": "Başlık Biçimi"
+      },
+      "characterLimitTitle": "Karakter Sınırı",
+      "characterLimitDescription": "Satır başına (0 = otomatik)",
+      "lineCountTitle": "Satır Sayısı",
+      "lineCountDescription": "Altyazı başına maksimum satır"
+    },
+    "censor": {
+      "title": "Kelimeleri Sansürle",
+      "wordCount": "{{count}} kelime",
+      "dialogTitle": "Hassas Kelimeleri Sansürle",
+      "dialogDescription": "Altyazılarda sansürlenecek kelimeleri ekleyin.",
+      "inputPlaceholder": "Sansürlenecek kelime ekle",
+      "empty": "Henüz sansürlenmiş kelime yok."
+    },
+    "speakers": {
+      "title": "Konuşmacı Etiketleri",
+      "description": "Farklı konuşmacıları tanımla",
+      "countTitle": "Konuşmacı Sayısı",
+      "disabled": "Devre Dışı"
+    },
+    "tracks": {
+      "selectTracks": "Parçaları seç...",
+      "trackN": "Parça {{n}}",
+      "countSelected": "{{count}} parça seçildi",
+      "selectedLabel": "{{label}} seçildi",
+      "noneSelected": "Parça seçilmedi",
+      "clickToSelect": "Ses parçalarını seçmek için tıklayın",
+      "selectAll": "Tümünü Seç",
+      "clearAll": "Tümünü Temizle",
+      "noneFound": "Ses parçası bulunamadı.",
+      "createTrack": "Transkribe etmeye başlamak için mevcut zaman çizelgenizde bir ses parçası oluşturun."
+    },
+    "fileDrop": {
+      "aria": "Ses dosyasını buraya bırakın veya seçmek için tıklayın",
+      "prompt": "Dosyayı bırakın veya tıklayın",
+      "supports": "Çoğu format"
+    },
+    "language": {
+      "source": "Kaynak",
+      "translate": "Çevir",
+      "searchSourcePlaceholder": "Dilleri ara...",
+      "searchTargetPlaceholder": "Hedef dilleri ara...",
+      "noLanguageFound": "Dil bulunamadı."
+    }
+  },
+  "speakerEditor": {
+    "title": "Konuşmacıları Düzenle",
+    "description": "Bunlar seste tespit edilen konuşmacılardır.",
+    "jumpToSample": "Zaman çizelgesinde örneğe atla",
+    "name": "Ad",
+    "namePlaceholder": "Konuşmacı adını girin",
+    "outputTrack": "Çıkış Parçası",
+    "selectTrack": "Bir parça seçin",
+    "appearance": "Görünüm",
+    "colors": {
+      "fill": "Dolgu",
+      "outline": "Anahat",
+      "border": "Kenarlık"
+    },
+    "generatingPreview": "Önizleme Oluşturuluyor...",
+    "generatePreview": "Önizleme Oluştur",
+    "subtitlePreview": "Altyazı Önizleme",
+    "continueEditing": "Düzenlemeye Devam Et",
+    "saveAndAddToTimeline": "Kaydet ve Zaman Çizelgesine Ekle"
+  },
+  "workspace": {
+    "empty": {
+      "loadingModel": "Model belleğe yükleniyor...",
+      "welcomeTitle": "AutoSubs'a Hoş Geldiniz",
+      "welcomeDescription": "Altyazı oluşturmaya başlamak için bir ses kaynağı seçin.",
+      "support": "AutoSubs'ı Destekle"
+    }
+  },
+  "modelStatus": {
+    "cached": "Önbellekte",
+    "available": "Kullanılabilir",
+    "storage": "Depolama:",
+    "ram": "RAM:"
+  },
+  "models": {
+    "englishOnly": {
+      "title": "Yalnızca İngilizce Modeller",
+      "description": "İngilizce transkripsiyon için daha yüksek doğruluklu özel İngilizce modelleri göster."
+    },
+    "manage": {
+      "title": "İndirilen Modelleri Yönet",
+      "description": "Disk alanı boşaltmak için önbelleğe alınmış modelleri sil.",
+      "empty": "İndirilen model bulunamadı",
+      "deleteModel": "Modeli Sil",
+      "confirmTitle": "Emin misiniz?",
+      "confirmBody": "Bu, {{model}} modelini cihazınızdan silecektir. Gelecekte bu modeli kullanırsanız tekrar indirilmesi gerekecektir."
+    },
+    "tiny": {
+      "label": "Tiny",
+      "description": "En Hızlı",
+      "details": "Minimal bellek ile en hızlı transkripsiyon. Hızlı taslaklar için ideal."
+    },
+    "tiny_en": {
+      "label": "Tiny",
+      "description": "En Hızlı",
+      "details": "Minimal bellek ile en hızlı İngilizce transkripsiyon. Hızlı taslaklar için ideal."
+    },
+    "base": {
+      "label": "Base",
+      "description": "Günlük kullanım",
+      "details": "Düşük bellek gereksinimleri ile güvenilir transkripsiyon. Günlük kullanım için harika."
+    },
+    "base_en": {
+      "label": "Base",
+      "description": "Günlük kullanım",
+      "details": "Düşük bellek ile güvenilir İngilizce transkripsiyon. Günlük kullanım için harika."
+    },
+    "small": {
+      "label": "Small",
+      "description": "Dengeli",
+      "details": "Orta bellek ile dengeli hız ve doğruluk. Çeşitli aksanları iyi yönetir."
+    },
+    "small_en": {
+      "label": "Small",
+      "description": "Dengeli",
+      "details": "Orta bellek ile dengeli hız ve İngilizce doğruluğu. Çeşitli aksanları yönetir."
+    },
+    "medium": {
+      "label": "Medium",
+      "description": "Doğru",
+      "details": "Orta hız ve bellek ile yüksek doğruluklu transkripsiyon. Zorlu ses için iyi."
+    },
+    "medium_en": {
+      "label": "Medium",
+      "description": "Doğru",
+      "details": "Orta hız ile yüksek doğruluklu İngilizce transkripsiyon. Zorlu ses için iyi."
+    },
+    "large_v3_turbo": {
+      "label": "Large Turbo",
+      "description": "Hızlı ve Doğru",
+      "details": "Large modelinden daha hızlı ve orta bellek ile mükemmel doğruluk."
+    },
+    "large_v3": {
+      "label": "Large",
+      "description": "En Yüksek Doğruluk",
+      "details": "Karmaşık ses için en yüksek doğruluk, ancak daha yavaş ve önemli bellek gerektirir."
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Hızlı ve Doğru",
+      "details": "Avrupa dilleri için mükemmel doğruluk ve hız."
+    }
+  },
+  "completion": {
+    "processingComplete": "İşlem Tamamlandı",
+    "subtitlesReady": "Altyazılarınız kullanıma hazır!",
+    "exportToFile": "Dosyaya Aktar",
+    "addToTimeline": "Zaman Çizelgesine Ekle"
+  },
+  "progressSteps": {
+    "download": "Model indiriliyor",
+    "transcribe": "Konuşmadan metne",
+    "translate": "{{language}} diline çevriliyor",
+    "processing": "İşleniyor"
+  },
+  "subtitles": {
+    "title": "Altyazılar",
+    "speakers": "Konuşmacılar",
+    "editSpeakers": "Konuşmacıları Düzenle",
+    "searchPlaceholder": "Altyazılarda ara...",
+    "searchAria": "Altyazılarda ara",
+    "clearSearch": "Aramayı temizle",
+    "addToTimeline": "Zaman Çizelgesine Ekle",
+    "loading": "Altyazılar yükleniyor...",
+    "jumpToTimeline": "Zaman çizelgesindeki noktaya atla",
+    "unknownSpeaker": "Bilinmeyen Konuşmacı",
+    "empty": {
+      "noSubtitlesFound": "Altyazı bulunamadı",
+      "tryDifferentSearch": "Farklı bir arama terimi deneyin",
+      "noSubtitlesAvailable": "Altyazı mevcut değil. Önce bazılarını içe aktarmayı deneyin.",
+      "noSubtitlesAvailableShort": "Altyazı mevcut değil"
+    }
+  },
+  "subtitleEditor": {
+    "title": "Altyazıyı Düzenle",
+    "description": "Aşağıdaki kelimeleri değiştirerek altyazı metnini düzenleyin",
+    "mergeLeft": "Sola Birleştir",
+    "mergeRight": "Sağa Birleştir",
+    "deleteWord": "Kelimeyi sil"
+  },
+  "languagePicker": {
+    "title": "Dilinizi seçin",
+    "description": "Uygulamada kullanmak istediğiniz dili seçin.",
+    "continue": "Devam Et"
+  },
+  "titlebar": {
+    "windowControls": {
+      "minimize": "Küçült",
+      "maximize": "Büyüt",
+      "close": "Kapat"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "Bağlandı",
+        "disconnected": "Bağlantı Kesildi"
+      },
+      "tooltip": {
+        "connected": "Bağlandı",
+        "currentlyViewing": "Şu anda görüntülenen: {{name}}",
+        "ready": "Zaman çizelgesine erişmeye hazır",
+        "canGetAudio": "Zaman çizelgesinden ses alabilir ve ona altyazı ekleyebilirsiniz.",
+        "cantConnect": "Zaman çizelgesine bağlanılamıyor",
+        "openResolve": "DaVinci Resolve'u açın ve Workspace → Scripts → AutoSubs'a gidin"
+      }
+    }
+  },
+  "theme": {
+    "toggle": "Temayı değiştir"
+  }
+}
