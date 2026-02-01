@@ -1,6 +1,5 @@
 import * as React from "react"
 import { UploadIcon, type UploadIconHandle } from "@/components/ui/upload"
-import { RadioIcon, type RadioIconHandle } from "@/components/ui/radio"
 import { DownloadIcon, type DownloadIconHandle } from "@/components/ui/download"
 import { CheckIcon, type CheckIconHandle } from "@/components/ui/check"
 import { Button } from "@/components/ui/button"
@@ -43,7 +42,6 @@ export function WorkspaceHeader({
 }) {
   const { t } = useTranslation()
   const uploadIconRef = React.useRef<UploadIconHandle>(null)
-  const radioIconRef = React.useRef<RadioIconHandle>(null)
   const checkIconRef = React.useRef<CheckIconHandle>(null)
   const downloadIconRef = React.useRef<DownloadIconHandle>(null)
 
@@ -205,11 +203,13 @@ export function WorkspaceHeader({
             </TabsTrigger>
             <TabsTrigger 
               value="timeline" 
-              className="text-sm"
-              onMouseEnter={() => radioIconRef.current?.startAnimation()}
-              onMouseLeave={() => radioIconRef.current?.stopAnimation()}
+              className="text-sm px-5"
             >
-              <RadioIcon ref={radioIconRef} size={14} />
+              <img 
+                src="/davinci-resolve-logo.png" 
+                alt="DaVinci Resolve logo" 
+                className="w-5 h-5"
+              />
               Timeline
             </TabsTrigger>
           </TabsList>

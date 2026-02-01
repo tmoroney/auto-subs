@@ -5,7 +5,8 @@
     "sections": {
       "transcription": "Transcription",
       "support": "Support",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "language": "Appearance"
     },
     "gpu": {
       "title": "GPU Acceleration",
@@ -28,7 +29,7 @@
     "support": {
       "supportAutoSubs": "Support AutoSubs",
       "helpSupportDevelopment": "Help support development",
-      "viewSource": "View Source Code"
+      "viewSource": "Contribute"
     }
   },
   "common": {

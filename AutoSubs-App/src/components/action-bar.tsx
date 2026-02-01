@@ -263,7 +263,7 @@ export function ActionBar({
                                     </div>
                                     <Slider
                                         value={[settings.enableDiarize ? (settings.maxSpeakers === null ? 0 : settings.maxSpeakers) : 0]}
-                                        onValueChange={([value]) => settings.enableDiarize && updateSetting("maxSpeakers", value === 0 ? null : value)}
+                                        onValueChange={([value]: [number]) => settings.enableDiarize && updateSetting("maxSpeakers", value === 0 ? null : value)}
                                         max={10}
                                         min={0}
                                         step={1}
@@ -285,7 +285,7 @@ export function ActionBar({
                                         </div>
                                         <Switch
                                             checked={settings.enableDiarize}
-                                            onCheckedChange={(checked) => updateSetting("enableDiarize", checked)}
+                                            onCheckedChange={(checked: boolean) => updateSetting("enableDiarize", checked)}
                                         />
                                     </div>
                                 </div>
@@ -316,7 +316,7 @@ export function ActionBar({
                                     </div>
                                     <Switch
                                         checked={settings.removePunctuation}
-                                        onCheckedChange={(checked) => updateSetting("removePunctuation", checked)}
+                                        onCheckedChange={(checked: boolean) => updateSetting("removePunctuation", checked)}
                                     />
                                 </div>
 
@@ -387,12 +387,14 @@ export function ActionBar({
                                                                             variant="secondary"
                                                                             className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
                                                                             onClick={() => {
-                                                                                const updatedWords = (settings.censoredWords || []).filter((_, i) => i !== index);
+                                                                                const updatedWords = (settings.censoredWords || []).filter((_: string, i: number) => i !== index);
                                                                                 updateSetting("censoredWords", updatedWords);
                                                                             }}
                                                                         >
-                                                                            {word}
-                                                                            <X className="ml-1.5 opacity-50 w-4 h-4" />
+                                                                            <span className="flex items-center gap-1.5">
+                                                                                {word}
+                                                                                <X className="opacity-50 w-4 h-4" />
+                                                                            </span>
                                                                         </Badge>
                                                                     ))}
                                                                 </div>
@@ -409,7 +411,7 @@ export function ActionBar({
                                         </Dialog>
                                         <Switch
                                             checked={settings.enableCensor}
-                                            onCheckedChange={(checked) => updateSetting("enableCensor", checked)}
+                                            onCheckedChange={(checked: boolean) => updateSetting("enableCensor", checked)}
                                         />
                                     </div>
                                 </div>
@@ -448,7 +450,7 @@ export function ActionBar({
                                         type="number"
                                         min="0"
                                         value={settings.maxCharsPerLine}
-                                        onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("maxCharsPerLine", Number(e.target.value))}
                                         className="w-20"
                                     />
                                 </div>
@@ -463,7 +465,7 @@ export function ActionBar({
                                         type="number"
                                         min="1"
                                         value={settings.maxLinesPerSubtitle}
-                                        onChange={(e) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
                                         className="w-20"
                                     />
                                 </div>
@@ -570,11 +572,11 @@ export function ActionBar({
                                                         checked={isChecked}
                                                         tabIndex={-1}
                                                         className="transition-transform duration-150"
-                                                        onCheckedChange={(checked) => {
+                                                        onCheckedChange={(checked: boolean) => {
                                                             if (checked) {
                                                                 updateSetting("selectedInputTracks", [...settings.selectedInputTracks, trackId]);
                                                             } else {
-                                                                updateSetting("selectedInputTracks", settings.selectedInputTracks.filter(id => id !== trackId));
+                                                                updateSetting("selectedInputTracks", settings.selectedInputTracks.filter((id: string) => id !== trackId));
                                                             }
                                                         }}
                                                     />
