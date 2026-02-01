@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 function Tabs({
   className,
@@ -26,9 +26,11 @@ const TabsList = React.forwardRef<
     width: 0,
     height: 0,
   });
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [shouldAnimateTransition, setShouldAnimateTransition] = useState(false);
   const tabsListRef = useRef<HTMLDivElement | null>(null);
 
-  const updateIndicator = React.useCallback(() => {
+  const updateIndicator = React.useCallback((shouldAnimate = false) => {
     if (!tabsListRef.current) return;
 
     const activeTab = tabsListRef.current.querySelector<HTMLElement>(
@@ -46,16 +48,35 @@ const TabsList = React.forwardRef<
         width: activeRect.width,
         height: activeRect.height,
       });
+      
+      // Control animation state
+      setShouldAnimateTransition(shouldAnimate);
+      
+      // Mark as initialized after first positioning
+      if (!isInitialized) {
+        setIsInitialized(true);
+      }
     });
-  }, []);
+  }, [isInitialized]);
+
+  const updateIndicatorWithAnimation = React.useCallback(() => {
+    updateIndicator(true);
+  }, [updateIndicator]);
+
+  const updateIndicatorWithoutAnimation = React.useCallback(() => {
+    updateIndicator(false);
+  }, [updateIndicator]);
+
+  useLayoutEffect(() => {
+    updateIndicatorWithoutAnimation();
+  }, [updateIndicatorWithoutAnimation]);
 
   useEffect(() => {
-    // Initial update
-    const timeoutId = setTimeout(updateIndicator, 0);
+    setShouldAnimateTransition(true);
 
     // Event listeners
-    window.addEventListener("resize", updateIndicator);
-    const observer = new MutationObserver(updateIndicator);
+    window.addEventListener("resize", updateIndicatorWithAnimation);
+    const observer = new MutationObserver(updateIndicatorWithAnimation);
 
     if (tabsListRef.current) {
       observer.observe(tabsListRef.current, {
@@ -66,11 +87,10 @@ const TabsList = React.forwardRef<
     }
 
     return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener("resize", updateIndicator);
+      window.removeEventListener("resize", updateIndicatorWithAnimation);
       observer.disconnect();
     };
-  }, [updateIndicator]);
+  }, [updateIndicatorWithAnimation]);
 
   return (
     <div className="relative" ref={tabsListRef}>
@@ -84,7 +104,11 @@ const TabsList = React.forwardRef<
         {...props}
       />
       <div
-        className="absolute rounded-sm border border-transparent bg-background shadow-sm dark:border-input dark:bg-input/30 transition-all duration-300 ease-in-out"
+        data-indicator="true"
+        className={cn(
+          "absolute rounded-sm border border-transparent bg-background shadow-sm dark:border-input dark:bg-input/30",
+          shouldAnimateTransition ? "transition-all duration-300 ease-in-out" : "transition-none"
+        )}
         style={indicatorStyle}
       />
     </div>

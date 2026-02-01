@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { languages, translateLanguages } from "@/lib/languages"
 import { cn } from "@/lib/utils"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/animated-tabs"
 import { useTranslation } from "react-i18next"
 
 interface ActionBarProps {
@@ -121,10 +121,10 @@ export function ActionBar({
     }
 
     return (
-        <Card className="p-3 space-y-3 sticky bottom-4 mx-4">
+        <Card className="p-3 sticky bottom-4 mx-4">
             <div className="grid w-full gap-3">
                 {/* 1. TRANSCRIPTION SETTINGS - All settings in one row at the top */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     {/* Language selector */}
                     <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
                         <PopoverTrigger asChild>
@@ -133,7 +133,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openLanguage}
-                                className="flex-1 dark:bg-transparent/50 dark:hover:bg-accent"
+                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
                             >
                                 <Globe className="h-4 w-4" />
                                 <span className="text-xs truncate">
@@ -147,7 +147,7 @@ export function ActionBar({
                         <PopoverContent className="p-0 w-72" align="start" side="top">
                             <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
                                 <TabsContent value="source" className="mt-0 border-b">
-                                    <Command className="max-h-[250px]">
+                                    <Command className="max-h-[250px] rounded-b-none">
                                         <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                                         <CommandList>
                                             <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
@@ -179,7 +179,7 @@ export function ActionBar({
                                 </TabsContent>
 
                                 <TabsContent value="translate" className="mt-0 border-b">
-                                    <Command className="max-h-[250px] relative">
+                                    <Command className="max-h-[250px] rounded-b-none">
                                         <div className="relative">
                                             <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                                             <Button
@@ -220,7 +220,7 @@ export function ActionBar({
                                         </CommandList>
                                     </Command>
                                 </TabsContent>
-                                <TabsList className="h-auto p-1 m-2 flex">
+                                <TabsList className="h-auto mx-2 mb-2 w-auto flex">
                                     <TabsTrigger value="source" className="flex-1 gap-1.5 text-xs py-2">
                                         <Globe size={14} />
                                         {t("actionBar.language.source")}
@@ -245,7 +245,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openSpeakerPopover}
-                                className="dark:bg-transparent/50 dark:hover:bg-accent"
+                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
                             >
                                 <Speech className="h-4 w-4" />
                                 <span className="text-xs">{settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.common.off")}</span>
@@ -301,7 +301,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openTextFormattingPopover}
-                                className="dark:bg-transparent/50 dark:hover:bg-accent"
+                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
                             >
                                 <Type className="h-4 w-4" />
                             </Button>
@@ -629,7 +629,7 @@ export function ActionBar({
                         onClick={onCancel}
                         size="default"
                         variant="destructive"
-                        className="w-full"
+                        className="w-full mt-1"
                     >
                         <X className="h-4 w-4" />
                         Cancel
@@ -639,7 +639,7 @@ export function ActionBar({
                         onClick={onStart}
                         size="default"
                         variant="default"
-                        className="w-full"
+                        className="w-full mt-1"
                         disabled={isProcessing}
                     >
                         <PlayCircle className="h-4 w-4" />

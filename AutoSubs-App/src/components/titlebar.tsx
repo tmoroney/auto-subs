@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Check, Trash2, AlertTriangle, Archive, Heart, Github } from "lucide-react";
+import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Trash2, AlertTriangle, Archive, Heart, Github } from "lucide-react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { getTranscriptsDir } from "@/utils/file-utils";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { readTranscript } from "@/utils/file-utils";
@@ -46,7 +47,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
 import { Model } from "@/types/interfaces";
 import { useState, useEffect } from "react";
-import { SettingsDialogControlled } from "@/components/settings-dialog";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -153,7 +154,7 @@ function ManageModelsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={e => e.preventDefault()}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{t("models.manage.title")}</DialogTitle>
             <DialogDescription>
@@ -247,6 +248,10 @@ function SettingsDropdown() {
   const [manageModelsOpen, setManageModelsOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
+  const handleThemeChange = (themeValue: string) => {
+    setTheme(themeValue as "dark" | "light" | "system");
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -255,7 +260,7 @@ function SettingsDropdown() {
             variant="ghost"
             size="icon-sm"
             data-tauri-drag-region="false"
-            className="gap-2 rounded-full"
+            className="gap-2 rounded-full !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -274,26 +279,6 @@ function SettingsDropdown() {
             <DropdownMenuItem onClick={() => setManageModelsOpen(true)} className="cursor-pointer">
               <Archive className="h-4 w-4 mr-2" />
               <span>{t("models.manage.title", "Manage Models")}</span>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
-              <Sun className="h-4 w-4 mr-2" />
-              <span>{t("settings.theme.light", "Light")}</span>
-              {theme === "light" && <Check className="ml-auto h-4 w-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
-              <Moon className="h-4 w-4 mr-2" />
-              <span>{t("settings.theme.dark", "Dark")}</span>
-              {theme === "dark" && <Check className="ml-auto h-4 w-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
-              <Monitor className="h-4 w-4 mr-2" />
-              <span>{t("settings.theme.system", "System")}</span>
-              {theme === "system" && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -351,6 +336,25 @@ function SettingsDropdown() {
               </a>
             </DropdownMenuItem>
           </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          {/* Theme Tabs */}
+          <div className="p-1">
+            <Tabs value={theme} onValueChange={handleThemeChange}>
+              <TabsList className="w-full">
+                <TabsTrigger value="light" className="flex-1">
+                  <Sun className="h-4 w-4" />
+                </TabsTrigger>
+                <TabsTrigger value="dark" className="flex-1">
+                  <Moon className="h-4 w-4" />
+                </TabsTrigger>
+                <TabsTrigger value="system" className="flex-1">
+                  <Monitor className="h-4 w-4" />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -361,7 +365,7 @@ function SettingsDropdown() {
         onDeleteModel={handleDeleteModel}
       />
 
-      <SettingsDialogControlled
+      <SettingsDialog
         open={settingsDialogOpen}
         onOpenChange={setSettingsDialogOpen}
       />
