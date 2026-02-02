@@ -301,7 +301,7 @@ const SubtitleList = ({
                 ref={containerRef}
                 className="h-full"
                 onScroll={handleScroll}
-                style={{ height: '100%', overflow: 'visible' }}
+                style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}
             >
                 <div style={{ height: totalHeight, position: 'relative' }}>
                     <div 

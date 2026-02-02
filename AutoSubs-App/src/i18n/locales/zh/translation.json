@@ -21,7 +21,7 @@
       "showPickerAgain": "再次显示语言选择器"
     },
     "reset": {
-      "button": "重置所有设置为默认值",
+      "button": "重置设置",
       "confirm": "您确定要将所有设置重置为默认值吗？此操作无法撤销。",
       "confirmTitle": "重置设置"
     },
@@ -37,7 +37,8 @@
     "saveChanges": "保存更改",
     "add": "添加",
     "done": "完成",
-    "delete": "删除"
+    "delete": "删除",
+    "generateSubtitles": "生成字幕"
   },
   "importExport": {
     "button": "导入 / 导出",
@@ -103,7 +104,8 @@
       "selectAll": "全选",
       "clearAll": "清除全部",
       "noneFound": "未找到音频轨道。",
-      "createTrack": "在当前时间线中创建音频轨道以开始转录。"
+      "createTrack": "在当前时间线中创建音频轨道以开始转录。",
+      "selectMultiple": "点击选择多个轨道"
     },
     "fileDrop": {
       "aria": "将音频文件拖放到此处或点击选择",
@@ -166,54 +168,70 @@
       "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。"
     },
     "tiny": {
-      "label": "Tiny",
+      "label": "Tiny（微型）",
       "description": "最快",
-      "details": "最快的转录，内存占用最小。适合快速草稿。"
+      "details": "最快的转录，内存占用最小。适合快速草稿。",
+      "badge": "多语言"
     },
     "tiny_en": {
-      "label": "Tiny",
+      "label": "Tiny（微型英语）",
       "description": "最快",
-      "details": "最快的英语转录，内存占用最小。适合快速草稿。"
+      "details": "最快的英语转录，内存占用最小。适合快速草稿。",
+      "badge": "仅英语"
     },
     "base": {
-      "label": "Base",
+      "label": "Base（基础）",
       "description": "日常使用",
-      "details": "可靠的转录，内存要求低。适合日常使用。"
+      "details": "可靠的转录，内存要求低。适合日常使用。",
+      "badge": "多语言"
     },
     "base_en": {
-      "label": "Base",
+      "label": "Base（基础英语）",
       "description": "日常使用",
-      "details": "可靠的英语转录，内存要求低。适合日常使用。"
+      "details": "可靠的英语转录，内存要求低。适合日常使用。",
+      "badge": "仅英语"
     },
     "small": {
-      "label": "Small",
+      "label": "Small（小型）",
       "description": "平衡",
-      "details": "平衡的速度和准确性，内存占用适中。能很好地处理各种口音。"
+      "details": "平衡的速度和准确性，内存占用适中。能很好地处理各种口音。",
+      "badge": "多语言"
     },
     "small_en": {
-      "label": "Small",
+      "label": "Small（小型英语）",
       "description": "平衡",
-      "details": "平衡的速度和英语准确性，内存占用适中。能处理各种口音。"
+      "details": "平衡的速度和英语准确性，内存占用适中。能处理各种口音。",
+      "badge": "仅英语"
     },
     "medium": {
-      "label": "Medium",
+      "label": "Medium（中型）",
       "description": "准确",
-      "details": "高准确性转录，速度和内存适中。适合具有挑战性的音频。"
+      "details": "高准确性转录，速度和内存适中。适合具有挑战性的音频。",
+      "badge": "多语言"
     },
     "medium_en": {
-      "label": "Medium",
+      "label": "Medium（中型英语）",
       "description": "准确",
-      "details": "高准确性英语转录，速度适中。适合具有挑战性的音频。"
+      "details": "高准确性英语转录，速度适中。适合具有挑战性的音频。",
+      "badge": "仅英语"
     },
     "large_v3_turbo": {
-      "label": "Large Turbo",
+      "label": "Large Turbo（大型涡轮）",
       "description": "快速且准确",
-      "details": "优秀的准确性，比 Large 模型速度更快，内存占用适中。"
+      "details": "优秀的准确性，比 Large 模型速度更快，内存占用适中。",
+      "badge": "多语言"
     },
     "large_v3": {
-      "label": "Large",
+      "label": "Large（大型）",
       "description": "最高准确性",
-      "details": "复杂音频的最高准确性，但速度较慢且需要大量内存。"
+      "details": "复杂音频的最高准确性，但速度较慢且需要大量内存。",
+      "badge": "多语言"
+    },
+    "parakeet": {
+      "label": "Parakeet（鹦鹉）",
+      "description": "快速且准确",
+      "details": "欧洲语言的出色准确性和速度。",
+      "badge": "欧洲语言"
     }
   },
   "completion": {

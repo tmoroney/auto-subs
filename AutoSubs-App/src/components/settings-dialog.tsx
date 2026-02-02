@@ -1,4 +1,5 @@
 import { Gauge, Clock } from "lucide-react";
+import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/delete";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
+import { useRef } from "react";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -31,6 +33,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { settings, updateSetting, resetSettings } = useSettings();
   const { t } = useTranslation();
+  const deleteIconRef = useRef<DeleteIconHandle>(null);
 
   const handleResetSettings = async () => {
     const shouldReset = await ask(t("settings.reset.confirm"), {
@@ -140,7 +143,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="destructive" size="sm" onClick={handleResetSettings}>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleResetSettings}
+            onMouseEnter={() => deleteIconRef.current?.startAnimation()}
+            onMouseLeave={() => deleteIconRef.current?.stopAnimation()}
+          >
+            <DeleteIcon ref={deleteIconRef} />
             {t("settings.reset.button")}
           </Button>
           <DialogClose asChild>

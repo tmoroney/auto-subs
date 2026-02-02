@@ -16,9 +16,10 @@ interface ImportExportPopoverProps {
     onImport: () => Promise<void>
     onExport: (format: ExportFormat, includeSpeakerLabels: boolean) => Promise<void>
     hasSubtitles: boolean
+    trigger?: React.ReactNode
 }
 
-export function ImportExportPopover({ onImport, onExport, hasSubtitles }: ImportExportPopoverProps) {
+export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger }: ImportExportPopoverProps) {
     const { t } = useTranslation()
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [exportFormat, setExportFormat] = React.useState<ExportFormat>('srt')
@@ -83,10 +84,12 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles }: Import
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full flex items-center justify-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    {t("importExport.button")}
-                </Button>
+                {trigger ?? (
+                    <Button variant="outline" className="w-full flex items-center justify-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        {t("importExport.button")}
+                    </Button>
+                )}
             </PopoverTrigger>
             <PopoverContent className="w-80">
                 <Tabs defaultValue="import" className="w-full">

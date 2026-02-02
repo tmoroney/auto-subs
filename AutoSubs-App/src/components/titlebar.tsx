@@ -37,7 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { getTranscriptsDir } from "@/utils/file-utils";
 import { readDir } from "@tauri-apps/plugin-fs";
@@ -71,6 +70,7 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
             ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
             : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
             }`}
+          data-tauri-drag-region
         >
           <div
             className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
@@ -140,17 +140,6 @@ function ManageModelsDialog({
   const [confirmOpenForModelValue, setConfirmOpenForModelValue] = useState<string | null>(null);
   const downloadedModels = models.filter(model => model.isDownloaded);
 
-  const getLanguageBadge = (model: Model) => {
-    if (model.languageSupport.kind === "single_language") {
-      return (
-        <Badge variant="secondary" className="text-xs py-0 px-1.5 ml-1.5">
-          {model.languageSupport.language.toUpperCase()}
-        </Badge>
-      );
-    }
-    return null;
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,12 +163,11 @@ function ManageModelsDialog({
                     <img
                       src={model.image}
                       alt={t(model.label)}
-                      className="w-10 h-10 object-contain rounded"
+                      className="w-9 h-9 object-contain rounded"
                     />
                     <div>
                       <div className="flex items-center">
-                        <p className="font-medium">{t(model.label)}</p>
-                        {getLanguageBadge(model)}
+                        <p className="font-medium text-sm">{t(model.label)}</p>
                       </div>
                       <p className="text-xs text-muted-foreground">{model.size}</p>
                     </div>
@@ -343,13 +331,13 @@ function SettingsDropdown() {
           <div className="p-1">
             <Tabs value={theme} onValueChange={handleThemeChange}>
               <TabsList className="w-full">
-                <TabsTrigger value="light" className="flex-1">
+                <TabsTrigger value="light">
                   <Sun className="h-4 w-4" />
                 </TabsTrigger>
-                <TabsTrigger value="dark" className="flex-1">
+                <TabsTrigger value="dark">
                   <Moon className="h-4 w-4" />
                 </TabsTrigger>
-                <TabsTrigger value="system" className="flex-1">
+                <TabsTrigger value="system">
                   <Monitor className="h-4 w-4" />
                 </TabsTrigger>
               </TabsList>
@@ -506,9 +494,8 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="titlebar flex items-center justify-between h-9 px-1 border-b bg-card/50 backdrop-blur select-none relative z-40"
+      className="flex items-center justify-between h-9 px-1 border-b bg-card/50 backdrop-blur select-none z-50"
       data-tauri-drag-region
-      onMouseDown={() => getCurrentWindow().startDragging()}
     >
       {isMacOS ? (
         // macOS layout: System handles traffic lights, status in center, settings on right
@@ -522,18 +509,26 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
           </div>
 
           {/* Right side - Transcripts and Settings buttons */}
-          <div className="flex items-center w-24 justify-end" data-tauri-drag-region>
-            <TranscriptsButton />
-            <SettingsDropdown />
+          <div className="flex items-center w-24 justify-end">
+            <div data-tauri-drag-region="false">
+              <TranscriptsButton />
+            </div>
+            <div data-tauri-drag-region="false">
+              <SettingsDropdown />
+            </div>
           </div>
         </>
       ) : (
         // Windows/Linux layout: Settings on left, status in center, window buttons on right
         <>
           {/* Left side - Transcripts and Settings */}
-          <div className="flex items-center gap-1" data-tauri-drag-region>
-            <TranscriptsButton />
-            <SettingsDropdown />
+          <div className="flex items-center">
+            <div data-tauri-drag-region="false">
+              <TranscriptsButton />
+            </div>
+            <div data-tauri-drag-region="false">
+              <SettingsDropdown />
+            </div>
           </div>
 
           {/* Center - Resolve status */}

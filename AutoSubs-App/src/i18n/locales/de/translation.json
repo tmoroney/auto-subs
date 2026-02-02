@@ -21,7 +21,7 @@
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
     "reset": {
-      "button": "Alle Einstellungen auf Standard zurücksetzen",
+      "button": "Einstellungen zurücksetzen",
       "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",
       "confirmTitle": "Einstellungen zurücksetzen"
     },
@@ -37,7 +37,8 @@
     "saveChanges": "Änderungen speichern",
     "add": "Hinzufügen",
     "done": "Fertig",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "generateSubtitles": "Untertitel generieren"
   },
   "importExport": {
     "button": "Import / Export",
@@ -103,7 +104,8 @@
       "selectAll": "Alle auswählen",
       "clearAll": "Alle entfernen",
       "noneFound": "Keine Audiospuren gefunden.",
-      "createTrack": "Erstelle eine Audiospur in deiner Timeline, um mit der Transkription zu beginnen."
+      "createTrack": "Erstelle eine Audiospur in deiner Timeline, um mit der Transkription zu beginnen.",
+      "selectMultiple": "Klicken, um mehrere Spuren auszuwählen"
     },
     "fileDrop": {
       "aria": "Audio-Datei hier ablegen oder klicken zum Auswählen",
@@ -168,52 +170,68 @@
     "tiny": {
       "label": "Tiny",
       "description": "Am schnellsten",
-      "details": "Schnellste Transkription mit minimalem Speicherbedarf. Ideal für schnelle Entwürfe."
+      "details": "Schnellste Transkription mit minimalem Speicherbedarf. Ideal für schnelle Entwürfe.",
+      "badge": "Mehrsprachig"
     },
     "tiny_en": {
       "label": "Tiny",
       "description": "Am schnellsten",
-      "details": "Schnellste englische Transkription mit minimalem Speicherbedarf. Ideal für Entwürfe."
+      "details": "Schnellste englische Transkription mit minimalem Speicherbedarf. Ideal für Entwürfe.",
+      "badge": "Nur Englisch"
     },
     "base": {
       "label": "Base",
       "description": "Alltag",
-      "details": "Zuverlässige Transkription mit geringem Speicherbedarf."
+      "details": "Zuverlässige Transkription mit geringem Speicherbedarf.",
+      "badge": "Mehrsprachig"
     },
     "base_en": {
       "label": "Base",
       "description": "Alltag",
-      "details": "Zuverlässige englische Transkription mit geringem Speicherbedarf."
+      "details": "Zuverlässige englische Transkription mit geringem Speicherbedarf.",
+      "badge": "Nur Englisch"
     },
     "small": {
       "label": "Small",
       "description": "Ausgewogen",
-      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und Genauigkeit bei moderatem Speicherbedarf."
+      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und Genauigkeit bei moderatem Speicherbedarf.",
+      "badge": "Mehrsprachig"
     },
     "small_en": {
       "label": "Small",
       "description": "Ausgewogen",
-      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und englischer Genauigkeit bei moderatem Speicherbedarf."
+      "details": "Ausgewogenes Verhältnis von Geschwindigkeit und englischer Genauigkeit bei moderatem Speicherbedarf.",
+      "badge": "Nur Englisch"
     },
     "medium": {
       "label": "Medium",
       "description": "Genau",
-      "details": "Hohe Genauigkeit bei moderater Geschwindigkeit. Gut für schwieriges Audio."
+      "details": "Hohe Genauigkeit bei moderater Geschwindigkeit. Gut für schwieriges Audio.",
+      "badge": "Mehrsprachig"
     },
     "medium_en": {
       "label": "Medium",
       "description": "Genau",
-      "details": "Hohe englische Genauigkeit bei moderater Geschwindigkeit."
+      "details": "Hohe englische Genauigkeit bei moderater Geschwindigkeit.",
+      "badge": "Nur Englisch"
     },
     "large_v3_turbo": {
       "label": "Large Turbo",
       "description": "Schnell & genau",
-      "details": "Sehr gute Genauigkeit mit höherer Geschwindigkeit als das Large-Modell und moderatem Speicherbedarf."
+      "details": "Sehr gute Genauigkeit mit höherer Geschwindigkeit als das Large-Modell und moderatem Speicherbedarf.",
+      "badge": "Mehrsprachig"
     },
     "large_v3": {
       "label": "Large",
       "description": "Höchste Genauigkeit",
-      "details": "Höchste Genauigkeit für komplexes Audio, aber langsamer und mit hohem Speicherbedarf."
+      "details": "Höchste Genauigkeit für komplexes Audio, aber langsamer und mit hohem Speicherbedarf.",
+      "badge": "Mehrsprachig"
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Schnell & genau",
+      "details": "Hervorragende Genauigkeit und Geschwindigkeit für europäische Sprachen.",
+      "badge": "Europäisch"
     }
   },
   "completion": {

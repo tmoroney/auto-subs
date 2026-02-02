@@ -182,14 +182,11 @@ export function ActionBar({
                                     <Command className="max-h-[250px] rounded-b-none">
                                         <div className="relative">
                                             <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
-                                            <Button
-                                                size="sm"
-                                                variant={settings.translate ? "default" : "outline"}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs h-8 px-3"
-                                                onClick={() => updateSetting("translate", !settings.translate)}
-                                            >
-                                                {settings.translate ? t("actionBar.common.on") : t("actionBar.common.off")}
-                                            </Button>
+                                            <Switch
+                                                checked={settings.translate}
+                                                onCheckedChange={(checked: boolean) => updateSetting("translate", checked)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2"
+                                            />
                                         </div>
                                         <CommandList>
                                             <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
@@ -221,12 +218,12 @@ export function ActionBar({
                                     </Command>
                                 </TabsContent>
                                 <TabsList className="h-auto mx-2 mb-2 w-auto flex">
-                                    <TabsTrigger value="source" className="flex-1 gap-1.5 text-xs py-2">
-                                        <Globe size={14} />
+                                    <TabsTrigger value="source" className="flex-1 gap-1.5 text-xs py-1.5">
+                                        <Globe className="size-3.5" />
                                         {t("actionBar.language.source")}
                                     </TabsTrigger>
-                                    <TabsTrigger value="translate" className="flex-1 gap-1.5 text-xs py-2">
-                                        <Languages size={14} />
+                                    <TabsTrigger value="translate" className="flex-1 gap-1.5 text-xs py-1.5">
+                                        <Languages className="size-3.5" />
                                         {t("actionBar.language.translate")}
                                         {settings.translate && (
                                             <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
@@ -306,7 +303,7 @@ export function ActionBar({
                                 <Type className="h-4 w-4" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0" align="end">
+                        <PopoverContent className="w-80 p-0" align="center">
                             <div className="space-y-3 p-4">
                                 {/* Remove Punctuation */}
                                 <div className="flex items-center justify-between">
@@ -632,7 +629,7 @@ export function ActionBar({
                         className="w-full mt-1"
                     >
                         <X className="h-4 w-4" />
-                        Cancel
+                        {t("common.cancel")}
                     </Button>
                 ) : (
                     <Button
@@ -643,7 +640,7 @@ export function ActionBar({
                         disabled={isProcessing}
                     >
                         <PlayCircle className="h-4 w-4" />
-                        Generate Subtitles
+                        {t("common.generateSubtitles")}
                     </Button>
                 )}
             </div>

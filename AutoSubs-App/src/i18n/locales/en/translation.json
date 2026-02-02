@@ -22,8 +22,8 @@
       "showPickerAgain": "Show language picker again"
     },
     "reset": {
-      "button": "Reset All Settings to Default",
-      "confirm": "Are you sure you want to reset all settings to default? This cannot be undone.",
+      "button": "Reset Settings",
+      "confirm": "Are you sure you want to reset all settings, including transcription settings? This action cannot be undone.",
       "confirmTitle": "Reset Settings"
     },
     "support": {
@@ -38,7 +38,8 @@
     "saveChanges": "Save Changes",
     "add": "Add",
     "done": "Done",
-    "delete": "Delete"
+    "delete": "Delete",
+    "generateSubtitles": "Generate Subtitles"
   },
   "importExport": {
     "button": "Import / Export",
@@ -60,7 +61,7 @@
       "off": "Off"
     },
     "mode": {
-      "fileInput": "File Input",
+      "fileInput": "File",
       "timeline": "Timeline"
     },
     "format": {
@@ -170,57 +171,68 @@
     "tiny": {
       "label": "Tiny",
       "description": "Fastest",
-      "details": "Fastest transcription with minimal memory. Ideal for quick drafts."
+      "details": "Fastest transcription with minimal memory. Ideal for quick drafts.",
+      "badge": "Multilingual"
     },
     "tiny_en": {
-      "label": "Tiny",
+      "label": "Tiny (English)",
       "description": "Fastest",
-      "details": "Fastest English transcription with minimal memory. Ideal for quick drafts."
+      "details": "Fastest English transcription with minimal memory. Ideal for quick drafts.",
+      "badge": "English Only"
     },
     "base": {
       "label": "Base",
       "description": "Everyday use",
-      "details": "Reliable transcription with low memory requirements. Great for everyday use."
+      "details": "Reliable transcription with low memory requirements. Great for everyday use.",
+      "badge": "Multilingual"
     },
     "base_en": {
-      "label": "Base",
+      "label": "Base (English)",
       "description": "Everyday use",
-      "details": "Reliable English transcription with low memory. Great for everyday use."
+      "details": "Reliable English transcription with low memory. Great for everyday use.",
+      "badge": "English Only"
     },
     "small": {
       "label": "Small",
       "description": "Balanced",
-      "details": "Balanced speed and accuracy with moderate memory. Handles varied accents well."
+      "details": "Balanced speed and accuracy with moderate memory. Handles varied accents well.",
+      "badge": "Multilingual"
     },
     "small_en": {
-      "label": "Small",
+      "label": "Small (English)",
       "description": "Balanced",
-      "details": "Balanced speed and English accuracy with moderate memory. Handles varied accents."
+      "details": "Balanced speed and English accuracy with moderate memory. Handles varied accents.",
+      "badge": "English Only"
     },
     "medium": {
       "label": "Medium",
       "description": "Accurate",
-      "details": "High accuracy transcription with moderate speed and memory. Good for challenging audio."
+      "details": "High accuracy transcription with moderate speed and memory. Good for challenging audio.",
+      "badge": "Multilingual"
     },
     "medium_en": {
-      "label": "Medium",
+      "label": "Medium (English)",
       "description": "Accurate",
-      "details": "High accuracy English transcription with moderate speed. Good for challenging audio."
+      "details": "High accuracy English transcription with moderate speed. Good for challenging audio.",
+      "badge": "English Only"
     },
     "large_v3_turbo": {
       "label": "Large Turbo",
       "description": "Fast & Accurate",
-      "details": "Excellent accuracy with faster speed than Large model and moderate memory."
+      "details": "Excellent accuracy with faster speed than Large model and moderate memory.",
+      "badge": "Multilingual"
     },
     "large_v3": {
       "label": "Large",
       "description": "Highest Accuracy",
-      "details": "Highest accuracy for complex audio, but slower and requires significant memory."
+      "details": "Highest accuracy for complex audio, but slower and requires significant memory.",
+      "badge": "Multilingual"
     },
     "parakeet": {
       "label": "Parakeet",
       "description": "Fast & Accurate",
-      "details": "Excellent accuracy and speed for European languages."
+      "details": "Excellent accuracy and speed for European languages.",
+      "badge": "European"
     }
   },
   "completion": {

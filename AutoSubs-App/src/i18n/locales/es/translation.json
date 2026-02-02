@@ -37,7 +37,8 @@
     "saveChanges": "Guardar cambios",
     "add": "Añadir",
     "done": "Listo",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "generateSubtitles": "Generar subtítulos"
   },
   "importExport": {
     "button": "Importar / Exportar",
@@ -103,7 +104,8 @@
       "selectAll": "Seleccionar todo",
       "clearAll": "Limpiar",
       "noneFound": "No se encontraron pistas de audio.",
-      "createTrack": "Crea una pista de audio en tu línea de tiempo para empezar a transcribir."
+      "createTrack": "Crea una pista de audio en tu línea de tiempo para empezar a transcribir.",
+      "selectMultiple": "Haz clic para seleccionar múltiples pistas"
     },
     "fileDrop": {
       "aria": "Suelta un archivo de audio aquí o haz clic para seleccionar",
@@ -168,52 +170,68 @@
     "tiny": {
       "label": "Tiny",
       "description": "Más rápido",
-      "details": "Transcripción muy rápida con poca memoria. Ideal para borradores rápidos."
+      "details": "Transcripción muy rápida con poca memoria. Ideal para borradores rápidos.",
+      "badge": "Multilingüe"
     },
     "tiny_en": {
       "label": "Tiny",
       "description": "Más rápido",
-      "details": "Transcripción en inglés muy rápida con poca memoria. Ideal para borradores rápidos."
+      "details": "Transcripción en inglés muy rápida con poca memoria. Ideal para borradores rápidos.",
+      "badge": "Solo inglés"
     },
     "base": {
       "label": "Base",
       "description": "Uso diario",
-      "details": "Transcripción fiable con bajos requisitos de memoria. Ideal para el día a día."
+      "details": "Transcripción fiable con bajos requisitos de memoria. Ideal para el día a día.",
+      "badge": "Multilingüe"
     },
     "base_en": {
       "label": "Base",
       "description": "Uso diario",
-      "details": "Transcripción en inglés fiable con poca memoria. Ideal para el día a día."
+      "details": "Transcripción en inglés fiable con poca memoria. Ideal para el día a día.",
+      "badge": "Solo inglés"
     },
     "small": {
       "label": "Small",
       "description": "Equilibrado",
-      "details": "Equilibrio entre velocidad y precisión con memoria moderada. Maneja bien acentos variados."
+      "details": "Equilibrio entre velocidad y precisión con memoria moderada. Maneja bien acentos variados.",
+      "badge": "Multilingüe"
     },
     "small_en": {
       "label": "Small",
       "description": "Equilibrado",
-      "details": "Equilibrio entre velocidad y precisión en inglés con memoria moderada."
+      "details": "Equilibrio entre velocidad y precisión en inglés con memoria moderada.",
+      "badge": "Solo inglés"
     },
     "medium": {
       "label": "Medium",
       "description": "Preciso",
-      "details": "Alta precisión con velocidad moderada y memoria media. Bueno para audio difícil."
+      "details": "Alta precisión con velocidad moderada y memoria media. Bueno para audio difícil.",
+      "badge": "Multilingüe"
     },
     "medium_en": {
       "label": "Medium",
       "description": "Preciso",
-      "details": "Alta precisión en inglés con velocidad moderada. Bueno para audio difícil."
+      "details": "Alta precisión en inglés con velocidad moderada. Bueno para audio difícil.",
+      "badge": "Solo inglés"
     },
     "large_v3_turbo": {
       "label": "Large Turbo",
       "description": "Rápido y preciso",
-      "details": "Excelente precisión con más velocidad que el modelo Large y memoria moderada."
+      "details": "Excelente precisión con más velocidad que el modelo Large y memoria moderada.",
+      "badge": "Multilingüe"
     },
     "large_v3": {
       "label": "Large",
       "description": "Máxima precisión",
-      "details": "Máxima precisión para audio complejo, pero más lento y requiere mucha memoria."
+      "details": "Máxima precisión para audio complejo, pero más lento y requiere mucha memoria.",
+      "badge": "Multilingüe"
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Rápido y preciso",
+      "details": "Excelente precisión y velocidad para idiomas europeos.",
+      "badge": "Europeo"
     }
   },
   "completion": {

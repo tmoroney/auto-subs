@@ -61,7 +61,7 @@ export function WorkspaceBody({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full space-y-2 pb-14 text-center">
+        <div className="flex flex-col items-center justify-center h-full space-y-2 pb-12 text-center">
           <img
             src="/autosubs-logo.png"
             alt="AutoSubs"
