@@ -494,7 +494,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
 
   return (
     <header
-      className="flex items-center justify-between h-9 px-1 border-b bg-card/50 backdrop-blur select-none z-50"
+      className="flex items-center justify-between h-9 px-1 border-b bg-card backdrop-blur select-none z-50"
       data-tauri-drag-region
     >
       {isMacOS ? (

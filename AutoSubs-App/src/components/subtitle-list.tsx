@@ -163,6 +163,24 @@ const SubtitleList = ({
         return () => window.removeEventListener('resize', updateContainerHeight);
     }, []);
 
+    // Handle click outside to deselect subtitle
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            // Check if the click is outside the subtitle list container
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setSelectedIndex(null);
+            }
+        };
+
+        // Add global click listener when a subtitle is selected
+        if (selectedIndex !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => {
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [selectedIndex]);
+
     const setSelectedIndex = (index: number | null) => {
         if (controlledSelectedIndex !== undefined) {
             onSelectedIndexChange?.(index);

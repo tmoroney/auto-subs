@@ -87,7 +87,7 @@ export function WorkspaceHeader({
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-transparent">
+      <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-transparent">
         {/* Left side: Model Management */}
         <div className="flex items-center gap-2">
           {/* Model Selector */}

@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Layers2, MoreVertical, Repeat2, Type, Upload, Users, X } from "lucide-react"
+import { MoreVertical, Repeat2, Type, Upload, Users, X } from "lucide-react"
+import { LayersIcon } from "@/components/ui/layers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"
@@ -27,6 +28,7 @@ export function DesktopSubtitleViewer() {
   const { subtitles, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles } = useTranscript()
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings, updateSetting } = useSettings()
+  const layersIconRef = React.useRef<any>(null)
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [showReformat, setShowReformat] = React.useState(false)
   const { t } = useTranslation()
@@ -76,14 +78,14 @@ export function DesktopSubtitleViewer() {
     <div className="flex flex-col h-full border-l bg-card/50">
 
       {/* Search */}
-      <div className="shrink-0 p-3 border-b relative z-20 bg-card/50">
+      <div className="shrink-0 p-3 border-b relative z-20">
         <div className="relative">
           <Input
             ref={searchInputRef}
             placeholder={t("subtitles.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-28"
+            className="pr-28 text-sm"
             aria-label={t("subtitles.searchAria")}
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -169,7 +171,7 @@ export function DesktopSubtitleViewer() {
       </div>
 
       {/* Compact toolbar */}
-      <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 bg-card/50">
+      <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20">
         <ImportExportPopover
           onImport={() => importSubtitles(settings, null, "")}
           onExport={(format, includeSpeakers) => exportSubtitlesAs(format, includeSpeakers, subtitles, [])}
@@ -325,8 +327,10 @@ export function DesktopSubtitleViewer() {
               variant="secondary"
               size="default"
               className="w-full"
+              onMouseEnter={() => layersIconRef.current?.startAnimation()}
+              onMouseLeave={() => layersIconRef.current?.stopAnimation()}
             >
-              <Layers2 className="w-4 h-4 mr-2" />
+              <LayersIcon ref={layersIconRef} className="w-4 h-4" />
               {t("subtitles.addToTimeline")}
             </Button>
           </AddToTimelineDialog>
