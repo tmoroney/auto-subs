@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Speech, Languages, Type, AudioLines, Globe, Check, X, Settings2, PlayCircle } from "lucide-react"
-import { UploadIcon, type UploadIconHandle } from "@/components/ui/upload"
+import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"

@@ -1,5 +1,5 @@
 import { HardDrive, MemoryStick, InfoIcon } from "lucide-react"
-import { CircleCheckIcon } from "@/components/ui/circle-check"
+import { CircleCheckIcon } from "@/components/ui/icons/circle-check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -13,8 +13,8 @@ import { Model } from "@/types/interfaces"
 
 
 import * as React from "react"
-import { UploadIcon, type UploadIconHandle } from "@/components/ui/upload"
-import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/chevrons-up-down"
+import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
+import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
 
 function ModelStatusIndicator({ isDownloaded }: { isDownloaded: boolean }) {
   const { t } = useTranslation()

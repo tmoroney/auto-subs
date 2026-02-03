@@ -1,6 +1,6 @@
 import * as React from "react"
 import { MoreVertical, Repeat2, Type, Upload, Users, X } from "lucide-react"
-import { LayersIcon } from "@/components/ui/layers"
+import { LayersIcon } from "@/components/ui/icons/layers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SubtitleList } from "@/components/subtitle-list"

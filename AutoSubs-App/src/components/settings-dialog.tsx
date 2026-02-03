@@ -1,5 +1,5 @@
 import { Gauge, Clock } from "lucide-react";
-import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/delete";
+import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
