@@ -147,7 +147,7 @@ export function ActionBar({
                         <PopoverContent className="p-0 w-72" align="start" side="top">
                             <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
                                 <TabsContent value="source" className="mt-0 border-b">
-                                    <Command className="max-h-[250px] rounded-b-none">
+                                    <Command className="max-h-[260px] rounded-b-none">
                                         <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                                         <CommandList>
                                             <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
@@ -179,7 +179,7 @@ export function ActionBar({
                                 </TabsContent>
 
                                 <TabsContent value="translate" className="mt-0 border-b">
-                                    <Command className="max-h-[250px] rounded-b-none">
+                                    <Command className="max-h-[260px] rounded-b-none">
                                         <div className="relative">
                                             <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                                             <Switch

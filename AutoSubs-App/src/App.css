@@ -128,6 +128,12 @@
   }
 }
 
+/* Custom icon sizing override */
+.info-icon-custom {
+  width: 20px !important;
+  height: 20px !important;
+}
+
 /* Heart Burst Animation */
 .group:hover .heart-anim {
   animation: burst 1s ease-out forwards;

@@ -151,23 +151,23 @@ export function WorkspaceHeader({
                                       <p className="text-xs text-muted-foreground line-clamp-2 flex-1">
                                         {t(model.description)}
                                       </p>
-                                      <InfoIcon size={12} className="text-muted-foreground" />
+                                      <InfoIcon className="text-muted-foreground" />
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2.5">
                                       <p className="text-xs">{t(model.details)}</p>
-                                      <div className="flex items-center gap-1 text-xs">
-                                        <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs">
+                                      <div className="flex items-center gap-4 text-xs">
+                                        <div className="flex items-center gap-1">
                                           <HardDrive size={14} />
                                           <span>{t("modelStatus.storage")}</span>
                                           <span className="font-medium">{model.size}</span>
-                                        </span>
-                                        <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-full text-xs">
+                                        </div>
+                                        <div className="flex items-center gap-1">
                                           <MemoryStick size={14} />
                                           <span>{t("modelStatus.ram")}</span>
                                           <span className="font-medium">{model.ram}</span>
-                                        </span>
+                                        </div>
                                       </div>
                                     </div>
                                   </TooltipContent>
