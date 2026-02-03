@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Trash2, AlertTriangle, Archive, Heart, Github } from "lucide-react";
+import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Archive, Heart, Github } from "lucide-react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { getTranscriptsDir } from "@/utils/file-utils";
 import { readDir } from "@tauri-apps/plugin-fs";
@@ -44,9 +36,9 @@ import { readTranscript } from "@/utils/file-utils";
 import { useTranscript } from "@/contexts/TranscriptContext";
 import { useTheme } from "@/components/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
-import { Model } from "@/types/interfaces";
 import { useState, useEffect } from "react";
 import { SettingsDialog } from "@/components/settings-dialog";
+import { ManageModelsDialog } from "@/components/model-manager";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -125,109 +117,6 @@ interface TranscriptFile {
   lastModified: Date;
 }
 
-function ManageModelsDialog({
-  open,
-  onOpenChange,
-  models,
-  onDeleteModel
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  models: Model[];
-  onDeleteModel: (modelValue: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [confirmOpenForModelValue, setConfirmOpenForModelValue] = useState<string | null>(null);
-  const downloadedModels = models.filter(model => model.isDownloaded);
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{t("models.manage.title")}</DialogTitle>
-            <DialogDescription>
-              {t("models.manage.description")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {downloadedModels.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                {t("models.manage.empty")}
-              </p>
-            ) : (
-              downloadedModels.map((model) => (
-                <div key={model.value} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={model.image}
-                      alt={t(model.label)}
-                      className="w-9 h-9 object-contain rounded"
-                    />
-                    <div>
-                      <div className="flex items-center">
-                        <p className="font-medium text-sm">{t(model.label)}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{model.size}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    title={t("models.manage.deleteModel")}
-                    onClick={() => setConfirmOpenForModelValue(model.value)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={confirmOpenForModelValue !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setConfirmOpenForModelValue(null);
-        }}
-      >
-        <DialogContent
-          onOpenAutoFocus={e => e.preventDefault()}
-        >
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <span className="font-semibold text-red-500 dark:text-red-500">{t("models.manage.confirmTitle")}</span>
-          </DialogTitle>
-          <span className="text-sm text-muted-foreground">
-            {t("models.manage.confirmBody", {
-              model: confirmOpenForModelValue
-                ? t(models.find((m) => m.value === confirmOpenForModelValue)?.label || "")
-                : "",
-            })}
-          </span>
-          <div className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">{t("common.cancel")}</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (!confirmOpenForModelValue) return;
-                onDeleteModel(confirmOpenForModelValue);
-                setConfirmOpenForModelValue(null);
-              }}
-            >
-              {t("common.delete")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 function SettingsDropdown() {
   const { t } = useTranslation();

@@ -107,7 +107,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 {t("settings.sections.transcription")}
               </h4>
 
-              <FieldGroup>
+              <FieldGroup className="gap-3">
                 <Field>
                   <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
