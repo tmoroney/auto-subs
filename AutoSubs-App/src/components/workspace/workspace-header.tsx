@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
 import { Model } from "@/types/interfaces"
-
-
 import * as React from "react"
 import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
@@ -87,7 +85,7 @@ export function WorkspaceHeader({
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-transparent">
+      <div className="sticky top-0 z-10 flex items-center justify-between p-4 pb-3 bg-transparent">
         {/* Left side: Model Management */}
         <div className="flex items-center gap-2">
           {/* Model Selector */}

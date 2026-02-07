@@ -11,6 +11,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProgressType::Download => {
                     println!("📥 Download: {}% - {}", percent, label);
                 }
+                ProgressType::Diarize => {
+                    if percent == 100 || percent % 25 == 0 {
+                        println!("🗣️ Diarize: {}% - {}", percent, label);
+                    }
+                }
                 ProgressType::Transcribe => {
                     if percent == 100 || percent % 25 == 0 {
                         println!("🎵 Transcribe: {}% - {}", percent, label);

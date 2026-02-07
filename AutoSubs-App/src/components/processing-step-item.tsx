@@ -43,7 +43,7 @@ export function ProcessingStepItem({
     }
 
     return (
-        <div className="flex w-full flex-col [--radius:1rem]">
+        <div className="flex w-full flex-col">
             <Item variant={isCompleted ? "muted" : "outline"}>
                 <ItemMedia>
                     {isCompleted ? (

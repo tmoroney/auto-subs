@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use static atomic counters for the callback
     static DOWNLOAD_COUNT: AtomicU32 = AtomicU32::new(0);
+    static DIARIZE_COUNT: AtomicU32 = AtomicU32::new(0);
     static TRANSCRIBE_COUNT: AtomicU32 = AtomicU32::new(0);
     static TRANSLATE_COUNT: AtomicU32 = AtomicU32::new(0);
     
@@ -14,6 +15,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProgressType::Download => {
                     let count = DOWNLOAD_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
                     println!("[DOWNLOAD #{}] {}%: {}", count, percent, label);
+                }
+                ProgressType::Diarize => {
+                    let count = DIARIZE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+                    println!("[DIARIZE #{}] {}%: {}", count, percent, label);
                 }
                 ProgressType::Transcribe => {
                     let count = TRANSCRIBE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
@@ -50,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("\nProgress summary:");
     println!("Download progress updates: {}", DOWNLOAD_COUNT.load(Ordering::Relaxed));
+    println!("Diarize progress updates: {}", DIARIZE_COUNT.load(Ordering::Relaxed));
     println!("Transcribe progress updates: {}", TRANSCRIBE_COUNT.load(Ordering::Relaxed));
     println!("Translate progress updates: {}", TRANSLATE_COUNT.load(Ordering::Relaxed));
     

@@ -49,7 +49,7 @@ pub fn label_speakers(
 
         if let Some(cb) = progress_callback {
             let pct = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-            cb(pct, ProgressType::Transcribe, "Identifying speakers");
+            cb(pct, ProgressType::Diarize, "Identifying speakers");
         }
     }
 

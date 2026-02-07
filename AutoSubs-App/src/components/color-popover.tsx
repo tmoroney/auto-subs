@@ -31,24 +31,19 @@ export function ColorPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center gap-2 px-3 py-2 rounded-md border"
+          className="w-9 h-9 p-0 rounded-full border"
           disabled={disabled}
         >
-          <>
-            {enabled ? (
-              <span
-                className="justify-center w-5 h-5 rounded-md border"
-                style={{ backgroundColor: color, borderColor: color }}
-              />
-            ) : (
-              <span className="flex items-center justify-center w-5 h-5 rounded-md border bg-muted text-muted-foreground shrink-0 leading-none p-0 m-0">
-                <X className="w-4 h-4 block" />
-              </span>
-            )}
-            <span className="text-sm font-medium">
-              {label}
+          {enabled ? (
+            <span
+              className="w-5 h-5 rounded-full border-2"
+              style={{ backgroundColor: color, borderColor: color }}
+            />
+          ) : (
+            <span className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-muted text-muted-foreground">
+              <X className="w-3 h-3" />
             </span>
-          </>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-52 space-y-4">
@@ -59,7 +54,7 @@ export function ColorPopover({
             onCheckedChange={(checked: boolean) => onEnabledChange(!!checked)}
             aria-label={`${label} Enabled`}
           />
-          <Label htmlFor={`toggle-${label.replace(/\s+/g, "-").toLowerCase()}`}>{label} {enabled ? "Enabled" : "Disabled"}</Label>
+          <Label htmlFor={`toggle-${label.replace(/\s+/g, "-").toLowerCase()}`}>{label}</Label>
         </div>
         <div className="flex items-center gap-2">
           <input

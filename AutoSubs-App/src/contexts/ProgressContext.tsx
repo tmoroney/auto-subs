@@ -20,7 +20,8 @@ interface ProgressContextType {
   clearProgressSteps: () => void;
   completeAllProgressSteps: () => void;
   cancelAllProgressSteps: () => void;
-  setupEventListeners: (settings: { targetLanguage: string; language: string }) => () => void;
+  updateProgressStep: (event: { progress: number; type?: string; label?: string }) => void;
+  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; isModelCached?: boolean; enableDiarize?: boolean }) => () => void;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
@@ -33,12 +34,12 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const seenSegmentsRef = useRef<Set<string>>(new Set());
   
   // Ref to track latest settings for use in closures/callbacks
-  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto' });
+  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, isModelCached: false, enableDiarize: false });
 
   // Simplified progress step management
   const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
     // Only process events with known step types - ignore unknown/null types
-    const knownTypes = ['Download', 'Transcribe', 'Translate']
+    const knownTypes = ['Export', 'Download', 'Diarize', 'Transcribe', 'Translate']
     if (!event.type || !knownTypes.includes(event.type)) {
       console.log('Ignoring progress event with unknown type:', event.type)
       return
@@ -123,8 +124,12 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   
   const getStepTitle = (type?: string): string => {
     switch (type) {
+      case 'Export':
+        return i18n.t('progressSteps.export', { defaultValue: 'Exporting Audio' });
       case 'Download':
         return i18n.t('progressSteps.download');
+      case 'Diarize':
+        return i18n.t('progressSteps.diarize', { defaultValue: 'Identifying Speakers' });
       case 'Transcribe':
         return i18n.t('progressSteps.transcribe');
       case 'Translate':
@@ -138,7 +143,11 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
   // Define the order of progress steps
   const getStepOrder = (): string[] => {
-    const order = ['Download', 'Transcribe']
+    const order: string[] = []
+    if (settingsRef.current.isResolveMode) order.push('Export')
+    if (!settingsRef.current.isModelCached) order.push('Download')
+    if (settingsRef.current.enableDiarize) order.push('Diarize')
+    order.push('Transcribe')
     if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
       order.push('Translate')
     }
@@ -186,9 +195,15 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Set up simplified event listener
-  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string }) => {
+  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; isModelCached?: boolean; enableDiarize?: boolean }) => {
     // Update settings ref
-    settingsRef.current = settings;
+    settingsRef.current = {
+      targetLanguage: settings.targetLanguage,
+      language: settings.language,
+      isResolveMode: settings.isResolveMode ?? false,
+      isModelCached: settings.isModelCached ?? false,
+      enableDiarize: settings.enableDiarize ?? false,
+    };
     
     const setup = async () => {
       try {
@@ -262,6 +277,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       clearProgressSteps,
       completeAllProgressSteps,
       cancelAllProgressSteps,
+      updateProgressStep,
       setupEventListeners,
     }}>
       {children}

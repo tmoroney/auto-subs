@@ -61,7 +61,7 @@ function AppContent() {
                 <TranscriptionWorkspace />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={50} minSize={45}>
+              <ResizablePanel defaultSize={50} minSize={35}>
                 <DesktopSubtitleViewer />
               </ResizablePanel>
             </ResizablePanelGroup>

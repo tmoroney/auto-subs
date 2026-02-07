@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProgressType {
     Download,
+    Diarize,
     Transcribe,
     Translate,
 }

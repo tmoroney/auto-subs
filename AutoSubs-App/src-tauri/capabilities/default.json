@@ -93,6 +93,7 @@
     {
       "identifier": "core:window:allow-toggle-maximize"
     },
+    "core:webview:allow-set-webview-zoom",
     "process:default",
     "shell:default",
     "os:default",

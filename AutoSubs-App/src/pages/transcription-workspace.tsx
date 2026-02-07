@@ -9,7 +9,6 @@ import { invoke } from "@tauri-apps/api/core"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { generateTranscriptFilename } from "@/utils/file-utils"
 import { ActionBar } from "@/components/action-bar"
-import PixelOverlay, { PixelOverlayRef } from "@/components/pixel-overlay"
 import { WorkspaceHeader } from "@/components/workspace/workspace-header"
 import { WorkspaceBody } from "@/components/workspace/workspace-body"
 
@@ -22,6 +21,7 @@ export const TranscriptionWorkspace = () => {
         pushToTimeline, 
         cancelExport, 
         isExporting, 
+        exportProgress,
         setIsExporting, 
         setExportProgress, 
         cancelRequestedRef, 
@@ -38,6 +38,7 @@ export const TranscriptionWorkspace = () => {
         clearProgressSteps, 
         completeAllProgressSteps, 
         cancelAllProgressSteps, 
+        updateProgressStep,
         setupEventListeners 
     } = useProgress()
     
@@ -77,34 +78,32 @@ export const TranscriptionWorkspace = () => {
     // Ref for auto-scrolling progress steps
     const progressContainerRef = React.useRef<HTMLDivElement>(null)
 
-    // Ref for pixel overlay animation
-    const pixelOverlayRef = React.useRef<PixelOverlayRef>(null)
-
-    // State for showing loading message during model warmup
-    const [showLoadingMessage, setShowLoadingMessage] = React.useState(false)
-
-    // Auto-scroll to bottom when new steps are added, and stop animation when first step appears
+    // Auto-scroll to bottom when new steps are added
     React.useEffect(() => {
-        if (processingSteps.length > 0) {
-            // Stop the pixel animation and hide loading message when steps start appearing
-            pixelOverlayRef.current?.stopAnimation()
-            setShowLoadingMessage(false)
-
-            // Scroll to the bottom smoothly
-            if (progressContainerRef.current) {
-                progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
-            }
+        if (processingSteps.length > 0 && progressContainerRef.current) {
+            progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
         }
     }, [processingSteps])
 
     // Set up event listeners from progress context
+    const isModelCached = modelsState[settings.model]?.isDownloaded ?? false
     React.useEffect(() => {
         const cleanup = setupEventListeners({
             targetLanguage: settings.targetLanguage,
-            language: settings.language
+            language: settings.language,
+            isResolveMode: !settings.isStandaloneMode,
+            isModelCached,
+            enableDiarize: settings.enableDiarize,
         });
         return cleanup;
-    }, [setupEventListeners, settings.targetLanguage, settings.language]);
+    }, [setupEventListeners, settings.targetLanguage, settings.language, settings.isStandaloneMode, isModelCached, settings.enableDiarize]);
+
+    // Feed export progress into processingSteps for Resolve mode
+    React.useEffect(() => {
+        if (!settings.isStandaloneMode && isExporting) {
+            updateProgressStep({ progress: exportProgress, type: 'Export' })
+        }
+    }, [isExporting, exportProgress, settings.isStandaloneMode, updateProgressStep])
 
     /**
      * Main function to handle the transcription process
@@ -143,11 +142,23 @@ export const TranscriptionWorkspace = () => {
             return
         }
 
-        // Trigger pixel animation and show loading message only after validation passes
-        pixelOverlayRef.current?.triggerAnimation()
-        setShowLoadingMessage(true)
+        // Set UI state to processing
+        setIsProcessing(true)
+        setTranscriptionProgress(0)
 
-        // Get audio path based on mode
+        // Clear any previous processing steps before starting new transcription
+        clearProgressSteps()
+
+        // Update progress settings with current model cache status
+        setupEventListeners({
+            targetLanguage: settings.targetLanguage,
+            language: settings.language,
+            isResolveMode: !settings.isStandaloneMode,
+            isModelCached: modelsState[settings.model]?.isDownloaded ?? false,
+            enableDiarize: settings.enableDiarize,
+        })
+
+        // Get audio path based on mode (triggers export polling in Resolve mode)
         const audioInfo = await getSourceAudio(
             settings.isStandaloneMode,
             fileInput,
@@ -155,15 +166,9 @@ export const TranscriptionWorkspace = () => {
         )
         if (!audioInfo) {
             console.error("Failed to get audio")
+            setIsProcessing(false)
             return
         }
-
-        // Set UI state to transcribing
-        setIsProcessing(true)
-        setTranscriptionProgress(0)
-
-        // Clear any previous processing steps before starting new transcription
-        clearProgressSteps()
 
         try {
             // Create transcription options
@@ -205,9 +210,6 @@ export const TranscriptionWorkspace = () => {
             setIsExporting(false)
             setExportProgress(0)
             setLabeledProgress(null)
-            // Also hide loading message when resetting
-            setShowLoadingMessage(false)
-
             // Update model download status
             await checkDownloadedModels()
         }
@@ -222,10 +224,6 @@ export const TranscriptionWorkspace = () => {
         console.log("Cancelling process...")
         // Set cancellation flag immediately to interrupt any polling loops
         cancelRequestedRef.current = true
-
-        // Stop pixel animation immediately
-        pixelOverlayRef.current?.stopAnimation()
-        setShowLoadingMessage(false)
 
         try {
             // If transcription is active, cancel it
@@ -265,9 +263,7 @@ export const TranscriptionWorkspace = () => {
 
     return (
         <>
-            <div className="h-full flex flex-col relative">
-                {/* Pixel Animation Overlay */}
-                <PixelOverlay ref={pixelOverlayRef} />
+            <div className="h-full flex flex-col relative pb-4">
                 <WorkspaceHeader
                     modelsState={modelsState}
                     selectedModelIndex={settings.model}
@@ -284,9 +280,12 @@ export const TranscriptionWorkspace = () => {
                     onStandaloneModeChange={(standalone) => updateSetting("isStandaloneMode", standalone)}
                 />
 
+                <div className="flex-1 min-h-0 overflow-y-auto" style={{
+                    maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)'
+                }}>
                 <WorkspaceBody
                     processingSteps={processingSteps}
-                    showLoadingMessage={showLoadingMessage}
                     progressContainerRef={progressContainerRef}
                     onExportToFile={handleExportToFile}
                     onAddToTimeline={handleAddToTimeline}
@@ -294,8 +293,10 @@ export const TranscriptionWorkspace = () => {
                     settings={settings}
                     timelineInfo={timelineInfo}
                 />
+                </div>
 
                 {/* Footer */}
+                <div className="flex-shrink-0">
                 <ActionBar
                     selectedFile={fileInput}
                     onSelectedFileChange={handleSelectedFileChange}
@@ -303,6 +304,7 @@ export const TranscriptionWorkspace = () => {
                     onCancel={handleCancelTranscription}
                     isProcessing={isProcessing}
                 />
+                </div>
             </div>
         </>
     )

@@ -8,6 +8,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProgressType::Download => {
                     println!("📥 Download: {}% - {}", percent, label);
                 }
+                ProgressType::Diarize => {
+                    println!("🗣️ Diarize: {}% - {}", percent, label);
+                }
                 ProgressType::Transcribe => {
                     println!("🎵 Transcribe: {}% - {}", percent, label);
                 }

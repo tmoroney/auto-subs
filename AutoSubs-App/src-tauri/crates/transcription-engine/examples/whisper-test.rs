@@ -22,6 +22,7 @@ async fn main() -> Result<(), eyre::Report> {
     fn on_progress(p: i32, progress_type: ProgressType, label: &str) { 
         match progress_type {
             ProgressType::Download => print!("📥 "),
+            ProgressType::Diarize => print!("🗣️ "),
             ProgressType::Transcribe => print!("🎵 "),
             ProgressType::Translate => print!("🌍 "),
         }

@@ -121,7 +121,7 @@ export function ActionBar({
     }
 
     return (
-        <Card className="p-3 sticky bottom-4 mx-4">
+        <Card className="p-3 sticky bottom-4 mx-4 z-50 shadow-lg bg-card">
             <div className="grid w-full gap-3">
                 {/* 1. TRANSCRIPTION SETTINGS - All settings in one row at the top */}
                 <div className="flex items-center gap-1.5">
@@ -133,7 +133,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openLanguage}
-                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
+                                className="dark:bg-background dark:hover:bg-accent rounded-full"
                             >
                                 <Globe className="h-4 w-4" />
                                 <span className="text-xs truncate">
@@ -242,7 +242,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openSpeakerPopover}
-                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
+                                className="dark:bg-background dark:hover:bg-accent rounded-full"
                             >
                                 <Speech className="h-4 w-4" />
                                 <span className="text-xs">{settings.enableDiarize ? (settings.maxSpeakers === null ? t("actionBar.common.auto") : settings.maxSpeakers) : t("actionBar.common.off")}</span>
@@ -298,7 +298,7 @@ export function ActionBar({
                                 size="default"
                                 role="combobox"
                                 aria-expanded={openTextFormattingPopover}
-                                className="dark:bg-transparent/50 dark:hover:bg-accent rounded-full"
+                                className="dark:bg-background dark:hover:bg-accent rounded-full"
                             >
                                 <Type className="h-4 w-4" />
                             </Button>
@@ -480,7 +480,7 @@ export function ActionBar({
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={openTrackSelector}
-                                className="w-full h-[120px] justify-center dark:bg-transparent/50 dark:hover:bg-accent"
+                                className="w-full h-[120px] justify-center dark:bg-background dark:hover:bg-accent"
                                 size="sm"
                             >
                                 <div className="flex flex-col items-center gap-2">
@@ -499,7 +499,7 @@ export function ActionBar({
                         </PopoverTrigger>
                         <PopoverContent className="min-w-[320px] p-0 overflow-hidden" align="center">
                             {inputTracks.length > 0 ? (
-                                <div className="px-4 py-2 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/50 dark:to-orange-950/50 border-b">
+                                <div className="px-4 py-2 bg-muted/30 border-b">
                                     <div className="flex items-center justify-between min-h-[28px]">
                                         <span className="text-sm text-muted-foreground">
                                             {settings.selectedInputTracks.length > 0
@@ -527,7 +527,7 @@ export function ActionBar({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="px-4 py-3 bg-red-50/30 dark:bg-red-900/10 border-b">
+                                <div className="px-4 py-3 bg-muted/30 border-b">
                                     <p className="text-sm text-center text-muted-foreground">
                                         {t("actionBar.tracks.noneFound")}
                                     </p>
@@ -544,7 +544,7 @@ export function ActionBar({
                                                     key={trackId}
                                                     className={`group relative flex items-center gap-3 py-2 px-3 rounded-lg border transition-all duration-200 w-full cursor-pointer select-none
                                                     ${isChecked
-                                                            ? 'bg-red-50/50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
+                                                            ? 'bg-primary/10 border-primary'
                                                             : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}
                                                     onClick={() => {
                                                         if (isChecked) {
@@ -556,12 +556,12 @@ export function ActionBar({
                                                 >
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
                                                     ${isChecked
-                                                            ? 'bg-red-100 dark:bg-red-900/50'
+                                                            ? 'bg-primary/10'
                                                             : 'bg-zinc-100 dark:bg-zinc-800'}`}
                                                     >
-                                                        <AudioLines className={`h-4 w-4 ${isChecked ? 'text-red-600 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                                                        <AudioLines className={`h-4 w-4 ${isChecked ? 'text-primary' : 'text-zinc-500 dark:text-zinc-400'}`} />
                                                     </div>
-                                                    <span className={`text-sm font-medium flex-1 text-left ${isChecked ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                                    <span className={`text-sm font-medium flex-1 text-left ${isChecked ? 'text-primary' : ''}`}>
                                                         {track.label}
                                                     </span>
                                                     <Checkbox
