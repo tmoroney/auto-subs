@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
-use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType};
+use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType, FormattingOverrides, PostProcessConfig, process_segments, apply_overrides};
 
 // Frontend-compatible progress data type
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -485,3 +485,100 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
     (speakers, updated_segments)
 }
 
+// --- Frontend Formatting Options Struct ---
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendFormattingOptions {
+    pub max_chars_per_line: Option<usize>,
+    pub max_lines: Option<usize>,
+    pub cps_cap: Option<f64>,
+    pub split_gap_sec: Option<f64>,
+    pub min_sub_dur: Option<f64>,
+    pub max_sub_dur: Option<f64>,
+    pub language: Option<String>,
+}
+
+impl FrontendFormattingOptions {
+    fn to_overrides(&self) -> FormattingOverrides {
+        FormattingOverrides {
+            max_chars_per_line: self.max_chars_per_line,
+            max_lines: self.max_lines,
+            cps_cap: self.cps_cap,
+            split_gap_sec: self.split_gap_sec,
+            min_sub_dur: self.min_sub_dur,
+            max_sub_dur: self.max_sub_dur,
+            ..Default::default()
+        }
+    }
+}
+
+/// Reformat subtitles with new formatting options without re-transcribing.
+/// Takes the raw word-level data and applies formatting rules to produce new segments.
+#[command]
+pub async fn reformat_subtitles(
+    segments: Vec<Segment>,
+    options: FrontendFormattingOptions,
+) -> Result<Vec<Segment>, String> {
+    // Convert app segments to engine segments (WDSegment)
+    let engine_segments: Vec<WDSegment> = segments
+        .iter()
+        .map(|seg| {
+            let words = seg.words.as_ref().map(|words| {
+                words
+                    .iter()
+                    .map(|w| transcription_engine::WordTimestamp {
+                        text: w.word.clone(),
+                        start: w.start,
+                        end: w.end,
+                        probability: w.probability,
+                    })
+                    .collect()
+            });
+
+            WDSegment {
+                start: seg.start,
+                end: seg.end,
+                text: seg.text.clone(),
+                words,
+                speaker_id: seg.speaker_id.clone(),
+            }
+        })
+        .collect();
+
+    // Build config from language profile, then apply overrides
+    let lang = options.language.as_deref().unwrap_or("en");
+    let mut config = PostProcessConfig::for_language(lang);
+    let overrides = options.to_overrides();
+    apply_overrides(&mut config, &overrides);
+
+    // Run the formatting engine
+    let formatted = process_segments(&engine_segments, &config, None);
+
+    // Convert back to app segments
+    let result: Vec<Segment> = formatted
+        .iter()
+        .map(|seg| {
+            let words = seg.words.as_ref().map(|words| {
+                words
+                    .iter()
+                    .map(|w| WordTimestamp {
+                        word: w.text.clone(),
+                        start: w.start,
+                        end: w.end,
+                        probability: w.probability,
+                    })
+                    .collect()
+            });
+
+            Segment {
+                start: seg.start,
+                end: seg.end,
+                text: seg.text.clone(),
+                words,
+                speaker_id: seg.speaker_id.clone(),
+            }
+        })
+        .collect();
+
+    Ok(result)
+}

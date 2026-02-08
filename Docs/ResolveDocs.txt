@@ -1,5 +1,5 @@
-Last Updated: 6 Jun 2025
-------------------------
+Last Updated: 7 Oct 2025
+-------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
 
@@ -104,6 +104,7 @@ Resolve
   ExportBurnInPreset(presetName, exportPath)      --> Bool               # Export a data burn in preset to a given path (string) if presetName (string) exists.
   GetKeyframeMode()                               --> keyframeMode       # Returns the currently set keyframe mode (int). Refer to section 'Keyframe Mode information' below for details.
   SetKeyframeMode(keyframeMode)                   --> Bool               # Returns True when 'keyframeMode'(enum) is successfully set. Refer to section 'Keyframe Mode information' below for details.
+  GetFairlightPresets()                           --> [presetNames...].  # Returns a list of Fairlight presets by name
 
 ProjectManager
   ArchiveProject(projectName,
@@ -111,7 +112,7 @@ ProjectManager
                  isArchiveSrcMedia=True,
                  isArchiveRenderCache=True,
                  isArchiveProxyMedia=False)       --> Bool               # Archives project to provided file path with the configuration as provided by the optional arguments
-  CreateProject(projectName)                      --> Project            # Creates and returns a project if projectName (string) is unique, and None if it is not.
+  CreateProject(projectName, mediaLocationPath)   --> Project            # Creates and returns a project if projectName (string) is unique, and None if it is not. Accepts an optional argument to set the media location path.
   DeleteProject(projectName)                      --> Bool               # Delete project in the current folder if not currently loaded
   LoadProject(projectName)                        --> Project            # Loads and returns the project with name = projectName (string) if there is a match found, and None if there is no matching Project.
   GetCurrentProject()                             --> Project            # Returns the currently loaded Resolve project.
@@ -197,6 +198,7 @@ Project
   GetColorGroupsList()                            --> [ColorGroups...]   # Returns a list of all group objects in the timeline.
   AddColorGroup(groupName)                        --> ColorGroup         # Creates a new ColorGroup. groupName must be a unique string.
   DeleteColorGroup(colorGroup)                    --> Bool               # Deletes the given color group and sets clips to ungrouped.
+  ApplyFairlightPresetToCurrentTimeline(name)     --> Bool               # Apply Fairlight Preset of given name to the current timeline, returns True if successful, False otherwise.
 
 MediaStorage
   GetMountedVolumeList()                          --> [paths...]         # Returns list of folder paths corresponding to mounted volumes displayed in Resolve’s Media Storage.
@@ -266,6 +268,7 @@ Folder
 
 MediaPoolItem
   GetName()                                       --> string             # Returns the clip name.
+  SetName(name)                                   --> bool               # Sets the clip's name to name(string). Returns True if successful
   GetMetadata(metadataType=None)                  --> string|dict        # Returns the metadata value for the key 'metadataType'.
                                                                          # If no argument is specified, a dict of all set metadata properties is returned.
   SetMetadata(metadataType, metadataValue)        --> Bool               # Sets the given metadata to metadataValue (string). Returns True if successful.
@@ -404,10 +407,11 @@ Timeline
   SetMarkInOut(in, out, type="all")               --> Bool               # Sets mark in/out of type "video", "audio" or "all" (default).
   ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
   GetVoiceIsolationState(trackIndex)              --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the given track index
-  SetVoiceIsolationState(trackIndex, {VoiceIsolationState}) --> Bool      # Sets Voice Isolation state of audio track with given trackIndex (int) to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100] and 1 <= trackIndex <= GetTrackCount("audio"). Returns True if successful.
+  SetVoiceIsolationState(trackIndex, {VoiceIsolationState}) --> Bool     # Sets Voice Isolation state of audio track with given trackIndex (int) to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100] and 1 <= trackIndex <= GetTrackCount("audio"). Returns True if successful.
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
+  SetName(name)                                   --> bool               # Sets the clip's name to name(string). Returns True if successful
   GetDuration(subframe_precision)                 --> int/float          # Returns the item duration. Returns fractional frames if subframe_precision is True
   GetEnd(subframe_precision)                      --> int/float          # Returns the end frame position on the timeline. Returns fractional frames if subframe_precision is True
   GetSourceEndFrame()                             --> int                # Returns the end frame position of the media pool clip in the timeline clip.
@@ -487,13 +491,14 @@ TimelineItem
   GetTrackTypeAndIndex()                          --> [trackType, trackIndex] # Returns a list of two values that correspond to the TimelineItem's trackType (string) and trackIndex (int) respectively.
                                                                            # trackType is one of {"audio", "video", "subtitle"}
                                                                            # 1 <= trackIndex <= Timeline.GetTrackCount(trackType)
-  GetSourceAudioChannelMapping()                 --> json formatted string # Returns a string with TimelineItem's audio mapping information. Check 'Audio Mapping' section below for more information.
+  GetSourceAudioChannelMapping()                  --> json formatted string # Returns a string with TimelineItem's audio mapping information. Check 'Audio Mapping' section below for more information.
   GetIsColorOutputCacheEnabled()                  --> cache_value        # Returns if the cache corresponding to cache_type is enabled
   GetIsFusionOutputCacheEnabled()                 --> cache_value        # Returns if the cache corresponding to cache_type is enabled (or auto)
   SetColorOutputCache(cache_value)                --> Bool               # Sets caching to enabled or disabled. Equivalent to clip context menu action 'Render Cache Color Output'.
   SetFusionOutputCache(cache_value)               --> Bool               # Sets caching to auto, enabled or disabled. Equivalent to clip context menu action 'Render Cache Fusion Output'.
   GetVoiceIsolationState()                        --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the timelineItem
-  SetVoiceIsolationState({VoiceIsolationState})    --> Bool               # Sets Voice Isolation state of the timelineItem to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100]. Returns True if successful.
+  SetVoiceIsolationState({VoiceIsolationState})   --> Bool               # Sets Voice Isolation state of the timelineItem to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100]. Returns True if successful.
+  ResetAllNodeColors()                            --> Bool               # Reset node color for all nodes in the active version of the clip. Returns True if successful.
 
 Gallery
   GetAlbumName(galleryStillAlbum)                 --> string              # Returns the name of the GalleryStillAlbum object 'galleryStillAlbum'.
@@ -585,7 +590,7 @@ Where syncMode is one of the following values:
 * resolve.CLOUD_SYNC_PROXY_ONLY,
 * resolve.CLOUD_SYNC_PROXY_AND_ORIG
 
-All four functions "ProjectManager:CreateCloudProject", "ProjectManager:LoadCloudProject", "ProjectManager:ImportCloudProject", and "ProjectManager:RestoreCloudProject" require resolve.PROJECT_MEDIA_PATH to be defined. 
+All four functions "ProjectManager:CreateCloudProject", "ProjectManager:LoadCloudProject", "ProjectManager:ImportCloudProject", and "ProjectManager:RestoreCloudProject" require resolve.PROJECT_MEDIA_PATH to be defined.
 "ProjectManager:LoadCloudProject" and "ProjectManager:CreateCloudProject" also requires resolve.PROJECT_NAME to be defined.
 
 Audio Sync Settings
@@ -789,6 +794,8 @@ The parameter setting is a dictionary containing the following keys:
     - "ClipStartFrame": int
     - "TimelineStartTimecode": string (example: "01:00:00:00")
     - "ReplaceExistingFilesInPlace": Bool
+    - "ExportSubtitle": Bool
+    - "SubtitleFormat": string (options: "BurnIn", "EmbeddedCaptions", "SeparateFile")
 
 Looking up timeline export properties
 -------------------------------------

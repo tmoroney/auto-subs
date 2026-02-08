@@ -139,3 +139,28 @@ export interface TranscriptionOptions {
     enableDiarize: boolean,
     maxSpeakers: number | null,
 }
+
+// Formatting options for reformatting subtitles without re-transcribing
+export interface FormattingOptions {
+    maxCharsPerLine?: number,
+    maxLines?: number,
+    cpsCap?: number,
+    splitGapSec?: number,
+    minSubDur?: number,
+    maxSubDur?: number,
+    language?: string,
+}
+
+// Segment format expected by the backend reformat command
+export interface BackendSegment {
+    start: number,
+    end: number,
+    text: string,
+    speaker_id?: string,
+    words?: Array<{
+        word: string,
+        start: number,
+        end: number,
+        probability?: number,
+    }>,
+}

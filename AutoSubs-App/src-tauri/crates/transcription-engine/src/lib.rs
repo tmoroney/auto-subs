@@ -15,7 +15,7 @@ pub use vad::get_segments;
 pub use types::{TranscribeOptions, Segment, WordTimestamp, ProgressType};
 pub use model_manager::ModelManager;
 pub use utils::{get_translate_languages, get_whisper_languages};
-pub use formatting::{PostProcessConfig, process_segments, FormattingOverrides};
+pub use formatting::{PostProcessConfig, process_segments, FormattingOverrides, apply_overrides};
 
 /// Convenience function to list all cached Whisper models.
 /// Creates a temporary Engine with default config (except cache_dir) to access the cache.
