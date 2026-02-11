@@ -2,7 +2,7 @@
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global
 local ffi = ffi
-local resolve = resolve
+local resolve = Resolve()
 
 local DEV_MODE = false
 
@@ -70,9 +70,8 @@ end
 
 -- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
 function hexToRgb(hex)
-    local result = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
-    if result then
-        local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
+    local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
+    if r then
         return {
             r = tonumber(r, 16) / 255,
             g = tonumber(g, 16) / 255,
@@ -91,11 +90,12 @@ end
 -- Pause execution for a specified number of seconds (platform-independent)
 function sleep(n)
     if ffi.os == "Windows" then
-        -- Windows
         ffi.C.Sleep(n * 1000)
     else
-        -- Unix-based (Linux, macOS)
-        os.execute("sleep " .. tonumber(n))
+        local ts = ffi.new("struct timespec")
+        ts.tv_sec = math.floor(n)
+        ts.tv_nsec = (n - math.floor(n)) * 1e9
+        ffi.C.nanosleep(ts, nil)
     end
 end
 
@@ -165,9 +165,10 @@ function GetTemplates()
     local hasDefault = false
 
     walk_media_pool(rootFolder, function(clip)
-        local clipType = clip:GetClipProperty()["Type"]
+        local props = clip:GetClipProperty()
+        local clipType = props["Type"]
         if isMatchingTitle(clipType) then
-            local clipName = clip:GetClipProperty()["Clip Name"]
+            local clipName = props["Clip Name"]
             table.insert(t, { label = clipName, value = clipName })
             if clipName == "Default Template" then
                 hasDefault = true
@@ -192,7 +193,8 @@ end
 function GetTemplateItem(folder, templateName)
     local found = nil
     walk_media_pool(folder, function(clip)
-        if clip:GetClipProperty()["Clip Name"] == templateName then
+        local props = clip:GetClipProperty()
+        if props["Clip Name"] == templateName then
             found = clip
             return true -- early stop traversal
         end
@@ -1094,12 +1096,16 @@ function GeneratePreview(speaker, templateName, exportDir)
     return outputPath
 end
 
-local function set_cors_headers(client)
-    client:send("HTTP/1.1 200 OK\r\n")
-    client:send("Access-Control-Allow-Origin: *\r\n")
-    client:send("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-    client:send("Access-Control-Allow-Headers: Content-Type\r\n")
-    client:send("\r\n")
+-- Minimal JSON helper to avoid crashes if `json` is unavailable
+local function safe_json(obj)
+    if json and json.encode then
+        return json.encode(obj)
+    end
+    if obj and obj.message ~= nil then
+        local msg = tostring(obj.message):gsub('"', '\\"')
+        return '{"message":"' .. msg .. '"}'
+    end
+    return "{}"
 end
 
 function LaunchApp()
@@ -1177,13 +1183,14 @@ function StartServer()
 
     assert(server:listen())
     print("AutoSubs server is listening on port: ", PORT)
+    print("Press Ctrl+C to stop the server")
 
     -- Launch app if not in dev mode
     if not DEV_MODE then
         LaunchApp()
     end
 
-    -- Server loop
+    -- Server loop with signal handling
     local quitServer = false
     while not quitServer do
         -- Server loop to handle client connections
@@ -1236,18 +1243,6 @@ function StartServer()
                         content = string.sub(request, sep_end + 1)
                     end
                     print("Received request:", content)
-
-                    -- Minimal JSON helper to avoid crashes if `json` is unavailable
-                    local function safe_json(obj)
-                        if json and json.encode then
-                            return json.encode(obj)
-                        end
-                        if obj and obj.message ~= nil then
-                            local msg = tostring(obj.message):gsub('"', '\\"')
-                            return '{"message":"' .. msg .. '"}'
-                        end
-                        return "{}"
-                    end
 
                     -- Parse the JSON content safely (avoid crashes if body is missing/partial)
                     local data, pos, jerr = nil, nil, nil
@@ -1306,6 +1301,8 @@ function StartServer()
                             elseif data.func == "Exit" then
                                 body = safe_json({ message = "Server shutting down" })
                                 quitServer = true
+                            elseif data.func == "Ping" then
+                                body = safe_json({ message = "Pong" })
                             else
                                 print("Invalid function name")
                             end
@@ -1342,7 +1339,7 @@ function StartServer()
 
                     -- Send HTTP response content (don't assert to avoid crashing on client disconnect)
                     local response = CreateResponse(body)
-                    print(response)
+                    if DEV_MODE then print(response) end
                     local sent, sendErr = client:send(response)
                     if not sent then
                         print("Send failed:", sendErr or "unknown")
@@ -1384,7 +1381,11 @@ local AutoSubs = {
             resources_path = resources_folder
             command_open = 'start "" "' .. main_app .. '"'
         else
-            ffi.cdef [[ int system(const char *command); ]]
+            ffi.cdef [[
+                int system(const char *command);
+                struct timespec { long tv_sec; long tv_nsec; };
+                int nanosleep(const struct timespec *req, struct timespec *rem);
+            ]]
 
             if ffi.os == "OSX" then
                 main_app = executable_path

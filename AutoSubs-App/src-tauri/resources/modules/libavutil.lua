@@ -71,6 +71,7 @@ luaresolve =
 	},
 
 	load_library = function(name_pattern)
+		local fu = Fusion()
 		local files = bmd.readdir(fu:MapPath("FusionLibs:"..iif(ffi.os == "Windows", "", "../"))..name_pattern)
 		assert(#files == 1 and files[1].IsDir == false, string.format("Couldn't find exact match for pattern \"%s.\"", name_pattern))
 		return ffi.load(files.Parent..files[1].Name)
