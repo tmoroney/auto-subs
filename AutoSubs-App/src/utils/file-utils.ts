@@ -2,7 +2,6 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
-import { reformatSubtitles } from './formatting-api';
 import { applyTextFormattingToSubtitle } from './subtitle-formatter';
 
 // Get the transcripts storage directory
@@ -73,7 +72,9 @@ function interpolateWordsFromText(text: string, start: number, end: number) {
   }));
 }
 
-// Save a new transcript to JSON file
+// Save a new transcript to JSON file.
+// Segments are assumed to already be structurally split by the Rust backend.
+// This function only applies content formatting (case, punctuation, censoring).
 export async function saveTranscript(
   transcript: any,
   filename: string,
@@ -81,9 +82,6 @@ export async function saveTranscript(
     case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
     removePunctuation: boolean;
     censoredWords: string[];
-    maxLinesPerSubtitle: number;
-    textDensity: "less" | "standard" | "more";
-    language: string;
   }
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
@@ -110,17 +108,10 @@ export async function saveTranscript(
       };
     });
 
-    // Apply formatting if options are provided
+    // Apply content formatting only (case, punctuation, censoring).
+    // Structural splitting (line breaks, cue boundaries) is already done by Rust.
     let segments: Subtitle[] = originalSegments;
     if (formatOptions) {
-      // 1. Structural splitting via Rust backend
-      segments = await reformatSubtitles(originalSegments, {
-        maxLines: formatOptions.maxLinesPerSubtitle,
-        textDensity: formatOptions.textDensity,
-        language: formatOptions.language,
-      });
-
-      // 2. Content formatting (case, punctuation, censoring) in JS
       segments = segments.map(sub =>
         applyTextFormattingToSubtitle(sub, {
           case: formatOptions.case,

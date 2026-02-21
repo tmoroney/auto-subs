@@ -251,19 +251,24 @@ export function DesktopSubtitleViewer() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-medium">Max chars per line</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">Text Density</Label>
+                  <div className="flex items-center space-x-2">
+                    <Select
+                      value={settings.textDensity}
+                      onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more")}
+                    >
+                      <SelectTrigger className="w-24 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="less">Less</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="more">More</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <Input
-                  type="number"
-                  min="0"
-                  value={String(settings.maxCharsPerLine)}
-                  onChange={(e) => updateSetting("maxCharsPerLine", Number(e.target.value))}
-                  className="w-24"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm font-medium">Max lines per subtitle</Label>
                 </div>

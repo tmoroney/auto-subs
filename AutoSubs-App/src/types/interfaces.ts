@@ -108,7 +108,7 @@ export interface Settings {
     enableGpu: boolean,
 
     // Text settings
-    maxCharsPerLine: number,
+    textDensity: "less" | "standard" | "more",
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,
     textCase: "none" | "uppercase" | "lowercase" | "titlecase";
@@ -138,6 +138,7 @@ export interface TranscriptionOptions {
     enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    density: "less" | "standard" | "more",
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

@@ -61,6 +61,7 @@ pub struct FrontendTranscribeOptions {
     pub enable_gpu: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
+    pub density: Option<TextDensity>,
 }
 
 #[command]
@@ -245,7 +246,7 @@ pub async fn transcribe_audio<R: Runtime>(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
                 None, // max_lines
-                None, // density
+                options.density, // density
                 Some(callbacks),
             )
             .await

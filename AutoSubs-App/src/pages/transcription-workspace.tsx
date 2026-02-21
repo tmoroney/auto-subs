@@ -183,6 +183,7 @@ export const TranscriptionWorkspace = () => {
                 enableGpu: settings.enableGpu,
                 enableDiarize: settings.enableDiarize,
                 maxSpeakers: settings.maxSpeakers,
+                density: settings.textDensity,
             }
             console.log("Invoking transcribe_audio with options:", options)
 

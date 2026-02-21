@@ -29,6 +29,7 @@ mod tests {
             enable_gpu: Some(true),
             enable_diarize: Some(false),
             max_speakers: None,
+            density: None,
         };
 
         let res = transcribe_audio(handle, options).await;
@@ -70,6 +71,7 @@ mod tests {
             enable_gpu: Some(true),
             enable_diarize: Some(true),
             max_speakers: None,
+            density: None,
         };
 
         let res = transcribe_audio(handle, options).await;

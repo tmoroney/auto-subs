@@ -5,12 +5,14 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
-import { 
-  generateTranscriptFilename, 
-  readTranscript, 
-  saveTranscript, 
-  updateTranscript 
+import {
+  generateTranscriptFilename,
+  readTranscript,
+  saveTranscript,
+  updateTranscript
 } from '../utils/file-utils';
+import { reformatSubtitles as rustReformatSubtitles } from '@/utils/formatting-api';
+import { applyTextFormattingToSubtitle } from '@/utils/subtitle-formatter';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 
 interface TranscriptContextType {
@@ -128,9 +130,6 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       case: settings.textCase,
       removePunctuation: settings.removePunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
-      textDensity: "standard",
-      language: settings.language,
     })
     console.log("Transcript saved to:", filename)
 
@@ -151,17 +150,34 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     }
 
     setCurrentTranscriptFilename(filename);
-    const { segments, speakers } = await saveTranscript(transcript, filename, {
-      case: settings.textCase,
-      removePunctuation: settings.removePunctuation,
-      censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+    const originalSegments: Subtitle[] = transcript.originalSegments || transcript.segments || [];
+
+    // 1. Structural splitting via Rust (from original word-level data)
+    let segments = await rustReformatSubtitles(originalSegments, {
+      maxLines: settings.maxLinesPerSubtitle,
       textDensity: "standard",
       language: settings.language,
     });
-    console.log("Subtitle list updated with", segments.length, "subtitles");
-    setSpeakers(speakers);
-    setSubtitles(segments);
+
+    // 2. Content formatting in JS (case, punctuation, censoring)
+    const censoredWords = settings.enableCensor ? settings.censoredWords : [];
+    segments = segments.map(sub =>
+      applyTextFormattingToSubtitle(sub, {
+        case: settings.textCase,
+        removePunctuation: settings.removePunctuation,
+        censoredWords,
+      })
+    );
+
+    // 3. Save and update state
+    const speakers: Speaker[] = transcript.speakers || [];
+    const { segments: savedSegments, speakers: savedSpeakers } = await saveTranscript(
+      { ...transcript, segments, originalSegments, speakers },
+      filename,
+    );
+    console.log("Subtitle list updated with", savedSegments.length, "subtitles");
+    setSpeakers(savedSpeakers);
+    setSubtitles(savedSegments);
   };
 
   async function exportSubtitlesAs(
@@ -272,9 +288,6 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
         case: settings.textCase,
         removePunctuation: settings.removePunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
-        maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
-        textDensity: "standard",
-        language: settings.language,
       });
       setSubtitles(segments)
     } catch (error) {

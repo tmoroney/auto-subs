@@ -419,37 +419,38 @@ export function ActionBar({
                                         <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
                                         <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
                                     </div>
-                                    <div className="w-36">
-                                        <Select
-                                            value={settings.textCase}
-                                            onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent align="end">
-                                                <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
-                                                <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
-                                                <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
-                                                <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    <Select
+                                        value={settings.textCase}
+                                        onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
+                                    >
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent align="end">
+                                            <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
+                                            <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
+                                            <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
+                                            <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
-                                {/* Character Limit */}
+                                {/* Text Density */}
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <Label className="text-sm font-medium">{t("actionBar.format.characterLimitTitle")}</Label>
-                                        <p className="text-xs text-muted-foreground">{t("actionBar.format.characterLimitDescription")}</p>
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        value={settings.maxCharsPerLine}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("maxCharsPerLine", Number(e.target.value))}
-                                        className="w-20"
-                                    />
+                                    <Label className="text-sm font-medium">Text Density</Label>
+                                    <Select
+                                        value={settings.textDensity}
+                                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more")}
+                                    >
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="less">Less</SelectItem>
+                                            <SelectItem value="standard">Standard</SelectItem>
+                                            <SelectItem value="more">More</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Line Count */}

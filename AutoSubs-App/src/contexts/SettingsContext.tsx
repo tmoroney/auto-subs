@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   maxSpeakers: null,
 
   // Text settings
-  maxCharsPerLine: 0,
+  textDensity: "standard",
   maxLinesPerSubtitle: 1,
   splitOnPunctuation: true,
   textCase: "none",
