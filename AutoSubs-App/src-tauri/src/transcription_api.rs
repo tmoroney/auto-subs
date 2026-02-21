@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
-use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType, FormattingOverrides, PostProcessConfig, process_segments, apply_overrides};
+use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType, PostProcessConfig, process_segments, TextDensity};
 
 // Frontend-compatible progress data type
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -232,9 +232,6 @@ pub async fn transcribe_audio<R: Runtime>(
             })),
         };
 
-        // No formatting overrides - frontend handles formatting
-        let formatting_overrides = None;
-
         // Check for cancellation before starting transcription
         if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
             if *should_cancel {
@@ -247,7 +244,8 @@ pub async fn transcribe_audio<R: Runtime>(
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
-                formatting_overrides,
+                None, // max_lines
+                None, // density
                 Some(callbacks),
             )
             .await
@@ -489,27 +487,9 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FrontendFormattingOptions {
-    pub max_chars_per_line: Option<usize>,
-    pub max_lines: Option<usize>,
-    pub cps_cap: Option<f64>,
-    pub split_gap_sec: Option<f64>,
-    pub min_sub_dur: Option<f64>,
-    pub max_sub_dur: Option<f64>,
     pub language: Option<String>,
-}
-
-impl FrontendFormattingOptions {
-    fn to_overrides(&self) -> FormattingOverrides {
-        FormattingOverrides {
-            max_chars_per_line: self.max_chars_per_line,
-            max_lines: self.max_lines,
-            cps_cap: self.cps_cap,
-            split_gap_sec: self.split_gap_sec,
-            min_sub_dur: self.min_sub_dur,
-            max_sub_dur: self.max_sub_dur,
-            ..Default::default()
-        }
-    }
+    pub max_lines: Option<usize>,
+    pub text_density: Option<String>,
 }
 
 /// Reformat subtitles with new formatting options without re-transcribing.
@@ -545,14 +525,21 @@ pub async fn reformat_subtitles(
         })
         .collect();
 
-    // Build config from language profile, then apply overrides
+    // Build config from language profile, then apply density and max_lines
     let lang = options.language.as_deref().unwrap_or("en");
     let mut config = PostProcessConfig::for_language(lang);
-    let overrides = options.to_overrides();
-    apply_overrides(&mut config, &overrides);
+
+    if let Some(ref density_str) = options.text_density {
+        let density: TextDensity = serde_json::from_value(serde_json::Value::String(density_str.clone()))
+            .unwrap_or(TextDensity::Standard);
+        config.apply_density(density);
+    }
+    if let Some(ml) = options.max_lines {
+        config.max_lines = ml;
+    }
 
     // Run the formatting engine
-    let formatted = process_segments(&engine_segments, &config, None);
+    let formatted = process_segments(&engine_segments, &config);
 
     // Convert back to app segments
     let result: Vec<Segment> = formatted

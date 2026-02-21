@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use eyre::eyre;
 use crate::types::{SpeechSegment, DiarizeOptions, LabeledProgressFn, NewSegmentFn, Segment};
-use crate::formatting::{VadMaskOracle, process_segments, SilenceOracle, PostProcessConfig, FormattingOverrides, apply_overrides};
+use crate::formatting::{process_segments, PostProcessConfig, TextDensity};
 
 use crate::engines::moonshine::{is_moonshine_model, moonshine_variant_from_model_name};
 
@@ -71,7 +71,8 @@ impl Engine {
         &mut self,
         audio_path: &str,
         options: crate::TranscribeOptions,
-        formatting_overrides: Option<FormattingOverrides>,
+        max_lines: Option<usize>,
+        density: Option<TextDensity>,
         cb: Option<Callbacks<'_>>,
     ) -> eyre::Result<Vec<Segment>> {
         let cb = cb.unwrap_or_default();
@@ -104,7 +105,6 @@ impl Engine {
         let original_samples = crate::audio::read_wav(&audio_path)?;
 
         let mut speech_segments: Vec<SpeechSegment> = Vec::new();
-        let mut vad_mask: Option<VadMaskOracle> = None;
 
         if let Some(true) = options.enable_diarize {
             let seg_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/segmentation-community-1.onnx";
@@ -161,10 +161,8 @@ impl Engine {
 
             // `vad::get_segments` expects a &str path; convert from PathBuf
             let vad_model_path_str = vad_model_path.to_string_lossy().to_string();
-            let (mask, merged) = crate::vad::get_segments(&vad_model_path_str, &original_samples)
+            speech_segments = crate::vad::get_segments(&vad_model_path_str, &original_samples)
                 .map_err(|e| eyre!("{:?}", e))?;
-            speech_segments = merged;
-            vad_mask = Some(VadMaskOracle::new(mask));
         }
         else {
             speech_segments = vec![SpeechSegment {
@@ -248,15 +246,12 @@ impl Engine {
             }
         }
 
-        // Build a config from the chosen preset; then apply optional overrides.
+        // Build a config from the chosen preset; apply density and max_lines.
         let mut pp_cfg = PostProcessConfig::for_language(effective_lang);
-        if let Some(ov) = &formatting_overrides { apply_overrides(&mut pp_cfg, ov); }
+        if let Some(d) = density { pp_cfg.apply_density(d); }
+        if let Some(ml) = max_lines { pp_cfg.max_lines = ml; }
 
-        Ok(process_segments(
-            &segments,
-            &pp_cfg,
-            vad_mask.as_ref().map(|o| o as &dyn SilenceOracle),
-        ))
+        Ok(process_segments(&segments, &pp_cfg))
     }
 
     // TODO: Make equivalent functions for Parakeet and Moonshine models - also possibly merge with delete_cached_model

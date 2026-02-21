@@ -142,12 +142,8 @@ export interface TranscriptionOptions {
 
 // Formatting options for reformatting subtitles without re-transcribing
 export interface FormattingOptions {
-    maxCharsPerLine?: number,
     maxLines?: number,
-    cpsCap?: number,
-    splitGapSec?: number,
-    minSubDur?: number,
-    maxSubDur?: number,
+    textDensity?: "less" | "standard" | "more",
     language?: string,
 }
 

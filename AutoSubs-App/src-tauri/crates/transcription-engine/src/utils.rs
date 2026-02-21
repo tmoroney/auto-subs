@@ -58,6 +58,43 @@ pub fn cs_to_s(cs: i64) -> f64 {
     cs as f64 * 0.01
 }
 
+/// Generate approximate per-word timestamps by interpolating across [start, end]
+/// proportional to word lengths. Used when real word-level timestamps are unavailable
+/// (e.g. translation output, Moonshine).
+pub fn interpolate_word_timestamps(line: &str, start: f64, end: f64) -> Vec<crate::types::WordTimestamp> {
+    let dur = (end - start).max(0.0);
+    if dur <= 0.0 { return Vec::new(); }
+
+    let tokens: Vec<&str> = line
+        .split_whitespace()
+        .filter(|t| !t.trim_matches('\0').trim().is_empty())
+        .collect();
+    if tokens.is_empty() { return Vec::new(); }
+
+    let weights: Vec<usize> = tokens
+        .iter()
+        .map(|t| t.chars().filter(|c| c.is_alphanumeric()).count().max(1))
+        .collect();
+    let total_w: usize = weights.iter().sum();
+    if total_w == 0 { return Vec::new(); }
+
+    let mut out = Vec::with_capacity(tokens.len());
+    let mut acc = 0usize;
+    for (i, tok) in tokens.iter().enumerate() {
+        let t0 = start + (acc as f64 / total_w as f64) * dur;
+        let t1 = if i + 1 == tokens.len() {
+            end
+        } else {
+            start + ((acc + weights[i]) as f64 / total_w as f64) * dur
+        };
+        acc += weights[i];
+        // Prefix non-first words with a space so formatting.rs can detect word boundaries
+        let text = if i == 0 { (*tok).to_string() } else { format!(" {}", tok) };
+        out.push(crate::types::WordTimestamp { text, start: t0, end: t1, probability: None });
+    }
+    out
+}
+
 /// List of supported target language codes for Google Translate (unofficial endpoint).
 pub fn get_translate_languages() -> Vec<&'static str> {
     vec![

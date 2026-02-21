@@ -1,4 +1,4 @@
-use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
+use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use eyre::{Result, eyre};
 use std::path::Path;
 use transcribe_rs::{
@@ -9,44 +9,7 @@ use transcribe_rs::{
 const SAMPLE_RATE: usize = 16000;
 const MAX_SEGMENT_SECONDS: f64 = 64.0;
 
-fn interpolate_word_timestamps(line: &str, start: f64, end: f64) -> Vec<WordTimestamp> {
-    let dur = (end - start).max(0.0);
-    if dur <= 0.0 { return Vec::new(); }
-
-    let tokens: Vec<&str> = line
-        .split_whitespace()
-        .filter(|t| !t.trim_matches('\0').trim().is_empty())
-        .collect();
-    if tokens.is_empty() { return Vec::new(); }
-
-    let weights: Vec<usize> = tokens
-        .iter()
-        .map(|t| t.chars().filter(|c| c.is_alphanumeric()).count().max(1))
-        .collect();
-    let total_w: usize = weights.iter().sum();
-    if total_w == 0 { return Vec::new(); }
-
-    let mut out: Vec<WordTimestamp> = Vec::with_capacity(tokens.len());
-    let mut acc = 0usize;
-    for (i, tok) in tokens.iter().enumerate() {
-        let t0 = start + (acc as f64 / total_w as f64) * dur;
-        let t1 = if i + 1 == tokens.len() {
-            end
-        } else {
-            start + ((acc + weights[i]) as f64 / total_w as f64) * dur
-        };
-        acc += weights[i];
-        // formatting.rs infers `leading_space` from WordTimestamp.text starting with a space/newline.
-        // Without this, it treats every token as a continuation piece and may merge whole sentences.
-        let text = if i == 0 {
-            (*tok).to_string()
-        } else {
-            format!(" {}", tok)
-        };
-        out.push(WordTimestamp { text, start: t0, end: t1, probability: None });
-    }
-    out
-}
+use crate::utils::interpolate_word_timestamps;
 
 fn split_speech_segment(seg: &SpeechSegment, max_seconds: f64) -> Vec<SpeechSegment> {
     let max_samples = (max_seconds * SAMPLE_RATE as f64) as usize;

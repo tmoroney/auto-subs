@@ -2,7 +2,8 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
-import { splitAndFormatSubtitles } from "./subtitle-formatter";
+import { reformatSubtitles } from './formatting-api';
+import { applyTextFormattingToSubtitle } from './subtitle-formatter';
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -79,10 +80,10 @@ export async function saveTranscript(
   formatOptions?: {
     case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
     removePunctuation: boolean;
-    splitOnPunctuation: boolean;
     censoredWords: string[];
-    maxCharsPerLine: number;
     maxLinesPerSubtitle: number;
+    textDensity: "less" | "standard" | "more";
+    language: string;
   }
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
@@ -112,7 +113,21 @@ export async function saveTranscript(
     // Apply formatting if options are provided
     let segments: Subtitle[] = originalSegments;
     if (formatOptions) {
-      segments = splitAndFormatSubtitles(originalSegments, formatOptions);
+      // 1. Structural splitting via Rust backend
+      segments = await reformatSubtitles(originalSegments, {
+        maxLines: formatOptions.maxLinesPerSubtitle,
+        textDensity: formatOptions.textDensity,
+        language: formatOptions.language,
+      });
+
+      // 2. Content formatting (case, punctuation, censoring) in JS
+      segments = segments.map(sub =>
+        applyTextFormattingToSubtitle(sub, {
+          case: formatOptions.case,
+          removePunctuation: formatOptions.removePunctuation,
+          censoredWords: formatOptions.censoredWords,
+        })
+      );
     }
 
     // Speakers are now aggregated in the Rust backend and included in the transcript

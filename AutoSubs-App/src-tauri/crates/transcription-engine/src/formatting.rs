@@ -32,38 +32,17 @@ struct Tok {
 #[inline]
 fn round3(x: f64) -> f64 { (x * 1000.0).round() / 1000.0 }
 
-/// Optional overrides that can be applied on top of a language/profile preset.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct FormattingOverrides {
-    pub max_chars_per_line: Option<usize>,
-    pub max_lines: Option<usize>,
-    pub cps_cap: Option<f64>,
-    pub split_gap_sec: Option<f64>,
-    pub comma_min_chars_before_allow: Option<usize>,
-    pub min_word_dur: Option<f64>,
-    pub min_sub_dur: Option<f64>,
-    pub max_sub_dur: Option<f64>,
-    pub soft_max_words_per_line: Option<usize>,
-    pub insert_interword_space: Option<bool>,
-    pub use_grapheme_len: Option<bool>,
-    pub enforce_kinsoku: Option<bool>,
-    pub allow_comma_split: Option<bool>,
+/// User-facing text density control that scales `max_chars_per_line`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TextDensity {
+    Less,
+    Standard,
+    More,
 }
 
-pub fn apply_overrides(cfg: &mut PostProcessConfig, ov: &FormattingOverrides) {
-    if let Some(v) = ov.max_chars_per_line { cfg.max_chars_per_line = v; }
-    if let Some(v) = ov.max_lines { cfg.max_lines = v; }
-    if let Some(v) = ov.cps_cap { cfg.cps_cap = v; }
-    if let Some(v) = ov.split_gap_sec { cfg.split_gap_sec = v; }
-    if let Some(v) = ov.comma_min_chars_before_allow { cfg.comma_min_chars_before_allow = v; }
-    if let Some(v) = ov.min_word_dur { cfg.min_word_dur = v; }
-    if let Some(v) = ov.min_sub_dur { cfg.min_sub_dur = v; }
-    if let Some(v) = ov.max_sub_dur { cfg.max_sub_dur = v; }
-    if let Some(v) = ov.soft_max_words_per_line { cfg.soft_max_words_per_line = v; }
-    if let Some(v) = ov.insert_interword_space { cfg.insert_interword_space = v; }
-    if let Some(v) = ov.use_grapheme_len { cfg.use_grapheme_len = v; }
-    if let Some(v) = ov.enforce_kinsoku { cfg.enforce_kinsoku = v; }
-    if let Some(v) = ov.allow_comma_split { cfg.allow_comma_split = v; }
+impl Default for TextDensity {
+    fn default() -> Self { Self::Standard }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,8 +63,6 @@ pub struct PostProcessConfig {
     pub min_sub_dur: f64,          // e.g., 1.0
     /// Maximum duration per subtitle cue
     pub max_sub_dur: f64,          // e.g., 6.0
-    /// Optional soft cap on words per line (0 disables)
-    pub soft_max_words_per_line: usize, // e.g., 10
     pub insert_interword_space: bool,   // false for CJK
     pub use_grapheme_len: bool,         // true outside ASCII-only
     pub enforce_kinsoku: bool,          // true for JA
@@ -103,7 +80,6 @@ impl Default for PostProcessConfig {
             min_word_dur: 0.10,
             min_sub_dur: 1.0,
             max_sub_dur: 6.0,
-            soft_max_words_per_line: 0,
             insert_interword_space: true,
             use_grapheme_len: true,
             enforce_kinsoku: false,
@@ -123,6 +99,16 @@ impl PostProcessConfig {
     /// Build a config from a language code by inferring the appropriate ScriptProfile.
     pub fn for_language(lang: &str) -> Self {
         Self::with_profile(profile_for_lang(lang))
+    }
+
+    /// Scale `max_chars_per_line` by density factor (~0.7 / 1.0 / 1.3).
+    pub fn apply_density(&mut self, density: TextDensity) {
+        let factor = match density {
+            TextDensity::Less => 0.7,
+            TextDensity::Standard => 1.0,
+            TextDensity::More => 1.3,
+        };
+        self.max_chars_per_line = ((self.max_chars_per_line as f64) * factor).round() as usize;
     }
 
     /// Convenience constructors for common profiles
@@ -196,54 +182,11 @@ pub fn profile_for_lang(lang: &str) -> ScriptProfile {
     }
 }
 
-/// Optional oracle to refine silence decisions; connect your VAD here if available.
-pub trait SilenceOracle {
-    /// Return true if [t0, t1] is considered non-speech (or mostly so)
-    fn is_silence(&self, t0: f64, t1: f64) -> bool;
-}
-
-/// Dummy oracle that always returns false (no extra silence knowledge).
-pub struct NoSilence;
-impl SilenceOracle for NoSilence { fn is_silence(&self, _t0: f64, _t1: f64) -> bool { false } }
-
-/// Oracle backed by a list of speech intervals (start,end in seconds).
-/// `is_silence([t0,t1])` returns true if the interval does not overlap any speech range.
-#[derive(Clone, Debug)]
-pub struct VadMaskOracle {
-    pub mask: Vec<(f64, f64)>,
-}
-
-impl VadMaskOracle {
-    pub fn new(mut mask: Vec<(f64, f64)>) -> Self {
-        // Ensure mask is normalized: sort and drop empty/negative ranges
-        mask.retain(|(s, e)| e > s);
-        mask.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        Self { mask }
-    }
-}
-
-impl SilenceOracle for VadMaskOracle {
-    fn is_silence(&self, t0: f64, t1: f64) -> bool {
-        if t1 <= t0 { return true; }
-        // If any speech interval overlaps [t0, t1], it's not silence
-        for (s0, s1) in &self.mask {
-            if *s1 <= t0 { continue; }
-            if *s0 >= t1 { break; }
-            // overlap exists
-            if *s1 > t0 && *s0 < t1 { return false; }
-        }
-        true
-    }
-}
-
 /// Main entry: post-process whisper segments into readable subtitle cues.
 pub fn process_segments(
     segments: &[Segment],
     cfg: &PostProcessConfig,
-    oracle: Option<&dyn SilenceOracle>,
 ) -> Vec<Segment> {
-    let oracle = oracle.unwrap_or(&NoSilence);
-
     // 1) Collect words from all segments, keep speaker_id continuity.
     let mut all: Vec<(Option<String>, WordTimestamp)> = Vec::new();
     for seg in segments {
@@ -291,8 +234,8 @@ pub fn process_segments(
     // 3) Merge subword continuation pieces (right token without leading space) into the previous token.
     merge_continuations(&mut toks);
 
-    // 4) Clamp tiny words and adjust boundaries using gaps and (optional) silence oracle.
-    clamp_and_merge_tiny_words(&mut toks, cfg, oracle);
+    // 4) Clamp tiny words and adjust boundaries using gaps.
+    clamp_and_merge_tiny_words(&mut toks, cfg);
 
     // 5) Partition into groups by strong punctuation and long gaps.
     let groups = split_into_groups(&toks, cfg);
@@ -313,6 +256,13 @@ pub fn process_segments(
 }
 
 // === Implementation details ===
+
+// Line-split scoring constants (lower score = better split point).
+const BONUS_TERMINAL_PUNCT: f64 = 1.0;  // strong: sentence boundary is ideal
+const BONUS_COMMA: f64 = 0.4;           // moderate: comma is a natural pause
+const BONUS_LONG_GAP: f64 = 0.5;        // moderate: audible pause suggests a break
+const COST_FUNCTION_WORD: f64 = 0.3;    // mild: avoid orphaning "the", "a", etc.
+const COST_MID_WORD: f64 = 5.0;         // extreme: never break inside a word
 
 #[inline]
 fn is_ascii_word(s: &str) -> bool {
@@ -357,17 +307,15 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
 }
 
 fn split_trailing_punct(s: &str) -> (&str, &str) {
-    let bytes = s.as_bytes();
-    let mut cut = s.len();
-    // Rough ASCII/Latin punctuation set; fine for most cases. Add more if you need.
-    // Note: don’t strip apostrophes in contractions.
-    let is_punc = |c: u8| match c as char {
-        '.' | '!' | '?' | ',' | ';' | ':' | '…' | '。' | '！' | '？' | '、' | '，' | '—' | '–' | ')' | ']' | '}' | '"' => true,
-        _ => false,
-    };
-    for (idx, &b) in bytes.iter().enumerate().rev() {
-        if is_punc(b) { cut = idx; } else { break; }
-    }
+    let is_punc = |c: char| matches!(c,
+        '.' | '!' | '?' | ',' | ';' | ':' | '…' | '。' | '！' | '？' | '、' | '，' | '—' | '–' | ')' | ']' | '}' | '"'
+    );
+    // Walk backwards by char to correctly handle multi-byte Unicode punctuation
+    let cut = s.char_indices().rev()
+        .take_while(|&(_, c)| is_punc(c))
+        .last()
+        .map(|(idx, _)| idx)
+        .unwrap_or(s.len());
     if cut < s.len() { (&s[..cut], &s[cut..]) } else { (s, "") }
 }
 
@@ -377,36 +325,26 @@ fn is_terminal_punct(p: &str) -> bool {
 
 fn is_comma_like(p: &str) -> bool { matches!(p, "," | "，" | "、" | ";") }
 
-fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig, oracle: &dyn SilenceOracle) {
+fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig) {
     if toks.is_empty() { return; }
 
-    // First pass: clamp boundaries against neighbors and silence.
-    for i in 0..toks.len() {
-        // Clamp to min duration
-        let dur = toks[i].end - toks[i].start;
+    // First pass: expand tokens that are shorter than min_word_dur.
+    for t in toks.iter_mut() {
+        let dur = t.end - t.start;
         if dur < cfg.min_word_dur {
             let grow = (cfg.min_word_dur - dur) / 2.0;
-            toks[i].start -= grow;
-            toks[i].end += grow;
+            t.start -= grow;
+            t.end += grow;
         }
-        // Avoid crossing neighbor midpoints
-        if i > 0 {
+    }
+
+    // Second pass: resolve overlaps between adjacent tokens.
+    // Each boundary is handled exactly once by only looking backward.
+    for i in 1..toks.len() {
+        if toks[i - 1].end > toks[i].start {
             let mid = 0.5 * (toks[i - 1].end + toks[i].start);
-            toks[i - 1].end = toks[i - 1].end.min(mid);
-            toks[i].start = toks[i].start.max(mid);
-        }
-        if i + 1 < toks.len() {
-            let mid = 0.5 * (toks[i].end + toks[i + 1].start);
-            toks[i].end = toks[i].end.min(mid);
-            toks[i + 1].start = toks[i + 1].start.max(mid);
-        }
-        // Snap tiny interior silences to edges if oracle says it’s silence
-        let pad = 0.02;
-        if oracle.is_silence(toks[i].start - pad, toks[i].start) {
-            toks[i].start += pad;
-        }
-        if oracle.is_silence(toks[i].end, toks[i].end + pad) {
-            toks[i].end -= pad;
+            toks[i - 1].end = mid;
+            toks[i].start = mid;
         }
     }
 
@@ -550,42 +488,43 @@ fn split_into_lines(slice: &[Tok], cfg: &PostProcessConfig) -> Vec<String> {
     }
     if cands.is_empty() { return vec![render_slice(slice, cfg)]; }
 
-    // Score candidates and choose best
+    // Score candidates: lower = better split point.
+    //
+    // Cost components (all positive, added to score):
+    //   - Line length overflow beyond CPL (quadratic)
+    //   - Function word at boundary (avoid orphaned "the", "a", etc.)
+    //   - Mid-word break (BPE continuation piece)
+    //
+    // Bonuses (subtracted from score — reward good break points):
+    //   - Terminal punctuation (. ! ?)
+    //   - Comma / semicolon
+    //   - Long pause between words
+
     let mut best_k = cands[0];
     let mut best_score = f64::INFINITY;
     for &k in &cands {
         let lchars = slice_chars(&slice[..k], cfg);
         let rchars = slice_chars(&slice[k..], cfg);
-        let ltext = render_slice(&slice[..k], cfg);
-        let rtext = render_slice(&slice[k..], cfg);
-        let lwords = k;
-        let rwords = slice.len() - k;
 
-        let len_pen = length_penalty(lchars, cfg.max_chars_per_line)
+        // Penalize lines that exceed the character limit
+        let len_cost = length_penalty(lchars, cfg.max_chars_per_line)
             + length_penalty(rchars, cfg.max_chars_per_line);
 
-        // Soft word-per-line penalty, if enabled
-        let word_pen = if cfg.soft_max_words_per_line > 0 {
-            soft_cap_penalty(lwords, cfg.soft_max_words_per_line)
-                + soft_cap_penalty(rwords, cfg.soft_max_words_per_line)
-        } else { 0.0 };
+        // Penalize splits that orphan short function words at line edges
+        let syntax_cost = syntax_penalty(slice, k);
 
-        // Syntax-ish penalty: discourage splits that separate short function words from their head
-        let syntax_pen = syntax_penalty(&ltext, &rtext);
-
-        // Break quality bonus
-        let left_term = slice[k - 1].punc.as_str();
-        let is_term = is_terminal_punct(left_term) as i32;
-        let is_comma = is_comma_like(left_term) as i32;
+        // Reward splitting at punctuation or pauses
+        let left_punc = slice[k - 1].punc.as_str();
         let gap = slice[k].start - slice[k - 1].end;
-        let long_gap = (gap >= cfg.split_gap_sec) as i32;
-        let bonus = (-0.6 * is_term as f64) + (-0.3 * long_gap as f64) + (0.15 * is_comma as f64);
+        let mut bonus = 0.0;
+        if is_terminal_punct(left_punc)   { bonus += BONUS_TERMINAL_PUNCT; }
+        if is_comma_like(left_punc)       { bonus += BONUS_COMMA; }
+        if gap >= cfg.split_gap_sec       { bonus += BONUS_LONG_GAP; }
 
-        // Strongly discourage breaking inside a word: if the right-side first token
-        // has no leading space, it's likely a continuation piece (BPE-style).
-        let continuation_pen = if !slice[k].leading_space { 5.0 } else { 0.0 };
+        // Never break inside a BPE word (right token has no leading space)
+        let mid_word_cost = if !slice[k].leading_space { COST_MID_WORD } else { 0.0 };
 
-        let score = len_pen + word_pen + syntax_pen + bonus + continuation_pen;
+        let score = len_cost + syntax_cost + mid_word_cost - bonus;
         if score < best_score { best_score = score; best_k = k; }
     }
 
@@ -619,27 +558,26 @@ fn length_penalty(chars: usize, cap: usize) -> f64 {
     if chars <= cap { 0.0 } else { let d = (chars - cap) as f64; 0.02 * d * d }
 }
 
-fn soft_cap_penalty(v: usize, cap: usize) -> f64 {
-    if v <= cap { 0.0 } else { let d = (v - cap) as f64; 0.01 * d * d }
-}
-
-fn syntax_penalty(left: &str, right: &str) -> f64 {
-    // Very lightweight heuristics: penalize if right starts with a short function word
-    // or if left ends with a short function word ("I", "to", "a", etc.).
-    // This helps avoid splits like "I think I | would like to".
+/// Penalize splits that orphan short function words at line boundaries.
+/// Operates on the token slice directly to avoid rendering strings.
+fn syntax_penalty(slice: &[Tok], k: usize) -> f64 {
     const SHORT_FUNCT: &[&str] = &[
         "i", "to", "a", "the", "and", "or", "of", "in", "on", "for", "with", "at",
     ];
-    let starts_bad = right.split_whitespace().next()
-        .map(|w| SHORT_FUNCT.contains(&w.to_lowercase().as_str()))
-        .unwrap_or(false);
-    let ends_bad = left.split_whitespace().last()
-        .map(|w| SHORT_FUNCT.contains(&w.to_lowercase().as_str()))
-        .unwrap_or(false);
-    let mut pen = 0.0;
-    if starts_bad { pen += 0.3; }
-    if ends_bad { pen += 0.25; }
-    pen
+    let mut cost = 0.0;
+    // Right line starts with a function word
+    if let Some(first_right) = slice.get(k) {
+        if SHORT_FUNCT.contains(&first_right.word.to_lowercase().as_str()) {
+            cost += COST_FUNCTION_WORD;
+        }
+    }
+    // Left line ends with a function word
+    if k > 0 {
+        if SHORT_FUNCT.contains(&slice[k - 1].word.to_lowercase().as_str()) {
+            cost += COST_FUNCTION_WORD;
+        }
+    }
+    cost
 }
 
 // --- Example usage (remove or adapt in your app) ---
@@ -677,7 +615,7 @@ mod tests {
                     .collect(),
             ),
         };
-        let cues = process_segments(&[seg], &cfg, None);
+        let cues = process_segments(&[seg], &cfg);
         assert!(!cues.is_empty());
         let text = &cues[0].text;
         let norm = text.split_whitespace().collect::<Vec<_>>().join(" ");

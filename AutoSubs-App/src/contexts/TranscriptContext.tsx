@@ -127,10 +127,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     const { segments, speakers } = await saveTranscript(transcript, filename, {
       case: settings.textCase,
       removePunctuation: settings.removePunctuation,
-      splitOnPunctuation: settings.splitOnPunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxCharsPerLine: settings.maxCharsPerLine,
       maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+      textDensity: "standard",
+      language: settings.language,
     })
     console.log("Transcript saved to:", filename)
 
@@ -154,10 +154,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     const { segments, speakers } = await saveTranscript(transcript, filename, {
       case: settings.textCase,
       removePunctuation: settings.removePunctuation,
-      splitOnPunctuation: settings.splitOnPunctuation,
       censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      maxCharsPerLine: settings.maxCharsPerLine,
       maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+      textDensity: "standard",
+      language: settings.language,
     });
     console.log("Subtitle list updated with", segments.length, "subtitles");
     setSpeakers(speakers);
@@ -271,10 +271,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       let { segments } = await saveTranscript(transcript, filename, {
         case: settings.textCase,
         removePunctuation: settings.removePunctuation,
-        splitOnPunctuation: settings.splitOnPunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
-        maxCharsPerLine: settings.maxCharsPerLine,
         maxLinesPerSubtitle: settings.maxLinesPerSubtitle,
+        textDensity: "standard",
+        language: settings.language,
       });
       setSubtitles(segments)
     } catch (error) {

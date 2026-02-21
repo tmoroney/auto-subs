@@ -68,13 +68,12 @@ export async function reformatSubtitles(
  * Get default formatting options based on current settings.
  */
 export function getDefaultFormattingOptions(settings: {
-    maxCharsPerLine: number;
     maxLinesPerSubtitle: number;
     language: string;
 }): FormattingOptions {
     return {
-        maxCharsPerLine: settings.maxCharsPerLine,
         maxLines: settings.maxLinesPerSubtitle,
+        textDensity: "standard",
         language: settings.language,
     };
 }

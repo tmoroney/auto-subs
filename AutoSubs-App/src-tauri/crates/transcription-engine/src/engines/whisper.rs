@@ -164,42 +164,7 @@ pub fn create_context(
     }
 }
 
-/// When Whisper is translating (e.g., to English), token-level timings no longer
-/// align with the translated words. This helper generates approximate per-word
-/// timestamps by interpolating across [start, end] proportional to word lengths.
-fn interpolate_word_timestamps(line: &str, start: f64, end: f64) -> Vec<WordTimestamp> {
-    let dur = (end - start).max(0.0);
-    if dur <= 0.0 { return Vec::new(); }
-
-    // Split on whitespace; keep non-empty tokens
-    let tokens: Vec<&str> = line
-        .split_whitespace()
-        .filter(|t| !t.trim_matches('\0').trim().is_empty())
-        .collect();
-    if tokens.is_empty() { return Vec::new(); }
-
-    // Weight by alphanumeric length (fallback to 1 if zero) so punctuation consumes little time
-    let weights: Vec<usize> = tokens
-        .iter()
-        .map(|t| t.chars().filter(|c| c.is_alphanumeric()).count().max(1))
-        .collect();
-    let total_w: usize = weights.iter().sum();
-    if total_w == 0 { return Vec::new(); }
-
-    let mut out: Vec<WordTimestamp> = Vec::with_capacity(tokens.len());
-    let mut acc = 0usize;
-    for (i, tok) in tokens.iter().enumerate() {
-        let t0 = start + (acc as f64 / total_w as f64) * dur;
-        let t1 = if i + 1 == tokens.len() {
-            end
-        } else {
-            start + ((acc + weights[i]) as f64 / total_w as f64) * dur
-        };
-        acc += weights[i];
-        out.push(WordTimestamp { text: (*tok).to_string(), start: t0, end: t1, probability: None });
-    }
-    out
-}
+use crate::utils::interpolate_word_timestamps;
 
 // Returns true if `s` is *only* a control marker like "[_BEG_]" or "[_TT_320]".
 fn is_whole_control_token(s: &str) -> bool {
