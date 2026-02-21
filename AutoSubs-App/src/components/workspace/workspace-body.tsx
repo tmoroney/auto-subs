@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ProcessingStepItem } from "@/components/processing-step-item"
+import { ProcessingStepItem } from "@/components/processing/processing-step-item"
 import { Settings, TimelineInfo } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
 

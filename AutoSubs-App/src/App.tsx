@@ -1,13 +1,13 @@
 // App.tsx
-import { ThemeProvider, useTheme } from "@/components/theme-provider";
+import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionWorkspace } from "@/pages/transcription-workspace"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { MobileSubtitleViewer } from "@/components/mobile-subtitle-viewer"
-import { DesktopSubtitleViewer } from "@/components/desktop-subtitle-viewer"
-import { LanguagePickerModal } from "@/components/language-picker-modal"
+import { MobileSubtitleViewer } from "@/components/subtitles/mobile-subtitle-viewer"
+import { DesktopSubtitleViewer } from "@/components/subtitles/desktop-subtitle-viewer"
+import { LanguagePickerModal } from "@/components/dialogs/language-picker-modal"
 import { useTranslation } from "react-i18next"
 import {
   ResizablePanelGroup,
@@ -15,7 +15,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Titlebar } from "@/components/titlebar"
+import { Titlebar } from "@/components/layout/titlebar"
 import { useResolve } from "@/contexts/ResolveContext"
 
 export function ThemeToggle() {

@@ -20,7 +20,7 @@ import { Settings, TimelineInfo, Speaker } from "@/types/interfaces"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { Check, ChevronLeft, ChevronRight, Layers, Layout, Palette } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ColorPopover } from "@/components/color-popover"
+import { ColorPopover } from "@/components/common/color-popover"
 
 const PRESET_COLORS = [
     "#ef4444", "#f97316", "#eab308", "#22c55e",

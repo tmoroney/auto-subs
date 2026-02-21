@@ -7,7 +7,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
-import { SegmentPreview } from "./segment-preview"
+import { SegmentPreview } from "@/components/subtitles/segment-preview"
 import { Settings, TimelineInfo } from "@/types/interfaces"
 
 export interface ProcessingStepProps {

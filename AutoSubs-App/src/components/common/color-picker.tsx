@@ -1,8 +1,8 @@
 import React, { useEffect } from "react"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type ColorPickerProps = {
     value: string
@@ -56,7 +56,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, items
                     id="fontColor"
                     type="color"
                     value={color}
-                    onChange={(e) => handleOnChange(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleOnChange(e.target.value)}
                     className="h-14 hover:bg-muted transition-all"
                 />
             </PopoverContent>

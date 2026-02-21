@@ -7,7 +7,7 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { SpeakerEditor } from "@/components/speaker-editor"
+import { SpeakerEditor } from "@/components/subtitles/speaker-editor"
 
 
 interface SubtitleListProps {

@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { ColorPopover } from "@/components/color-popover"
+import { ColorPopover } from "@/components/common/color-popover"
 import { Speech, ChevronDown, ChevronRight, LoaderPinwheel, LoaderCircle, Palette } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Speaker } from "@/types/interfaces"

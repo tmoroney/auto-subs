@@ -34,11 +34,11 @@ import { getTranscriptsDir } from "@/utils/file-utils";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { readTranscript } from "@/utils/file-utils";
 import { useTranscript } from "@/contexts/TranscriptContext";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/providers/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
 import { useState, useEffect } from "react";
-import { SettingsDialog } from "@/components/settings-dialog";
-import { ManageModelsDialog } from "@/components/model-manager";
+import { SettingsDialog } from "@/components/dialogs/settings-dialog";
+import { ManageModelsDialog } from "@/components/settings/model-manager";
 
 interface TimelineInfo {
   timelineId?: string;

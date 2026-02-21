@@ -7,7 +7,7 @@ import {
     ItemTitle,
 } from "@/components/ui/item"
 import { Download, Plus } from "lucide-react"
-import { AddToTimelineDialog } from "./add-to-timeline-dialog"
+import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { Settings, TimelineInfo } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
 

@@ -29,7 +29,7 @@ function backendSegmentToSubtitle(segment: BackendSegment, id: number): Subtitle
         end: segment.end,
         text: segment.text,
         speaker_id: segment.speaker_id,
-        words: segment.words?.map((w, idx) => ({
+        words: segment.words?.map((w) => ({
             word: w.word,
             start: w.start,
             end: w.end,

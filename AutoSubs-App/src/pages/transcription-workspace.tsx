@@ -8,7 +8,7 @@ import { useProgress } from "@/contexts/ProgressContext"
 import { invoke } from "@tauri-apps/api/core"
 import { TranscriptionOptions } from "@/types/interfaces"
 import { generateTranscriptFilename } from "@/utils/file-utils"
-import { ActionBar } from "@/components/action-bar"
+import { ActionBar } from "@/components/layout/action-bar"
 import { WorkspaceHeader } from "@/components/workspace/workspace-header"
 import { WorkspaceBody } from "@/components/workspace/workspace-body"
 
