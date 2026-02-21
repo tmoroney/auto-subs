@@ -531,8 +531,11 @@ pub async fn reformat_subtitles(
     let mut config = PostProcessConfig::for_language(lang);
 
     if let Some(ref density_str) = options.text_density {
-        let density: TextDensity = serde_json::from_value(serde_json::Value::String(density_str.clone()))
-            .unwrap_or(TextDensity::Standard);
+        let density: TextDensity = match density_str.to_lowercase().as_str() {
+            "less" => TextDensity::Less,
+            "more" => TextDensity::More,
+            _ => TextDensity::Standard,
+        };
         config.apply_density(density);
     }
     if let Some(ml) = options.max_lines {

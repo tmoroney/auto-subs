@@ -155,7 +155,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     // 1. Structural splitting via Rust (from original word-level data)
     let segments = await rustReformatSubtitles(originalSegments, {
       maxLines: settings.maxLinesPerSubtitle,
-      textDensity: "standard",
+      textDensity: settings.textDensity,
       language: settings.language,
     });
 
@@ -169,15 +169,12 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       })
     );
 
-    // 3. Save and update state
-    const speakers: Speaker[] = transcript.speakers || [];
-    const { segments: savedSegments, speakers: savedSpeakers } = await saveTranscript(
-      { ...transcript, segments, originalSegments, speakers },
-      filename,
-    );
-    console.log("Subtitle list updated with", savedSegments.length, "subtitles");
-    setSpeakers(savedSpeakers);
-    setSubtitles(savedSegments);
+    // 3. Save reformatted segments and update state
+    // Use updateTranscript (not saveTranscript) to preserve originalSegments unchanged
+    await updateTranscript(filename, { subtitles: segments });
+    console.log("Subtitle list updated with", segments.length, "subtitles");
+    setSpeakers(transcript.speakers || []);
+    setSubtitles(segments);
   };
 
   async function exportSubtitlesAs(
