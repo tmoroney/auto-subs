@@ -282,7 +282,7 @@ export function SpeakerEditor({ afterTranscription = false, open = false, onOpen
                         ))}
                     </div>
                 </ScrollArea>
-                <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-0">
+                <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <DialogClose asChild>
                         {afterTranscription ? (
                             <Button variant="outline" className="w-full sm:w-auto" onClick={() => updateSpeakers(speakers)}>

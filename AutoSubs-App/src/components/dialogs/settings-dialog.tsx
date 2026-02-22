@@ -92,6 +92,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <SelectItem value="es">Español</SelectItem>
                           <SelectItem value="fr">Français</SelectItem>
                           <SelectItem value="de">Deutsch</SelectItem>
+                          <SelectItem value="ja">日本語</SelectItem>
+                          <SelectItem value="ko">한국어</SelectItem>
                           <SelectItem value="zh">中文</SelectItem>
                         </SelectContent>
                       </Select>

@@ -1,0 +1,359 @@
+{
+  "actionBar": {
+    "censor": {
+      "dialogDescription": "자막에서 검열할 단어를 추가하세요.",
+      "dialogTitle": "민감한 단어 검열",
+      "empty": "검열된 단어가 없습니다.",
+      "inputPlaceholder": "검열할 단어 추가",
+      "title": "단어 검열",
+      "wordCount": "{{count}}개 단어"
+    },
+    "common": {
+      "auto": "자동",
+      "off": "끄기",
+      "on": "켜기"
+    },
+    "fileDrop": {
+      "aria": "오디오 파일을 여기에 놓거나 클릭하여 선택",
+      "prompt": "파일을 놓거나 클릭",
+      "supports": "대부분의 형식 지원"
+    },
+    "format": {
+      "button": "서식",
+      "characterLimitDescription": "줄당 (0 = 자동)",
+      "characterLimitTitle": "문자 제한",
+      "lineCountDescription": "자막당 최대 줄 수",
+      "lineCountTitle": "줄 수",
+      "removePunctuationDescription": "쉼표, 마침표 등을 제거",
+      "removePunctuationTitle": "구두점 제거",
+      "textCase": {
+        "lowercase": "소문자",
+        "normal": "보통",
+        "titleCase": "제목 형식",
+        "uppercase": "대문자"
+      },
+      "textCaseDescription": "자막 대소문자 변경",
+      "textCaseTitle": "텍스트 케이스"
+    },
+    "language": {
+      "noLanguageFound": "언어를 찾을 수 없습니다.",
+      "searchSourcePlaceholder": "언어 검색...",
+      "searchTargetPlaceholder": "대상 언어 검색...",
+      "source": "소스",
+      "translate": "번역"
+    },
+    "mode": {
+      "fileInput": "파일",
+      "timeline": "타임라인"
+    },
+    "speakers": {
+      "countTitle": "화자 수",
+      "description": "다른 화자 식별",
+      "disabled": "비활성화됨",
+      "title": "화자 레이블"
+    },
+    "tracks": {
+      "clearAll": "모두 지우기",
+      "clickToSelect": "클릭하여 오디오 트랙 선택",
+      "countSelected": "{{count}}개 트랙 선택됨",
+      "createTrack": "현재 타임라인에 오디오 트랙을 만들어 자막 생성을 시작하세요.",
+      "noneFound": "오디오 트랙을 찾을 수 없습니다.",
+      "noneSelected": "선택된 트랙 없음",
+      "selectAll": "모두 선택",
+      "selectMultiple": "클릭하여 여러 트랙 선택",
+      "selectTracks": "트랙 선택...",
+      "selectedLabel": "{{label}} 선택됨",
+      "trackN": "트랙 {{n}}"
+    }
+  },
+  "common": {
+    "add": "추가",
+    "cancel": "취소",
+    "close": "닫기",
+    "delete": "삭제",
+    "done": "완료",
+    "generateSubtitles": "자막 생성",
+    "saveChanges": "변경사항 저장"
+  },
+  "completion": {
+    "addToTimeline": "타임라인에 추가",
+    "exportToFile": "파일로 내보내기",
+    "processingComplete": "처리 완료",
+    "subtitlesReady": "자막이 준비되었습니다!"
+  },
+  "importExport": {
+    "button": "가져오기 / 내보내기",
+    "downloadFormat": "{{format}} 다운로드",
+    "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
+    "exportAsJson": "JSON으로 내보내기",
+    "exportAsSrt": "SRT로 내보내기",
+    "exportTab": "내보내기",
+    "importFile": "파일 가져오기",
+    "importTab": "가져오기",
+    "includeSpeakerLabels": "화자 레이블 포함",
+    "selected": "선택됨:",
+    "supportsSrt": ".srt 파일 지원"
+  },
+  "languagePicker": {
+    "continue": "계속",
+    "description": "앱에서 사용할 언어를 선택하세요.",
+    "title": "언어 선택"
+  },
+  "modelStatus": {
+    "available": "다운로드 안 됨",
+    "cached": "다운로드됨",
+    "ram": "RAM:",
+    "storage": "저장 공간:"
+  },
+  "models": {
+    "base": {
+      "badge": "다국어",
+      "description": "빠름",
+      "details": "낮은 메모리로 안정적인 자막 생성. 일상 사용에 적합.",
+      "label": "Base"
+    },
+    "base_en": {
+      "badge": "영어 전용",
+      "description": "빠름",
+      "details": "낮은 메모리로 안정적인 영어 자막 생성. 일상 사용에 적합.",
+      "label": "Base (영어)"
+    },
+    "englishOnly": {
+      "description": "영어 자막 정확도가 높은 영어 전용 모델을 표시합니다.",
+      "title": "영어 전용 모델"
+    },
+    "large_v3": {
+      "badge": "다국어",
+      "description": "최고 정확도",
+      "details": "복잡한 오디오에 최고의 정확도를 제공하지만 느리고 많은 메모리가 필요합니다.",
+      "label": "Large"
+    },
+    "large_v3_turbo": {
+      "badge": "다국어",
+      "description": "빠르고 정확",
+      "details": "Large 모델보다 빠른 속도로 우수한 정확도, 적당한 메모리 사용.",
+      "label": "Large Turbo"
+    },
+    "manage": {
+      "confirmBody": "{{model}} 모델을 기기에서 삭제합니다. 나중에 이 모델을 사용하면 다시 다운로드해야 합니다.",
+      "confirmTitle": "정말 삭제하시겠습니까?",
+      "deleteModel": "모델 삭제",
+      "description": "캐시된 모델을 삭제하여 디스크 공간을 확보하세요.",
+      "empty": "다운로드된 모델이 없습니다",
+      "title": "모델"
+    },
+    "moonshine_base": {
+      "badge": "영어 전용",
+      "description": "빠르고 정확",
+      "details": "Moonshine Tiny보다 높은 정확도의 빠른 온디바이스 영어 자막 생성.",
+      "label": "Moonshine Base"
+    },
+    "moonshine_base_es": {
+      "badge": "스페인어",
+      "description": "빠르고 정확",
+      "details": "좋은 정확도의 빠른 온디바이스 스페인어 자막 생성.",
+      "label": "Moonshine Base (스페인어)"
+    },
+    "moonshine_tiny": {
+      "badge": "영어 전용",
+      "description": "초고속",
+      "details": "최소 리소스로 초고속 온디바이스 영어 자막 생성. 실시간 사용에 최적.",
+      "label": "Moonshine Tiny"
+    },
+    "moonshine_tiny_ar": {
+      "badge": "아랍어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 아랍어 자막 생성.",
+      "label": "Moonshine Tiny (아랍어)"
+    },
+    "moonshine_tiny_ja": {
+      "badge": "일본어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 일본어 자막 생성.",
+      "label": "Moonshine Tiny (일본어)"
+    },
+    "moonshine_tiny_ko": {
+      "badge": "한국어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 한국어 자막 생성.",
+      "label": "Moonshine Tiny (한국어)"
+    },
+    "moonshine_tiny_uk": {
+      "badge": "우크라이나어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 우크라이나어 자막 생성.",
+      "label": "Moonshine Tiny (우크라이나어)"
+    },
+    "moonshine_tiny_vi": {
+      "badge": "베트남어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 베트남어 자막 생성.",
+      "label": "Moonshine Tiny (베트남어)"
+    },
+    "moonshine_tiny_zh": {
+      "badge": "중국어",
+      "description": "초고속",
+      "details": "최소 리소스로 빠른 온디바이스 중국어 자막 생성.",
+      "label": "Moonshine Tiny (중국어)"
+    },
+    "medium": {
+      "badge": "다국어",
+      "description": "정확",
+      "details": "적당한 속도와 메모리로 높은 정확도. 어려운 오디오에 적합.",
+      "label": "Medium"
+    },
+    "medium_en": {
+      "badge": "영어 전용",
+      "description": "정확",
+      "details": "적당한 속도로 높은 영어 정확도. 어려운 오디오에 적합.",
+      "label": "Medium (영어)"
+    },
+    "parakeet": {
+      "badge": "유럽어",
+      "description": "빠르고 정확",
+      "details": "유럽 언어에 대한 우수한 정확도와 속도.",
+      "label": "Parakeet"
+    },
+    "small": {
+      "badge": "다국어",
+      "description": "균형",
+      "details": "적당한 메모리로 속도와 정확도의 균형. 다양한 억양에 잘 대응.",
+      "label": "Small"
+    },
+    "small_en": {
+      "badge": "영어 전용",
+      "description": "균형",
+      "details": "적당한 메모리로 속도와 영어 정확도의 균형. 다양한 억양에 대응.",
+      "label": "Small (영어)"
+    },
+    "tiny": {
+      "badge": "다국어",
+      "description": "초고속",
+      "details": "최소 메모리로 가장 빠른 자막 생성. 빠른 초안에 최적.",
+      "label": "Tiny"
+    },
+    "tiny_en": {
+      "badge": "영어 전용",
+      "description": "초고속",
+      "details": "최소 메모리로 가장 빠른 영어 자막 생성. 빠른 초안에 최적.",
+      "label": "Tiny (영어)"
+    }
+  },
+  "progressSteps": {
+    "download": "모델 다운로드 중",
+    "processing": "처리 중",
+    "transcribe": "음성을 텍스트로 변환 중",
+    "translate": "{{language}}(으)로 번역 중"
+  },
+  "settings": {
+    "description": "AutoSubs 환경설정 및 옵션을 구성합니다.",
+    "dtw": {
+      "description": "단어 수준 타이밍 정확도 향상",
+      "title": "동적 시간 왜곡"
+    },
+    "gpu": {
+      "description": "GPU를 사용하여 빠른 자막 생성",
+      "title": "GPU 가속"
+    },
+    "reset": {
+      "button": "설정 초기화",
+      "confirm": "자막 설정을 포함한 모든 설정을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "confirmTitle": "설정 초기화"
+    },
+    "sections": {
+      "appearance": "외관",
+      "language": "언어",
+      "support": "지원",
+      "transcription": "자막 생성"
+    },
+    "support": {
+      "helpSupportDevelopment": "개발 지원하기",
+      "supportAutoSubs": "AutoSubs 지원",
+      "viewSource": "기여하기"
+    },
+    "title": "설정",
+    "uiLanguage": {
+      "description": "메뉴 및 버튼 업데이트",
+      "showPickerAgain": "언어 선택창 다시 표시",
+      "title": "앱 언어"
+    }
+  },
+  "speakerEditor": {
+    "appearance": "외관",
+    "colors": {
+      "border": "테두리",
+      "fill": "채우기",
+      "outline": "윤곽선"
+    },
+    "continueEditing": "계속 편집",
+    "description": "오디오에서 감지된 화자입니다.",
+    "generatePreview": "미리보기 생성",
+    "generatingPreview": "미리보기 생성 중...",
+    "jumpToSample": "타임라인의 샘플로 이동",
+    "name": "이름",
+    "namePlaceholder": "화자 이름 입력",
+    "outputTrack": "출력 트랙",
+    "saveAndAddToTimeline": "저장 후 타임라인에 추가",
+    "selectTrack": "트랙 선택",
+    "subtitlePreview": "자막 미리보기",
+    "title": "화자 편집"
+  },
+  "subtitleEditor": {
+    "deleteWord": "단어 삭제",
+    "description": "아래 단어를 수정하여 자막 텍스트를 편집하세요",
+    "mergeLeft": "왼쪽으로 병합",
+    "mergeRight": "오른쪽으로 병합",
+    "title": "자막 편집"
+  },
+  "subtitles": {
+    "addToTimeline": "타임라인에 추가",
+    "clearSearch": "검색 지우기",
+    "editSpeakers": "화자 편집",
+    "empty": {
+      "noSubtitlesAvailable": "자막이 없습니다. 먼저 가져오기를 시도해보세요.",
+      "noSubtitlesAvailableShort": "자막 없음",
+      "noSubtitlesFound": "자막을 찾을 수 없습니다",
+      "tryDifferentSearch": "다른 검색어를 시도해보세요"
+    },
+    "jumpToTimeline": "타임라인의 해당 지점으로 이동",
+    "loading": "자막 불러오는 중...",
+    "searchAria": "자막 검색",
+    "searchPlaceholder": "자막 검색...",
+    "speakers": "화자",
+    "title": "자막",
+    "unknownSpeaker": "알 수 없는 화자"
+  },
+  "theme": {
+    "toggle": "테마 전환"
+  },
+  "titlebar": {
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "연결됨",
+        "disconnected": "연결 끊김"
+      },
+      "tooltip": {
+        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
+        "cantConnect": "타임라인에 연결할 수 없습니다",
+        "connected": "연결됨",
+        "currentlyViewing": "현재 보기: {{name}}",
+        "openResolve": "DaVinci Resolve를 열고 작업 공간 → 스크립트 → AutoSubs로 이동하세요",
+        "ready": "타임라인 접근 준비 완료"
+      }
+    },
+    "windowControls": {
+      "close": "닫기",
+      "maximize": "최대화",
+      "minimize": "최소화"
+    }
+  },
+  "workspace": {
+    "empty": {
+      "loadingModel": "모델을 메모리에 불러오는 중...",
+      "support": "AutoSubs 지원",
+      "welcomeDescription": "자막 생성을 시작하려면 오디오 소스를 선택하세요.",
+      "welcomeTitle": "AutoSubs에 오신 것을 환영합니다"
+    }
+  }
+}

@@ -1,0 +1,359 @@
+{
+  "actionBar": {
+    "censor": {
+      "dialogDescription": "字幕で検閲する単語を追加してください。",
+      "dialogTitle": "不適切な言葉を検閲",
+      "empty": "検閲する単語がありません。",
+      "inputPlaceholder": "検閲する単語を追加",
+      "title": "単語を検閲",
+      "wordCount": "{{count}} 語"
+    },
+    "common": {
+      "auto": "自動",
+      "off": "オフ",
+      "on": "オン"
+    },
+    "fileDrop": {
+      "aria": "音声ファイルをここにドロップするかクリックして選択",
+      "prompt": "ファイルをドロップまたはクリック",
+      "supports": "ほとんどの形式に対応"
+    },
+    "format": {
+      "button": "書式",
+      "characterLimitDescription": "1行あたり（0 = 自動）",
+      "characterLimitTitle": "文字数制限",
+      "lineCountDescription": "字幕ごとの最大行数",
+      "lineCountTitle": "行数",
+      "removePunctuationDescription": "読点・句点などを削除",
+      "removePunctuationTitle": "句読点を削除",
+      "textCase": {
+        "lowercase": "小文字",
+        "normal": "通常",
+        "titleCase": "タイトルケース",
+        "uppercase": "大文字"
+      },
+      "textCaseDescription": "字幕の大文字・小文字を変更",
+      "textCaseTitle": "文字ケース"
+    },
+    "language": {
+      "noLanguageFound": "言語が見つかりません。",
+      "searchSourcePlaceholder": "言語を検索...",
+      "searchTargetPlaceholder": "ターゲット言語を検索...",
+      "source": "ソース",
+      "translate": "翻訳"
+    },
+    "mode": {
+      "fileInput": "ファイル",
+      "timeline": "タイムライン"
+    },
+    "speakers": {
+      "countTitle": "話者数",
+      "description": "異なる話者を識別",
+      "disabled": "無効",
+      "title": "話者ラベル"
+    },
+    "tracks": {
+      "clearAll": "すべてクリア",
+      "clickToSelect": "クリックして音声トラックを選択",
+      "countSelected": "{{count}} トラック選択済み",
+      "createTrack": "現在のタイムラインに音声トラックを作成して文字起こしを開始してください。",
+      "noneFound": "音声トラックが見つかりません。",
+      "noneSelected": "トラックが選択されていません",
+      "selectAll": "すべて選択",
+      "selectMultiple": "クリックで複数のトラックを選択",
+      "selectTracks": "トラックを選択...",
+      "selectedLabel": "{{label}} が選択されました",
+      "trackN": "トラック {{n}}"
+    }
+  },
+  "common": {
+    "add": "追加",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "delete": "削除",
+    "done": "完了",
+    "generateSubtitles": "字幕を生成",
+    "saveChanges": "変更を保存"
+  },
+  "completion": {
+    "addToTimeline": "タイムラインに追加",
+    "exportToFile": "ファイルに書き出し",
+    "processingComplete": "処理完了",
+    "subtitlesReady": "字幕の準備ができました！"
+  },
+  "importExport": {
+    "button": "インポート / エクスポート",
+    "downloadFormat": "{{format}} をダウンロード",
+    "dropHere": "ファイルをここにドロップするかクリックして選択",
+    "exportAsJson": "JSON としてエクスポート",
+    "exportAsSrt": "SRT としてエクスポート",
+    "importFile": "ファイルをインポート",
+    "importTab": "インポート",
+    "includeSpeakerLabels": "話者ラベルを含める",
+    "exportTab": "エクスポート",
+    "selected": "選択済み：",
+    "supportsSrt": ".srt ファイルに対応"
+  },
+  "languagePicker": {
+    "continue": "続行",
+    "description": "アプリで使用する言語を選択してください。",
+    "title": "言語を選択"
+  },
+  "modelStatus": {
+    "available": "未ダウンロード",
+    "cached": "ダウンロード済み",
+    "ram": "RAM：",
+    "storage": "ストレージ："
+  },
+  "models": {
+    "base": {
+      "badge": "多言語",
+      "description": "高速",
+      "details": "低メモリで信頼性の高い文字起こし。日常使用に最適。",
+      "label": "Base"
+    },
+    "base_en": {
+      "badge": "英語専用",
+      "description": "高速",
+      "details": "低メモリで信頼性の高い英語文字起こし。日常使用に最適。",
+      "label": "Base（英語）"
+    },
+    "englishOnly": {
+      "description": "英語文字起こしの精度が高い英語専用モデルを表示。",
+      "title": "英語専用モデル"
+    },
+    "large_v3": {
+      "badge": "多言語",
+      "description": "最高精度",
+      "details": "複雑な音声に対して最高の精度を発揮しますが、低速で大量のメモリが必要です。",
+      "label": "Large"
+    },
+    "large_v3_turbo": {
+      "badge": "多言語",
+      "description": "高速・高精度",
+      "details": "Largeモデルより高速で優れた精度、適度なメモリ使用量。",
+      "label": "Large Turbo"
+    },
+    "manage": {
+      "confirmBody": "{{model}} モデルをデバイスから削除します。今後このモデルを使用する場合は再ダウンロードが必要です。",
+      "confirmTitle": "本当によろしいですか？",
+      "deleteModel": "モデルを削除",
+      "description": "キャッシュされたモデルを削除してディスク容量を確保。",
+      "empty": "ダウンロード済みのモデルが見つかりません",
+      "title": "モデル"
+    },
+    "moonshine_base": {
+      "badge": "英語専用",
+      "description": "高速・高精度",
+      "details": "Moonshine Tinyより高精度な高速オンデバイス英語文字起こし。",
+      "label": "Moonshine Base"
+    },
+    "moonshine_base_es": {
+      "badge": "スペイン語",
+      "description": "高速・高精度",
+      "details": "高精度な高速オンデバイススペイン語文字起こし。",
+      "label": "Moonshine Base（スペイン語）"
+    },
+    "moonshine_tiny": {
+      "badge": "英語専用",
+      "description": "超高速",
+      "details": "最小リソースで超高速のオンデバイス英語文字起こし。リアルタイム使用に最適。",
+      "label": "Moonshine Tiny"
+    },
+    "moonshine_tiny_ar": {
+      "badge": "アラビア語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイスアラビア語文字起こし。",
+      "label": "Moonshine Tiny（アラビア語）"
+    },
+    "moonshine_tiny_ja": {
+      "badge": "日本語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイス日本語文字起こし。",
+      "label": "Moonshine Tiny（日本語）"
+    },
+    "moonshine_tiny_ko": {
+      "badge": "韓国語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイス韓国語文字起こし。",
+      "label": "Moonshine Tiny（韓国語）"
+    },
+    "moonshine_tiny_uk": {
+      "badge": "ウクライナ語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイスウクライナ語文字起こし。",
+      "label": "Moonshine Tiny（ウクライナ語）"
+    },
+    "moonshine_tiny_vi": {
+      "badge": "ベトナム語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイスベトナム語文字起こし。",
+      "label": "Moonshine Tiny（ベトナム語）"
+    },
+    "moonshine_tiny_zh": {
+      "badge": "中国語",
+      "description": "超高速",
+      "details": "最小リソースで高速なオンデバイス中国語文字起こし。",
+      "label": "Moonshine Tiny（中国語）"
+    },
+    "medium": {
+      "badge": "多言語",
+      "description": "高精度",
+      "details": "適度な速度とメモリで高精度な文字起こし。難しい音声に適しています。",
+      "label": "Medium"
+    },
+    "medium_en": {
+      "badge": "英語専用",
+      "description": "高精度",
+      "details": "適度な速度で高精度な英語文字起こし。難しい音声に適しています。",
+      "label": "Medium（英語）"
+    },
+    "parakeet": {
+      "badge": "ヨーロッパ語",
+      "description": "高速・高精度",
+      "details": "ヨーロッパ言語に対して優れた精度と速度。",
+      "label": "Parakeet"
+    },
+    "small": {
+      "badge": "多言語",
+      "description": "バランス型",
+      "details": "適度なメモリでスピードと精度のバランスが良い。様々なアクセントに対応。",
+      "label": "Small"
+    },
+    "small_en": {
+      "badge": "英語専用",
+      "description": "バランス型",
+      "details": "適度なメモリでスピードと英語精度のバランスが良い。様々なアクセントに対応。",
+      "label": "Small（英語）"
+    },
+    "tiny": {
+      "badge": "多言語",
+      "description": "超高速",
+      "details": "最小メモリで最速の文字起こし。クイックドラフトに最適。",
+      "label": "Tiny"
+    },
+    "tiny_en": {
+      "badge": "英語専用",
+      "description": "超高速",
+      "details": "最小メモリで最速の英語文字起こし。クイックドラフトに最適。",
+      "label": "Tiny（英語）"
+    }
+  },
+  "progressSteps": {
+    "download": "モデルをダウンロード中",
+    "processing": "処理中",
+    "transcribe": "音声をテキストに変換中",
+    "translate": "{{language}} に翻訳中"
+  },
+  "settings": {
+    "description": "AutoSubs の設定とオプションを構成します。",
+    "dtw": {
+      "description": "単語レベルのタイミング精度を向上",
+      "title": "動的時間伸縮法"
+    },
+    "gpu": {
+      "description": "GPUを使用して高速な文字起こし",
+      "title": "GPU アクセラレーション"
+    },
+    "reset": {
+      "button": "設定をリセット",
+      "confirm": "すべての設定（文字起こし設定を含む）をリセットしてもよろしいですか？この操作は元に戻せません。",
+      "confirmTitle": "設定をリセット"
+    },
+    "sections": {
+      "appearance": "外観",
+      "language": "言語",
+      "support": "サポート",
+      "transcription": "文字起こし"
+    },
+    "support": {
+      "helpSupportDevelopment": "開発を支援",
+      "supportAutoSubs": "AutoSubs をサポート",
+      "viewSource": "コントリビュート"
+    },
+    "title": "設定",
+    "uiLanguage": {
+      "description": "メニューとボタンを更新",
+      "showPickerAgain": "言語選択を再度表示",
+      "title": "アプリの言語"
+    }
+  },
+  "speakerEditor": {
+    "appearance": "外観",
+    "colors": {
+      "border": "ボーダー",
+      "fill": "塗りつぶし",
+      "outline": "アウトライン"
+    },
+    "continueEditing": "編集を続ける",
+    "description": "音声で検出された話者の一覧です。",
+    "generatePreview": "プレビューを生成",
+    "generatingPreview": "プレビューを生成中...",
+    "jumpToSample": "タイムラインのサンプルにジャンプ",
+    "name": "名前",
+    "namePlaceholder": "話者名を入力",
+    "outputTrack": "出力トラック",
+    "saveAndAddToTimeline": "保存してタイムラインに追加",
+    "selectTrack": "トラックを選択",
+    "subtitlePreview": "字幕プレビュー",
+    "title": "話者を編集"
+  },
+  "subtitleEditor": {
+    "deleteWord": "単語を削除",
+    "description": "下の単語を変更して字幕テキストを編集",
+    "mergeLeft": "左に結合",
+    "mergeRight": "右に結合",
+    "title": "字幕を編集"
+  },
+  "subtitles": {
+    "addToTimeline": "タイムラインに追加",
+    "clearSearch": "検索をクリア",
+    "editSpeakers": "話者を編集",
+    "empty": {
+      "noSubtitlesAvailable": "字幕がありません。先にインポートしてください。",
+      "noSubtitlesAvailableShort": "字幕がありません",
+      "noSubtitlesFound": "字幕が見つかりません",
+      "tryDifferentSearch": "別の検索語を試してください"
+    },
+    "jumpToTimeline": "タイムライン上の地点にジャンプ",
+    "loading": "字幕を読み込み中...",
+    "searchAria": "字幕を検索",
+    "searchPlaceholder": "字幕を検索...",
+    "speakers": "話者",
+    "title": "字幕",
+    "unknownSpeaker": "不明な話者"
+  },
+  "theme": {
+    "toggle": "テーマを切り替え"
+  },
+  "titlebar": {
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "status": {
+        "connected": "接続済み",
+        "disconnected": "未接続"
+      },
+      "tooltip": {
+        "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
+        "cantConnect": "タイムラインに接続できません",
+        "connected": "接続済み",
+        "currentlyViewing": "現在表示中：{{name}}",
+        "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください",
+        "ready": "タイムラインへのアクセスの準備が完了"
+      }
+    },
+    "windowControls": {
+      "close": "閉じる",
+      "maximize": "最大化",
+      "minimize": "最小化"
+    }
+  },
+  "workspace": {
+    "empty": {
+      "loadingModel": "モデルをメモリに読み込み中...",
+      "support": "AutoSubs をサポート",
+      "welcomeDescription": "字幕の生成を開始するには音声ソースを選択してください。",
+      "welcomeTitle": "AutoSubs へようこそ"
+    }
+  }
+}

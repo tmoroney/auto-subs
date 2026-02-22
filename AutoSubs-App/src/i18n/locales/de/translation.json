@@ -169,25 +169,25 @@
     },
     "tiny": {
       "label": "Tiny",
-      "description": "Am schnellsten",
+      "description": "Ultraschnell",
       "details": "Schnellste Transkription mit minimalem Speicherbedarf. Ideal für schnelle Entwürfe.",
       "badge": "Mehrsprachig"
     },
     "tiny_en": {
       "label": "Tiny",
-      "description": "Am schnellsten",
+      "description": "Ultraschnell",
       "details": "Schnellste englische Transkription mit minimalem Speicherbedarf. Ideal für Entwürfe.",
       "badge": "Nur Englisch"
     },
     "base": {
       "label": "Base",
-      "description": "Alltag",
+      "description": "Schnell",
       "details": "Zuverlässige Transkription mit geringem Speicherbedarf.",
       "badge": "Mehrsprachig"
     },
     "base_en": {
       "label": "Base",
-      "description": "Alltag",
+      "description": "Schnell",
       "details": "Zuverlässige englische Transkription mit geringem Speicherbedarf.",
       "badge": "Nur Englisch"
     },
@@ -232,6 +232,60 @@
       "description": "Schnell & genau",
       "details": "Hervorragende Genauigkeit und Geschwindigkeit für europäische Sprachen.",
       "badge": "Europäisch"
+    },
+    "moonshine_tiny": {
+      "label": "Moonshine Tiny",
+      "description": "Ultraschnell",
+      "details": "Extrem schnelle englische Transkription auf dem Gerät mit minimalen Ressourcen. Ideal für Echtzeitnutzung.",
+      "badge": "Nur Englisch"
+    },
+    "moonshine_tiny_ar": {
+      "label": "Moonshine Tiny (Arabisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle arabische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Arabisch"
+    },
+    "moonshine_tiny_zh": {
+      "label": "Moonshine Tiny (Chinesisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle chinesische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Chinesisch"
+    },
+    "moonshine_tiny_ja": {
+      "label": "Moonshine Tiny (Japanisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle japanische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Japanisch"
+    },
+    "moonshine_tiny_ko": {
+      "label": "Moonshine Tiny (Koreanisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle koreanische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Koreanisch"
+    },
+    "moonshine_tiny_uk": {
+      "label": "Moonshine Tiny (Ukrainisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle ukrainische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Ukrainisch"
+    },
+    "moonshine_tiny_vi": {
+      "label": "Moonshine Tiny (Vietnamesisch)",
+      "description": "Ultraschnell",
+      "details": "Schnelle vietnamesische Transkription auf dem Gerät mit minimalen Ressourcen.",
+      "badge": "Vietnamesisch"
+    },
+    "moonshine_base": {
+      "label": "Moonshine Base",
+      "description": "Schnell & genau",
+      "details": "Schnelle englische Transkription auf dem Gerät mit besserer Genauigkeit als Moonshine Tiny.",
+      "badge": "Nur Englisch"
+    },
+    "moonshine_base_es": {
+      "label": "Moonshine Base (Spanisch)",
+      "description": "Schnell & genau",
+      "details": "Schnelle spanische Transkription auf dem Gerät mit guter Genauigkeit.",
+      "badge": "Spanisch"
     }
   },
   "completion": {

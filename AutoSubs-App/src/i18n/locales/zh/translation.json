@@ -169,25 +169,25 @@
     },
     "tiny": {
       "label": "Tiny（微型）",
-      "description": "最快",
+      "description": "超快速",
       "details": "最快的转录，内存占用最小。适合快速草稿。",
       "badge": "多语言"
     },
     "tiny_en": {
       "label": "Tiny（微型英语）",
-      "description": "最快",
+      "description": "超快速",
       "details": "最快的英语转录，内存占用最小。适合快速草稿。",
       "badge": "仅英语"
     },
     "base": {
       "label": "Base（基础）",
-      "description": "日常使用",
+      "description": "快速",
       "details": "可靠的转录，内存要求低。适合日常使用。",
       "badge": "多语言"
     },
     "base_en": {
       "label": "Base（基础英语）",
-      "description": "日常使用",
+      "description": "快速",
       "details": "可靠的英语转录，内存要求低。适合日常使用。",
       "badge": "仅英语"
     },
@@ -232,6 +232,60 @@
       "description": "快速且准确",
       "details": "欧洲语言的出色准确性和速度。",
       "badge": "欧洲语言"
+    },
+    "moonshine_tiny": {
+      "label": "Moonshine Tiny",
+      "description": "超快速",
+      "details": "极快的本地英语转录，资源消耗极低。适合实时使用。",
+      "badge": "仅英语"
+    },
+    "moonshine_tiny_ar": {
+      "label": "Moonshine Tiny（阿拉伯语）",
+      "description": "超快速",
+      "details": "快速的本地阿拉伯语转录，资源消耗极低。",
+      "badge": "阿拉伯语"
+    },
+    "moonshine_tiny_zh": {
+      "label": "Moonshine Tiny（中文）",
+      "description": "超快速",
+      "details": "快速的本地中文转录，资源消耗极低。",
+      "badge": "中文"
+    },
+    "moonshine_tiny_ja": {
+      "label": "Moonshine Tiny（日语）",
+      "description": "超快速",
+      "details": "快速的本地日语转录，资源消耗极低。",
+      "badge": "日语"
+    },
+    "moonshine_tiny_ko": {
+      "label": "Moonshine Tiny（韩语）",
+      "description": "超快速",
+      "details": "快速的本地韩语转录，资源消耗极低。",
+      "badge": "韩语"
+    },
+    "moonshine_tiny_uk": {
+      "label": "Moonshine Tiny（乌克兰语）",
+      "description": "超快速",
+      "details": "快速的本地乌克兰语转录，资源消耗极低。",
+      "badge": "乌克兰语"
+    },
+    "moonshine_tiny_vi": {
+      "label": "Moonshine Tiny（越南语）",
+      "description": "超快速",
+      "details": "快速的本地越南语转录，资源消耗极低。",
+      "badge": "越南语"
+    },
+    "moonshine_base": {
+      "label": "Moonshine Base",
+      "description": "快速且准确",
+      "details": "快速的本地英语转录，比Moonshine Tiny精度更高。",
+      "badge": "仅英语"
+    },
+    "moonshine_base_es": {
+      "label": "Moonshine Base（西班牙语）",
+      "description": "快速且准确",
+      "details": "快速的本地西班牙语转录，精度良好。",
+      "badge": "西班牙语"
     }
   },
   "completion": {

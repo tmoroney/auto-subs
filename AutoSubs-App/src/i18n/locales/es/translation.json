@@ -168,31 +168,31 @@
       "confirmBody": "Esto eliminará el modelo {{model}} de tu dispositivo. Si lo usas en el futuro, tendrás que descargarlo de nuevo."
     },
     "tiny": {
-      "label": "Tiny",
-      "description": "Más rápido",
+      "label": "Pequeño",
+      "description": "Ultra-rápido",
       "details": "Transcripción muy rápida con poca memoria. Ideal para borradores rápidos.",
       "badge": "Multilingüe"
     },
     "tiny_en": {
-      "label": "Tiny",
-      "description": "Más rápido",
+      "label": "Pequeño (Inglés)",
+      "description": "Ultra-rápido",
       "details": "Transcripción en inglés muy rápida con poca memoria. Ideal para borradores rápidos.",
       "badge": "Solo inglés"
     },
     "base": {
       "label": "Base",
-      "description": "Uso diario",
+      "description": "Rápido",
       "details": "Transcripción fiable con bajos requisitos de memoria. Ideal para el día a día.",
       "badge": "Multilingüe"
     },
     "base_en": {
-      "label": "Base",
-      "description": "Uso diario",
+      "label": "Base (Inglés)",
+      "description": "Rápido",
       "details": "Transcripción en inglés fiable con poca memoria. Ideal para el día a día.",
       "badge": "Solo inglés"
     },
     "small": {
-      "label": "Small",
+      "label": "Pequeño",
       "description": "Equilibrado",
       "details": "Equilibrio entre velocidad y precisión con memoria moderada. Maneja bien acentos variados.",
       "badge": "Multilingüe"
@@ -232,6 +232,60 @@
       "description": "Rápido y preciso",
       "details": "Excelente precisión y velocidad para idiomas europeos.",
       "badge": "Europeo"
+    },
+    "moonshine_tiny": {
+      "label": "Moonshine Tiny",
+      "description": "Ultrarrápido",
+      "details": "Transcripción en inglés ultrarrápida en el dispositivo con recursos mínimos. Ideal para uso en tiempo real.",
+      "badge": "Solo inglés"
+    },
+    "moonshine_tiny_ar": {
+      "label": "Moonshine Tiny (Árabe)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en árabe en el dispositivo con recursos mínimos.",
+      "badge": "Árabe"
+    },
+    "moonshine_tiny_zh": {
+      "label": "Moonshine Tiny (Chino)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en chino en el dispositivo con recursos mínimos.",
+      "badge": "Chino"
+    },
+    "moonshine_tiny_ja": {
+      "label": "Moonshine Tiny (Japonés)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en japonés en el dispositivo con recursos mínimos.",
+      "badge": "Japonés"
+    },
+    "moonshine_tiny_ko": {
+      "label": "Moonshine Tiny (Coreano)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en coreano en el dispositivo con recursos mínimos.",
+      "badge": "Coreano"
+    },
+    "moonshine_tiny_uk": {
+      "label": "Moonshine Tiny (Ucraniano)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en ucraniano en el dispositivo con recursos mínimos.",
+      "badge": "Ucraniano"
+    },
+    "moonshine_tiny_vi": {
+      "label": "Moonshine Tiny (Vietnamita)",
+      "description": "Ultrarrápido",
+      "details": "Transcripción rápida en vietnamita en el dispositivo con recursos mínimos.",
+      "badge": "Vietnamita"
+    },
+    "moonshine_base": {
+      "label": "Moonshine Base",
+      "description": "Rápido y preciso",
+      "details": "Transcripción rápida en inglés en el dispositivo con mejor precisión que Moonshine Tiny.",
+      "badge": "Solo inglés"
+    },
+    "moonshine_base_es": {
+      "label": "Moonshine Base (Español)",
+      "description": "Rápido y preciso",
+      "details": "Transcripción rápida en español en el dispositivo con buena precisión.",
+      "badge": "Español"
     }
   },
   "completion": {

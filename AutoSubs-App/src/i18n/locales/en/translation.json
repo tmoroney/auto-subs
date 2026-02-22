@@ -6,7 +6,7 @@
       "transcription": "Transcription",
       "support": "Support",
       "appearance": "Appearance",
-      "language": "Appearance"
+      "language": "Language"
     },
     "gpu": {
       "title": "GPU Acceleration",
@@ -170,25 +170,25 @@
     },
     "tiny": {
       "label": "Tiny",
-      "description": "Fastest",
+      "description": "Ultra-fast",
       "details": "Fastest transcription with minimal memory. Ideal for quick drafts.",
       "badge": "Multilingual"
     },
     "tiny_en": {
       "label": "Tiny (English)",
-      "description": "Fastest",
+      "description": "Ultra-fast",
       "details": "Fastest English transcription with minimal memory. Ideal for quick drafts.",
       "badge": "English Only"
     },
     "base": {
       "label": "Base",
-      "description": "Everyday use",
+      "description": "Fast",
       "details": "Reliable transcription with low memory requirements. Great for everyday use.",
       "badge": "Multilingual"
     },
     "base_en": {
       "label": "Base (English)",
-      "description": "Everyday use",
+      "description": "Fast",
       "details": "Reliable English transcription with low memory. Great for everyday use.",
       "badge": "English Only"
     },
@@ -233,6 +233,60 @@
       "description": "Fast & Accurate",
       "details": "Excellent accuracy and speed for European languages.",
       "badge": "European"
+    },
+    "moonshine_tiny": {
+      "label": "Moonshine Tiny",
+      "description": "Ultra-fast",
+      "details": "Extremely fast on-device English transcription with minimal resources. Ideal for real-time use.",
+      "badge": "English Only"
+    },
+    "moonshine_tiny_ar": {
+      "label": "Moonshine Tiny (Arabic)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Arabic transcription with minimal resources.",
+      "badge": "Arabic"
+    },
+    "moonshine_tiny_zh": {
+      "label": "Moonshine Tiny (Chinese)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Chinese transcription with minimal resources.",
+      "badge": "Chinese"
+    },
+    "moonshine_tiny_ja": {
+      "label": "Moonshine Tiny (Japanese)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Japanese transcription with minimal resources.",
+      "badge": "Japanese"
+    },
+    "moonshine_tiny_ko": {
+      "label": "Moonshine Tiny (Korean)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Korean transcription with minimal resources.",
+      "badge": "Korean"
+    },
+    "moonshine_tiny_uk": {
+      "label": "Moonshine Tiny (Ukrainian)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Ukrainian transcription with minimal resources.",
+      "badge": "Ukrainian"
+    },
+    "moonshine_tiny_vi": {
+      "label": "Moonshine Tiny (Vietnamese)",
+      "description": "Ultra-fast",
+      "details": "Fast on-device Vietnamese transcription with minimal resources.",
+      "badge": "Vietnamese"
+    },
+    "moonshine_base": {
+      "label": "Moonshine Base",
+      "description": "Fast & Accurate",
+      "details": "Fast on-device English transcription with better accuracy than Moonshine Tiny.",
+      "badge": "English Only"
+    },
+    "moonshine_base_es": {
+      "label": "Moonshine Base (Spanish)",
+      "description": "Fast & Accurate",
+      "details": "Fast on-device Spanish transcription with good accuracy.",
+      "badge": "Spanish"
     }
   },
   "completion": {

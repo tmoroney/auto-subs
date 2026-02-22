@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-
-import { SpeakerEditor } from "@/components/subtitles/speaker-editor"
+import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 
 interface SubtitleListProps {
@@ -36,15 +36,14 @@ const SubtitleList = ({
     onSelectedIndexChange,
 }: SubtitleListProps) => {
     const { t } = useTranslation();
-    const { subtitles, updateSubtitles, speakers } = useTranscript();
+    const { subtitles, updateSubtitles, speakers, updateSpeakers } = useTranscript();
     const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
     const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
 
     const [draftText, setDraftText] = useState<string>("");
     const [originalText, setOriginalText] = useState<string>("");
     const inlineEditorRef = useRef<HTMLDivElement>(null);
-    const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
-    const [expandedSpeakerIndex, setExpandedSpeakerIndex] = React.useState<number | undefined>(undefined);
+    const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
     
     // Virtual scrolling state
     const containerRef = useRef<HTMLDivElement>(null);
@@ -74,21 +73,6 @@ const SubtitleList = ({
         return text.toLowerCase().includes(query.toLowerCase());
     }, [searchCaseSensitive, searchWholeWord]);
 
-    const filteredSubtitleItems = useMemo(() => {
-        const query = searchQuery ?? "";
-        return subtitles
-            .map((subtitle, index) => ({ subtitle, index }))
-            .filter(({ subtitle }) => {
-                if (!query.trim()) return true;
-                const speakerMatch = subtitle.speaker_id
-                    ? (searchCaseSensitive
-                        ? subtitle.speaker_id.includes(query)
-                        : subtitle.speaker_id.toLowerCase().includes(query.toLowerCase()))
-                    : false;
-                return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
-            });
-    }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive]);
-
     // speaker_id can be either 0-based ("0", "1", ...) or 1-based ("1", "2", ...).
     // Detect base once per transcript so Speaker 1 doesn't get mislabeled as Speaker 2.
     const speakerIdBase = useMemo(() => {
@@ -113,6 +97,29 @@ const SubtitleList = ({
         if (n - 1 >= 0 && n - 1 < speakers.length) return n - 1;
         return 0;
     }, [speakerIdBase, speakers.length]);
+
+    const filteredSubtitleItems = useMemo(() => {
+        const query = searchQuery ?? "";
+        return subtitles
+            .map((subtitle, index) => ({ subtitle, index }))
+            .filter(({ subtitle }) => {
+                if (!query.trim()) return true;
+                
+                // Check speaker name match
+                let speakerMatch = false;
+                if (subtitle.speaker_id) {
+                    const speakerIndex = getSpeakerIndex(subtitle.speaker_id);
+                    const speakerName = speakers[speakerIndex]?.name;
+                    if (speakerName) {
+                        speakerMatch = searchCaseSensitive
+                            ? speakerName.includes(query)
+                            : speakerName.toLowerCase().includes(query.toLowerCase());
+                    }
+                }
+                
+                return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
+            });
+    }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
     
     // Calculate visible range with estimated heights
     const { startIndex, endIndex, totalHeight } = useMemo(() => {
@@ -300,6 +307,29 @@ const SubtitleList = ({
         }
     };
 
+    const renderHighlightedText = (text: string, query: string) => {
+        if (!query.trim() || !text) return text;
+
+        const escaped = escapeRegExp(query.trim());
+        const flags = searchCaseSensitive ? "g" : "gi";
+        const re = searchWholeWord 
+            ? new RegExp(`\\b(${escaped})\\b`, flags)
+            : new RegExp(`(${escaped})`, flags);
+
+        const parts = text.split(re);
+        
+        return parts.map((part, i) => {
+            if (i % 2 === 1) {
+                return (
+                    <mark key={i} className="bg-yellow-200 dark:bg-yellow-900 text-inherit">
+                        {part}
+                    </mark>
+                );
+            }
+            return part;
+        });
+    };
+
     if (isLoading) {
         return <div className="p-4 text-center text-muted-foreground">{t("subtitles.loading")}</div>;
     }
@@ -314,7 +344,6 @@ const SubtitleList = ({
 
     return (
         <div className={className}>
-            <SpeakerEditor afterTranscription={false} expandedSpeakerIndex={expandedSpeakerIndex} open={showSpeakerEditor} onOpenChange={setShowSpeakerEditor} />
             <div 
                 ref={containerRef}
                 className="h-full"
@@ -358,23 +387,46 @@ const SubtitleList = ({
                                             </TooltipContent>
                                         </Tooltip>
                                         {subtitle.speaker_id && speakers.length > 0 ? (
-                                            <>
-                                                <Button
-                                                    variant="outline"
-                                                    className="ml-auto text-xs p-2 h-6"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                        setExpandedSpeakerIndex(idx);
-                                                        setShowSpeakerEditor(true);
-                                                    }}
-                                                >
+                                            <Popover
+                                                open={editingSubtitleId === subtitle.id}
+                                                onOpenChange={(open) => {
+                                                    if (open) {
+                                                        setEditingSubtitleId(subtitle.id);
+                                                    } else {
+                                                        setEditingSubtitleId(null);
+                                                    }
+                                                }}
+                                            >
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="ml-auto text-xs p-2 h-6"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {(() => {
+                                                            const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                            return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                        })()}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent align="end" className="p-0" onClick={(e) => e.stopPropagation()}>
                                                     {(() => {
                                                         const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                        return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                        const speaker = speakers[idx];
+                                                        if (!speaker) return null;
+                                                        return (
+                                                            <SpeakerSettings
+                                                                speaker={speaker}
+                                                                onSpeakerChange={(updated) => {
+                                                                    const next = [...speakers];
+                                                                    next[idx] = updated;
+                                                                    updateSpeakers(next);
+                                                                }}
+                                                            />
+                                                        );
                                                     })()}
-                                                </Button>
-                                            </>
+                                                </PopoverContent>
+                                            </Popover>
                                         ) : null}
 
                                     </div>
@@ -418,7 +470,7 @@ const SubtitleList = ({
                                             />
                                         ) : (
                                             <div className="rounded-md pr-1 text-foreground leading-relaxed whitespace-pre-line">
-                                                {subtitle.text}
+                                                {renderHighlightedText(subtitle.text ?? "", searchQuery)}
                                             </div>
                                         )}
 

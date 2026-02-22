@@ -601,6 +601,40 @@ impl ModelManager {
         Ok(())
     }
 
+    /// Delete a cached Moonshine model by name (e.g. "moonshine-tiny", "moonshine-base-es").
+    /// Removes the entire model folder from the moonshine cache directory.
+    pub fn delete_moonshine_model(&self, model_name: &str) -> Result<()> {
+        let folder = model_name
+            .strip_prefix("moonshine-")
+            .ok_or_else(|| eyre!("Invalid Moonshine model name: {}", model_name))?;
+
+        let cache_dir = self.model_cache_dir()?;
+        let model_dir = cache_dir.join("moonshine").join(folder);
+        if !model_dir.exists() {
+            bail!("Moonshine model '{}' not found in cache", model_name);
+        }
+
+        fs::remove_dir_all(&model_dir)
+            .with_context(|| format!("Failed to delete Moonshine model directory: {}", model_dir.display()))?;
+        eprintln!("Deleted Moonshine model: {}", model_dir.display());
+        Ok(())
+    }
+
+    /// Delete the cached Parakeet model.
+    /// Removes the hf-hub snapshot files for the Parakeet model.
+    pub fn delete_parakeet_model(&self) -> Result<()> {
+        let cache_dir = self.model_cache_dir()?;
+        let parakeet_repo_dir = cache_dir.join("models--istupakov--parakeet-tdt-0.6b-v3-onnx");
+        if !parakeet_repo_dir.exists() {
+            bail!("Parakeet model not found in cache");
+        }
+
+        fs::remove_dir_all(&parakeet_repo_dir)
+            .with_context(|| format!("Failed to delete Parakeet model directory: {}", parakeet_repo_dir.display()))?;
+        eprintln!("Deleted Parakeet model: {}", parakeet_repo_dir.display());
+        Ok(())
+    }
+
     /// Clean up orphaned blob files that are no longer referenced by any symlinks
     /// This should be called periodically to free up disk space
     pub fn cleanup_orphaned_blobs(&self) -> Result<()> {
@@ -689,36 +723,36 @@ impl ModelManager {
         Ok(())
     }
 
-    /// List all cached Whisper models in the cache directory.
-    /// Returns a vector of model names (e.g., "tiny", "base", "small").
+    /// List all cached models in the cache directory.
+    /// Returns a vector of model names (e.g., "tiny", "base", "small", "moonshine-tiny").
     pub fn list_cached_models(&self) -> Result<Vec<String>> {
         let cache_dir = self.model_cache_dir()?;
         if !cache_dir.exists() { return Ok(vec![]); }
 
-        // Only look in the Whisper repository directory
-        let whisper_repo_dir = cache_dir.join("models--ggerganov--whisper.cpp").join("snapshots");
-        if !whisper_repo_dir.exists() { return Ok(vec![]); }
-
         let mut models = std::collections::HashSet::new();
 
-        // Iterate through snapshot directories
-        for snapshot_entry in fs::read_dir(&whisper_repo_dir).context("Failed to read snapshots dir")? {
-            let snapshot_entry = snapshot_entry?;
-            let snapshot_path = snapshot_entry.path();
-            if !snapshot_path.is_dir() { continue; }
+        // Look in the Whisper repository directory
+        let whisper_repo_dir = cache_dir.join("models--ggerganov--whisper.cpp").join("snapshots");
+        if whisper_repo_dir.exists() {
+            // Iterate through snapshot directories
+            for snapshot_entry in fs::read_dir(&whisper_repo_dir).context("Failed to read snapshots dir")? {
+                let snapshot_entry = snapshot_entry?;
+                let snapshot_path = snapshot_entry.path();
+                if !snapshot_path.is_dir() { continue; }
 
-            // Look for ggml-{model}.bin files in this snapshot
-            for file_entry in fs::read_dir(&snapshot_path).context("Failed to read snapshot dir")? {
-                let file_entry = file_entry?;
-                let path = file_entry.path();
-                if path.is_file() {
-                    if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                        if name.starts_with("ggml-") && name.ends_with(".bin") {
-                            // Extract model name from "ggml-{model}.bin"
-                            let model_part = name.strip_prefix("ggml-").unwrap_or("");
-                            let model_name = model_part.strip_suffix(".bin").unwrap_or("");
-                            if !model_name.is_empty() {
-                                models.insert(model_name.to_string());
+                // Look for ggml-{model}.bin files in this snapshot
+                for file_entry in fs::read_dir(&snapshot_path).context("Failed to read snapshot dir")? {
+                    let file_entry = file_entry?;
+                    let path = file_entry.path();
+                    if path.is_file() {
+                        if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                            if name.starts_with("ggml-") && name.ends_with(".bin") {
+                                // Extract model name from "ggml-{model}.bin"
+                                let model_part = name.strip_prefix("ggml-").unwrap_or("");
+                                let model_name = model_part.strip_suffix(".bin").unwrap_or("");
+                                if !model_name.is_empty() {
+                                    models.insert(model_name.to_string());
+                                }
                             }
                         }
                     }
@@ -726,18 +760,48 @@ impl ModelManager {
             }
         }
 
+        // Look in the Moonshine cache directory
+        let moonshine_dir = cache_dir.join("moonshine");
+        if moonshine_dir.exists() {
+            let required_files = ["encoder_model.onnx", "decoder_model_merged.onnx", "tokenizer.json"];
+            for entry in fs::read_dir(&moonshine_dir).context("Failed to read moonshine dir")? {
+                let entry = entry?;
+                let path = entry.path();
+                if !path.is_dir() { continue; }
+                // Check that all required model files exist in this folder
+                let all_present = required_files.iter().all(|f| path.join(f).exists());
+                if all_present {
+                    if let Some(folder_name) = path.file_name().and_then(|s| s.to_str()) {
+                        // Map folder name back to model value: "tiny" -> "moonshine-tiny", "base-es" -> "moonshine-base-es"
+                        models.insert(format!("moonshine-{}", folder_name));
+                    }
+                }
+            }
+        }
+
+        // Look in the Parakeet cache directory (hf-hub structure)
+        if self.find_cached_snapshot_with_files(
+            "istupakov/parakeet-tdt-0.6b-v3-onnx",
+            &["encoder-model.int8.onnx", "decoder_joint-model.int8.onnx"],
+        ).unwrap_or(None).is_some() {
+            models.insert("parakeet".to_string());
+        }
+
         let mut result: Vec<String> = models.into_iter().collect();
         result.sort(); // Sort for consistent ordering
         Ok(result)
     }
 
-    /// Delete a cached Whisper model by name.
+    /// Delete a cached model by name.
     /// Returns true if successfully deleted, false if model doesn't exist or deletion failed.
     pub fn delete_cached_model(&self, model_name: &str) -> bool {
-        match self.delete_whisper_model(model_name) {
-            Ok(()) => true,
-            Err(_) => false,
+        if model_name.starts_with("moonshine-") {
+            return self.delete_moonshine_model(model_name).is_ok();
         }
+        if model_name == "parakeet" {
+            return self.delete_parakeet_model().is_ok();
+        }
+        self.delete_whisper_model(model_name).is_ok()
     }
 
     /// Setup for a new download: cancel previous download and create new token

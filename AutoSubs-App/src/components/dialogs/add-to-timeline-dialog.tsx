@@ -20,12 +20,7 @@ import { Settings, TimelineInfo, Speaker } from "@/types/interfaces"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { Check, ChevronLeft, ChevronRight, Layers, Layout, Palette } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ColorPopover } from "@/components/common/color-popover"
-
-const PRESET_COLORS = [
-    "#ef4444", "#f97316", "#eab308", "#22c55e",
-    "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
-]
+import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
 
 const STEPS = [
     { title: "Template", description: "Choose a style template", icon: Layout },
@@ -80,15 +75,6 @@ export function AddToTimelineDialog({
         } finally {
             setIsSubmitting(false)
         }
-    }
-
-    const updateSpeakerColor = (index: number, color: string) => {
-        const newSpeakers = [...localSpeakers]
-        newSpeakers[index] = {
-            ...newSpeakers[index],
-            fill: { ...newSpeakers[index].fill, enabled: true, color },
-        }
-        setLocalSpeakers(newSpeakers)
     }
 
     const canProceed = () => {
@@ -173,56 +159,22 @@ export function AddToTimelineDialog({
                         <ScrollArea className="max-h-[300px] pr-3">
                             <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
-                                    <div
+                                    <SpeakerSettings
                                         key={index}
-                                        className="flex items-center gap-3 rounded-lg border p-3"
-                                    >
-                                        <div className="shrink-0">
-                                            <ColorPopover
-                                                label="Unique Colour"
-                                                enabled={speaker.fill.enabled}
-                                                onEnabledChange={(enabled: boolean) => {
-                                                    const newSpeakers = [...localSpeakers]
-                                                    newSpeakers[index] = {
-                                                        ...newSpeakers[index],
-                                                        fill: { ...newSpeakers[index].fill, enabled },
-                                                    }
-                                                    setLocalSpeakers(newSpeakers)
-                                                }}
-                                                color={speaker.fill.color}
-                                                onColorChange={(color: string) => updateSpeakerColor(index, color)}
-                                                presetColors={PRESET_COLORS}
-                                            />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{speaker.name}</p>
-                                            <p className="text-xs text-muted-foreground font-mono">{speaker.fill.color}</p>
-                                        </div>
-                                        <div className="shrink-0">
-                                            <Select
-                                                value={speaker.track || settings.selectedOutputTrack}
-                                                onValueChange={(value) => {
-                                                    const newSpeakers = [...localSpeakers]
-                                                    newSpeakers[index] = {
-                                                        ...newSpeakers[index],
-                                                        track: value
-                                                    }
-                                                    setLocalSpeakers(newSpeakers)
-                                                }}
-                                            >
-                                                <SelectTrigger className="w-32">
-                                                    <SelectValue placeholder="Track" />
-                                                </SelectTrigger>
-                                                <SelectContent align="end">
-                                                    {timelineInfo.outputTracks.map((track) => (
-                                                        <SelectItem key={track.value} value={track.value}>
-                                                            {track.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
+                                        speaker={speaker}
+                                        onSpeakerChange={(updated) => {
+                                            const newSpeakers = [...localSpeakers]
+                                            newSpeakers[index] = updated
+                                            setLocalSpeakers(newSpeakers)
+                                        }}
+                                        tracks={timelineInfo.outputTracks}
+                                        selectedTrack={speaker.track || settings.selectedOutputTrack}
+                                        onTrackChange={(value) => {
+                                            const newSpeakers = [...localSpeakers]
+                                            newSpeakers[index] = { ...newSpeakers[index], track: value }
+                                            setLocalSpeakers(newSpeakers)
+                                        }}
+                                    />
                                 ))}
                             </div>
                         </ScrollArea>
