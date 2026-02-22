@@ -2,7 +2,7 @@
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global
 local ffi = ffi
-local resolve = Resolve()
+local resolve = resolve
 
 local DEV_MODE = false
 
@@ -70,8 +70,9 @@ end
 
 -- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
 function hexToRgb(hex)
-    local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
-    if r then
+    local result = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
+    if result then
+        local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
         return {
             r = tonumber(r, 16) / 255,
             g = tonumber(g, 16) / 255,
@@ -90,12 +91,11 @@ end
 -- Pause execution for a specified number of seconds (platform-independent)
 function sleep(n)
     if ffi.os == "Windows" then
+        -- Windows
         ffi.C.Sleep(n * 1000)
     else
-        local ts = ffi.new("struct timespec")
-        ts.tv_sec = math.floor(n)
-        ts.tv_nsec = (n - math.floor(n)) * 1e9
-        ffi.C.nanosleep(ts, nil)
+        -- Unix-based (Linux, macOS)
+        os.execute("sleep " .. tonumber(n))
     end
 end
 
@@ -165,10 +165,9 @@ function GetTemplates()
     local hasDefault = false
 
     walk_media_pool(rootFolder, function(clip)
-        local props = clip:GetClipProperty()
-        local clipType = props["Type"]
+        local clipType = clip:GetClipProperty()["Type"]
         if isMatchingTitle(clipType) then
-            local clipName = props["Clip Name"]
+            local clipName = clip:GetClipProperty()["Clip Name"]
             table.insert(t, { label = clipName, value = clipName })
             if clipName == "Default Template" then
                 hasDefault = true
@@ -193,8 +192,7 @@ end
 function GetTemplateItem(folder, templateName)
     local found = nil
     walk_media_pool(folder, function(clip)
-        local props = clip:GetClipProperty()
-        if props["Clip Name"] == templateName then
+        if clip:GetClipProperty()["Clip Name"] == templateName then
             found = clip
             return true -- early stop traversal
         end
@@ -277,7 +275,6 @@ function ResetTracks()
     for i = 1, audioTracks do
         timeline:SetTrackEnable("audio", i, currentExportJob.trackStates[i])
     end
-    currentExportJob.clipBoundaries = nil
 end
 
 function CheckTrackEmpty(trackIndex, markIn, markOut)
@@ -425,82 +422,6 @@ function CancelExport()
     end
 end
 
--- Helper function to find clip boundaries on selected audio tracks
-function GetClipBoundaries(timeline, selectedTracks)
-    local earliestStart = nil
-    local latestEnd = nil
-    
-    for trackIndex, _ in pairs(selectedTracks) do
-        local clips = timeline:GetItemListInTrack("audio", trackIndex)
-        if clips then
-            for _, clip in ipairs(clips) do
-                local clipStart = clip:GetStart()
-                local clipEnd = clip:GetEnd()
-                
-                if earliestStart == nil or clipStart < earliestStart then
-                    earliestStart = clipStart
-                end
-                if latestEnd == nil or clipEnd > latestEnd then
-                    latestEnd = clipEnd
-                end
-            end
-        end
-    end
-    
-    return earliestStart, latestEnd
-end
-
--- Helper function to get individual clips with their boundaries (for segment-based transcription)
--- Returns a sorted array of clip segments: { { start, end, name }, ... }
-function GetIndividualClips(timeline, selectedTracks)
-    local allClips = {}
-    local timelineStart = timeline:GetStartFrame()
-    local frameRate = timeline:GetSetting("timelineFrameRate")
-    
-    for trackIndex, _ in pairs(selectedTracks) do
-        local clips = timeline:GetItemListInTrack("audio", trackIndex)
-        if clips then
-            for _, clip in ipairs(clips) do
-                local clipStart = clip:GetStart()
-                local clipEnd = clip:GetEnd()
-                local clipName = clip:GetName() or "Unnamed"
-                
-                table.insert(allClips, {
-                    startFrame = clipStart,
-                    endFrame = clipEnd,
-                    -- Convert to seconds relative to timeline start
-                    start = (clipStart - timelineStart) / frameRate,
-                    ["end"] = (clipEnd - timelineStart) / frameRate,
-                    name = clipName
-                })
-            end
-        end
-    end
-    
-    -- Sort by start time
-    table.sort(allClips, function(a, b) return a.startFrame < b.startFrame end)
-    
-    -- Merge overlapping clips (in case clips from different tracks overlap)
-    local mergedClips = {}
-    for _, clip in ipairs(allClips) do
-        if #mergedClips == 0 then
-            table.insert(mergedClips, clip)
-        else
-            local lastClip = mergedClips[#mergedClips]
-            -- If this clip overlaps or is adjacent to the last one, merge them
-            if clip.startFrame <= lastClip.endFrame then
-                lastClip.endFrame = math.max(lastClip.endFrame, clip.endFrame)
-                lastClip["end"] = math.max(lastClip["end"], clip["end"])
-                lastClip.name = lastClip.name .. " + " .. clip.name
-            else
-                table.insert(mergedClips, clip)
-            end
-        end
-    end
-    
-    return mergedClips
-end
-
 -- Export audio from selected tracks
 -- inputTracks is a table of track indices to export
 function ExportAudio(outputDir, inputTracks)
@@ -555,27 +476,10 @@ function ExportAudio(outputDir, inputTracks)
     -- save track states for later use
     currentExportJob.trackStates = trackStates
 
-    -- Find clip boundaries on selected tracks to only export the relevant portion
-    local clipStart, clipEnd = GetClipBoundaries(timeline, selected)
-    
-    -- Get individual clips for segment-based transcription
-    local individualClips = GetIndividualClips(timeline, selected)
-    currentExportJob.individualClips = individualClips
-    print("[AutoSubs] Found " .. #individualClips .. " individual clip(s) for transcription")
-    
-    if clipStart and clipEnd then
-        print("[AutoSubs] Found clip boundaries: " .. clipStart .. " - " .. clipEnd)
-        currentExportJob.clipBoundaries = { start = clipStart, ["end"] = clipEnd }
-    else
-        print("[AutoSubs] No clips found on selected tracks, using full timeline")
-    end
-
     resolve:OpenPage("deliver")
 
     project:LoadRenderPreset('Audio Only')
-    
-    -- Build render settings
-    local renderSettings = {
+    project:SetRenderSettings({
         TargetDir = outputDir,
         CustomName = "autosubs-exported-audio",
         RenderMode = "Single clip",
@@ -583,16 +487,7 @@ function ExportAudio(outputDir, inputTracks)
         IsExportAudio = true,
         AudioBitDepth = 24,
         AudioSampleRate = 44100
-    }
-    
-    -- If we found clip boundaries, set the render range to only that portion
-    if clipStart and clipEnd then
-        renderSettings.MarkIn = clipStart
-        renderSettings.MarkOut = clipEnd
-        print("[AutoSubs] Setting render range in settings: " .. clipStart .. " - " .. clipEnd)
-    end
-    
-    project:SetRenderSettings(renderSettings)
+    })
 
     local success, err = pcall(function()
         local pid = project:AddRenderJob()
@@ -602,26 +497,11 @@ function ExportAudio(outputDir, inputTracks)
         local renderJobList = project:GetRenderJobList()
         local renderSettings = renderJobList[#renderJobList]
 
-        local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
-        
-        -- Calculate relative offsets for each clip segment (relative to the exported audio start)
-        local segments = {}
-        for _, clip in ipairs(currentExportJob.individualClips or {}) do
-            table.insert(segments, {
-                start = clip.start - baseOffset,  -- Start time within the exported audio
-                ["end"] = clip["end"] - baseOffset,  -- End time within the exported audio
-                timelineStart = clip.start,  -- Absolute start on timeline (for subtitle placement)
-                timelineEnd = clip["end"],
-                name = clip.name
-            })
-        end
-        
         audioInfo = {
             path = join_path(renderSettings["TargetDir"], renderSettings["OutputFilename"]),
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"],
-            offset = baseOffset,
-            segments = segments  -- Individual clip segments for segment-based transcription
+            offset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
         }
         dump(audioInfo)
         currentExportJob.audioInfo = audioInfo
@@ -647,9 +527,7 @@ function ExportAudio(outputDir, inputTracks)
 end
 
 function SanitizeTrackIndex(timeline, trackIndex, markIn, markOut)
-    -- Only create a new track if trackIndex is explicitly "0" (new track), empty/nil, or invalid
-    -- Respect user's track selection regardless of whether the track is empty
-    if trackIndex == "0" or trackIndex == "" or trackIndex == nil or tonumber(trackIndex) > timeline:GetTrackCount("video") then
+    if trackIndex == "0" or trackIndex == "" or trackIndex == nil or tonumber(trackIndex) > timeline:GetTrackCount("video") or CheckTrackEmpty(trackIndex, markIn, markOut) then
         trackIndex = timeline:GetTrackCount("video") + 1
         timeline:AddTrack("video")
     end
@@ -691,117 +569,75 @@ function SetCustomColors(speaker, tool)
     end
 end
 
--- Check for existing clips on a track that would conflict with new subtitles
--- Returns conflict info: { hasConflicts, conflictingClips: [{start, end, name}], trackName }
-function CheckTrackConflicts(filePath, trackIndex)
-    local timeline = project:GetCurrentTimeline()
-    local timelineStart = timeline:GetStartFrame()
-    local frame_rate = timeline:GetSetting("timelineFrameRate")
-    
-    -- Read the subtitle data to get time ranges
-    local data = read_json_file(filePath)
-    if type(data) ~= "table" then
-        return { hasConflicts = false, error = "Could not read subtitle file" }
-    end
-    
-    local subtitles = data["segments"]
-    if not subtitles or #subtitles == 0 then
-        return { hasConflicts = false, message = "No subtitles to add" }
-    end
-    
-    -- Get the time range of new subtitles
-    local firstSubStart = to_frames(subtitles[1]["start"], frame_rate) + timelineStart
-    local lastSubEnd = to_frames(subtitles[#subtitles]["end"], frame_rate) + timelineStart
-    
-    -- Validate track index
-    trackIndex = tonumber(trackIndex)
-    if not trackIndex or trackIndex <= 0 or trackIndex > timeline:GetTrackCount("video") then
-        return { hasConflicts = false, trackExists = false, message = "Track does not exist" }
-    end
-    
-    -- Get track name
-    local trackName = timeline:GetTrackName("video", trackIndex) or ("Video " .. trackIndex)
-    
-    -- Get existing clips on the track
-    local existingClips = timeline:GetItemListInTrack("video", trackIndex)
-    if not existingClips or #existingClips == 0 then
-        return { hasConflicts = false, trackName = trackName, message = "Track is empty" }
-    end
-    
-    -- Find clips that overlap with the new subtitle range
-    local conflictingClips = {}
-    for _, clip in ipairs(existingClips) do
-        local clipStart = clip:GetStart()
-        local clipEnd = clip:GetEnd()
-        
-        -- Check if clip overlaps with subtitle range
-        if clipStart < lastSubEnd and clipEnd > firstSubStart then
-            table.insert(conflictingClips, {
-                start = (clipStart - timelineStart) / frame_rate,
-                ["end"] = (clipEnd - timelineStart) / frame_rate,
-                name = clip:GetName() or "Unnamed clip"
-            })
-        end
-    end
-    
-    return {
-        hasConflicts = #conflictingClips > 0,
-        conflictingClips = conflictingClips,
-        trackName = trackName,
-        subtitleRange = {
-            start = (firstSubStart - timelineStart) / frame_rate,
-            ["end"] = (lastSubEnd - timelineStart) / frame_rate
-        },
-        totalConflicts = #conflictingClips
-    }
-end
-
 -- Add subtitles to the timeline using the specified template
--- conflictMode: "replace" (delete existing), "skip" (write around conflicts), "new_track" (use new track), nil (default/old behavior)
-function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
+function AddSubtitles(filePath, trackIndex, templateName)
+    -- Keep Resolve on the Edit page, switching pages mid-operation can break Fusion initialisation
     resolve:OpenPage("edit")
 
     local data = read_json_file(filePath)
     if type(data) ~= "table" then
-        print("Error reading JSON file")
+        print("[AutoSubs] ERROR: Failed to read JSON file: " .. tostring(filePath))
         return false
     end
 
-    ---@type { mark_in: integer, mark_out: integer, segments: table, speakers: table }
-    data = data
-
     local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        print("[AutoSubs] ERROR: No active timeline selected")
+        return false
+    end
+
     local timelineStart = timeline:GetStartFrame()
     local timelineEnd = timeline:GetEndFrame()
 
     local markIn = data["mark_in"]
     local markOut = data["mark_out"]
-    local subtitles = data["segments"]
-    local speakers = data["speakers"]
 
-    local speakersExist = false
-    if speakers and #speakers > 0 then
-        speakersExist = true
+    -- Normalise subtitle segments (supports AutoSubs JSON + Whisper-style JSON)
+    local subtitles = data["segments"]
+    if subtitles == nil and type(data["originalSegments"]) == "table" then
+        print("[AutoSubs] Normalising originalSegments -> segments")
+        subtitles = {}
+        for _, seg in ipairs(data["originalSegments"]) do
+            table.insert(subtitles, {
+                start = seg.start or seg.startTime or 0,
+                ["end"] = seg["end"] or seg.endTime or 0,
+                text = seg.text or "",
+                speaker_id = seg.speaker_id or seg.speaker or 0
+            })
+        end
     end
 
+    if type(subtitles) ~= "table" or #subtitles == 0 then
+        print("[AutoSubs] ERROR: No valid subtitle segments found in JSON")
+        return false
+    end
+
+    local speakers = data["speakers"]
+    local speakersExist = (type(speakers) == "table" and #speakers > 0)
+
+    -- Derive mark in/out if not present in the JSON
     if not markIn or not markOut then
-        local success, err = pcall(function()
+        local ok = pcall(function()
             local markInOut = timeline:GetMarkInOut()
             markIn = (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
             markOut = (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
         end)
-
-        if not success then
+        if not ok then
             markIn = timelineStart
             markOut = timelineEnd
         end
     end
 
+    -- Make sure we are working with numbers
+    markIn = tonumber(markIn) or timelineStart
+    markOut = tonumber(markOut) or timelineEnd
+
+    -- Choose or create output track
     trackIndex = SanitizeTrackIndex(timeline, trackIndex, markIn, markOut)
 
     -- Sanitize speaker tracks
     if speakersExist then
-        for i, speaker in ipairs(speakers) do
+        for _, speaker in ipairs(speakers) do
             if speaker.track == nil or speaker.track == "" then
                 speaker.track = trackIndex
             else
@@ -812,173 +648,188 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
 
     local rootFolder = mediaPool:GetRootFolder()
 
-    if templateName == "" then
+    if templateName == "" or templateName == nil then
         local availableTemplates = GetTemplates()
         if #availableTemplates > 0 then
             templateName = availableTemplates[1].value
         end
     end
 
-    -- Get template and frame rate (with safety guards)
+    -- Resolve template and frame rate (with fallbacks)
     local templateItem = nil
     if templateName ~= nil and templateName ~= "" then
         templateItem = GetTemplateItem(rootFolder, templateName)
     end
     if not templateItem then
-        -- Fallback to Default Template if not found
         templateItem = GetTemplateItem(rootFolder, "Default Template")
     end
     if not templateItem then
-        print("Error: Could not find subtitle template '" .. tostring(templateName) .. "' in media pool.")
+        print("[AutoSubs] ERROR: Could not find subtitle template '" .. tostring(templateName) .. "' in media pool")
         return false
     end
+
     local template_frame_rate = templateItem:GetClipProperty()["FPS"]
-
-    -- Get Timeline Frame rate
     local frame_rate = timeline:GetSetting("timelineFrameRate")
+    frame_rate = tonumber(frame_rate) or 30
+    template_frame_rate = tonumber(template_frame_rate) or frame_rate
 
-    -- Handle conflict modes
-    if conflictMode == "new_track" then
-        -- Force creation of a new track regardless of current state
-        trackIndex = timeline:GetTrackCount("video") + 1
-        timeline:AddTrack("video")
-        print("[AutoSubs] Created new track: " .. trackIndex)
-    elseif conflictMode == "replace" then
-        -- Delete existing clips in the subtitle time range on the selected track
-        local existingClips = timeline:GetItemListInTrack("video", trackIndex)
-        if existingClips and #existingClips > 0 then
-            local firstSubStart = to_frames(subtitles[1]["start"], frame_rate) + timelineStart
-            local lastSubEnd = to_frames(subtitles[#subtitles]["end"], frame_rate) + timelineStart
-            
-            local clipsToDelete = {}
-            for _, clip in ipairs(existingClips) do
-                local clipStart = clip:GetStart()
-                local clipEnd = clip:GetEnd()
-                -- Check if clip overlaps with subtitle range
-                if clipStart < lastSubEnd and clipEnd > firstSubStart then
-                    table.insert(clipsToDelete, clip)
-                end
-            end
-            
-            -- Delete conflicting clips
-            for _, clip in ipairs(clipsToDelete) do
-                timeline:DeleteClips({clip}, false) -- false = don't ripple delete
-            end
-            print("[AutoSubs] Deleted " .. #clipsToDelete .. " conflicting clips")
-        end
-    elseif conflictMode == "skip" then
-        -- Filter subtitles to skip ones that would overlap with existing clips
-        local existingClips = timeline:GetItemListInTrack("video", trackIndex)
-        if existingClips and #existingClips > 0 then
-            local filteredSubtitles = {}
-            for _, subtitle in ipairs(subtitles) do
-                local subStart = to_frames(subtitle["start"], frame_rate) + timelineStart
-                local subEnd = to_frames(subtitle["end"], frame_rate) + timelineStart
-                
-                local hasConflict = false
-                for _, clip in ipairs(existingClips) do
-                    local clipStart = clip:GetStart()
-                    local clipEnd = clip:GetEnd()
-                    if subStart < clipEnd and subEnd > clipStart then
-                        hasConflict = true
-                        break
-                    end
-                end
-                
-                if not hasConflict then
-                    table.insert(filteredSubtitles, subtitle)
-                end
-            end
-            
-            print("[AutoSubs] Skipped " .. (#subtitles - #filteredSubtitles) .. " conflicting subtitles")
-            subtitles = filteredSubtitles
-            
-            if #subtitles == 0 then
-                print("[AutoSubs] All subtitles skipped due to conflicts")
-                return { success = true, message = "All subtitles skipped due to existing content", added = 0 }
-            end
-        end
-    end
-
-    -- If within 1 second, join the subtitles
+    -- If within 1 second, join neighbouring subtitles
     local joinThreshold = frame_rate
+
+    -- Build a clip batch for AppendToTimeline
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
-        -- print("Adding subtitle: ", subtitle["text"])
-        local start_frame = to_frames(subtitle["start"], frame_rate)
-        local end_frame = to_frames(subtitle["end"], frame_rate)
+        local s = tonumber(subtitle["start"]) or 0
+        local e = tonumber(subtitle["end"]) or s
+        if e < s then e = s end
+
+        local start_frame = to_frames(s, frame_rate)
+        local end_frame = to_frames(e, frame_rate)
         local timeline_pos = timelineStart + start_frame
         local clip_timeline_duration = end_frame - start_frame
 
         if i < #subtitles then
-            local next_start = timelineStart + to_frames(subtitles[i + 1]["start"], frame_rate)
+            local ns = tonumber(subtitles[i + 1]["start"]) or e
+            local next_start = timelineStart + to_frames(ns, frame_rate)
             local frames_between = next_start - (timeline_pos + clip_timeline_duration)
-            -- if gap between clips is less than threshold, join them
             if frames_between < joinThreshold then
                 clip_timeline_duration = clip_timeline_duration + frames_between + 1
             end
         end
 
-        -- Resolve uses frame rate of clip for startFrame and endFrame, so we need to convert clip_timeline_duration to template frame rate
+        -- Convert duration into the template clip's frame rate
         local duration = (clip_timeline_duration / frame_rate) * template_frame_rate
+        if duration < 1 then duration = 1 end
 
-        -- If speakers exists then check for custom track
         local itemTrack = trackIndex
         if speakersExist then
-            local speaker = speakers[tonumber(subtitle["speaker_id"]) + 1]
-            if speaker.track ~= nil and speaker.track ~= "" then
-                itemTrack = speaker.track
+            local sid = subtitle["speaker_id"]
+            if sid ~= nil and sid ~= "?" then
+                local speaker = speakers[tonumber(sid) + 1]
+                if speaker and speaker.track ~= nil and speaker.track ~= "" then
+                    itemTrack = speaker.track
+                end
             end
         end
 
-        local newClip = {
-            mediaPoolItem = templateItem, -- source MediaPoolItem to add to timeline
-            mediaType = 1,                -- media type 1 is video
-            startFrame = 0,               -- start frame means within the clip
-            endFrame = duration,          -- end frame means within the clip
-            recordFrame = timeline_pos,   -- record frame means where in the timeline the clip should be placed
-            trackIndex = itemTrack        -- track the clip should be placed on
-        }
-
-        table.insert(clipList, newClip)
+        table.insert(clipList, {
+            mediaPoolItem = templateItem,
+            mediaType = 1,
+            startFrame = 0,
+            endFrame = duration,
+            recordFrame = timeline_pos,
+            trackIndex = itemTrack
+        })
     end
 
-    -- Note: Seems to be faster to add all clips at once then add one by one (which arguably looks cooler)
-    local timelineItems = mediaPool:AppendToTimeline(clipList)
+    -- Small helper: try AppendToTimeline with retries
+    local function append_batch(batch, tries)
+        tries = tries or 3
+        for t = 1, tries do
+            local items = mediaPool:AppendToTimeline(batch)
+            if type(items) == "table" then
+                return items
+            end
+            -- Nudge Resolve to refresh internal state then retry
+            timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
+            sleep(0.05)
+            resolve:OpenPage("edit")
+            sleep(0.05)
+        end
+        return nil
+    end
 
-    -- Append all clips to the timeline
+    -- Append in batches, adapt the batch size if Resolve refuses
+    local timelineItems = {}
+    local batchSize = 25
+    local idx = 1
+
+    while idx <= #clipList do
+        local size = math.min(batchSize, #clipList - idx + 1)
+
+        local batch = {}
+        for j = idx, idx + size - 1 do
+            table.insert(batch, clipList[j])
+        end
+
+        local items = append_batch(batch, 3)
+
+        if type(items) ~= "table" then
+            if batchSize > 10 then
+                batchSize = 10
+                print("[AutoSubs] WARNING: AppendToTimeline failed, reducing batch size to 10 at index " .. idx)
+                sleep(0.1)
+            elseif batchSize > 1 then
+                batchSize = 1
+                print("[AutoSubs] WARNING: AppendToTimeline still failing, switching to single-clip mode at index " .. idx)
+                sleep(0.1)
+            else
+                print("[AutoSubs] ERROR: AppendToTimeline failed at index " .. idx .. " even in single-clip mode")
+                return false
+            end
+        else
+            for _, it in ipairs(items) do
+                table.insert(timelineItems, it)
+            end
+            idx = idx + size
+            sleep(0.02)
+        end
+    end
+
+    -- Apply StyledText + colours
     for i, timelineItem in ipairs(timelineItems) do
-        local success, err = pcall(function()
-            local subtitle = subtitles[i]
-            local subtitleText = subtitle["text"]
+        local subtitle = subtitles[i]
+        local subtitleText = (subtitle and subtitle["text"]) and tostring(subtitle["text"]) or ""
 
-            -- Skip if text is not TextPlus (TODO: Add support for other types of text if possible)
-            if timelineItem:GetFusionCompCount() > 0 then
-                local comp = timelineItem:GetFusionCompByIndex(1)
-                local tool = comp:FindToolByID("TextPlus")
-                tool:SetInput("StyledText", subtitleText)
+        local ok, err = pcall(function()
+            -- Fusion comp can be created lazily, so retry briefly
+            local comp = nil
+            for attempt = 1, 8 do
+                if timelineItem:GetFusionCompCount() > 0 then
+                    comp = timelineItem:GetFusionCompByIndex(1)
+                    if comp then break end
+                end
+                sleep(0.03)
+            end
+            if not comp then
+                print("[AutoSubs] WARNING: Fusion comp not ready, skipping clip " .. i)
+                return
+            end
 
-                -- Set text colors if available
-                if speakersExist then
-                    local speaker_id = subtitle["speaker_id"]
-                    if speaker_id ~= "?" then
-                        local speaker = speakers[tonumber(speaker_id) + 1]
-                        SetCustomColors(speaker, tool)
+            local tool = nil
+            for attempt = 1, 10 do
+                tool = comp:FindToolByID("TextPlus")
+                if tool then break end
+                sleep(0.03)
+            end
+            if not tool then
+                print("[AutoSubs] WARNING: TextPlus tool not found, skipping clip " .. i)
+                return
+            end
+
+            tool:SetInput("StyledText", subtitleText)
+
+            if speakersExist then
+                local sid = subtitle and subtitle["speaker_id"] or nil
+                if sid ~= nil and sid ~= "?" then
+                    local sp = speakers[tonumber(sid) + 1]
+                    if sp then
+                        SetCustomColors(sp, tool)
                     end
                 end
-
-                -- Set the clip color to symbolize that the subtitle was added
-                timelineItem:SetClipColor("Green")
             end
+
+            timelineItem:SetClipColor("Green")
         end)
 
-        if not success then
-            print("Failed to add subtitle to timeline: " .. err)
+        if not ok then
+            print("[AutoSubs] Failed to update subtitle clip " .. i .. ": " .. tostring(err))
         end
     end
 
-    -- Update timeline by moving playhead position
+    -- Nudge timeline refresh
     timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
+    return true
 end
 
 function ExtractFrame(comp, exportDir, templateFrameRate)
@@ -1096,16 +947,12 @@ function GeneratePreview(speaker, templateName, exportDir)
     return outputPath
 end
 
--- Minimal JSON helper to avoid crashes if `json` is unavailable
-local function safe_json(obj)
-    if json and json.encode then
-        return json.encode(obj)
-    end
-    if obj and obj.message ~= nil then
-        local msg = tostring(obj.message):gsub('"', '\\"')
-        return '{"message":"' .. msg .. '"}'
-    end
-    return "{}"
+local function set_cors_headers(client)
+    client:send("HTTP/1.1 200 OK\r\n")
+    client:send("Access-Control-Allow-Origin: *\r\n")
+    client:send("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
+    client:send("Access-Control-Allow-Headers: Content-Type\r\n")
+    client:send("\r\n")
 end
 
 function LaunchApp()
@@ -1183,14 +1030,13 @@ function StartServer()
 
     assert(server:listen())
     print("AutoSubs server is listening on port: ", PORT)
-    print("Press Ctrl+C to stop the server")
 
     -- Launch app if not in dev mode
     if not DEV_MODE then
         LaunchApp()
     end
 
-    -- Server loop with signal handling
+    -- Server loop
     local quitServer = false
     while not quitServer do
         -- Server loop to handle client connections
@@ -1244,6 +1090,18 @@ function StartServer()
                     end
                     print("Received request:", content)
 
+                    -- Minimal JSON helper to avoid crashes if `json` is unavailable
+                    local function safe_json(obj)
+                        if json and json.encode then
+                            return json.encode(obj)
+                        end
+                        if obj and obj.message ~= nil then
+                            local msg = tostring(obj.message):gsub('"', '\\"')
+                            return '{"message":"' .. msg .. '"}'
+                        end
+                        return "{}"
+                    end
+
                     -- Parse the JSON content safely (avoid crashes if body is missing/partial)
                     local data, pos, jerr = nil, nil, nil
                     if content and #content > 0 then
@@ -1283,26 +1141,26 @@ function StartServer()
                                 print("[AutoSubs Server] Cancelling export...")
                                 local cancelResult = CancelExport()
                                 body = json.encode(cancelResult)
-                            elseif data.func == "CheckTrackConflicts" then
-                                print("[AutoSubs Server] Checking track conflicts...")
-                                local conflictInfo = CheckTrackConflicts(data.filePath, data.trackIndex)
-                                body = json.encode(conflictInfo)
                             elseif data.func == "AddSubtitles" then
-                                print("[AutoSubs Server] Adding subtitles to timeline...")
-                                local result = AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.conflictMode)
-                                body = json.encode({
-                                    message = "Job completed",
-                                    result = result
-                                })
-                            elseif data.func == "GeneratePreview" then
+    print("[AutoSubs Server] Adding subtitles to timeline...")
+    local ok = AddSubtitles(data.filePath, data.trackIndex, data.templateName)
+    if ok then
+        body = json.encode({ message = "Job completed" })
+    else
+        body = json.encode({ message = "Job failed, see console for details", error = true })
+    end
+
+elseif data.func == "GeneratePreview" then
+    print("[AutoSubs Server] Generating preview...")
+    local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
+    body = json.encode(previewPath)
+
                                 print("[AutoSubs Server] Generating preview...")
                                 local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
                                 body = json.encode(previewPath)
                             elseif data.func == "Exit" then
                                 body = safe_json({ message = "Server shutting down" })
                                 quitServer = true
-                            elseif data.func == "Ping" then
-                                body = safe_json({ message = "Pong" })
                             else
                                 print("Invalid function name")
                             end
@@ -1339,7 +1197,7 @@ function StartServer()
 
                     -- Send HTTP response content (don't assert to avoid crashing on client disconnect)
                     local response = CreateResponse(body)
-                    if DEV_MODE then print(response) end
+                    print(response)
                     local sent, sendErr = client:send(response)
                     if not sent then
                         print("Send failed:", sendErr or "unknown")
@@ -1381,11 +1239,7 @@ local AutoSubs = {
             resources_path = resources_folder
             command_open = 'start "" "' .. main_app .. '"'
         else
-            ffi.cdef [[
-                int system(const char *command);
-                struct timespec { long tv_sec; long tv_nsec; };
-                int nanosleep(const struct timespec *req, struct timespec *rem);
-            ]]
+            ffi.cdef [[ int system(const char *command); ]]
 
             if ffi.os == "OSX" then
                 main_app = executable_path
