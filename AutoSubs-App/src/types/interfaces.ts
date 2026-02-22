@@ -80,6 +80,8 @@ export interface Model {
         | { kind: "multilingual" }
         | { kind: "single_language"; language: string }
         | { kind: "restricted"; languages: string[] }
+    accuracy: 1 | 2 | 3
+    weight: 1 | 2 | 3
     isDownloaded: boolean
 }
 

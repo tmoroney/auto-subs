@@ -1,11 +1,10 @@
-import { HardDrive, MemoryStick, InfoIcon } from "lucide-react"
+import { HardDrive, MemoryStick, Lightbulb, Feather } from "lucide-react"
 import { CircleCheckIcon } from "@/components/ui/icons/circle-check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs"
-import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
@@ -14,23 +13,33 @@ import * as React from "react"
 import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
 
-function ModelStatusIndicator({ isDownloaded }: { isDownloaded: boolean }) {
+function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
   const { t } = useTranslation()
-
+  if (!isDownloaded) return null
   return (
-    <div className="flex items-center gap-2">
-      {isDownloaded && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <CircleCheckIcon className="text-green-600 dark:text-green-400" size={18} />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{t("modelStatus.cached")}</p>
-          </TooltipContent>
-        </Tooltip>
-      )}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">
+          <CircleCheckIcon className="text-green-600 dark:text-green-400" size={14} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{t("modelStatus.cached")}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function MetricIcons({ count, max, Icon, activeClass }: { count: number; max: number; Icon: React.ElementType; activeClass: string }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: max }).map((_, i) => (
+        <Icon
+          key={i}
+          size={11}
+          className={i < count ? activeClass : "text-muted-foreground/25 dark:text-muted-foreground"}
+        />
+      ))}
     </div>
   )
 }
@@ -141,36 +150,11 @@ export function WorkspaceHeader({
                             <div className="flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-medium text-xs">{t(model.label)}</span>
+                                <ModelCachedBadge isDownloaded={model.isDownloaded} />
                               </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1">
-                                      <p className="text-xs text-muted-foreground line-clamp-2 flex-1">
-                                        {t(model.description)}
-                                      </p>
-                                      <InfoIcon className="text-muted-foreground" />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4">
-                                    <div className="space-y-2.5">
-                                      <p className="text-xs">{t(model.details)}</p>
-                                      <div className="flex items-center gap-4 text-xs">
-                                        <div className="flex items-center gap-1">
-                                          <HardDrive size={14} />
-                                          <span>{t("modelStatus.storage")}</span>
-                                          <span className="font-medium">{model.size}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <MemoryStick size={14} />
-                                          <span>{t("modelStatus.ram")}</span>
-                                          <span className="font-medium">{model.ram}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {t(model.badge)}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center ml-2 flex-shrink-0 gap-2">
@@ -180,14 +164,41 @@ export function WorkspaceHeader({
                                 <span className="text-xs text-blue-600 dark:text-blue-400">{downloadProgress}%</span>
                               </div>
                             ) : (
-                              <>
-                                <ModelStatusIndicator
-                                  isDownloaded={model.isDownloaded}
-                                />
-                                <Badge variant="outline" className="text-xs py-1 px-2">
-                                  {t(model.badge)}
-                                </Badge>
-                              </>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5">
+                                    <MetricIcons count={model.accuracy} max={3} Icon={Lightbulb} activeClass="text-amber-500" />
+                                    <MetricIcons count={model.weight} max={3} Icon={Feather} activeClass="text-sky-500" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4 bg-slate-50 dark:bg-slate-950 text-foreground">
+                                  <div className="space-y-2.5">
+                                    <p className="text-xs">{t(model.details)}</p>
+                                    <div className="flex items-center gap-4 text-xs">
+                                      <div className="flex items-center gap-1">
+                                        <HardDrive size={14} />
+                                        <span>{t("modelStatus.storage")}</span>
+                                        <span className="font-medium">{model.size}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <MemoryStick size={14} />
+                                        <span>{t("modelStatus.ram")}</span>
+                                        <span className="font-medium">{model.ram}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        <MetricIcons count={model.accuracy} max={3} Icon={Lightbulb} activeClass="text-amber-500" />
+                                        <span>Accuracy</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <MetricIcons count={model.weight} max={3} Icon={Feather} activeClass="text-sky-500" />
+                                        <span>Lightweight</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </CommandItem>

@@ -175,7 +175,7 @@
       "badge": "Multilingual"
     },
     "tiny_en": {
-      "label": "Tiny (English)",
+      "label": "Tiny",
       "description": "Ultra-fast",
       "details": "Fastest English transcription with minimal memory. Ideal for quick drafts.",
       "badge": "English Only"
@@ -187,7 +187,7 @@
       "badge": "Multilingual"
     },
     "base_en": {
-      "label": "Base (English)",
+      "label": "Base",
       "description": "Fast",
       "details": "Reliable English transcription with low memory. Great for everyday use.",
       "badge": "English Only"
@@ -199,7 +199,7 @@
       "badge": "Multilingual"
     },
     "small_en": {
-      "label": "Small (English)",
+      "label": "Small",
       "description": "Balanced",
       "details": "Balanced speed and English accuracy with moderate memory. Handles varied accents.",
       "badge": "English Only"
@@ -211,7 +211,7 @@
       "badge": "Multilingual"
     },
     "medium_en": {
-      "label": "Medium (English)",
+      "label": "Medium",
       "description": "Accurate",
       "details": "High accuracy English transcription with moderate speed. Good for challenging audio.",
       "badge": "English Only"
@@ -241,37 +241,37 @@
       "badge": "English Only"
     },
     "moonshine_tiny_ar": {
-      "label": "Moonshine Tiny (Arabic)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Arabic transcription with minimal resources.",
       "badge": "Arabic"
     },
     "moonshine_tiny_zh": {
-      "label": "Moonshine Tiny (Chinese)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Chinese transcription with minimal resources.",
       "badge": "Chinese"
     },
     "moonshine_tiny_ja": {
-      "label": "Moonshine Tiny (Japanese)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Japanese transcription with minimal resources.",
       "badge": "Japanese"
     },
     "moonshine_tiny_ko": {
-      "label": "Moonshine Tiny (Korean)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Korean transcription with minimal resources.",
       "badge": "Korean"
     },
     "moonshine_tiny_uk": {
-      "label": "Moonshine Tiny (Ukrainian)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Ukrainian transcription with minimal resources.",
       "badge": "Ukrainian"
     },
     "moonshine_tiny_vi": {
-      "label": "Moonshine Tiny (Vietnamese)",
+      "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Fast on-device Vietnamese transcription with minimal resources.",
       "badge": "Vietnamese"
@@ -283,7 +283,7 @@
       "badge": "English Only"
     },
     "moonshine_base_es": {
-      "label": "Moonshine Base (Spanish)",
+      "label": "Moonshine Base",
       "description": "Fast & Accurate",
       "details": "Fast on-device Spanish transcription with good accuracy.",
       "badge": "Spanish"

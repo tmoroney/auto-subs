@@ -21,6 +21,8 @@ export const models: Model[] = [
         "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"
       ],
     },
+    accuracy: 3,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -33,6 +35,8 @@ export const models: Model[] = [
     details: "models.tiny.details",
     badge: "models.tiny.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -45,6 +49,8 @@ export const models: Model[] = [
     details: "models.tiny_en.details",
     badge: "models.tiny_en.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -57,6 +63,8 @@ export const models: Model[] = [
     details: "models.base.details",
     badge: "models.base.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -69,6 +77,8 @@ export const models: Model[] = [
     details: "models.base_en.details",
     badge: "models.base_en.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -81,6 +91,8 @@ export const models: Model[] = [
     details: "models.small.details",
     badge: "models.small.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 2,
+    weight: 2,
     isDownloaded: false,
   },
   {
@@ -93,6 +105,8 @@ export const models: Model[] = [
     details: "models.small_en.details",
     badge: "models.small_en.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 2,
+    weight: 2,
     isDownloaded: false,
   },
   {
@@ -105,6 +119,8 @@ export const models: Model[] = [
     details: "models.medium.details",
     badge: "models.medium.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 3,
+    weight: 1,
     isDownloaded: false,
   },
   {
@@ -117,6 +133,8 @@ export const models: Model[] = [
     details: "models.medium_en.details",
     badge: "models.medium_en.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 3,
+    weight: 1,
     isDownloaded: false,
   },
   {
@@ -129,6 +147,8 @@ export const models: Model[] = [
     details: "models.large_v3_turbo.details",
     badge: "models.large_v3_turbo.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 3,
+    weight: 2,
     isDownloaded: false,
   },
   {
@@ -141,6 +161,8 @@ export const models: Model[] = [
     details: "models.large_v3.details",
     badge: "models.large_v3.badge",
     languageSupport: { kind: "multilingual" },
+    accuracy: 3,
+    weight: 1,
     isDownloaded: false,
   },
   {
@@ -153,6 +175,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny.details",
     badge: "models.moonshine_tiny.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -165,6 +189,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_ar.details",
     badge: "models.moonshine_tiny_ar.badge",
     languageSupport: { kind: "single_language", language: "ar" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -177,6 +203,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_zh.details",
     badge: "models.moonshine_tiny_zh.badge",
     languageSupport: { kind: "single_language", language: "zh" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -189,6 +217,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_ja.details",
     badge: "models.moonshine_tiny_ja.badge",
     languageSupport: { kind: "single_language", language: "ja" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -201,6 +231,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_ko.details",
     badge: "models.moonshine_tiny_ko.badge",
     languageSupport: { kind: "single_language", language: "ko" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -213,6 +245,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_uk.details",
     badge: "models.moonshine_tiny_uk.badge",
     languageSupport: { kind: "single_language", language: "uk" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -225,6 +259,8 @@ export const models: Model[] = [
     details: "models.moonshine_tiny_vi.details",
     badge: "models.moonshine_tiny_vi.badge",
     languageSupport: { kind: "single_language", language: "vi" },
+    accuracy: 1,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -237,6 +273,8 @@ export const models: Model[] = [
     details: "models.moonshine_base.details",
     badge: "models.moonshine_base.badge",
     languageSupport: { kind: "single_language", language: "en" },
+    accuracy: 2,
+    weight: 3,
     isDownloaded: false,
   },
   {
@@ -249,6 +287,8 @@ export const models: Model[] = [
     details: "models.moonshine_base_es.details",
     badge: "models.moonshine_base_es.badge",
     languageSupport: { kind: "single_language", language: "es" },
+    accuracy: 2,
+    weight: 3,
     isDownloaded: false,
   },
 ];

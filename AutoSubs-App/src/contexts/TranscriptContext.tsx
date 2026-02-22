@@ -142,7 +142,8 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   }
 
   const reformatSubtitles = async (settings: Settings, fileInput: string | null, timelineId: string) => {
-    const filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineId);
+    const filename = currentTranscriptFilename
+      ?? generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineId);
     const transcript = await readTranscript(filename);
     if (!transcript) {
       console.error("Failed to read transcript");
