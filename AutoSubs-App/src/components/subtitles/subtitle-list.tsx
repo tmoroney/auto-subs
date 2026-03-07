@@ -44,15 +44,8 @@ const SubtitleList = ({
     const [originalText, setOriginalText] = useState<string>("");
     const inlineEditorRef = useRef<HTMLDivElement>(null);
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
-    
-    // Virtual scrolling state
+
     const containerRef = useRef<HTMLDivElement>(null);
-    const [scrollTop, setScrollTop] = useState(0);
-    const [containerHeight, setContainerHeight] = useState(0);
-    
-    // Constants for virtualization - using adaptive height estimation
-    const ESTIMATED_ITEM_HEIGHT = 100; // Conservative estimate for variable heights
-    const BUFFER_SIZE = 5; // Increased buffer for smoother scrolling
 
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -120,55 +113,6 @@ const SubtitleList = ({
                 return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
             });
     }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
-    
-    // Calculate visible range with estimated heights
-    const { startIndex, endIndex, totalHeight } = useMemo(() => {
-        const itemCount = filteredSubtitleItems.length;
-        if (itemCount === 0) return { startIndex: 0, endIndex: 0, totalHeight: 0 };
-        
-        // Calculate visible range more accurately
-        const visibleStart = Math.floor(scrollTop / ESTIMATED_ITEM_HEIGHT);
-        const visibleEnd = Math.min(
-            itemCount - 1,
-            Math.ceil((scrollTop + containerHeight) / ESTIMATED_ITEM_HEIGHT)
-        );
-        
-        // Add buffer to prevent empty space during scroll
-        const start = Math.max(0, visibleStart - BUFFER_SIZE);
-        const end = Math.min(itemCount - 1, visibleEnd + BUFFER_SIZE);
-        
-        // Use conservative height estimate to account for variable content
-        const averageItemHeight = ESTIMATED_ITEM_HEIGHT - 20; // Match the minHeight we use for items
-        
-        return {
-            startIndex: start,
-            endIndex: end,
-            totalHeight: itemCount * averageItemHeight
-        };
-    }, [scrollTop, containerHeight, filteredSubtitleItems.length]);
-    
-    // Get visible items with content hash dependency
-    const visibleItems = useMemo(() => {
-        return filteredSubtitleItems.slice(startIndex, endIndex + 1);
-    }, [filteredSubtitleItems, startIndex, endIndex]);
-    
-    // Handle scroll
-    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        setScrollTop(e.currentTarget.scrollTop);
-    }, []);
-    
-    // Handle container resize
-    useEffect(() => {
-        const updateContainerHeight = () => {
-            if (containerRef.current) {
-                setContainerHeight(containerRef.current.clientHeight);
-            }
-        };
-        
-        updateContainerHeight();
-        window.addEventListener('resize', updateContainerHeight);
-        return () => window.removeEventListener('resize', updateContainerHeight);
-    }, []);
 
     // Handle click outside to deselect subtitle
     useEffect(() => {
@@ -343,32 +287,16 @@ const SubtitleList = ({
     }
 
     return (
-        <div className={className}>
-            <div 
-                ref={containerRef}
-                className="h-full"
-                onScroll={handleScroll}
-                style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}
-            >
-                <div style={{ height: totalHeight, position: 'relative' }}>
-                    <div 
-                        style={{ 
-                            transform: `translateY(${startIndex * ESTIMATED_ITEM_HEIGHT}px)`,
-                            position: 'relative'
-                        }}
+        <div ref={containerRef} className={className}>
+            {filteredSubtitleItems.map(({ subtitle, index }: { subtitle: Subtitle; index: number }) => {
+                const isSelected = selectedIndex === index;
+
+                return (
+                    <div
+                        key={subtitle.id}
+                        className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-all duration-200 ease-out hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
+                        onClick={() => selectSubtitle(index)}
                     >
-                        {visibleItems.map(({ subtitle, index }: { subtitle: Subtitle; index: number }) => {
-                            const isSelected = selectedIndex === index;
-                            
-                            return (
-                                <div
-                                    key={subtitle.id}
-                                    className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-all duration-200 ease-out hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
-                                    onClick={() => selectSubtitle(index)}
-                                    style={{ 
-                                        minHeight: `${ESTIMATED_ITEM_HEIGHT - 20}px` // Allow natural height with minimum
-                                    }}
-                                >
                                     <div className="flex w-full items-center gap-2">
                                         <Tooltip>
                                             <TooltipTrigger>
@@ -508,9 +436,6 @@ const SubtitleList = ({
                                 </div>
                             );
                         })}
-                    </div>
-                </div>
-            </div>
         </div>
     )
 }
