@@ -8,7 +8,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ConflictInfo, ConflictMode } from "@/api/resolveAPI";
+import { ConflictInfo, ConflictMode } from "@/api/resolve-api";
 import { AlertTriangle, Replace, SkipForward, Plus } from "lucide-react";
 
 interface TrackConflictDialogProps {

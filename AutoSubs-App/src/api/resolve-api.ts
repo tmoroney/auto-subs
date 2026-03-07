@@ -1,4 +1,3 @@
-// src/api/resolveApi.ts
 import { fetch } from '@tauri-apps/plugin-http';
 import { downloadDir } from '@tauri-apps/api/path';
 import { getTranscriptPath } from '@/utils/file-utils';
@@ -54,7 +53,39 @@ export async function getTimelineInfo() {
   return data;
 }
 
-export async function addSubtitlesToTimeline(filename: string, currentTemplate: string, outputTrack: string) {
+export interface ConflictInfo {
+  hasConflicts: boolean;
+  conflictingClips?: Array<{ start: number; end: number; name: string }>;
+  trackName?: string;
+  subtitleRange?: { start: number; end: number };
+  totalConflicts?: number;
+  trackExists?: boolean;
+  message?: string;
+  error?: string;
+}
+
+export type ConflictMode = 'replace' | 'skip' | 'new_track' | null;
+
+export async function checkTrackConflicts(filename: string, outputTrack: string): Promise<ConflictInfo> {
+  const filePath = await getTranscriptPath(filename);
+  const response = await fetch(resolveAPI, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      func: "CheckTrackConflicts",
+      filePath,
+      trackIndex: outputTrack,
+    }),
+  });
+  return response.json();
+}
+
+export async function addSubtitlesToTimeline(
+  filename: string,
+  currentTemplate: string,
+  outputTrack: string,
+  conflictMode: ConflictMode = null
+) {
   const filePath = await getTranscriptPath(filename);
   const response = await fetch(resolveAPI, {
     method: 'POST',
@@ -64,6 +95,7 @@ export async function addSubtitlesToTimeline(filename: string, currentTemplate: 
       filePath,
       templateName: currentTemplate,
       trackIndex: outputTrack,
+      conflictMode,
     }),
   });
   return response.json();
