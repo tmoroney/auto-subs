@@ -68,6 +68,7 @@
   },
   "common": {
     "add": "追加",
+    "apply": "適用",
     "cancel": "キャンセル",
     "close": "閉じる",
     "delete": "削除",

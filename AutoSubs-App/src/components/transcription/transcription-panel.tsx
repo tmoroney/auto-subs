@@ -92,6 +92,7 @@ function TranscriptionPanelView({
   const { refresh } = useResolve()
   const { settings: currentSettings } = useSettings()
   const uploadIconRef = React.useRef<UploadIconHandle>(null)
+  const dropAreaUploadIconRef = React.useRef<UploadIconHandle>(null)
   const [openLanguage, setOpenLanguage] = React.useState(false)
   const [localSelectedFile, setLocalSelectedFile] = React.useState<string | null>(null)
   const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
@@ -133,7 +134,7 @@ function TranscriptionPanelView({
       multiple: false,
       directory: false,
       filters: [{
-        name: "Media Files (ffmpeg-supported)",
+        name: t("actionBar.fileDialog.mediaFiles"),
         extensions: [
           "wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg", "m4v", "3gp", "aiff", "opus", "alac", "*",
         ],
@@ -260,7 +261,7 @@ function TranscriptionPanelView({
                     <Globe className="h-4 w-4" />
                     <span className="text-xs truncate">
                       {currentSettings.translate
-                        ? `${currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label} → ${translateLanguages.find((l) => l.value === currentSettings.targetLanguage)?.label}`
+                        ? `${currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label} ${t("actionBar.language.arrow")} ${translateLanguages.find((l) => l.value === currentSettings.targetLanguage)?.label}`
                         : currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label}
                     </span>
                   </Button>
@@ -347,19 +348,19 @@ function TranscriptionPanelView({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") handleFileSelect()
                 }}
-                onMouseEnter={() => uploadIconRef.current?.startAnimation()}
-                onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
+                onMouseEnter={() => dropAreaUploadIconRef.current?.startAnimation()}
+                onMouseLeave={() => dropAreaUploadIconRef.current?.stopAnimation()}
               >
                 {selectedFile ? (
                   <div className="flex flex-col items-center gap-1">
-                    <UploadIcon ref={uploadIconRef} size={24} className="text-green-500" />
+                    <UploadIcon ref={dropAreaUploadIconRef} size={24} className="text-green-500" />
                     <span className="text-sm font-medium text-muted-foreground truncate max-w-full px-2">
                       {selectedFile.split("/").pop()}
                     </span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-1">
-                    <UploadIcon ref={uploadIconRef} size={24} className="text-muted-foreground" />
+                    <UploadIcon ref={dropAreaUploadIconRef} size={24} className="text-muted-foreground" />
                     <span className="text-sm font-medium text-muted-foreground">{t("actionBar.fileDrop.prompt")}</span>
                     <span className="text-xs text-muted-foreground">{t("actionBar.fileDrop.supports")}</span>
                   </div>
@@ -397,6 +398,7 @@ function TranscriptionPanelView({
 }
 
 export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () => void } = {}) {
+  const { t } = useTranslation()
   const { subtitles, speakers, processTranscriptionResults, exportSubtitlesAs, loadSubtitles } = useTranscript()
   const { settings, updateSetting } = useSettings()
   const { modelsState, checkDownloadedModels } = useModels()
@@ -472,7 +474,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
 
   React.useEffect(() => {
     if (!settings.isStandaloneMode && isExporting) {
-      updateProgressStep({ progress: exportProgress, type: "Export" })
+      updateProgressStep({ progress: exportProgress, type: t("progressSteps.export") })
     }
   }, [isExporting, exportProgress, settings.isStandaloneMode, updateProgressStep])
 

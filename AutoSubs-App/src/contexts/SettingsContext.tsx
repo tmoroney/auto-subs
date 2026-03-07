@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { load, Store } from '@tauri-apps/plugin-store';
 import { Settings } from '@/types/interfaces';
-import { initI18n, normalizeUiLanguage } from '@/i18n';
+import { getPreferredUiLanguage, initI18n, normalizeUiLanguage } from '@/i18n';
 import { models, modelSupportsLanguage, getFirstRecommendedModelForLanguage } from '@/lib/models';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,8 +71,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       // Alternatively, if they are stored individually, you can reconstruct the object here.
       const storedSettings = await loadedStore.get<any>('settings');
       const hydratedSettings = storedSettings
-        ? ({ ...DEFAULT_SETTINGS, ...storedSettings, uiLanguage: normalizeUiLanguage(storedSettings.uiLanguage) } as Settings)
-        : DEFAULT_SETTINGS;
+        ? ({
+            ...DEFAULT_SETTINGS,
+            ...storedSettings,
+            uiLanguage: storedSettings.uiLanguagePromptCompleted
+              ? normalizeUiLanguage(storedSettings.uiLanguage)
+              : getPreferredUiLanguage(),
+            uiLanguagePromptCompleted: true,
+          } as Settings)
+        : ({
+            ...DEFAULT_SETTINGS,
+            uiLanguage: getPreferredUiLanguage(),
+            uiLanguagePromptCompleted: true,
+          } as Settings);
 
       initI18n(hydratedSettings.uiLanguage);
       setSettings(hydratedSettings);
@@ -116,7 +127,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // A handy reset function
   function resetSettings() {
-    setSettings(DEFAULT_SETTINGS);
+    setSettings({
+      ...DEFAULT_SETTINGS,
+      uiLanguage: getPreferredUiLanguage(),
+      uiLanguagePromptCompleted: true,
+    });
   }
 
   // Update a setting

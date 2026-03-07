@@ -68,6 +68,7 @@
   },
   "common": {
     "add": "추가",
+    "apply": "적용",
     "cancel": "취소",
     "close": "닫기",
     "delete": "삭제",

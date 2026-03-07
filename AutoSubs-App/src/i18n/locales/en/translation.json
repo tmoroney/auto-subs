@@ -36,6 +36,7 @@
     "close": "Close",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
+    "apply": "Apply",
     "add": "Add",
     "done": "Done",
     "delete": "Delete",
@@ -113,12 +114,16 @@
       "prompt": "Drop file or click",
       "supports": "Supports most formats"
     },
+    "fileDialog": {
+      "mediaFiles": "Media Files (ffmpeg-supported)"
+    },
     "language": {
       "source": "Source",
       "translate": "Translate",
       "searchSourcePlaceholder": "Search languages...",
       "searchTargetPlaceholder": "Search target languages...",
-      "noLanguageFound": "No language found."
+      "noLanguageFound": "No language found.",
+      "arrow": "→"
     }
   },
   "speakerEditor": {
@@ -316,7 +321,8 @@
     "download": "Downloading model",
     "transcribe": "Speech to text",
     "translate": "Translating to {{language}}",
-    "processing": "Processing"
+    "processing": "Processing",
+    "export": "Export"
   },
   "subtitles": {
     "title": "Subtitles",

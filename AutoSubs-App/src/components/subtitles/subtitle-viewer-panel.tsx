@@ -23,10 +23,547 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { Speaker } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
 
+type SubtitleViewerVariant = "desktop" | "compact"
+
 interface SubtitleViewerPanelProps {
-  variant: "desktop" | "compact"
+  variant: SubtitleViewerVariant
   isOpen?: boolean
   onClose?: () => void
+}
+
+interface SearchActionButtonProps {
+  button: React.ReactNode
+  tooltip: string
+  useAddon?: boolean
+}
+
+function SearchActionButton({ button, tooltip, useAddon = false }: SearchActionButtonProps) {
+  const trigger = useAddon ? <InputGroupAddon align="inline-end">{button}</InputGroupAddon> : button
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+interface SearchSectionProps {
+  variant: SubtitleViewerVariant
+  headerClassName: string
+  searchQuery: string
+  replaceValue: string
+  searchCaseSensitive: boolean
+  searchWholeWord: boolean
+  showReplace: boolean
+  canReplace: boolean
+  searchInputRef: React.RefObject<HTMLInputElement>
+  onSearchQueryChange: (value: string) => void
+  onReplaceValueChange: (value: string) => void
+  onToggleCaseSensitive: () => void
+  onToggleWholeWord: () => void
+  onToggleReplace: () => void
+  onReplaceAll: () => void
+  searchPlaceholder: string
+  searchAriaLabel: string
+}
+
+function SearchSection({
+  variant,
+  headerClassName,
+  searchQuery,
+  replaceValue,
+  searchCaseSensitive,
+  searchWholeWord,
+  showReplace,
+  canReplace,
+  searchInputRef,
+  onSearchQueryChange,
+  onReplaceValueChange,
+  onToggleCaseSensitive,
+  onToggleWholeWord,
+  onToggleReplace,
+  onReplaceAll,
+  searchPlaceholder,
+  searchAriaLabel,
+}: SearchSectionProps) {
+  const isDesktop = variant === "desktop"
+  const showClearButton = !isDesktop && Boolean(searchQuery)
+  const searchInputClassName = isDesktop ? undefined : "h-10 pr-28"
+  const searchActionsClassName = isDesktop
+    ? "contents"
+    : "absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1"
+  const replaceContainerClassName = `overflow-hidden transition-all duration-200 ease-out ${showReplace ? `${isDesktop ? "mt-2 " : ""}max-h-20 opacity-100 pointer-events-auto` : "max-h-0 opacity-0 pointer-events-none"}`
+  const replaceRowClassName = isDesktop ? "w-full" : "flex items-center gap-2 py-0.5"
+
+  const searchActions = [
+    showClearButton ? (
+      <SearchActionButton
+        key="clear"
+        button={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onSearchQueryChange("")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        }
+        tooltip="Clear"
+      />
+    ) : null,
+    <SearchActionButton
+      key="case-sensitive"
+      button={
+        <Button
+          type="button"
+          variant={searchCaseSensitive ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 text-xs"
+          onClick={onToggleCaseSensitive}
+        >
+          Aa
+        </Button>
+      }
+      tooltip="Case match"
+      useAddon={isDesktop}
+    />,
+    <SearchActionButton
+      key="whole-word"
+      button={
+        <Button
+          type="button"
+          variant={searchWholeWord ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 text-xs"
+          onClick={onToggleWholeWord}
+        >
+          W
+        </Button>
+      }
+      tooltip="Whole word"
+      useAddon={isDesktop}
+    />,
+    <SearchActionButton
+      key="replace-toggle"
+      button={
+        <Button
+          type="button"
+          variant={showReplace ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7"
+          onClick={onToggleReplace}
+        >
+          <Repeat2 className="h-4 w-4" />
+        </Button>
+      }
+      tooltip="Replace all"
+      useAddon={isDesktop}
+    />,
+  ].filter(Boolean)
+
+  const desktopSearch = (
+    <>
+      <ButtonGroup className="w-full">
+        <InputGroup>
+          <InputGroupInput
+            ref={searchInputRef}
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+            aria-label={searchAriaLabel}
+          />
+          {searchActions}
+        </InputGroup>
+      </ButtonGroup>
+
+      <div className={replaceContainerClassName}>
+        <ButtonGroup className={replaceRowClassName}>
+          <Input
+            placeholder="Replace with..."
+            value={replaceValue}
+            onChange={(e) => onReplaceValueChange(e.target.value)}
+          />
+          <Button
+            type="button"
+            disabled={!canReplace}
+            onClick={onReplaceAll}
+            className="text-xs"
+          >
+            Replace All
+          </Button>
+        </ButtonGroup>
+      </div>
+    </>
+  )
+
+  if (isDesktop) {
+    return <div className={headerClassName}>{desktopSearch}</div>
+  }
+
+  return (
+    <div className={headerClassName}>
+      <div className="relative">
+        <Input
+          ref={searchInputRef}
+          placeholder={searchPlaceholder}
+          value={searchQuery}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
+          className={searchInputClassName}
+          aria-label={searchAriaLabel}
+        />
+        <div className={searchActionsClassName}>{searchActions}</div>
+      </div>
+
+      <div className={replaceContainerClassName}>
+        <div className={replaceRowClassName}>
+          <Input
+            placeholder="Replace with..."
+            value={replaceValue}
+            onChange={(e) => onReplaceValueChange(e.target.value)}
+            className="h-9"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!canReplace}
+            onClick={onReplaceAll}
+            size="sm"
+          >
+            Replace All
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface SpeakersPopoverProps {
+  variant: SubtitleViewerVariant
+  open: boolean
+  localSpeakers: Speaker[]
+  onOpenChange: (open: boolean) => void
+  onSpeakerChange: (index: number, speaker: Speaker) => void
+  onCancel: () => void
+  onSave: () => void
+  t: (key: string) => string
+}
+
+function SpeakersPopover({
+  variant,
+  open,
+  localSpeakers,
+  onOpenChange,
+  onSpeakerChange,
+  onCancel,
+  onSave,
+  t,
+}: SpeakersPopoverProps) {
+  const isDesktop = variant === "desktop"
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) onOpenChange(true)
+        else onOpenChange(false)
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size={isDesktop ? "sm" : "icon"}
+              className={isDesktop ? "h-9 px-3" : "h-9 w-9"}
+              title={isDesktop ? t("subtitles.speakers") : undefined}
+              aria-label={variant === "compact" ? t("subtitles.editSpeakers") : undefined}
+            >
+              <Users className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
+              {isDesktop ? "Speakers" : null}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.editSpeakers")}</TooltipContent>}
+      </Tooltip>
+      <PopoverContent align="center" className="w-80 p-0">
+        <div className="px-4 pt-4 pb-2">
+          <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("speakerEditor.description")}</p>
+        </div>
+        <ScrollArea className="max-h-72">
+          <div className="px-4 pb-2 space-y-3">
+            {localSpeakers.length === 0 && (
+              <p className="text-xs text-muted-foreground py-4 text-center">{t("subtitles.empty.noSubtitlesAvailable")}</p>
+            )}
+            {localSpeakers.map((speaker, index) => (
+              <div key={index} className="border rounded-md">
+                <SpeakerSettings
+                  speaker={speaker}
+                  onSpeakerChange={(updated) => onSpeakerChange(index, updated)}
+                />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        {localSpeakers.length > 0 && (
+          <div className="p-3 border-t flex justify-end gap-2 mt-2">
+            <Button variant="outline" size="sm" onClick={onCancel}>
+              {t("common.cancel")}
+            </Button>
+            <Button size="sm" onClick={onSave}>
+              {t("common.saveChanges")}
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface ReformatPopoverProps {
+  variant: SubtitleViewerVariant
+  open: boolean
+  subtitleCount: number
+  onOpenChange: (open: boolean) => void
+  onApply: () => Promise<void>
+}
+
+function ReformatPopover({ variant, open, subtitleCount, onOpenChange, onApply }: ReformatPopoverProps) {
+  const isDesktop = variant === "desktop"
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size={isDesktop ? "sm" : "icon"}
+              className={isDesktop ? "h-9 px-3" : "h-9 w-9"}
+              title={isDesktop ? "Reformat" : undefined}
+              aria-label={variant === "compact" ? "Reformat" : undefined}
+            >
+              <Type className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
+              {isDesktop ? "Reformat" : null}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        {variant === "compact" && <TooltipContent side="bottom">Reformat</TooltipContent>}
+      </Tooltip>
+      <PopoverContent align="center" className="w-80 p-0">
+        <TextFormattingPanel
+          showActions
+          onCancel={() => onOpenChange(false)}
+          onApply={onApply}
+          applyDisabled={subtitleCount === 0}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface SubtitleToolbarProps {
+  variant: SubtitleViewerVariant
+  onClose?: () => void
+  subtitlesLength: number
+  settings: ReturnType<typeof useSettings>["settings"]
+  speakers: Speaker[]
+  localSpeakers: Speaker[]
+  showSpeakerEditor: boolean
+  showReformat: boolean
+  importSubtitles: ReturnType<typeof useTranscript>["importSubtitles"]
+  exportSubtitlesAs: ReturnType<typeof useTranscript>["exportSubtitlesAs"]
+  subtitles: ReturnType<typeof useTranscript>["subtitles"]
+  onSpeakerEditorOpenChange: (open: boolean) => void
+  onLocalSpeakerChange: (index: number, speaker: Speaker) => void
+  onCancelSpeakerEdit: () => void
+  onSaveSpeakers: () => void
+  onReformatOpenChange: (open: boolean) => void
+  onApplyReformat: () => Promise<void>
+  t: (key: string) => string
+}
+
+function SubtitleToolbar({
+  variant,
+  onClose,
+  subtitlesLength,
+  settings,
+  speakers,
+  localSpeakers,
+  showSpeakerEditor,
+  showReformat,
+  importSubtitles,
+  exportSubtitlesAs,
+  subtitles,
+  onSpeakerEditorOpenChange,
+  onLocalSpeakerChange,
+  onCancelSpeakerEdit,
+  onSaveSpeakers,
+  onReformatOpenChange,
+  onApplyReformat,
+  t,
+}: SubtitleToolbarProps) {
+  const toolbarClassName = variant === "desktop"
+    ? "shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20"
+    : "px-3 py-1.5 border-b shrink-0 relative z-20 bg-background"
+
+  return (
+    <div className={toolbarClassName}>
+      <div className="flex items-center gap-2 w-full">
+        {variant === "compact" && onClose && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onClose}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0 mr-auto"
+                aria-label={t("common.back")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("common.close")}</TooltipContent>
+          </Tooltip>
+        )}
+
+        <ImportExportPopover
+          onImport={() => importSubtitles(settings, null, "")}
+          onExport={(format, includeSpeakers) => exportSubtitlesAs(format, includeSpeakers, subtitles, [])}
+          hasSubtitles={subtitlesLength > 0}
+          trigger={variant === "desktop" ? (
+            <Button variant="outline" size="sm" className="h-9 px-3" title={t("importExport.button")}>
+              <Upload className="h-4 w-4 mr-0.5" />
+              Import/Export
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" aria-label={t("importExport.button")}>
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{t("importExport.button")}</TooltipContent>
+            </Tooltip>
+          )}
+        />
+
+        <SpeakersPopover
+          variant={variant}
+          open={showSpeakerEditor}
+          localSpeakers={localSpeakers}
+          onOpenChange={onSpeakerEditorOpenChange}
+          onSpeakerChange={onLocalSpeakerChange}
+          onCancel={onCancelSpeakerEdit}
+          onSave={onSaveSpeakers}
+          t={t}
+        />
+
+        <ReformatPopover
+          variant={variant}
+          open={showReformat}
+          subtitleCount={subtitlesLength}
+          onOpenChange={onReformatOpenChange}
+          onApply={onApplyReformat}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface SubtitleContentProps {
+  variant: SubtitleViewerVariant
+  subtitlesLength: number
+  searchQuery: string
+  searchCaseSensitive: boolean
+  searchWholeWord: boolean
+  selectedIndex: number | null
+  onSelectedIndexChange: (index: number | null) => void
+  t: (key: string) => string
+}
+
+function SubtitleContent({
+  variant,
+  subtitlesLength,
+  searchQuery,
+  searchCaseSensitive,
+  searchWholeWord,
+  selectedIndex,
+  onSelectedIndexChange,
+  t,
+}: SubtitleContentProps) {
+  const contentClassName = variant === "desktop"
+    ? "flex-1 overflow-y-auto min-h-0 px-0 pb-2 relative z-0"
+    : "flex-1 overflow-y-auto min-h-0 px-0 pb-2 pt-2 relative z-0"
+
+  return (
+    <div className={contentClassName}>
+      {subtitlesLength > 0 ? (
+        <SubtitleList
+          searchQuery={searchQuery}
+          searchCaseSensitive={searchCaseSensitive}
+          searchWholeWord={searchWholeWord}
+          selectedIndex={selectedIndex}
+          onSelectedIndexChange={onSelectedIndexChange}
+          itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
+          <p className="text-lg font-medium mb-2">{t("subtitles.empty.noSubtitlesFound")}</p>
+          <p className="text-sm">
+            {searchQuery
+              ? t("subtitles.empty.tryDifferentSearch")
+              : t("subtitles.empty.noSubtitlesAvailable")}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface AddToTimelineFooterProps {
+  variant: SubtitleViewerVariant
+  settings: ReturnType<typeof useSettings>["settings"]
+  timelineInfo: ReturnType<typeof useResolve>["timelineInfo"]
+  layersIconRef: React.RefObject<any>
+  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
+  t: (key: string) => string
+}
+
+function AddToTimelineFooter({
+  variant,
+  settings,
+  timelineInfo,
+  layersIconRef,
+  onAddToTimeline,
+  t,
+}: AddToTimelineFooterProps) {
+  return (
+    <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
+      <AddToTimelineDialog
+        settings={settings}
+        timelineInfo={timelineInfo}
+        onAddToTimeline={onAddToTimeline}
+      >
+        <Button
+          variant={variant === "desktop" ? "secondary" : "default"}
+          size="default"
+          className={variant === "desktop" ? "w-full" : "w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"}
+          onMouseEnter={() => layersIconRef.current?.startAnimation?.()}
+          onMouseLeave={() => layersIconRef.current?.stopAnimation?.()}
+        >
+          {variant === "desktop" ? (
+            <LayersIcon ref={layersIconRef} className="w-4 h-4" />
+          ) : (
+            <Layers2 className="w-4 h-4 mr-2" />
+          )}
+          {t("subtitles.addToTimeline")}
+        </Button>
+      </AddToTimelineDialog>
+    </div>
+  )
 }
 
 export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: SubtitleViewerPanelProps) {
@@ -77,6 +614,13 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   }, [searchCaseSensitive, searchQuery, searchWholeWord])
 
   const canReplace = variant === "desktop" ? Boolean(replaceValue.trim()) : Boolean(searchQuery.trim())
+  const isResolveConnected = Boolean(timelineInfo?.timelineId)
+  const shellClassName = variant === "desktop"
+    ? "flex flex-col h-full border-l bg-card/50"
+    : "flex flex-col h-full min-h-0 bg-background"
+  const headerClassName = variant === "desktop"
+    ? "shrink-0 p-3 border-b"
+    : "p-2 border-b shrink-0 sticky top-0 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 space-y-1"
 
   function updateLocalSpeaker(index: number, updated: Speaker) {
     const next = [...localSpeakers]
@@ -118,350 +662,72 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
 
   if (variant === "compact" && !isOpen) return null
 
-  const shellClassName = variant === "desktop"
-    ? "flex flex-col h-full border-l bg-card/50"
-    : "flex flex-col h-full min-h-0 bg-background"
-
-  const headerClassName = variant === "desktop"
-    ? "shrink-0 p-3 border-b"
-    : "p-2 border-b shrink-0 sticky top-0 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 space-y-1"
-
-  const isDesktop = variant === "desktop"
-  const showClearButton = !isDesktop && Boolean(searchQuery)
-  const searchInputClassName = isDesktop ? undefined : "h-10 pr-28"
-  const searchActionsClassName = isDesktop
-    ? "contents"
-    : "absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1"
-  const replaceContainerClassName = `overflow-hidden transition-all duration-200 ease-out ${showReplace ? `${isDesktop ? "mt-2 " : ""}max-h-20 opacity-100 pointer-events-auto` : "max-h-0 opacity-0 pointer-events-none"}`
-  const replaceRowClassName = isDesktop ? "w-full" : "flex items-center gap-2 py-0.5"
-
-  const renderSearchAction = (
-    key: string,
-    button: React.ReactNode,
-    tooltip: string,
-    useAddon = false,
-  ) => {
-    const trigger = useAddon ? <InputGroupAddon align="inline-end">{button}</InputGroupAddon> : button
-
-    return (
-      <Tooltip key={key}>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent side="bottom">{tooltip}</TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  const searchActions = [
-    showClearButton
-      ? renderSearchAction(
-          "clear",
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="h-4 w-4" />
-          </Button>,
-          "Clear",
-        )
-      : null,
-    renderSearchAction(
-      "case-sensitive",
-      <Button
-        type="button"
-        variant={searchCaseSensitive ? "secondary" : "ghost"}
-        size="icon"
-        className="h-7 w-7 text-xs"
-        onClick={() => setSearchCaseSensitive((v) => !v)}
-      >
-        Aa
-      </Button>,
-      "Case match",
-      isDesktop,
-    ),
-    renderSearchAction(
-      "whole-word",
-      <Button
-        type="button"
-        variant={searchWholeWord ? "secondary" : "ghost"}
-        size="icon"
-        className="h-7 w-7 text-xs"
-        onClick={() => setSearchWholeWord((v) => !v)}
-      >
-        W
-      </Button>,
-      "Whole word",
-      isDesktop,
-    ),
-    renderSearchAction(
-      "replace-toggle",
-      <Button
-        type="button"
-        variant={showReplace ? "secondary" : "ghost"}
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => setShowReplace((v) => !v)}
-      >
-        <Repeat2 className="h-4 w-4" />
-      </Button>,
-      "Replace all",
-      isDesktop,
-    ),
-  ].filter(Boolean)
-
-  const searchContainer = isDesktop ? (
-    <>
-      <ButtonGroup className="w-full">
-        <InputGroup>
-          <InputGroupInput
-            ref={searchInputRef}
-            placeholder={t("subtitles.searchPlaceholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label={t("subtitles.searchAria")}
-          />
-          {searchActions}
-        </InputGroup>
-      </ButtonGroup>
-
-      <div className={replaceContainerClassName}>
-        <ButtonGroup className={replaceRowClassName}>
-          <Input
-            placeholder="Replace with..."
-            value={replaceValue}
-            onChange={(e) => setReplaceValue(e.target.value)}
-          />
-          <Button
-            type="button"
-            disabled={!canReplace}
-            onClick={handleReplaceAll}
-            className="text-xs"
-          >
-            Replace All
-          </Button>
-        </ButtonGroup>
-      </div>
-    </>
-  ) : (
-    <div className={headerClassName}>
-      <div className="relative">
-        <Input
-          ref={searchInputRef}
-          placeholder={t("subtitles.searchPlaceholder")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={searchInputClassName}
-          aria-label={t("subtitles.searchAria")}
-        />
-        <div className={searchActionsClassName}>{searchActions}</div>
-      </div>
-
-      <div className={replaceContainerClassName}>
-        <div className={replaceRowClassName}>
-          <Input
-            placeholder="Replace with..."
-            value={replaceValue}
-            onChange={(e) => setReplaceValue(e.target.value)}
-            className="h-9"
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!canReplace}
-            onClick={handleReplaceAll}
-            size="sm"
-          >
-            Replace All
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-
-  const toolbarClassName = variant === "desktop"
-    ? "shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20"
-    : "px-3 py-1.5 border-b shrink-0 relative z-20 bg-background"
-
-  const isResolveConnected = Boolean(timelineInfo?.timelineId)
-
   return (
     <div className={shellClassName}>
-      {variant === "desktop" ? (
-        <div className={headerClassName}>{searchContainer}</div>
-      ) : (
-        searchContainer
-      )}
+      <SearchSection
+        variant={variant}
+        headerClassName={headerClassName}
+        searchQuery={searchQuery}
+        replaceValue={replaceValue}
+        searchCaseSensitive={searchCaseSensitive}
+        searchWholeWord={searchWholeWord}
+        showReplace={showReplace}
+        canReplace={canReplace}
+        searchInputRef={searchInputRef}
+        onSearchQueryChange={setSearchQuery}
+        onReplaceValueChange={setReplaceValue}
+        onToggleCaseSensitive={() => setSearchCaseSensitive((value) => !value)}
+        onToggleWholeWord={() => setSearchWholeWord((value) => !value)}
+        onToggleReplace={() => setShowReplace((value) => !value)}
+        onReplaceAll={handleReplaceAll}
+        searchPlaceholder={t("subtitles.searchPlaceholder")}
+        searchAriaLabel={t("subtitles.searchAria")}
+      />
 
-      <div className={toolbarClassName}>
-        <div className="flex items-center gap-2 w-full">
-          {variant === "compact" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onClose}
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 mr-auto"
-                  aria-label={t("common.back")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t("common.close")}</TooltipContent>
-            </Tooltip>
-          )}
+      <SubtitleToolbar
+        variant={variant}
+        onClose={onClose}
+        subtitlesLength={subtitles.length}
+        settings={settings}
+        speakers={speakers}
+        localSpeakers={localSpeakers}
+        showSpeakerEditor={showSpeakerEditor}
+        showReformat={showReformat}
+        importSubtitles={importSubtitles}
+        exportSubtitlesAs={exportSubtitlesAs}
+        subtitles={subtitles}
+        onSpeakerEditorOpenChange={(open) => {
+          if (open) setLocalSpeakers(speakers)
+          setShowSpeakerEditor(open)
+        }}
+        onLocalSpeakerChange={updateLocalSpeaker}
+        onCancelSpeakerEdit={() => setShowSpeakerEditor(false)}
+        onSaveSpeakers={handleSaveSpeakers}
+        onReformatOpenChange={setShowReformat}
+        onApplyReformat={handleApplyReformat}
+        t={t}
+      />
 
-          <ImportExportPopover
-            onImport={() => importSubtitles(settings, null, "")}
-            onExport={(format, includeSpeakers) => exportSubtitlesAs(format, includeSpeakers, subtitles, [])}
-            hasSubtitles={subtitles.length > 0}
-            trigger={variant === "desktop" ? (
-              <Button variant="outline" size="sm" className="h-9 px-3" title={t("importExport.button")}>
-                <Upload className="h-4 w-4 mr-0.5" />
-                Import/Export
-              </Button>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9" aria-label={t("importExport.button")}>
-                    <Upload className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{t("importExport.button")}</TooltipContent>
-              </Tooltip>
-            )}
-          />
-
-          <Popover open={showSpeakerEditor} onOpenChange={(open) => {
-            if (open) setLocalSpeakers(speakers)
-            setShowSpeakerEditor(open)
-          }}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size={variant === "desktop" ? "sm" : "icon"}
-                    className={variant === "desktop" ? "h-9 px-3" : "h-9 w-9"}
-                    title={variant === "desktop" ? t("subtitles.speakers") : undefined}
-                    aria-label={variant === "compact" ? t("subtitles.editSpeakers") : undefined}
-                  >
-                    <Users className={variant === "desktop" ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-                    {variant === "desktop" ? "Speakers" : null}
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.editSpeakers")}</TooltipContent>}
-            </Tooltip>
-            <PopoverContent align="center" className="w-80 p-0">
-              <div className="px-4 pt-4 pb-2">
-                <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("speakerEditor.description")}</p>
-              </div>
-              <ScrollArea className="max-h-72">
-                <div className="px-4 pb-2 space-y-3">
-                  {localSpeakers.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">{t("subtitles.empty.noSubtitlesAvailable")}</p>
-                  )}
-                  {localSpeakers.map((speaker, index) => (
-                    <div key={index} className="border rounded-md">
-                      <SpeakerSettings
-                        speaker={speaker}
-                        onSpeakerChange={(updated) => updateLocalSpeaker(index, updated)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              {localSpeakers.length > 0 && (
-                <div className="p-3 border-t flex justify-end gap-2 mt-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowSpeakerEditor(false)}>
-                    {t("common.cancel")}
-                  </Button>
-                  <Button size="sm" onClick={handleSaveSpeakers}>
-                    {t("common.saveChanges")}
-                  </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-
-          <Popover open={showReformat} onOpenChange={setShowReformat}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size={variant === "desktop" ? "sm" : "icon"}
-                    className={variant === "desktop" ? "h-9 px-3" : "h-9 w-9"}
-                    title={variant === "desktop" ? "Reformat" : undefined}
-                    aria-label={variant === "compact" ? "Reformat" : undefined}
-                  >
-                    <Type className={variant === "desktop" ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-                    {variant === "desktop" ? "Reformat" : null}
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              {variant === "compact" && <TooltipContent side="bottom">Reformat</TooltipContent>}
-            </Tooltip>
-            <PopoverContent align="center" className="w-80 p-0">
-              <TextFormattingPanel
-                showActions
-                onCancel={() => setShowReformat(false)}
-                onApply={handleApplyReformat}
-                applyDisabled={subtitles.length === 0}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      <div className={variant === "desktop" ? "flex-1 overflow-y-auto min-h-0 px-0 pb-2 relative z-0" : "flex-1 overflow-y-auto min-h-0 px-0 pb-2 pt-2 relative z-0"}>
-        {subtitles.length > 0 ? (
-          <SubtitleList
-            searchQuery={searchQuery}
-            searchCaseSensitive={searchCaseSensitive}
-            searchWholeWord={searchWholeWord}
-            selectedIndex={selectedIndex}
-            onSelectedIndexChange={setSelectedIndex}
-            itemClassName="hover:bg-sidebar-accent p-3 transition-colors"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
-            <p className="text-lg font-medium mb-2">{t("subtitles.empty.noSubtitlesFound")}</p>
-            <p className="text-sm">
-              {searchQuery
-                ? t("subtitles.empty.tryDifferentSearch")
-                : t("subtitles.empty.noSubtitlesAvailable")}
-            </p>
-          </div>
-        )}
-      </div>
+      <SubtitleContent
+        variant={variant}
+        subtitlesLength={subtitles.length}
+        searchQuery={searchQuery}
+        searchCaseSensitive={searchCaseSensitive}
+        searchWholeWord={searchWholeWord}
+        selectedIndex={selectedIndex}
+        onSelectedIndexChange={setSelectedIndex}
+        t={t}
+      />
 
       {isResolveConnected && (
-        <div className={variant === "desktop" ? "shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl" : "shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl"}>
-          <AddToTimelineDialog
-            settings={settings}
-            timelineInfo={timelineInfo}
-            onAddToTimeline={handleAddToTimeline}
-          >
-            <Button
-              variant={variant === "desktop" ? "secondary" : "default"}
-              size="default"
-              className={variant === "desktop" ? "w-full" : "w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"}
-              onMouseEnter={() => layersIconRef.current?.startAnimation?.()}
-              onMouseLeave={() => layersIconRef.current?.stopAnimation?.()}
-            >
-              {variant === "desktop" ? (
-                <LayersIcon ref={layersIconRef} className="w-4 h-4" />
-              ) : (
-                <Layers2 className="w-4 h-4 mr-2" />
-              )}
-              {t("subtitles.addToTimeline")}
-            </Button>
-          </AddToTimelineDialog>
-        </div>
+        <AddToTimelineFooter
+          variant={variant}
+          settings={settings}
+          timelineInfo={timelineInfo}
+          layersIconRef={layersIconRef}
+          onAddToTimeline={handleAddToTimeline}
+          t={t}
+        />
       )}
     </div>
   )

@@ -29,6 +29,25 @@ export function normalizeUiLanguage(lang: string | null | undefined): SupportedU
   return DEFAULT_UI_LANGUAGE;
 }
 
+export function getPreferredUiLanguage(): SupportedUiLanguage {
+  if (typeof navigator === "undefined") {
+    return DEFAULT_UI_LANGUAGE;
+  }
+
+  const preferredLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
+
+  for (const language of preferredLanguages) {
+    const normalized = normalizeUiLanguage(language);
+    if (normalized !== DEFAULT_UI_LANGUAGE || language?.toLowerCase().startsWith(DEFAULT_UI_LANGUAGE)) {
+      return normalized;
+    }
+  }
+
+  return DEFAULT_UI_LANGUAGE;
+}
+
 export function initI18n(uiLanguage: string) {
   const normalized = normalizeUiLanguage(uiLanguage);
 

@@ -7,7 +7,6 @@ import { TranscriptionPanel } from "@/components/transcription/transcription-pan
 import { useIsMobile } from "@/hooks/use-mobile"
 import { CompactSubtitleViewer } from "@/components/subtitles/compact-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/subtitles/desktop-subtitle-viewer"
-import { LanguagePickerModal } from "@/components/dialogs/language-picker-modal"
 import { useTranslation } from "react-i18next"
 import {
   ResizablePanelGroup,
@@ -47,7 +46,6 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-      <LanguagePickerModal />
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Use actual timeline info from Resolve context */}
         <Titlebar

@@ -213,8 +213,8 @@ export function TextFormattingPanel({
             {/* Cancel / Apply actions */}
             {showActions && (
                 <div className="flex items-center justify-end gap-2 border-t p-3 bg-muted/30">
-                    <Button variant="outline" onClick={onCancel}>Cancel</Button>
-                    <Button onClick={onApply} disabled={applyDisabled}>Apply</Button>
+                    <Button variant="outline" onClick={onCancel}>{t("common.cancel")}</Button>
+                    <Button onClick={onApply} disabled={applyDisabled}>{t("common.apply")}</Button>
                 </div>
             )}
         </div>
