@@ -19,6 +19,7 @@ export interface ProcessingStepProps {
     id?: string;
     onExportToFile?: () => void;
     onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
+    onViewSubtitles?: () => void;
     livePreviewSegments?: any[];
     settings?: Settings;
     timelineInfo?: TimelineInfo;
@@ -33,13 +34,14 @@ export function ProcessingStepItem({
     id,
     onExportToFile,
     onAddToTimeline,
+    onViewSubtitles,
     livePreviewSegments = [],
     settings,
     timelineInfo
 }: ProcessingStepProps) {
     // If this is the completion step, render the special completion component
     if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} settings={settings} timelineInfo={timelineInfo} />;
+        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} settings={settings} timelineInfo={timelineInfo} />;
     }
 
     return (

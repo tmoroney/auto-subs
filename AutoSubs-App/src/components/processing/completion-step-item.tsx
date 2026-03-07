@@ -6,7 +6,7 @@ import {
     ItemFooter,
     ItemTitle,
 } from "@/components/ui/item"
-import { Download, Plus } from "lucide-react"
+import { Download, List, Plus } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { Settings, TimelineInfo } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next"
 export interface CompletionStepProps {
     onExportToFile: () => void;
     onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
+    onViewSubtitles?: () => void;
     settings: Settings;
     timelineInfo: TimelineInfo;
 }
@@ -21,6 +22,7 @@ export interface CompletionStepProps {
 export function CompletionStepItem({
     onExportToFile,
     onAddToTimeline,
+    onViewSubtitles,
     settings,
     timelineInfo
 }: CompletionStepProps) {
@@ -39,6 +41,17 @@ export function CompletionStepItem({
                 </ItemContent>
                 <ItemFooter>
                     <div className="flex gap-2">
+                        {onViewSubtitles && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onViewSubtitles}
+                                className="flex items-center gap-2"
+                            >
+                                <List className="h-3 w-3" />
+                                View Subtitles
+                            </Button>
+                        )}
                         <Button
                             variant="outline"
                             size="sm"

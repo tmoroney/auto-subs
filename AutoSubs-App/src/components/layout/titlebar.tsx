@@ -45,6 +45,11 @@ interface TimelineInfo {
   name?: string;
 }
 
+interface TitlebarProps {
+  timelineInfo: TimelineInfo | null;
+  onOpenCompactViewer?: () => void;
+}
+
 interface ResolveStatusProps {
   timelineInfo: TimelineInfo | null;
 }
@@ -250,7 +255,7 @@ function SettingsDropdown() {
   );
 }
 
-function TranscriptsButton() {
+function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void }) {
   const [open, setOpen] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -318,6 +323,7 @@ function TranscriptsButton() {
                   <CommandItem
                     key={transcript.name}
                     value={transcript.name}
+                    className="cursor-pointer"
                     onSelect={async () => {
                       try {
                         const transcriptData = await readTranscript(transcript.name);
@@ -325,6 +331,7 @@ function TranscriptsButton() {
                           setSubtitles(transcriptData.segments || []);
                           setSpeakers(transcriptData.speakers || []);
                           setCurrentTranscriptFilename(transcript.name);
+                          onTranscriptOpen?.();
                         }
                       } catch (error) {
                         console.error('Failed to load transcript:', error);
@@ -357,7 +364,7 @@ function TranscriptsButton() {
   );
 }
 
-export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }) {
+export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
 
@@ -398,9 +405,9 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
           </div>
 
           {/* Right side - Transcripts and Settings buttons */}
-          <div className="flex items-center w-24 justify-end">
+          <div className="flex items-center gap-1 w-24 justify-end">
             <div data-tauri-drag-region="false">
-              <TranscriptsButton />
+              <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>
             <div data-tauri-drag-region="false">
               <SettingsDropdown />
@@ -413,7 +420,7 @@ export function Titlebar({ timelineInfo }: { timelineInfo: TimelineInfo | null }
           {/* Left side - Transcripts and Settings */}
           <div className="flex items-center">
             <div data-tauri-drag-region="false">
-              <TranscriptsButton />
+              <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>
             <div data-tauri-drag-region="false">
               <SettingsDropdown />

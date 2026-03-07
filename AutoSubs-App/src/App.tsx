@@ -3,9 +3,9 @@ import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
-import { TranscriptionWorkspace } from "@/pages/transcription-workspace"
+import { TranscriptionPanel } from "@/components/transcription/transcription-panel"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { MobileSubtitleViewer } from "@/components/subtitles/mobile-subtitle-viewer"
+import { CompactSubtitleViewer } from "@/components/subtitles/compact-subtitle-viewer"
 import { DesktopSubtitleViewer } from "@/components/subtitles/desktop-subtitle-viewer"
 import { LanguagePickerModal } from "@/components/dialogs/language-picker-modal"
 import { useTranslation } from "react-i18next"
@@ -39,26 +39,40 @@ function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
   const { timelineInfo } = useResolve()
+  const handleOpenCompactViewer = React.useCallback(() => {
+    if (isMobile) {
+      setShowMobileSubtitles(true)
+    }
+  }, [isMobile])
 
   return (
     <TooltipProvider>
       <LanguagePickerModal />
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Use actual timeline info from Resolve context */}
-        <Titlebar timelineInfo={timelineInfo} />
+        <Titlebar
+          timelineInfo={timelineInfo}
+          onOpenCompactViewer={handleOpenCompactViewer}
+        />
 
         {/* Main Content Area with Resizable Panels */}
         <div className="flex-1 min-h-0 pb-0">
           {isMobile ? (
-            // Mobile: Just show transcription settings
             <div className="h-full overflow-hidden">
-              <TranscriptionWorkspace />
+              {showMobileSubtitles ? (
+                <CompactSubtitleViewer
+                  isOpen={showMobileSubtitles}
+                  onClose={() => setShowMobileSubtitles(false)}
+                />
+              ) : (
+                <TranscriptionPanel onViewSubtitles={handleOpenCompactViewer} />
+              )}
             </div>
           ) : (
             // Desktop: Resizable panels with transcription settings and subtitle viewer
             <ResizablePanelGroup direction="horizontal" className="h-full">
               <ResizablePanel defaultSize={50} className="min-w-[400px]">
-                <TranscriptionWorkspace />
+                <TranscriptionPanel />
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={50} minSize={35}>
@@ -67,14 +81,6 @@ function AppContent() {
             </ResizablePanelGroup>
           )}
         </div>
-
-        {/* Mobile Subtitles Viewer */}
-        {isMobile && (
-          <MobileSubtitleViewer
-            isOpen={showMobileSubtitles}
-            onClose={() => setShowMobileSubtitles(false)}
-          />
-        )}
       </div>
     </TooltipProvider>
   )
