@@ -178,7 +178,7 @@ function TranscriptionPanelView({
           <TabsList className="p-1 h-auto">
             <TabsTrigger
               value="file"
-              className="text-sm"
+              className="text-sm px-0"
               onMouseEnter={() => uploadIconRef.current?.startAnimation()}
               onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
             >
