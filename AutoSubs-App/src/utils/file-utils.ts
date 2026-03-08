@@ -1,8 +1,232 @@
 // src/utils/fileUtils.ts
 import { join, documentDir } from '@tauri-apps/api/path';
-import { readTextFile, exists, writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
+import { readDir, readTextFile, exists, writeTextFile, mkdir, stat } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types/interfaces';
 import { applyTextFormattingToSubtitle } from './subtitle-formatter';
+
+const TRANSCRIPT_INDEX_FILENAME = 'transcript-index.json';
+
+export interface TranscriptMetadata {
+  transcriptId: string;
+  sourceType: 'standalone' | 'resolve' | 'unknown';
+  displayName: string;
+  createdAt: string;
+  timelineId?: string;
+  timelineName?: string;
+  sourceFilePath?: string;
+  sourceFileName?: string;
+  markIn?: number;
+  markOut?: number;
+}
+
+interface TranscriptIndexItem {
+  filename: string;
+  metadata?: Partial<TranscriptMetadata>;
+  createdAt?: string;
+}
+
+export interface StoredTranscript {
+  filename: string;
+  createdAt: string;
+  processingTime?: number;
+  speakers: Speaker[];
+  originalSegments: Subtitle[];
+  segments: Subtitle[];
+  metadata: TranscriptMetadata;
+  transcriptId?: string;
+  timelineId?: string;
+  timelineName?: string;
+  sourceType?: TranscriptMetadata['sourceType'];
+  sourceFilePath?: string;
+  sourceFileName?: string;
+  mark_in?: number;
+  mark_out?: number;
+}
+
+export interface TranscriptListItem {
+  filename: string;
+  displayName: string;
+  createdAt: Date;
+  transcriptId?: string;
+  timelineId?: string;
+  timelineName?: string;
+  markIn?: number;
+  markOut?: number;
+}
+
+export interface GenerateTranscriptFilenameOptions {
+  isStandaloneMode: boolean;
+  selectedFile: string | null;
+  timelineId?: string;
+  timelineName?: string;
+}
+
+export interface SaveTranscriptOptions {
+  formatOptions?: {
+    case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
+    removePunctuation: boolean;
+    censoredWords: string[];
+  };
+  metadata?: Partial<TranscriptMetadata>;
+}
+
+function stripExtension(fileName: string): string {
+  return fileName.replace(/\.[^/.\\]+$/, '');
+}
+
+function getFileName(filePath: string | null | undefined): string {
+  if (!filePath) return 'unknown';
+  return filePath.split(/[/\\]/).pop() || 'unknown';
+}
+
+function sanitizeFilenamePart(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9\s-_]/g, '')
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .toLowerCase()
+    .slice(0, 60) || 'transcript';
+}
+
+function createTranscriptId(): string {
+  const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().split('-')[0]
+    : Math.random().toString(36).slice(2, 10);
+  return `tr_${timestamp}_${randomPart}`;
+}
+
+function inferDisplayName(isStandaloneMode: boolean, selectedFile: string | null, timelineName?: string): string {
+  if (isStandaloneMode && selectedFile) {
+    return stripExtension(getFileName(selectedFile));
+  }
+
+  if (!isStandaloneMode && timelineName?.trim()) {
+    return timelineName.trim();
+  }
+
+  return 'transcript';
+}
+
+function buildMetadata(
+  transcript: any,
+  filename: string,
+  overrides: Partial<TranscriptMetadata> | undefined,
+): TranscriptMetadata {
+  const transcriptId = overrides?.transcriptId || filename.replace(/\.json$/, '').split('__').pop() || createTranscriptId();
+  const createdAt = overrides?.createdAt || transcript.createdAt || new Date().toISOString();
+  const sourceType = overrides?.sourceType || transcript.sourceType || 'unknown';
+  const displayName = overrides?.displayName
+    || transcript.timelineName
+    || transcript.timeline_name
+    || transcript.sourceFileName
+    || transcript.source_file_name
+    || stripExtension(filename.replace(/\.json$/, ''));
+
+  return {
+    transcriptId,
+    sourceType,
+    displayName,
+    createdAt,
+    timelineId: overrides?.timelineId ?? transcript.timelineId ?? transcript.timeline_id,
+    timelineName: overrides?.timelineName ?? transcript.timelineName ?? transcript.timeline_name,
+    sourceFilePath: overrides?.sourceFilePath ?? transcript.sourceFilePath ?? transcript.source_file_path,
+    sourceFileName: overrides?.sourceFileName ?? transcript.sourceFileName ?? transcript.source_file_name,
+    markIn: overrides?.markIn ?? transcript.mark_in,
+    markOut: overrides?.markOut ?? transcript.mark_out,
+  };
+}
+
+function parseValidDate(value: unknown): Date | null {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function getTranscriptIndexPath(): Promise<string> {
+  const dir = await getTranscriptsDir();
+  return await join(dir, TRANSCRIPT_INDEX_FILENAME);
+}
+
+async function readTranscriptIndex(): Promise<TranscriptIndexItem[]> {
+  const indexPath = await getTranscriptIndexPath();
+  if (!(await exists(indexPath))) {
+    return [];
+  }
+
+  try {
+    const contents = await readTextFile(indexPath);
+    const parsed = JSON.parse(contents);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Failed to read transcript index:', error);
+    return [];
+  }
+}
+
+async function writeTranscriptIndex(items: TranscriptIndexItem[]): Promise<void> {
+  const indexPath = await getTranscriptIndexPath();
+  await writeTextFile(indexPath, JSON.stringify(items, null, 2));
+}
+
+async function upsertTranscriptIndexItem(filename: string, metadata: TranscriptMetadata): Promise<void> {
+  const items = await readTranscriptIndex();
+  const nextItem: TranscriptIndexItem = {
+    filename,
+    metadata,
+    createdAt: metadata.createdAt,
+  };
+
+  const existingIndex = items.findIndex((item) => item.filename === filename);
+  if (existingIndex >= 0) {
+    items[existingIndex] = nextItem;
+  } else {
+    items.push(nextItem);
+  }
+
+  await writeTranscriptIndex(items);
+}
+
+async function ensureTranscriptIndexItem(filename: string): Promise<TranscriptIndexItem | null> {
+  const items = await readTranscriptIndex();
+  const existingItem = items.find((item) => item.filename === filename);
+  if (existingItem) {
+    return existingItem;
+  }
+
+  const transcript = await readTranscript(filename) as StoredTranscript | null;
+  if (!transcript) {
+    return null;
+  }
+
+  const metadata = buildMetadata(transcript, filename, transcript.metadata);
+  const nextItem: TranscriptIndexItem = {
+    filename,
+    metadata,
+    createdAt: metadata.createdAt,
+  };
+
+  items.push(nextItem);
+  await writeTranscriptIndex(items);
+  return nextItem;
+}
+
+function getLegacyTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineId?: string): string | null {
+  if (isStandaloneMode && selectedFile) {
+    return `${stripExtension(getFileName(selectedFile))}.json`;
+  }
+
+  if (!isStandaloneMode && timelineId) {
+    return `${timelineId}.json`;
+  }
+
+  return null;
+}
 
 // Get the transcripts storage directory
 export async function getTranscriptsDir(): Promise<string> {
@@ -39,20 +263,98 @@ export async function readTranscript(filename: string): Promise<any | null> {
   return JSON.parse(contents);
 }
 
-// Generate a filename for the transcript based on mode and input
-export function generateTranscriptFilename(isStandaloneMode: boolean, selectedFile: string | null, timelineId?: string): string {
-  if (isStandaloneMode && selectedFile) {
-    // For standalone mode, use the audio file name without extension (cross-platform)
-    const fileName = selectedFile.split(/[/\\]/).pop() || 'unknown';
-    const nameWithoutExt = fileName.replace(/\.[^/.\\]+$/, '');
-    return `${nameWithoutExt}.json`;
-  } else if (!isStandaloneMode && timelineId) {
-    // For resolve mode, use the timeline name
-    return `${timelineId}.json`;
-  } else {
-    // Fallback
-    return `transcript_${Date.now()}.json`;
+export function generateTranscriptFilename(
+  isStandaloneModeOrOptions: boolean | GenerateTranscriptFilenameOptions,
+  selectedFile?: string | null,
+  timelineId?: string,
+  timelineName?: string,
+): string {
+  const options = typeof isStandaloneModeOrOptions === 'object'
+    ? isStandaloneModeOrOptions
+    : {
+        isStandaloneMode: isStandaloneModeOrOptions,
+        selectedFile: selectedFile ?? null,
+        timelineId,
+        timelineName,
+      };
+
+  const displayName = inferDisplayName(options.isStandaloneMode, options.selectedFile, options.timelineName);
+  const safeDisplayName = sanitizeFilenamePart(displayName);
+  return `${safeDisplayName}__${createTranscriptId()}.json`;
+}
+
+export async function listTranscriptFiles(): Promise<TranscriptListItem[]> {
+  const transcriptsDir = await getTranscriptsDir();
+  const entries = await readDir(transcriptsDir);
+
+  const transcriptFiles: Array<TranscriptListItem | null> = await Promise.all(
+    entries
+      .filter((entry) => entry.name.endsWith('.json') && entry.name !== TRANSCRIPT_INDEX_FILENAME)
+      .map(async (entry) => {
+        try {
+          const filePath = await getTranscriptPath(entry.name);
+          const fileStats = await stat(filePath);
+          const indexItem = await ensureTranscriptIndexItem(entry.name);
+          const metadata = indexItem?.metadata
+            ? buildMetadata(indexItem, entry.name, indexItem.metadata)
+            : undefined;
+          const createdAt = (fileStats.mtime ? new Date(fileStats.mtime) : null)
+            || parseValidDate(indexItem?.metadata?.createdAt)
+            || parseValidDate(indexItem?.createdAt)
+            || new Date(0);
+
+          return {
+            filename: entry.name,
+            displayName: metadata?.displayName?.trim() || stripExtension(entry.name),
+            createdAt,
+            transcriptId: metadata?.transcriptId,
+            timelineId: metadata?.timelineId,
+            timelineName: metadata?.timelineName,
+            markIn: metadata?.markIn,
+            markOut: metadata?.markOut,
+          } satisfies TranscriptListItem;
+        } catch (error) {
+          console.error('Failed to parse transcript metadata for:', entry.name, error);
+          return null;
+        }
+      })
+  );
+
+  return transcriptFiles
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+export async function resolveTranscriptFilename(
+  isStandaloneMode: boolean,
+  selectedFile: string | null,
+  timelineId?: string,
+): Promise<string | null> {
+  const transcripts = await listTranscriptFiles();
+
+  const matchingTranscript = transcripts.find((transcript) => {
+    if (isStandaloneMode && selectedFile) {
+      return transcript.displayName === stripExtension(getFileName(selectedFile));
+    }
+
+    if (!isStandaloneMode && timelineId) {
+      return transcript.timelineId === timelineId;
+    }
+
+    return false;
+  });
+
+  if (matchingTranscript) {
+    return matchingTranscript.filename;
   }
+
+  const legacyFilename = getLegacyTranscriptFilename(isStandaloneMode, selectedFile, timelineId);
+  if (!legacyFilename) {
+    return null;
+  }
+
+  const legacyPath = await getTranscriptPath(legacyFilename);
+  return (await exists(legacyPath)) ? legacyFilename : null;
 }
 
 // Helper to interpolate words with timings if missing
@@ -78,11 +380,7 @@ function interpolateWordsFromText(text: string, start: number, end: number) {
 export async function saveTranscript(
   transcript: any,
   filename: string,
-  formatOptions?: {
-    case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
-    removePunctuation: boolean;
-    censoredWords: string[];
-  }
+  options?: SaveTranscriptOptions
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
     const storageDir = await getTranscriptsDir();
@@ -111,6 +409,7 @@ export async function saveTranscript(
     // Apply content formatting only (case, punctuation, censoring).
     // Structural splitting (line breaks, cue boundaries) is already done by Rust.
     let segments: Subtitle[] = originalSegments;
+    const formatOptions = options?.formatOptions;
     if (formatOptions) {
       segments = segments.map(sub =>
         applyTextFormattingToSubtitle(sub, {
@@ -123,11 +422,21 @@ export async function saveTranscript(
 
     // Speakers are now aggregated in the Rust backend and included in the transcript
     const speakers: Speaker[] = transcript.speakers || [];
+    const metadata = buildMetadata(transcript, filename, options?.metadata);
 
-    const transcriptData = {
+    const transcriptData: StoredTranscript = {
       filename,
-      createdAt: new Date().toISOString(),
+      transcriptId: metadata.transcriptId,
+      createdAt: metadata.createdAt,
       processingTime: transcript.processing_time_sec,
+      metadata,
+      timelineId: metadata.timelineId,
+      timelineName: metadata.timelineName,
+      sourceType: metadata.sourceType,
+      sourceFilePath: metadata.sourceFilePath,
+      sourceFileName: metadata.sourceFileName,
+      mark_in: metadata.markIn,
+      mark_out: metadata.markOut,
       speakers: speakers,
       originalSegments: originalSegments,
       segments: segments,
@@ -135,11 +444,12 @@ export async function saveTranscript(
 
     // Save transcript to file
     await writeTextFile(filePath, JSON.stringify(transcriptData, null, 2));
+    await upsertTranscriptIndexItem(filename, metadata);
     console.log('Successfully saved transcript to:', filePath);
     return { segments, speakers };
   } catch (error) {
     console.error('Failed to save transcript:', error);
-    throw new Error(`Failed to save transcript: ${error}`);
+    throw new Error(`Failed to save transcript: ${String(error)}`);
   }
 }
 
@@ -170,6 +480,9 @@ export async function updateTranscript(
 
   // read current file
   let transcript = await readTranscript(filename);
+  if (!transcript) return;
+
+  const metadata = buildMetadata(transcript, filename, transcript.metadata);
 
   // update speakers and subtitles
   if (speakers) {
@@ -179,7 +492,18 @@ export async function updateTranscript(
     transcript.segments = subtitles;
   }
 
+  transcript.metadata = metadata;
+  transcript.transcriptId = metadata.transcriptId;
+  transcript.timelineId = metadata.timelineId;
+  transcript.timelineName = metadata.timelineName;
+  transcript.sourceType = metadata.sourceType;
+  transcript.sourceFilePath = metadata.sourceFilePath;
+  transcript.sourceFileName = metadata.sourceFileName;
+  transcript.mark_in = metadata.markIn;
+  transcript.mark_out = metadata.markOut;
+
   // write to file
   const filePath = await getTranscriptPath(filename);
-  return await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
+  await writeTextFile(filePath, JSON.stringify(transcript, null, 2));
+  await upsertTranscriptIndexItem(filename, metadata);
 }

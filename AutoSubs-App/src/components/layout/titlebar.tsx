@@ -31,9 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
-import { getTranscriptsDir } from "@/utils/file-utils";
-import { readDir } from "@tauri-apps/plugin-fs";
-import { readTranscript } from "@/utils/file-utils";
+import { listTranscriptFiles, readTranscript, type TranscriptListItem } from "@/utils/file-utils";
 import { useTranscript } from "@/contexts/TranscriptContext";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
@@ -117,11 +115,6 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
       </HoverCardContent>
     </HoverCard>
   );
-}
-
-interface TranscriptFile {
-  name: string;
-  lastModified: Date;
 }
 
 function SettingsDropdown() {
@@ -258,10 +251,15 @@ function SettingsDropdown() {
 
 function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [transcripts, setTranscripts] = useState<TranscriptFile[]>([]);
+  const [transcripts, setTranscripts] = useState<TranscriptListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const { setSubtitles, setSpeakers, setCurrentTranscriptFilename } = useTranscript();
   const historyIconRef = useRef<HistoryIconHandle>(null);
+
+  useEffect(() => {
+    loadTranscripts();
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -272,24 +270,8 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
   const loadTranscripts = async () => {
     setLoading(true);
     try {
-      const transcriptsDir = await getTranscriptsDir();
-      const entries = await readDir(transcriptsDir);
-
-      const transcriptFiles = await Promise.all(
-        entries
-          .filter(entry => entry.name.endsWith('.json'))
-          .map(async (entry) => {
-            // For now, just use current time as lastModified since the API doesn't expose it easily
-            const lastModified = new Date();
-            return {
-              name: entry.name,
-              lastModified
-            };
-          })
-      );
-
-      transcriptFiles.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
-      setTranscripts(transcriptFiles);
+      setTranscripts(await listTranscriptFiles());
+      setHasLoaded(true);
     } catch (error) {
       console.error('Failed to load transcripts:', error);
     } finally {
@@ -315,7 +297,7 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
         <Command>
           <CommandInput placeholder="Search transcripts..." />
           <CommandList>
-            {loading ? (
+            {loading && transcripts.length === 0 && !hasLoaded ? (
               <div className="py-4 text-center text-sm text-muted-foreground">
                 Loading...
               </div>
@@ -325,16 +307,16 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
               <CommandGroup>
                 {transcripts.map((transcript) => (
                   <CommandItem
-                    key={transcript.name}
-                    value={transcript.name}
+                    key={transcript.filename}
+                    value={`${transcript.displayName} ${transcript.filename}`}
                     className="cursor-pointer"
                     onSelect={async () => {
                       try {
-                        const transcriptData = await readTranscript(transcript.name);
+                        const transcriptData = await readTranscript(transcript.filename);
                         if (transcriptData) {
                           setSubtitles(transcriptData.segments || []);
                           setSpeakers(transcriptData.speakers || []);
-                          setCurrentTranscriptFilename(transcript.name);
+                          setCurrentTranscriptFilename(transcript.filename);
                           onTranscriptOpen?.();
                         }
                       } catch (error) {
@@ -345,10 +327,10 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
                   >
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-sm font-medium">
-                        {transcript.name.replace('.json', '')}
+                        {transcript.displayName}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {transcript.lastModified.toLocaleDateString('en-US', {
+                        {transcript.createdAt.toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

@@ -575,7 +575,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>([])
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const layersIconRef = React.useRef<PlusIconHandle>(null)
-  const { subtitles, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles, speakers, updateSpeakers } = useTranscript()
+  const { subtitles, currentTranscriptFilename, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles, speakers, updateSpeakers } = useTranscript()
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
   const { t } = useTranslation()
@@ -648,9 +648,12 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
 
   const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
     try {
-      const { generateTranscriptFilename } = await import("@/utils/file-utils")
-      const filename = generateTranscriptFilename(settings.isStandaloneMode, null, timelineInfo.timelineId || "")
-      await pushToTimeline(filename, selectedTemplate, selectedOutputTrack)
+      if (!currentTranscriptFilename) {
+        console.error("No active transcript file to add to timeline")
+        return
+      }
+
+      await pushToTimeline(currentTranscriptFilename, selectedTemplate, selectedOutputTrack)
     } catch (error) {
       console.error("Failed to add to timeline:", error)
       throw error

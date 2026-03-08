@@ -22,7 +22,6 @@ import { useTranscript } from "@/contexts/TranscriptContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useResolve } from "@/contexts/ResolveContext"
 import { languages, translateLanguages } from "@/lib/languages"
-import { generateTranscriptFilename } from "@/utils/file-utils"
 import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
 
@@ -399,7 +398,7 @@ function TranscriptionPanelView({
 
 export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () => void } = {}) {
   const { t } = useTranslation()
-  const { subtitles, speakers, processTranscriptionResults, exportSubtitlesAs, loadSubtitles } = useTranscript()
+  const { subtitles, speakers, currentTranscriptFilename, processTranscriptionResults, exportSubtitlesAs, loadSubtitles } = useTranscript()
   const { settings, updateSetting } = useSettings()
   const { modelsState, checkDownloadedModels } = useModels()
   const {
@@ -488,8 +487,13 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
 
   const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
     try {
+      if (!currentTranscriptFilename) {
+        console.error("No active transcript file to add to timeline")
+        return
+      }
+
       await pushToTimeline(
-        generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineInfo.timelineId),
+        currentTranscriptFilename,
         selectedTemplate,
         selectedOutputTrack,
       )

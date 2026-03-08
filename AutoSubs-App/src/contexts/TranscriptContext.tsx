@@ -1,17 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Subtitle, Speaker, Settings } from '@/types/interfaces';
 import { useResolve } from '@/contexts/ResolveContext';
-import { useSettings } from '@/contexts/SettingsContext';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
 import {
   generateTranscriptFilename,
+  resolveTranscriptFilename,
   readTranscript,
   saveTranscript,
   updateTranscript
 } from '../utils/file-utils';
-import { reformatSubtitles as rustReformatSubtitles } from '@/utils/formatting-api';
+import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { applyTextFormattingToSubtitle } from '@/utils/subtitle-formatter';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 
@@ -19,6 +19,7 @@ interface TranscriptContextType {
   subtitles: Subtitle[];
   speakers: Speaker[];
   markIn: number;
+  currentTranscriptFilename: string | null;
   setSubtitles: (subtitles: Subtitle[]) => void;
   setSpeakers: (speakers: Speaker[]) => void;
   setCurrentTranscriptFilename: (filename: string | null) => void;
@@ -39,27 +40,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   const [markIn, setMarkIn] = useState(0);
   const [currentTranscriptFilename, setCurrentTranscriptFilename] = useState<string | null>(null);
   const { timelineInfo } = useResolve();
-  const { settings } = useSettings();
-
-  // Auto-load subtitles when timeline changes
-  useEffect(() => {
-    const loadSubtitlesForTimeline = async () => {
-      if (timelineInfo?.timelineId) {
-        console.log("Timeline changed, loading subtitles for:", timelineInfo.timelineId);
-        await loadSubtitles(settings.isStandaloneMode, null, timelineInfo.timelineId);
-      } else {
-        console.log("No timeline, clearing subtitles");
-        setSubtitles([]);
-        setSpeakers([]);
-      }
-    };
-
-    loadSubtitlesForTimeline();
-  }, [timelineInfo?.timelineId, settings.isStandaloneMode]);
 
   // Load subtitles when timelineId or fileInput changes
   const loadSubtitles = useCallback(async (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => {
-    let filename = generateTranscriptFilename(isStandaloneMode, fileInput, timelineId);
+    const filename = await resolveTranscriptFilename(isStandaloneMode, fileInput, timelineId);
     if (filename && filename.length > 0) {
       console.log("Loading subtitles:", filename);
       const transcript = await readTranscript(filename);
@@ -73,11 +57,13 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
         console.warn("No transcript found for:", filename);
         setCurrentTranscriptFilename(null);
         setSubtitles([]);
+        setSpeakers([]);
       }
     } else {
-      console.log("No timelineId, clearing subtitles");
+      console.log("No matching transcript found");
       setCurrentTranscriptFilename(null);
       setSubtitles([]);
+      setSpeakers([]);
     }
   }, []);
 
@@ -120,16 +106,31 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     const filename = generateTranscriptFilename(
       settings.isStandaloneMode,
       fileInput,
-      timelineId
+      timelineId,
+      settings.isStandaloneMode ? undefined : timelineInfo?.name
     )
 
     setCurrentTranscriptFilename(filename);
 
     // Save transcript to JSON file
     const { segments, speakers } = await saveTranscript(transcript, filename, {
-      case: settings.textCase,
-      removePunctuation: settings.removePunctuation,
-      censoredWords: settings.enableCensor ? settings.censoredWords : [],
+      formatOptions: {
+        case: settings.textCase,
+        removePunctuation: settings.removePunctuation,
+        censoredWords: settings.enableCensor ? settings.censoredWords : [],
+      },
+      metadata: {
+        sourceType: settings.isStandaloneMode ? 'standalone' : 'resolve',
+        displayName: settings.isStandaloneMode
+          ? (fileInput?.split(/[/\\]/).pop()?.replace(/\.[^/.\\]+$/, '') || 'transcript')
+          : timelineInfo?.name || 'transcript',
+        timelineId: settings.isStandaloneMode ? undefined : timelineId,
+        timelineName: settings.isStandaloneMode ? undefined : timelineInfo?.name,
+        sourceFilePath: settings.isStandaloneMode ? fileInput || undefined : undefined,
+        sourceFileName: settings.isStandaloneMode && fileInput
+          ? fileInput.split(/[/\\]/).pop() || undefined
+          : undefined,
+      }
     })
     console.log("Transcript saved to:", filename)
 
@@ -279,14 +280,34 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       let transcript = { segments: subtitles };
 
       // Save transcript to file in Transcripts directory
-      let filename = generateTranscriptFilename(settings.isStandaloneMode, fileInput, timelineId);
+      let filename = generateTranscriptFilename(
+        settings.isStandaloneMode,
+        fileInput,
+        timelineId,
+        settings.isStandaloneMode ? undefined : timelineInfo?.name,
+      );
       console.log("Saving transcript to:", filename);
       // No speakers for imported subtitles
       let { segments } = await saveTranscript(transcript, filename, {
-        case: settings.textCase,
-        removePunctuation: settings.removePunctuation,
-        censoredWords: settings.enableCensor ? settings.censoredWords : [],
+        formatOptions: {
+          case: settings.textCase,
+          removePunctuation: settings.removePunctuation,
+          censoredWords: settings.enableCensor ? settings.censoredWords : [],
+        },
+        metadata: {
+          sourceType: settings.isStandaloneMode ? 'standalone' : 'resolve',
+          displayName: settings.isStandaloneMode
+            ? (fileInput?.split(/[/\\]/).pop()?.replace(/\.[^/.\\]+$/, '') || 'transcript')
+            : timelineInfo?.name || 'transcript',
+          timelineId: settings.isStandaloneMode ? undefined : timelineId,
+          timelineName: settings.isStandaloneMode ? undefined : timelineInfo?.name,
+          sourceFilePath: settings.isStandaloneMode ? fileInput || undefined : undefined,
+          sourceFileName: settings.isStandaloneMode && fileInput
+            ? fileInput.split(/[/\\]/).pop() || undefined
+            : undefined,
+        }
       });
+      setCurrentTranscriptFilename(filename)
       setSubtitles(segments)
     } catch (error) {
       console.error('Failed to open file', error);
@@ -300,6 +321,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       subtitles,
       speakers,
       markIn,
+      currentTranscriptFilename,
       setSubtitles,
       setSpeakers,
       setCurrentTranscriptFilename,
