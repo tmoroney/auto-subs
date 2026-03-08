@@ -51,6 +51,7 @@ function SearchActionButton({ button, tooltip, useAddon = false }: SearchActionB
 interface SearchSectionProps {
   variant: SubtitleViewerVariant
   headerClassName: string
+  t: (key: string) => string
   searchQuery: string
   replaceValue: string
   searchCaseSensitive: boolean
@@ -71,6 +72,7 @@ interface SearchSectionProps {
 function SearchSection({
   variant,
   headerClassName,
+  t,
   searchQuery,
   replaceValue,
   searchCaseSensitive,
@@ -104,7 +106,7 @@ function SearchSection({
             <X className="h-4 w-4" />
           </Button>
         }
-        tooltip="Clear"
+        tooltip={searchAriaLabel}
       />
     ) : null,
     <SearchActionButton
@@ -120,7 +122,7 @@ function SearchSection({
           Aa
         </Button>
       }
-      tooltip="Case match"
+      tooltip={t("subtitles.search.caseMatch")}
       useAddon={isDesktop}
     />,
     <SearchActionButton
@@ -136,7 +138,7 @@ function SearchSection({
           W
         </Button>
       }
-      tooltip="Whole word"
+      tooltip={t("subtitles.search.wholeWord")}
       useAddon={isDesktop}
     />,
     <SearchActionButton
@@ -152,7 +154,7 @@ function SearchSection({
           <Repeat2 className="h-4 w-4" />
         </Button>
       }
-      tooltip="Replace all"
+      tooltip={t("subtitles.search.replaceAll")}
       useAddon={isDesktop}
     />,
   ].filter(Boolean)
@@ -174,7 +176,7 @@ function SearchSection({
   const replaceSection = (
     <ButtonGroup className="w-full mt-2">
       <Input
-        placeholder="Replace with..."
+        placeholder={t("subtitles.search.replaceWithPlaceholder")}
         value={replaceValue}
         onChange={(e) => onReplaceValueChange(e.target.value)}
         className="text-sm"
@@ -187,7 +189,7 @@ function SearchSection({
         size={isDesktop ? undefined : "sm"}
         className={isDesktop ? "text-xs" : undefined}
       >
-        Replace All
+        {t("subtitles.search.replaceAll")}
       </Button>
     </ButtonGroup>
   )
@@ -242,7 +244,7 @@ function SpeakersPopover({
               aria-label={variant === "compact" ? t("subtitles.editSpeakers") : undefined}
             >
               <Users className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-              {isDesktop ? "Speakers" : null}
+              {isDesktop ? t("subtitles.speakers") : null}
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
@@ -291,9 +293,10 @@ interface ReformatPopoverProps {
   subtitleCount: number
   onOpenChange: (open: boolean) => void
   onApply: () => Promise<void>
+  t: (key: string) => string
 }
 
-function ReformatPopover({ variant, open, subtitleCount, onOpenChange, onApply }: ReformatPopoverProps) {
+function ReformatPopover({ variant, open, subtitleCount, onOpenChange, onApply, t }: ReformatPopoverProps) {
   const isDesktop = variant === "desktop"
 
   return (
@@ -305,15 +308,15 @@ function ReformatPopover({ variant, open, subtitleCount, onOpenChange, onApply }
               variant="outline"
               size={isDesktop ? "sm" : "icon"}
               className={isDesktop ? "h-9 px-3" : "h-9 w-9"}
-              title={isDesktop ? "Reformat" : undefined}
-              aria-label={variant === "compact" ? "Reformat" : undefined}
+              title={isDesktop ? t("subtitles.reformat") : undefined}
+              aria-label={variant === "compact" ? t("subtitles.reformat") : undefined}
             >
               <Type className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-              {isDesktop ? "Reformat" : null}
+              {isDesktop ? t("subtitles.reformat") : null}
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        {variant === "compact" && <TooltipContent side="bottom">Reformat</TooltipContent>}
+        {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.reformat")}</TooltipContent>}
       </Tooltip>
       <PopoverContent align="center" className="w-80 p-0">
         <TextFormattingPanel
@@ -401,7 +404,7 @@ function SubtitleToolbar({
               trigger={variant === "desktop" ? (
                 <Button variant="outline" size="sm" className="h-9 px-3" title={t("importExport.button")}>
                   <Upload className="h-4 w-4 mr-0.5" />
-                  Import/Export
+                  {t("importExport.button")}
                 </Button>
               ) : (
                 <Button
@@ -438,6 +441,7 @@ function SubtitleToolbar({
           subtitleCount={subtitlesLength}
           onOpenChange={onReformatOpenChange}
           onApply={onApplyReformat}
+          t={t}
         />
       </div>
     </div>
@@ -637,6 +641,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
       <SearchSection
         variant={variant}
         headerClassName={headerClassName}
+        t={t}
         searchQuery={searchQuery}
         replaceValue={replaceValue}
         searchCaseSensitive={searchCaseSensitive}

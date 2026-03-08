@@ -40,8 +40,10 @@
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
       "source": "ソース",
-      "translate": "翻訳"
+      "translate": "翻訳",
+      "arrow": "→"
     },
+    "fileDialog": { "mediaFiles": "メディアファイル (ffmpeg 対応)" },
     "mode": {
       "fileInput": "ファイル",
       "timeline": "タイムライン"
@@ -69,18 +71,21 @@
   "common": {
     "add": "追加",
     "apply": "適用",
+    "back": "戻る",
     "cancel": "キャンセル",
     "close": "閉じる",
     "delete": "削除",
     "done": "完了",
     "generateSubtitles": "字幕を生成",
+    "next": "次へ",
     "saveChanges": "変更を保存"
   },
   "completion": {
     "addToTimeline": "タイムラインに追加",
     "exportToFile": "ファイルに書き出し",
     "processingComplete": "処理完了",
-    "subtitlesReady": "字幕の準備ができました！"
+    "subtitlesReady": "字幕の準備ができました！",
+    "viewSubtitles": "字幕を表示"
   },
   "importExport": {
     "button": "インポート / エクスポート",
@@ -93,7 +98,12 @@
     "includeSpeakerLabels": "話者ラベルを含める",
     "exportTab": "エクスポート",
     "selected": "選択済み：",
-    "supportsSrt": ".srt ファイルに対応"
+    "supportsSrt": ".srt ファイルに対応",
+    "fileDialog": { "subtitleFiles": "字幕ファイル" },
+    "exportFormats": {
+      "srt": { "title": "字幕 (.srt)", "description": "YouTube や VLC などで使える標準的な字幕形式です。タイムスタンプを含みます。" },
+      "txt": { "title": "文字起こし (.txt)", "description": "利用可能な場合は話者ラベルを含む、LLM 向けのプレーンテキスト書き出しです。" }
+    }
   },
   "languagePicker": {
     "continue": "続行",
@@ -160,6 +170,7 @@
       "empty": "ダウンロード済みのモデルが見つかりません",
       "title": "モデル"
     },
+    "diarize": { "label": "話者ダイアリゼーションモデル", "description": "話者ラベリング用バンドル", "details": "話者のダイアリゼーションとラベリングに使用されます。", "badge": "話者ラベル" },
     "moonshine_base": {
       "badge": "英語専用",
       "description": "高速・高精度",
@@ -259,9 +270,11 @@
   },
   "progressSteps": {
     "download": "モデルをダウンロード中",
+    "diarize": "話者を識別中",
     "processing": "処理中",
     "transcribe": "音声をテキストに変換中",
-    "translate": "{{language}} に翻訳中"
+    "translate": "{{language}} に翻訳中",
+    "export": "エクスポート"
   },
   "settings": {
     "description": "AutoSubs の設定とオプションを構成します。",
@@ -327,6 +340,7 @@
     "addToTimeline": "タイムラインに追加",
     "clearSearch": "検索をクリア",
     "editSpeakers": "話者を編集",
+    "reformat": "再フォーマット",
     "empty": {
       "noSubtitlesAvailable": "字幕がありません。先にインポートしてください。",
       "noSubtitlesAvailableShort": "字幕がありません",
@@ -335,6 +349,8 @@
     },
     "jumpToTimeline": "タイムライン上の地点にジャンプ",
     "loading": "字幕を読み込み中...",
+    "waitingForSubtitles": "字幕を待機中...",
+    "search": { "caseMatch": "大文字/小文字を区別", "wholeWord": "完全一致", "replaceAll": "すべて置換", "replaceWithPlaceholder": "次に置換..." },
     "searchAria": "字幕を検索",
     "searchPlaceholder": "字幕を検索...",
     "speakers": "話者",
@@ -345,6 +361,7 @@
     "toggle": "テーマを切り替え"
   },
   "titlebar": {
+    "transcripts": { "searchPlaceholder": "文字起こしを検索...", "loading": "読み込み中...", "empty": "文字起こしが見つかりません。" },
     "resolve": {
       "productName": "DaVinci Resolve",
       "status": {
@@ -373,5 +390,31 @@
       "welcomeDescription": "字幕の生成を開始するには音声ソースを選択してください。",
       "welcomeTitle": "AutoSubs へようこそ"
     }
+  },
+  "addToTimeline": {
+    "title": "タイムラインに追加",
+    "templateTheme": "テンプレートテーマ",
+    "selectTemplate": "テンプレートを選択",
+    "outputTrack": "出力トラック",
+    "selectOutputTrack": "出力トラックを選択",
+    "adding": "追加中...",
+    "steps": {
+      "template": { "title": "テンプレート", "description": "スタイルテンプレートを選択" },
+      "speakers": { "title": "話者", "description": "話者トラックと色を設定" },
+      "outputTrack": { "title": "出力トラック", "description": "字幕トラックを選択" }
+    }
+  },
+  "replaceStrings": {
+    "title": "単語を検索/置換",
+    "find": "検索",
+    "findPlaceholder": "検索するテキスト...",
+    "matchCase": "大文字/小文字を区別",
+    "replaceWith": "置換後",
+    "replacePlaceholder": "置換テキスト...",
+    "occurrencesFound": "{{count}} 件見つかりました",
+    "occurrencePosition": "{{current}} / {{total}}",
+    "noOccurrencesFound": "一致が見つかりません",
+    "replaceCurrent": "現在を置換",
+    "replaceAll": "すべて置換 ({{count}})"
   }
 }

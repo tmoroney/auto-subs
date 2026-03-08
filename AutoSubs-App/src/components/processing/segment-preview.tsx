@@ -1,5 +1,6 @@
 import { Subtitle } from "@/types/interfaces"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 interface SegmentPreviewProps {
     segments: Subtitle[]
@@ -8,6 +9,7 @@ interface SegmentPreviewProps {
 }
 
 export function SegmentPreview({ segments, isActive, placeholder }: SegmentPreviewProps) {
+    const { t } = useTranslation()
     const scrollRef = useRef<HTMLDivElement>(null)
     const [streamedText, setStreamedText] = useState("")
     const [isStreaming, setIsStreaming] = useState(false)
@@ -145,7 +147,7 @@ export function SegmentPreview({ segments, isActive, placeholder }: SegmentPrevi
         >
             <div className="text-xs text-muted-foreground">
                 {streamedText || (isActive && !isStreaming && (
-                    <span className="italic">{placeholder || "Waiting for subtitles..."}</span>
+                    <span className="italic">{placeholder || t("subtitles.waitingForSubtitles")}</span>
                 ))}
             </div>
         </div>

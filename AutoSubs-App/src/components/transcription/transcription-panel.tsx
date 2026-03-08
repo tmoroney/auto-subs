@@ -44,6 +44,8 @@ interface ProcessingStep {
   isCancelled?: boolean
 }
 
+const DIARIZE_MODEL_ID = "speaker-diarize"
+
 interface TranscriptionPanelViewProps {
   modelsState: Model[]
   selectedModelIndex: number
@@ -409,10 +411,9 @@ function TranscriptionPanelView({
 }
 
 export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () => void } = {}) {
-  const { t } = useTranslation()
   const { subtitles, speakers, currentTranscriptFilename, processTranscriptionResults, exportSubtitlesAs, loadSubtitles } = useTranscript()
   const { settings, updateSetting } = useSettings()
-  const { modelsState, checkDownloadedModels } = useModels()
+  const { modelsState, downloadedModelValues, checkDownloadedModels } = useModels()
   const {
     timelineInfo,
     pushToTimeline,
@@ -465,27 +466,32 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
 
   React.useEffect(() => {
     if (processingSteps.length > 0 && progressContainerRef.current) {
-      progressContainerRef.current.scrollTop = progressContainerRef.current.scrollHeight
+      progressContainerRef.current.scrollTop = 0
     }
   }, [processingSteps])
 
   const isModelCached = modelsState[settings.model]?.isDownloaded ?? false
+  const isDiarizeModelDownloaded = downloadedModelValues.includes(DIARIZE_MODEL_ID)
+  const hasPendingDownloads = !isModelCached || (settings.enableDiarize && !isDiarizeModelDownloaded)
 
   React.useEffect(() => {
     const cleanup = setupEventListeners({
       targetLanguage: settings.targetLanguage,
       language: settings.language,
       isResolveMode: !settings.isStandaloneMode,
-      isModelCached,
+      hasPendingDownloads,
       enableDiarize: settings.enableDiarize,
     })
 
     return cleanup
-  }, [setupEventListeners, settings.targetLanguage, settings.language, settings.isStandaloneMode, isModelCached, settings.enableDiarize])
+  }, [setupEventListeners, settings.targetLanguage, settings.language, settings.isStandaloneMode, hasPendingDownloads, settings.enableDiarize])
 
   React.useEffect(() => {
     if (!settings.isStandaloneMode && isExporting) {
-      updateProgressStep({ progress: exportProgress, type: t("progressSteps.export") })
+      updateProgressStep({
+        progress: exportProgress,
+        type: 'Export'
+      })
     }
   }, [isExporting, exportProgress, settings.isStandaloneMode, updateProgressStep])
 
@@ -533,7 +539,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
       targetLanguage: settings.targetLanguage,
       language: settings.language,
       isResolveMode: !settings.isStandaloneMode,
-      isModelCached: modelsState[settings.model]?.isDownloaded ?? false,
+      hasPendingDownloads,
       enableDiarize: settings.enableDiarize,
     })
 

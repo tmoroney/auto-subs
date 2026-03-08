@@ -35,10 +35,13 @@ import { listTranscriptFiles, readTranscript, type TranscriptListItem } from "@/
 import { useTranscript } from "@/contexts/TranscriptContext";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
+import type { Model } from "@/types/interfaces";
 import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
 import { ArchiveIcon } from "../ui/archive";
+
+ const DIARIZE_MODEL_ID = "speaker-diarize";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -120,9 +123,29 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
 function SettingsDropdown() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { modelsState, handleDeleteModel } = useModels();
+  const { modelsState, downloadedModelValues, handleDeleteModel } = useModels();
   const [manageModelsOpen, setManageModelsOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
+  const managerModels: Model[] = downloadedModelValues.includes(DIARIZE_MODEL_ID)
+    ? [
+        ...modelsState,
+        {
+          value: DIARIZE_MODEL_ID,
+          label: "models.diarize.label",
+          description: "models.diarize.description",
+          size: "40MB",
+          ram: "",
+          image: "/diarize.png",
+          details: "models.diarize.details",
+          badge: "models.diarize.badge",
+          languageSupport: { kind: "multilingual" },
+          accuracy: 3,
+          weight: 2,
+          isDownloaded: true,
+        },
+      ]
+    : modelsState;
 
   const handleThemeChange = (themeValue: string) => {
     setTheme(themeValue as "dark" | "light" | "system");
@@ -237,7 +260,7 @@ function SettingsDropdown() {
       <ManageModelsDialog
         open={manageModelsOpen}
         onOpenChange={setManageModelsOpen}
-        models={modelsState}
+        models={managerModels}
         onDeleteModel={handleDeleteModel}
       />
 
@@ -250,6 +273,7 @@ function SettingsDropdown() {
 }
 
 function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void }) {
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptListItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -279,6 +303,8 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
     }
   };
 
+  const transcriptDateLocale = i18n.resolvedLanguage || i18n.language || undefined;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -295,14 +321,14 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <Command>
-          <CommandInput placeholder="Search transcripts..." />
+          <CommandInput placeholder={t("titlebar.transcripts.searchPlaceholder")} />
           <CommandList>
             {loading && transcripts.length === 0 && !hasLoaded ? (
               <div className="py-4 text-center text-sm text-muted-foreground">
-                Loading...
+                {t("titlebar.transcripts.loading")}
               </div>
             ) : transcripts.length === 0 ? (
-              <CommandEmpty>No transcripts found.</CommandEmpty>
+              <CommandEmpty>{t("titlebar.transcripts.empty")}</CommandEmpty>
             ) : (
               <CommandGroup>
                 {transcripts.map((transcript) => (
@@ -330,7 +356,7 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
                         {transcript.displayName}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {transcript.createdAt.toLocaleDateString('en-US', {
+                        {transcript.createdAt.toLocaleDateString(transcriptDateLocale, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

@@ -240,14 +240,6 @@ pub async fn transcribe_audio<R: Runtime>(
             }
         }
 
-        LATEST_PROGRESS.store(0, Ordering::Relaxed);
-        if let Ok(mut progress_type_lock) = LATEST_PROGRESS_TYPE.lock() {
-            *progress_type_lock = Some(ProgressType::Transcribe);
-        }
-        if let Ok(mut progress_label_lock) = LATEST_PROGRESS_LABEL.lock() {
-            *progress_label_lock = Some("Loading model into memory...".to_string());
-        }
-
         // Run transcription
         let segments = engine
             .transcribe_audio(

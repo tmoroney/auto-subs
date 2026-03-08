@@ -35,6 +35,8 @@
   "common": {
     "close": "Close",
     "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
     "saveChanges": "Save Changes",
     "apply": "Apply",
     "add": "Add",
@@ -53,7 +55,20 @@
     "includeSpeakerLabels": "Include speaker labels",
     "exportAsSrt": "Export as SRT",
     "exportAsJson": "Export as JSON",
-    "downloadFormat": "Download {{format}}"
+    "downloadFormat": "Download {{format}}",
+    "fileDialog": {
+      "subtitleFiles": "Subtitle Files"
+    },
+    "exportFormats": {
+      "srt": {
+        "title": "Subtitles (.srt)",
+        "description": "Standard subtitle format for apps like YouTube and VLC. Includes timestamps."
+      },
+      "txt": {
+        "title": "Transcript (.txt)",
+        "description": "Plain text export for LLMs that includes speaker labels when available."
+      }
+    }
   },
   "actionBar": {
     "common": {
@@ -190,6 +205,12 @@
       "confirmTitle": "Are you sure?",
       "confirmBody": "This will delete the {{model}} model from your device. If you use this model in future it will need to be downloaded again."
     },
+    "diarize": {
+      "label": "Speaker Diarization Model",
+      "description": "Speaker labeling bundle",
+      "details": "Used for speaker diarization and labeling.",
+      "badge": "Speaker Labels"
+    },
     "tiny": {
       "label": "Whisper Tiny",
       "description": "Ultra-fast",
@@ -314,11 +335,13 @@
   "completion": {
     "processingComplete": "Processing Complete",
     "subtitlesReady": "Your subtitles are ready to use!",
+    "viewSubtitles": "View Subtitles",
     "exportToFile": "Export to File",
     "addToTimeline": "Add to Timeline"
   },
   "progressSteps": {
     "download": "Downloading model",
+    "diarize": "Identifying speakers",
     "transcribe": "Speech to text",
     "translate": "Translating to {{language}}",
     "processing": "Processing",
@@ -328,9 +351,17 @@
     "title": "Subtitles",
     "speakers": "Speakers",
     "editSpeakers": "Edit Speakers",
+    "reformat": "Reformat",
+    "waitingForSubtitles": "Waiting for subtitles...",
     "searchPlaceholder": "Search subtitles...",
     "searchAria": "Search subtitles",
     "clearSearch": "Clear search",
+    "search": {
+      "caseMatch": "Case match",
+      "wholeWord": "Whole word",
+      "replaceAll": "Replace all",
+      "replaceWithPlaceholder": "Replace with..."
+    },
     "addToTimeline": "Add to Timeline",
     "loading": "Loading subtitles...",
     "jumpToTimeline": "Jump to point on timeline",
@@ -355,6 +386,11 @@
     "continue": "Continue"
   },
   "titlebar": {
+    "transcripts": {
+      "searchPlaceholder": "Search transcripts...",
+      "loading": "Loading...",
+      "empty": "No transcripts found."
+    },
     "windowControls": {
       "minimize": "Minimize",
       "maximize": "Maximize",
@@ -378,5 +414,40 @@
   },
   "theme": {
     "toggle": "Toggle theme"
+  },
+  "addToTimeline": {
+    "title": "Add to Timeline",
+    "templateTheme": "Template Theme",
+    "selectTemplate": "Select template",
+    "outputTrack": "Output Track",
+    "selectOutputTrack": "Select output track",
+    "adding": "Adding...",
+    "steps": {
+      "template": {
+        "title": "Template",
+        "description": "Choose a style template"
+      },
+      "speakers": {
+        "title": "Speakers",
+        "description": "Configure speaker tracks and colors"
+      },
+      "outputTrack": {
+        "title": "Output Track",
+        "description": "Select the subtitle track"
+      }
+    }
+  },
+  "replaceStrings": {
+    "title": "Search/Replace Words",
+    "find": "Find",
+    "findPlaceholder": "Text to find...",
+    "matchCase": "Match Case",
+    "replaceWith": "Replace with",
+    "replacePlaceholder": "Replacement text...",
+    "occurrencesFound": "{{count}} occurrence found",
+    "occurrencePosition": "{{current}} of {{total}}",
+    "noOccurrencesFound": "No occurrences found",
+    "replaceCurrent": "Replace Current",
+    "replaceAll": "Replace All ({{count}})"
   }
 }

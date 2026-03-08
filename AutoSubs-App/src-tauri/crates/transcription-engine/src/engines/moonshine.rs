@@ -99,7 +99,7 @@ pub async fn transcribe_moonshine(
         if text.is_empty() {
             if let Some(progress_callback) = progress_callback {
                 let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-                progress_callback(progress, ProgressType::Transcribe, "Transcribing audio (Moonshine)");
+                progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
             }
             continue;
         }
@@ -139,7 +139,7 @@ pub async fn transcribe_moonshine(
 
         if let Some(progress_callback) = progress_callback {
             let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-            progress_callback(progress, ProgressType::Transcribe, "Transcribing audio (Moonshine)");
+            progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
         }
     }
 

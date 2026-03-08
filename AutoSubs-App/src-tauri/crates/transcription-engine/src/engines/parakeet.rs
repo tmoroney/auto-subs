@@ -149,7 +149,7 @@ pub async fn transcribe_parakeet(
         // Emit progress update
         if let Some(progress_callback) = progress_callback {
             let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-            progress_callback(progress, ProgressType::Transcribe, "Transcribing audio (Parakeet)");
+            progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
         }
     }
 

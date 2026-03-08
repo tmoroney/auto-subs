@@ -177,6 +177,10 @@ impl Engine {
 
         println!("Transcribing {} segments", speech_segments.len());
 
+        if let Some(progress_callback) = cb.progress {
+            progress_callback(0, crate::ProgressType::Transcribe, "workspace.empty.loadingModel");
+        }
+
         // Capture translation options before moving `options` into the pipeline
         let translate_to = options.translate_target.clone();
         let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());

@@ -5,7 +5,8 @@
     "sections": {
       "transcription": "Transcription",
       "support": "Assistance",
-      "appearance": "Apparence"
+      "appearance": "Apparence",
+      "language": "Langue"
     },
     "gpu": {
       "title": "Accélération GPU",
@@ -34,6 +35,8 @@
   "common": {
     "close": "Fermer",
     "cancel": "Annuler",
+    "back": "Retour",
+    "next": "Suivant",
     "saveChanges": "Enregistrer les modifications",
     "apply": "Appliquer",
     "add": "Ajouter",
@@ -52,7 +55,12 @@
     "includeSpeakerLabels": "Inclure les labels de speaker",
     "exportAsSrt": "Exporter en SRT",
     "exportAsJson": "Exporter en JSON",
-    "downloadFormat": "Télécharger {{format}}"
+    "downloadFormat": "Télécharger {{format}}",
+    "fileDialog": { "subtitleFiles": "Fichiers de sous-titres" },
+    "exportFormats": {
+      "srt": { "title": "Sous-titres (.srt)", "description": "Format de sous-titres standard pour YouTube, VLC et autres. Inclut les horodatages." },
+      "txt": { "title": "Transcription (.txt)", "description": "Export texte brut pour les LLMs incluant les labels de speaker lorsqu’ils sont disponibles." }
+    }
   },
   "actionBar": {
     "common": {
@@ -113,12 +121,14 @@
       "prompt": "Déposez ou cliquez",
       "supports": "La plupart des formats"
     },
+    "fileDialog": { "mediaFiles": "Fichiers multimédias (pris en charge par ffmpeg)" },
     "language": {
       "source": "Source",
       "translate": "Traduire",
       "searchSourcePlaceholder": "Rechercher des langues...",
       "searchTargetPlaceholder": "Rechercher des langues cibles...",
-      "noLanguageFound": "Aucune langue trouvée."
+      "noLanguageFound": "Aucune langue trouvée.",
+      "arrow": "→"
     }
   },
   "speakerEditor": {
@@ -155,12 +165,15 @@
     "storage": "Stockage :",
     "ram": "RAM :",
     "accuracy": "Précision",
-    "lightweight": "Léger"
+    "lightweight": "Léger",
+    "downloadProgress": "{{progress}}%"
   },
   "models": {
     "searchPlaceholder": "Rechercher des modèles...",
     "noResults": "Aucun modèle trouvé.",
     "filteredByLanguage": "Modèles filtrés par langue",
+    "groups": { "specialized": "Spécialisés pour la langue sélectionnée", "general": "Modèles généraux" },
+    "filters": { "weight": "Léger", "accuracy": "Précision", "recommended": "Recommandé", "search": "Recherche", "clear": "Effacer le filtre" },
     "englishOnly": {
       "title": "Modèles uniquement anglais",
       "description": "Afficher des modèles anglais spécialisés avec une meilleure précision."
@@ -173,6 +186,7 @@
       "confirmTitle": "Êtes-vous sûr ?",
       "confirmBody": "Cela supprimera le modèle {{model}} de votre appareil. Si vous l’utilisez plus tard, il devra être retéléchargé."
     },
+    "diarize": { "label": "Modèle de diarisation des intervenants", "description": "Pack de labels de speaker", "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.", "badge": "Labels de speaker" },
     "tiny": {
       "label": "Whisper Tiny",
       "description": "Ultra-rapide",
@@ -297,22 +311,28 @@
   "completion": {
     "processingComplete": "Traitement terminé",
     "subtitlesReady": "Vos sous-titres sont prêts à être utilisés !",
+    "viewSubtitles": "Voir les sous-titres",
     "exportToFile": "Exporter vers un fichier",
     "addToTimeline": "Ajouter à la timeline"
   },
   "progressSteps": {
     "download": "Téléchargement du modèle",
+    "diarize": "Identification des intervenants",
     "transcribe": "Voix en texte",
     "translate": "Traduction vers {{language}}",
-    "processing": "Traitement"
+    "processing": "Traitement",
+    "export": "Export"
   },
   "subtitles": {
     "title": "Sous-titres",
     "speakers": "Intervenants",
     "editSpeakers": "Modifier les intervenants",
+    "reformat": "Reformater",
+    "waitingForSubtitles": "En attente des sous-titres...",
     "searchPlaceholder": "Rechercher des sous-titres...",
     "searchAria": "Rechercher des sous-titres",
     "clearSearch": "Effacer la recherche",
+    "search": { "caseMatch": "Respecter la casse", "wholeWord": "Mot entier", "replaceAll": "Tout remplacer", "replaceWithPlaceholder": "Remplacer par..." },
     "addToTimeline": "Ajouter à la timeline",
     "loading": "Chargement des sous-titres...",
     "jumpToTimeline": "Aller à ce point sur la timeline",
@@ -337,6 +357,7 @@
     "continue": "Continuer"
   },
   "titlebar": {
+    "transcripts": { "searchPlaceholder": "Rechercher des transcriptions...", "loading": "Chargement...", "empty": "Aucune transcription trouvée." },
     "windowControls": {
       "minimize": "Réduire",
       "maximize": "Agrandir",
@@ -360,5 +381,31 @@
   },
   "theme": {
     "toggle": "Basculer le thème"
+  },
+  "addToTimeline": {
+    "title": "Ajouter à la timeline",
+    "templateTheme": "Thème du modèle",
+    "selectTemplate": "Sélectionner un modèle",
+    "outputTrack": "Piste de sortie",
+    "selectOutputTrack": "Sélectionner la piste de sortie",
+    "adding": "Ajout en cours...",
+    "steps": {
+      "template": { "title": "Modèle", "description": "Choisissez un modèle de style" },
+      "speakers": { "title": "Intervenants", "description": "Configurer les pistes et couleurs des intervenants" },
+      "outputTrack": { "title": "Piste de sortie", "description": "Sélectionnez la piste de sous-titres" }
+    }
+  },
+  "replaceStrings": {
+    "title": "Rechercher/Remplacer des mots",
+    "find": "Rechercher",
+    "findPlaceholder": "Texte à rechercher...",
+    "matchCase": "Respecter la casse",
+    "replaceWith": "Remplacer par",
+    "replacePlaceholder": "Texte de remplacement...",
+    "occurrencesFound": "{{count}} occurrence trouvée",
+    "occurrencePosition": "{{current}} sur {{total}}",
+    "noOccurrencesFound": "Aucune occurrence trouvée",
+    "replaceCurrent": "Remplacer l’actuelle",
+    "replaceAll": "Tout remplacer ({{count}})"
   }
 }

@@ -21,7 +21,7 @@ interface ProgressContextType {
   completeAllProgressSteps: () => void;
   cancelAllProgressSteps: () => void;
   updateProgressStep: (event: { progress: number; type?: string; label?: string }) => void;
-  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; isModelCached?: boolean; enableDiarize?: boolean }) => () => void;
+  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => () => void;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
@@ -34,7 +34,24 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const seenSegmentsRef = useRef<Set<string>>(new Set());
   
   // Ref to track latest settings for use in closures/callbacks
-  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, isModelCached: false, enableDiarize: false });
+  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, hasPendingDownloads: false, enableDiarize: false });
+
+  const resolveProgressLabel = useCallback((label?: string, progress?: number): string => {
+    if (!label) {
+      return `${Math.round(progress ?? 0)}%`
+    }
+
+    if (label.includes('.')) {
+      const translated = label === 'progressSteps.translate'
+        ? i18n.t(label, {
+            language: getLanguageDisplayName(settingsRef.current.targetLanguage),
+          })
+        : i18n.t(label)
+      return translated === label ? `${Math.round(progress ?? 0)}%` : translated
+    }
+
+    return label.trim() || `${Math.round(progress ?? 0)}%`
+  }, [])
 
   // Simplified progress step management
   const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
@@ -45,7 +62,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const stepDescription = event.label?.trim() || `${Math.round(event.progress)}%`
+    const stepDescription = resolveProgressLabel(event.label, event.progress)
     
     setProcessingSteps(prev => {
       const stepId = event.type!
@@ -127,11 +144,11 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const getStepTitle = (type?: string): string => {
     switch (type) {
       case 'Export':
-        return i18n.t('progressSteps.export', { defaultValue: 'Exporting Audio' });
+        return i18n.t('progressSteps.export');
       case 'Download':
         return i18n.t('progressSteps.download');
       case 'Diarize':
-        return i18n.t('progressSteps.diarize', { defaultValue: 'Identifying Speakers' });
+        return i18n.t('progressSteps.diarize');
       case 'Transcribe':
         return i18n.t('progressSteps.transcribe');
       case 'Translate':
@@ -147,7 +164,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const getStepOrder = (): string[] => {
     const order: string[] = []
     if (settingsRef.current.isResolveMode) order.push('Export')
-    if (!settingsRef.current.isModelCached) order.push('Download')
+    if (settingsRef.current.hasPendingDownloads) order.push('Download')
     if (settingsRef.current.enableDiarize) order.push('Diarize')
     order.push('Transcribe')
     if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
@@ -197,13 +214,13 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Set up simplified event listener
-  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; isModelCached?: boolean; enableDiarize?: boolean }) => {
+  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => {
     // Update settings ref
     settingsRef.current = {
       targetLanguage: settings.targetLanguage,
       language: settings.language,
       isResolveMode: settings.isResolveMode ?? false,
-      isModelCached: settings.isModelCached ?? false,
+      hasPendingDownloads: settings.hasPendingDownloads ?? false,
       enableDiarize: settings.enableDiarize ?? false,
     };
     

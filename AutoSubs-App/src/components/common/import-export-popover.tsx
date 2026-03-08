@@ -49,7 +49,7 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
             multiple: false,
             directory: false,
             filters: [{
-                name: 'Subtitle Files',
+                name: t("importExport.fileDialog.subtitleFiles"),
                 extensions: ['srt']
             }],
             defaultPath: await downloadDir()
@@ -106,9 +106,9 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                                 <div className="flex w-full items-start gap-3 text-left">
                                     <Captions className="mt-0.5 h-4 w-4 shrink-0" />
                                     <div className="min-w-0 flex-1 space-y-1">
-                                        <div className="text-sm font-medium">Subtitles (.srt)</div>
+                                        <div className="text-sm font-medium">{t("importExport.exportFormats.srt.title")}</div>
                                         <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
-                                            Standard subtitle format for apps like YouTube and VLC. Includes timestamps.
+                                            {t("importExport.exportFormats.srt.description")}
                                         </div>
                                     </div>
                                 </div>
@@ -122,9 +122,9 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                                 <div className="flex w-full items-start gap-3 text-left">
                                     <FileText className="mt-0.5 h-4 w-4 shrink-0" />
                                     <div className="min-w-0 flex-1 space-y-1">
-                                        <div className="text-sm font-medium">Transcript (.txt)</div>
+                                        <div className="text-sm font-medium">{t("importExport.exportFormats.txt.title")}</div>
                                         <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
-                                            Plain text export for LLMs that includes speaker labels when available.
+                                            {t("importExport.exportFormats.txt.description")}
                                         </div>
                                     </div>
                                 </div>

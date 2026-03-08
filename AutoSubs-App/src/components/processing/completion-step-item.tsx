@@ -27,6 +27,7 @@ export function CompletionStepItem({
     timelineInfo
 }: CompletionStepProps) {
     const { t } = useTranslation()
+    const isResolveConnected = Boolean(timelineInfo?.timelineId)
 
     return (
         <div className="flex w-full flex-col gap-2">
@@ -49,32 +50,36 @@ export function CompletionStepItem({
                                 className="flex items-center gap-2"
                             >
                                 <List className="h-3 w-3" />
-                                View Subtitles
+                                {t("completion.viewSubtitles")}
                             </Button>
                         )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={onExportToFile}
-                            className="flex items-center gap-2"
-                        >
-                            <Download className="h-3 w-3" />
-                            {t("completion.exportToFile")}
-                        </Button>
-                        <AddToTimelineDialog
-                            settings={settings}
-                            timelineInfo={timelineInfo}
-                            onAddToTimeline={onAddToTimeline}
-                        >
+                        {((isResolveConnected && onViewSubtitles) || !onViewSubtitles) && (
                             <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={onExportToFile}
                                 className="flex items-center gap-2"
                             >
-                                <Plus className="h-3 w-3" />
-                                {t("completion.addToTimeline")}
+                                <Download className="h-3 w-3" />
+                                {t("completion.exportToFile")}
                             </Button>
-                        </AddToTimelineDialog>
+                        )}
+                        {isResolveConnected && (
+                            <AddToTimelineDialog
+                                settings={settings}
+                                timelineInfo={timelineInfo}
+                                onAddToTimeline={onAddToTimeline}
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    <Plus className="h-3 w-3" />
+                                    {t("completion.addToTimeline")}
+                                </Button>
+                            </AddToTimelineDialog>
+                        )}
                     </div>
                 </ItemFooter>
             </Item>

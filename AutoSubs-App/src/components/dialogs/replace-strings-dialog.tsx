@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Subtitle, Word } from "@/types/interfaces"
+import { useTranslation } from "react-i18next"
 
 interface ReplaceStringsPanelProps {
     subtitles: Subtitle[]
@@ -26,6 +27,7 @@ export function ReplaceStringsPanel({
     onHighlightChange,
     onMatchCaseChange
 }: ReplaceStringsPanelProps) {
+    const { t } = useTranslation()
     const [findText, setFindText] = useState("")
     const [replaceText, setReplaceText] = useState("")
     const [currentOccurrenceIndex, setCurrentOccurrenceIndex] = useState(0)
@@ -246,17 +248,17 @@ export function ReplaceStringsPanel({
         <div className="border-t bg-sidebar p-3 space-y-3">
             <div className="flex items-center gap-2">
                 <Search className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Search/Replace Words</span>
+                <span className="text-sm font-medium">{t("replaceStrings.title")}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                    <Label htmlFor="find-text" className="text-xs">Find</Label>
+                    <Label htmlFor="find-text" className="text-xs">{t("replaceStrings.find")}</Label>
                     <div className="relative">
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
                             id="find-text"
-                            placeholder="Text to find..."
+                            placeholder={t("replaceStrings.findPlaceholder")}
                             value={findText}
                             onChange={(e) => setFindText(e.target.value)}
                             className="pl-7 pr-20 h-8 text-sm"
@@ -267,7 +269,7 @@ export function ReplaceStringsPanel({
                             size="icon"
                             onClick={() => handleMatchCaseToggle(!matchCase)}
                             className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-xs"
-                            title="Match Case"
+                            title={t("replaceStrings.matchCase")}
                         >
                             <span className="text-[10px] font-semibold leading-none">Aa</span>
                         </Button>
@@ -275,12 +277,12 @@ export function ReplaceStringsPanel({
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="replace-text" className="text-xs">Replace with</Label>
+                    <Label htmlFor="replace-text" className="text-xs">{t("replaceStrings.replaceWith")}</Label>
                     <div className="relative">
                         <Replace className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
                             id="replace-text"
-                            placeholder="Replacement text..."
+                            placeholder={t("replaceStrings.replacePlaceholder")}
                             value={replaceText}
                             onChange={(e) => setReplaceText(e.target.value)}
                             className="pl-7 h-8 text-sm"
@@ -292,10 +294,10 @@ export function ReplaceStringsPanel({
             {findText && occurrences.length > 0 && (
                 <div className="flex items-center justify-between p-2 bg-muted rounded-md">
                     <div className="text-xs text-muted-foreground">
-                        {occurrences.length} occurrence{occurrences.length !== 1 ? 's' : ''} found
+                        {t("replaceStrings.occurrencesFound", { count: occurrences.length })}
                         {currentOccurrence && (
                             <span className="ml-2 text-foreground font-medium">
-                                ({currentOccurrenceIndex + 1} of {occurrences.length})
+                                ({t("replaceStrings.occurrencePosition", { current: currentOccurrenceIndex + 1, total: occurrences.length })})
                             </span>
                         )}
                     </div>
@@ -324,7 +326,7 @@ export function ReplaceStringsPanel({
 
             {findText && occurrences.length === 0 && (
                 <div className="p-2 bg-muted rounded-md text-xs text-muted-foreground text-center">
-                    No occurrences found
+                    {t("replaceStrings.noOccurrencesFound")}
                 </div>
             )}
 
@@ -337,7 +339,7 @@ export function ReplaceStringsPanel({
                         disabled={!findText.trim() || occurrences.length === 0}
                         className="flex-1 text-xs h-8"
                     >
-                        Replace Current
+                        {t("replaceStrings.replaceCurrent")}
                     </Button>
                     <Button
                         onClick={handleReplaceAll}
@@ -345,7 +347,7 @@ export function ReplaceStringsPanel({
                         size="sm"
                         className="flex-1 text-xs h-8"
                     >
-                        Replace All ({occurrences.length})
+                        {t("replaceStrings.replaceAll", { count: occurrences.length })}
                     </Button>
                 </div>
             )}

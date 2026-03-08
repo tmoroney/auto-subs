@@ -11,6 +11,10 @@ use std::time::SystemTime;
 use tokio_util::sync::CancellationToken;
 use once_cell::sync::Lazy;
 
+const DIARIZE_MODEL_ID: &str = "speaker-diarize";
+const DIARIZE_REPO_ID: &str = "altunenes/speaker-diarization-community-1-onnx";
+const DIARIZE_REQUIRED_FILES: [&str; 2] = ["segmentation-community-1.onnx", "embedding_model.onnx"];
+
 // Global download state to ensure only one download runs at a time
 static ACTIVE_DOWNLOAD: Lazy<Mutex<Option<Arc<CancellationToken>>>> = Lazy::new(|| Mutex::new(None));
 
@@ -177,7 +181,7 @@ impl ModelManager {
                 is_cancelled,
                 0.0,
                 70.0,
-                &format!("Downloading {}", model),
+                "progressSteps.download",
             )
             .await?
         } else {
@@ -188,7 +192,7 @@ impl ModelManager {
                 is_cancelled,
                 0.0,
                 100.0,
-                &format!("Downloading {}", model),
+                "progressSteps.download",
             )
             .await?
         };
@@ -232,7 +236,7 @@ impl ModelManager {
                         is_cancelled,
                         70.0,
                         20.0,
-                        "Downloading CoreML encoder",
+                        "progressSteps.download",
                     )
                     .await
                 {
@@ -242,13 +246,13 @@ impl ModelManager {
                             "Warning: CoreML encoder download failed ({}). Proceeding without CoreML encoder.",
                             e
                         );
-                        if let Some(cb) = progress { cb(100, ProgressType::Download, "Failed to download CoreML encoder"); }
+                        if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
                         return Ok(model_path);
                     }
                 };
 
                 // Progress at 90% (download done, start extracting)
-                if let Some(cb) = progress { cb(90, ProgressType::Download, "Extracting CoreML encoder"); }
+                if let Some(cb) = progress { cb(90, ProgressType::Download, "progressSteps.download"); }
 
                 // Extract to same directory as the cached zip
                 let extract_dir = coreml_zip_path
@@ -283,7 +287,7 @@ impl ModelManager {
                         count += 1;
                         if let Some(cb) = progress {
                             let pct = 90.0 + (count as f32 / total as f32) * 10.0;
-                            cb(pct as i32, ProgressType::Download, "Extracting CoreML encoder");
+                            cb(pct as i32, ProgressType::Download, "progressSteps.download");
                         }
                     }
 
@@ -292,7 +296,7 @@ impl ModelManager {
                 }
 
                 // Final completion
-                if let Some(cb) = progress { cb(100, ProgressType::Download, "Extracted CoreML encoder"); }
+                if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
             }
         }
 
@@ -354,7 +358,7 @@ impl ModelManager {
                     is_cancelled,
                     offset,
                     scale,
-                    "Downloading Parakeet v3 model",
+                    "progressSteps.download",
                 )
                 .await?;
         }
@@ -368,7 +372,7 @@ impl ModelManager {
                     .with_context(|| format!("Model validation failed for '{}' from '{}'", f, repo_id))?;
             }
             if let Some(cb) = progress {
-                cb(100, ProgressType::Download, "Downloaded Parakeet v3 model");
+                cb(100, ProgressType::Download, "progressSteps.download");
             }
             return Ok(snapshot_dir);
         }
@@ -451,7 +455,7 @@ impl ModelManager {
             let scale = (1.0 / total) * 100.0;
 
             if let Some(cb) = progress {
-                cb(offset as i32, ProgressType::Download, "Downloading Moonshine model");
+                cb(offset as i32, ProgressType::Download, "progressSteps.download");
             }
 
             let url = if *filename == "tokenizer.json" {
@@ -469,12 +473,12 @@ impl ModelManager {
                 .with_context(|| format!("Model validation failed for '{}' from Moonshine {}", filename, folder))?;
 
             if let Some(cb) = progress {
-                cb((offset + scale) as i32, ProgressType::Download, "Downloading Moonshine model");
+                cb((offset + scale) as i32, ProgressType::Download, "progressSteps.download");
             }
         }
 
         if let Some(cb) = progress {
-            cb(100, ProgressType::Download, "Downloaded Moonshine model");
+            cb(100, ProgressType::Download, "progressSteps.download");
         }
 
         Ok(model_dir)
@@ -495,7 +499,7 @@ impl ModelManager {
                 is_cancelled,
                 0.0,
                 100.0,
-                "Downloading VAD Model",
+                "progressSteps.download",
             )
             .await
     }
@@ -509,6 +513,11 @@ impl ModelManager {
     ) -> Result<(PathBuf, PathBuf)> {
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
+        let had_cached_diarize_bundle = self.find_cached_snapshot_with_files(
+            DIARIZE_REPO_ID,
+            &DIARIZE_REQUIRED_FILES,
+        ).unwrap_or(None).is_some();
+
         let seg_path = if let Some((repo_id, filename)) = parse_hf_blob_url(seg_url) {
             self
                 .ensure_hub_model(
@@ -518,7 +527,7 @@ impl ModelManager {
                     is_cancelled,
                     0.0,
                     50.0,
-                    "Downloading Diarize Models",
+                    "progressSteps.download",
                 )
                 .await?
         } else {
@@ -526,7 +535,7 @@ impl ModelManager {
             let seg_name = url_filename(seg_url).ok_or_else(|| eyre!("Invalid seg_url"))?;
             let seg_path = model_dir.join(&seg_name);
             if !seg_path.exists() {
-                if let Some(cb) = progress { cb(5, ProgressType::Download, "Downloading Diarize Models"); }
+                if let Some(cb) = progress { cb(5, ProgressType::Download, "progressSteps.download"); }
                 download_to(&seg_path, seg_url).await?;
             }
             seg_path
@@ -543,7 +552,7 @@ impl ModelManager {
                     is_cancelled,
                     50.0,
                     50.0,
-                    "Downloading Diarize Models",
+                    "progressSteps.download",
                 )
                 .await?
         } else {
@@ -551,13 +560,15 @@ impl ModelManager {
             let emb_name = url_filename(emb_url).ok_or_else(|| eyre!("Invalid emb_url"))?;
             let emb_path = model_dir.join(&emb_name);
             if !emb_path.exists() {
-                if let Some(cb) = progress { cb(55, ProgressType::Download, "Downloading Diarize Models"); }
+                if let Some(cb) = progress { cb(55, ProgressType::Download, "progressSteps.download"); }
                 download_to(&emb_path, emb_url).await?;
             }
             emb_path
         };
 
-        if let Some(cb) = progress { cb(100, ProgressType::Download, "Downloaded Diarize Models"); }
+        if !had_cached_diarize_bundle {
+            if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
+        }
         Ok((seg_path, emb_path))
     }
 
@@ -632,6 +643,19 @@ impl ModelManager {
         fs::remove_dir_all(&parakeet_repo_dir)
             .with_context(|| format!("Failed to delete Parakeet model directory: {}", parakeet_repo_dir.display()))?;
         eprintln!("Deleted Parakeet model: {}", parakeet_repo_dir.display());
+        Ok(())
+    }
+
+    pub fn delete_diarize_model(&self) -> Result<()> {
+        let cache_dir = self.model_cache_dir()?;
+        let diarize_repo_dir = cache_dir.join("models--altunenes--speaker-diarization-community-1-onnx");
+        if !diarize_repo_dir.exists() {
+            bail!("Diarization model not found in cache");
+        }
+
+        fs::remove_dir_all(&diarize_repo_dir)
+            .with_context(|| format!("Failed to delete diarization model directory: {}", diarize_repo_dir.display()))?;
+        eprintln!("Deleted diarization model: {}", diarize_repo_dir.display());
         Ok(())
     }
 
@@ -787,6 +811,13 @@ impl ModelManager {
             models.insert("parakeet".to_string());
         }
 
+        if self.find_cached_snapshot_with_files(
+            DIARIZE_REPO_ID,
+            &DIARIZE_REQUIRED_FILES,
+        ).unwrap_or(None).is_some() {
+            models.insert(DIARIZE_MODEL_ID.to_string());
+        }
+
         let mut result: Vec<String> = models.into_iter().collect();
         result.sort(); // Sort for consistent ordering
         Ok(result)
@@ -800,6 +831,9 @@ impl ModelManager {
         }
         if model_name == "parakeet" {
             return self.delete_parakeet_model().is_ok();
+        }
+        if model_name == DIARIZE_MODEL_ID {
+            return self.delete_diarize_model().is_ok();
         }
         self.delete_whisper_model(model_name).is_ok()
     }

@@ -5,6 +5,7 @@ import { models } from '@/lib/models';
 
 interface ModelsContextType {
   modelsState: Model[];
+  downloadedModelValues: string[];
   setModelsState: (models: Model[]) => void;
   checkDownloadedModels: () => Promise<void>;
   handleDeleteModel: (modelValue: string) => Promise<void>;
@@ -14,11 +15,13 @@ const ModelsContext = createContext<ModelsContextType | null>(null);
 
 export function ModelsProvider({ children }: { children: React.ReactNode }) {
   const [modelsState, setModelsState] = useState(models);
+  const [downloadedModelValues, setDownloadedModelValues] = useState<string[]>([]);
 
   async function checkDownloadedModels() {
     try {
       const downloadedModels = await invoke("get_downloaded_models") as string[]
       console.log("Downloaded models:", downloadedModels)
+      setDownloadedModelValues(downloadedModels)
 
       const updatedModels = models.map(model => ({
         ...model,
@@ -56,6 +59,7 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
   return (
     <ModelsContext.Provider value={{
       modelsState,
+      downloadedModelValues,
       setModelsState,
       checkDownloadedModels,
       handleDeleteModel,

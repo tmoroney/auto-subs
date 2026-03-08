@@ -21,11 +21,12 @@ import { useTranscript } from "@/contexts/TranscriptContext"
 import { Check, ChevronLeft, ChevronRight, Layers, Layout, Palette } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { useTranslation } from "react-i18next"
 
 const STEPS = [
-    { title: "Template", description: "Choose a style template", icon: Layout },
-    { title: "Speakers", description: "Configure speaker tracks and colors", icon: Palette },
-    { title: "Output Track", description: "Select the subtitle track", icon: Layers },
+    { key: "template", icon: Layout },
+    { key: "speakers", icon: Palette },
+    { key: "outputTrack", icon: Layers },
 ]
 
 interface AddToTimelineDialogProps {
@@ -41,6 +42,7 @@ export function AddToTimelineDialog({
     timelineInfo,
     onAddToTimeline
 }: AddToTimelineDialogProps) {
+    const { t } = useTranslation()
     const { speakers, updateSpeakers } = useTranscript()
     const [open, setOpen] = useState(false)
     const [currentStep, setCurrentStep] = useState(0)
@@ -78,9 +80,9 @@ export function AddToTimelineDialog({
     }
 
     const canProceed = () => {
-        const stepTitle = activeSteps[currentStep]?.title
-        if (stepTitle === "Template") return !!selectedTemplate
-        if (stepTitle === "Output Track") return !!selectedOutputTrack
+        const stepKey = activeSteps[currentStep]?.key
+        if (stepKey === "template") return !!selectedTemplate
+        if (stepKey === "outputTrack") return !!selectedOutputTrack
         return true
     }
 
@@ -91,9 +93,9 @@ export function AddToTimelineDialog({
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Add to Timeline</DialogTitle>
+                    <DialogTitle>{t("addToTimeline.title")}</DialogTitle>
                     <DialogDescription>
-                        {activeSteps[currentStep]?.description}
+                        {activeSteps[currentStep] ? t(`addToTimeline.steps.${activeSteps[currentStep].key}.description`) : ""}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -120,7 +122,7 @@ export function AddToTimelineDialog({
                                     ) : (
                                         <Icon className="w-3.5 h-3.5" />
                                     )}
-                                    <span className="hidden sm:inline">{step.title}</span>
+                                    <span className="hidden sm:inline">{t(`addToTimeline.steps.${step.key}.title`)}</span>
                                 </button>
                                 {index < activeSteps.length - 1 && (
                                     <div className={`w-6 h-0.5 rounded-full ${
@@ -134,15 +136,15 @@ export function AddToTimelineDialog({
 
                 {/* Step content */}
                 <div className="py-2 min-h-[120px]">
-                    {activeSteps[currentStep]?.title === "Template" && (
+                    {activeSteps[currentStep]?.key === "template" && (
                         <div className="space-y-3">
-                            <label className="text-sm font-medium">Template Theme</label>
+                            <label className="text-sm font-medium">{t("addToTimeline.templateTheme")}</label>
                             <Select
                                 value={selectedTemplate}
                                 onValueChange={setSelectedTemplate}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select template" />
+                                    <SelectValue placeholder={t("addToTimeline.selectTemplate")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {timelineInfo.templates.map((template) => (
@@ -155,7 +157,7 @@ export function AddToTimelineDialog({
                         </div>
                     )}
 
-                    {activeSteps[currentStep]?.title === "Speakers" && (
+                    {activeSteps[currentStep]?.key === "speakers" && (
                         <ScrollArea className="max-h-[300px] pr-3">
                             <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
@@ -180,15 +182,15 @@ export function AddToTimelineDialog({
                         </ScrollArea>
                     )}
 
-                    {activeSteps[currentStep]?.title === "Output Track" && (
+                    {activeSteps[currentStep]?.key === "outputTrack" && (
                         <div className="space-y-3">
-                            <label className="text-sm font-medium">Output Track</label>
+                            <label className="text-sm font-medium">{t("addToTimeline.outputTrack")}</label>
                             <Select
                                 value={selectedOutputTrack}
                                 onValueChange={setSelectedOutputTrack}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select output track" />
+                                    <SelectValue placeholder={t("addToTimeline.selectOutputTrack")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {timelineInfo.outputTracks.map((track) => (
@@ -215,10 +217,10 @@ export function AddToTimelineDialog({
                         }}
                         disabled={isSubmitting}
                     >
-                        {currentStep === 0 ? "Cancel" : (
+                        {currentStep === 0 ? t("common.cancel") : (
                             <>
                                 <ChevronLeft className="w-4 h-4" />
-                                Back
+                                {t("common.back")}
                             </>
                         )}
                     </Button>
@@ -228,7 +230,7 @@ export function AddToTimelineDialog({
                             onClick={() => setCurrentStep((prev) => prev + 1)}
                             disabled={!canProceed()}
                         >
-                            Next
+                            {t("common.next")}
                             <ChevronRight className="w-4 h-4" />
                         </Button>
                     ) : (
@@ -240,9 +242,9 @@ export function AddToTimelineDialog({
                             {isSubmitting ? (
                             <>
                                 <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                Adding...
+                                {t("addToTimeline.adding")}
                             </>
-                        ) : "Add to Timeline"}
+                        ) : t("addToTimeline.title")}
                         </Button>
                     )}
                 </DialogFooter>

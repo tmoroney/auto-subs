@@ -5,7 +5,8 @@
     "sections": {
       "transcription": "转录",
       "support": "支持",
-      "appearance": "外观"
+      "appearance": "外观",
+      "language": "语言"
     },
     "gpu": {
       "title": "GPU 加速",
@@ -34,6 +35,8 @@
   "common": {
     "close": "关闭",
     "cancel": "取消",
+    "back": "返回",
+    "next": "下一步",
     "saveChanges": "保存更改",
     "apply": "应用",
     "add": "添加",
@@ -52,7 +55,20 @@
     "includeSpeakerLabels": "包含说话人标签",
     "exportAsSrt": "导出为 SRT",
     "exportAsJson": "导出为 JSON",
-    "downloadFormat": "下载 {{format}}"
+    "downloadFormat": "下载 {{format}}",
+    "fileDialog": {
+      "subtitleFiles": "字幕文件"
+    },
+    "exportFormats": {
+      "srt": {
+        "title": "字幕 (.srt)",
+        "description": "适用于 YouTube、VLC 等应用的标准字幕格式，包含时间戳。"
+      },
+      "txt": {
+        "title": "转录文本 (.txt)",
+        "description": "适用于 LLM 的纯文本导出，在可用时包含说话人标签。"
+      }
+    }
   },
   "actionBar": {
     "common": {
@@ -113,7 +129,11 @@
       "prompt": "拖放文件或点击",
       "supports": "支持大多数格式"
     },
+    "fileDialog": {
+      "mediaFiles": "媒体文件（ffmpeg 支持）"
+    },
     "language": {
+      "arrow": "→",
       "source": "源语言",
       "translate": "翻译",
       "searchSourcePlaceholder": "搜索语言...",
@@ -155,12 +175,24 @@
     "storage": "存储：",
     "ram": "内存：",
     "accuracy": "准确性",
-    "lightweight": "轻量级"
+    "lightweight": "轻量级",
+    "downloadProgress": "{{progress}}%"
   },
   "models": {
     "searchPlaceholder": "搜索模型...",
     "noResults": "未找到模型。",
     "filteredByLanguage": "根据语言筛选模型",
+    "groups": {
+      "specialized": "针对所选语言优化",
+      "general": "通用模型"
+    },
+    "filters": {
+      "weight": "轻量",
+      "accuracy": "准确性",
+      "recommended": "推荐",
+      "search": "搜索",
+      "clear": "清除筛选"
+    },
     "englishOnly": {
       "title": "英语专用模型",
       "description": "显示专用的英语模型，英语转录准确性更高。"
@@ -172,6 +204,12 @@
       "deleteModel": "删除模型",
       "confirmTitle": "您确定吗？",
       "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。"
+    },
+    "diarize": {
+      "label": "说话人分离模型",
+      "description": "说话人标注包",
+      "details": "用于说话人分离和标注。",
+      "badge": "说话人标签"
     },
     "tiny": {
       "label": "Whisper 微型",
@@ -297,24 +335,35 @@
   "completion": {
     "processingComplete": "处理完成",
     "subtitlesReady": "您的字幕已准备就绪！",
+    "viewSubtitles": "查看字幕",
     "exportToFile": "导出到文件",
     "addToTimeline": "添加到时间线"
   },
   "progressSteps": {
     "download": "正在下载模型",
+    "diarize": "正在识别说话人",
     "transcribe": "语音转文本",
     "translate": "正在翻译为 {{language}}",
-    "processing": "正在处理"
-  },
+    "processing": "正在处理",
+    "export": "导出"
+ },
   "subtitles": {
     "title": "字幕",
     "speakers": "说话人",
     "editSpeakers": "编辑说话人",
+    "reformat": "重新格式化",
     "searchPlaceholder": "搜索字幕...",
     "searchAria": "搜索字幕",
     "clearSearch": "清除搜索",
+    "search": {
+      "caseMatch": "区分大小写",
+      "wholeWord": "整词匹配",
+      "replaceAll": "全部替换",
+      "replaceWithPlaceholder": "替换为..."
+    },
     "addToTimeline": "添加到时间线",
     "loading": "正在加载字幕...",
+    "waitingForSubtitles": "正在等待字幕...",
     "jumpToTimeline": "跳转到时间线上的点",
     "unknownSpeaker": "未知说话人",
     "empty": {
@@ -337,6 +386,11 @@
     "continue": "继续"
   },
   "titlebar": {
+    "transcripts": {
+      "searchPlaceholder": "搜索转录记录...",
+      "loading": "加载中...",
+      "empty": "未找到转录记录。"
+    },
     "windowControls": {
       "minimize": "最小化",
       "maximize": "最大化",
@@ -360,5 +414,40 @@
   },
   "theme": {
     "toggle": "切换主题"
+  },
+  "addToTimeline": {
+    "title": "添加到时间线",
+    "templateTheme": "模板主题",
+    "selectTemplate": "选择模板",
+    "outputTrack": "输出轨道",
+    "selectOutputTrack": "选择输出轨道",
+    "adding": "正在添加...",
+    "steps": {
+      "template": {
+        "title": "模板",
+        "description": "选择样式模板"
+      },
+      "speakers": {
+        "title": "说话人",
+        "description": "配置说话人轨道和颜色"
+      },
+      "outputTrack": {
+        "title": "输出轨道",
+        "description": "选择字幕轨道"
+      }
+    }
+  },
+  "replaceStrings": {
+    "title": "搜索/替换词语",
+    "find": "查找",
+    "findPlaceholder": "要查找的文本...",
+    "matchCase": "区分大小写",
+    "replaceWith": "替换为",
+    "replacePlaceholder": "替换文本...",
+    "occurrencesFound": "找到 {{count}} 处匹配",
+    "occurrencePosition": "第 {{current}} / {{total}} 处",
+    "noOccurrencesFound": "未找到匹配项",
+    "replaceCurrent": "替换当前项",
+    "replaceAll": "全部替换（{{count}}）"
   }
 }

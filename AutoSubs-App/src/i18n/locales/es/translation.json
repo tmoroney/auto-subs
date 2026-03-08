@@ -5,7 +5,8 @@
     "sections": {
       "transcription": "Transcripción",
       "support": "Soporte",
-      "appearance": "Apariencia"
+      "appearance": "Apariencia",
+      "language": "Idioma"
     },
     "gpu": {
       "title": "Aceleración por GPU",
@@ -34,6 +35,8 @@
   "common": {
     "close": "Cerrar",
     "cancel": "Cancelar",
+    "back": "Atrás",
+    "next": "Siguiente",
     "saveChanges": "Guardar cambios",
     "apply": "Aplicar",
     "add": "Añadir",
@@ -52,7 +55,20 @@
     "includeSpeakerLabels": "Incluir etiquetas de hablante",
     "exportAsSrt": "Exportar como SRT",
     "exportAsJson": "Exportar como JSON",
-    "downloadFormat": "Descargar {{format}}"
+    "downloadFormat": "Descargar {{format}}",
+    "fileDialog": {
+      "subtitleFiles": "Archivos de subtítulos"
+    },
+    "exportFormats": {
+      "srt": {
+        "title": "Subtítulos (.srt)",
+        "description": "Formato estándar de subtítulos para apps como YouTube y VLC. Incluye marcas de tiempo."
+      },
+      "txt": {
+        "title": "Transcripción (.txt)",
+        "description": "Exportación de texto plano para LLMs que incluye etiquetas de hablante cuando están disponibles."
+      }
+    }
   },
   "actionBar": {
     "common": {
@@ -113,12 +129,16 @@
       "prompt": "Suelta o haz clic",
       "supports": "La mayoría de formatos"
     },
+    "fileDialog": {
+      "mediaFiles": "Archivos multimedia (compatibles con ffmpeg)"
+    },
     "language": {
       "source": "Origen",
       "translate": "Traducir",
       "searchSourcePlaceholder": "Buscar idiomas...",
       "searchTargetPlaceholder": "Buscar idiomas de destino...",
-      "noLanguageFound": "No se encontró ningún idioma."
+      "noLanguageFound": "No se encontró ningún idioma.",
+      "arrow": "→"
     }
   },
   "speakerEditor": {
@@ -184,6 +204,12 @@
       "deleteModel": "Eliminar modelo",
       "confirmTitle": "¿Estás seguro?",
       "confirmBody": "Esto eliminará el modelo {{model}} de tu dispositivo. Si lo usas en el futuro, tendrás que descargarlo de nuevo."
+    },
+    "diarize": {
+      "label": "Modelo de diarización de hablantes",
+      "description": "Paquete de etiquetado de hablantes",
+      "details": "Se utiliza para la diarización y el etiquetado de hablantes.",
+      "badge": "Etiquetas de hablante"
     },
     "tiny": {
       "label": "Whisper Diminuto",
@@ -309,22 +335,33 @@
   "completion": {
     "processingComplete": "Proceso completado",
     "subtitlesReady": "¡Tus subtítulos están listos para usar!",
+    "viewSubtitles": "Ver subtítulos",
     "exportToFile": "Exportar a archivo",
     "addToTimeline": "Añadir a la línea de tiempo"
   },
   "progressSteps": {
     "download": "Descargando modelo",
+    "diarize": "Identificando hablantes",
     "transcribe": "Voz a texto",
     "translate": "Traduciendo a {{language}}",
-    "processing": "Procesando"
+    "processing": "Procesando",
+    "export": "Exportar"
   },
   "subtitles": {
     "title": "Subtítulos",
     "speakers": "Hablantes",
     "editSpeakers": "Editar hablantes",
+    "reformat": "Reformatear",
+    "waitingForSubtitles": "Esperando subtítulos...",
     "searchPlaceholder": "Buscar subtítulos...",
     "searchAria": "Buscar subtítulos",
     "clearSearch": "Borrar búsqueda",
+    "search": {
+      "caseMatch": "Coincidir mayúsculas/minúsculas",
+      "wholeWord": "Palabra completa",
+      "replaceAll": "Reemplazar todo",
+      "replaceWithPlaceholder": "Reemplazar con..."
+    },
     "addToTimeline": "Añadir a la línea de tiempo",
     "loading": "Cargando subtítulos...",
     "jumpToTimeline": "Saltar a este punto en la línea de tiempo",
@@ -349,6 +386,11 @@
     "continue": "Continuar"
   },
   "titlebar": {
+    "transcripts": {
+      "searchPlaceholder": "Buscar transcripciones...",
+      "loading": "Cargando...",
+      "empty": "No se encontraron transcripciones."
+    },
     "windowControls": {
       "minimize": "Minimizar",
       "maximize": "Maximizar",
@@ -372,5 +414,40 @@
   },
   "theme": {
     "toggle": "Cambiar tema"
+  },
+  "addToTimeline": {
+    "title": "Añadir a la línea de tiempo",
+    "templateTheme": "Tema de plantilla",
+    "selectTemplate": "Seleccionar plantilla",
+    "outputTrack": "Pista de salida",
+    "selectOutputTrack": "Seleccionar pista de salida",
+    "adding": "Añadiendo...",
+    "steps": {
+      "template": {
+        "title": "Plantilla",
+        "description": "Elige una plantilla de estilo"
+      },
+      "speakers": {
+        "title": "Hablantes",
+        "description": "Configura pistas y colores de hablantes"
+      },
+      "outputTrack": {
+        "title": "Pista de salida",
+        "description": "Selecciona la pista de subtítulos"
+      }
+    }
+  },
+  "replaceStrings": {
+    "title": "Buscar/Reemplazar palabras",
+    "find": "Buscar",
+    "findPlaceholder": "Texto a buscar...",
+    "matchCase": "Coincidir mayúsculas/minúsculas",
+    "replaceWith": "Reemplazar con",
+    "replacePlaceholder": "Texto de reemplazo...",
+    "occurrencesFound": "{{count}} coincidencia encontrada",
+    "occurrencePosition": "{{current}} de {{total}}",
+    "noOccurrencesFound": "No se encontraron coincidencias",
+    "replaceCurrent": "Reemplazar actual",
+    "replaceAll": "Reemplazar todo ({{count}})"
   }
 }

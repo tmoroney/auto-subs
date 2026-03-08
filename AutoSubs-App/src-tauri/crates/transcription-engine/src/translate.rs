@@ -115,7 +115,7 @@ pub async fn translate_segments(
     // Progress setup
     let total = inputs.len();
     let mut completed: usize = 0;
-    let start_label = format!("Translating from {} to {}", from, to);
+    let start_label = "progressSteps.translate";
     // Report start at 0%
     if total > 0 {
         if let Some(p) = progress { p(0, ProgressType::Translate, &start_label); }
@@ -140,7 +140,7 @@ pub async fn translate_segments(
         completed += 1;
         // Incremental progress
         let percent = ((completed as f64) / (total as f64) * 100.0).round() as i32;
-        if let Some(p) = progress { p(percent.min(99), ProgressType::Translate, &format!("{}", start_label)); }
+        if let Some(p) = progress { p(percent.min(99), ProgressType::Translate, start_label); }
     }
 
     // Apply results back to segments
@@ -155,7 +155,7 @@ pub async fn translate_segments(
 
     // Completion progress
     if total > 0 {
-        if let Some(p) = progress { p(100, ProgressType::Translate, "Translating complete"); }
+        if let Some(p) = progress { p(100, ProgressType::Translate, start_label); }
     }
 
     Ok(())
