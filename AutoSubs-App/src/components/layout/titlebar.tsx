@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, History, Settings, Sun, Moon, Monitor, Archive, Heart, Github } from "lucide-react";
+import { Minus, Square, X, Settings, Sun, Moon, Monitor, Archive, Heart, Github, Boxes } from "lucide-react";
+import { HistoryIcon, type HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -36,9 +37,10 @@ import { readTranscript } from "@/utils/file-utils";
 import { useTranscript } from "@/contexts/TranscriptContext";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
+import { ArchiveIcon } from "../ui/archive";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -122,7 +124,6 @@ interface TranscriptFile {
   lastModified: Date;
 }
 
-
 function SettingsDropdown() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -142,7 +143,7 @@ function SettingsDropdown() {
             variant="ghost"
             size="icon-sm"
             data-tauri-drag-region="false"
-            className="gap-2 rounded-full !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0"
+            className="gap-2 rounded-sm !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -159,7 +160,7 @@ function SettingsDropdown() {
               <span>{t("settings.title", "Settings")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setManageModelsOpen(true)} className="cursor-pointer">
-              <Archive className="h-4 w-4 mr-2" />
+              <Boxes className="h-4 w-4 mr-2" />
               <span>{t("models.manage.title", "Manage Models")}</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
@@ -260,6 +261,7 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
   const [transcripts, setTranscripts] = useState<TranscriptFile[]>([]);
   const [loading, setLoading] = useState(false);
   const { setSubtitles, setSpeakers, setCurrentTranscriptFilename } = useTranscript();
+  const historyIconRef = useRef<HistoryIconHandle>(null);
 
   useEffect(() => {
     if (open) {
@@ -302,9 +304,11 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
           variant="ghost"
           size="icon-sm"
           data-tauri-drag-region="false"
-          className="gap-2 rounded-full"
+          className="gap-2 rounded-sm"
+          onMouseEnter={() => historyIconRef.current?.startAnimation()}
+          onMouseLeave={() => historyIconRef.current?.stopAnimation()}
         >
-          <History className="h-4 w-4" />
+          <ArchiveIcon ref={historyIconRef} size={16} />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
@@ -405,7 +409,7 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
           </div>
 
           {/* Right side - Transcripts and Settings buttons */}
-          <div className="flex items-center gap-1 w-24 justify-end">
+          <div className="flex items-center w-24 justify-end">
             <div data-tauri-drag-region="false">
               <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>

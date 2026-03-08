@@ -1,9 +1,9 @@
-local DEV_MODE = true
-
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global
 local ffi = ffi
+
+local DEV_MODE = rawget(_G, "AUTOSUBS_DEV_MODE") == true
 
 local function join_path(dir, filename)
     local sep = package.config:sub(1,1) -- returns '\\' on Windows, '/' elsewhere
@@ -96,7 +96,7 @@ else
     resources_folder = "/usr/lib/autosubs/resources"
 end
 
--- temporarily redefine path for dev_mode
+-- temporarily redefine path for dev_mode (replace with correct path to resources folder in repo)
 if DEV_MODE then
     resources_folder = os.getenv("HOME") .. "/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources"
 end
@@ -108,3 +108,5 @@ package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
 -- Launch AutoSubs
 local AutoSubs = require("autosubs_core")
 AutoSubs:Init(app_executable, resources_folder, DEV_MODE)
+
+_G.AUTOSUBS_DEV_MODE = nil

@@ -22,6 +22,7 @@ import { useResolve } from "@/contexts/ResolveContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { Speaker } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
+import { PlusIcon, type PlusIconHandle } from "../ui/plus"
 
 type SubtitleViewerVariant = "desktop" | "compact"
 
@@ -527,7 +528,7 @@ interface AddToTimelineFooterProps {
   variant: SubtitleViewerVariant
   settings: ReturnType<typeof useSettings>["settings"]
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"]
-  layersIconRef: React.RefObject<any>
+  layersIconRef: React.RefObject<PlusIconHandle>
   onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
   t: (key: string) => string
 }
@@ -554,11 +555,7 @@ function AddToTimelineFooter({
           onMouseEnter={() => layersIconRef.current?.startAnimation?.()}
           onMouseLeave={() => layersIconRef.current?.stopAnimation?.()}
         >
-          {variant === "desktop" ? (
-            <LayersIcon ref={layersIconRef} className="w-4 h-4" />
-          ) : (
-            <Layers2 className="w-4 h-4 mr-2" />
-          )}
+          <PlusIcon ref={layersIconRef} className="w-4 h-4" />
           {t("subtitles.addToTimeline")}
         </Button>
       </AddToTimelineDialog>
@@ -577,7 +574,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const [showReformat, setShowReformat] = React.useState(false)
   const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>([])
   const searchInputRef = React.useRef<HTMLInputElement>(null)
-  const layersIconRef = React.useRef<any>(null)
+  const layersIconRef = React.useRef<PlusIconHandle>(null)
   const { subtitles, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles, speakers, updateSpeakers } = useTranscript()
   const { pushToTimeline, timelineInfo } = useResolve()
   const { settings } = useSettings()
