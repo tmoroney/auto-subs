@@ -1,4 +1,4 @@
-import { Subtitle, Speaker } from "../types/interfaces";
+import { Subtitle } from "../types/interfaces";
 
 // src/utils/srtUtils.ts
 export function formatTimecode(seconds: number): string {
@@ -10,11 +10,8 @@ export function formatTimecode(seconds: number): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
 
-export function generateSrt(subtitles: Subtitle[], includeSpeakerLabels: boolean, speakers?: Speaker[]): string {
+export function generateSrt(subtitles: Subtitle[]): string {
     console.log('Generating SRT from subtitles:', subtitles);
-    console.log('Include speaker labels in srt:', includeSpeakerLabels);
-
-    const speakerIdBase = subtitles.some(s => String(s.speaker_id) === "0") ? 0 : 1;
 
     if (!subtitles || !Array.isArray(subtitles)) {
         console.error('Invalid subtitles input:', subtitles);
@@ -39,17 +36,6 @@ export function generateSrt(subtitles: Subtitle[], includeSpeakerLabels: boolean
             if (isNaN(start) || isNaN(end)) {
                 console.error('Invalid timestamp in subtitle:', sub);
                 return ''; // Skip entries with invalid timestamps
-            }
-
-            if (includeSpeakerLabels && sub.speaker_id) {
-                const n = Number(sub.speaker_id);
-                const idx = Number.isFinite(n)
-                    ? (n - speakerIdBase)
-                    : 0;
-                const speakerName = speakers?.[idx]?.name;
-                if (speakerName) {
-                    text = `[${speakerName}]: ${text}`;
-                }
             }
 
             return `${i + 1}\n${formatTimecode(start)} --> ${formatTimecode(end)}\n${text}\n`;

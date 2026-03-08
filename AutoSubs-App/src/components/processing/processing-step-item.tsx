@@ -7,11 +7,12 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
-import { SegmentPreview } from "@/components/subtitles/segment-preview"
+import { SegmentPreview } from "@/components/processing/segment-preview"
 import { Settings, TimelineInfo } from "@/types/interfaces"
 
 export interface ProcessingStepProps {
     title: string;
+    description: string;
     progress: number;
     isActive: boolean;
     isCompleted: boolean;
@@ -27,6 +28,7 @@ export interface ProcessingStepProps {
 
 export function ProcessingStepItem({
     title,
+    description,
     progress,
     isActive,
     isCompleted,
@@ -65,11 +67,12 @@ export function ProcessingStepItem({
                     <span className="text-sm tabular-nums">{Math.round(progress)}%</span>
                 </ItemContent>
                 {/* Show live preview for Transcribe step */}
-                {id === 'Transcribe' && isActive && livePreviewSegments.length > 0 && (
+                {id === 'Transcribe' && isActive && (
                     <ItemContent className="w-full bg-muted/50 rounded-xl overflow-y-auto">
                         <SegmentPreview 
                             segments={livePreviewSegments} 
-                            isActive={isActive} 
+                            isActive={isActive}
+                            placeholder={description}
                         />
                     </ItemContent>
                 )}

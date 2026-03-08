@@ -1,20 +1,18 @@
 import * as React from "react"
-import { Download, Upload, FileUp, FileJson, Captions, Speech } from "lucide-react"
+import { Download, Upload, FileUp, Captions, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/animated-tabs"
 import { open } from '@tauri-apps/plugin-dialog'
 import { downloadDir } from "@tauri-apps/api/path"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
-import { Switch } from "@/components/ui/switch"
-import { Card } from "@/components/ui/card"
 import { useTranslation } from "react-i18next"
 
-type ExportFormat = 'srt' | 'json';
+type ExportFormat = 'srt' | 'txt';
 
 interface ImportExportPopoverProps {
     onImport: () => Promise<void>
-    onExport: (format: ExportFormat, includeSpeakerLabels: boolean) => Promise<void>
+    onExport: (format: ExportFormat) => Promise<void>
     hasSubtitles: boolean
     trigger?: React.ReactNode
 }
@@ -23,7 +21,6 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
     const { t } = useTranslation()
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
     const [exportFormat, setExportFormat] = React.useState<ExportFormat>('srt')
-    const [includeSpeakerLabels, setIncludeSpeakerLabels] = React.useState(false)
 
     React.useEffect(() => {
         let unlisten: (() => void) | undefined;
@@ -75,7 +72,7 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
 
     const handleExportFile = async () => {
         try {
-            await onExport(exportFormat, includeSpeakerLabels);
+            await onExport(exportFormat);
         } catch (error) {
             console.error("Failed to export file:", error);
         }
@@ -91,15 +88,60 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                     </Button>
                 )}
             </PopoverTrigger>
-            <PopoverContent className="w-80">
-                <Tabs defaultValue="import" className="w-full">
+            <PopoverContent className="w-80 p-3">
+                <Tabs defaultValue="export" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="import">{t("importExport.importTab")}</TabsTrigger>
                         <TabsTrigger value="export">{t("importExport.exportTab")}</TabsTrigger>
+                        <TabsTrigger value="import">{t("importExport.importTab")}</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="import" className="space-y-3">
+                    <TabsContent value="export" className="space-y-3 px-1">
+                        <div className="space-y-3">
+                            <Button
+                                variant="outline"
+                                className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
+                                onClick={() => setExportFormat('srt')}
+                                aria-label={t("importExport.exportAsSrt")}
+                                type="button"
+                            >
+                                <div className="flex w-full items-start gap-3 text-left">
+                                    <Captions className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                        <div className="text-sm font-medium">Subtitles (.srt)</div>
+                                        <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
+                                            Standard subtitle format for apps like YouTube and VLC. Includes timestamps.
+                                        </div>
+                                    </div>
+                                </div>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'txt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
+                                onClick={() => setExportFormat('txt')}
+                                type="button"
+                            >
+                                <div className="flex w-full items-start gap-3 text-left">
+                                    <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                        <div className="text-sm font-medium">Transcript (.txt)</div>
+                                        <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
+                                            Plain text export for LLMs that includes speaker labels when available.
+                                        </div>
+                                    </div>
+                                </div>
+                            </Button>
+                        </div>
+                        <Button
+                            onClick={handleExportFile}
+                            className="w-full mt-4"
+                            disabled={!hasSubtitles}
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            {t("importExport.downloadFormat", { format: exportFormat.toUpperCase() })}
+                        </Button>
+                    </TabsContent>
+                    <TabsContent value="import" className="space-y-3 px-1">
                         <div
-                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors mt-3 flex flex-col items-center justify-center h-36"
+                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors flex flex-col items-center justify-center h-36"
                             onClick={handleFileSelect}
                         >
                             <FileUp className="h-8 w-8 mb-2 text-muted-foreground" />
@@ -122,52 +164,6 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                             disabled={!selectedFile}
                         >
                             {t("importExport.importFile")}
-                        </Button>
-                    </TabsContent>
-                    <TabsContent value="export" className="space-y-3">
-
-                        {/* Switch to include speaker labels or not */}
-                        <Card className="flex items-center justify-between p-2 mt-3 shadow-none">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                    <Speech className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <p className="text-sm font-medium">
-                                    {t("importExport.includeSpeakerLabels")}
-                                </p>
-                            </div>
-                            <Switch checked={includeSpeakerLabels} onCheckedChange={setIncludeSpeakerLabels} />
-                        </Card>
-
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
-                                onClick={() => setExportFormat("srt")}
-                                aria-label={t("importExport.exportAsSrt")}
-                                type="button"
-                            >
-                                <Captions className="!h-6 !w-6 mb-2" />
-                                <span className="text-base">SRT</span>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className={`flex-1 flex flex-col items-center justify-center h-32 border-2 rounded-xl ${exportFormat === 'json' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
-                                onClick={() => setExportFormat("json")}
-                                aria-label={t("importExport.exportAsJson")}
-                                type="button"
-                            >
-                                <FileJson className="!h-6 !w-6 mb-2" />
-                                <span className="text-base">JSON</span>
-                            </Button>
-                        </div>
-                        <Button
-                            onClick={handleExportFile}
-                            className="w-full mt-4"
-                            disabled={!hasSubtitles}
-                        >
-                            <Download className="h-4 w-4 mr-2" />
-                            {t("importExport.downloadFormat", { format: exportFormat.toUpperCase() })}
                         </Button>
                     </TabsContent>
                 </Tabs>

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { Subtitle } from "@/types/interfaces"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -402,36 +403,50 @@ const SubtitleList = ({
                                             </div>
                                         )}
 
-                                        <div
-                                            className={`grid grid-cols-2 gap-2 overflow-hidden transition-all duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
+                                        <ButtonGroup
+                                            className={`overflow-hidden transition-all duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
                                         >
-                                            <Button
-                                                variant="outline"
-                                                className="text-xs h-8"
-                                                disabled={!isSelected || index <= 0 || splitIntoWords(draftText).length === 0}
-                                                onMouseDown={(e) => e.preventDefault()}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleMoveFirstWordToPrev(index);
-                                                }}
-                                            >
-                                                <ArrowUp className="h-4 w-4" />
-                                                Move to prev
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                className="text-xs h-8"
-                                                disabled={!isSelected || index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
-                                                onMouseDown={(e) => e.preventDefault()}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleMoveLastWordToNext(index);
-                                                }}
-                                            >
-                                                <ArrowDown className="h-4 w-4" />
-                                                Move to next
-                                            </Button>
-                                        </div>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="text-xs h-8"
+                                                        disabled={!isSelected || index <= 0 || splitIntoWords(draftText).length === 0}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMoveFirstWordToPrev(index);
+                                                        }}
+                                                    >
+                                                        <ArrowUp />
+                                                        First word
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-60">
+                                                    <p>Move first word to previous subtitle while preserving word timing</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="text-xs h-8"
+                                                        disabled={!isSelected || index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMoveLastWordToNext(index);
+                                                        }}
+                                                    >
+                                                        <ArrowDown />
+                                                        Last word
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-52">
+                                                    <p>Move last word to next subtitle while preserving word timing</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </ButtonGroup>
                                     </div>
                                 </div>
                             );

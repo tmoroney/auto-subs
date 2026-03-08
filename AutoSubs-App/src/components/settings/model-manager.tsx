@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,15 +42,20 @@ export function ManageModelsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("models.manage.title")}</DialogTitle>
+          <DialogTitle>
+            <span className="inline-flex items-center gap-2 align-middle">
+              <span>{t("models.manage.title")}</span>
+              <Badge variant="default" className="h-5 shadow-none">{downloadedModels.length}</Badge>
+            </span>
+          </DialogTitle>
           <DialogDescription>
             {t("models.manage.description")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+        <div className="space-y-3 max-h-[340px] overflow-y-auto">
           {downloadedModels.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {t("models.manage.empty")}

@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 interface SegmentPreviewProps {
     segments: Subtitle[]
     isActive: boolean
+    placeholder?: string
 }
 
-export function SegmentPreview({ segments, isActive }: SegmentPreviewProps) {
+export function SegmentPreview({ segments, isActive, placeholder }: SegmentPreviewProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const [streamedText, setStreamedText] = useState("")
     const [isStreaming, setIsStreaming] = useState(false)
@@ -144,7 +145,7 @@ export function SegmentPreview({ segments, isActive }: SegmentPreviewProps) {
         >
             <div className="text-xs text-muted-foreground">
                 {streamedText || (isActive && !isStreaming && (
-                    <span className="italic">Waiting for subtitles...</span>
+                    <span className="italic">{placeholder || "Waiting for subtitles..."}</span>
                 ))}
             </div>
         </div>

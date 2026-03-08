@@ -1,6 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Settings, Sun, Moon, Monitor, Archive, Heart, Github, Boxes } from "lucide-react";
-import { HistoryIcon, type HistoryIconHandle } from "@/components/ui/history";
+import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes } from "lucide-react";
+import type { HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";

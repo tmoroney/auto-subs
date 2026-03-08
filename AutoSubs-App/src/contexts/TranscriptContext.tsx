@@ -6,6 +6,7 @@ import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
 import {
   generateTranscriptFilename,
+  generateTranscriptTxt,
   resolveTranscriptFilename,
   readTranscript,
   saveTranscript,
@@ -27,7 +28,7 @@ interface TranscriptContextType {
   updateSubtitles: (newSubtitles: Subtitle[], filename?: string) => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
-  exportSubtitlesAs: (format: 'srt' | 'json', includeSpeakerLabels: boolean, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
+  exportSubtitlesAs: (format: 'srt' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => Promise<void>;
 }
@@ -180,21 +181,22 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   };
 
   async function exportSubtitlesAs(
-    format: 'srt' | 'json', 
-    includeSpeakerLabels: boolean, 
-    subtitlesParam?: Subtitle[]
+    format: 'srt' | 'txt', 
+    subtitlesParam?: Subtitle[],
+    speakersParam?: Speaker[]
   ) {
     const subtitlesToExport = subtitlesParam || subtitles;
+    const speakersToExport = speakersParam || speakers;
     
     try {
       if (!subtitlesToExport || subtitlesToExport.length === 0) {
         throw new Error('No subtitles available to export');
       }
 
-      const defaultPath = format === 'srt' ? 'subtitles.srt' : 'subtitles.json';
+      const defaultPath = format === 'srt' ? 'subtitles.srt' : 'transcript.txt';
       const filters = format === 'srt'
         ? [{ name: 'SRT Files', extensions: ['srt'] }]
-        : [{ name: 'JSON Files', extensions: ['json'] }];
+        : [{ name: 'Text Files', extensions: ['txt'] }];
 
       const filePath = await save({
         defaultPath,
@@ -207,14 +209,14 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
       }
 
       if (format === 'srt') {
-        console.log('Generating SRT data from subtitles (first 3 items):', subtitles.slice(0, 3));
-        console.log('Subtitles array length:', subtitles.length);
+        console.log('Generating SRT data from subtitles (first 3 items):', subtitlesToExport.slice(0, 3));
+        console.log('Subtitles array length:', subtitlesToExport.length);
 
         // Log the structure of the first subtitle if it exists
-        if (subtitles.length > 0) {
+        if (subtitlesToExport.length > 0) {
           console.log('First subtitle structure:', {
-            keys: Object.keys(subtitles[0]),
-            values: Object.entries(subtitles[0]).map(([key, value]) => ({
+            keys: Object.keys(subtitlesToExport[0]),
+            values: Object.entries(subtitlesToExport[0]).map(([key, value]) => ({
               key,
               type: typeof value,
               value: value
@@ -222,7 +224,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
           });
         }
 
-        let srtData = generateSrt(subtitles, includeSpeakerLabels, speakers);
+        let srtData = generateSrt(subtitlesToExport);
 
         if (!srtData || srtData.trim() === '') {
           console.error('Generated SRT data is empty');
@@ -232,25 +234,15 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
         await writeTextFile(filePath, srtData);
         console.log('SRT file saved successfully to', filePath);
       } else {
-        // Export as JSON
-        console.log('Generating JSON data from subtitles (first 3 items):', subtitles.slice(0, 3));
+        const transcriptText = generateTranscriptTxt(subtitlesToExport, speakersToExport);
 
-        // Create a structured JSON object similar to what's used internally
-        const jsonData = {
-          createdAt: new Date().toISOString(),
-          segments: subtitles.map((segment, index) => ({
-            id: index.toString(),
-            start: segment.start,
-            end: segment.end,
-            text: segment.text.trim(),
-            speaker_id: segment.speaker_id || undefined,
-            words: segment.words || []
-          }))
-        };
+        if (!transcriptText || transcriptText.trim() === '') {
+          console.error('Generated transcript text is empty');
+          throw new Error('Generated transcript text is empty');
+        }
 
-        const jsonString = JSON.stringify(jsonData, null, 2);
-        await writeTextFile(filePath, jsonString);
-        console.log('JSON file saved successfully to', filePath);
+        await writeTextFile(filePath, transcriptText);
+        console.log('TXT transcript file saved successfully to', filePath);
       }
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);

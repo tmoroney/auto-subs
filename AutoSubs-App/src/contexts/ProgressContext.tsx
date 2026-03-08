@@ -44,6 +44,8 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       console.log('Ignoring progress event with unknown type:', event.type)
       return
     }
+
+    const stepDescription = event.label?.trim() || `${Math.round(event.progress)}%`
     
     setProcessingSteps(prev => {
       const stepId = event.type!
@@ -59,7 +61,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         updated[existingStepIndex] = {
           ...updated[existingStepIndex],
           progress: event.progress,
-          description: `${Math.round(event.progress)}%`,
+          description: stepDescription,
           isActive: event.progress < 100,
           isCompleted: event.progress >= 100
         }
@@ -88,7 +90,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         const newStep: ProcessingStep = {
           id: stepId,
           title: stepTitle,
-          description: `${Math.round(event.progress)}%`,
+          description: stepDescription,
           progress: event.progress,
           isActive: event.progress < 100,
           isCompleted: event.progress >= 100

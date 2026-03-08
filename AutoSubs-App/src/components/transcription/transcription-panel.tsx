@@ -25,9 +25,19 @@ import { languages, translateLanguages } from "@/lib/languages"
 import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
 
+ const SUPPORTED_MEDIA_EXTENSIONS = [
+   "wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg", "m4v", "3gp", "aiff", "opus", "alac",
+ ]
+
+ function isSupportedMediaFile(filePath: string): boolean {
+   const extension = filePath.split(".").pop()?.toLowerCase()
+   return extension ? SUPPORTED_MEDIA_EXTENSIONS.includes(extension) : false
+ }
+
 interface ProcessingStep {
   id?: string
   title: string
+  description: string
   progress: number
   isActive: boolean
   isCompleted: boolean
@@ -118,7 +128,10 @@ function TranscriptionPanelView({
         if (event.payload.type === "drop") {
           const files = event.payload.paths as string[] | undefined
           if (files && files.length > 0) {
-            setSelectedFile(files[0])
+            const supportedFile = files.find(isSupportedMediaFile)
+            if (supportedFile) {
+              setSelectedFile(supportedFile)
+            }
           }
         }
       })
@@ -134,9 +147,7 @@ function TranscriptionPanelView({
       directory: false,
       filters: [{
         name: t("actionBar.fileDialog.mediaFiles"),
-        extensions: [
-          "wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg", "m4v", "3gp", "aiff", "opus", "alac", "*",
-        ],
+        extensions: SUPPORTED_MEDIA_EXTENSIONS,
       }],
       defaultPath: await downloadDir(),
     })
@@ -212,6 +223,7 @@ function TranscriptionPanelView({
                   <ProcessingStepItem
                     id={step.id}
                     title={step.title}
+                    description={step.description}
                     progress={step.progress}
                     isActive={step.isActive}
                     isCompleted={step.isCompleted}
@@ -479,7 +491,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
 
   const handleExportToFile = async () => {
     try {
-      await exportSubtitlesAs("srt", settings.enableDiarize, subtitles, speakers)
+      await exportSubtitlesAs("srt", subtitles, speakers)
     } catch (error) {
       console.error("Export failed:", error)
     }
