@@ -24,6 +24,7 @@ import { useResolve } from "@/contexts/ResolveContext"
 import { languages, translateLanguages } from "@/lib/languages"
 import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types/interfaces"
 import { useTranslation } from "react-i18next"
+import { diarizeModel } from "@/lib/models"
 
  const SUPPORTED_MEDIA_EXTENSIONS = [
    "wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg", "m4v", "3gp", "aiff", "opus", "alac",
@@ -43,8 +44,6 @@ interface ProcessingStep {
   isCompleted: boolean
   isCancelled?: boolean
 }
-
-const DIARIZE_MODEL_ID = "speaker-diarize"
 
 interface TranscriptionPanelViewProps {
   modelsState: Model[]
@@ -471,7 +470,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
   }, [processingSteps])
 
   const isModelCached = modelsState[settings.model]?.isDownloaded ?? false
-  const isDiarizeModelDownloaded = downloadedModelValues.includes(DIARIZE_MODEL_ID)
+  const isDiarizeModelDownloaded = downloadedModelValues.includes(diarizeModel.value)
   const hasPendingDownloads = !isModelCached || (settings.enableDiarize && !isDiarizeModelDownloaded)
 
   React.useEffect(() => {

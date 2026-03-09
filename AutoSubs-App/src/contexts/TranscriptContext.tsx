@@ -71,8 +71,17 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   async function updateSpeakers(newSpeakers: Speaker[]) {
     console.log("Updating speakers:", newSpeakers);
     setSpeakers(newSpeakers);
-    // Note: This will need to be called with proper context for filename generation
-    // We'll handle this in the implementation where it's used
+
+    try {
+      if (currentTranscriptFilename) {
+        await updateTranscript(currentTranscriptFilename, {
+          speakers: newSpeakers
+        });
+        console.log('Speakers updated in both UI and file');
+      }
+    } catch (error) {
+      console.error('Failed to update speakers in file:', error);
+    }
   }
 
   // Function to update a specific subtitle

@@ -40,8 +40,7 @@ import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
 import { ArchiveIcon } from "../ui/archive";
-
- const DIARIZE_MODEL_ID = "speaker-diarize";
+import { diarizeModel } from "@/lib/models";
 
 interface TimelineInfo {
   timelineId?: string;
@@ -127,23 +126,14 @@ function SettingsDropdown() {
   const [manageModelsOpen, setManageModelsOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
-  const managerModels: Model[] = downloadedModelValues.includes(DIARIZE_MODEL_ID)
+  // The diarization model is handled separately from transcription models and only added
+  // to the model manager when it's actually downloaded. This is because it's a different
+  // type of model (speaker diarization vs speech transcription) and has a different
+  // download/management pattern.
+  const managerModels: Model[] = downloadedModelValues.includes(diarizeModel.value)
     ? [
         ...modelsState,
-        {
-          value: DIARIZE_MODEL_ID,
-          label: "models.diarize.label",
-          description: "models.diarize.description",
-          size: "40MB",
-          ram: "",
-          image: "/diarize.png",
-          details: "models.diarize.details",
-          badge: "models.diarize.badge",
-          languageSupport: { kind: "multilingual" },
-          accuracy: 3,
-          weight: 2,
-          isDownloaded: true,
-        },
+        { ...diarizeModel, isDownloaded: true },
       ]
     : modelsState;
 

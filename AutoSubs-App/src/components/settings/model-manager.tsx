@@ -12,31 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Model } from "@/types/interfaces";
 
-function LanguageSupportBadges({ model }: { model: Model }) {
-  if (model.languageSupport.kind === "multilingual") {
-    return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Multilingual</Badge>;
-  }
-
-  if (model.languageSupport.kind === "single_language") {
-    return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 uppercase">{model.languageSupport.language}</Badge>;
-  }
-
-  return (
-    <>
-      {model.languageSupport.languages.slice(0, 3).map((language) => (
-        <Badge key={language} variant="secondary" className="text-[10px] px-1.5 py-0 uppercase">
-          {language}
-        </Badge>
-      ))}
-      {model.languageSupport.languages.length > 3 && (
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-          +{model.languageSupport.languages.length - 3}
-        </Badge>
-      )}
-    </>
-  );
-}
-
 interface ManageModelsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -97,7 +72,7 @@ export function ManageModelsDialog({
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm">{t(model.label)}</p>
-                      <LanguageSupportBadges model={model} />
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t(model.badge)}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{model.size}</p>
                   </div>

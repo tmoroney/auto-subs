@@ -321,6 +321,25 @@ export const models: Model[] = [
 ];
 
 /**
+ * Diarization model definition
+ * This is handled separately from transcription models
+ */
+export const diarizeModel: Model = {
+  value: "speaker-diarize",
+  label: "models.diarize.label",
+  description: "models.diarize.description",
+  size: "40MB",
+  ram: "",
+  image: "/diarize.png",
+  details: "models.diarize.details",
+  badge: "models.diarize.badge",
+  languageSupport: { kind: "multilingual" },
+  accuracy: 3,
+  weight: 2,
+  isDownloaded: false, // Will be set to true when actually downloaded
+};
+
+/**
  * Check if a model supports a specific language
  */
 export function modelSupportsLanguage(model: Model, language: string): boolean {
