@@ -979,6 +979,9 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local tool = comp:FindToolByID("TextPlus")
+                if tool == nil then
+                    tool = comp:FindTool("AutoSubs")
+                end
                 tool:SetInput("StyledText", subtitleText)
 
                 if speakersExist then
@@ -1039,8 +1042,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local earlyResult = nil
-    trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate,
-        timelineStart)
+    trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
     if earlyResult then
         return earlyResult
     end

@@ -1,6 +1,6 @@
 import { Subtitle, Word } from "@/types/interfaces";
 
-const PUNCTUATION_REGEX = /[\p{P}$+<=>^`|~]/gu;
+const PUNCTUATION_REGEX = /[^\p{L}\p{N}\s']+/gu;
 
 /**
  * Helper to join a words array into a normalized text string.
