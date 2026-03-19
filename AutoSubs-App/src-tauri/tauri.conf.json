@@ -56,9 +56,6 @@
     "resources": [
       "resources/"
     ],
-    "externalBin": [
-      "binaries/ffmpeg"
-    ],
     "macOS": {
       "minimumSystemVersion": "13.3"
     },
@@ -67,7 +64,10 @@
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
-        }
+        },
+        "depends": [
+          "ffmpeg"
+        ]
       },
       "rpm":{
         "epoch": 0,
@@ -80,7 +80,8 @@
           "webkit2gtk4.1",
           "openssl",
           "libappindicator-gtk3",
-          "librsvg2"
+          "librsvg2",
+          "ffmpeg"
         ]
       }
     },
