@@ -259,7 +259,7 @@ jobs:
         tag_name: ${{ env.TAG }}
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout AutoSubs Repo Code
         uses: actions/checkout@v4
@@ -304,7 +304,8 @@ jobs:
             pkg-config \
             libvulkan-dev \
             mesa-vulkan-drivers \
-            unzip
+            unzip\
+            rpm-build
           # optional:
           #  vulkan-validationlayers
 
@@ -343,10 +344,11 @@ jobs:
           # Disable default features (mac-specific) for Linux build
           npm run tauri build -- -- --no-default-features --features linux
 
-      - name: Collect Linux artifacts (.deb only)
+      - name: Collect and rename Linux artifacts
         run: |
           set -euo pipefail
           LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
+          
           # Debian package lives under bundle/deb
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
           OUT_NAME="AutoSubs-linux-x86_64.deb"
@@ -356,11 +358,21 @@ jobs:
             echo "WARNING: .deb package not found in $LINUX_BUNDLE_DIR/deb"
           fi
 
-      - name: Upload Linux artifacts to Release (.deb only)
+          # RPM package
+          RPM_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/rpm"/*.rpm 2>/dev/null | head -n1 || true)
+          OUT_NAME="AutoSubs-linux-x86_64.rpm"
+          if [ -n "$RPM_FILE" ]; then
+            cp "$RPM_FILE" "$OUT_NAME"
+          else
+            echo "WARNING: .rpm package not found in $LINUX_BUNDLE_DIR/rpm"
+          fi
+
+      - name: Upload Linux artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             *.deb
+            *.rpm
           token: ${{ secrets.GH_TOKEN }}
           tag_name: ${{ env.TAG }}
 
