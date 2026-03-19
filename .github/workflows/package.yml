@@ -307,7 +307,7 @@ jobs:
             libvulkan-dev \
             mesa-vulkan-drivers \
             unzip\
-            rpm-build
+            rpm
           # optional:
           #  vulkan-validationlayers
 
