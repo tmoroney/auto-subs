@@ -114,7 +114,7 @@ jobs:
 
     - name: Download ffmpeg/ffprobe binaries
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         cd AutoSubs-App/src-tauri
@@ -313,7 +313,7 @@ jobs:
 
       - name: Download ffmpeg/ffprobe binaries (Linux)
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           cd AutoSubs-App/src-tauri
