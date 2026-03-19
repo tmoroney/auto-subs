@@ -1,5 +1,7 @@
 name: Package AutoSubs for MacOS and Linux
 on:
+  push:
+    branches: [rpm-support]   # your working branch
   release:
     types: [released]
   workflow_dispatch:
