@@ -160,6 +160,7 @@ function HighlightSpokenWords(comp, follower, wordTimings, duration)
     if settings == nil then
         local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
         characterLevelStyling:AddModifier("CharacterLevelStyling", "BezierSpline")
+        -- can be removed like this comp.Settings.Tools.CharacterLevelStyling = nil
     end
 
     -- should be passed in to functions (only setting the outline colour for testing)
@@ -274,40 +275,107 @@ function ExampleData()
     return wordData
 end
 
-function AddWordTiming(follower, framerate, wordTimings, clipDuration, animDuration)
-    follower:AddModifier("DelayByCharacterPosition", "BezierSpline")
-    follower:SetInput("Order", 6)
-    local delaySpline = follower.DelayByCharacterPosition:GetConnectedOutput():GetTool()
-
+local function generate_word_keyframes(wordTimings, framerate)
     local keyframes = {}
-    local currentIndex = 0
+    local charIndex = 0
     for i, word in ipairs(wordTimings) do
-        -- Format: [index of first character of word in string] = { frame that word starts }
-        keyframes[currentIndex] = { word.start * framerate }
+        -- Format: [index of first character in word] = { frame to start showing word }
+        keyframes[charIndex] = { word.start * framerate, Flags = { StepIn = true } }
 
-        -- Update start index for next word
-        currentIndex = currentIndex + #word.word
+        -- Move to start of next word
+        charIndex = charIndex + #word.word + 1 -- +1 for space
     end
-    delaySpline:SetKeyFrames(keyframes)
+    return keyframes
+end
+
+local function get_delay_spline(comp)
+    local splineName = "Follower1DelaybyCharacterPosition"
+    local spline = comp:FindTool(splineName)
+    if not spline then
+        splineName = "AutoSubsDelaybyCharacterPosition"
+        spline = comp:FindTool(splineName)
+    end
+    return spline
+end
+
+function AddWordTiming(comp, framerate, wordTimings, clipDuration, animDuration)
+    local spline = get_delay_spline(comp)
 
     -- Make sure that all keyframes are set to StepIn (prevent weird character by character animation)
-    local name = delaySpline.Name
-    local settings = delaySpline:SaveSettings()
-    for key, _ in pairs(settings.Tools[name].KeyFrames) do
-        settings.Tools[name].KeyFrames[key].Flags = { StepIn = true }
-    end
-    delaySpline:LoadSettings(settings)
+    local name = spline.Name
+    local settings = spline:SaveSettings()
+    settings.Tools[name].KeyFrames = generate_word_keyframes(wordTimings, framerate)
+    spline:LoadSettings(settings)
+end
 
-    -- Animate out all at once at the end of the clip
-    follower:SetInput("DelayType", 0)
-    follower:SetInput("Delay", 0.5)
-    follower:AddModifier("Order", "BezierSpline")
-    local orderSpline = follower.Order:GetConnectedOutput():GetTool()
-    keyframes = {
-        [clipDuration - animDuration - 1] = { 6 },
-        [clipDuration - animDuration] = { 0 },
-    }
-    orderSpline:SetKeyFrames(keyframes)
+function SetupAnimation(comp, follower, stretcher1, stretcher2, spline1, spline2, animInEnd, animOutStart)
+    local mainTool = comp:FindTool("AutoSubs")
+    local anims = mainTool:GetData("Animations")
+    local animLength = tool:GetInput("AnimLength")
+    local fadeEnabled = tool:GetInput("FadeEnabled") == 1
+    local popInEnabled = tool:GetInput("PopInEnabled") == 1
+    local slideUpEnabled = tool:GetInput("SlideUpEnabled") == 1
+
+    -- Load helper functions from CustomData
+    local findTools = loadstring(anims.FindTools)()
+    local removeXYPaths = loadstring(anims.RemoveXYPaths)()
+
+    local tools = findTools(comp)
+    if not tools then return end
+
+    local follower = tools.follower
+    local stretcher1 = tools.stretcher1
+    local stretcher2 = tools.stretcher2
+    local spline1 = tools.spline1
+    local spline2 = tools.spline2
+
+    local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+    local frames = math.max(math.floor(animLength * fps + 0.5), 5)
+    local animInEnd = frames
+    local animOutStart = 100 - frames
+
+    -- Fade (also applied with SlideUp and PopIn)
+    if fadeEnabled or slideUpEnabled or popInEnabled then
+        local applyFade = loadstring(anims.ApplyFade)()
+        applyFade(follower, stretcher1, spline1, animInEnd, animOutStart)
+    else
+        -- No fade: preserve word timing but make opacity jump to full in 1 frame
+        follower.Opacity1 = stretcher1.Result
+        follower.Opacity2 = stretcher1.Result
+        follower.Opacity3 = stretcher1.Result
+        spline1:SetKeyFrames({
+            [0] = { 0, Flags = { StepIn = true } },
+            [1] = { 1, Flags = { StepIn = true } },
+            [99] = { 1, Flags = { StepIn = true } },
+            [100] = { 0, Flags = { StepIn = true } },
+        }, true)
+    end
+
+    -- PopIn
+    if popInEnabled then
+        local applyPopIn = loadstring(anims.ApplyPopIn)()
+        applyPopIn(follower, animInEnd, animOutStart)
+    else
+        local resetPopIn = loadstring(anims.ResetPopIn)()
+        resetPopIn(follower)
+    end
+
+    -- SlideUp
+    if slideUpEnabled then
+        local applySlideUp = loadstring(anims.ApplySlideUp)()
+        applySlideUp(follower, animInEnd, animOutStart)
+    else
+        removeXYPaths(follower)
+    end
+
+    -- Update stretcher timing
+    stretcher1:SetInput("StretchStart", animInEnd)
+    stretcher1:SetInput("StretchEnd", animOutStart)
+    spline2:SetKeyFrames({
+        [animOutStart - 1] = { 6, Flags = { StepIn = true } },
+        [animOutStart] = { 0, Flags = { StepIn = true } },
+    }, true)
+    stretcher2:SetInput("StretchEnd", animOutStart)
 end
 
 -- Animation Plan
@@ -340,13 +408,14 @@ if timelineItem:GetFusionCompCount() > 0 then
 
     local wordData = ExampleData()
 
-    AddWordTiming(follower, framerate, wordData, clipDuration, animDuration)
+    AddWordTiming(comp, framerate, wordData, clipDuration, animDuration)
     --BuildAnimation(follower, clipDuration, animDuration, { "fade", "popin" })
     Fade(follower, clipDuration, animDuration)
     comp.CurrentTime = 0
 end
 
 local animate = {}
+animate.addWordTiming = AddWordTiming
 animate.highlight = HighlightWords
 animate.popin = PopIn
 animate.fade = Fade
