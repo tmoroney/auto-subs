@@ -284,7 +284,7 @@ const SubtitleList = ({
     }
 
     if (!filteredSubtitleItems || filteredSubtitleItems.length === 0) {
-        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.empty.noSubtitlesAvailableShort")}</div>;
+        return <div className="p-4 text-center text-muted-foreground">{t("subtitles.empty.noSubtitlesAvailable")}</div>;
     }
 
     return (

@@ -369,8 +369,7 @@
     "empty": {
       "noSubtitlesFound": "未找到字幕",
       "tryDifferentSearch": "尝试不同的搜索词",
-      "noSubtitlesAvailable": "没有可用的字幕。请先导入一些。",
-      "noSubtitlesAvailableShort": "没有可用的字幕"
+      "noSubtitlesAvailable": "转录完成后，字幕将显示在这里"
     }
   },
   "subtitleEditor": {

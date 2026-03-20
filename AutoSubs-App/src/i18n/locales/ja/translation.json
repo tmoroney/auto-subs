@@ -342,8 +342,7 @@
     "editSpeakers": "話者を編集",
     "reformat": "再フォーマット",
     "empty": {
-      "noSubtitlesAvailable": "字幕がありません。先にインポートしてください。",
-      "noSubtitlesAvailableShort": "字幕がありません",
+      "noSubtitlesAvailable": "文字起こしが完了すると、ここに字幕が表示されます",
       "noSubtitlesFound": "字幕が見つかりません",
       "tryDifferentSearch": "別の検索語を試してください"
     },

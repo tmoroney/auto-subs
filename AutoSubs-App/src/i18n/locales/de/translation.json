@@ -369,8 +369,7 @@
     "empty": {
       "noSubtitlesFound": "Keine Untertitel gefunden",
       "tryDifferentSearch": "Versuche einen anderen Suchbegriff",
-      "noSubtitlesAvailable": "Keine Untertitel verfügbar. Versuche zuerst welche zu importieren.",
-      "noSubtitlesAvailableShort": "Keine Untertitel verfügbar"
+      "noSubtitlesAvailable": "Deine Untertitel werden hier angezeigt, sobald die Transkription abgeschlossen ist"
     }
   },
   "subtitleEditor": {

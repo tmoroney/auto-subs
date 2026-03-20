@@ -332,7 +332,12 @@
     "searchPlaceholder": "Rechercher des sous-titres...",
     "searchAria": "Rechercher des sous-titres",
     "clearSearch": "Effacer la recherche",
-    "search": { "caseMatch": "Respecter la casse", "wholeWord": "Mot entier", "replaceAll": "Tout remplacer", "replaceWithPlaceholder": "Remplacer par..." },
+    "search": {
+      "caseMatch": "Respecter la casse",
+      "wholeWord": "Mot entier",
+      "replaceAll": "Tout remplacer",
+      "replaceWithPlaceholder": "Remplacer par..."
+    },
     "addToTimeline": "Ajouter à la timeline",
     "loading": "Chargement des sous-titres...",
     "jumpToTimeline": "Aller à ce point sur la timeline",
@@ -340,13 +345,12 @@
     "empty": {
       "noSubtitlesFound": "Aucun sous-titre trouvé",
       "tryDifferentSearch": "Essayez un autre terme de recherche",
-      "noSubtitlesAvailable": "Aucun sous-titre disponible. Essayez d’en importer d’abord.",
-      "noSubtitlesAvailableShort": "Aucun sous-titre disponible"
+      "noSubtitlesAvailable": "Vos sous-titres apparaîtront ici une fois la transcription terminée"
     }
   },
   "subtitleEditor": {
     "title": "Modifier le sous-titre",
-    "description": "Modifiez le texte du sous-titre en ajustant les mots ci-dessous",
+    "description": "Modifiez le texte du sous-titre en changeant les mots ci-dessous",
     "mergeLeft": "Fusionner à gauche",
     "mergeRight": "Fusionner à droite",
     "deleteWord": "Supprimer le mot"

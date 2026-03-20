@@ -356,8 +356,7 @@
     "clearSearch": "검색 지우기",
     "editSpeakers": "화자 편집",
     "empty": {
-      "noSubtitlesAvailable": "자막이 없습니다. 먼저 가져오기를 시도해보세요.",
-      "noSubtitlesAvailableShort": "자막 없음",
+      "noSubtitlesAvailable": "전사가 완료되면 여기에 자막이 표시됩니다",
       "noSubtitlesFound": "자막을 찾을 수 없습니다",
       "tryDifferentSearch": "다른 검색어를 시도해보세요"
     },

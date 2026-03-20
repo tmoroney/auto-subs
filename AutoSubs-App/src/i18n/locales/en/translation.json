@@ -369,8 +369,7 @@
     "empty": {
       "noSubtitlesFound": "No subtitles found",
       "tryDifferentSearch": "Try a different search term",
-      "noSubtitlesAvailable": "No subtitles available. Try importing some first.",
-      "noSubtitlesAvailableShort": "No subtitles available"
+      "noSubtitlesAvailable": "Your subtitles will appear here when finished transcribing"
     }
   },
   "subtitleEditor": {
