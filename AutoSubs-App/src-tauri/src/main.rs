@@ -4,9 +4,11 @@
 use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
-use tauri::{RunEvent};
+use tauri::{Manager, RunEvent};
 use tauri::Emitter; // for app.emit
-use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
+use std::sync::Arc;
+use tokio::sync::Notify;
 use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
@@ -33,6 +35,13 @@ mod tests;
 
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
+
+struct InstallSignal(Arc<Notify>);
+
+#[tauri::command]
+fn trigger_install_update(state: tauri::State<InstallSignal>) {
+    state.0.notify_one();
+}
 
 fn main() {
     // Note: whisper-diarize-rs handles whisper_rs logging internally
@@ -116,6 +125,9 @@ fn main() {
             }
 
             // Check for updates in the background on startup (Tauri v2 Updater)
+            let install_signal = Arc::new(Notify::new());
+            app.manage(InstallSignal(install_signal.clone()));
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Ok(builder) = handle.updater_builder().build() {
@@ -131,31 +143,51 @@ fn main() {
                       .buttons(MessageDialogButtons::OkCancelCustom("Install".to_string(), "Later".to_string()))
                       .show(move |should_update| {
                         if should_update {
-                          // Perform download+install asynchronously
+                          // Perform download asynchronously, defer install until user triggers it
                           let handle_for_dl = handle_for_cb.clone();
+                          let signal = install_signal.clone();
                           tauri::async_runtime::spawn(async move {
                             if let Ok(builder2) = handle_for_dl.updater_builder().build() {
                               if let Ok(Some(update2)) = builder2.check().await {
-                                if let Err(e) = update2
-                                  .download_and_install(
-                                    |chunk, total| eprintln!("Downloading update: {} / {:?}", chunk, total),
-                                    || eprintln!("Download finished"),
+                                let downloaded = Arc::new(AtomicU64::new(0));
+                                let handle_progress = handle_for_dl.clone();
+
+                                // Download only — do NOT install yet
+                                let bytes = match update2
+                                  .download(
+                                    move |chunk, total| {
+                                      let prev = downloaded.fetch_add(chunk as u64, AtomicOrdering::Relaxed);
+                                      let current = prev + chunk as u64;
+                                      let percentage = total.map(|t| if t > 0 { (current as f64 / t as f64 * 100.0).min(100.0) } else { 0.0 }).unwrap_or(0.0);
+                                      let _ = handle_progress.emit("update-progress", json!({
+                                        "percentage": percentage,
+                                        "downloaded": current,
+                                        "total": total.unwrap_or(0)
+                                      }));
+                                    },
+                                    || {},
                                   )
                                   .await
                                 {
-                                  eprintln!("Update failed: {e}");
-                                  return;
-                                }
+                                  Ok(bytes) => bytes,
+                                  Err(e) => {
+                                    eprintln!("Update download failed: {e}");
+                                    let _ = handle_for_dl.emit("update-error", json!({ "error": e.to_string() }));
+                                    return;
+                                  }
+                                };
 
-                                // Inform user of success (non-blocking message)
-                                handle_for_dl
-                                  .dialog()
-                                  .message("Update installed. It will take effect the next time you open the app.")
-                                  .title("AutoSubs updated")
-                                  .buttons(MessageDialogButtons::Ok)
-                                  .show(|_| {});
-                                // Optional: restart immediately
-                                // handle_for_dl.restart();
+                                // Notify frontend that update is ready to install
+                                let _ = handle_for_dl.emit("update-ready", json!({}));
+
+                                // Wait for user to click "Restart to Update"
+                                signal.notified().await;
+
+                                // Install the update (this calls std::process::exit internally)
+                                if let Err(e) = update2.install(bytes) {
+                                  eprintln!("Update install failed: {e}");
+                                  let _ = handle_for_dl.emit("update-error", json!({ "error": e.to_string() }));
+                                }
                               }
                             }
                           });
@@ -176,7 +208,8 @@ fn main() {
             logging::get_backend_logs,
             logging::clear_backend_logs,
             logging::get_log_dir,
-            logging::export_backend_logs
+            logging::export_backend_logs,
+            trigger_install_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")

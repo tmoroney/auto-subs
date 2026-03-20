@@ -94,42 +94,40 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                         <TabsTrigger value="export">{t("importExport.exportTab")}</TabsTrigger>
                         <TabsTrigger value="import">{t("importExport.importTab")}</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="export" className="space-y-3 px-1">
-                        <div className="space-y-3">
-                            <Button
-                                variant="outline"
-                                className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
-                                onClick={() => setExportFormat('srt')}
-                                aria-label={t("importExport.exportAsSrt")}
-                                type="button"
-                            >
-                                <div className="flex w-full items-start gap-3 text-left">
-                                    <Captions className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                        <div className="text-sm font-medium">{t("importExport.exportFormats.srt.title")}</div>
-                                        <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
-                                            {t("importExport.exportFormats.srt.description")}
-                                        </div>
+                    <TabsContent value="export" className="space-y-3 px-1 pb-1">
+                        <Button
+                            variant="outline"
+                            className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'srt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
+                            onClick={() => setExportFormat('srt')}
+                            aria-label={t("importExport.exportAsSrt")}
+                            type="button"
+                        >
+                            <div className="flex w-full items-start gap-3 text-left">
+                                <Captions className="mt-0.5 h-4 w-4 shrink-0" />
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="text-sm font-medium">{t("importExport.exportFormats.srt.title")}</div>
+                                    <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
+                                        {t("importExport.exportFormats.srt.description")}
                                     </div>
                                 </div>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'txt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
-                                onClick={() => setExportFormat('txt')}
-                                type="button"
-                            >
-                                <div className="flex w-full items-start gap-3 text-left">
-                                    <FileText className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                        <div className="text-sm font-medium">{t("importExport.exportFormats.txt.title")}</div>
-                                        <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
-                                            {t("importExport.exportFormats.txt.description")}
-                                        </div>
+                            </div>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className={`h-auto w-full justify-start border px-4 py-3 ${exportFormat === 'txt' ? 'border-primary bg-primary/10' : 'bg-transparent'}`}
+                            onClick={() => setExportFormat('txt')}
+                            type="button"
+                        >
+                            <div className="flex w-full items-start gap-3 text-left">
+                                <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="text-sm font-medium">{t("importExport.exportFormats.txt.title")}</div>
+                                    <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
+                                        {t("importExport.exportFormats.txt.description")}
                                     </div>
                                 </div>
-                            </Button>
-                        </div>
+                            </div>
+                        </Button>
                         <Button
                             onClick={handleExportFile}
                             className="w-full mt-4"
@@ -139,7 +137,7 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                             {t("importExport.downloadFormat", { format: exportFormat.toUpperCase() })}
                         </Button>
                     </TabsContent>
-                    <TabsContent value="import" className="space-y-3 px-1">
+                    <TabsContent value="import" className="space-y-3 px-1 pb-1">
                         <div
                             className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors flex flex-col items-center justify-center h-36"
                             onClick={handleFileSelect}

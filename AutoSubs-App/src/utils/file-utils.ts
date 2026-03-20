@@ -472,6 +472,27 @@ export async function saveTranscript(
       let words = segment.words && segment.words.length > 0
         ? segment.words
         : interpolateWordsFromText(segment.text, segment.start, segment.end);
+
+      // Compute line_number for each word based on newlines in segment text.
+      // The Rust backend joins multi-line cues with '\n'.
+      const textStr: string = segment.text ?? '';
+      const lines = textStr.split('\n');
+      if (words && words.length > 0 && lines.length > 1) {
+        let wordIdx = 0;
+        for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+          const lineWords = lines[lineNum].trim().split(/\s+/).filter(Boolean);
+          for (let i = 0; i < lineWords.length && wordIdx < words.length; i++) {
+            words[wordIdx] = { ...words[wordIdx], line_number: lineNum };
+            wordIdx++;
+          }
+        }
+        // Remaining words get the last line number
+        while (wordIdx < words.length) {
+          words[wordIdx] = { ...words[wordIdx], line_number: lines.length - 1 };
+          wordIdx++;
+        }
+      }
+
       return {
         id: index.toString(),
         start: segment.start,

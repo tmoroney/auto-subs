@@ -90,7 +90,7 @@
     "viewSubtitles": "자막 보기"
   },
   "importExport": {
-    "button": "가져오기 / 내보내기",
+    "button": "내보내기 / 가져오기",
     "downloadFormat": "{{format}} 다운로드",
     "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
     "exportAsJson": "JSON으로 내보내기",
@@ -405,6 +405,10 @@
       "close": "닫기",
       "maximize": "최대화",
       "minimize": "최소화"
+    },
+    "update": {
+      "downloading": "업데이트 다운로드 중",
+      "installUpdateNow": "지금 업데이트 설치"
     }
   },
   "workspace": {

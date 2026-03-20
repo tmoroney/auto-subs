@@ -62,6 +62,7 @@ pub struct FrontendTranscribeOptions {
     pub enable_diarize: Option<bool>,
     pub max_speakers: Option<usize>,
     pub density: Option<TextDensity>,
+    pub max_lines: Option<usize>,
 }
 
 #[command]
@@ -151,9 +152,9 @@ pub async fn transcribe_audio<R: Runtime>(
         // Create engine config with proper cache directory
         let engine_config = EngineConfig {
             cache_dir,
-            enable_dtw: Some(true),           // Enable DTW for better word timestamps
-            enable_flash_attn: Some(false),   // Disable flash attention for compatibility
-            use_gpu: Some(true),              // Enable GPU acceleration when available
+            enable_dtw: options.enable_dtw.or(Some(true)), // Enable DTW for better word timestamps
+            enable_flash_attn: Some(true),                 // Engine handles DTW/flash attention mutual exclusion
+            use_gpu: options.enable_gpu.or(Some(true)),    // Enable GPU acceleration when available
             gpu_device: None,                 // Use default GPU device
             vad_model_path: None,             // Use default VAD model
             diarize_segment_model_path: None, // Download segmentation model if needed
@@ -174,8 +175,6 @@ pub async fn transcribe_audio<R: Runtime>(
             Some(0) => None,
             other => other,
         };
-        // DTW is enabled in engine config for better word timestamps
-        
         // Handle translation - use target_language from frontend
         if options.translate.unwrap_or(false) {
             if let Some(target) = options.target_language {
@@ -245,7 +244,7 @@ pub async fn transcribe_audio<R: Runtime>(
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
-                None, // max_lines
+                options.max_lines, // max_lines
                 options.density, // density
                 Some(callbacks),
             )
@@ -534,6 +533,7 @@ pub async fn reformat_subtitles(
         let density: TextDensity = match density_str.to_lowercase().as_str() {
             "less" => TextDensity::Less,
             "more" => TextDensity::More,
+            "single" => TextDensity::Single,
             _ => TextDensity::Standard,
         };
         config.apply_density(density);

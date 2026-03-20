@@ -50,12 +50,13 @@ export function TextFormattingPanel({
                     </div>
                     <Select
                         value={settings.textDensity}
-                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more")}
+                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single")}
                     >
                         <SelectTrigger className="w-32">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="single">Single Word</SelectItem>
                             <SelectItem value="less">Less</SelectItem>
                             <SelectItem value="standard">Standard</SelectItem>
                             <SelectItem value="more">More</SelectItem>

@@ -45,7 +45,7 @@
     "generateSubtitles": "生成字幕"
   },
   "importExport": {
-    "button": "导入 / 导出",
+    "button": "导出 / 导入",
     "importTab": "导入",
     "exportTab": "导出",
     "dropHere": "将文件拖放到此处或点击选择",
@@ -395,6 +395,10 @@
       "minimize": "最小化",
       "maximize": "最大化",
       "close": "关闭"
+    },
+    "update": {
+      "downloading": "正在下载更新",
+      "installUpdateNow": "立即安装更新"
     },
     "resolve": {
       "productName": "DaVinci Resolve",

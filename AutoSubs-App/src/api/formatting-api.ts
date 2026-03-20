@@ -23,18 +23,38 @@ function subtitleToBackendSegment(subtitle: Subtitle): BackendSegment {
  * Convert backend segment format to frontend Subtitle format.
  */
 function backendSegmentToSubtitle(segment: BackendSegment, id: number): Subtitle {
+    // Compute line_number for each word based on newlines in the segment text.
+    // The Rust backend joins multi-line cues with '\n', so we walk the text to
+    // figure out which line each word belongs to.
+    const lines = segment.text.split('\n');
+    const wordLineMap: number[] = [];
+    if (segment.words) {
+        let wordIdx = 0;
+        for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+            const lineWords = lines[lineNum].trim().split(/\s+/).filter(Boolean);
+            for (let i = 0; i < lineWords.length && wordIdx < segment.words.length; i++) {
+                wordLineMap.push(lineNum);
+                wordIdx++;
+            }
+        }
+        // If there are remaining words (edge case), assign them to the last line
+        while (wordLineMap.length < segment.words.length) {
+            wordLineMap.push(lines.length - 1);
+        }
+    }
+
     return {
         id,
         start: segment.start,
         end: segment.end,
         text: segment.text,
         speaker_id: segment.speaker_id,
-        words: segment.words?.map((w) => ({
+        words: segment.words?.map((w, i) => ({
             word: w.word,
             start: w.start,
             end: w.end,
             probability: w.probability,
-            line_number: 0, // Will be recalculated based on newlines in text
+            line_number: wordLineMap[i] ?? 0,
         })) ?? [],
     };
 }

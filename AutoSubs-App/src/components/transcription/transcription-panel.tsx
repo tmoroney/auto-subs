@@ -567,6 +567,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         enableDiarize: settings.enableDiarize,
         maxSpeakers: settings.maxSpeakers,
         density: settings.textDensity,
+        maxLines: settings.maxLinesPerSubtitle,
       }
 
       const transcript = await invoke("transcribe_audio", { options })

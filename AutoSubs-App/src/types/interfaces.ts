@@ -110,7 +110,7 @@ export interface Settings {
     enableGpu: boolean,
 
     // Text settings
-    textDensity: "less" | "standard" | "more",
+    textDensity: "less" | "standard" | "more" | "single",
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,
     textCase: "none" | "uppercase" | "lowercase" | "titlecase";
@@ -140,13 +140,14 @@ export interface TranscriptionOptions {
     enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
-    density: "less" | "standard" | "more",
+    density: "less" | "standard" | "more" | "single",
+    maxLines: number,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing
 export interface FormattingOptions {
     maxLines?: number,
-    textDensity?: "less" | "standard" | "more",
+    textDensity?: "less" | "standard" | "more" | "single",
     language?: string,
 }
 

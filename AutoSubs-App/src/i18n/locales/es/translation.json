@@ -45,7 +45,7 @@
     "generateSubtitles": "Generar subtítulos"
   },
   "importExport": {
-    "button": "Importar / Exportar",
+    "button": "Exportar / Importar",
     "importTab": "Importar",
     "exportTab": "Exportar",
     "dropHere": "Suelta el archivo aquí o haz clic para seleccionarlo",
@@ -395,6 +395,10 @@
       "minimize": "Minimizar",
       "maximize": "Maximizar",
       "close": "Cerrar"
+    },
+    "update": {
+      "downloading": "Descargando actualización",
+      "installUpdateNow": "Instalar actualización ahora"
     },
     "resolve": {
       "productName": "DaVinci Resolve",

@@ -88,7 +88,7 @@
     "viewSubtitles": "字幕を表示"
   },
   "importExport": {
-    "button": "インポート / エクスポート",
+    "button": "エクスポート / インポート",
     "downloadFormat": "{{format}} をダウンロード",
     "dropHere": "ファイルをここにドロップするかクリックして選択",
     "exportAsJson": "JSON としてエクスポート",
@@ -381,6 +381,10 @@
       "close": "閉じる",
       "maximize": "最大化",
       "minimize": "最小化"
+    },
+    "update": {
+      "downloading": "アップデートをダウンロード中",
+      "installUpdateNow": "今すぐアップデートをインストール"
     }
   },
   "workspace": {

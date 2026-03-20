@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes } from "lucide-react";
+import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes, RotateCcw } from "lucide-react";
 import type { HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
@@ -40,6 +40,9 @@ import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
 import { ArchiveIcon } from "../ui/archive";
+import { Spinner } from "@/components/ui/spinner";
+import { useUpdateStatus } from "@/hooks/use-update-status";
+import { invoke } from "@tauri-apps/api/core";
 import { diarizeModel } from "@/lib/models";
 
 interface TimelineInfo {
@@ -366,9 +369,38 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
   );
 }
 
+function UpdateStatusIndicator({ phase, percentage }: { phase: string; percentage: number | null }) {
+  const { t } = useTranslation();
+
+  if (phase === "downloading") {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Spinner className="h-3 w-3" />
+        <span>{t("titlebar.update.downloading", "Downloading Update")} {percentage != null ? `${percentage}%` : ""}</span>
+      </div>
+    );
+  }
+
+  if (phase === "ready") {
+    return (
+      <Button
+        variant="ghost"
+        className="flex items-center gap-2 h-7 text-xs text-green-600 dark:text-green-400 hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+        onClick={() => invoke("trigger_install_update")}
+      >
+        <RotateCcw className="h-3 w-3" />
+        {t("titlebar.update.installUpdateNow", "Install Update Now")}
+      </Button>
+    );
+  }
+
+  return null;
+}
+
 export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
+  const { phase, percentage } = useUpdateStatus();
 
   useEffect(() => {
     const checkPlatform = async () => {
@@ -377,6 +409,10 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
     };
     checkPlatform();
   }, []);
+
+  const centerContent = phase === "downloading" || phase === "ready"
+    ? <UpdateStatusIndicator phase={phase} percentage={percentage} />
+    : <ResolveStatus timelineInfo={timelineInfo} />;
 
   const handleMinimize = () => {
     getCurrentWindow().minimize();
@@ -403,7 +439,7 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
 
           {/* Center - Resolve status */}
           <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
-            <ResolveStatus timelineInfo={timelineInfo} />
+            {centerContent}
           </div>
 
           {/* Right side - Transcripts and Settings buttons */}
@@ -431,7 +467,7 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
 
           {/* Center - Resolve status */}
           <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
-            <ResolveStatus timelineInfo={timelineInfo} />
+            {centerContent}
           </div>
 
           {/* Right side - Window controls */}

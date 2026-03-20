@@ -39,6 +39,7 @@ pub enum TextDensity {
     Less,
     Standard,
     More,
+    Single,
 }
 
 impl Default for TextDensity {
@@ -66,6 +67,8 @@ pub struct PostProcessConfig {
     pub enforce_kinsoku: bool,          // true for JA
     /// Language code used for language-aware line breaking (e.g. "en", "fr", "de")
     pub lang: String,
+    /// When true, emit one word per subtitle cue (set by TextDensity::Single)
+    pub single_word: bool,
 }
 
 impl Default for PostProcessConfig {
@@ -82,6 +85,7 @@ impl Default for PostProcessConfig {
             use_grapheme_len: true,
             enforce_kinsoku: false,
             lang: "en".to_string(),
+            single_word: false,
         }
     }
 }
@@ -103,12 +107,20 @@ impl PostProcessConfig {
 
     /// Scale `max_chars_per_line` by density factor (~0.7 / 1.0 / 1.3).
     pub fn apply_density(&mut self, density: TextDensity) {
-        let factor = match density {
-            TextDensity::Less => 0.7,
-            TextDensity::Standard => 1.0,
-            TextDensity::More => 1.3,
-        };
-        self.max_chars_per_line = ((self.max_chars_per_line as f64) * factor).round() as usize;
+        match density {
+            TextDensity::Single => {
+                self.single_word = true;
+            }
+            other => {
+                let factor = match other {
+                    TextDensity::Less => 0.7,
+                    TextDensity::Standard => 1.0,
+                    TextDensity::More => 1.3,
+                    TextDensity::Single => unreachable!(),
+                };
+                self.max_chars_per_line = ((self.max_chars_per_line as f64) * factor).round() as usize;
+            }
+        }
     }
 
     /// Convenience constructors for common profiles
@@ -231,6 +243,25 @@ pub fn process_segments(
 
     // 4) Clamp tiny words and adjust boundaries using gaps.
     clamp_and_merge_tiny_words(&mut toks, cfg);
+
+    // Fast path: single-word mode emits one cue per merged token.
+    if cfg.single_word {
+        return toks.iter().map(|t| {
+            let text = format!("{}{}", t.word, t.punc).trim().to_string();
+            Segment {
+                start: round3(t.start.max(0.0)),
+                end: round3(t.end),
+                text: text.clone(),
+                words: Some(vec![WordTimestamp {
+                    text: render_token(t),
+                    start: round3(t.start.max(0.0)),
+                    end: round3(t.end),
+                    probability: t.prob,
+                }]),
+                speaker_id: t.speaker.clone(),
+            }
+        }).collect();
+    }
 
     // 5) Wrap tokens into lines using greedy line-filling with natural break priorities.
     let lines = wrap_into_lines(&toks, cfg);
