@@ -123,12 +123,10 @@ jobs:
         if [ "${{ matrix.arch }}" = "arm64" ]; then
           ZIP_NAME="ffmpeg-aarch64-apple-darwin.zip"
           FFMPEG_SRC="ffmpeg-aarch64-apple-darwin"
-          FFPROBE_SRC="ffprobe-aarch64-apple-darwin"
         else
           # Fallback to x86_64 naming if runner arch isn't arm64
           ZIP_NAME="ffmpeg-x86_64-apple-darwin.zip"
           FFMPEG_SRC="ffmpeg-x86_64-apple-darwin"
-          FFPROBE_SRC="ffprobe-x86_64-apple-darwin"
         fi
 
         # Download the appropriate archive from the ffmpeg-binaries repo
@@ -141,7 +139,7 @@ jobs:
         unzip -jo "$ZIP_NAME"
 
         # Ensure executables (keep architecture-specific names expected by Tauri v2)
-        chmod +x "$FFMPEG_SRC" "$FFPROBE_SRC"
+        chmod +x "$FFMPEG_SRC"
 
         # Cleanup archive
         rm -f "$ZIP_NAME"
@@ -319,7 +317,6 @@ jobs:
 
           ZIP_NAME="ffmpeg-x86_64-unknown-linux-gnu.zip"
           FFMPEG_SRC="ffmpeg-x86_64-unknown-linux-gnu"
-          FFPROBE_SRC="ffprobe-x86_64-unknown-linux-gnu"
 
           gh release download \
             --repo tmoroney/ffmpeg-binaries \
@@ -327,7 +324,7 @@ jobs:
             --clobber
 
           unzip -jo "$ZIP_NAME"
-          chmod +x "$FFMPEG_SRC" "$FFPROBE_SRC"
+          chmod +x "$FFMPEG_SRC"
           rm -f "$ZIP_NAME"
 
       - name: Install NPM deps
