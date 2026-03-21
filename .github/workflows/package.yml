@@ -363,6 +363,14 @@ jobs:
             echo "WARNING: .AppImage not found in $LINUX_BUNDLE_DIR/appimage"
           fi
 
+          # AppImage updater signature (createUpdaterArtifacts: true produces .AppImage + .AppImage.sig)
+          APPIMAGE_SIG=$(ls -1 "$LINUX_BUNDLE_DIR/appimage"/*.AppImage.sig 2>/dev/null | head -n1 || true)
+          if [ -n "$APPIMAGE_SIG" ]; then
+            cp "$APPIMAGE_SIG" "AutoSubs-linux-x86_64.AppImage.sig"
+          else
+            echo "WARNING: AppImage updater signature not found"
+          fi
+
       - name: Upload .deb artifact for Flatpak job
         uses: actions/upload-artifact@v4
         with:
@@ -376,6 +384,7 @@ jobs:
           files: |
             AutoSubs-linux-x86_64.deb
             AutoSubs-linux-x86_64.AppImage
+            AutoSubs-linux-x86_64.AppImage.sig
           token: ${{ secrets.GH_TOKEN }}
           tag_name: ${{ env.TAG }}
 
@@ -419,7 +428,7 @@ jobs:
           tag_name: ${{ env.TAG }}
 
   compose-latest-json:
-    needs: [build-mac]
+    needs: [build-mac, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -462,9 +471,16 @@ jobs:
             --dir latest \
             --clobber || true
 
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "AutoSubs-linux-x86_64.AppImage.sig" \
+            --dir latest \
+            --clobber || true
+
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
           WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
+          LINUX_SIG="$(cat latest/AutoSubs-linux-x86_64.AppImage.sig 2>/dev/null || true)"
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -477,6 +493,7 @@ jobs:
             --arg arm_sig "$ARM_SIG" \
             --arg intel_sig "$INTEL_SIG" \
             --arg windows_sig "$WINDOWS_SIG" \
+            --arg linux_sig "$LINUX_SIG" \
             --arg tag "$TAG" \
             '{
               version: $version,
@@ -495,6 +512,12 @@ jobs:
                   if ($windows_sig | length) > 0 then
                     { signature: $windows_sig,
                       url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
+                  else empty end
+                ),
+                "linux-x86_64": (
+                  if ($linux_sig | length) > 0 then
+                    { signature: $linux_sig,
+                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-linux-x86_64.AppImage") }
                   else empty end
                 )
               }
