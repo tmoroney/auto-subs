@@ -1,0 +1,37 @@
+id: org.autosubs.AutoSubs
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: autosubs
+
+finish-args:
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --filesystem=home
+  - --filesystem=/opt/resolve:create
+  - --device=dri
+
+modules:
+  - name: autosubs
+    buildsystem: simple
+    build-commands:
+      # Extract the .deb package
+      - ar x AutoSubs-linux-x86_64.deb
+      - tar -xf data.tar.*
+
+      # Install the main binary
+      - install -Dm755 usr/bin/autosubs /app/bin/autosubs
+
+      # Install the desktop file and icon
+      - install -Dm644 org.autosubs.AutoSubs.desktop /app/share/applications/org.autosubs.AutoSubs.desktop
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/autosubs.png /app/share/icons/hicolor/128x128/apps/org.autosubs.AutoSubs.png
+
+      # Install bundled resources and external binaries
+      - if [ -d usr/lib/autosubs ]; then mkdir -p /app/lib/autosubs && cp -r usr/lib/autosubs/* /app/lib/autosubs/; fi
+
+    sources:
+      - type: file
+        path: AutoSubs-linux-x86_64.deb
+      - type: file
+        path: org.autosubs.AutoSubs.desktop

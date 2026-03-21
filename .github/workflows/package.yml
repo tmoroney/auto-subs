@@ -302,9 +302,8 @@ jobs:
             pkg-config \
             libvulkan-dev \
             mesa-vulkan-drivers \
-            unzip
-          # optional:
-          #  vulkan-validationlayers
+            unzip \
+            libfuse2
 
       - name: Download ffmpeg/ffprobe binaries (Linux)
         env:
@@ -333,6 +332,8 @@ jobs:
           npm install
 
       - name: Build Tauri (Linux x86_64)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           cd AutoSubs-App
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
@@ -340,24 +341,79 @@ jobs:
           # Disable default features (mac-specific) for Linux build
           npm run tauri build -- -- --no-default-features --features linux
 
-      - name: Collect Linux artifacts (.deb only)
+      - name: Collect Linux artifacts
         run: |
           set -euo pipefail
           LINUX_BUNDLE_DIR="AutoSubs-App/src-tauri/target/release/bundle"
-          # Debian package lives under bundle/deb
+
+          # Debian package
           DEB_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/deb"/*.deb 2>/dev/null | head -n1 || true)
-          OUT_NAME="AutoSubs-linux-x86_64.deb"
           if [ -n "$DEB_FILE" ]; then
-            cp "$DEB_FILE" "$OUT_NAME"
+            cp "$DEB_FILE" "AutoSubs-linux-x86_64.deb"
           else
             echo "WARNING: .deb package not found in $LINUX_BUNDLE_DIR/deb"
           fi
 
-      - name: Upload Linux artifacts to Release (.deb only)
+          # AppImage
+          APPIMAGE_FILE=$(ls -1 "$LINUX_BUNDLE_DIR/appimage"/*.AppImage 2>/dev/null | head -n1 || true)
+          if [ -n "$APPIMAGE_FILE" ]; then
+            cp "$APPIMAGE_FILE" "AutoSubs-linux-x86_64.AppImage"
+          else
+            echo "WARNING: .AppImage not found in $LINUX_BUNDLE_DIR/appimage"
+          fi
+
+      - name: Upload .deb artifact for Flatpak job
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: AutoSubs-linux-x86_64.deb
+          retention-days: 1
+
+      - name: Upload Linux artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            *.deb
+            AutoSubs-linux-x86_64.deb
+            AutoSubs-linux-x86_64.AppImage
+          token: ${{ secrets.GH_TOKEN }}
+          tag_name: ${{ env.TAG }}
+
+  build-linux-flatpak:
+    needs: [build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: flatpak-build/
+
+      - name: Install Flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.gnome.Platform//47 org.gnome.Sdk//47
+
+      - name: Prepare Flatpak build directory
+        run: |
+          cp flatpak/org.autosubs.AutoSubs.yml flatpak-build/
+          cp flatpak/org.autosubs.AutoSubs.desktop flatpak-build/
+
+      - name: Build Flatpak bundle
+        run: |
+          cd flatpak-build
+          flatpak-builder --user --install-deps-from=flathub --force-clean build-dir org.autosubs.AutoSubs.yml
+          flatpak build-export repo build-dir
+          flatpak build-bundle repo AutoSubs-linux-x86_64.flatpak org.autosubs.AutoSubs
+
+      - name: Upload Flatpak to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: flatpak-build/AutoSubs-linux-x86_64.flatpak
           token: ${{ secrets.GH_TOKEN }}
           tag_name: ${{ env.TAG }}
 

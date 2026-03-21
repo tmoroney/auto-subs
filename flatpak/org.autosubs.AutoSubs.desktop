@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=AutoSubs
+Comment=Automatic subtitles for DaVinci Resolve
+Exec=autosubs
+Icon=org.autosubs.AutoSubs
+Terminal=false
+Categories=AudioVideo;Video;
