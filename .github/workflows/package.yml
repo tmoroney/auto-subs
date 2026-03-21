@@ -257,6 +257,7 @@ jobs:
         tag_name: ${{ env.TAG }}
 
   build-linux:
+    needs: [build-mac]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout AutoSubs Repo Code
