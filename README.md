@@ -8,7 +8,7 @@ Create high‑quality subtitles with **one click**. AutoSubs delivers **fast, ac
 
 ### 🐧 [Linux (.deb): see install commands below](#quick-start)
 
-**💡 800,000+ downloads so far!**
+**💡 315,000+ downloads so far!**
 
 <a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
