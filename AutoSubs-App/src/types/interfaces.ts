@@ -48,20 +48,14 @@ export interface Subtitle {
     speaker_id?: string;
 }
 
-// Speaker Interfaces
-export interface ColorModifier {
-    enabled: boolean;
-    color: string;
-}
 export interface Sample {
     start: number;
     end: number;
 }
 export interface Speaker {
     name: string;
-    fill: ColorModifier;
-    outline: ColorModifier;
-    border: ColorModifier;
+    style: "Fill" | "Outline";
+    color: string;
     sample: Sample;
     track?: string;
 }

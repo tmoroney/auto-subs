@@ -25,6 +25,15 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
+local ANIMATED_CAPTION = "AutoSubs Animated"
+
+local STYLE_INDEX = {
+	Fill = 1,
+	Outline = 2, 
+	Shadow = 3,
+	Background = 4
+}
+
 -- Global state for export operations
 local currentExportJob = {
     active = false,
@@ -73,9 +82,9 @@ local function hex_to_rgb(hex)
     local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
     if r then
         return {
-            r = tonumber(r, 16) / 255,
-            g = tonumber(g, 16) / 255,
-            b = tonumber(b, 16) / 255
+            Red = tonumber(r, 16) / 255,
+            Green = tonumber(g, 16) / 255,
+            Blue = tonumber(b, 16) / 255
         }
     else
         return nil
@@ -562,12 +571,12 @@ function ExportAudio(outputDir, inputTracks)
 
     -- Find clip boundaries on selected tracks to only export the relevant portion
     local clipStart, clipEnd = get_clip_boundaries(timeline, selected)
-    
+
     -- Get individual clips for segment-based transcription
     local individualClips = get_individual_clips(timeline, selected)
     currentExportJob.individualClips = individualClips
     print("[AutoSubs] Found " .. #individualClips .. " individual clip(s) for transcription")
-    
+
     if clipStart and clipEnd then
         print("[AutoSubs] Found clip boundaries: " .. clipStart .. " - " .. clipEnd)
         currentExportJob.clipBoundaries = { start = clipStart, ["end"] = clipEnd }
@@ -578,7 +587,7 @@ function ExportAudio(outputDir, inputTracks)
     resolve:OpenPage("deliver")
 
     project:LoadRenderPreset('Audio Only')
-    
+
     -- Build render settings
     local renderSettings = {
         TargetDir = outputDir,
@@ -589,14 +598,14 @@ function ExportAudio(outputDir, inputTracks)
         AudioBitDepth = 24,
         AudioSampleRate = 44100
     }
-    
+
     -- If we found clip boundaries, set the render range to only that portion
     if clipStart and clipEnd then
         renderSettings.MarkIn = clipStart
         renderSettings.MarkOut = clipEnd
         print("[AutoSubs] Setting render range in settings: " .. clipStart .. " - " .. clipEnd)
     end
-    
+
     project:SetRenderSettings(renderSettings)
 
     local success, err = pcall(function()
@@ -608,7 +617,7 @@ function ExportAudio(outputDir, inputTracks)
         local renderSettings = renderJobList[#renderJobList]
 
         local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
-        
+
         -- Calculate relative offsets for each clip segment (relative to the exported audio start)
         local segments = {}
         for _, clip in ipairs(currentExportJob.individualClips or {}) do
@@ -620,7 +629,7 @@ function ExportAudio(outputDir, inputTracks)
                 name = clip.name
             })
         end
-        
+
         audioInfo = {
             path = join_path(renderSettings["TargetDir"], renderSettings["OutputFilename"]),
             markIn = renderSettings["MarkIn"],
@@ -662,37 +671,30 @@ local function sanitize_track_index(timeline, trackIndex, markIn, markOut)
     return tonumber(trackIndex)
 end
 
-local function set_custom_colors(speaker, tool)
-    local color = nil
-    -- Set custom colors for each speaker if enabled
-    if speaker.fill.enabled and speaker.fill.color ~= "" then
-        color = hex_to_rgb(speaker.fill.color)
-        if color ~= nil then
-            tool:SetInput("Enabled1", 1)
-            tool:SetInput("Red1", color.r)
-            tool:SetInput("Green1", color.g)
-            tool:SetInput("Blue1", color.b)
+local function set_speaker_styling(speaker, tool, isAnimated)
+    -- Return early if no custom color set for speaker
+    if speaker.color == "" then return end
+
+    local styleId = STYLE_INDEX[speaker.style]
+
+    -- Convert hex color to rgb
+    local color = hex_to_rgb(speaker.color)
+    if color == nil then return end
+
+    -- Update color for that style e.g. Fill or Outline
+    for key, value in ipairs(color) do
+        if isAnimated then
+            tool:SetInput(speaker.style .. "Color" .. key, value)
+        else
+            tool:SetInput(key .. styleId, value)
         end
     end
 
-    if speaker.outline.enabled and speaker.outline.color ~= "" then
-        color = hex_to_rgb(speaker.outline.color)
-        if color ~= nil then
-            tool:SetInput("Enabled2", 1)
-            tool:SetInput("Red2", color.r)
-            tool:SetInput("Green2", color.g)
-            tool:SetInput("Blue2", color.b)
-        end
-    end
-
-    if speaker.border.enabled and speaker.border.color ~= "" then
-        color = hex_to_rgb(speaker.border.color)
-        if color ~= nil then
-            tool:SetInput("Enabled4", 1)
-            tool:SetInput("Red4", color.r)
-            tool:SetInput("Green4", color.g)
-            tool:SetInput("Blue4", color.b)
-        end
+    -- Ensure the selected style is enabled
+    if isAnimated then
+        tool:SetInput(speaker.style .. "Enabled", 1)
+    else
+        tool:SetInput("Enabled" .. styleId, 1)
     end
 end
 
@@ -702,43 +704,43 @@ function CheckTrackConflicts(filePath, trackIndex)
     local timeline = project:GetCurrentTimeline()
     local timelineStart = timeline:GetStartFrame()
     local frame_rate = timeline:GetSetting("timelineFrameRate")
-    
+
     -- Read the subtitle data to get time ranges
     local data = read_json_file(filePath)
     if type(data) ~= "table" then
         return { hasConflicts = false, error = "Could not read subtitle file" }
     end
-    
+
     local subtitles = data["segments"]
     if not subtitles or #subtitles == 0 then
         return { hasConflicts = false, message = "No subtitles to add" }
     end
-    
+
     -- Get the time range of new subtitles
     local firstSubStart = to_frames(subtitles[1]["start"], frame_rate) + timelineStart
     local lastSubEnd = to_frames(subtitles[#subtitles]["end"], frame_rate) + timelineStart
-    
+
     -- Validate track index
     trackIndex = tonumber(trackIndex)
     if not trackIndex or trackIndex <= 0 or trackIndex > timeline:GetTrackCount("video") then
         return { hasConflicts = false, trackExists = false, message = "Track does not exist" }
     end
-    
+
     -- Get track name
     local trackName = timeline:GetTrackName("video", trackIndex) or ("Video " .. trackIndex)
-    
+
     -- Get existing clips on the track
     local existingClips = timeline:GetItemListInTrack("video", trackIndex)
     if not existingClips or #existingClips == 0 then
         return { hasConflicts = false, trackName = trackName, message = "Track is empty" }
     end
-    
+
     -- Find clips that overlap with the new subtitle range
     local conflictingClips = {}
     for _, clip in ipairs(existingClips) do
         local clipStart = clip:GetStart()
         local clipEnd = clip:GetEnd()
-        
+
         -- Check if clip overlaps with subtitle range
         if clipStart < lastSubEnd and clipEnd > firstSubStart then
             table.insert(conflictingClips, {
@@ -748,7 +750,7 @@ function CheckTrackConflicts(filePath, trackIndex)
             })
         end
     end
-    
+
     return {
         hasConflicts = #conflictingClips > 0,
         conflictingClips = conflictingClips,
@@ -901,17 +903,8 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
     return trackIndex, subtitles, nil
 end
 
-local function get_speaker_for_subtitle(speakers, subtitle)
-    if not speakers or not subtitle then
-        return nil
-    end
-
-    local speaker_id = subtitle["speaker_id"]
-    if speaker_id == nil or speaker_id == "?" or speaker_id == "" then
-        return nil
-    end
-
-    local speakerIndex = tonumber(speaker_id)
+local function get_speaker_from_id(speakers, id)
+    local speakerIndex = tonumber(id)
     if speakerIndex == nil then
         return nil
     end
@@ -919,10 +912,6 @@ local function get_speaker_for_subtitle(speakers, subtitle)
     local speaker = speakers[speakerIndex]
     if speaker ~= nil then
         return speaker
-    end
-
-    if speakerIndex >= 0 then
-        return speakers[speakerIndex + 1]
     end
 
     return nil
@@ -949,7 +938,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
 
         local itemTrack = trackIndex
         if speakersExist then
-            local speaker = get_speaker_for_subtitle(speakers, subtitle)
+            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
             if speaker and speaker.track ~= nil and speaker.track ~= "" then
                 itemTrack = speaker.track
             end
@@ -970,7 +959,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     return clipList
 end
 
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist)
+local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated)
     for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
             local subtitle = subtitles[i]
@@ -978,20 +967,21 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
 
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local tool = comp:FindToolByID("TextPlus")
-                if tool == nil then
-                    tool = comp:FindTool("AutoSubs")
+                local tool = comp:FindTool("Template")
+                if isAnimated then
+                    tool:SetInput("Text", subtitleText) -- AutoSubs Macro uses custom text input
+                else
+                    tool:SetInput("StyledText", subtitleText)
                 end
-                tool:SetInput("StyledText", subtitleText)
 
                 if speakersExist then
-                    local speaker = get_speaker_for_subtitle(speakers, subtitle)
+                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
                     if speaker then
-                        set_custom_colors(speaker, tool)
+                        set_speaker_styling(speaker, tool, isAnimated)
                     end
                 end
 
-                timelineItem:SetClipColor("Green")
+                timelineItem:SetClipColor("Green") -- Visualise updated clips
             end
         end)
 
@@ -1001,6 +991,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
     end
 end
 
+-- Forces timeline view to update and show new subtitle clips
 local function refresh_timeline(timeline)
     timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
 end
@@ -1051,11 +1042,13 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
         template_frame_rate, timelineStart)
     local timelineItems = mediaPool:AppendToTimeline(clipList)
 
-    apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist)
+    local isAnimated = templateName == ANIMATED_CAPTION and true or false
+
+    apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated)
     refresh_timeline(timeline)
 end
 
-local function extract_frame(comp, exportDir, templateFrameRate)
+local function extract_frame(comp, exportDir)
     -- Lock the composition to prevent redraws and pop-ups during scripting [15, 16]
     comp:Lock()
 
@@ -1134,8 +1127,6 @@ function GeneratePreview(speaker, templateName, exportDir)
     end
 
     local templateFrameRate = templateItem:GetClipProperty()["FPS"]
-
-    -- Only add a track after we have a valid template
     timeline:AddTrack("video")
     local trackIndex = timeline:GetTrackCount("video")
 
@@ -1156,9 +1147,9 @@ function GeneratePreview(speaker, templateName, exportDir)
             local comp = timelineItem:GetFusionCompByIndex(1)
             local tool = comp:FindToolByID("TextPlus")
             tool:SetInput("StyledText", "Example Subtitle Text")
-            set_custom_colors(speaker, tool)
+            set_speaker_styling(speaker, tool)
 
-            outputPath = extract_frame(comp, exportDir, templateFrameRate)
+            outputPath = extract_frame(comp, exportDir)
         end
     end)
     if not success then
