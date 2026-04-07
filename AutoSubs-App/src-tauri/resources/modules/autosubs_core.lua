@@ -25,7 +25,7 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
-local ANIMATED_CAPTION = "AutoSubs Animated"
+local ANIMATED_CAPTION = "AutoSubs Caption"
 
 local STYLE_INDEX = {
 	Fill = 1,
@@ -49,6 +49,12 @@ local currentExportJob = {
     },
     trackStates = nil
 }
+
+-- UTF-8 aware character count
+local function utf8len(s)
+	local _, count = s:gsub("[^\128-\191]", "")
+	return count
+end
 
 -- Function to read a JSON file
 local function read_json_file(file_path)
@@ -673,7 +679,7 @@ end
 
 local function set_speaker_styling(speaker, tool, isAnimated)
     -- Return early if no custom color set for speaker
-    if speaker.color == "" then return end
+    if not speaker.color or speaker.color == "" then return end
 
     local styleId = STYLE_INDEX[speaker.style]
 
@@ -959,6 +965,24 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     return clipList
 end
 
+local function to_word_timing(transcript_words, frameRate, segmentStart)
+    local result = {}
+    local startIndex = 0
+
+    for _, word in ipairs(transcript_words) do
+        local endIndex = startIndex + utf8len(word.word) - 1
+        table.insert(result, {
+            startIndex = startIndex,
+            endIndex   = endIndex,
+            startFrame = math.floor((word.start - segmentStart) * frameRate),
+            endFrame   = math.floor((word["end"] - segmentStart) * frameRate),
+        })
+        startIndex = endIndex + 1
+    end
+
+    return result
+end
+
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated)
     for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
@@ -967,17 +991,20 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
 
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local tool = comp:FindTool("Template")
+                local template = comp:FindTool("Template")
                 if isAnimated then
-                    tool:SetInput("Text", subtitleText) -- AutoSubs Macro uses custom text input
+                    local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
+                    local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
+                    comp:FindTool("AutoSubs"):SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
+                    template:SetInput("Text", subtitleText) -- AutoSubs Macro uses custom text input
                 else
-                    tool:SetInput("StyledText", subtitleText)
+                    template:SetInput("StyledText", subtitleText)
                 end
 
                 if speakersExist then
                     local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
                     if speaker then
-                        set_speaker_styling(speaker, tool, isAnimated)
+                        set_speaker_styling(speaker, template, isAnimated)
                     end
                 end
 
