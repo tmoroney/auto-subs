@@ -9,6 +9,66 @@ local DEV_MODE = false
 -- Server Port
 local PORT = 56002
 
+-- Windows FFI bindings for wide-character file operations to handle special characters in paths
+if ffi.os == "Windows" then
+    ffi.cdef [[
+        typedef wchar_t WCHAR;
+
+        int MultiByteToWideChar(
+            unsigned int CodePage,
+            unsigned long dwFlags,
+            const char* lpMultiByteStr,
+            int cbMultiByte,
+            WCHAR* lpWideCharStr,
+            int cchWideChar);
+
+        void* _wfopen(const WCHAR* filename, const WCHAR* mode);
+        size_t fread(void* buffer, size_t size, size_t count, void* stream);
+        int fclose(void* stream);
+    ]]
+end
+
+-- Helper to convert a UTF-8 string to a wide-character (WCHAR) string
+local function to_wide_string(str)
+    local len = #str + 1 -- Include null terminator
+    local buffer = ffi.new("WCHAR[?]", len)
+    local bytes_written = ffi.C.MultiByteToWideChar(65001, 0, str, -1, buffer, len)
+    if bytes_written == 0 then
+        error("Failed to convert string to wide string: " .. str)
+    end
+    return buffer
+end
+
+-- Function to read the content of a file using _wfopen on Windows for special character support
+local function read_file(file_path)
+    if (ffi.os == "Windows") then
+        local wide_path = to_wide_string(file_path)
+        local mode = to_wide_string("rb")
+        local f = ffi.C._wfopen(wide_path, mode)
+        if f == nil then
+            error("Failed to open file: " .. file_path)
+        end
+
+        local buffer = {}
+        local temp_buffer = ffi.new("char[4096]") -- 4KB buffer for reading
+        while true do
+            local read_bytes = ffi.C.fread(temp_buffer, 1, 4096, f)
+            if read_bytes == 0 then
+                break
+            end
+            buffer[#buffer + 1] = ffi.string(temp_buffer, read_bytes)
+        end
+        ffi.C.fclose(f)
+
+        return table.concat(buffer)
+    else
+        local file = assert(io.open(file_path, "r"))
+        local content = file:read("*a")
+        file:close()
+        return content
+    end
+end
+
 -- Load external libraries
 local socket = nil
 local json = nil
@@ -58,9 +118,7 @@ end
 
 -- Function to read a JSON file
 local function read_json_file(file_path)
-    local file = assert(io.open(file_path, "r")) -- Open file for reading
-    local content = file:read("*a")              -- Read the entire file content
-    file:close()
+    local content = read_file(file_path)
 
     -- Parse the JSON content
     local data, pos, err = json.decode(content, 1, nil)
@@ -843,9 +901,27 @@ end
 
 local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
     if conflictMode == "new_track" then
-        trackIndex = timeline:GetTrackCount("video") + 1
-        timeline:AddTrack("video")
-        print("[AutoSubs] Created new track: " .. trackIndex)
+        local existingClips = timeline:GetItemListInTrack("video", trackIndex)
+        if existingClips and #existingClips > 0 then
+            local firstSubStart = to_frames(subtitles[1]["start"], frame_rate) + timelineStart
+            local lastSubEnd = to_frames(subtitles[#subtitles]["end"], frame_rate) + timelineStart
+            local hasConflict = false
+            for _, clip in ipairs(existingClips) do
+                if clip:GetStart() < lastSubEnd and clip:GetEnd() > firstSubStart then
+                    hasConflict = true
+                    break
+                end
+            end
+            if hasConflict then
+                trackIndex = timeline:GetTrackCount("video") + 1
+                timeline:AddTrack("video")
+                print("[AutoSubs] Created new track: " .. trackIndex)
+            else
+                print("[AutoSubs] No conflicts on track " .. trackIndex .. ", using existing track")
+            end
+        else
+            print("[AutoSubs] Track " .. trackIndex .. " is empty, using existing track")
+        end
         return trackIndex, subtitles, nil
     end
 
@@ -1049,20 +1125,20 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
 
     trackIndex = sanitize_track_index(timeline, trackIndex, markIn, markOut)
 
-    speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
-
-    local rootFolder = mediaPool:GetRootFolder()
-    local templateItem, template_frame_rate = get_template(rootFolder, templateName)
-    if not templateItem then
-        return false
-    end
-
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local earlyResult = nil
     trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
     if earlyResult then
         return earlyResult
+    end
+
+    speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
+
+    local rootFolder = mediaPool:GetRootFolder()
+    local templateItem, template_frame_rate = get_template(rootFolder, templateName)
+    if not templateItem then
+        return false
     end
 
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
