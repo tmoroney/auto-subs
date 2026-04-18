@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { Subtitle } from '@/types/interfaces';
+import { Subtitle } from '@/types';
 import { translateLanguages } from '@/lib/languages';
 import i18n from '@/i18n';
 

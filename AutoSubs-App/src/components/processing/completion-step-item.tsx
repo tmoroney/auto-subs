@@ -8,12 +8,12 @@ import {
 } from "@/components/ui/item"
 import { Download, List, Plus } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
-import { Settings, TimelineInfo } from "@/types/interfaces"
+import { Settings, TimelineInfo } from "@/types"
 import { useTranslation } from "react-i18next"
 
 export interface CompletionStepProps {
     onExportToFile: () => void;
-    onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
+    onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
     settings: Settings;
     timelineInfo: TimelineInfo;

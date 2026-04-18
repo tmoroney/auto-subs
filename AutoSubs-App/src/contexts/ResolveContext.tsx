@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { TimelineInfo } from '@/types/interfaces';
+import { TimelineInfo } from '@/types';
 import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
 
 interface ResolveContextType {
@@ -9,7 +9,7 @@ interface ResolveContextType {
   exportProgress: number;
   cancelRequestedRef: React.MutableRefObject<boolean>;
   refresh: () => Promise<void>;
-  pushToTimeline: (filename?: string, selectedTemplate?: string, selectedOutputTrack?: string) => Promise<void>;
+  pushToTimeline: (filename?: string, selectedTemplate?: string, selectedOutputTrack?: string, presetSettings?: Record<string, unknown>) => Promise<void>;
   getSourceAudio: (isStandaloneMode: boolean, fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   setIsExporting: (isExporting: boolean) => void;
   setExportProgress: (progress: number) => void;
@@ -60,13 +60,18 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function pushToTimeline(filename?: string, selectedTemplate?: string, selectedOutputTrack?: string) {
+  async function pushToTimeline(
+    filename?: string,
+    selectedTemplate?: string,
+    selectedOutputTrack?: string,
+    presetSettings?: Record<string, unknown>,
+  ) {
     // If parameters are not provided, use defaults
     const finalFilename = filename || '';
     const finalTemplate = selectedTemplate || 'Subtitle';
     const finalTrack = selectedOutputTrack || '1';
-    
-    await addSubtitlesToTimeline(finalFilename, finalTemplate, finalTrack);
+
+    await addSubtitlesToTimeline(finalFilename, finalTemplate, finalTrack, null, presetSettings);
   }
 
   // Function to get source audio based on current mode

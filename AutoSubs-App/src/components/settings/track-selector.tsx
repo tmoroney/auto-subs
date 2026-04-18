@@ -2,7 +2,7 @@ import { AudioLines } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Track } from "@/types/interfaces"
+import { Track } from "@/types"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useTranslation } from "react-i18next"
 

@@ -54,8 +54,8 @@ export interface Sample {
 }
 export interface Speaker {
     name: string;
-    style: "Fill" | "Outline";
-    color: string;
+    style: "Fill" | "Outline" | "None";
+    color: string; // hex
     sample: Sample;
     track?: string;
 }
@@ -117,10 +117,27 @@ export interface Settings {
     selectedOutputTrack: string;
     selectedTemplate: Template;
 
+    // AutoSubs Caption settings
+    presetId: string;
+
     // Animation settings
-    animationType: "none" | "pop-in" | "fade-in" | "slide-in" | "typewriter";
-    highlightType: "none" | "outline" | "fill" | "bubble";
+    animationType: string;
+    highlightType: string;
     highlightColor: string;
+}
+
+// Caption preset for the custom AutoSubs animated caption macro.
+// `macroSettings` is an opaque table round-tripped through the Fusion macro's
+// built-in GetInputValues / SetInputValues helpers.
+export interface CaptionPreset {
+    id: string;            // "builtin:<slug>" for shipped presets, uuid for user presets
+    name: string;
+    description?: string;
+    builtIn: boolean;
+    version: number;       // schema version (starts at 1)
+    createdAt: string;
+    updatedAt: string;
+    macroSettings: Record<string, unknown>;
 }
 
 export interface TranscriptionOptions {

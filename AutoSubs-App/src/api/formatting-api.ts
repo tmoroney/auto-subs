@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Subtitle, FormattingOptions, BackendSegment } from "@/types/interfaces";
+import { Subtitle, FormattingOptions, BackendSegment } from "@/types";
 
 /**
  * Convert frontend Subtitle format to backend segment format.

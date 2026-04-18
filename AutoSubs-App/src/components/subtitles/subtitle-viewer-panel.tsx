@@ -19,7 +19,7 @@ import { TextFormattingPanel } from "@/components/settings/text-formatting-panel
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { useResolve } from "@/contexts/ResolveContext"
 import { useSettings } from "@/contexts/SettingsContext"
-import { Speaker } from "@/types/interfaces"
+import { Speaker, Track } from "@/types"
 import { useTranslation } from "react-i18next"
 import { PlusIcon, type PlusIconHandle } from "../ui/plus"
 
@@ -211,6 +211,7 @@ interface SpeakersPopoverProps {
   onCancel: () => void
   onSave: () => void
   t: (key: string) => string
+  tracks?: Track[]
 }
 
 function SpeakersPopover({
@@ -222,6 +223,7 @@ function SpeakersPopover({
   onCancel,
   onSave,
   t,
+  tracks,
 }: SpeakersPopoverProps) {
   const isDesktop = variant === "desktop"
 
@@ -255,16 +257,17 @@ function SpeakersPopover({
           <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
           <p className="text-xs text-muted-foreground mt-0.5">{t("speakerEditor.description")}</p>
         </div>
-        <ScrollArea className="max-h-72">
-          <div className="px-4 pb-2 space-y-3">
+        <ScrollArea className="h-72">
+          <div className="px-4 space-y-3">
             {localSpeakers.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">{t("subtitles.empty.noSubtitlesAvailable")}</p>
             )}
             {localSpeakers.map((speaker, index) => (
-              <div key={index} className="border rounded-md">
+              <div key={index} className="border rounded-md p-3">
                 <SpeakerSettings
                   speaker={speaker}
                   onSpeakerChange={(updated) => onSpeakerChange(index, updated)}
+                  tracks={tracks}
                 />
               </div>
             ))}
@@ -349,6 +352,7 @@ interface SubtitleToolbarProps {
   onReformatOpenChange: (open: boolean) => void
   onApplyReformat: () => Promise<void>
   t: (key: string) => string
+  tracks?: Track[]
 }
 
 function SubtitleToolbar({
@@ -370,6 +374,7 @@ function SubtitleToolbar({
   onReformatOpenChange,
   onApplyReformat,
   t,
+  tracks,
 }: SubtitleToolbarProps) {
   const toolbarClassName = variant === "desktop"
     ? "shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto"
@@ -432,6 +437,7 @@ function SubtitleToolbar({
             onCancel={onCancelSpeakerEdit}
             onSave={onSaveSpeakers}
             t={t}
+            tracks={tracks}
           />
         )}
 
@@ -503,7 +509,7 @@ interface AddToTimelineFooterProps {
   settings: ReturnType<typeof useSettings>["settings"]
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"]
   layersIconRef: React.RefObject<PlusIconHandle>
-  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
+  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>
   t: (key: string) => string
 }
 
@@ -620,14 +626,14 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
     setShowReformat(false)
   }
 
-  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
+  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => {
     try {
       if (!currentTranscriptFilename) {
         console.error("No active transcript file to add to timeline")
         return
       }
 
-      await pushToTimeline(currentTranscriptFilename, selectedTemplate, selectedOutputTrack)
+      await pushToTimeline(currentTranscriptFilename, selectedTemplate, selectedOutputTrack, presetSettings)
     } catch (error) {
       console.error("Failed to add to timeline:", error)
       throw error
@@ -681,6 +687,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
         onReformatOpenChange={setShowReformat}
         onApplyReformat={handleApplyReformat}
         t={t}
+        tracks={timelineInfo?.outputTracks}
       />
 
       <SubtitleContent

@@ -88,11 +88,17 @@ local mediaPool = project:GetMediaPool()
 local ANIMATED_CAPTION = "AutoSubs Caption"
 
 local STYLE_INDEX = {
-	Fill = 1,
-	Outline = 2, 
-	Shadow = 3,
-	Background = 4
+    Fill = 1,
+    Outline = 2,
+    Shadow = 3,
+    Background = 4
 }
+
+-- Global state for an active caption-preset edit session.
+-- Populated by StartPresetEdit, consumed/cleared by CapturePresetSettings or
+-- CancelPresetEdit. Holds just enough Resolve handles to tear down the
+-- temporary clip/track and read the tool's input values.
+local presetEditSession = nil
 
 -- Global state for export operations
 local currentExportJob = {
@@ -112,8 +118,8 @@ local currentExportJob = {
 
 -- UTF-8 aware character count
 local function utf8len(s)
-	local _, count = s:gsub("[^\128-\191]", "")
-	return count
+    local _, count = s:gsub("[^\128-\191]", "")
+    return count
 end
 
 -- Function to read a JSON file
@@ -507,14 +513,14 @@ end
 local function get_clip_boundaries(timeline, selectedTracks)
     local earliestStart = nil
     local latestEnd = nil
-    
+
     for trackIndex, _ in pairs(selectedTracks) do
         local clips = timeline:GetItemListInTrack("audio", trackIndex)
         if clips then
             for _, clip in ipairs(clips) do
                 local clipStart = clip:GetStart()
                 local clipEnd = clip:GetEnd()
-                
+
                 if earliestStart == nil or clipStart < earliestStart then
                     earliestStart = clipStart
                 end
@@ -524,7 +530,7 @@ local function get_clip_boundaries(timeline, selectedTracks)
             end
         end
     end
-    
+
     return earliestStart, latestEnd
 end
 
@@ -534,7 +540,7 @@ local function get_individual_clips(timeline, selectedTracks)
     local allClips = {}
     local timelineStart = timeline:GetStartFrame()
     local frameRate = timeline:GetSetting("timelineFrameRate")
-    
+
     for trackIndex, _ in pairs(selectedTracks) do
         local clips = timeline:GetItemListInTrack("audio", trackIndex)
         if clips then
@@ -542,7 +548,7 @@ local function get_individual_clips(timeline, selectedTracks)
                 local clipStart = clip:GetStart()
                 local clipEnd = clip:GetEnd()
                 local clipName = clip:GetName() or "Unnamed"
-                
+
                 table.insert(allClips, {
                     startFrame = clipStart,
                     endFrame = clipEnd,
@@ -554,10 +560,10 @@ local function get_individual_clips(timeline, selectedTracks)
             end
         end
     end
-    
+
     -- Sort by start time
     table.sort(allClips, function(a, b) return a.startFrame < b.startFrame end)
-    
+
     -- Merge overlapping clips (in case clips from different tracks overlap)
     local mergedClips = {}
     for _, clip in ipairs(allClips) do
@@ -575,7 +581,7 @@ local function get_individual_clips(timeline, selectedTracks)
             end
         end
     end
-    
+
     return mergedClips
 end
 
@@ -680,15 +686,16 @@ function ExportAudio(outputDir, inputTracks)
         local renderJobList = project:GetRenderJobList()
         local renderSettings = renderJobList[#renderJobList]
 
-        local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) / timeline:GetSetting("timelineFrameRate")
+        local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) /
+        timeline:GetSetting("timelineFrameRate")
 
         -- Calculate relative offsets for each clip segment (relative to the exported audio start)
         local segments = {}
         for _, clip in ipairs(currentExportJob.individualClips or {}) do
             table.insert(segments, {
-                start = clip.start - baseOffset,  -- Start time within the exported audio
-                ["end"] = clip["end"] - baseOffset,  -- End time within the exported audio
-                timelineStart = clip.start,  -- Absolute start on timeline (for subtitle placement)
+                start = clip.start - baseOffset,    -- Start time within the exported audio
+                ["end"] = clip["end"] - baseOffset, -- End time within the exported audio
+                timelineStart = clip.start,         -- Absolute start on timeline (for subtitle placement)
                 timelineEnd = clip["end"],
                 name = clip.name
             })
@@ -699,7 +706,7 @@ function ExportAudio(outputDir, inputTracks)
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"],
             offset = baseOffset,
-            segments = segments  -- Individual clip segments for segment-based transcription
+            segments = segments -- Individual clip segments for segment-based transcription
         }
         dump(audioInfo)
         currentExportJob.audioInfo = audioInfo
@@ -941,7 +948,7 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
             end
 
             for _, clip in ipairs(clipsToDelete) do
-                timeline:DeleteClips({clip}, false)
+                timeline:DeleteClips({ clip }, false)
             end
             print("[AutoSubs] Deleted " .. #clipsToDelete .. " conflicting clips")
         end
@@ -977,7 +984,8 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
 
             if #subtitles == 0 then
                 print("[AutoSubs] All subtitles skipped due to conflicts")
-                return trackIndex, subtitles, { success = true, message = "All subtitles skipped due to existing content", added = 0 }
+                return trackIndex, subtitles,
+                    { success = true, message = "All subtitles skipped due to existing content", added = 0 }
             end
         end
     end
@@ -999,7 +1007,8 @@ local function get_speaker_from_id(speakers, id)
     return nil
 end
 
-local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate, template_frame_rate, timelineStart)
+local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
+                               template_frame_rate, timelineStart)
     local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
@@ -1059,7 +1068,8 @@ local function to_word_timing(transcript_words, frameRate, segmentStart)
     return result
 end
 
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated)
+local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
+    local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
             local subtitle = subtitles[i]
@@ -1071,8 +1081,25 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
-                    comp:FindTool("AutoSubs"):SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
-                    template:SetInput("Text", subtitleText) -- AutoSubs Macro uses custom text input
+                    local autosubsTool = comp:FindTool("AutoSubs")
+                    autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
+                    template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
+
+                    -- Apply caption preset settings via the macro's built-in helper
+                    -- so inspector values captured during a preset edit are faithfully
+                    -- reproduced here. Swallow errors for forward-compat with future
+                    -- macro versions that may gain/lose fields.
+                    if hasPresetSettings then
+                        local applyOk, applyErr = pcall(function()
+                            local setter = autosubsTool:GetData("SetInputValues")
+                            if setter and setter ~= "" then
+                                loadstring(setter)(comp, autosubsTool, presetSettings)
+                            end
+                        end)
+                        if not applyOk then
+                            print("Failed to apply preset settings: " .. tostring(applyErr))
+                        end
+                    end
                 else
                     template:SetInput("StyledText", subtitleText)
                 end
@@ -1101,7 +1128,9 @@ end
 
 -- Add subtitles to the timeline using the specified template
 -- conflictMode: "replace" (delete existing), "skip" (write around conflicts), "new_track" (use new track), nil (default/old behavior)
-function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
+-- presetSettings: optional opaque table of AutoSubs Caption macro input values
+-- (captured via StartPresetEdit/CapturePresetSettings). Ignored for non-animated templates.
+function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSettings)
     resolve:OpenPage("edit")
 
     local data = load_subtitle_data(filePath)
@@ -1128,7 +1157,8 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     local earlyResult = nil
-    trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
+    trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate,
+        timelineStart)
     if earlyResult then
         return earlyResult
     end
@@ -1147,7 +1177,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode)
 
     local isAnimated = templateName == ANIMATED_CAPTION and true or false
 
-    apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated)
+    apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
     refresh_timeline(timeline)
 end
 
@@ -1174,24 +1204,24 @@ local function extract_frame(comp, exportDir)
         local mediaOut = comp:FindToolByID("MediaOut")
         mySaver:SetInput("Input", mediaOut)
 
-        -- Define the frame number you want to extract
-        local frameToExtract = math.floor(comp:GetAttrs().COMPN_GlobalEnd / 2)
+        -- Get the middle frame of the clip (best representative)
+        local frameIndex = math.floor(comp:GetAttrs().COMPN_GlobalEnd / 2)
 
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
-            Start = frameToExtract, -- Start rendering at this frame
-            End = frameToExtract,   -- End rendering at this frame
-            Tool = mySaver,         -- Render up to this specific Saver tool [13]
-            Wait = true             -- Wait for the render to complete before continuing the script [19]
+            Start = frameIndex, -- Start rendering at this frame
+            End = frameIndex,   -- End rendering at this frame (same in this case)
+            Tool = mySaver,     -- Render up to this specific Saver tool [13]
+            Wait = true         -- Wait for the render to complete before continuing the script [19]
         })
 
-        local outputFilename = "subtitle-preview-" .. frameToExtract .. ".png"
+        local outputFilename = "subtitle-preview-" .. frameIndex .. ".png"
         outputPath = join_path(exportDir, outputFilename)
 
         if success then
-            print("Frame " .. frameToExtract .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
+            print("Frame " .. frameIndex .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
         else
-            print("Failed to save frame " .. frameToExtract)
+            print("Failed to save frame " .. frameIndex)
         end
     else
         print("Saver tool 'MySaver' not found in the composition.")
@@ -1204,64 +1234,189 @@ local function extract_frame(comp, exportDir)
 end
 
 -- place example subtitle on timeline with theme and export frame
-function GeneratePreview(speaker, templateName, exportDir)
+function GeneratePreview(speaker, templateName, preset, exportDir)
     local timeline = project:GetCurrentTimeline()
     local rootFolder = mediaPool:GetRootFolder()
 
-    -- Choose a template if none provided
-    if templateName == "" then
-        local availableTemplates = get_templates()
-        if #availableTemplates > 0 then
-            templateName = availableTemplates[1].value
-        end
-    end
-
-    -- Resolve the template item with fallbacks
-    local templateItem = nil
-    if templateName ~= nil and templateName ~= "" then
-        templateItem = get_template_item(rootFolder, templateName)
-    end
-    if not templateItem then
-        templateItem = get_template_item(rootFolder, "Default Template")
-    end
+    -- Resolve the template item
+    local templateItem = get_template_item(rootFolder, templateName)
     if not templateItem then
         print("Error: Could not find subtitle template '" .. tostring(templateName) .. "' in media pool.")
         return ""
     end
 
-    local templateFrameRate = templateItem:GetClipProperty()["FPS"]
+    -- Add new track and place item at start of timeline (avoids overwriting existing clips)
     timeline:AddTrack("video")
     local trackIndex = timeline:GetTrackCount("video")
+    local fps = templateItem:GetClipProperty()["FPS"]
 
-    local newClip = {
-        mediaPoolItem = templateItem,     -- source MediaPoolItem to add to timeline
-        startFrame = 0,                   -- start frame means within the clip
-        endFrame = templateFrameRate * 2, -- end frame means within the clip
-        recordFrame = 0,                  -- record frame means where in the timeline the clip should be placed
-        trackIndex = trackIndex           -- track the clip should be placed on
-    }
-    local timelineItems = mediaPool:AppendToTimeline({ newClip })
-    local timelineItem = timelineItems[1]
+    local timelineItem = mediaPool:AppendToTimeline({ {
+        mediaPoolItem = templateItem,
+        startFrame = 0,
+        endFrame = fps * 5, -- set preview to 5 seconds long
+        recordFrame = timeline:GetStartFrame(),
+        trackIndex = trackIndex
+    } })[1]
 
     local outputPath = nil
     local success, err = pcall(function()
-        -- Set timeline position to middle of clip
         if timelineItem:GetFusionCompCount() > 0 then
             local comp = timelineItem:GetFusionCompByIndex(1)
             local tool = comp:FindToolByID("TextPlus")
-            tool:SetInput("StyledText", "Example Subtitle Text")
+            tool:SetInput("StyledText", "Subtitle Example Text")
             set_speaker_styling(speaker, tool)
-
             outputPath = extract_frame(comp, exportDir)
         end
     end)
     if not success then
-        print("Failed to set timeline position: " .. err)
+        print("Failed to generate preview: " .. err)
+        return ""
     end
-    timeline:DeleteClips(timelineItems)
+
+    -- Cleanup preview clip and tracks
+    timeline:DeleteClips({ timelineItem })
     timeline:DeleteTrack("video", trackIndex)
 
     return outputPath
+end
+
+-- ---------------------------------------------------------------------------
+-- Caption-preset editing
+--
+-- The AutoSubs animated caption macro exposes two helper scripts via
+-- `tool:GetData("GetInputValues")` and `tool:GetData("SetInputValues")`. We
+-- use these to let the user tweak preset parameters in Resolve's Fusion
+-- inspector and round-trip those values back into a JSON preset we store in
+-- the app.
+--
+-- The three endpoints below form a mini state machine driven from the app:
+--   StartPresetEdit  -> drops a caption clip on a temp track, opens Fusion.
+--   CapturePresetSettings -> reads tool inputs, tears down the temp track.
+--   CancelPresetEdit -> tears down without reading.
+-- ---------------------------------------------------------------------------
+
+-- Remove the temp clip + track created by StartPresetEdit, if any, and return
+-- to the edit page. Safe to call without an active session.
+local function teardown_preset_edit_session()
+    if presetEditSession == nil then return end
+    local timeline = project:GetCurrentTimeline()
+    pcall(function()
+        if timeline and presetEditSession.timelineItem then
+            timeline:DeleteClips({ presetEditSession.timelineItem })
+        end
+    end)
+    pcall(function()
+        if timeline and presetEditSession.trackIndex then
+            timeline:DeleteTrack("video", presetEditSession.trackIndex)
+        end
+    end)
+    pcall(function() resolve:OpenPage("edit") end)
+    presetEditSession = nil
+end
+
+function StartPresetEdit(initialSettings)
+    -- Never stack sessions. Callers are expected to finalise or cancel first.
+    if presetEditSession ~= nil then
+        return { error = "A preset edit is already in progress" }
+    end
+
+    local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return { error = "No active timeline" }
+    end
+
+    local rootFolder = mediaPool:GetRootFolder()
+    local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
+    if not templateItem then
+        return { error = "Could not find '" .. ANIMATED_CAPTION .. "' template in media pool" }
+    end
+
+    local ok, err = pcall(function()
+        timeline:AddTrack("video")
+        local trackIndex = timeline:GetTrackCount("video")
+        local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
+        local position = timeline:GetStartFrame()
+
+        local appended = mediaPool:AppendToTimeline({ {
+            mediaPoolItem = templateItem,
+            startFrame = 0,
+            endFrame = math.floor(fps * 5), -- 5-second preview clip
+            recordFrame = position,
+            trackIndex = trackIndex,
+        } })
+        local timelineItem = appended and appended[1]
+        if not timelineItem then
+            error("Failed to append preview clip to timeline")
+        end
+
+        -- Open caption in Fusion (move playhead over it and open Fusion page)
+        timeline:SetCurrentTimecode(timeline:GetStartTimecode())
+        local comp = timelineItem:GetFusionCompByIndex(1)
+        local tool = comp:FindTool("AutoSubs")
+
+        -- Apply any existing settings so editing an existing preset starts
+        -- from its current look rather than macro defaults.
+        if tool and initialSettings ~= nil and next(initialSettings) ~= nil then
+            pcall(function()
+                local setter = tool:GetData("SetInputValues")
+                if setter and setter ~= "" then
+                    loadstring(setter)(comp, tool, initialSettings)
+                end
+            end)
+        end
+
+        presetEditSession = {
+            trackIndex = trackIndex,
+            timelineItem = timelineItem,
+            comp = comp,
+            tool = tool,
+        }
+    end)
+
+    if not ok then
+        -- Best-effort cleanup so we don't leave an orphan track.
+        teardown_preset_edit_session()
+        return { error = "Failed to start preset edit: " .. tostring(err) }
+    end
+
+    return { ok = true }
+end
+
+function CapturePresetSettings()
+    if presetEditSession == nil then
+        return { error = "No preset edit in progress" }
+    end
+
+    local tool = presetEditSession.tool
+    if not tool then
+        teardown_preset_edit_session()
+        return { error = "AutoSubs tool not found in preview composition" }
+    end
+
+    local settings = nil
+    local ok, err = pcall(function()
+        local getter = tool:GetData("GetInputValues")
+        if not getter or getter == "" then
+            error("Macro is missing GetInputValues helper")
+        end
+        settings = loadstring(getter)()(tool)
+    end)
+
+    -- Always tear down, even on failure, so the user isn't left with a
+    -- stranded preview clip on their timeline.
+    teardown_preset_edit_session()
+
+    if not ok then
+        return { error = "Failed to capture preset settings: " .. tostring(err) }
+    end
+
+    dump(settings)
+    return { settings = settings or {} }
+end
+
+function CancelPresetEdit()
+    teardown_preset_edit_session()
+    return { ok = true }
 end
 
 -- Minimal JSON helper to avoid crashes if `json` is unavailable
@@ -1457,7 +1612,8 @@ function StartServer()
                                 body = json.encode(conflictInfo)
                             elseif data.func == "AddSubtitles" then
                                 print("[AutoSubs Server] Adding subtitles to timeline...")
-                                local result = AddSubtitles(data.filePath, data.trackIndex, data.templateName, data.conflictMode)
+                                local result = AddSubtitles(data.filePath, data.trackIndex, data.templateName,
+                                    data.conflictMode, data.presetSettings)
                                 body = json.encode({
                                     message = "Job completed",
                                     result = result
@@ -1466,6 +1622,18 @@ function StartServer()
                                 print("[AutoSubs Server] Generating preview...")
                                 local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
                                 body = json.encode(previewPath)
+                            elseif data.func == "StartPresetEdit" then
+                                print("[AutoSubs Server] Starting caption preset edit...")
+                                local result = StartPresetEdit(data.initialSettings)
+                                body = json.encode(result)
+                            elseif data.func == "CapturePresetSettings" then
+                                print("[AutoSubs Server] Capturing caption preset settings...")
+                                local result = CapturePresetSettings()
+                                body = json.encode(result)
+                            elseif data.func == "CancelPresetEdit" then
+                                print("[AutoSubs Server] Cancelling caption preset edit...")
+                                local result = CancelPresetEdit()
+                                body = json.encode(result)
                             elseif data.func == "Exit" then
                                 body = safe_json({ message = "Server shutting down" })
                                 quitServer = true

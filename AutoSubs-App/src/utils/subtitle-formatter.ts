@@ -1,4 +1,4 @@
-import { Subtitle, Word } from "@/types/interfaces";
+import { Subtitle, Word } from "@/types";
 
 const PUNCTUATION_REGEX = /[^\p{L}\p{N}\s']+/gu;
 

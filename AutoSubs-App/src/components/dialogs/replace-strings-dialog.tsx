@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Search, Replace } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Subtitle, Word } from "@/types/interfaces"
+import { Subtitle, Word } from "@/types"
 import { useTranslation } from "react-i18next"
 
 interface ReplaceStringsPanelProps {

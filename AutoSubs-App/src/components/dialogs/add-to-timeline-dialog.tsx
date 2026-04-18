@@ -1,181 +1,301 @@
-import { useState, useEffect } from "react"
+import * as React from "react"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Settings, TimelineInfo, Speaker } from "@/types/interfaces"
-import { useTranscript } from "@/contexts/TranscriptContext"
-import { Check, ChevronLeft, ChevronRight, Layers, Layout, Palette } from "lucide-react"
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/animated-tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import {
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    Layers,
+    Layout,
+    Palette,
+} from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { Settings, Speaker, TimelineInfo } from "@/types"
+import { useTranscript } from "@/contexts/TranscriptContext"
+import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext"
+import { useSettings } from "@/contexts/SettingsContext"
+import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { AnimatedPresetPicker } from "@/components/dialogs/add-to-timeline/animated-preset-picker"
+import {
+    CreatePresetFlow,
+    CreatePresetSubmit,
+} from "@/components/dialogs/add-to-timeline/create-preset-flow"
+import { cancelPresetEdit } from "@/api/resolve-api"
+import { toast } from "sonner"
 
-const STEPS = [
-    { key: "template", icon: Layout },
-    { key: "speakers", icon: Palette },
-    { key: "outputTrack", icon: Layers },
-]
+const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
+
+type Mode = "regular" | "animated"
+
+interface Selection {
+    mode: Mode
+    templateValue: string  // used when mode === 'regular'
+    presetId: string       // used when mode === 'animated'
+    outputTrack: string
+}
+
+type CreateSession =
+    | { kind: "closed" }
+    | { kind: "create" }
+    | { kind: "edit"; presetId: string }
 
 interface AddToTimelineDialogProps {
     children: React.ReactNode
     settings: Settings
     timelineInfo: TimelineInfo
-    onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
+    onAddToTimeline: (
+        selectedOutputTrack: string,
+        selectedTemplate: string,
+        presetSettings?: Record<string, unknown>,
+    ) => Promise<void>
 }
+
+const STEPS = [
+    { key: "template", icon: Layout },
+    { key: "speakers", icon: Palette },
+    { key: "outputTrack", icon: Layers },
+] as const
 
 export function AddToTimelineDialog({
     children,
     settings,
     timelineInfo,
-    onAddToTimeline
+    onAddToTimeline,
 }: AddToTimelineDialogProps) {
     const { t } = useTranslation()
     const { speakers, updateSpeakers } = useTranscript()
-    const [open, setOpen] = useState(false)
-    const [currentStep, setCurrentStep] = useState(0)
-    const [selectedOutputTrack, setSelectedOutputTrack] = useState(settings.selectedOutputTrack)
-    const [selectedTemplate, setSelectedTemplate] = useState(settings.selectedTemplate.value)
-    const [localSpeakers, setLocalSpeakers] = useState<Speaker[]>(speakers)
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const { updateSetting } = useSettings()
+    const {
+        presets,
+        getPreset,
+        createPreset,
+        updatePreset,
+        deletePreset,
+        importPreset,
+        exportPreset,
+    } = usePresets()
 
+    const [open, setOpen] = React.useState(false)
+    const [currentStep, setCurrentStep] = React.useState(0)
+    const [selection, setSelection] = React.useState<Selection>(() => ({
+        mode: "regular",
+        templateValue: settings.selectedTemplate.value,
+        presetId: settings.presetId || DEFAULT_PRESET_ID,
+        outputTrack: settings.selectedOutputTrack,
+    }))
+    const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>(speakers)
+    const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [createSession, setCreateSession] = React.useState<CreateSession>({ kind: "closed" })
+
+    // Only show the speakers step when we actually have speakers to configure.
     const hasSpeakers = speakers.length > 0
-    const activeSteps = hasSpeakers ? STEPS : [STEPS[0], STEPS[2]]
+    const activeSteps = React.useMemo<ReadonlyArray<typeof STEPS[number]>>(
+        () => (hasSpeakers ? STEPS : [STEPS[0], STEPS[2]]),
+        [hasSpeakers],
+    )
     const totalSteps = activeSteps.length
 
-    useEffect(() => {
-        if (open) {
-            setCurrentStep(0)
-            setSelectedOutputTrack(settings.selectedOutputTrack)
-            setSelectedTemplate(settings.selectedTemplate.value)
-            setLocalSpeakers(speakers)
-        }
+    // Re-hydrate from settings whenever the dialog opens; a fresh session should
+    // not carry over half-baked state from a previous open/close.
+    React.useEffect(() => {
+        if (!open) return
+        setCurrentStep(0)
+        setSelection({
+            mode: "regular",
+            templateValue: settings.selectedTemplate.value,
+            presetId: settings.presetId || DEFAULT_PRESET_ID,
+            outputTrack: settings.selectedOutputTrack,
+        })
+        setLocalSpeakers(speakers)
+        setCreateSession({ kind: "closed" })
     }, [open, settings, speakers])
 
-    const handleSubmit = async () => {
+    // Intercept close while a preset-edit session is active so the temporary
+    // track is always torn down. We explicitly cancel here rather than relying
+    // on CreatePresetFlow's unmount cleanup, because dialog close animations
+    // and batched state updates can make unmount timing unreliable.
+    function handleOpenChange(next: boolean) {
+        if (!next && createSession.kind !== "closed") {
+            // Fire-and-forget cancel of the Resolve-side session.
+            cancelPresetEdit().catch(() => {})
+            setCreateSession({ kind: "closed" })
+        }
+        setOpen(next)
+    }
+
+    function handleCreatePreset() {
+        setCreateSession({ kind: "create" })
+    }
+
+    function handleEditPreset(presetId: string) {
+        setCreateSession({ kind: "edit", presetId })
+    }
+
+    const handleSubmitPreset: CreatePresetSubmit = async ({
+        name,
+        description,
+        macroSettings,
+    }) => {
+        try {
+            if (createSession.kind === "edit") {
+                await updatePreset(createSession.presetId, {
+                    name,
+                    description,
+                    macroSettings,
+                })
+                setSelection((s) => ({ ...s, presetId: createSession.presetId }))
+            } else {
+                const created = await createPreset(name, macroSettings, description)
+                setSelection((s) => ({ ...s, presetId: created.id }))
+            }
+            setCreateSession({ kind: "closed" })
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to save preset")
+        }
+    }
+
+    async function handleDuplicatePreset(id: string) {
+        const p = getPreset(id)
+        if (!p) return
+        const copy = await createPreset(
+            `${p.name} copy`,
+            p.macroSettings,
+            p.description,
+        )
+        setSelection((s) => ({ ...s, presetId: copy.id }))
+    }
+
+    // Submit: assemble the final template/preset pair and hand it to the parent.
+    async function handleSubmit() {
         setIsSubmitting(true)
         try {
             if (localSpeakers.length > 0) {
                 await updateSpeakers(localSpeakers)
             }
-            await onAddToTimeline(selectedOutputTrack, selectedTemplate)
+
+            const templateName =
+                selection.mode === "animated"
+                    ? ANIMATED_CAPTION_TEMPLATE
+                    : selection.templateValue
+            const presetSettings =
+                selection.mode === "animated"
+                    ? getPreset(selection.presetId)?.macroSettings
+                    : undefined
+
+            // Persist the user's picks so the next run starts from them.
+            if (selection.mode === "animated") {
+                updateSetting("presetId", selection.presetId)
+            } else {
+                const matched = timelineInfo.templates.find(
+                    (tpl) => tpl.value === selection.templateValue,
+                )
+                if (matched) updateSetting("selectedTemplate", matched)
+            }
+            updateSetting("selectedOutputTrack", selection.outputTrack)
+
+            await onAddToTimeline(selection.outputTrack, templateName, presetSettings)
             setOpen(false)
-        } catch (error) {
-            console.error('Failed to add to timeline:', error)
+        } catch (err) {
+            console.error("Failed to add to timeline:", err)
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    const canProceed = () => {
+    function canProceed(): boolean {
         const stepKey = activeSteps[currentStep]?.key
-        if (stepKey === "template") return !!selectedTemplate
-        if (stepKey === "outputTrack") return !!selectedOutputTrack
+        if (stepKey === "template") {
+            if (selection.mode === "regular") return !!selection.templateValue
+            return !!selection.presetId
+        }
+        if (stepKey === "outputTrack") return !!selection.outputTrack
         return true
     }
 
+    const animatedPresets = presets // already ordered: built-ins first
+    const editingPreset =
+        createSession.kind === "edit" ? getPreset(createSession.presetId) : undefined
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {children}
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{t("addToTimeline.title")}</DialogTitle>
-                    <DialogDescription>
-                        {activeSteps[currentStep] ? t(`addToTimeline.steps.${activeSteps[currentStep].key}.description`) : ""}
-                    </DialogDescription>
-                </DialogHeader>
-
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="max-w-xl">
                 {/* Stepper */}
-                <div className="flex items-center gap-1">
-                    {activeSteps.map((step, index) => {
-                        const Icon = step.icon
-                        return (
-                            <div key={index} className="flex items-center gap-1">
-                                <button
-                                    type="button"
-                                    onClick={() => index < currentStep && setCurrentStep(index)}
-                                    disabled={index > currentStep}
-                                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        index < currentStep
-                                            ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20"
-                                            : index === currentStep
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted text-muted-foreground"
-                                    }`}
-                                >
-                                    {index < currentStep ? (
-                                        <Check className="w-3.5 h-3.5" />
-                                    ) : (
-                                        <Icon className="w-3.5 h-3.5" />
-                                    )}
-                                    <span className="hidden sm:inline">{t(`addToTimeline.steps.${step.key}.title`)}</span>
-                                </button>
-                                {index < activeSteps.length - 1 && (
-                                    <div className={`w-6 h-0.5 rounded-full ${
-                                        index < currentStep ? "bg-primary" : "bg-muted"
-                                    }`} />
-                                )}
-                            </div>
-                        )
-                    })}
-                </div>
+                <Stepper
+                    steps={activeSteps.map((s) => ({
+                        key: s.key,
+                        label: t(`addToTimeline.steps.${s.key}.title`),
+                        icon: s.icon,
+                    }))}
+                    currentStep={currentStep}
+                    onJump={setCurrentStep}
+                    canAdvanceTo={(target) => {
+                        if (target <= currentStep) return true
+                        return target === currentStep + 1 && canProceed()
+                    }}
+                />
 
-                {/* Step content */}
-                <div className="py-2 min-h-[120px]">
+                {/* Step body */}
+                <div className="py-1 min-h-[280px]">
                     {activeSteps[currentStep]?.key === "template" && (
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">{t("addToTimeline.templateTheme")}</label>
-                            <Select
-                                value={selectedTemplate}
-                                onValueChange={setSelectedTemplate}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t("addToTimeline.selectTemplate")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {timelineInfo.templates.map((template) => (
-                                        <SelectItem key={template.value} value={template.value}>
-                                            {template.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <TemplateStep
+                            mode={selection.mode}
+                            onModeChange={(mode) =>
+                                setSelection((s) => ({ ...s, mode }))
+                            }
+                            templateValue={selection.templateValue}
+                            onTemplateChange={(value) =>
+                                setSelection((s) => ({ ...s, templateValue: value }))
+                            }
+                            templates={timelineInfo.templates}
+                            presetId={selection.presetId}
+                            onPresetChange={(id) =>
+                                setSelection((s) => ({ ...s, presetId: id }))
+                            }
+                            animatedPresets={animatedPresets}
+                            createSession={createSession}
+                            onRequestCreate={handleCreatePreset}
+                            onRequestEdit={(p) => handleEditPreset(p.id)}
+                            onCreateFlowExit={() => setCreateSession({ kind: "closed" })}
+                            onSubmitPreset={handleSubmitPreset}
+                            editingInitialSettings={editingPreset?.macroSettings}
+                            editingInitialName={editingPreset?.name}
+                            editingInitialDescription={editingPreset?.description}
+                            onDeletePreset={deletePreset}
+                            onDuplicatePreset={(p) => handleDuplicatePreset(p.id)}
+                            onImportPreset={async (json) => {
+                                const imported = await importPreset(json)
+                                setSelection((s) => ({ ...s, presetId: imported.id }))
+                                return imported
+                            }}
+                            onExportPreset={exportPreset}
+                        />
                     )}
 
                     {activeSteps[currentStep]?.key === "speakers" && (
-                        <ScrollArea className="max-h-[300px] pr-3">
+                        <ScrollArea className="max-h-[320px] pr-3">
                             <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
                                     <SpeakerSettings
                                         key={index}
                                         speaker={speaker}
                                         onSpeakerChange={(updated) => {
-                                            const newSpeakers = [...localSpeakers]
-                                            newSpeakers[index] = updated
-                                            setLocalSpeakers(newSpeakers)
+                                            const next = [...localSpeakers]
+                                            next[index] = updated
+                                            setLocalSpeakers(next)
                                         }}
                                         tracks={timelineInfo.outputTracks}
-                                        selectedTrack={speaker.track || settings.selectedOutputTrack}
-                                        onTrackChange={(value) => {
-                                            const newSpeakers = [...localSpeakers]
-                                            newSpeakers[index] = { ...newSpeakers[index], track: value }
-                                            setLocalSpeakers(newSpeakers)
-                                        }}
                                     />
                                 ))}
                             </div>
@@ -183,72 +303,276 @@ export function AddToTimelineDialog({
                     )}
 
                     {activeSteps[currentStep]?.key === "outputTrack" && (
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">{t("addToTimeline.outputTrack")}</label>
-                            <Select
-                                value={selectedOutputTrack}
-                                onValueChange={setSelectedOutputTrack}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t("addToTimeline.selectOutputTrack")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {timelineInfo.outputTracks.map((track) => (
-                                        <SelectItem key={track.value} value={track.value}>
-                                            {track.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <OutputTrackStep
+                            tracks={timelineInfo.outputTracks}
+                            selected={selection.outputTrack}
+                            onSelect={(value) =>
+                                setSelection((s) => ({ ...s, outputTrack: value }))
+                            }
+                        />
                     )}
                 </div>
 
-                <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                            if (currentStep === 0) {
-                                setOpen(false)
-                            } else {
-                                setCurrentStep((prev) => prev - 1)
-                            }
-                        }}
-                        disabled={isSubmitting}
-                    >
-                        {currentStep === 0 ? t("common.cancel") : (
-                            <>
-                                <ChevronLeft className="w-4 h-4" />
-                                {t("common.back")}
-                            </>
+                {/* Footer: hide when a preset edit is in progress so its own
+                    Cancel/Save buttons own the flow. */}
+                {createSession.kind === "closed" && (
+                    <div className="-mx-4 -mb-4 rounded-b-xl border-t bg-muted/40 p-3 flex items-center justify-between gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                if (currentStep === 0) setOpen(false)
+                                else setCurrentStep((s) => s - 1)
+                            }}
+                            disabled={isSubmitting}
+                        >
+                            {currentStep === 0 ? (
+                                t("common.cancel")
+                            ) : (
+                                <>
+                                    <ChevronLeft className="w-4 h-4" />
+                                    {t("common.back")}
+                                </>
+                            )}
+                        </Button>
+                        {currentStep < totalSteps - 1 ? (
+                            <Button
+                                type="button"
+                                onClick={() => setCurrentStep((s) => s + 1)}
+                                disabled={!canProceed()}
+                            >
+                                {t("common.next")}
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        ) : (
+                            <Button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || !canProceed()}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                        {t("addToTimeline.adding")}
+                                    </>
+                                ) : (
+                                    t("addToTimeline.title")
+                                )}
+                            </Button>
                         )}
-                    </Button>
-                    {currentStep < totalSteps - 1 ? (
-                        <Button
-                            type="button"
-                            onClick={() => setCurrentStep((prev) => prev + 1)}
-                            disabled={!canProceed()}
-                        >
-                            {t("common.next")}
-                            <ChevronRight className="w-4 h-4" />
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={isSubmitting || !canProceed()}
-                        >
-                            {isSubmitting ? (
-                            <>
-                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                {t("addToTimeline.adding")}
-                            </>
-                        ) : t("addToTimeline.title")}
-                        </Button>
-                    )}
-                </DialogFooter>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
+    )
+}
+
+// ----------------------------------------------------------------------------
+// Stepper
+// ----------------------------------------------------------------------------
+
+interface StepperProps {
+    steps: { key: string; label: string; icon: React.ComponentType<{ className?: string }> }[]
+    currentStep: number
+    onJump: (index: number) => void
+    canAdvanceTo: (index: number) => boolean
+}
+
+function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
+    return (
+        <div className="flex items-center gap-1">
+            {steps.map((step, index) => {
+                const Icon = step.icon
+                const isCompleted = index < currentStep
+                const isCurrent = index === currentStep
+                const clickable = canAdvanceTo(index)
+                return (
+                    <React.Fragment key={step.key}>
+                        <button
+                            type="button"
+                            onClick={() => clickable && onJump(index)}
+                            disabled={!clickable}
+                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                                isCompleted
+                                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                    : isCurrent
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted text-muted-foreground"
+                            } ${!clickable && !isCurrent ? "cursor-not-allowed" : "cursor-pointer"}`}
+                        >
+                            {isCompleted ? (
+                                <Check className="w-3.5 h-3.5" />
+                            ) : (
+                                <Icon className="w-3.5 h-3.5" />
+                            )}
+                            <span className="hidden sm:inline">{step.label}</span>
+                        </button>
+                        {index < steps.length - 1 && (
+                            <div
+                                className={`h-0.5 w-6 rounded-full ${
+                                    isCompleted ? "bg-primary" : "bg-muted"
+                                }`}
+                            />
+                        )}
+                    </React.Fragment>
+                )
+            })}
+        </div>
+    )
+}
+
+// ----------------------------------------------------------------------------
+// Template step
+// ----------------------------------------------------------------------------
+
+interface TemplateStepProps {
+    mode: Mode
+    onModeChange: (mode: Mode) => void
+    templateValue: string
+    onTemplateChange: (value: string) => void
+    templates: TimelineInfo["templates"]
+    presetId: string
+    onPresetChange: (id: string) => void
+    animatedPresets: ReturnType<typeof usePresets>["presets"]
+    createSession: CreateSession
+    onRequestCreate: () => void
+    onRequestEdit: (preset: import("@/types").CaptionPreset) => void
+    onCreateFlowExit: () => void
+    onSubmitPreset: CreatePresetSubmit
+    editingInitialSettings?: Record<string, unknown>
+    editingInitialName?: string
+    editingInitialDescription?: string
+    onDeletePreset: (id: string) => Promise<void>
+    onDuplicatePreset: (preset: import("@/types").CaptionPreset) => Promise<void> | void
+    onImportPreset: (json: string) => Promise<import("@/types").CaptionPreset>
+    onExportPreset: (id: string) => string
+}
+
+function TemplateStep({
+    mode,
+    onModeChange,
+    templateValue,
+    onTemplateChange,
+    templates,
+    presetId,
+    onPresetChange,
+    animatedPresets,
+    createSession,
+    onRequestCreate,
+    onRequestEdit,
+    onCreateFlowExit,
+    onSubmitPreset,
+    editingInitialSettings,
+    editingInitialName,
+    editingInitialDescription,
+    onDeletePreset,
+    onDuplicatePreset,
+    onImportPreset,
+    onExportPreset,
+}: TemplateStepProps) {
+    const { t } = useTranslation()
+
+    if (createSession.kind !== "closed") {
+        return (
+            <CreatePresetFlow
+                key={createSession.kind === "edit" ? createSession.presetId : "create"}
+                initialSettings={editingInitialSettings}
+                initialName={editingInitialName}
+                initialDescription={editingInitialDescription}
+                onSubmit={onSubmitPreset}
+                onExit={onCreateFlowExit}
+            />
+        )
+    }
+
+    return (
+        <Tabs value={mode} onValueChange={(v) => onModeChange(v as Mode)}>
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="regular">
+                    {t("addToTimeline.mode.regular")}
+                </TabsTrigger>
+                <TabsTrigger value="animated">
+                    {t("addToTimeline.mode.animated")}
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="regular" className="space-y-3">
+                <ScrollArea className="h-[240px] rounded-md border">
+                    <div className="p-2 space-y-1">
+                        {templates.map((template) => (
+                            <button
+                                key={template.value}
+                                type="button"
+                                onClick={() => onTemplateChange(template.value)}
+                                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                                    templateValue === template.value
+                                        ? "bg-secondary text-secondary-foreground"
+                                        : "hover:bg-muted"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span>{template.label}</span>
+                                    {templateValue === template.value && (
+                                        <Check className="h-4 w-4" />
+                                    )}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="animated" className="space-y-3">
+                <AnimatedPresetPicker
+                    presets={animatedPresets}
+                    selectedPresetId={presetId}
+                    onSelect={onPresetChange}
+                    onRequestCreate={onRequestCreate}
+                    onRequestEdit={onRequestEdit}
+                    onDelete={onDeletePreset}
+                    onImportJson={onImportPreset}
+                    onExportJson={onExportPreset}
+                    onDuplicate={onDuplicatePreset}
+                />
+            </TabsContent>
+        </Tabs>
+    )
+}
+
+// ----------------------------------------------------------------------------
+// Output track step
+// ----------------------------------------------------------------------------
+
+function OutputTrackStep({
+    tracks,
+    selected,
+    onSelect,
+}: {
+    tracks: TimelineInfo["outputTracks"]
+    selected: string
+    onSelect: (value: string) => void
+}) {
+    return (
+        <ScrollArea className="h-[240px] rounded-md border">
+            <div className="p-2 space-y-1">
+                {tracks.map((track) => (
+                    <button
+                        key={track.value}
+                        type="button"
+                        onClick={() => onSelect(track.value)}
+                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                            selected === track.value
+                                ? "bg-secondary text-secondary-foreground"
+                                : "hover:bg-muted"
+                        }`}
+                    >
+                        <div className="flex items-center justify-between">
+                            <span>{track.label}</span>
+                            {selected === track.value && <Check className="h-4 w-4" />}
+                        </div>
+                    </button>
+                ))}
+            </div>
+        </ScrollArea>
     )
 }

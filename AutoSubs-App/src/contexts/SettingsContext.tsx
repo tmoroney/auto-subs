@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { load, Store } from '@tauri-apps/plugin-store';
-import { Settings } from '@/types/interfaces';
+import { Settings } from '@/types';
 import { getPreferredUiLanguage, initI18n, normalizeUiLanguage } from '@/i18n';
 import { models, modelSupportsLanguage, getFirstRecommendedModelForLanguage } from '@/lib/models';
+import { DEFAULT_PRESET_ID } from '@/presets/built-in-presets';
 
 export const DEFAULT_SETTINGS: Settings = {
   // Mode
@@ -41,6 +42,9 @@ export const DEFAULT_SETTINGS: Settings = {
   selectedOutputTrack: "1",
   selectedTemplate: { value: "Default Template", label: "Default Template" },
 
+  // AutoSubs Caption settings
+  presetId: DEFAULT_PRESET_ID,
+
   // Animation settings
   animationType: "none",
   highlightType: "none",
@@ -70,6 +74,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       // If you store settings as a single object, you can get it all at once
       // Alternatively, if they are stored individually, you can reconstruct the object here.
       const storedSettings = await loadedStore.get<any>('settings');
+      // Legacy migration: old builds stored `preset: "<name>"`. All previous
+      // values were built-in names that we now represent as `builtin:default`.
+      if (storedSettings && typeof storedSettings === 'object') {
+        if (!storedSettings.presetId && typeof storedSettings.preset === 'string') {
+          storedSettings.presetId = DEFAULT_PRESET_ID;
+        }
+        delete storedSettings.preset;
+      }
       const hydratedSettings = storedSettings
         ? ({
             ...DEFAULT_SETTINGS,

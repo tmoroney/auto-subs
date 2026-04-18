@@ -1,4 +1,4 @@
-import { Model } from "@/types/interfaces";
+import { Model } from "@/types";
 
 /**
  * Centralized model definitions for AutoSubs

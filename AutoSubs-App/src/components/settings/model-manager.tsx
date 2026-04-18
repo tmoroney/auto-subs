@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Model } from "@/types/interfaces";
+import { Model } from "@/types";
 
 interface ManageModelsDialogProps {
   open: boolean;

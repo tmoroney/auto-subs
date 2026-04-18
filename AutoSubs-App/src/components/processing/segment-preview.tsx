@@ -1,4 +1,4 @@
-import { Subtitle } from "@/types/interfaces"
+import { Subtitle } from "@/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 

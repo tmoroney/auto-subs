@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Subtitle, Speaker, Settings } from '@/types/interfaces';
+import { Subtitle, Speaker, Settings } from '@/types';
 import { useResolve } from '@/contexts/ResolveContext';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';

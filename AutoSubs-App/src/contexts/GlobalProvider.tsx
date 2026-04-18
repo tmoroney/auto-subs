@@ -4,6 +4,7 @@ import { ModelsProvider } from './ModelsContext';
 import { ResolveProvider } from './ResolveContext';
 import { TranscriptProvider } from './TranscriptContext';
 import { ProgressProvider } from './ProgressContext';
+import { PresetsProvider } from './PresetsContext';
 
 interface GlobalProviderProps {
   children: React.ReactNode;
@@ -29,7 +30,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         <ResolveProvider>
           <TranscriptProvider>
             <ProgressProvider>
-              {children}
+              <PresetsProvider>
+                {children}
+              </PresetsProvider>
             </ProgressProvider>
           </TranscriptProvider>
         </ResolveProvider>

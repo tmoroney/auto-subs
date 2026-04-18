@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Model } from '@/types/interfaces';
+import { Model } from '@/types';
 import { models } from '@/lib/models';
 
 interface ModelsContextType {

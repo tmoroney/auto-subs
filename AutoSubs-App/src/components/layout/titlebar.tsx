@@ -35,7 +35,7 @@ import { listTranscriptFiles, readTranscript, type TranscriptListItem } from "@/
 import { useTranscript } from "@/contexts/TranscriptContext";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useModels } from "@/contexts/ModelsContext";
-import type { Model } from "@/types/interfaces";
+import type { Model } from "@/types";
 import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";

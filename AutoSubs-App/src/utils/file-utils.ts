@@ -1,7 +1,7 @@
 // src/utils/fileUtils.ts
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readDir, readTextFile, exists, writeTextFile, mkdir, stat } from '@tauri-apps/plugin-fs';
-import { Subtitle, Speaker } from '@/types/interfaces';
+import { Subtitle, Speaker } from '@/types';
 import { applyTextFormattingToSubtitle } from './subtitle-formatter';
 
 const TRANSCRIPT_INDEX_FILENAME = 'transcript-index.json';

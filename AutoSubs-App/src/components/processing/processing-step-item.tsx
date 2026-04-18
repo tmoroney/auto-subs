@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
 import { SegmentPreview } from "@/components/processing/segment-preview"
-import { Settings, TimelineInfo } from "@/types/interfaces"
+import { Settings, TimelineInfo } from "@/types"
 
 export interface ProcessingStepProps {
     title: string;
@@ -19,7 +19,7 @@ export interface ProcessingStepProps {
     isCancelled?: boolean;
     id?: string;
     onExportToFile?: () => void;
-    onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>;
+    onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
     livePreviewSegments?: any[];
     settings?: Settings;

@@ -1,4 +1,4 @@
-import { Subtitle } from "../types/interfaces";
+import { Subtitle } from "../types";
 
 // src/utils/srtUtils.ts
 export function formatTimecode(seconds: number): string {

@@ -1,10 +1,10 @@
 import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranscript } from "@/contexts/TranscriptContext"
-import { Subtitle } from "@/types/interfaces"
+import { Subtitle } from "@/types"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { ArrowDown, ArrowUp, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
@@ -338,22 +338,35 @@ const SubtitleList = ({
                                                         })()}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent align="end" className="p-0" onClick={(e) => e.stopPropagation()}>
-                                                    {(() => {
-                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                        const speaker = speakers[idx];
-                                                        if (!speaker) return null;
-                                                        return (
-                                                            <SpeakerSettings
-                                                                speaker={speaker}
-                                                                onSpeakerChange={(updated) => {
-                                                                    const next = [...speakers];
-                                                                    next[idx] = updated;
-                                                                    updateSpeakers(next);
-                                                                }}
-                                                            />
-                                                        );
-                                                    })()}
+                                                <PopoverContent align="end" className="relative" onClick={(e) => e.stopPropagation()}>
+                                                    <div>
+                                                        {(() => {
+                                                            const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                            const speaker = speakers[idx];
+                                                            if (!speaker) return null;
+                                                            return (
+                                                                <SpeakerSettings
+                                                                    speaker={speaker}
+                                                                    onSpeakerChange={(updated) => {
+                                                                        const next = [...speakers];
+                                                                        next[idx] = updated;
+                                                                        updateSpeakers(next);
+                                                                    }}
+                                                                />
+                                                            );
+                                                        })()}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="absolute right-2 top-2 h-6 w-6"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingSubtitleId(null);
+                                                            }}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </PopoverContent>
                                             </Popover>
                                         ) : null}

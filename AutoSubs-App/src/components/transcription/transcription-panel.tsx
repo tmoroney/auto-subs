@@ -22,7 +22,7 @@ import { useTranscript } from "@/contexts/TranscriptContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useResolve } from "@/contexts/ResolveContext"
 import { languages, translateLanguages } from "@/lib/languages"
-import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types/interfaces"
+import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types"
 import { useTranslation } from "react-i18next"
 import { diarizeModel } from "@/lib/models"
 
@@ -60,7 +60,7 @@ interface TranscriptionPanelViewProps {
   processingSteps: ProcessingStep[]
   progressContainerRef: React.RefObject<HTMLDivElement>
   onExportToFile: () => void
-  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string) => Promise<void>
+  onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>
   onViewSubtitles?: () => void
   livePreviewSegments: any[]
   settings: Settings
@@ -502,7 +502,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
     }
   }
 
-  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string) => {
+  const handleAddToTimeline = async (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => {
     try {
       if (!currentTranscriptFilename) {
         console.error("No active transcript file to add to timeline")
@@ -513,6 +513,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         currentTranscriptFilename,
         selectedTemplate,
         selectedOutputTrack,
+        presetSettings,
       )
     } catch (error) {
       console.error("Failed to add to timeline:", error)

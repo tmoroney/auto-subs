@@ -145,12 +145,14 @@
     "title": "Edit Speakers",
     "description": "These are the speakers detected in the audio.",
     "jumpToSample": "Jump to sample in timeline",
-    "name": "Name",
+    "name": "Speaker Name",
     "namePlaceholder": "Enter speaker name",
     "outputTrack": "Output Track",
     "selectTrack": "Select a track",
     "appearance": "Appearance",
+    "style": "Individual Style",
     "colors": {
+      "none": "None",
       "fill": "Fill",
       "outline": "Outline",
       "border": "Border"
@@ -437,6 +439,57 @@
       "outputTrack": {
         "title": "Output Track",
         "description": "Select the subtitle track"
+      }
+    },
+    "mode": {
+      "regular": "Regular",
+      "animated": "Animated"
+    },
+    "preset": {
+      "new": "New preset",
+      "newDescription": "Design a caption in Resolve",
+      "builtIn": "Built-in",
+      "preview": "Preview in Resolve",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "rename": "Rename",
+      "export": "Export JSON",
+      "import": "Import file",
+      "paste": "Paste JSON",
+      "emptyTitle": "No custom presets yet",
+      "emptyHint": "Click New preset to design your own, or import one from a file.",
+      "phase": {
+        "launchingTitle": "Opening caption in Resolve\u2026",
+        "launchingHint": "We\u2019ll drop a preview caption on a temporary track.",
+        "editingTitle": "Switch to DaVinci Resolve",
+        "editingBody": "A caption has been placed on a new track and opened in the Fusion page. Customise it using the inspector, then come back here.",
+        "capturingTitle": "Reading settings from Resolve\u2026",
+        "nameTitle": "Name your preset",
+        "nameHint": "Give it something short and descriptive."
+      },
+      "action": {
+        "cancel": "Cancel",
+        "save": "Save preset",
+        "back": "Back",
+        "startEditing": "Start editing in Resolve",
+        "captureSettings": "Capture settings"
+      },
+      "nameLabel": "Preset name",
+      "namePlaceholder": "e.g. Bold Yellow, TikTok Style",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional note about this preset",
+      "confirmDeleteTitle": "Delete preset?",
+      "confirmDelete": "This preset will be removed from your library. Built-in presets are not affected.",
+      "confirmDeleteConfirm": "Delete",
+      "importTitle": "Paste preset JSON",
+      "importPlaceholder": "Paste the contents of a preset file here\u2026",
+      "importSubmit": "Import preset",
+      "errors": {
+        "invalidJson": "That doesn\u2019t look like a valid preset file.",
+        "startFailed": "Couldn\u2019t open the preset editor in Resolve.",
+        "captureFailed": "Couldn\u2019t read the caption settings from Resolve.",
+        "nameRequired": "Please enter a name."
       }
     }
   },
