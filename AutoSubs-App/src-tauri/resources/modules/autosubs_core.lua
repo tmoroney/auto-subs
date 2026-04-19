@@ -255,7 +255,7 @@ get_templates = function()
         if is_matching_title(clipType) then
             local clipName = props["Clip Name"]
             table.insert(t, { label = clipName, value = clipName })
-            if clipName == "Default Template" then
+            if clipName == ANIMATED_CAPTION then
                 hasDefault = true
             end
         end
@@ -264,10 +264,10 @@ get_templates = function()
     -- Add default template to mediapool if not available
     if not hasDefault and tonumber(resolve:GetVersion()[1]) >= 19 then
         print("Default template not found. Importing default template...")
-        local ok = pcall(function()
+        pcall(function()
             mediaPool:ImportFolderFromFile(join_path(assets_path, "caption-bin.drb"))
             -- Append the default template to the list
-            table.insert(t, { label = "Default Template", value = "Default Template" })
+            table.insert(t, { label = ANIMATED_CAPTION, value = ANIMATED_CAPTION })
         end)
     end
 
