@@ -66,6 +66,31 @@ export interface ConflictInfo {
 
 export type ConflictMode = 'replace' | 'skip' | 'new_track' | null;
 
+// Emitted by the Resolve Lua server when the AutoSubs Caption macro's default
+// font was auto-swapped to something that supports the transcript's script
+// (e.g. Japanese). `to` is null when the script is known but no candidate font
+// is installed on the host (`missing: true`) so the UI can warn the user.
+export interface FontSwapInfo {
+  from: string;
+  to: string | null;
+  language: string;
+  script: string;
+  missing: boolean;
+}
+
+export interface AddSubtitlesResult {
+  message?: string;
+  result?: {
+    ok?: boolean;
+    fontSwap?: FontSwapInfo | null;
+  } | false;
+}
+
+export interface GeneratePreviewResult {
+  path: string;
+  fontSwap?: FontSwapInfo | null;
+}
+
 export async function checkTrackConflicts(filename: string, outputTrack: string): Promise<ConflictInfo> {
   const filePath = await getTranscriptPath(filename);
   const response = await fetch(resolveAPI, {
@@ -86,7 +111,7 @@ export async function addSubtitlesToTimeline(
   outputTrack: string,
   conflictMode: ConflictMode = null,
   presetSettings?: Record<string, unknown>,
-) {
+): Promise<AddSubtitlesResult> {
   const filePath = await getTranscriptPath(filename);
   const response = await fetch(resolveAPI, {
     method: 'POST',
@@ -144,11 +169,12 @@ export async function generatePreview(
   templateName: string,
   exportPath: string,
   presetSettings?: Record<string, unknown>,
-) {
+  language?: string,
+): Promise<GeneratePreviewResult> {
   const response = await fetch(resolveAPI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GeneratePreview", speaker, templateName, exportPath, presetSettings }),
+    body: JSON.stringify({ func: "GeneratePreview", speaker, templateName, exportPath, presetSettings, language }),
   });
   return response.json();
 }

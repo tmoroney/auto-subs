@@ -73,6 +73,7 @@ end
 local socket = nil
 local json = nil
 local luaresolve = nil
+local font_fallback = nil
 
 -- OS SPECIFIC CONFIGURATION
 local assets_path
@@ -1177,8 +1178,19 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
 
     local isAnimated = templateName == ANIMATED_CAPTION and true or false
 
+    -- Auto-swap the caption Font for non-Latin transcript languages when the
+    -- user is still on the macro's default font. Uses the transcript JSON's
+    -- `language` field so older transcripts in a different language still get
+    -- the right font even if the app's current language setting has moved on.
+    local fontSwap = nil
+    if isAnimated and font_fallback then
+        presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
+    end
+
     apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
     refresh_timeline(timeline)
+
+    return { ok = true, fontSwap = fontSwap }
 end
 
 local function extract_frame(comp, exportDir)
@@ -1234,7 +1246,9 @@ local function extract_frame(comp, exportDir)
 end
 
 -- place example subtitle on timeline with theme and export frame
-function GeneratePreview(speaker, templateName, preset, exportDir)
+-- `language` (optional): ISO code of the transcript this preview represents,
+-- used for language-aware font fallback on the AutoSubs Caption macro.
+function GeneratePreview(speaker, templateName, presetSettings, exportDir, language)
     local timeline = project:GetCurrentTimeline()
     local rootFolder = mediaPool:GetRootFolder()
 
@@ -1258,6 +1272,12 @@ function GeneratePreview(speaker, templateName, preset, exportDir)
         trackIndex = trackIndex
     } })[1]
 
+    local isAnimated = templateName == ANIMATED_CAPTION and true or false
+    local fontSwap = nil
+    if isAnimated and font_fallback then
+        presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
+    end
+
     local outputPath = nil
     local success, err = pcall(function()
         if timelineItem:GetFusionCompCount() > 0 then
@@ -1265,6 +1285,9 @@ function GeneratePreview(speaker, templateName, preset, exportDir)
             local tool = comp:FindToolByID("TextPlus")
             tool:SetInput("StyledText", "Subtitle Example Text")
             set_speaker_styling(speaker, tool)
+            if fontSwap and fontSwap.to then
+                pcall(function() tool:SetInput("Font", fontSwap.to) end)
+            end
             outputPath = extract_frame(comp, exportDir)
         end
     end)
@@ -1277,7 +1300,7 @@ function GeneratePreview(speaker, templateName, preset, exportDir)
     timeline:DeleteClips({ timelineItem })
     timeline:DeleteTrack("video", trackIndex)
 
-    return outputPath
+    return { path = outputPath, fontSwap = fontSwap }
 end
 
 -- ---------------------------------------------------------------------------
@@ -1620,8 +1643,9 @@ function StartServer()
                                 })
                             elseif data.func == "GeneratePreview" then
                                 print("[AutoSubs Server] Generating preview...")
-                                local previewPath = GeneratePreview(data.speaker, data.templateName, data.exportPath)
-                                body = json.encode(previewPath)
+                                local previewResult = GeneratePreview(data.speaker, data.templateName,
+                                    data.presetSettings, data.exportPath, data.language)
+                                body = json.encode(previewResult)
                             elseif data.func == "StartPresetEdit" then
                                 print("[AutoSubs Server] Starting caption preset edit...")
                                 local result = StartPresetEdit(data.initialSettings)
@@ -1740,6 +1764,7 @@ local AutoSubs = {
         socket = require("ljsocket")
         json = require("dkjson")
         luaresolve = require("libavutil")
+        font_fallback = require("font_fallback")
 
         assets_path = join_path(resources_path, "AutoSubs")
         StartServer()

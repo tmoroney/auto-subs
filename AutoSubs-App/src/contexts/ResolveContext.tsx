@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { TimelineInfo } from '@/types';
 import { getTimelineInfo, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
 
@@ -71,7 +72,25 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
     const finalTemplate = selectedTemplate || 'Subtitle';
     const finalTrack = selectedOutputTrack || '1';
 
-    await addSubtitlesToTimeline(finalFilename, finalTemplate, finalTrack, null, presetSettings);
+    const response = await addSubtitlesToTimeline(finalFilename, finalTemplate, finalTrack, null, presetSettings);
+
+    // Surface a language-aware font swap (done server-side in the Lua macro
+    // server) so the user knows why their caption font changed.
+    const result = response && typeof response === 'object' ? response.result : undefined;
+    const fontSwap = result && typeof result === 'object' ? result.fontSwap : null;
+    if (fontSwap) {
+      if (fontSwap.to) {
+        toast.info(
+          `Using '${fontSwap.to}' for ${fontSwap.language} captions`,
+          { description: `The default caption font doesn't support this language. Change the Font in your preset to override.` },
+        );
+      } else if (fontSwap.missing) {
+        toast.warning(
+          `No installed font found for ${fontSwap.language} captions`,
+          { description: `Install a font that supports ${fontSwap.script} (e.g. a Noto ${fontSwap.script} family) to render captions correctly.` },
+        );
+      }
+    }
   }
 
   // Function to get source audio based on current mode
