@@ -265,7 +265,7 @@ get_templates = function()
     if not hasDefault and tonumber(resolve:GetVersion()[1]) >= 19 then
         print("Default template not found. Importing default template...")
         local ok = pcall(function()
-            mediaPool:ImportFolderFromFile(join_path(assets_path, "subtitle-template.drb"))
+            mediaPool:ImportFolderFromFile(join_path(assets_path, "caption-bin.drb"))
             -- Append the default template to the list
             table.insert(t, { label = "Default Template", value = "Default Template" })
         end)

@@ -1,0 +1,1956 @@
+{
+	Tools = ordered() {
+		AutoSubs = MacroOperator {
+			CtrlWZoom = false,
+			ViewInfo = GroupInfo { Pos = { 249.287, 50.4162 } },
+			CustomData = {
+				IsEditing = false,
+				DelaySpline = "Follower1DelaybyCharacterPosition",
+				WordTiming = {
+					{
+						["startIndex"] = 0,
+						["endIndex"] = 7,
+						["startFrame"] = 0,
+						["endFrame"] = 40,
+					},
+					{
+						["startIndex"] = 8,
+						["endIndex"] = 15,
+						["startFrame"] = 40,
+						["endFrame"] = 60,
+					},
+					{
+						["startIndex"] = 16,
+						["endIndex"] = 20,
+						["startFrame"] = 60,
+						["endFrame"] = 80,
+					}
+				},
+				InputKeys = {
+					"Style",
+					"Font",
+					"TextSize",
+					"TextPosition",
+					"FadeEnabled",
+					"PopInEnabled",
+					"SlideUpEnabled",
+					"AnimationLength",
+					"AnimationLevel",
+					"HighlightExtendHorizontal",
+					"HighlightExtendVertical",
+					"HighlightRound",
+					"HighlightColorRed",
+					"HighlightColorGreen",
+					"HighlightColorBlue",
+					"FillEnabled",
+					"FillColorRed",
+					"FillColorGreen",
+					"FillColorBlue",
+					"OutlineEnabled",
+					"OutlineThickness",
+					"OutlineColorRed",
+					"OutlineColorGreen",
+					"OutlineColorBlue",
+					"ShadowEnabled",
+					"ShadowColorRed",
+					"ShadowColorGreen",
+					"ShadowColorBlue",
+					"HighlightStyle",
+					"HighlightEnabled"
+				},
+				GetInputValues = [[
+					return function(tool)
+						local keys = tool:GetData("InputKeys")
+						local settings = {}
+						for _, key in ipairs(keys) do
+							settings[key] = tool:GetInput(key)
+						end
+						return settings
+					end
+				]],
+				SetInputValues = [[
+					return function(comp, tool, settings)
+						for key, value in pairs(settings) do
+							tool:SetInput(key, value)
+						end
+
+						-- Update animation and highlight
+						loadstring(tool:GetData("SetAnimations"))()(comp, tool)
+						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
+					end
+				]],
+				Animations = {
+					-- Helper: Remove XYPath modifiers from Offset inputs
+					RemoveOffsetModifiers = [[
+						return function(follower)
+							for i = 1, 3 do
+								local offsetProp = "Offset" .. i
+								local offsetInput = follower[offsetProp]
+								if offsetInput then
+									local output = offsetInput:GetConnectedOutput()
+									if output then
+										local xyPath = output:GetTool()
+										if xyPath and xyPath.Name:match("XYPath") then
+											follower[offsetProp] = nil
+										end
+									end
+								end
+							end
+						end
+					]],
+					-- Fade: Connect Opacity to stretcher with smooth ease-in
+					ApplyFade = [[
+						return function(follower, animStretcher, animSpline, animInEnd, animOutStart, mode)
+							follower.Opacity1 = animStretcher.Result
+							follower.Opacity2 = animStretcher.Result
+							follower.Opacity3 = animStretcher.Result
+							follower.Opacity4 = animStretcher.Result
+							
+							local keyframes
+							if mode == 0 then
+								-- In only
+								keyframes = {
+									[0] = { 0 },
+									[animInEnd] = { 1, LH = { -animInEnd, 0 } },
+									[100] = { 1 },
+								}
+							elseif mode == 1 then
+								-- Out only
+								keyframes = {
+									[0] = { 1 },
+									[animOutStart] = { 1 },
+									[100] = { 0 },
+								}
+							else
+								-- Both (default)
+								keyframes = {
+									[0] = { 0 },
+									[animInEnd] = { 1, LH = { -animInEnd, 0 } },
+									[animOutStart] = { 1 },
+									[100] = { 0 },
+								}
+							end
+							
+							animSpline:SetKeyFrames(keyframes, true)
+							print("Applied Fade animation (mode: " .. mode .. ")")
+						end
+					]],
+					ResetFade = [[
+						return function(follower)
+							follower.Opacity1 = nil
+							follower.Opacity2 = nil
+							follower.Opacity3 = nil
+							follower.Opacity4 = nil
+							follower:SetInput("Opacity1", 1)
+							follower:SetInput("Opacity2", 1)
+							follower:SetInput("Opacity3", 1)
+							follower:SetInput("Opacity4", 1)
+						end
+					]],
+					-- PopIn: Add KeyStretcher modifiers to WordSizeX/Y with smooth ease-in
+					ApplyPopIn = [[
+						return function(follower, animInEnd, animOutStart, animationLevel, mode)
+							local sizeKeyframes
+							if mode == 0 then
+								-- In only
+								sizeKeyframes = {
+									[0] = { 0.8 },
+									[animInEnd] = { 1, LH = { -animInEnd, 0 } },
+									[100] = { 1 },
+								}
+							elseif mode == 1 then
+								-- Out only
+								sizeKeyframes = {
+									[0] = { 1 },
+									[animOutStart] = { 1 },
+									[100] = { 0.8 },
+								}
+							else
+								-- Both (default)
+								sizeKeyframes = {
+									[0] = { 0.8 },
+									[animInEnd] = { 1, LH = { -animInEnd, 0 } },
+									[animOutStart] = { 1 },
+									[100] = { 0 },
+								}
+							end
+							local function applyStretchedKeyframes(propName)
+								follower:AddModifier(propName, "KeyStretcherMod")
+								local stretcher = follower[propName]:GetConnectedOutput():GetTool()
+								if stretcher then
+									stretcher:AddModifier("Keyframes", "BezierSpline")
+									local spline = stretcher.Keyframes:GetConnectedOutput():GetTool()
+									if spline then
+										spline:SetKeyFrames(sizeKeyframes, true)
+									end
+									stretcher:SetInput("StretchStart", animInEnd)
+									stretcher:SetInput("StretchEnd", animOutStart)
+								end
+							end
+							local propX = animationLevel == 0 and "Line" or "Word"
+							print(propX)
+							applyStretchedKeyframes(propX .. "SizeX")
+							applyStretchedKeyframes(propX .. "SizeY")
+							print("Applied PopIn animation (mode: " .. mode .. ")")
+						end
+					]],
+					ResetPopIn = [[
+						return function(follower)
+							follower.LineSizeX = nil
+							follower.LineSizeY = nil
+							follower.WordSizeX = nil
+							follower.WordSizeY = nil
+							follower:SetInput("LineSizeX", 1)
+							follower:SetInput("LineSizeY", 1)
+							follower:SetInput("WordSizeX", 1)
+							follower:SetInput("WordSizeY", 1)
+						end
+					]],
+					-- SlideUp: Add XYPath + KeyStretcher to Offset Y with smooth ease-in
+					ApplySlideUp = [[
+						return function(follower, animInEnd, animOutStart, mode)
+							local yKeyframes
+							if mode == 0 then
+								-- In only
+								yKeyframes = {
+									[0] = { -0.1 },
+									[animInEnd] = { 0, LH = { -animInEnd, 0 } },
+									[100] = { 0 },
+								}
+							elseif mode == 1 then
+								-- Out only
+								yKeyframes = {
+									[0] = { 0 },
+									[animOutStart] = { 0 },
+									[100] = { -0.1 },
+								}
+							else
+								-- Both (default)
+								yKeyframes = {
+									[0] = { -0.1 },
+									[animInEnd] = { 0, LH = { -animInEnd, 0 } },
+									[animOutStart] = { 0 },
+									[100] = { -0.1 },
+								}
+							end
+							for i = 1, 3 do
+								local offsetProp = "Offset" .. i
+								follower:AddModifier(offsetProp, "XYPath")
+								local xyPath = follower[offsetProp]:GetConnectedOutput():GetTool()
+								if xyPath then
+									xyPath:AddModifier("Y", "KeyStretcherMod")
+									local yStretcher = xyPath.Y:GetConnectedOutput():GetTool()
+									if yStretcher then
+										yStretcher:AddModifier("Keyframes", "BezierSpline")
+										local ySpline = yStretcher.Keyframes:GetConnectedOutput():GetTool()
+										if ySpline then
+											ySpline:SetKeyFrames(yKeyframes, true)
+										end
+										yStretcher:SetInput("StretchStart", animInEnd)
+										yStretcher:SetInput("StretchEnd", animOutStart)
+									end
+								end
+							end
+							print("Applied SlideUp animation (mode: " .. mode .. ")")
+						end
+					]],
+				},
+				SetAnimations = [[
+					return function(comp, tool)
+						local anims = tool:GetData("Animations")
+						local animationLength = tool:GetInput("AnimationLength")
+						local fadeEnabled = tool:GetInput("FadeEnabled") == 1
+						local popInEnabled = tool:GetInput("PopInEnabled") == 1
+						local slideUpEnabled = tool:GetInput("SlideUpEnabled") == 1
+						local animationLevel = tool:GetInput("AnimationLevel")
+						local animationMode = tool:GetInput("AnimationMode") or 2
+
+						local follower = comp:FindTool("Follower1")
+						local animStretcher = comp:FindTool("AnimationKeyframeStretcher")
+						local orderStretcher = comp:FindTool("OrderKeyframeStretcher")
+						local animSpline = animStretcher.Keyframes:GetConnectedOutput():GetTool()
+						local orderSpline = orderStretcher.Keyframes:GetConnectedOutput():GetTool()
+
+						-- Reset animations
+						loadstring(anims.ResetPopIn)()(follower)
+						loadstring(anims.RemoveOffsetModifiers)()(follower)
+
+						-- Calculate animation frames
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local function round(x) return math.floor(x + 0.5) end
+						local frames = round(animationLength * fps)
+						local animInEnd = frames
+						local animOutStart = 100 - frames
+
+						-- Apply fade animation
+						if fadeEnabled or slideUpEnabled or popInEnabled then
+							local applyFade = loadstring(anims.ApplyFade)()
+							applyFade(follower, animStretcher, animSpline, animInEnd, animOutStart, animationMode)
+						else
+							follower.Opacity1 = animStretcher.Result
+							follower.Opacity2 = animStretcher.Result
+							follower.Opacity3 = animStretcher.Result
+							follower.Opacity4 = animStretcher.Result
+							animSpline:SetKeyFrames({
+								[0] = { 1, Flags = { StepIn = true } },
+								[100] = { 1, Flags = { StepIn = true } },
+							}, true)
+						end
+
+						-- Apply pop-in animation
+						if popInEnabled then
+							local applyPopIn = loadstring(anims.ApplyPopIn)()
+							applyPopIn(follower, animInEnd, animOutStart, animationLevel, animationMode)
+						end
+
+						-- Apply slide-up animation
+						if slideUpEnabled then
+							local applySlideUp = loadstring(anims.ApplySlideUp)()
+							applySlideUp(follower, animInEnd, animOutStart, animationMode)
+						end
+
+						-- Set stretcher time ranges
+						animStretcher:SetInput("StretchStart", animInEnd)
+						animStretcher:SetInput("StretchEnd", animOutStart)
+
+						-- Configure order spline for out animation (animate entire line out, not word by word)
+						orderSpline:SetKeyFrames({
+							[animOutStart-1] = { 6, Flags = { StepIn = true } }, -- "Manual Curve"
+							[animOutStart] = { 0, Flags = { StepIn = true } },   -- "Automatic" (everything animates together)
+						}, true)
+						orderSpline:SetInput("StretchEnd", animOutStart)
+					end
+				]],
+				ApplyAnimationLevel = [[
+					return function(comp, tool)
+						-- Get current spline settings to be modified
+						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local settings = spline:SaveSettings()
+
+						if tool:GetInput("AnimationLevel") == 1 then
+							-- Restore word timing keyframes
+							local wordTiming = tool:GetData("WordTiming")
+							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(wordTiming)
+
+							settings.Tools[spline.Name].KeyFrames = keyframes
+							spline:LoadSettings(settings)
+						else
+							-- Remove word timing keyframes
+							-- TODO: Investigate if easier to set Order type to Automatic
+							local text = tool:GetInput("Text")
+							if text and #text > 0 then
+								settings.Tools[spline.Name].KeyFrames = {
+									[#text] = { 0, Flags = { StepIn = true } },
+								}
+								spline:LoadSettings(settings)
+							end
+						end
+
+						-- Scale type must be changed to line or word (if being utilised)
+						if tool:GetInput("PopInEnabled") == 1 then
+							loadstring(tool:GetData("SetAnimations"))()(comp, tool)
+						end
+					end
+				]],
+				ConvertToDelayKeyframes = [[
+					return function(wordTiming)
+						local keyframes = {}
+						for _, word in ipairs(wordTiming) do
+							keyframes[word.startIndex] = { word.startFrame, Flags = { StepIn = true } }
+						end
+						return keyframes
+					end
+				]],
+				ApplyWordTiming = [[
+					return function(comp, tool, wordTiming)
+						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+
+						local settings = spline:SaveSettings()
+						if tool:GetInput("AnimationLevel") == 1 then
+							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(wordTiming)
+							settings.Tools[spline.Name].KeyFrames = keyframes
+						else
+							local text = tool:GetInput("Text")
+							settings.Tools[spline.Name].KeyFrames = {
+								[#text] = { 0, Flags = { StepIn = true } },
+							}
+						end
+						spline:LoadSettings(settings)
+
+						tool:SetData("WordTiming", wordTiming)
+						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
+					end
+				]],
+				UpdateTextContent = [[
+					return function(comp, tool, text)
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
+						-- Split text into words
+						local words = {}
+						for word in text:gmatch("%S+") do
+							table.insert(words, word)
+						end
+
+						local wordTiming = tool:GetData("WordTiming")
+						if not wordTiming then return end
+
+						local oldCount = #wordTiming
+						local newCount = #words
+
+						-- Handle added words
+						if newCount > oldCount then
+							local gap
+							if oldCount >= 2 then
+								gap = wordTiming[oldCount].startFrame - wordTiming[oldCount - 1].startFrame
+							elseif oldCount == 1 then
+								gap = wordTiming[1].endFrame - wordTiming[1].startFrame
+								if gap == 0 then gap = 20 end
+							else
+								gap = 20
+							end
+
+							for i = oldCount + 1, newCount do
+								local prevStart = wordTiming[i - 1].startFrame
+								local newStart = prevStart + gap
+								wordTiming[i - 1].endFrame = newStart
+								table.insert(wordTiming, {
+									["startIndex"] = 0,
+									["endIndex"] = 0,
+									["startFrame"] = newStart,
+									["endFrame"] = newStart,
+								})
+							end
+						elseif newCount < oldCount then
+							for i = oldCount, newCount + 1, -1 do
+								table.remove(wordTiming, i)
+							end
+						end
+
+						-- Recompute character indices
+						local charIndex = 0
+						for i = 1, newCount do
+							local wordText = words[i]
+							if i > 1 then
+								wordText = " " .. wordText
+							end
+
+							local length = utf8len(wordText)
+							wordTiming[i].startIndex = charIndex
+							wordTiming[i].endIndex = charIndex + length - 1
+							charIndex = charIndex + length
+						end
+
+						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
+					end
+				]],
+				ShowWordMarkers = [[
+					return function(comp, tool)
+						-- Get timeline item that contains this composition
+						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
+						local item = getTimelineItem(comp)
+
+						-- Get follower delay spline
+						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+
+						-- Remove all existing word markers
+						while item:DeleteMarkerByCustomData("AutoSubs") do end
+
+						local wordTiming = spline:GetKeyFrames()
+						local keys = {}
+						for k in pairs(wordTiming) do
+							if type(k) == "number" then table.insert(keys, k) end
+						end
+						table.sort(keys)
+						local index = 1
+						for _, k in ipairs(keys) do
+							local v = wordTiming[k]
+							if type(v) == "table" and v[1] then
+								local offset = comp:GetAttrs("COMPN_RenderStart")
+								local clipFrame = v[1] + offset
+								item:AddMarker(clipFrame, "Blue", "Word "..index, "", 1, "AutoSubs")
+								index = index + 1
+							end
+						end
+					end
+				]],
+				ApplyWordMarkers = [[
+					return function(comp, tool)
+						-- Get timeline item that contains this composition
+						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
+						local item = getTimelineItem(comp)
+
+						-- Get follower delay spline
+						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+
+						-- Get comp offset
+						local offset = comp:GetAttrs("COMPN_RenderStart")
+
+						-- Collect marker positions from timeline
+						local markers = item:GetMarkers()
+						local markerFrames = {}
+						for frame, markerInfo in pairs(markers) do
+							if markerInfo["customData"] == "AutoSubs" then
+								table.insert(markerFrames, frame - offset)
+							end
+						end
+
+						-- Sort markers by frame number
+						table.sort(markerFrames)
+
+						-- Split text into words
+						local text = tool:GetInput("Text")
+						local words = {}
+						for word in text:gmatch("%S+") do
+							table.insert(words, word)
+						end
+						
+						-- UTF-8 aware character count
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
+						-- Build intermediate word timing format
+						local wordTiming = {}
+						local count = math.min(#markerFrames, #words)
+						local charIndex = 0
+						
+						for i = 1, count do
+							local wordText = words[i]
+							if i > 1 then
+								wordText = " " .. wordText
+							end
+
+							local length = utf8len(wordText)
+							local startFrame = markerFrames[i]
+							local endFrame
+						
+							if i < count then
+								endFrame = markerFrames[i + 1]
+							else
+								endFrame = startFrame
+							end
+						
+							table.insert(wordTiming, {
+								["startIndex"] = charIndex,
+								["endIndex"] = charIndex + length - 1,
+								["startFrame"] = startFrame,
+								["endFrame"] = endFrame,
+							})
+
+							charIndex = charIndex + length
+						end
+						
+						-- Apply word timing (update spline, store data, refresh highlight)
+						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
+
+						-- Clean up markers
+						while item:DeleteMarkerByCustomData("AutoSubs") do end
+					end
+				]],
+				GetTimelineItem = [[
+					-- Find the timeline item that contains this Fusion composition
+					-- Note: DaVinci Resolve has no direct API to get timeline item from comp, so we search manually
+					return function(comp)
+						local resolve = bmd and bmd.scriptapp and bmd.scriptapp("Resolve")
+						local projectManager = resolve:GetProjectManager()
+						local currentProject = projectManager:GetCurrentProject()
+						local timeline = currentProject:GetCurrentTimeline()
+
+						local function itemContainsComp(timelineItem, targetComp)
+							if timelineItem:GetFusionCompCount() == 0 then
+								return false
+							end
+					
+							return timelineItem:GetFusionCompByIndex(1) == targetComp
+						end
+						
+						-- Search from top track down (subtitles usually on top track - faster)
+						local videoTrackCount = timeline:GetTrackCount("video")
+						for trackIndex = videoTrackCount, 1, -1 do
+							local itemsOnTrack = timeline:GetItemListInTrack("video", trackIndex)
+							
+							for _, timelineItem in ipairs(itemsOnTrack or {}) do
+								if itemContainsComp(timelineItem, comp) then
+									return timelineItem
+								end
+							end
+						end
+						
+						return nil
+					end
+				]],
+				ApplyHighlight = [[
+					return function(comp, tool)
+						local STYLES = {"Fill", "Outline", "Shadow", "Bubble"}
+						local STYLE_INDEX = {
+							Fill = 1,
+							Outline = 2, 
+							Shadow = 3,
+							Bubble = 4
+						}
+						local CHANNELS = { "Red", "Green", "Blue" } -- exclude opacity for now as it interferes with other effects
+						local INTERNAL_CODES = { Red = 2401, Green = 2402, Blue = 2403, Enabled = 2000 } -- Note: Opacity = 2600
+
+						loadstring(tool:GetData("UpdateAllStyleColors"))()(comp, tool)
+
+						-- Function to retrieve the base style for non-highlighted words
+						-- @param template: The template tool
+						-- @param styleKey: The style key (e.g. "Fill", "Outline", etc.)
+						-- @return: A table containing the base style values
+						local function get_current_style(styleKey)
+							local base = {}
+							
+							-- Get color values for all channels (Red, Green, Blue)
+							for _, channel in ipairs(CHANNELS) do
+								base[channel] = tool:GetInput(styleKey .. "Color" .. channel)
+							end
+
+							-- Handle enabled state differently for Bubble vs other styles
+							local template = comp:FindTool("Template")
+							local isBubbleStyle = styleKey == "Bubble"
+
+							-- Bubble must be enabled at the template level or will not work with character-level styling
+							template:SetInput("Enabled4", isBubbleStyle and 1 or 0)
+
+							if isBubbleStyle then
+								base["Enabled"] = 0 -- only highlighted words should have bubble enabled (disabled for base style)
+							else
+								base["Enabled"] = tool:GetInput(styleKey .. "Enabled")
+							end
+
+							return base
+						end
+
+						-- Build a StyledText Array where word at `activeIndex` uses `highlight` colors and the rest use `base`
+						local function build_style_array(wordTiming, activeIndex, highlight, base, styleId)
+							local array = {}
+							for j, word in ipairs(wordTiming) do
+								local style = j == activeIndex and highlight or base
+								for key, internalCode in pairs(INTERNAL_CODES) do
+									table.insert(array, {
+										internalCode,
+										word.startIndex,
+										word.endIndex,
+										Value = style[key],
+										__flags = 256,
+										Index = styleId
+									})
+								end
+							end
+							return array
+						end
+
+						-- Create a single StyledText keyframe value
+						local function make_keyframe(index, styleArray)
+							return {
+								index,
+								Value = {
+									__ctor = "StyledText", -- internal id to designate this as a StyledText object
+									Array = styleArray,
+									Flags = { StepIn = true, LockedY = true, __flags = 256 }
+								},
+							}
+						end
+
+						local function round(x)
+							return math.floor(x + 0.5)
+						end
+
+						local follower = comp:FindTool("Follower1")
+						local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
+						local spline = characterLevelStyling.CharacterLevelStyling:GetConnectedOutput():GetTool()
+
+						local wordTiming = tool:GetData("WordTiming")
+
+						local highlight = {
+    						Red = tool:GetInput("HighlightColorRed"),
+    						Green = tool:GetInput("HighlightColorGreen"),
+    						Blue = tool:GetInput("HighlightColorBlue"),
+							Enabled = 1
+						}
+
+						-- (0=Fill, 1=Outline, 2=Shadow, 3=Bubble)
+						local styleId = tool:GetInput("HighlightStyle")
+
+						-- TextPlus input suffixes are 1-based (e.g. Red1, Red2).
+						-- CharacterLevelStyling style indices appear to be 0-based.
+
+						-- local animationLength = comp:FindTool("Template"):GetInput("AnimationLength")
+						-- local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						-- local transitionFrames = round(animationLength * fps)
+						local transitionFrames = 0
+
+						-- +1 required: styleId is 0-based but Lua arrays are 1-based
+						local styleKey = STYLES[styleId + 1]
+						local base = get_current_style(styleKey)
+						local keyframes = {}
+						local keyframeIndex = 0
+						for i, word in ipairs(wordTiming) do
+							local startFrame = word.startFrame + (i > 1 and transitionFrames or 0)
+							local styleArray = build_style_array(wordTiming, i, highlight, base, styleId)
+
+							keyframes[startFrame] = make_keyframe(keyframeIndex, styleArray)
+							keyframeIndex = keyframeIndex + 1
+
+							if i < #wordTiming then
+								-- Holds the style constant until just before the next word starts, so the
+								-- transition only occurs near the word boundary rather than fading from
+								-- the beginning of the current word all the way to the next
+								keyframes[word.endFrame - 1] = make_keyframe(keyframeIndex, styleArray)
+								keyframeIndex = keyframeIndex + 1
+							end
+						end
+
+						spline:SetKeyFrames(keyframes, true)
+					end
+				]],
+				RemoveHighlight = [[
+					return function(comp, tool)
+						local follower = comp:FindTool("Follower1")
+						local characterLevelStyling = follower.Text:GetConnectedOutput():GetTool()
+						local spline = characterLevelStyling.CharacterLevelStyling:GetConnectedOutput():GetTool()
+						loadstring(tool:GetData("UpdateAllStyleColors"))()(comp, tool)
+
+						local keyframes = {
+							[0] = {
+						        0,                         -- index of keyframe in the array (0-based) - kinda random - why?
+						        Value = {
+						            __ctor = "StyledText", -- internal id to designate this as a StyledText object
+						            Array = {}, -- empty array uses default styling
+						            Flags = { StepIn = true, LockedY = true, __flags = 256 }
+						        },
+						    },
+						}
+
+						spline:SetKeyFrames(keyframes, true)
+
+						-- Disable Bubble (enabled specifically for highlight)
+						local template = comp:FindTool("Template")
+						template:SetInput("Enabled4", 0)
+					end
+				]],
+				ToggleHighlight = [[
+					return function(comp, tool)
+						local isEnabled = tool:GetInput("HighlightEnabled") == 1
+						local func = isEnabled
+        					and tool:GetData("ApplyHighlight") 
+        					or tool:GetData("RemoveHighlight")
+    					loadstring(func)()(comp, tool)
+					end
+				]],
+				UpdateHighlight = [[
+					return function(comp, tool)
+						-- Must update Highlight keyframes (if enabled)
+						local isEnabled = tool:GetInput("HighlightEnabled") == 1
+						if isEnabled then
+    					    loadstring(tool:GetData("ApplyHighlight"))()(comp, tool)
+						end
+					end
+				]],
+				UpdateStyleColor = [[
+					return function(comp, tool, type)
+						local id = ({Fill="1", Outline="2", Shadow="3", Bubble="4"})[type]
+						local template, follower = comp:FindTool("Template"), comp:FindTool("Follower1")
+
+						local value = tool:GetInput(type .. "Enabled")
+						template:SetInput("Enabled" .. id, value)
+						follower:SetInput("Enabled" .. id, value)
+						
+						for _, key in ipairs({"Red", "Green", "Blue", "Thickness"}) do
+							if type == "Outline" and key == "Thickness" then
+								local value = tool:GetInput(type .. "Thickness")
+								template:SetInput(key .. id, value)
+								follower:SetInput(key .. id, value)
+							else
+								local value = tool:GetInput(type .. "Color" .. key)
+								template:SetInput(key .. id, value)
+								follower:SetInput(key .. id, value)
+							end
+						end
+
+						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
+					end
+				]],
+				UpdateAllStyleColors = [[
+					return function(comp, tool)
+						local template, follower = comp:FindTool("Template"), comp:FindTool("Follower1")
+						local types = {"Fill", "Outline", "Shadow", "Bubble"}
+						
+						for _, type in ipairs(types) do
+							local id = ({Fill="1", Outline="2", Shadow="3", Bubble="4"})[type]
+							
+							local value = tool:GetInput(type .. "Enabled")
+							template:SetInput("Enabled" .. id, value)
+							follower:SetInput("Enabled" .. id, value)
+							
+							for _, key in ipairs({"Red", "Green", "Blue", "Thickness"}) do
+								if type == "Outline" and key == "Thickness" then
+									local value = tool:GetInput(type .. "Thickness")
+									template:SetInput(key .. id, value)
+									follower:SetInput(key .. id, value)
+								else
+									local value = tool:GetInput(type .. "Color" .. key)
+									template:SetInput(key .. id, value)
+									follower:SetInput(key .. id, value)
+								end
+							end
+						end
+					end
+				]],
+			},
+			Tools = ordered() {
+				Template = TextPlus {
+					CtrlWZoom = false,
+					CtrlWShown = true,
+					Inputs = {
+						GlobalOut = Input { Value = 149, },
+						Width = Input { Value = 1920, },
+						Height = Input { Value = 1080, },
+						UseFrameFormatSettings = Input { Value = 1, },
+						SelectElement = Input { Value = 1, },
+						Select = Input { Value = 1, },
+						Name2 = Input { Value = "Outline", },
+						Enabled2 = Input { Value = 1, },
+						Enabled3 = Input { Value = 1, },
+						StyledText = Input {
+							SourceOp = "Follower1",
+							Source = "StyledText",
+						},
+						Font = Input { Value = "Arial Rounded MT Bold", },
+						Style = Input { Value = "Regular", },
+						VerticalJustificationNew = Input { Value = 3, },
+						HorizontalJustificationNew = Input { Value = 3, },
+						Text = Input { Value = "Subtitle Example Text", },
+						Center = Input { Value = { 0.5, 0.15 }, },
+						Thickness2 = Input { Value = 0.08, },
+						Red2 = Input { Value = 1, },
+						Green2 = Input { Value = 0.3882352941176, },
+						Blue2 = Input { Value = 0.9294117647059, },
+						Softness2 = Input { Value = 1, },
+						Opacity3 = Input { Value = 0.4925926029682, },
+						Softness3 = Input { Value = 1, },
+						Level4 = Input { Value = 2 }, -- Set bubble to word level (character level looks bad)
+						ExtendHorizontal4 = Input { Value = 0 },
+						ExtendVertical4 = Input { Value = 0 },
+						Round4 = Input { Value = 0.2 },
+					},
+					ViewInfo = OperatorInfo { Pos = { 0, 8.75758 } },
+					UserControls = ordered() {
+						-- UserControls defines the actual custom controls on the Template tool.
+						-- These are the source definitions: labels, defaults, callbacks, ranges, etc.
+						SubtitleLabel = {
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 6,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INPID_InputControl = "LabelControl",
+							INP_Passive = true,
+							LINKS_Name = "Text",
+						},
+						Text = {
+							TEC_ReadOnly = false,
+							INPID_InputControl = "TextEditControl",
+							TEC_Lines = 5,
+							LINKID_DataType = "Text",
+							TEC_Wrap = false,
+							INP_External = false,
+							IC_NoLabel = true,
+							INP_Passive = true,
+							IC_Visible = true,
+							INPS_ExecuteOnChange = [[
+								local text = tool:GetInput("Text")
+								if text then
+									tool:SetInput("StyledText", text)
+									local func = tool:GetData("UpdateTextContent")
+									if func then
+										loadstring(func)()(comp, tool, text)
+									end
+								end
+							]],
+						},
+						AnimationLabel = {
+							LINKS_Name = "Animation",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 6,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						AnimationLevel = {
+							LINKS_Name = "Animation Level",
+							INP_MaxAllowed = 1,
+							INP_Integer = true,
+							INPID_InputControl = "ComboControl",
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = true,
+							INP_MinAllowed = 0,
+							{ CCS_AddString = "Segment Level" },
+							{ CCS_AddString = "Word by Word" },
+							INPS_ExecuteOnChange = [[
+								local func = tool:GetData("ApplyAnimationLevel")
+								if func then loadstring(func)()(comp, tool) end
+							]]
+						},
+						ModifyWordTiming = {
+							LINKS_Name = "Adjust Word Timing",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								local isEditing = tool:GetData("IsEditing") == true
+								if isEditing then
+									-- Apply changes and exit editing mode
+									tool.ModifyWordTiming:SetAttrs({INPS_Name = "Adjust Word Timing"})
+									tool:SetData("IsEditing", false)
+									loadstring(tool:GetData("ApplyWordMarkers"))()(comp, tool)
+								else
+									-- Enter editing mode and show markers
+									tool.ModifyWordTiming:SetAttrs({INPS_Name = "Timeline Markers Added - Adjust & Click to Save"})
+									tool:SetData("IsEditing", true)
+									loadstring(tool:GetData("ShowWordMarkers"))()(comp, tool)
+								end
+							]],
+						},
+						FadeEnabled = {
+							LINKS_Name = "Fade",
+							LINKID_DataType = "Number",
+							INPID_InputControl = "CheckboxControl",
+							INP_Integer = true,
+							INP_Default = 1,
+							INP_Passive = true,
+							INP_External = false,
+							CBC_TriState = false,
+						},
+						PopInEnabled = {
+							LINKS_Name = "Pop In",
+							LINKID_DataType = "Number",
+							INPID_InputControl = "CheckboxControl",
+							INP_Integer = true,
+							INP_Default = 0,
+							INP_Passive = true,
+							INP_External = false,
+							CBC_TriState = false,
+						},
+						SlideUpEnabled = {
+							LINKS_Name = "Slide Up",
+							LINKID_DataType = "Number",
+							INPID_InputControl = "CheckboxControl",
+							INP_Integer = true,
+							INP_Default = 0,
+							INP_Passive = true,
+							INP_External = false,
+							CBC_TriState = false,
+						},
+						AnimationMode = {
+							LINKS_Name = "Animation Mode",
+							LINKID_DataType = "Number",
+							INPID_InputControl = "ComboControl",
+							INP_Integer = true,
+							INP_Default = 2,
+							INP_Passive = true,
+							INP_External = false,
+							INP_MinAllowed = 0,
+							INP_MaxAllowed = 2,
+							{ CCS_AddString = "In" },
+							{ CCS_AddString = "Out" },
+							{ CCS_AddString = "Both" },
+						},
+						AnimationLength = {
+							INP_MaxAllowed = 1000000,
+							INP_Integer = false,
+							INPID_InputControl = "SliderControl",
+							IC_Steps = 0,
+							INP_MaxScale = 1,
+							INP_Passive = true,
+							INP_External = false,
+							INP_Default = 0.35,
+							INP_MinScale = 0,
+							INP_MinAllowed = 0,
+							LINKID_DataType = "Number",
+							ICD_Center = 0.5,
+							LINKS_Name = "Duration (seconds)"
+						},
+						UpdateAnimationButton = {
+							LINKS_Name = "Update Animation",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								loadstring(tool:GetData("SetAnimations"))()(comp, tool)
+							]],
+						},
+						HighlightLabel = {
+							LINKS_Name = "Highlighter",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 8,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						HighlightEnabled = {
+							LINKS_Name = "Highlight Spoken Word",
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "CheckboxControl",
+							CBC_TriState = false,
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = false,
+							INP_MinAllowed = 0,
+							INPS_ExecuteOnChange = [[
+								local func = tool:GetData("ToggleHighlight")
+								if func then
+									loadstring(func)()(comp, tool)
+								end
+							]],
+						},
+						UpdateHighlight = {
+							LINKS_Name = "Update Highlight Color",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
+							]],
+						},
+						HighlightStyle = {
+							LINKS_Name = "Style",
+							INP_Integer = true,
+							INPID_InputControl = "ComboControl",
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = true,
+							INP_MinAllowed = 0,
+							{ CCS_AddString = "Fill" },
+							{ CCS_AddString = "Outline" },
+							{ CCS_AddString = "Shadow / Glow" },
+							{ CCS_AddString = "Bubble" },
+							INPS_ExecuteOnChange = [[
+								local func = tool:GetData("UpdateHighlight")
+								if func then
+									loadstring(func)()(comp, tool)
+								end
+							]],
+						},
+						HighlightExtendHorizontal = {
+							LINKID_DataType = "Number",
+							INPID_InputControl = "SliderControl",
+							INP_Default = 0,
+							INP_Integer = false,
+							INP_MinScale = -0.5,
+							INP_MaxScale = 2,
+							INP_MinAllowed = -1000000,
+							INP_MaxAllowed = 1000000,
+							INP_SplineType = "Default",
+							INP_External = false,
+							INP_Passive = true,
+							LINKS_Name = "Extend Horizontal",
+							INPS_ExecuteOnChange = [[
+								tool:SetInput("ExtendHorizontal4", tool:GetInput("HighlightExtendHorizontal"))
+							]]
+						},
+						HighlightExtendVertical = {
+							LINKID_DataType = "Number",
+							INPID_InputControl = "SliderControl",
+							INP_Default = 0,
+							INP_Integer = false,
+							INP_MinScale = -0.5,
+							INP_MaxScale = 2,
+							INP_MinAllowed = -1000000,
+							INP_MaxAllowed = 1000000,
+							INP_SplineType = "Default",
+							INP_External = false,
+							INP_Passive = true,
+							LINKS_Name = "Extend Vertical",
+							INPS_ExecuteOnChange = [[
+								tool:SetInput("ExtendVertical4", tool:GetInput("HighlightExtendVertical"))
+							]]
+						},
+						HighlightRound = {
+							LINKID_DataType = "Number",
+							INPID_InputControl = "SliderControl",
+							INP_Default = 0.2,
+							INP_Integer = false,
+							INP_MinScale = 0,
+							INP_MaxScale = 1,
+							INP_MinAllowed = -1000000,
+							INP_MaxAllowed = 1000000,
+							INP_SplineType = "Default",
+							INP_External = false,
+							INP_Passive = true,
+							LINKS_Name = "Round",
+							INPS_ExecuteOnChange = [[
+								tool:SetInput("Round4", tool:GetInput("HighlightRound"))
+							]]
+						},
+						HighlightColorRed = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							CLRC_ShowWheel = true,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 1.0,
+							IC_ControlID = 0,
+							IC_ControlGroup = 23,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						HighlightColorGreen = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 1,
+							IC_ControlGroup = 23,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						HighlightColorBlue = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 2,
+							IC_ControlGroup = 23,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						FillLabel = {
+							LINKS_Name = "Fill",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 5,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						FillEnabled = {
+							LINKS_Name = "Enabled",
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "CheckboxControl",
+							CBC_TriState = false,
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = false,
+							INP_MinAllowed = 0,
+							INPS_ExecuteOnChange = [[
+								-- Add nil check because ExecuteOnChange can fire multiple times during initialization
+								-- before UpdateStyleColors data is available, while button clicks only run after full load
+								local func = tool:GetData("UpdateStyleColor")
+								if func then
+									loadstring(func)()(comp, tool, "Fill")
+								end
+							]],
+						},
+						UpdateFillColor = {
+							LINKS_Name = "Update Fill Color",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								loadstring(tool:GetData("UpdateStyleColor"))()(comp, tool, "Fill")
+							]],
+						},
+						FillColorRed = {
+							LINKS_Name = "Fill Color",
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							CLRC_ShowWheel = true,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 1,
+							IC_ControlID = 0,
+							IC_ControlGroup = 21,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						FillColorGreen = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 1,
+							IC_ControlID = 1,
+							IC_ControlGroup = 21,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						FillColorBlue = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 1,
+							IC_ControlID = 2,
+							IC_ControlGroup = 21,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						OutlineLabel = {
+							LINKS_Name = "Outline",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 6,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						OutlineEnabled = {
+							LINKS_Name = "Enabled",
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "CheckboxControl",
+							CBC_TriState = false,
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = false,
+							INP_MinAllowed = 0,
+							INPS_ExecuteOnChange = [[
+								-- Add nil check because ExecuteOnChange can fire multiple times during initialization
+								-- before UpdateStyleColors data is available, while button clicks only run after full load
+								local func = tool:GetData("UpdateStyleColor")
+								if func then
+									loadstring(func)()(comp, tool, "Outline")
+								end
+							]],
+						},
+						UpdateOutlineColor = {
+							LINKS_Name = "Update Outline Color",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								loadstring(tool:GetData("UpdateStyleColor"))()(comp, tool, "Outline")
+							]],
+						},
+						OutlineThickness = {
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "SliderControl",
+							IC_Steps = 0,
+							INP_MaxScale = 0.2,
+							INP_Passive = true,
+							INP_External = false,
+							INP_Default = 0.08,
+							INP_MinScale = 0,
+							INP_MinAllowed = 0,
+							LINKID_DataType = "Number",
+							LINKS_Name = "Thickness"
+						},
+						OutlineColorRed = {
+							LINKS_Name = "Outline Color",
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							CLRC_ShowWheel = true,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 0,
+							IC_ControlGroup = 20,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						OutlineColorGreen = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0.35,
+							IC_ControlID = 1,
+							IC_ControlGroup = 20,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						OutlineColorBlue = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 1.0,
+							IC_ControlID = 2,
+							IC_ControlGroup = 20,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						ShadowLabel = {
+							LINKS_Name = "Shadow / Glow",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 5,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						ShadowEnabled = {
+							LINKS_Name = "Enabled",
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "CheckboxControl",
+							CBC_TriState = false,
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = false,
+							INP_MinAllowed = 0,
+							INPS_ExecuteOnChange = [[
+								-- Add nil check because ExecuteOnChange can fire multiple times during initialization
+								-- before UpdateStyleColors data is available, while button clicks only run after full load
+								local func = tool:GetData("UpdateStyleColor")
+								if func then
+									loadstring(func)()(comp, tool, "Shadow")
+								end
+							]],
+						},
+						UpdateShadowColor = {
+							LINKS_Name = "Update Shadow Color",
+							LINKID_DataType = "Number",
+							IC_NoLabel = false,
+							INPID_InputControl = "ButtonControl",
+							IC_Visible = true,
+							INP_Passive = true,
+							BTNCS_Execute = [[
+								loadstring(tool:GetData("UpdateStyleColor"))()(comp, tool, "Shadow")
+							]],
+						},
+						ShadowColorRed = {
+							LINKS_Name = "Shadow Color",
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							CLRC_ShowWheel = true,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 0,
+							IC_ControlGroup = 22,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						ShadowColorGreen = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 1,
+							IC_ControlGroup = 22,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+						ShadowColorBlue = {
+							INP_Integer = false,
+							CLRC_NoSliders = false,
+							INPID_InputControl = "ColorControl",
+							LINKID_DataType = "Number",
+							INP_Default = 0,
+							IC_ControlID = 2,
+							IC_ControlGroup = 22,
+							ICS_ControlPage = "Controls",
+							IC_Visible = true,
+							INP_External = false,
+							INP_Passive = false,
+						},
+					}
+				},
+				Follower1 = StyledTextFollower {
+					Inputs = {
+						Order = Input {
+							SourceOp = "OrderKeyframeStretcher",
+							Source = "Result",
+						},
+						DelayByCharacterPosition = Input {
+							SourceOp = "Follower1DelaybyCharacterPosition",
+							Source = "Value",
+						},
+						DelayType = Input { Value = 0, },
+						Delay = Input { Value = 0, },
+						Text = Input {
+							SourceOp = "CharacterLevelStyling1",
+							Source = "StyledText",
+						},
+						TransformRotation = Input { Value = 1, },
+						SelectElement = Input { Value = 2, },
+						Enabled2 = Input { Value = 1, },
+						Enabled3 = Input { Value = 1, },
+						Opacity1 = Input {
+							SourceOp = "AnimationKeyframeStretcher",
+							Source = "Result",
+						},
+						Softness1 = Input { Value = 1, },
+						Opacity2 = Input {
+							SourceOp = "AnimationKeyframeStretcher",
+							Source = "Result",
+						},
+						Thickness2 = Input { Value = 0.8, },
+						Red2 = Input { Value = 0.9294117647059, },
+						Green2 = Input { Value = 0.0509803921569, },
+						Softness2 = Input { Value = 1, },
+						Opacity3 = Input {
+							SourceOp = "AnimationKeyframeStretcher",
+							Source = "Result",
+						},
+						Softness3 = Input { Value = 1, },
+						Opacity4 = Input {
+							SourceOp = "AnimationKeyframeStretcher",
+							Source = "Result",
+						},
+						Softness4 = Input { Value = 1, },
+						Softness5 = Input { Value = 1, },
+						Softness6 = Input { Value = 1, },
+						Softness7 = Input { Value = 1, },
+						Softness8 = Input { Value = 1, }
+					},
+				},
+				AnimationKeyframeStretcher = KeyStretcherMod {
+					CtrlWZoom = false,
+					Inputs = {
+						Keyframes = Input {
+							SourceOp = "KeyframeStretcher1Keyframes",
+							Source = "Value",
+						},
+						SourceEnd = Input { Value = 100, },
+						StretchStart = Input { Value = 15, },
+						StretchEnd = Input { Value = 85, }
+					},
+				},
+				OrderKeyframeStretcher = KeyStretcherMod {
+					Inputs = {
+						Keyframes = Input {
+							SourceOp = "KeyframeStretcher2Keyframes",
+							Source = "Value",
+						},
+						SourceEnd = Input { Value = 100, },
+						StretchEnd = Input { Value = 85, }
+					},
+				},
+				KeyframeStretcher1Keyframes = BezierSpline {
+					SplineColor = { Red = 193, Green = 106, Blue = 231 },
+					NameSet = true,
+					KeyFrames = {
+						[0] = { 0, RH = { 2.66666666666667, 0.333333333333333 }, Flags = { Linear = true } },
+						[8] = { 1, LH = { 0, 1 }, RH = { 36, 1 } },
+						[92] = { 1, LH = { 64, 1 }, RH = { 94.6666666666667, 0.666666666666667 }, Flags = { Linear = true } },
+						[100] = { 0, LH = { 97.3333333333333, 0.333333333333333 }, Flags = { Linear = true } }
+					}
+				},
+				KeyframeStretcher2Keyframes = BezierSpline {
+					SplineColor = { Red = 193, Green = 106, Blue = 231 },
+					NameSet = true,
+					KeyFrames = {
+						[84] = { 6, Flags = { StepIn = true } },
+						[85] = { 0, Flags = { StepIn = true } },
+					}
+				},
+				CharacterLevelStyling1 = StyledTextCLS {
+					CtrlWZoom = false,
+					Inputs = {
+						TransformRotation = Input { Value = 1, },
+						SelectElement = Input { Value = 1, },
+						Softness = Input { Value = 1, },
+						Text = Input { Value = "Subtitle Example Text", },
+						CharacterLevelStyling = Input {
+							SourceOp = "CharacterLevelStyling1RightclickHeretoAnimateCharacterLevelStyling",
+							Source = "Value",
+						}
+					},
+				},
+				CharacterLevelStyling1RightclickHeretoAnimateCharacterLevelStyling = BezierSpline {
+					SplineColor = { Red = 240, Green = 105, Blue = 156 },
+					CtrlWZoom = false,
+					KeyFrames = {
+						[0] = { 0, RH = { 9.66666666666667, 0.333333333333333 }, Flags = { LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2402, 0, 7, Index = 1 },
+									{ 2403, 0, 7, Index = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2403, 8, 15, Index = 1, Value = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 }
+								},
+								Value = ""
+							} },
+						[29] = { 1, LH = { 19.3333333333333, 0.666666666666667 }, RH = { 30, 1.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2402, 0, 7, Index = 1 },
+									{ 2403, 0, 7, Index = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2403, 8, 15, Index = 1, Value = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 }
+								},
+								Value = ""
+							} },
+						[32] = { 2, LH = { 31, 1.66666666666667 }, RH = { 41, 2.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 }
+								},
+								Value = ""
+							} },
+						[59] = { 3, LH = { 50, 2.66666666666667 }, RH = { 60, 3.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 }
+								},
+								Value = ""
+							} },
+						[62] = { 4, LH = { 61, 3.66666666666667 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2403, 8, 15, Index = 1, Value = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
+									{ 2402, 16, 20, Index = 1 },
+									{ 2403, 16, 20, Index = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1, Value = 1 }
+								},
+								Value = ""
+							} }
+					}
+				}
+			},
+			UserControls = ordered() {
+			    Icon = { INP_Integer = false, INPID_InputControl = "LabelControl", IC_ControlPage = -1, LBLC_MultiLine = true, INP_External = false, LINKID_DataType = "Number", IC_NoReset = true, INP_Passive = true, IC_NoLabel = true, LINKS_Name = "<center><img src='data:image/png;base64,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 > ", },
+				Text = ControlPage {
+					CT_Visible = true,
+					CTID_DIB_ID = 'Icons.Tools.Tabs.Text'
+				},
+				Style = ControlPage {
+					CT_Visible = true,
+				},
+				Controls = ControlPage {
+					CT_Visible = false,
+				},
+				Settings = ControlPage {
+					CT_Visible = false,
+				},
+			},
+			Inputs = ordered() {
+				-- Inputs publishes controls to the Macro inspector.
+				-- InstanceInput creates a visible inspector entry that points back to a
+				-- UserControls entry on the Template via SourceOp/Source.
+				-- In most cases the instance name matches the source control name 1:1.
+				TextLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "SubtitleLabel",
+					Page = "Text",
+				},
+				Text = InstanceInput {
+					SourceOp = "Template",
+					Source = "Text",
+					Page = "Text",
+				},
+				Font = InstanceInput {
+					SourceOp = "Template",
+					Source = "Font",
+					ControlGroup = 4,
+					Page = "Text",
+				},
+				Style = InstanceInput {
+					SourceOp = "Template",
+					Source = "Style",
+					ControlGroup = 4,
+					Page = "Text",
+				},
+				TextSize = InstanceInput {
+					SourceOp = "Template",
+					Source = "Size",
+					Default = 0.08,
+					Page = "Text",
+				},
+				TextPosition = InstanceInput {
+					SourceOp = "Template",
+					Source = "Center",
+					Name = "Center",
+				},
+				ModifyWordTiming = InstanceInput {
+					SourceOp = "Template",
+					Source = "ModifyWordTiming",
+					Page = "Text",
+				},
+				AnimationLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "AnimationLabel",
+					Page = "Text",
+				},
+				AnimationLevel = InstanceInput {
+					SourceOp = "Template",
+					Source = "AnimationLevel",
+					Page = "Text",
+					Default = 1,
+				},
+				AnimationMode = InstanceInput {
+					SourceOp = "Template",
+					Source = "AnimationMode",
+					Page = "Text",
+					Default = 2,
+				},
+				FadeEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "FadeEnabled",
+					Page = "Text",
+					Default = 1,
+				},
+				PopInEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "PopInEnabled",
+					Page = "Text",
+					Default = 0,
+				},
+				SlideUpEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "SlideUpEnabled",
+					Page = "Text",
+					Default = 0,
+				},
+				AnimationLength = InstanceInput {
+					SourceOp = "Template",
+					Source = "AnimationLength",
+					Page = "Text",
+				},
+				UpdateAnimationButton = InstanceInput {
+					SourceOp = "Template",
+					Source = "UpdateAnimationButton",
+					Page = "Text",
+				},
+				HighlightLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightLabel",
+					Page = "Text",
+				},
+				HighlightEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightEnabled",
+					Page = "Text",
+				},
+				HighlightStyle = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightStyle",
+					Page = "Text",
+				},
+				HighlightExtendHorizontal = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightExtendHorizontal",
+					Page = "Text",
+					MinAllowed = -10,
+					MaxAllowed = 10,
+					MinScale = -0.5,
+				},
+				HighlightExtendVertical = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightExtendVertical",
+					Page = "Text",
+					MinAllowed = -10,
+					MaxAllowed = 10,
+					MinScale = -0.5,
+				},
+				HighlightRound = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightRound",
+					Page = "Text",
+				},
+				HighlightColorRed = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightColorRed",
+					Name = "Color",
+					ControlGroup = 123,
+					Page = "Text",
+					Default = 0,
+				},
+				HighlightColorGreen = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightColorGreen",
+					ControlGroup = 123,
+					Page = "Text",
+					Default = 0,
+				},
+				HighlightColorBlue = InstanceInput {
+					SourceOp = "Template",
+					Source = "HighlightColorBlue",
+					ControlGroup = 123,
+					Page = "Text",
+					Default = 0,
+				},
+				UpdateHighlight = InstanceInput {
+					SourceOp = "Template",
+					Source = "UpdateHighlight",
+					Page = "Text",
+				},
+				FillLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "FillLabel",
+					Page = "Style",
+				},
+				FillEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "FillEnabled",
+					Name = "Enabled",
+					Page = "Style",
+					Default = 1,
+				},
+				FillColorRed = InstanceInput {
+					SourceOp = "Template",
+					Source = "FillColorRed",
+					Name = "Fill Color",
+					ControlGroup = 121,
+					Page = "Style",
+					Default = 1,
+				},
+				FillColorGreen = InstanceInput {
+					SourceOp = "Template",
+					Source = "FillColorGreen",
+					ControlGroup = 121,
+					Page = "Style",
+					Default = 1,
+				},
+				FillColorBlue = InstanceInput {
+					SourceOp = "Template",
+					Source = "FillColorBlue",
+					ControlGroup = 121,
+					Page = "Style",
+					Default = 1,
+				},
+				UpdateFillColor = InstanceInput {
+					SourceOp = "Template",
+					Source = "UpdateFillColor",
+					Page = "Style",
+				},
+				OutlineLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineLabel",
+					Page = "Style",
+				},
+				OutlineEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineEnabled",
+					Name = "Enabled",
+					Page = "Style",
+					Default = 1,
+				},
+				OutlineThickness = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineThickness",
+					Page = "Style",
+				},
+				OutlineColorRed = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineColorRed",
+					Name = "Outline Color",
+					ControlGroup = 120,
+					Page = "Style",
+					Default = 1,
+				},
+				OutlineColorGreen = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineColorGreen",
+					ControlGroup = 120,
+					Page = "Style",
+					Default = 0.3882352941176,
+				},
+				OutlineColorBlue = InstanceInput {
+					SourceOp = "Template",
+					Source = "OutlineColorBlue",
+					ControlGroup = 120,
+					Page = "Style",
+					Default = 0.9294117647059,
+				},
+				UpdateOutlineColor = InstanceInput {
+					SourceOp = "Template",
+					Source = "UpdateOutlineColor",
+					Page = "Style",
+				},
+				ShadowLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "ShadowLabel",
+					Page = "Style",
+				},
+				ShadowEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "ShadowEnabled",
+					Name = "Enabled",
+					Page = "Style",
+					Default = 1,
+				},
+				ShadowColorRed = InstanceInput {
+					SourceOp = "Template",
+					Source = "ShadowColorRed",
+					Name = "Shadow Color",
+					ControlGroup = 122,
+					Page = "Style",
+					Default = 0,
+				},
+				ShadowColorGreen = InstanceInput {
+					SourceOp = "Template",
+					Source = "ShadowColorGreen",
+					ControlGroup = 122,
+					Page = "Style",
+					Default = 0,
+				},
+				ShadowColorBlue = InstanceInput {
+					SourceOp = "Template",
+					Source = "ShadowColorBlue",
+					ControlGroup = 122,
+					Page = "Style",
+					Default = 0,
+				},
+				UpdateShadowColor = InstanceInput {
+					SourceOp = "Template",
+					Source = "UpdateShadowColor",
+					Page = "Style",
+				}
+				-- Multiple InstanceInputs can point to the same source control.
+				-- Use distinct instance names only when exposing the same control in different
+				-- pages/groups/roles.
+			},
+			Outputs = {
+				MainOutput1 = InstanceOutput {
+					SourceOp = "Template",
+					Source = "Output",
+				},
+				Output1 = InstanceOutput {
+					SourceOp = "Follower1",
+					Source = "StyledText",
+				},
+				Output2 = InstanceOutput {
+					SourceOp = "KeyframeStretcher2",
+					Source = "Result",
+				},
+				Output3 = InstanceOutput {
+					SourceOp = "KeyframeStretcher2Keyframes",
+					Source = "Value",
+				},
+				Output4 = InstanceOutput {
+					SourceOp = "Follower1DelaybyCharacterPosition",
+					Source = "Value",
+				},
+				Output5 = InstanceOutput {
+					SourceOp = "KeyframeStretcher1Keyframes",
+					Source = "Value",
+				},
+			},
+		},
+		-- Needs to be placed outside of the AutoSubs tool list.
+		-- Otherwise the macro will break when Resolve is restarted (not sure why)
+		Follower1DelaybyCharacterPosition = BezierSpline {
+			SplineColor = { Red = 33, Green = 7, Blue = 252 },
+			KeyFrames = {
+				[0] = { 0, Flags = { StepIn = true } },
+				[8] = { 30, Flags = { StepIn = true } },
+				[16] = { 60, Flags = { StepIn = true } },
+			}
+		},
+	}
+}
