@@ -63,9 +63,9 @@ interface AddToTimelineDialogProps {
 }
 
 const STEPS = [
+    { key: "outputTrack", icon: Layers },
     { key: "template", icon: Layout },
     { key: "speakers", icon: Palette },
-    { key: "outputTrack", icon: Layers },
 ] as const
 
 export function AddToTimelineDialog({
@@ -119,7 +119,12 @@ export function AddToTimelineDialog({
             presetId: settings.presetId || DEFAULT_PRESET_ID,
             outputTrack: settings.selectedOutputTrack,
         })
-        setLocalSpeakers(speakers)
+        // Initialize speakers without tracks to use the global output track
+        const initializedSpeakers = speakers.map((speaker) => ({
+            ...speaker,
+            track: speaker.track || settings.selectedOutputTrack,
+        }))
+        setLocalSpeakers(initializedSpeakers)
         setCreateSession({ kind: "closed" })
     }, [open, settings, speakers])
 
@@ -130,7 +135,7 @@ export function AddToTimelineDialog({
     function handleOpenChange(next: boolean) {
         if (!next && createSession.kind !== "closed") {
             // Fire-and-forget cancel of the Resolve-side session.
-            cancelPresetEdit().catch(() => {})
+            cancelPresetEdit().catch(() => { })
             setCreateSession({ kind: "closed" })
         }
         setOpen(next)
@@ -288,19 +293,21 @@ export function AddToTimelineDialog({
                     )}
 
                     {activeSteps[currentStep]?.key === "speakers" && (
-                        <ScrollArea className="max-h-[320px] pr-3">
-                            <div className="space-y-3">
+                        <ScrollArea>
+                            <div className="space-y-2">
                                 {localSpeakers.map((speaker, index) => (
-                                    <SpeakerSettings
-                                        key={index}
-                                        speaker={speaker}
-                                        onSpeakerChange={(updated) => {
-                                            const next = [...localSpeakers]
-                                            next[index] = updated
-                                            setLocalSpeakers(next)
-                                        }}
-                                        tracks={timelineInfo.outputTracks}
-                                    />
+                                    <div className="rounded-sm border p-2">
+                                        <SpeakerSettings
+                                            key={index}
+                                            speaker={speaker}
+                                            onSpeakerChange={(updated) => {
+                                                const next = [...localSpeakers]
+                                                next[index] = updated
+                                                setLocalSpeakers(next)
+                                            }}
+                                            tracks={timelineInfo.outputTracks}
+                                        />
+                                    </div>
                                 ))}
                             </div>
                         </ScrollArea>
@@ -396,13 +403,12 @@ function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
                             type="button"
                             onClick={() => clickable && onJump(index)}
                             disabled={!clickable}
-                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                                isCompleted
-                                    ? "bg-primary/10 text-primary hover:bg-primary/20"
-                                    : isCurrent
+                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${isCompleted
+                                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                : isCurrent
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted text-muted-foreground"
-                            } ${!clickable && !isCurrent ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                } ${!clickable && !isCurrent ? "cursor-not-allowed" : "cursor-pointer"}`}
                         >
                             {isCompleted ? (
                                 <Check className="w-3.5 h-3.5" />
@@ -413,9 +419,8 @@ function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
                         </button>
                         {index < steps.length - 1 && (
                             <div
-                                className={`h-0.5 w-6 rounded-full ${
-                                    isCompleted ? "bg-primary" : "bg-muted"
-                                }`}
+                                className={`h-0.5 w-6 rounded-full ${isCompleted ? "bg-primary" : "bg-muted"
+                                    }`}
                             />
                         )}
                     </React.Fragment>
@@ -508,11 +513,10 @@ function TemplateStep({
                                 key={template.value}
                                 type="button"
                                 onClick={() => onTemplateChange(template.value)}
-                                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                                    templateValue === template.value
-                                        ? "bg-secondary text-secondary-foreground"
-                                        : "hover:bg-muted"
-                                }`}
+                                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${templateValue === template.value
+                                    ? "bg-secondary text-secondary-foreground"
+                                    : "hover:bg-muted"
+                                    }`}
                             >
                                 <div className="flex items-center justify-between">
                                     <span>{template.label}</span>
@@ -564,11 +568,10 @@ function OutputTrackStep({
                         key={track.value}
                         type="button"
                         onClick={() => onSelect(track.value)}
-                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                            selected === track.value
-                                ? "bg-secondary text-secondary-foreground"
-                                : "hover:bg-muted"
-                        }`}
+                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${selected === track.value
+                            ? "bg-secondary text-secondary-foreground"
+                            : "hover:bg-muted"
+                            }`}
                     >
                         <div className="flex items-center justify-between">
                             <span>{track.label}</span>
