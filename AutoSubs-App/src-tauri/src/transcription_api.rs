@@ -240,7 +240,7 @@ pub async fn transcribe_audio<R: Runtime>(
         }
 
         // Run transcription
-        let segments = engine
+        let (segments, output_language) = engine
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
@@ -332,6 +332,7 @@ pub async fn transcribe_audio<R: Runtime>(
 
         Ok::<Transcript, String>(Transcript {
             processing_time_sec: 0, // Will be set below
+            language: output_language,
             segments,
             speakers,
         })

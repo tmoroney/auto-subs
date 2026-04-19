@@ -55,6 +55,7 @@ pub struct Speaker {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transcript {
     pub processing_time_sec: u64,
+    pub language: String,
     pub segments: Vec<Segment>,
     pub speakers: Vec<Speaker>,
 }

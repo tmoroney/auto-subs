@@ -1093,7 +1093,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                         local applyOk, applyErr = pcall(function()
                             local setter = autosubsTool:GetData("SetInputValues")
                             if setter and setter ~= "" then
-                                loadstring(setter)(comp, autosubsTool, presetSettings)
+                                loadstring(setter)()(comp, autosubsTool, presetSettings)
                             end
                         end)
                         if not applyOk then
@@ -1360,7 +1360,7 @@ function StartPresetEdit(initialSettings)
             pcall(function()
                 local setter = tool:GetData("SetInputValues")
                 if setter and setter ~= "" then
-                    loadstring(setter)(comp, tool, initialSettings)
+                    loadstring(setter)()(comp, tool, initialSettings)
                 end
             end)
         end

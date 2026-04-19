@@ -59,6 +59,7 @@ interface AddToTimelineDialogProps {
         selectedTemplate: string,
         presetSettings?: Record<string, unknown>,
     ) => Promise<void>
+    isAdding?: boolean
 }
 
 const STEPS = [
@@ -72,6 +73,7 @@ export function AddToTimelineDialog({
     settings,
     timelineInfo,
     onAddToTimeline,
+    isAdding = false,
 }: AddToTimelineDialogProps) {
     const { t } = useTranslation()
     const { speakers, updateSpeakers } = useTranscript()
@@ -179,38 +181,40 @@ export function AddToTimelineDialog({
     // Submit: assemble the final template/preset pair and hand it to the parent.
     async function handleSubmit() {
         setIsSubmitting(true)
-        try {
-            if (localSpeakers.length > 0) {
-                await updateSpeakers(localSpeakers)
-            }
 
-            const templateName =
-                selection.mode === "animated"
-                    ? ANIMATED_CAPTION_TEMPLATE
-                    : selection.templateValue
-            const presetSettings =
-                selection.mode === "animated"
-                    ? getPreset(selection.presetId)?.macroSettings
-                    : undefined
-
-            // Persist the user's picks so the next run starts from them.
-            if (selection.mode === "animated") {
-                updateSetting("presetId", selection.presetId)
-            } else {
-                const matched = timelineInfo.templates.find(
-                    (tpl) => tpl.value === selection.templateValue,
-                )
-                if (matched) updateSetting("selectedTemplate", matched)
-            }
-            updateSetting("selectedOutputTrack", selection.outputTrack)
-
-            await onAddToTimeline(selection.outputTrack, templateName, presetSettings)
-            setOpen(false)
-        } catch (err) {
-            console.error("Failed to add to timeline:", err)
-        } finally {
-            setIsSubmitting(false)
+        if (localSpeakers.length > 0) {
+            await updateSpeakers(localSpeakers)
         }
+
+        const templateName =
+            selection.mode === "animated"
+                ? ANIMATED_CAPTION_TEMPLATE
+                : selection.templateValue
+        const presetSettings =
+            selection.mode === "animated"
+                ? getPreset(selection.presetId)?.macroSettings
+                : undefined
+
+        // Persist the user's picks so the next run starts from them.
+        if (selection.mode === "animated") {
+            updateSetting("presetId", selection.presetId)
+        } else {
+            const matched = timelineInfo.templates.find(
+                (tpl) => tpl.value === selection.templateValue,
+            )
+            if (matched) updateSetting("selectedTemplate", matched)
+        }
+        updateSetting("selectedOutputTrack", selection.outputTrack)
+
+        // Close dialog immediately
+        setOpen(false)
+
+        // Run the operation in background
+        onAddToTimeline(selection.outputTrack, templateName, presetSettings).catch((err) => {
+            console.error("Failed to add to timeline:", err)
+        }).finally(() => {
+            setIsSubmitting(false)
+        })
     }
 
     function canProceed(): boolean {
@@ -348,9 +352,9 @@ export function AddToTimelineDialog({
                             <Button
                                 type="button"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || !canProceed()}
+                                disabled={isSubmitting || isAdding || !canProceed()}
                             >
-                                {isSubmitting ? (
+                                {isSubmitting || isAdding ? (
                                     <>
                                         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                                         {t("addToTimeline.adding")}

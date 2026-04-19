@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Repeat2, Type, Upload, Users, X } from "lucide-react"
+import { Loader2, Repeat2, Type, Upload, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Input } from "@/components/ui/input"
@@ -511,6 +511,7 @@ interface AddToTimelineFooterProps {
   layersIconRef: React.RefObject<PlusIconHandle>
   onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>
   t: (key: string) => string
+  isAdding: boolean
 }
 
 function AddToTimelineFooter({
@@ -520,6 +521,7 @@ function AddToTimelineFooter({
   layersIconRef,
   onAddToTimeline,
   t,
+  isAdding,
 }: AddToTimelineFooterProps) {
   return (
     <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
@@ -527,16 +529,27 @@ function AddToTimelineFooter({
         settings={settings}
         timelineInfo={timelineInfo}
         onAddToTimeline={onAddToTimeline}
+        isAdding={isAdding}
       >
         <Button
           variant={variant === "desktop" ? "secondary" : "default"}
           size="default"
+          disabled={isAdding}
           className={variant === "desktop" ? "w-full" : "w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"}
-          onMouseEnter={() => layersIconRef.current?.startAnimation?.()}
-          onMouseLeave={() => layersIconRef.current?.stopAnimation?.()}
+          onMouseEnter={() => !isAdding && layersIconRef.current?.startAnimation?.()}
+          onMouseLeave={() => !isAdding && layersIconRef.current?.stopAnimation?.()}
         >
-          <PlusIcon ref={layersIconRef} className="w-4 h-4" />
-          {t("subtitles.addToTimeline")}
+          {isAdding ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t("addToTimeline.adding")}
+            </>
+          ) : (
+            <>
+              <PlusIcon ref={layersIconRef} className="w-4 h-4" />
+              {t("subtitles.addToTimeline")}
+            </>
+          )}
         </Button>
       </AddToTimelineDialog>
     </div>
@@ -553,6 +566,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [showReformat, setShowReformat] = React.useState(false)
   const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>([])
+  const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const layersIconRef = React.useRef<PlusIconHandle>(null)
   const { subtitles, currentTranscriptFilename, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles, speakers, updateSpeakers } = useTranscript()
@@ -633,10 +647,13 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
         return
       }
 
+      setIsAddingToTimeline(true)
       await pushToTimeline(currentTranscriptFilename, selectedTemplate, selectedOutputTrack, presetSettings)
     } catch (error) {
       console.error("Failed to add to timeline:", error)
       throw error
+    } finally {
+      setIsAddingToTimeline(false)
     }
   }
 
@@ -709,6 +726,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
           layersIconRef={layersIconRef}
           onAddToTimeline={handleAddToTimeline}
           t={t}
+          isAdding={isAddingToTimeline}
         />
       )}
     </div>

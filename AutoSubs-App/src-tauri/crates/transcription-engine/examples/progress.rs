@@ -115,11 +115,11 @@ async fn main() -> Result<()> {
     };
 
     let mut engine = Engine::new(EngineConfig::default());
-    let segments = engine
+    let (segments, language) = engine
         .transcribe_audio(&args.audio_path, options, None, None, Some(callbacks))
         .await?;
 
-    println!("\nTranscribed {} segments", segments.len());
+    println!("\nTranscribed {} segments (language: {})", segments.len(), language);
     println!("Download progress updates: {}", DOWNLOAD_COUNT.load(Ordering::Relaxed));
     println!("Diarize progress updates: {}", DIARIZE_COUNT.load(Ordering::Relaxed));
     println!("Transcribe progress updates: {}", TRANSCRIBE_COUNT.load(Ordering::Relaxed));

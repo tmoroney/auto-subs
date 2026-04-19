@@ -157,11 +157,11 @@ async fn main() -> Result<()> {
     };
 
     let mut engine = Engine::new(config);
-    let segments = engine
+    let (segments, language) = engine
         .transcribe_audio(&args.audio_path, options, None, None, Some(callbacks))
         .await?;
 
-    println!("\nTranscribed {} segments", segments.len());
+    println!("\nTranscribed {} segments (language: {})", segments.len(), language);
 
     let json = serde_json::to_string_pretty(&segments)?;
     std::fs::write(&args.output_path, json)?;

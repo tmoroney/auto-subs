@@ -105,6 +105,7 @@ export interface StoredTranscript {
   filename: string;
   createdAt: string;
   processingTime?: number;
+  language?: string;
   speakers: Speaker[];
   originalSegments: Subtitle[];
   segments: Subtitle[];
@@ -526,6 +527,7 @@ export async function saveTranscript(
       transcriptId: metadata.transcriptId,
       createdAt: metadata.createdAt,
       processingTime: transcript.processing_time_sec,
+      language: transcript.language,
       metadata,
       timelineId: metadata.timelineId,
       timelineName: metadata.timelineName,

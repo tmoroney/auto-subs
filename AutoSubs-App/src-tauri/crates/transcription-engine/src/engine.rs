@@ -74,7 +74,7 @@ impl Engine {
         max_lines: Option<usize>,
         density: Option<TextDensity>,
         cb: Option<Callbacks<'_>>,
-    ) -> eyre::Result<Vec<Segment>> {
+    ) -> eyre::Result<(Vec<Segment>, String)> {
         let cb = cb.unwrap_or_default();
         if !std::path::PathBuf::from(audio_path).exists() {
             eyre::bail!("audio file doesn't exist")
@@ -255,7 +255,19 @@ impl Engine {
         if let Some(d) = density { pp_cfg.apply_density(d); }
         if let Some(ml) = max_lines { pp_cfg.max_lines = ml; }
 
-        Ok(process_segments(&segments, &pp_cfg))
+        // Determine the final output language of the transcript.
+        // - Whisper built-in translate-to-English => "en"
+        // - Post-translation to a target => that target
+        // - Otherwise => effective (detected or user-specified) language
+        let output_lang: String = if suppress_post_translation {
+            "en".to_string()
+        } else if let Some(ref to_lang) = translate_to {
+            to_lang.clone()
+        } else {
+            effective_lang.to_string()
+        };
+
+        Ok((process_segments(&segments, &pp_cfg), output_lang))
     }
 
     pub async fn delete_whisper_model(&self, model_name: &str) -> eyre::Result<()> {
