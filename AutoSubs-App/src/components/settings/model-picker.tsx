@@ -40,16 +40,28 @@ function FilterBadge({ children }: { children: React.ReactNode }) {
   )
 }
 
-function MetricIcons({ count, max, Icon, activeClass }: { count: number; max: number; Icon: React.ElementType; activeClass: string }) {
+/**
+ * Single trade-off spectrum between "lightweight" (low memory use) and
+ * "accurate". Position is derived from accuracy vs. weight so that balanced
+ * models (high accuracy AND low memory use, e.g. Parakeet) land in the middle.
+ */
+function BalanceMeter({ accuracy, weight }: { accuracy: number; weight: number }) {
+  // accuracy: 1-4 (higher = more accurate)
+  // weight:   1-4 (higher = more lightweight / less memory)
+  // position: 0 (pure light) ... 6 (pure accurate)
+  const position = Math.max(0, Math.min(6, 3 + (accuracy - weight)))
+  const pct = (position / 6) * 100
+
   return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: max }).map((_, i) => (
-        <Icon
-          key={i}
-          size={11}
-          className={i < count ? activeClass : "text-muted-foreground/25 dark:text-muted-foreground"}
+    <div className="flex items-center gap-1.5 w-[110px]">
+      <Feather size={11} className="text-sky-500 flex-shrink-0" aria-hidden />
+      <div className="relative flex-1 h-1 rounded-full bg-gradient-to-r from-sky-500/30 via-muted to-amber-500/30">
+        <div
+          className="absolute top-1/2 h-2.5 w-2.5 rounded-full border-2 border-background bg-foreground shadow-sm"
+          style={{ left: `${pct}%`, transform: "translate(-50%, -50%)" }}
         />
-      ))}
+      </div>
+      <Lightbulb size={11} className="text-amber-500 flex-shrink-0" aria-hidden />
     </div>
   )
 }
@@ -275,9 +287,8 @@ export function ModelPicker({
                           ) : (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1.5">
-                                  <MetricIcons count={model.accuracy} max={3} Icon={Lightbulb} activeClass="text-amber-500" />
-                                  <MetricIcons count={model.weight} max={3} Icon={Feather} activeClass="text-sky-500" />
+                                <div>
+                                  <BalanceMeter accuracy={model.accuracy} weight={model.weight} />
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4 bg-slate-50 dark:bg-slate-950 text-foreground">
@@ -285,24 +296,26 @@ export function ModelPicker({
                                   <p className="text-xs">{t(model.details)}</p>
                                   <div className="flex items-center gap-4 text-xs">
                                     <div className="flex items-center gap-1">
-                                      <HardDrive size={14} />
-                                      <span>{t("modelStatus.storage")}</span>
-                                      <span className="font-medium">{model.size}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
                                       <MemoryStick size={14} />
                                       <span>{t("modelStatus.ram")}</span>
                                       <span className="font-medium">{model.ram}</span>
                                     </div>
+                                    <div className="flex items-center gap-1">
+                                      <HardDrive size={14} />
+                                      <span>{t("modelStatus.storage")}</span>
+                                      <span className="font-medium">{model.size}</span>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-4 text-xs">
                                     <div className="flex items-center gap-1.5">
-                                      <MetricIcons count={model.accuracy} max={3} Icon={Lightbulb} activeClass="text-amber-500" />
-                                      <span>{t("modelStatus.accuracy")}</span>
+                                      <Feather size={12} className="text-sky-500" />
+                                      <span>{t("modelStatus.lightweight")}</span>
+                                      <span className="font-medium">{model.weight}/4</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <MetricIcons count={model.weight} max={3} Icon={Feather} activeClass="text-sky-500" />
-                                      <span>{t("modelStatus.lightweight")}</span>
+                                      <Lightbulb size={12} className="text-amber-500" />
+                                      <span>{t("modelStatus.accuracy")}</span>
+                                      <span className="font-medium">{model.accuracy}/4</span>
                                     </div>
                                   </div>
                                 </div>

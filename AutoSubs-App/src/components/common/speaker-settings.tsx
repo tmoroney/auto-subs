@@ -25,39 +25,39 @@ export function SpeakerSettings({ speaker, onSpeakerChange, tracks }: SpeakerSet
 
     return (
         <div className="space-y-2 min-w-82">
-            <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("speakerEditor.name")}</Label>
-                <div className="flex items-center gap-10">
+            <div className="flex gap-4">
+                <div className="space-y-1.5 flex-1">
+                    <Label className="text-xs text-muted-foreground">{t("speakerEditor.name")}</Label>
                     <Input
                         value={speaker.name}
                         onChange={(e) => onSpeakerChange({ ...speaker, name: e.target.value })}
                         placeholder={t("speakerEditor.namePlaceholder")}
-                        className="text-sm"
+                        className="text-sm bg-background"
                     />
-                    {tracks && tracks.length > 0 && (
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Label className="text-xs text-muted-foreground whitespace-nowrap">{t("speakerEditor.outputTrack")}</Label>
-                            <Select value={speaker.track || ""} onValueChange={(value) => onSpeakerChange({ ...speaker, track: value })}>
-                                <SelectTrigger className="w-28">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent align="end">
-                                    {tracks.map((track) => (
-                                        <SelectItem key={track.value} value={track.value}>
-                                            {track.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
                 </div>
+                {tracks && tracks.length > 0 && (
+                    <div className="space-y-1.5 flex-1">
+                        <Label className="text-xs text-muted-foreground">{t("speakerEditor.outputTrack")}</Label>
+                        <Select value={speaker.track || ""} onValueChange={(value) => onSpeakerChange({ ...speaker, track: value })}>
+                            <SelectTrigger className="bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent align="end">
+                                {tracks.map((track) => (
+                                    <SelectItem key={track.value} value={track.value}>
+                                        {track.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
             </div>
             <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("speakerEditor.style")}</Label>
                 <div className="flex items-center gap-3">
                     <Select value={speakerStyle} onValueChange={(value: "Fill" | "Outline" | "None") => onSpeakerChange({ ...speaker, style: value })}>
-                        <SelectTrigger className={speakerStyle === "None" ? "flex-1" : "w-32"}>
+                        <SelectTrigger className={speakerStyle === "None" ? "flex-1 bg-background" : "w-32 bg-background"}>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent align="end">

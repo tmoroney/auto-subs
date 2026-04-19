@@ -368,6 +368,7 @@
     "loading": "Loading subtitles...",
     "jumpToTimeline": "Jump to point on timeline",
     "unknownSpeaker": "Unknown Speaker",
+    "previousTranscripts": "Previous Transcripts",
     "empty": {
       "noSubtitlesFound": "No subtitles found",
       "tryDifferentSearch": "Try a different search term",

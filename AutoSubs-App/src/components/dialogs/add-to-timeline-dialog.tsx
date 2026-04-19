@@ -25,7 +25,7 @@ import { Settings, Speaker, TimelineInfo } from "@/types"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext"
 import { useSettings } from "@/contexts/SettingsContext"
-import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { AnimatedPresetPicker } from "@/components/dialogs/add-to-timeline/animated-preset-picker"
 import {
     CreatePresetFlow,
@@ -114,7 +114,7 @@ export function AddToTimelineDialog({
         if (!open) return
         setCurrentStep(0)
         setSelection({
-            mode: "regular",
+            mode: settings.captionMode,
             templateValue: settings.selectedTemplate.value,
             presetId: settings.presetId || DEFAULT_PRESET_ID,
             outputTrack: settings.selectedOutputTrack,
@@ -201,6 +201,7 @@ export function AddToTimelineDialog({
                 : undefined
 
         // Persist the user's picks so the next run starts from them.
+        updateSetting("captionMode", selection.mode)
         if (selection.mode === "animated") {
             updateSetting("presetId", selection.presetId)
         } else {
@@ -270,7 +271,7 @@ export function AddToTimelineDialog({
                             templates={timelineInfo.templates}
                             presetId={selection.presetId}
                             onPresetChange={(id) =>
-                                setSelection((s) => ({ ...s, presetId: id }))
+                                setSelection((s) => ({ ...s, presetId: id, mode: "animated" }))
                             }
                             animatedPresets={animatedPresets}
                             createSession={createSession}
@@ -294,9 +295,9 @@ export function AddToTimelineDialog({
 
                     {activeSteps[currentStep]?.key === "speakers" && (
                         <ScrollArea>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
-                                    <div className="rounded-sm border p-2">
+                                    <div className="rounded-sm border p-3 bg-card">
                                         <SpeakerSettings
                                             key={index}
                                             speaker={speaker}
@@ -508,7 +509,7 @@ function TemplateStep({
             <TabsContent value="regular" className="space-y-3">
                 <ScrollArea className="h-[240px] rounded-md border">
                     <div className="p-2 space-y-1">
-                        {templates.map((template) => (
+                        {templates.filter(t => t.value !== ANIMATED_CAPTION_TEMPLATE).map((template) => (
                             <button
                                 key={template.value}
                                 type="button"

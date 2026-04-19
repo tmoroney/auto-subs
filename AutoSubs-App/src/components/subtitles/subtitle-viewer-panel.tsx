@@ -12,8 +12,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SubtitleList } from "@/components/subtitles/subtitle-list"
-import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { ImportExportPopover } from "@/components/common/import-export-popover"
+import { TranscriptSearchPopover } from "@/components/common/transcript-search-popover"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel"
 import { useTranscript } from "@/contexts/TranscriptContext"
@@ -22,6 +23,8 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { Speaker, Track } from "@/types"
 import { useTranslation } from "react-i18next"
 import { PlusIcon, type PlusIconHandle } from "../ui/plus"
+import { ArchiveIcon } from "../ui/archive"
+import type { HistoryIconHandle } from "@/components/ui/history"
 
 type SubtitleViewerVariant = "desktop" | "compact"
 
@@ -160,17 +163,17 @@ function SearchSection({
   ].filter(Boolean)
 
   const searchInput = (
-      <InputGroup>
-        <InputGroupInput
-          ref={searchInputRef}
-          placeholder={searchPlaceholder}
-          value={searchQuery}
-          onChange={(e) => onSearchQueryChange(e.target.value)}
-          aria-label={searchAriaLabel}
-          className="text-sm"
-        />
-        {searchActions}
-      </InputGroup>
+    <InputGroup>
+      <InputGroupInput
+        ref={searchInputRef}
+        placeholder={searchPlaceholder}
+        value={searchQuery}
+        onChange={(e) => onSearchQueryChange(e.target.value)}
+        aria-label={searchAriaLabel}
+        className="text-sm"
+      />
+      {searchActions}
+    </InputGroup>
   )
 
   const replaceSection = (
@@ -205,11 +208,9 @@ function SearchSection({
 interface SpeakersPopoverProps {
   variant: SubtitleViewerVariant
   open: boolean
-  localSpeakers: Speaker[]
+  speakers: Speaker[]
   onOpenChange: (open: boolean) => void
   onSpeakerChange: (index: number, speaker: Speaker) => void
-  onCancel: () => void
-  onSave: () => void
   t: (key: string) => string
   tracks?: Track[]
 }
@@ -217,11 +218,9 @@ interface SpeakersPopoverProps {
 function SpeakersPopover({
   variant,
   open,
-  localSpeakers,
+  speakers,
   onOpenChange,
   onSpeakerChange,
-  onCancel,
-  onSave,
   t,
   tracks,
 }: SpeakersPopoverProps) {
@@ -252,18 +251,18 @@ function SpeakersPopover({
         </TooltipTrigger>
         {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.editSpeakers")}</TooltipContent>}
       </Tooltip>
-      <PopoverContent align="center" className="w-80 p-0">
-        <div className="px-4 pt-4 pb-2">
+      <PopoverContent align="center" className="w-84" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <div className="pb-3">
           <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("speakerEditor.description")}</p>
+          <p className="text-xs text-muted-foreground">{t("speakerEditor.description")}</p>
         </div>
-        <ScrollArea className="h-72">
-          <div className="px-4 space-y-3">
-            {localSpeakers.length === 0 && (
+        <ScrollArea className="h-84">
+          <div className="space-y-3">
+            {speakers.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">{t("subtitles.empty.noSubtitlesAvailable")}</p>
             )}
-            {localSpeakers.map((speaker, index) => (
-              <div key={index} className="border rounded-md p-3">
+            {speakers.map((speaker, index) => (
+              <div key={index} className="border rounded-md p-3 bg-card">
                 <SpeakerSettings
                   speaker={speaker}
                   onSpeakerChange={(updated) => onSpeakerChange(index, updated)}
@@ -273,18 +272,6 @@ function SpeakersPopover({
             ))}
           </div>
         </ScrollArea>
-        {localSpeakers.length > 0 && (
-          <div className="p-3 border-t flex justify-end gap-2 mt-2">
-            <ButtonGroup>
-              <Button variant="outline" size="sm" onClick={onCancel}>
-                {t("common.cancel")}
-              </Button>
-              <Button size="sm" onClick={onSave}>
-                {t("common.saveChanges")}
-              </Button>
-            </ButtonGroup>
-          </div>
-        )}
       </PopoverContent>
     </Popover>
   )
@@ -321,7 +308,7 @@ function ReformatPopover({ variant, open, subtitleCount, onOpenChange, onApply, 
         </TooltipTrigger>
         {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.reformat")}</TooltipContent>}
       </Tooltip>
-      <PopoverContent align="center" className="w-80 p-0">
+      <PopoverContent align="center" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <TextFormattingPanel
           showActions
           onCancel={() => onOpenChange(false)}
@@ -339,16 +326,13 @@ interface SubtitleToolbarProps {
   subtitlesLength: number
   settings: ReturnType<typeof useSettings>["settings"]
   speakers: Speaker[]
-  localSpeakers: Speaker[]
   showSpeakerEditor: boolean
   showReformat: boolean
   importSubtitles: ReturnType<typeof useTranscript>["importSubtitles"]
   exportSubtitlesAs: ReturnType<typeof useTranscript>["exportSubtitlesAs"]
   subtitles: ReturnType<typeof useTranscript>["subtitles"]
   onSpeakerEditorOpenChange: (open: boolean) => void
-  onLocalSpeakerChange: (index: number, speaker: Speaker) => void
-  onCancelSpeakerEdit: () => void
-  onSaveSpeakers: () => void
+  onSpeakerChange: (index: number, speaker: Speaker) => void
   onReformatOpenChange: (open: boolean) => void
   onApplyReformat: () => Promise<void>
   t: (key: string) => string
@@ -361,16 +345,13 @@ function SubtitleToolbar({
   subtitlesLength,
   settings,
   speakers,
-  localSpeakers,
   showSpeakerEditor,
   showReformat,
   importSubtitles,
   exportSubtitlesAs,
   subtitles,
   onSpeakerEditorOpenChange,
-  onLocalSpeakerChange,
-  onCancelSpeakerEdit,
-  onSaveSpeakers,
+  onSpeakerChange,
   onReformatOpenChange,
   onApplyReformat,
   t,
@@ -431,11 +412,9 @@ function SubtitleToolbar({
           <SpeakersPopover
             variant={variant}
             open={showSpeakerEditor}
-            localSpeakers={localSpeakers}
+            speakers={speakers}
             onOpenChange={onSpeakerEditorOpenChange}
-            onSpeakerChange={onLocalSpeakerChange}
-            onCancel={onCancelSpeakerEdit}
-            onSave={onSaveSpeakers}
+            onSpeakerChange={onSpeakerChange}
             t={t}
             tracks={tracks}
           />
@@ -475,6 +454,7 @@ function SubtitleContent({
   onSelectedIndexChange,
   t,
 }: SubtitleContentProps) {
+  const archiveIconRef = React.useRef<HistoryIconHandle>(null)
   const contentClassName = variant === "desktop"
     ? "flex-1 overflow-y-auto min-h-0 px-0 relative z-0"
     : "flex-1 overflow-y-auto min-h-0 px-0 relative z-0"
@@ -493,11 +473,27 @@ function SubtitleContent({
       ) : (
         <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8">
           <p className="text-lg font-medium mb-2">{t("subtitles.empty.noSubtitlesFound")}</p>
-          <p className="text-sm">
+          <p className="text-sm mb-4">
             {searchQuery
               ? t("subtitles.empty.tryDifferentSearch")
               : t("subtitles.empty.noSubtitlesAvailable")}
           </p>
+          {!searchQuery && (
+            <TranscriptSearchPopover
+              trigger={
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="gap-2"
+                  onMouseEnter={() => archiveIconRef.current?.startAnimation()}
+                  onMouseLeave={() => archiveIconRef.current?.stopAnimation()}
+                >
+                  <ArchiveIcon ref={archiveIconRef} size={16} />
+                  {t("subtitles.previousTranscripts")}
+                </Button>
+              }
+            />
+          )}
         </div>
       )}
     </div>
@@ -565,7 +561,6 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null)
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false)
   const [showReformat, setShowReformat] = React.useState(false)
-  const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>([])
   const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const layersIconRef = React.useRef<PlusIconHandle>(null)
@@ -574,9 +569,6 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const { settings } = useSettings()
   const { t } = useTranslation()
 
-  React.useEffect(() => {
-    setLocalSpeakers(speakers)
-  }, [speakers])
 
   React.useEffect(() => {
     if (variant !== "compact" || !isOpen || !onClose) return
@@ -613,15 +605,10 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
     ? "shrink-0 p-3 pb-0"
     : "p-2 pb-0 shrink-0 sticky top-0 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 space-y-1"
 
-  function updateLocalSpeaker(index: number, updated: Speaker) {
-    const next = [...localSpeakers]
+  function handleSpeakerChange(index: number, updated: Speaker) {
+    const next = [...speakers]
     next[index] = updated
-    setLocalSpeakers(next)
-  }
-
-  function handleSaveSpeakers() {
-    updateSpeakers(localSpeakers)
-    setShowSpeakerEditor(false)
+    updateSpeakers(next)
   }
 
   const handleReplaceAll = () => {
@@ -682,30 +669,26 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
         searchAriaLabel={t("subtitles.searchAria")}
       />
 
-      <SubtitleToolbar
-        variant={variant}
-        onClose={onClose}
-        subtitlesLength={subtitles.length}
-        settings={settings}
-        speakers={speakers}
-        localSpeakers={localSpeakers}
-        showSpeakerEditor={showSpeakerEditor}
-        showReformat={showReformat}
-        importSubtitles={importSubtitles}
-        exportSubtitlesAs={exportSubtitlesAs}
-        subtitles={subtitles}
-        onSpeakerEditorOpenChange={(open) => {
-          if (open) setLocalSpeakers(speakers)
-          setShowSpeakerEditor(open)
-        }}
-        onLocalSpeakerChange={updateLocalSpeaker}
-        onCancelSpeakerEdit={() => setShowSpeakerEditor(false)}
-        onSaveSpeakers={handleSaveSpeakers}
-        onReformatOpenChange={setShowReformat}
-        onApplyReformat={handleApplyReformat}
-        t={t}
-        tracks={timelineInfo?.outputTracks}
-      />
+      {subtitles.length > 0 && (
+        <SubtitleToolbar
+          variant={variant}
+          onClose={onClose}
+          subtitlesLength={subtitles.length}
+          settings={settings}
+          speakers={speakers}
+          showSpeakerEditor={showSpeakerEditor}
+          showReformat={showReformat}
+          importSubtitles={importSubtitles}
+          exportSubtitlesAs={exportSubtitlesAs}
+          subtitles={subtitles}
+          onSpeakerEditorOpenChange={setShowSpeakerEditor}
+          onSpeakerChange={handleSpeakerChange}
+          onReformatOpenChange={setShowReformat}
+          onApplyReformat={handleApplyReformat}
+          t={t}
+          tracks={timelineInfo?.outputTracks}
+        />
+      )}
 
       <SubtitleContent
         variant={variant}
@@ -718,7 +701,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
         t={t}
       />
 
-      {isResolveConnected && (
+      {isResolveConnected && subtitles.length > 0 && (
         <AddToTimelineFooter
           variant={variant}
           settings={settings}

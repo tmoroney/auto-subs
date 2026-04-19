@@ -74,8 +74,8 @@ export interface Model {
         | { kind: "multilingual" }
         | { kind: "single_language"; language: string }
         | { kind: "restricted"; languages: string[] }
-    accuracy: 1 | 2 | 3 // 1 = Poor, 2 = Standard, 3 = Excellent
-    weight: 1 | 2 | 3 // 1 = Heavy, 2 = Standard, 3 = Lightweight
+    accuracy: 1 | 2 | 3 | 4 // 1 = Poor, 2 = Standard, 3 = Excellent, 4 = Best-in-class
+    weight: 1 | 2 | 3 | 4 // 1 = Very Heavy, 2 = Heavy, 3 = Standard, 4 = Lightweight
     isDownloaded: boolean
 }
 
@@ -119,6 +119,7 @@ export interface Settings {
 
     // AutoSubs Caption settings
     presetId: string;
+    captionMode: "regular" | "animated";
 
     // Animation settings
     animationType: string;

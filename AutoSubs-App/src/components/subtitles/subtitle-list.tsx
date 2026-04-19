@@ -7,7 +7,7 @@ import { ButtonGroup } from "@/components/ui/button-group"
 import { ArrowDown, ArrowUp, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { SpeakerSettings } from "@/components/subtitles/speaker-settings"
+import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 
@@ -338,7 +338,7 @@ const SubtitleList = ({
                                                         })()}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent align="end" className="relative" onClick={(e) => e.stopPropagation()}>
+                                                <PopoverContent align="end" className="relative bg-card" onClick={(e) => e.stopPropagation()}>
                                                     <div>
                                                         {(() => {
                                                             const idx = getSpeakerIndex(subtitle.speaker_id);

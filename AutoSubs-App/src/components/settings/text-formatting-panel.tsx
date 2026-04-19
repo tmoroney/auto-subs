@@ -126,6 +126,7 @@ export function TextFormattingPanel({
                                             e.preventDefault();
                                             if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
                                             updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
+                                            if (!settings.enableCensor) updateSetting("enableCensor", true);
                                             setNewCensoredWord("");
                                         }}
                                     >

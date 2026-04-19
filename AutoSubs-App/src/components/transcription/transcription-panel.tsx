@@ -317,7 +317,7 @@ function TranscriptionPanelView({
                     <Type className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="center">
+                <PopoverContent className="w-80 p-0" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
                   <TextFormattingPanel />
                 </PopoverContent>
               </Popover>
