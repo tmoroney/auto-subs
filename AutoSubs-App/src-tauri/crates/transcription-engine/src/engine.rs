@@ -1,7 +1,15 @@
 use std::path::PathBuf;
 use eyre::eyre;
 use crate::types::{SpeechSegment, DiarizeOptions, LabeledProgressFn, NewSegmentFn, Segment};
-use crate::formatting::{process_segments, PostProcessConfig, TextDensity};
+use crate::formatting::{process_segments, PostProcessConfig, TextCase, TextDensity};
+
+/// Frontend-requested content formatting applied after structural line-wrapping.
+#[derive(Clone, Debug, Default)]
+pub struct ContentFormatting {
+    pub text_case: TextCase,
+    pub remove_punctuation: bool,
+    pub censored_words: Vec<String>,
+}
 
 use crate::engines::moonshine::{is_moonshine_model, moonshine_variant_from_model_name};
 
@@ -73,8 +81,9 @@ impl Engine {
         options: crate::TranscribeOptions,
         max_lines: Option<usize>,
         density: Option<TextDensity>,
+        content_formatting: Option<ContentFormatting>,
         cb: Option<Callbacks<'_>>,
-    ) -> eyre::Result<(Vec<Segment>, String)> {
+    ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
         let cb = cb.unwrap_or_default();
         if !std::path::PathBuf::from(audio_path).exists() {
             eyre::bail!("audio file doesn't exist")
@@ -250,10 +259,15 @@ impl Engine {
             }
         }
 
-        // Build a config from the chosen preset; apply density and max_lines.
+        // Build a config from the chosen preset; apply density, max_lines, and content formatting.
         let mut pp_cfg = PostProcessConfig::for_language(effective_lang);
         if let Some(d) = density { pp_cfg.apply_density(d); }
         if let Some(ml) = max_lines { pp_cfg.max_lines = ml; }
+        if let Some(cf) = content_formatting {
+            pp_cfg.text_case = cf.text_case;
+            pp_cfg.remove_punctuation = cf.remove_punctuation;
+            pp_cfg.censored_words = cf.censored_words;
+        }
 
         // Determine the final output language of the transcript.
         // - Whisper built-in translate-to-English => "en"
@@ -267,7 +281,11 @@ impl Engine {
             effective_lang.to_string()
         };
 
-        Ok((process_segments(&segments, &pp_cfg), output_lang))
+        // Run structural + content formatting to produce the display-ready segments,
+        // while preserving the raw post-translation `segments` as `original_segments`
+        // so the frontend can reformat later without re-transcribing.
+        let formatted_segments = process_segments(&segments, &pp_cfg);
+        Ok((segments, formatted_segments, output_lang))
     }
 
     pub async fn delete_whisper_model(&self, model_name: &str) -> eyre::Result<()> {

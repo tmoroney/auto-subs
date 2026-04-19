@@ -13,7 +13,6 @@ import {
   updateTranscript
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
-import { applyTextFormattingToSubtitle } from '@/utils/subtitle-formatter';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 
 interface TranscriptContextType {
@@ -122,13 +121,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
 
     setCurrentTranscriptFilename(filename);
 
-    // Save transcript to JSON file
+    // Save transcript to JSON file.
+    // Content formatting (case, punctuation, censoring) is already applied by the
+    // Rust backend during transcription, so no post-processing is needed here.
     const { segments, speakers } = await saveTranscript(transcript, filename, {
-      formatOptions: {
-        case: settings.textCase,
-        removePunctuation: settings.removePunctuation,
-        censoredWords: settings.enableCensor ? settings.censoredWords : [],
-      },
       metadata: {
         sourceType: settings.isStandaloneMode ? 'standalone' : 'resolve',
         displayName: settings.isStandaloneMode
@@ -164,25 +160,22 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     setCurrentTranscriptFilename(filename);
     const originalSegments: Subtitle[] = transcript.originalSegments || transcript.segments || [];
 
-    // 1. Structural splitting via Rust (from original word-level data)
-    let segments = await rustReformatSubtitles(originalSegments, {
+    // Single Rust call applies BOTH structural splitting and content formatting
+    // (case, punctuation removal, censoring) in one pass. We pass the transcript's
+    // stored language (the detected / output language at transcription time) so
+    // Rust's language-aware profile selection (CPL, function words, kinsoku, etc.)
+    // stays consistent. If missing, Rust falls back to the Latin default.
+    const segments = await rustReformatSubtitles(originalSegments, {
       maxLines: settings.maxLinesPerSubtitle,
       textDensity: settings.textDensity,
-      language: settings.language,
+      language: transcript.language,
+      textCase: settings.textCase,
+      removePunctuation: settings.removePunctuation,
+      censoredWords: settings.enableCensor ? settings.censoredWords : [],
     });
 
-    // 2. Content formatting in JS (case, punctuation, censoring)
-    const censoredWords = settings.enableCensor ? settings.censoredWords : [];
-    segments = segments.map(sub =>
-      applyTextFormattingToSubtitle(sub, {
-        case: settings.textCase,
-        removePunctuation: settings.removePunctuation,
-        censoredWords,
-      })
-    );
-
-    // 3. Save reformatted segments and update state
-    // Use updateTranscript (not saveTranscript) to preserve originalSegments unchanged
+    // Save reformatted segments and update state.
+    // Use updateTranscript (not saveTranscript) to preserve originalSegments unchanged.
     await updateTranscript(filename, { subtitles: segments });
     console.log("Subtitle list updated with", segments.length, "subtitles");
     setSpeakers(transcript.speakers || []);
@@ -288,13 +281,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
         settings.isStandaloneMode ? undefined : timelineInfo?.name,
       );
       console.log("Saving transcript to:", filename);
-      // No speakers for imported subtitles
+      // No speakers for imported subtitles.
+      // Content formatting is skipped here — imported SRTs lack word-level data.
+      // Users can apply formatting via the reformat flow after import.
       let { segments } = await saveTranscript(transcript, filename, {
-        formatOptions: {
-          case: settings.textCase,
-          removePunctuation: settings.removePunctuation,
-          censoredWords: settings.enableCensor ? settings.censoredWords : [],
-        },
         metadata: {
           sourceType: settings.isStandaloneMode ? 'standalone' : 'resolve',
           displayName: settings.isStandaloneMode

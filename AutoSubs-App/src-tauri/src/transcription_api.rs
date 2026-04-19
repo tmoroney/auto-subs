@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::time::Instant;
 use tauri::{command, AppHandle, Emitter, Manager, Runtime};
-use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType, PostProcessConfig, process_segments, TextDensity};
+use transcription_engine::{Engine, EngineConfig, TranscribeOptions, Callbacks, Segment as WDSegment, ProgressType, PostProcessConfig, process_segments, ContentFormatting, TextCase, TextDensity};
 
 // Frontend-compatible progress data type
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -63,6 +63,20 @@ pub struct FrontendTranscribeOptions {
     pub max_speakers: Option<usize>,
     pub density: Option<TextDensity>,
     pub max_lines: Option<usize>,
+    // Content formatting (applied after structural line wrapping).
+    pub text_case: Option<String>,
+    pub remove_punctuation: Option<bool>,
+    pub censored_words: Option<Vec<String>>,
+}
+
+/// Parse a frontend text_case string ("none"|"lowercase"|"uppercase"|"titlecase") into TextCase.
+fn parse_text_case(s: Option<&str>) -> TextCase {
+    match s.map(|v| v.to_lowercase()) {
+        Some(ref v) if v == "lowercase" => TextCase::Lowercase,
+        Some(ref v) if v == "uppercase" => TextCase::Uppercase,
+        Some(ref v) if v == "titlecase" => TextCase::Titlecase,
+        _ => TextCase::None,
+    }
 }
 
 #[command]
@@ -239,13 +253,23 @@ pub async fn transcribe_audio<R: Runtime>(
             }
         }
 
-        // Run transcription
-        let (segments, output_language) = engine
+        // Build content formatting options from frontend settings.
+        let content_formatting = ContentFormatting {
+            text_case: parse_text_case(options.text_case.as_deref()),
+            remove_punctuation: options.remove_punctuation.unwrap_or(false),
+            censored_words: options.censored_words.clone().unwrap_or_default(),
+        };
+
+        // Run transcription.
+        // `raw_segments` preserves the engine's pre-formatting word data (used as
+        // `originalSegments` for reformatting). `segments` are fully formatted for display.
+        let (raw_segments, segments, output_language) = engine
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
                 options.max_lines, // max_lines
                 options.density, // density
+                Some(content_formatting),
                 Some(callbacks),
             )
             .await
@@ -270,30 +294,8 @@ pub async fn transcribe_audio<R: Runtime>(
         }
 
         // Convert whisper-diarize-rs segments to app's Segment format
-        let mut app_segments: Vec<Segment> = segments
-            .iter()
-            .map(|seg| {
-                let words = seg.words.as_ref().map(|words| {
-                    words
-                        .iter()
-                        .map(|w| WordTimestamp {
-                            word: w.text.clone(),
-                            start: w.start,
-                            end: w.end,
-                            probability: w.probability,
-                        })
-                        .collect()
-                });
-
-                Segment {
-                    speaker_id: seg.speaker_id.clone(),
-                    start: seg.start,
-                    end: seg.end,
-                    text: seg.text.clone(),
-                    words,
-                }
-            })
-            .collect();
+        let mut app_segments: Vec<Segment> = segments.iter().map(wd_to_app_segment).collect();
+        let mut app_raw_segments: Vec<Segment> = raw_segments.iter().map(wd_to_app_segment).collect();
 
         if options.enable_diarize.unwrap_or(false) {
             let total = app_segments.len();
@@ -309,21 +311,15 @@ pub async fn transcribe_audio<R: Runtime>(
             }
         }
 
-        // Apply offset if provided
+        // Apply offset if provided — to both the display segments and the raw segments,
+        // so reformatting later preserves the correct (offset-adjusted) timings.
         if let Some(offset) = options.offset {
-            for segment in app_segments.iter_mut() {
-                segment.start = round_to_places(segment.start + offset, 3);
-                segment.end = round_to_places(segment.end + offset, 3);
-                if let Some(words) = &mut segment.words {
-                    for word in words.iter_mut() {
-                        word.start = round_to_places(word.start + offset, 3);
-                        word.end = round_to_places(word.end + offset, 3);
-                    }
-                }
-            }
+            apply_offset_to_segments(&mut app_segments, offset);
+            apply_offset_to_segments(&mut app_raw_segments, offset);
         }
 
-        // Aggregate speakers if diarization was enabled
+        // Aggregate speakers if diarization was enabled (from display segments, which
+        // are the ones actually shown; raw segments share the same speaker_id values).
         let (speakers, segments) = if options.enable_diarize.unwrap_or(false) {
             aggregate_speakers_from_segments(&app_segments)
         } else {
@@ -334,6 +330,7 @@ pub async fn transcribe_audio<R: Runtime>(
             processing_time_sec: 0, // Will be set below
             language: output_language,
             segments,
+            original_segments: app_raw_segments,
             speakers,
         })
     }
@@ -433,6 +430,42 @@ pub async fn create_normalized_audio<R: Runtime>(
 }
 
 
+/// Convert a `transcription_engine` segment to the app's `Segment` type.
+fn wd_to_app_segment(seg: &WDSegment) -> Segment {
+    let words = seg.words.as_ref().map(|words| {
+        words
+            .iter()
+            .map(|w| WordTimestamp {
+                word: w.text.clone(),
+                start: w.start,
+                end: w.end,
+                probability: w.probability,
+            })
+            .collect()
+    });
+    Segment {
+        speaker_id: seg.speaker_id.clone(),
+        start: seg.start,
+        end: seg.end,
+        text: seg.text.clone(),
+        words,
+    }
+}
+
+/// Apply a time offset (in seconds) to every segment and its word timestamps.
+fn apply_offset_to_segments(segments: &mut [Segment], offset: f64) {
+    for segment in segments.iter_mut() {
+        segment.start = round_to_places(segment.start + offset, 3);
+        segment.end = round_to_places(segment.end + offset, 3);
+        if let Some(words) = &mut segment.words {
+            for word in words.iter_mut() {
+                word.start = round_to_places(word.start + offset, 3);
+                word.end = round_to_places(word.end + offset, 3);
+            }
+        }
+    }
+}
+
 /// Aggregates speakers from transcript segments, similar to the frontend logic
 fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<Segment>) {
     use std::collections::HashMap;
@@ -491,6 +524,10 @@ pub struct FrontendFormattingOptions {
     pub language: Option<String>,
     pub max_lines: Option<usize>,
     pub text_density: Option<String>,
+    // Content formatting (applied after structural line wrapping).
+    pub text_case: Option<String>,
+    pub remove_punctuation: Option<bool>,
+    pub censored_words: Option<Vec<String>>,
 }
 
 /// Reformat subtitles with new formatting options without re-transcribing.
@@ -542,6 +579,11 @@ pub async fn reformat_subtitles(
     if let Some(ml) = options.max_lines {
         config.max_lines = ml;
     }
+
+    // Content formatting (case, punctuation removal, censoring).
+    config.text_case = parse_text_case(options.text_case.as_deref());
+    config.remove_punctuation = options.remove_punctuation.unwrap_or(false);
+    config.censored_words = options.censored_words.clone().unwrap_or_default();
 
     // Run the formatting engine
     let formatted = process_segments(&engine_segments, &config);

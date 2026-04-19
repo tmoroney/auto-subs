@@ -14,8 +14,18 @@
 //   rely on inter-word gaps and simple thresholds.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use crate::types::{WordTimestamp, Segment};
 use unicode_segmentation::UnicodeSegmentation;
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+/// Matches any run of characters that are NOT letters, digits, whitespace, apostrophe, or
+/// asterisk. The asterisk is preserved so that censor markers (e.g. "f******k") survive
+/// an optional punctuation-removal pass. This is a superset of the old JS regex
+/// `[^\p{L}\p{N}\s']+`, which accidentally stripped censor asterisks.
+static PUNCT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[^\p{L}\p{N}\s'*]+").expect("valid punctuation regex"));
 
 /// Internal working token type used during processing.
 #[derive(Clone, Debug)]
@@ -46,6 +56,20 @@ impl Default for TextDensity {
     fn default() -> Self { Self::Standard }
 }
 
+/// User-facing case transform applied after structural line-wrapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TextCase {
+    None,
+    Lowercase,
+    Uppercase,
+    Titlecase,
+}
+
+impl Default for TextCase {
+    fn default() -> Self { Self::None }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostProcessConfig {
     /// Max characters per rendered line (CPL)
@@ -69,6 +93,15 @@ pub struct PostProcessConfig {
     pub lang: String,
     /// When true, emit one word per subtitle cue (set by TextDensity::Single)
     pub single_word: bool,
+    /// Content formatting: case transform applied to rendered words.
+    #[serde(default)]
+    pub text_case: TextCase,
+    /// Content formatting: strip non-letter/digit/whitespace/apostrophe characters from rendered text.
+    #[serde(default)]
+    pub remove_punctuation: bool,
+    /// Content formatting: case-insensitive list of words to censor (replaced with first+***+last).
+    #[serde(default)]
+    pub censored_words: Vec<String>,
 }
 
 impl Default for PostProcessConfig {
@@ -86,6 +119,9 @@ impl Default for PostProcessConfig {
             enforce_kinsoku: false,
             lang: "en".to_string(),
             single_word: false,
+            text_case: TextCase::None,
+            remove_punctuation: false,
+            censored_words: Vec::new(),
         }
     }
 }
@@ -246,14 +282,16 @@ pub fn process_segments(
 
     // Fast path: single-word mode emits one cue per merged token.
     if cfg.single_word {
-        return toks.iter().map(|t| {
+        let censor_set = build_censor_set(&cfg.censored_words);
+        return toks.into_iter().map(|mut t| {
+            apply_content_formatting(&mut t, cfg, &censor_set);
             let text = format!("{}{}", t.word, t.punc).trim().to_string();
             Segment {
                 start: round3(t.start.max(0.0)),
                 end: round3(t.end),
                 text: text.clone(),
                 words: Some(vec![WordTimestamp {
-                    text: render_token(t),
+                    text: render_token(&t),
                     start: round3(t.start.max(0.0)),
                     end: round3(t.end),
                     probability: t.prob,
@@ -264,7 +302,20 @@ pub fn process_segments(
     }
 
     // 5) Wrap tokens into lines using greedy line-filling with natural break priorities.
-    let lines = wrap_into_lines(&toks, cfg);
+    //    Line wrapping uses ORIGINAL punctuation/casing to pick natural break points.
+    let mut lines = wrap_into_lines(&toks, cfg);
+
+    // 5b) Apply content formatting (case, punctuation removal, censoring) to tokens
+    //     AFTER wrapping but BEFORE rendering. This lets the rendered text reflect
+    //     user-facing transforms without disrupting line-break heuristics.
+    {
+        let censor_set = build_censor_set(&cfg.censored_words);
+        for line in lines.iter_mut() {
+            for t in line.iter_mut() {
+                apply_content_formatting(t, cfg, &censor_set);
+            }
+        }
+    }
 
     // 6) Bundle consecutive lines into subtitle cues (respecting max_lines and speaker boundaries).
     let mut cues = group_lines_into_cues(lines, cfg);
@@ -276,6 +327,98 @@ pub fn process_segments(
 }
 
 // === Implementation details ===
+
+// ---- Content formatting (case, punctuation removal, censoring) ----
+
+fn build_censor_set(words: &[String]) -> HashSet<String> {
+    words
+        .iter()
+        .map(|w| w.trim().to_lowercase())
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
+/// Strip punctuation characters as defined by [`PUNCT_RE`] (non-letter/digit/whitespace/apostrophe).
+fn strip_punct_chars(s: &str) -> String {
+    PUNCT_RE.replace_all(s, "").into_owned()
+}
+
+/// Port of the JS `getCensoredVersion`: first + '*' * (len-2) + last, or all '*' if ≤3 chars.
+fn censored_replacement(clean: &str) -> String {
+    let chars: Vec<char> = clean.chars().collect();
+    let n = chars.len();
+    if n == 0 {
+        return String::new();
+    }
+    if n > 3 {
+        let mut out = String::with_capacity(n);
+        out.push(chars[0]);
+        for _ in 0..(n - 2) { out.push('*'); }
+        out.push(chars[n - 1]);
+        out
+    } else {
+        "*".repeat(n)
+    }
+}
+
+/// Lowercase then uppercase the first letter of every "word" (separated by non-word chars).
+/// Mirrors JS `.toLocaleLowerCase().replace(/\b\w/g, c => c.toUpperCase())`.
+fn titlecase_latin(s: &str) -> String {
+    let lower = s.to_lowercase();
+    let mut out = String::with_capacity(lower.len());
+    let mut prev_is_word = false;
+    for c in lower.chars() {
+        let is_word = c.is_alphanumeric() || c == '_';
+        if is_word && !prev_is_word {
+            for uc in c.to_uppercase() { out.push(uc); }
+        } else {
+            out.push(c);
+        }
+        prev_is_word = is_word;
+    }
+    out
+}
+
+/// Apply content formatting to a single token in place:
+/// 1) censor (if core word matches), 2) strip punctuation, 3) case transform.
+fn apply_content_formatting(t: &mut Tok, cfg: &PostProcessConfig, censor_set: &HashSet<String>) {
+    // 1) Censor: check if the cleaned word (punctuation stripped, lowercased) is in the set.
+    if !censor_set.is_empty() {
+        let clean = strip_punct_chars(&t.word);
+        let clean_trim = clean.trim();
+        if !clean_trim.is_empty() && censor_set.contains(&clean_trim.to_lowercase()) {
+            let replacement = censored_replacement(clean_trim);
+            // Replace the first occurrence of `clean_trim` within `t.word` to preserve any
+            // surrounding characters (e.g. internal apostrophes) — mirrors JS `word.replace(clean, censored)`.
+            if let Some(idx) = t.word.find(clean_trim) {
+                let mut new_word = String::with_capacity(t.word.len());
+                new_word.push_str(&t.word[..idx]);
+                new_word.push_str(&replacement);
+                new_word.push_str(&t.word[idx + clean_trim.len()..]);
+                t.word = new_word;
+            } else {
+                t.word = replacement;
+            }
+        }
+    }
+
+    // 2) Remove punctuation: clear the trailing punctuation field and strip any
+    //    non-letter/digit/whitespace/apostrophe characters from the word body.
+    if cfg.remove_punctuation {
+        t.punc.clear();
+        if !t.word.is_empty() {
+            t.word = strip_punct_chars(&t.word);
+        }
+    }
+
+    // 3) Apply case transform to the word (punctuation is case-insensitive in practice).
+    match cfg.text_case {
+        TextCase::None => {}
+        TextCase::Lowercase => { t.word = t.word.to_lowercase(); }
+        TextCase::Uppercase => { t.word = t.word.to_uppercase(); }
+        TextCase::Titlecase => { t.word = titlecase_latin(&t.word); }
+    }
+}
 
 #[inline]
 fn is_ascii_word(s: &str) -> bool {
@@ -1256,6 +1399,105 @@ mod tests {
         // Breaking at index 1 would put 'ー' at line start — kinsoku should shift to 2
         let adjusted = adjust_kinsoku(&toks, 1);
         assert_eq!(adjusted, 2, "kinsoku should shift break past prolonged sound mark");
+    }
+
+    // --- Content formatting tests ---
+
+    fn make_hello_world_seg() -> Segment {
+        Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "Hello".into(),  start: 0.0, end: 0.5, probability: None },
+                WordTimestamp { text: ",".into(),      start: 0.5, end: 0.5, probability: None },
+                WordTimestamp { text: " fantastic".into(), start: 0.6, end: 1.2, probability: None },
+                WordTimestamp { text: " world".into(), start: 1.2, end: 1.8, probability: None },
+                WordTimestamp { text: "!".into(),      start: 1.8, end: 1.9, probability: None },
+            ]),
+        }
+    }
+
+    #[test]
+    fn content_formatting_uppercase() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.text_case = TextCase::Uppercase;
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        assert!(!cues.is_empty());
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        assert!(joined.contains("HELLO"), "expected HELLO in: {}", joined);
+        assert!(joined.contains("WORLD"), "expected WORLD in: {}", joined);
+        // Punctuation should still be present since remove_punctuation is false.
+        assert!(joined.contains("!"), "expected ! in: {}", joined);
+    }
+
+    #[test]
+    fn content_formatting_lowercase_preserves_word_timings() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.text_case = TextCase::Lowercase;
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        for cue in &cues {
+            let words = cue.words.as_ref().expect("words present");
+            for w in words {
+                assert!(w.end >= w.start, "word timing inverted: {:?}", w);
+            }
+        }
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        assert!(joined.contains("hello"), "expected hello in: {}", joined);
+        // No uppercase letters in the rendered text.
+        assert!(joined.chars().all(|c| !c.is_ascii_uppercase()), "unexpected uppercase in: {}", joined);
+    }
+
+    #[test]
+    fn content_formatting_titlecase() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.text_case = TextCase::Titlecase;
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        assert!(joined.contains("Hello"), "expected Hello in: {}", joined);
+        assert!(joined.contains("Fantastic"), "expected Fantastic in: {}", joined);
+        assert!(joined.contains("World"), "expected World in: {}", joined);
+    }
+
+    #[test]
+    fn content_formatting_remove_punctuation_strips_trailing_and_commas() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.remove_punctuation = true;
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        assert!(!joined.contains('!'), "! should be removed: {}", joined);
+        assert!(!joined.contains(','), ", should be removed: {}", joined);
+        // Apostrophes are preserved by the regex (word chars kept).
+        assert!(joined.contains("Hello"), "expected Hello retained: {}", joined);
+    }
+
+    #[test]
+    fn content_formatting_censor_preserves_surrounding_punctuation() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.censored_words = vec!["fantastic".to_string()];
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        // "fantastic" (9 chars) -> "f" + "*"*7 + "c"
+        assert!(joined.contains("f*******c"), "expected censored word in: {}", joined);
+        // Surrounding words untouched.
+        assert!(joined.contains("Hello"), "expected Hello preserved: {}", joined);
+        assert!(joined.contains("world"), "expected world preserved: {}", joined);
+    }
+
+    #[test]
+    fn content_formatting_combines_all_three() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.text_case = TextCase::Uppercase;
+        cfg.remove_punctuation = true;
+        cfg.censored_words = vec!["fantastic".to_string()];
+        let cues = process_segments(&[make_hello_world_seg()], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        // Censor runs BEFORE case (censor produces f*******c, then uppercase -> F*******C).
+        assert!(joined.contains("F*******C"), "expected uppercased censored in: {}", joined);
+        assert!(joined.contains("HELLO"), "expected HELLO in: {}", joined);
+        assert!(!joined.contains('!'), "punctuation should be stripped: {}", joined);
+        assert!(!joined.contains(','), "commas should be stripped: {}", joined);
     }
 
     #[test]

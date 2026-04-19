@@ -56,7 +56,15 @@ pub struct Speaker {
 pub struct Transcript {
     pub processing_time_sec: u64,
     pub language: String,
+    /// Fully-formatted segments ready for display (structural line wrapping +
+    /// content formatting: case, punctuation removal, censoring).
     pub segments: Vec<Segment>,
+    /// Raw engine-output segments (post-translation) with untouched word data.
+    /// Used as the source for reformatting: the frontend can invoke
+    /// `reformat_subtitles` with new settings to regenerate `segments` without
+    /// re-transcribing.
+    #[serde(rename = "originalSegments")]
+    pub original_segments: Vec<Segment>,
     pub speakers: Vec<Speaker>,
 }
 

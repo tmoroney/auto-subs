@@ -90,10 +90,18 @@ export async function reformatSubtitles(
 export function getDefaultFormattingOptions(settings: {
     maxLinesPerSubtitle: number;
     language: string;
+    textDensity?: "less" | "standard" | "more" | "single";
+    textCase?: "none" | "uppercase" | "lowercase" | "titlecase";
+    removePunctuation?: boolean;
+    enableCensor?: boolean;
+    censoredWords?: string[];
 }): FormattingOptions {
     return {
         maxLines: settings.maxLinesPerSubtitle,
-        textDensity: "standard",
+        textDensity: settings.textDensity ?? "standard",
         language: settings.language,
+        textCase: settings.textCase ?? "none",
+        removePunctuation: settings.removePunctuation ?? false,
+        censoredWords: settings.enableCensor ? (settings.censoredWords ?? []) : [],
     };
 }

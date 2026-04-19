@@ -2,7 +2,6 @@
 import { join, documentDir } from '@tauri-apps/api/path';
 import { readDir, readTextFile, exists, writeTextFile, mkdir, stat } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types';
-import { applyTextFormattingToSubtitle } from './subtitle-formatter';
 
 const TRANSCRIPT_INDEX_FILENAME = 'transcript-index.json';
 
@@ -139,11 +138,8 @@ export interface GenerateTranscriptFilenameOptions {
 }
 
 export interface SaveTranscriptOptions {
-  formatOptions?: {
-    case: 'lowercase' | 'uppercase' | 'none' | 'titlecase';
-    removePunctuation: boolean;
-    censoredWords: string[];
-  };
+  // Content formatting (case, punctuation, censoring) is applied by the Rust backend
+  // during transcription / reformat, so no per-save options are needed.
   metadata?: Partial<TranscriptMetadata>;
 }
 
@@ -465,17 +461,14 @@ export async function saveTranscript(
 
     console.log('Saving transcript to:', filePath);
 
-    if (transcript.originalSegments) {
-      transcript.segments = transcript.originalSegments;
-    }
-
-    const originalSegments: Subtitle[] = transcript.segments.map((segment: any, index: number) => {
+    // Normalize a single incoming Rust segment into a frontend `Subtitle`,
+    // including per-word `line_number` assignment based on newlines in the
+    // rendered text (Rust joins multi-line cues with '\n').
+    const toSubtitle = (segment: any, index: number) => {
       let words = segment.words && segment.words.length > 0
         ? segment.words
         : interpolateWordsFromText(segment.text, segment.start, segment.end);
 
-      // Compute line_number for each word based on newlines in segment text.
-      // The Rust backend joins multi-line cues with '\n'.
       const textStr: string = segment.text ?? '';
       const lines = textStr.split('\n');
       if (words && words.length > 0 && lines.length > 1) {
@@ -487,7 +480,6 @@ export async function saveTranscript(
             wordIdx++;
           }
         }
-        // Remaining words get the last line number
         while (wordIdx < words.length) {
           words[wordIdx] = { ...words[wordIdx], line_number: lines.length - 1 };
           wordIdx++;
@@ -495,28 +487,28 @@ export async function saveTranscript(
       }
 
       return {
-        id: index.toString(),
+        // Subtitle.id is numeric; the index keeps cues in stable, monotonically
+        // increasing order for React keys and downstream lookups.
+        id: index,
         start: segment.start,
         end: segment.end,
-        text: segment.text.trim(),
+        text: (segment.text ?? '').trim(),
         speaker_id: segment.speaker_id || undefined,
-        words
+        words,
       };
-    });
+    };
 
-    // Apply content formatting only (case, punctuation, censoring).
-    // Structural splitting (line breaks, cue boundaries) is already done by Rust.
-    let segments: Subtitle[] = originalSegments;
-    const formatOptions = options?.formatOptions;
-    if (formatOptions) {
-      segments = segments.map(sub =>
-        applyTextFormattingToSubtitle(sub, {
-          case: formatOptions.case,
-          removePunctuation: formatOptions.removePunctuation,
-          censoredWords: formatOptions.censoredWords,
-        })
-      );
-    }
+    // `segments`        = fully-formatted display cues from Rust.
+    // `originalSegments` = raw post-translation segments from Rust (pre-formatting
+    //                      word data). Used as the source for reformat so that
+    //                      case/punctuation/censoring can be changed later without
+    //                      re-transcribing.
+    const segments: Subtitle[] = (transcript.segments ?? []).map(toSubtitle);
+    const rawIncomingOriginals: any[] = transcript.originalSegments
+      ?? transcript.original_segments
+      ?? transcript.segments
+      ?? [];
+    const originalSegments: Subtitle[] = rawIncomingOriginals.map(toSubtitle);
 
     // Speakers are now aggregated in the Rust backend and included in the transcript
     const speakers: Speaker[] = transcript.speakers || [];

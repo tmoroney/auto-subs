@@ -10,12 +10,12 @@ pub mod formatting;
 pub mod speaker;
 
 // Re-exports (crate users only need these)
-pub use engine::{Engine, EngineConfig, Callbacks};
+pub use engine::{Engine, EngineConfig, Callbacks, ContentFormatting};
 pub use vad::get_segments;
 pub use types::{TranscribeOptions, Segment, WordTimestamp, ProgressType};
 pub use model_manager::ModelManager;
 pub use utils::{get_translate_languages, get_whisper_languages};
-pub use formatting::{PostProcessConfig, process_segments, TextDensity};
+pub use formatting::{PostProcessConfig, process_segments, TextCase, TextDensity};
 
 /// Convenience function to list all cached Whisper models.
 /// Creates a temporary Engine with default config (except cache_dir) to access the cache.

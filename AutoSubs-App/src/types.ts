@@ -153,6 +153,10 @@ export interface TranscriptionOptions {
     maxSpeakers: number | null,
     density: "less" | "standard" | "more" | "single",
     maxLines: number,
+    // Content formatting applied in the Rust backend.
+    textCase: "none" | "uppercase" | "lowercase" | "titlecase",
+    removePunctuation: boolean,
+    censoredWords: string[],
 }
 
 // Formatting options for reformatting subtitles without re-transcribing
@@ -160,6 +164,10 @@ export interface FormattingOptions {
     maxLines?: number,
     textDensity?: "less" | "standard" | "more" | "single",
     language?: string,
+    // Content formatting (applied by Rust backend after structural line wrapping).
+    textCase?: "none" | "uppercase" | "lowercase" | "titlecase",
+    removePunctuation?: boolean,
+    censoredWords?: string[],
 }
 
 // Segment format expected by the backend reformat command
