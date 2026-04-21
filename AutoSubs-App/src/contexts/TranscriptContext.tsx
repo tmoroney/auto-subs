@@ -14,6 +14,7 @@ import {
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
+import { loadFontForLanguage } from '@/lib/font-loader';
 
 interface TranscriptContextType {
   subtitles: Subtitle[];
@@ -53,6 +54,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
+        loadFontForLanguage(transcript.language);
       } else {
         console.warn("No transcript found for:", filename);
         setCurrentTranscriptFilename(null);
@@ -144,6 +146,10 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     setSpeakers(speakers)
     setSubtitles(segments)
     console.log("Subtitle list updated with", segments.length, "subtitles")
+
+    // Ensure the font for the detected transcription language is registered
+    // (important when settings.language === "auto").
+    loadFontForLanguage(transcript?.language);
 
     return filename
   }

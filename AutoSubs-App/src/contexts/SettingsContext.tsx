@@ -4,6 +4,7 @@ import { Settings } from '@/types';
 import { getPreferredUiLanguage, initI18n, normalizeUiLanguage } from '@/i18n';
 import { models, modelSupportsLanguage, getFirstRecommendedModelForLanguage } from '@/lib/models';
 import { DEFAULT_PRESET_ID } from '@/presets/built-in-presets';
+import { loadFontForLanguage } from '@/lib/font-loader';
 
 export const DEFAULT_SETTINGS: Settings = {
   // Mode
@@ -122,6 +123,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (!isHydrated) return;
     initI18n(settings.uiLanguage);
   }, [settings.uiLanguage, isHydrated]);
+
+  // Lazy-load the appropriate font for the currently selected languages so
+  // non-Latin text (CJK, Arabic, Devanagari, Thai, etc.) renders correctly.
+  useEffect(() => {
+    if (!isHydrated) return;
+    loadFontForLanguage(settings.uiLanguage);
+    loadFontForLanguage(settings.language);
+    if (settings.translate) loadFontForLanguage(settings.targetLanguage);
+  }, [
+    isHydrated,
+    settings.uiLanguage,
+    settings.language,
+    settings.translate,
+    settings.targetLanguage,
+  ]);
 
   // Whenever settings change, persist them
   useEffect(() => {
