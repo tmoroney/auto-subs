@@ -1,6 +1,6 @@
 // src/utils/fileUtils.ts
-import { join, documentDir } from '@tauri-apps/api/path';
-import { readDir, readTextFile, exists, writeTextFile, mkdir, stat } from '@tauri-apps/plugin-fs';
+import { join, documentDir, appLocalDataDir } from '@tauri-apps/api/path';
+import { readDir, readTextFile, exists, writeTextFile, mkdir, stat, rename, copyFile, remove } from '@tauri-apps/plugin-fs';
 import { Subtitle, Speaker } from '@/types';
 
 const TRANSCRIPT_INDEX_FILENAME = 'transcript-index.json';
@@ -301,10 +301,89 @@ function getLegacyTranscriptFilename(isStandaloneMode: boolean, selectedFile: st
   return null;
 }
 
-// Get the transcripts storage directory
+// Legacy transcripts location (pre-migration). Kept so we can move existing
+// data into the new app-local-data directory on first launch.
+async function getLegacyTranscriptsDir(): Promise<string> {
+  return await join(await documentDir(), "AutoSubs-Transcripts");
+}
+
+// Migration runs at most once per process. Any errors are logged but not
+// thrown so a failed migration never blocks transcript access.
+let migrationPromise: Promise<void> | null = null;
+
+async function migrateLegacyTranscriptsOnce(newDir: string): Promise<void> {
+  if (migrationPromise) return migrationPromise;
+
+  migrationPromise = (async () => {
+    try {
+      const legacyDir = await getLegacyTranscriptsDir();
+      if (!(await exists(legacyDir))) return;
+
+      let entries;
+      try {
+        entries = await readDir(legacyDir);
+      } catch (err) {
+        console.warn('Could not read legacy transcripts directory:', err);
+        return;
+      }
+
+      const jsonEntries = entries.filter(
+        (e) => e.isFile && e.name && e.name.toLowerCase().endsWith('.json'),
+      );
+      if (jsonEntries.length === 0) return;
+
+      console.log(
+        `Migrating ${jsonEntries.length} transcript file(s) from ${legacyDir} to ${newDir}`,
+      );
+
+      let migrated = 0;
+      for (const entry of jsonEntries) {
+        const src = await join(legacyDir, entry.name);
+        const dest = await join(newDir, entry.name);
+        try {
+          if (await exists(dest)) {
+            // Destination already has this file; skip to avoid clobbering.
+            continue;
+          }
+          try {
+            await rename(src, dest);
+          } catch {
+            // rename can fail across filesystems; fall back to copy + remove.
+            await copyFile(src, dest);
+            await remove(src);
+          }
+          migrated++;
+        } catch (err) {
+          console.warn(`Failed to migrate transcript ${entry.name}:`, err);
+        }
+      }
+
+      console.log(`Transcript migration complete. Moved ${migrated} file(s).`);
+
+      // Remove the legacy directory entirely so it no longer clutters
+      // the user's Documents folder. Use recursive removal to clean up
+      // any stray files (e.g. macOS .DS_Store) that aren't transcripts.
+      try {
+        await remove(legacyDir, { recursive: true });
+        console.log(`Removed legacy transcripts directory: ${legacyDir}`);
+      } catch (err) {
+        console.warn('Failed to remove legacy transcripts directory:', err);
+      }
+    } catch (err) {
+      console.error('Transcript migration failed:', err);
+    }
+  })();
+
+  return migrationPromise;
+}
+
+// Get the transcripts storage directory.
+// Stored under the Tauri app-local-data directory (e.g. on macOS:
+// ~/Library/Application Support/<bundle-id>/Transcripts). This keeps
+// user-generated data out of Documents and avoids cloud-sync surprises
+// (OneDrive/iCloud), while surviving app updates.
 export async function getTranscriptsDir(): Promise<string> {
-  // Store in user's Documents/AutoSubs-Transcripts for persistence across reinstalls
-  const dir = await join(await documentDir(), "AutoSubs-Transcripts");
+  const dir = await join(await appLocalDataDir(), "Transcripts");
 
   // Ensure the directory exists
   try {
@@ -316,6 +395,9 @@ export async function getTranscriptsDir(): Promise<string> {
     console.error('Failed to create transcripts directory:', error);
     throw new Error(`Failed to create transcripts directory: ${error}`);
   }
+
+  // Fire-and-await a one-time migration from the legacy Documents folder.
+  await migrateLegacyTranscriptsOnce(dir);
 
   return dir;
 }
