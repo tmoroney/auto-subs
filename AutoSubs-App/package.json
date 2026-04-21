@@ -15,7 +15,7 @@
     "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.8",
+    "@fontsource/figtree": "^5.2.10",
     "@fontsource/noto-sans-arabic": "^5.2.10",
     "@fontsource/noto-sans-armenian": "^5.2.8",
     "@fontsource/noto-sans-bengali": "^5.2.11",
