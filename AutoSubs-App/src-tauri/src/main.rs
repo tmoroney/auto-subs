@@ -61,6 +61,14 @@ fn main() {
             // Initialize backend logging (file + in-memory ring buffer)
             crate::logging::init_logging(&app.handle());
 
+            // Hide native titlebar on Windows so the custom HTML titlebar is used exclusively
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(false);
+                }
+            }
+
             // Startup sidecar health check: ffmpeg availability & version
             {
                 let app_handle = app.handle().clone();
