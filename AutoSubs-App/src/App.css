@@ -37,7 +37,7 @@
     --sidebar-accent-foreground: 217.3 91.2% 59.8%;
     --sidebar-border: 205.0000 25.0000% 90.5882%;
     --sidebar-ring: 217.3 91.2% 59.8%;
-    --font-sans: "Open Sans", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
+    --font-sans: "Inter", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
     --font-serif: Georgia, serif;
     --font-mono: Menlo, monospace;
     --radius: 0.8rem;
@@ -92,7 +92,7 @@
     --sidebar-accent-foreground: 217.3 91.2% 59.8%;
     --sidebar-border: 205.7143 15.7895% 26.0784%;
     --sidebar-ring: 217.3 91.2% 59.8%;
-    --font-sans: "Open Sans", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
+    --font-sans: "Inter", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
     --font-serif: Georgia, serif;
     --font-mono: Menlo, monospace;
     --radius: 0.8rem;

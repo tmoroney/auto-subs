@@ -15,6 +15,7 @@
     "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@fontsource/noto-sans-arabic": "^5.2.10",
     "@fontsource/noto-sans-armenian": "^5.2.8",
     "@fontsource/noto-sans-bengali": "^5.2.11",
@@ -38,7 +39,6 @@
     "@fontsource/noto-sans-telugu": "^5.2.8",
     "@fontsource/noto-sans-thai": "^5.2.8",
     "@fontsource/noto-serif-tibetan": "^5.2.8",
-    "@fontsource/open-sans": "^5.2.7",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
