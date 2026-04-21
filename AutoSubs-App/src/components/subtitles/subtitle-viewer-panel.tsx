@@ -251,12 +251,12 @@ function SpeakersPopover({
         </TooltipTrigger>
         {variant === "compact" && <TooltipContent side="bottom">{t("subtitles.editSpeakers")}</TooltipContent>}
       </Tooltip>
-      <PopoverContent align="center" className="w-84" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent align="center" className="w-[340px]" onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="pb-3">
           <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
           <p className="text-xs text-muted-foreground">{t("speakerEditor.description")}</p>
         </div>
-        <ScrollArea className="h-84">
+        <ScrollArea className="h-[320px] pr-4 -mr-4">
           <div className="space-y-3">
             {speakers.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">{t("subtitles.empty.noSubtitlesAvailable")}</p>
