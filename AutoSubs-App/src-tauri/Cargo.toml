@@ -44,7 +44,7 @@ tokio = { version = "1", features = ["full"] }
 tauri-plugin-os = "2"
 
 # Transcription engine
-transcription-engine = { path = "crates/transcription-engine" }
+transcription-engine = { path = "crates/transcription-engine", default-features = false }
 
 # Core utilities
 eyre = "0.6"

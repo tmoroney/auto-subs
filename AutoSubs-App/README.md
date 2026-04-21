@@ -91,10 +91,30 @@ For development:
 ```bash
 cd AutoSubs-App
 npm install
-npm run tauri dev
+npm run tauri dev        # macOS/Linux
+npm run dev:win          # Windows
 ```
 
 Requires Node.js and a Rust toolchain. See [tauri.app](https://tauri.app) for prerequisites.
+
+### Windows Prerequisites
+
+In addition to the standard Tauri prerequisites, Windows builds require:
+
+1. **LLVM** — needed by `bindgen` to generate FFI bindings:
+   ```powershell
+   winget install LLVM.LLVM
+   ```
+   Then set the environment variable: `LIBCLANG_PATH=C:\Program Files\LLVM\bin`
+
+2. **Vulkan SDK** — needed for GPU-accelerated transcription via Whisper:
+   Download from [vulkan.lunarg.com](https://vulkan.lunarg.com/sdk/home#windows) and install. The installer sets `VULKAN_SDK` automatically.
+
+3. **Windows Long Path support** — the Vulkan shader build generates deeply nested paths that exceed Windows' 260-character default limit. Enable long paths once with an elevated PowerShell:
+   ```powershell
+   Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -Type DWord
+   ```
+   A restart or new terminal session is required for this to take effect.
 
 ## Detailed Documentation
 
