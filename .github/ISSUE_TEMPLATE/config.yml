@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation & FAQ
+    url: https://github.com/tmoroney/auto-subs#readme
+    about: Installation, setup, and troubleshooting guides.
+  - name: Questions & ideas
+    url: https://github.com/tmoroney/auto-subs/discussions
+    about: Ask questions, share workflows, or chat with other users.

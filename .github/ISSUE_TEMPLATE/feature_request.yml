@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an idea for AutoSubs.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement!
+
+        Before submitting, please search
+        [existing issues](https://github.com/tmoroney/auto-subs/issues?q=is%3Aissue)
+        and [discussions](https://github.com/tmoroney/auto-subs/discussions)
+        to see if your idea has already been proposed.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >-
+        Is your feature request related to a problem? A clear and concise
+        description of what the problem is.
+      placeholder: e.g. I often work with multilingual footage and...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: A clear description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or workarounds you've thought about.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mock-ups, screenshots, references to similar features in other tools, etc.
+    validations:
+      required: false

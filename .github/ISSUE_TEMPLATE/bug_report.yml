@@ -1,0 +1,120 @@
+name: Bug report
+description: Something broke — help us fix it.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+
+        Before submitting, please:
+        - Search [existing issues](https://github.com/tmoroney/auto-subs/issues?q=is%3Aissue) to avoid duplicates.
+        - Check the [README](https://github.com/tmoroney/auto-subs#readme) for setup and troubleshooting notes.
+
+        If AutoSubs opened this issue for you from its error dialog, several fields
+        below will already be filled in — just add reproduction steps and paste the
+        contents of your log file into the "Log file contents" box.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and couldn't find a duplicate.
+          required: true
+        - label: I'm on the latest version of AutoSubs.
+          required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug, including the error message shown by AutoSubs (if any).
+      placeholder: |
+        e.g. Transcription failed with "Failed to normalize audio: ffmpeg exited with code 1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions so we can reproduce the problem.
+      placeholder: |
+        1. Open AutoSubs in DaVinci Resolve
+        2. Select audio track 1
+        3. Click "Generate Subtitles"
+        4. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: autosubs-version
+    attributes:
+      label: AutoSubs version
+      description: Shown in the app's title bar / About menu.
+      placeholder: e.g. 3.2.1
+    validations:
+      required: true
+
+  - type: input
+    id: resolve-version
+    attributes:
+      label: DaVinci Resolve version
+      description: Leave blank if you're running AutoSubs in standalone mode.
+      placeholder: e.g. 19.1.2
+    validations:
+      required: false
+
+  - type: input
+    id: log-path
+    attributes:
+      label: Log file path
+      description: >-
+        Full path to the AutoSubs log file on your machine. The error dialog's
+        "Open Log Folder" button will take you there.
+      placeholder: e.g. /Users/you/Library/Logs/com.autosubs.app/logs/autosubs.log
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log file contents
+      description: >-
+        Open the folder shown in the error dialog, open the most recent
+        `autosubs.log` file, and paste its contents here. Feel free to trim it
+        to the portion around the error — but more context helps us debug
+        faster. This field is rendered as a code block, so no formatting needed.
+      render: shell
+      placeholder: Paste the contents of autosubs.log here...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Screenshots, videos, sample media, or anything else that helps.
+    validations:
+      required: false
