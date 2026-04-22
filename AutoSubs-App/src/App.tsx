@@ -16,6 +16,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/layout/titlebar"
 import { useResolve } from "@/contexts/ResolveContext"
+import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -79,6 +80,8 @@ function AppContent() {
             </ResizablePanelGroup>
           )}
         </div>
+
+        <GettingStartedOverlay />
       </div>
     </TooltipProvider>
   )

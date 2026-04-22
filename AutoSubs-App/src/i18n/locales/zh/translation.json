@@ -379,10 +379,10 @@
     "mergeRight": "向右合并",
     "deleteWord": "删除词汇"
   },
-  "languagePicker": {
-    "title": "选择您的语言",
-    "description": "选择您要在应用中使用的语言。",
-    "continue": "继续"
+  "gettingStarted": {
+    "title": "欢迎使用 AutoSubs",
+    "description": "选择您使用的语言。我们将用它作为界面语言（如有）和转录语言。",
+    "continue": "开始使用"
   },
   "titlebar": {
     "transcripts": {

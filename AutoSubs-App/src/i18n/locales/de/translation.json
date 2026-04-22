@@ -379,10 +379,10 @@
     "mergeRight": "Nach rechts zusammenführen",
     "deleteWord": "Wort löschen"
   },
-  "languagePicker": {
-    "title": "Sprache auswählen",
-    "description": "Wähle die Sprache aus, die du in der App verwenden möchtest.",
-    "continue": "Weiter"
+  "gettingStarted": {
+    "title": "Willkommen bei AutoSubs",
+    "description": "Wähle deine Sprache. Wir verwenden sie für die Oberfläche (falls verfügbar) und die Transkription.",
+    "continue": "Los geht's"
   },
   "titlebar": {
     "transcripts": {

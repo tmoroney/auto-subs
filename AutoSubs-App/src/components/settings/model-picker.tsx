@@ -248,10 +248,16 @@ export function ModelPicker({
                 {(() => {
                   const isSpecific = selectedLanguage !== "auto"
                   const specializedModels = isSpecific
-                    ? filteredModels.filter(m => m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage)
+                    ? filteredModels.filter(m =>
+                        (m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage) ||
+                        (m.languageSupport.kind === "restricted" && m.languageSupport.languages.includes(selectedLanguage))
+                      )
                     : []
                   const otherModels = isSpecific
-                    ? filteredModels.filter(m => !(m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage))
+                    ? filteredModels.filter(m =>
+                        !(m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage) &&
+                        !(m.languageSupport.kind === "restricted" && m.languageSupport.languages.includes(selectedLanguage))
+                      )
                     : filteredModels
 
                   const renderItem = (model: Model) => {

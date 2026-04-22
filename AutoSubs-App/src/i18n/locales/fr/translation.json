@@ -355,10 +355,10 @@
     "mergeRight": "Fusionner à droite",
     "deleteWord": "Supprimer le mot"
   },
-  "languagePicker": {
-    "title": "Choisissez votre langue",
-    "description": "Sélectionnez la langue que vous souhaitez utiliser dans l’application.",
-    "continue": "Continuer"
+  "gettingStarted": {
+    "title": "Bienvenue dans AutoSubs",
+    "description": "Sélectionnez la langue que vous parlez. Nous l'utiliserons pour l'interface (si disponible) et la transcription.",
+    "continue": "Commencer"
   },
   "titlebar": {
     "transcripts": { "searchPlaceholder": "Rechercher des transcriptions...", "loading": "Chargement...", "empty": "Aucune transcription trouvée." },

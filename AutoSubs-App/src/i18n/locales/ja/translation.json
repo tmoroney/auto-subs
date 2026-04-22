@@ -105,10 +105,10 @@
       "txt": { "title": "文字起こし (.txt)", "description": "利用可能な場合は話者ラベルを含む、LLM 向けのプレーンテキスト書き出しです。" }
     }
   },
-  "languagePicker": {
-    "continue": "続行",
-    "description": "アプリで使用する言語を選択してください。",
-    "title": "言語を選択"
+  "gettingStarted": {
+    "title": "AutoSubs へようこそ",
+    "description": "使用する言語を選択してください。インターフェース（利用可能な場合）と文字起こしに使用します。",
+    "continue": "始める"
   },
   "modelStatus": {
     "available": "ダウンロード可能",

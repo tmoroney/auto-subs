@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { load, Store } from '@tauri-apps/plugin-store';
+import { platform } from '@tauri-apps/plugin-os';
 import { Settings } from '@/types';
 import { getPreferredUiLanguage, initI18n, normalizeUiLanguage } from '@/i18n';
 import { models, modelSupportsLanguage, getFirstRecommendedModelForLanguage } from '@/lib/models';
@@ -12,7 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
   // UI settings
   uiLanguage: "en",
-  uiLanguagePromptCompleted: false,
+  onboardingCompleted: false,
   showEnglishOnlyModels: false,
 
   // Survey notification settings
@@ -73,30 +74,26 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const loadedStore = await load('autosubs-store.json', { autoSave: false });
       setStore(loadedStore);
 
+      const currentPlatform = await platform();
+      const isWindows = currentPlatform === 'windows';
+
       // If you store settings as a single object, you can get it all at once
       // Alternatively, if they are stored individually, you can reconstruct the object here.
       const storedSettings = await loadedStore.get<any>('settings');
-      // Legacy migration: old builds stored `preset: "<name>"`. All previous
-      // values were built-in names that we now represent as `builtin:default`.
-      if (storedSettings && typeof storedSettings === 'object') {
-        if (!storedSettings.presetId && typeof storedSettings.preset === 'string') {
-          storedSettings.presetId = DEFAULT_PRESET_ID;
-        }
-        delete storedSettings.preset;
-      }
       const hydratedSettings = storedSettings
         ? ({
             ...DEFAULT_SETTINGS,
             ...storedSettings,
-            uiLanguage: storedSettings.uiLanguagePromptCompleted
+            uiLanguage: storedSettings.onboardingCompleted
               ? normalizeUiLanguage(storedSettings.uiLanguage)
               : getPreferredUiLanguage(),
-            uiLanguagePromptCompleted: true,
+            onboardingCompleted: false,
           } as Settings)
         : ({
             ...DEFAULT_SETTINGS,
+            enableDTW: !isWindows,
             uiLanguage: getPreferredUiLanguage(),
-            uiLanguagePromptCompleted: true,
+            onboardingCompleted: false,
           } as Settings);
 
       initI18n(hydratedSettings.uiLanguage);
@@ -159,7 +156,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings({
       ...DEFAULT_SETTINGS,
       uiLanguage: getPreferredUiLanguage(),
-      uiLanguagePromptCompleted: true,
+      onboardingCompleted: true,
     });
   }
 

@@ -382,10 +382,10 @@
     "mergeRight": "Merge Right",
     "deleteWord": "Delete word"
   },
-  "languagePicker": {
-    "title": "Choose your language",
-    "description": "Select the language you want to use in the app.",
-    "continue": "Continue"
+  "gettingStarted": {
+    "title": "Welcome to AutoSubs",
+    "description": "Select the language you speak. We'll use it for the interface (if available) and transcription.",
+    "continue": "Get Started"
   },
   "titlebar": {
     "transcripts": {

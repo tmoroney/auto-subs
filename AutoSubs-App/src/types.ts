@@ -86,7 +86,7 @@ export interface Settings {
 
     // UI settings
     uiLanguage: SupportedUiLanguage;
-    uiLanguagePromptCompleted: boolean;
+    onboardingCompleted: boolean;
     showEnglishOnlyModels: boolean;
 
     // Survey notification settings
