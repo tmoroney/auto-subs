@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/animated-tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
+    AlertTriangle,
     Check,
     ChevronLeft,
     ChevronRight,
@@ -31,7 +32,11 @@ import {
     CreatePresetFlow,
     CreatePresetSubmit,
 } from "@/components/dialogs/add-to-timeline/create-preset-flow"
-import { cancelPresetEdit } from "@/api/resolve-api"
+import {
+    cancelPresetEdit,
+    checkTrackConflicts,
+    type ConflictInfo,
+} from "@/api/resolve-api"
 import { toast } from "sonner"
 
 const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
@@ -76,7 +81,7 @@ export function AddToTimelineDialog({
     isAdding = false,
 }: AddToTimelineDialogProps) {
     const { t } = useTranslation()
-    const { speakers, updateSpeakers } = useTranscript()
+    const { speakers, updateSpeakers, currentTranscriptFilename } = useTranscript()
     const { updateSetting } = useSettings()
     const {
         presets,
@@ -99,6 +104,7 @@ export function AddToTimelineDialog({
     const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>(speakers)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [createSession, setCreateSession] = React.useState<CreateSession>({ kind: "closed" })
+    const [conflictInfo, setConflictInfo] = React.useState<ConflictInfo | null>(null)
 
     // Only show the speakers step when we actually have speakers to configure.
     const hasSpeakers = speakers.length > 0
@@ -126,7 +132,26 @@ export function AddToTimelineDialog({
         }))
         setLocalSpeakers(initializedSpeakers)
         setCreateSession({ kind: "closed" })
+        setConflictInfo(null)
     }, [open, settings, speakers])
+
+    // Check for track conflicts whenever the selected output track changes.
+    React.useEffect(() => {
+        if (!open || !currentTranscriptFilename || !selection.outputTrack) {
+            setConflictInfo(null)
+            return
+        }
+        let cancelled = false
+        checkTrackConflicts(currentTranscriptFilename, selection.outputTrack)
+            .then((info) => {
+                if (!cancelled) setConflictInfo(info)
+            })
+            .catch((err) => {
+                console.warn("Track conflict check failed:", err)
+                if (!cancelled) setConflictInfo(null)
+            })
+        return () => { cancelled = true }
+    }, [open, selection.outputTrack, currentTranscriptFilename])
 
     // Intercept close while a preset-edit session is active so the temporary
     // track is always torn down. We explicitly cancel here rather than relying
@@ -321,6 +346,7 @@ export function AddToTimelineDialog({
                             onSelect={(value) =>
                                 setSelection((s) => ({ ...s, outputTrack: value }))
                             }
+                            conflictInfo={conflictInfo}
                         />
                     )}
                 </div>
@@ -556,31 +582,42 @@ function OutputTrackStep({
     tracks,
     selected,
     onSelect,
+    conflictInfo,
 }: {
     tracks: TimelineInfo["outputTracks"]
     selected: string
     onSelect: (value: string) => void
+    conflictInfo?: ConflictInfo | null
 }) {
+    const { t } = useTranslation()
     return (
-        <ScrollArea className="h-[240px] rounded-md border">
-            <div className="p-2 space-y-1">
-                {tracks.map((track) => (
-                    <button
-                        key={track.value}
-                        type="button"
-                        onClick={() => onSelect(track.value)}
-                        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${selected === track.value
-                            ? "bg-secondary text-secondary-foreground"
-                            : "hover:bg-muted"
-                            }`}
-                    >
-                        <div className="flex items-center justify-between">
-                            <span>{track.label}</span>
-                            {selected === track.value && <Check className="h-4 w-4" />}
-                        </div>
-                    </button>
-                ))}
-            </div>
-        </ScrollArea>
+        <div className="space-y-2">
+            <ScrollArea className="h-[240px] rounded-md border">
+                <div className="p-2 space-y-1">
+                    {tracks.map((track) => (
+                        <button
+                            key={track.value}
+                            type="button"
+                            onClick={() => onSelect(track.value)}
+                            className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${selected === track.value
+                                ? "bg-secondary text-secondary-foreground"
+                                : "hover:bg-muted"
+                                }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span>{track.label}</span>
+                                {selected === track.value && <Check className="h-4 w-4" />}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </ScrollArea>
+            {conflictInfo?.hasConflicts && (
+                <div className="flex items-start gap-1.5 text-red-500 text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{t("addToTimeline.conflict.hasConflicts")}</span>
+                </div>
+            )}
+        </div>
     )
 }

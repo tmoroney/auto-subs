@@ -395,6 +395,10 @@
     }
   },
   "addToTimeline": {
+    "conflict": {
+      "checking": "競合を確認中...",
+      "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
+    },
     "title": "タイムラインに追加",
     "templateTheme": "テンプレートテーマ",
     "selectTemplate": "テンプレートを選択",

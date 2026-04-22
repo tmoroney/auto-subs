@@ -419,6 +419,10 @@
     }
   },
   "addToTimeline": {
+    "conflict": {
+      "checking": "충돌 확인 중...",
+      "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
+    },
     "adding": "추가하는 중...",
     "outputTrack": "출력 트랙",
     "selectOutputTrack": "출력 트랙 선택",

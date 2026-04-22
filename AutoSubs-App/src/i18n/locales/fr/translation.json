@@ -392,6 +392,10 @@
   },
   "addToTimeline": {
     "title": "Ajouter à la timeline",
+    "conflict": {
+      "checking": "Vérification des conflits...",
+      "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existant."
+    },
     "templateTheme": "Thème du modèle",
     "selectTemplate": "Sélectionner un modèle",
     "outputTrack": "Piste de sortie",

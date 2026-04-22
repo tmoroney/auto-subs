@@ -420,6 +420,10 @@
   },
   "addToTimeline": {
     "title": "Añadir a la línea de tiempo",
+    "conflict": {
+      "checking": "Comprobando conflictos...",
+      "hasConflicts": "Esta pista tiene clips en conflicto. Los subtítulos pueden superponerse con el contenido existente."
+    },
     "templateTheme": "Tema de plantilla",
     "selectTemplate": "Seleccionar plantilla",
     "outputTrack": "Pista de salida",

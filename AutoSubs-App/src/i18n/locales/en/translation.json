@@ -446,6 +446,10 @@
       "regular": "Regular",
       "animated": "Animated"
     },
+    "conflict": {
+      "checking": "Checking for conflicts...",
+      "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."
+    },
     "preset": {
       "new": "New preset",
       "newDescription": "Design a caption in Resolve",

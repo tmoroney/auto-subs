@@ -419,6 +419,10 @@
     "toggle": "切换主题"
   },
   "addToTimeline": {
+    "conflict": {
+      "checking": "正在检查冲突...",
+      "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
+    },
     "title": "添加到时间线",
     "templateTheme": "模板主题",
     "selectTemplate": "选择模板",

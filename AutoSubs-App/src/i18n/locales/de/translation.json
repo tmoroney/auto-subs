@@ -21,7 +21,7 @@
       "description": "Aktualisiert Menüs und Buttons",
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
-    "reset": {
+    "preset": {
       "button": "Einstellungen zurücksetzen",
       "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",
       "confirmTitle": "Einstellungen zurücksetzen"
@@ -420,6 +420,10 @@
   },
   "addToTimeline": {
     "title": "Zur Timeline hinzufügen",
+    "conflict": {
+      "checking": "Konflikte werden überprüft...",
+      "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
+    },
     "templateTheme": "Vorlagenstil",
     "selectTemplate": "Vorlage auswählen",
     "outputTrack": "Ausgabespur",
