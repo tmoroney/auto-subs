@@ -123,19 +123,29 @@ local function utf8len(s)
     return count
 end
 
--- Function to read a JSON file
+-- Helper that wraps a Resolve-facing operation in pcall and returns a
+-- structured `{ error = <short reason>, detail = <underlying error> }` on
+-- failure, or the function's result on success. Used so the frontend error
+-- dialog can surface the actual error from Resolve instead of a generic
+-- "something went wrong".
+local function make_error(short, detail)
+    return { error = short, detail = tostring(detail or "") }
+end
+
+-- Function to read a JSON file. Returns the decoded table on success, or
+-- `nil, err` on failure so callers can surface the real reason.
 local function read_json_file(file_path)
-    local content = read_file(file_path)
-
-    -- Parse the JSON content
-    local data, pos, err = json.decode(content, 1, nil)
-
-    if err then
-        print("Error:", err)
-        return nil
+    local ok, content = pcall(read_file, file_path)
+    if not ok then
+        return nil, tostring(content)
     end
 
-    return data -- Return the decoded Lua table
+    -- Parse the JSON content
+    local data, _, err = json.decode(content, 1, nil)
+    if err then
+        return nil, tostring(err)
+    end
+    return data
 end
 
 local function join_path(dir, filename)
@@ -718,9 +728,12 @@ function ExportAudio(outputDir, inputTracks)
     -- Handle export start result
     if not success then
         currentExportJob.active = false
+        local detail = tostring(err or "unknown error")
+        print("[AutoSubs] ExportAudio failed to start: " .. detail)
         return {
             error = true,
-            message = "Failed to start export: " .. (err or "unknown error")
+            message = "Failed to start audio export",
+            detail = detail
         }
     else
         -- Export started successfully - return immediately
@@ -774,13 +787,20 @@ end
 -- Returns conflict info: { hasConflicts, conflictingClips: [{start, end, name}], trackName }
 function CheckTrackConflicts(filePath, trackIndex)
     local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return { hasConflicts = false, error = "No active timeline" }
+    end
     local timelineStart = timeline:GetStartFrame()
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
     -- Read the subtitle data to get time ranges
-    local data = read_json_file(filePath)
+    local data, readErr = read_json_file(filePath)
     if type(data) ~= "table" then
-        return { hasConflicts = false, error = "Could not read subtitle file" }
+        return {
+            hasConflicts = false,
+            error = "Could not read subtitle file",
+            detail = readErr or "unknown error"
+        }
     end
 
     local subtitles = data["segments"]
@@ -836,12 +856,10 @@ function CheckTrackConflicts(filePath, trackIndex)
 end
 
 local function load_subtitle_data(filePath)
-    local data = read_json_file(filePath)
+    local data, err = read_json_file(filePath)
     if type(data) ~= "table" then
-        print("Error reading JSON file")
-        return nil
+        return nil, err or "Could not parse subtitle JSON"
     end
-
     return data
 end
 
@@ -899,12 +917,11 @@ local function get_template(rootFolder, templateName)
         templateItem = get_template_item(rootFolder, "Default Template")
     end
     if not templateItem then
-        print("Error: Could not find subtitle template '" .. tostring(templateName) .. "' in media pool.")
-        return nil
+        return nil, nil, "Could not find subtitle template '" .. tostring(templateName) .. "' in media pool"
     end
 
     local template_frame_rate = templateItem:GetClipProperty()["FPS"]
-    return templateItem, template_frame_rate
+    return templateItem, template_frame_rate, nil
 end
 
 local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
@@ -1069,8 +1086,14 @@ local function to_word_timing(transcript_words, frameRate, segmentStart)
     return result
 end
 
+-- Applies subtitle text + styling to each appended timeline item. Instead of
+-- spamming one print per failed clip, we aggregate failures and return a
+-- summary so the caller can surface a single clean error.
+-- Returns: { failed = N, total = M, firstError = "..." }
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
+    local failed = 0
+    local firstError = nil
     for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
             local subtitle = subtitles[i]
@@ -1098,7 +1121,8 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                             end
                         end)
                         if not applyOk then
-                            print("Failed to apply preset settings: " .. tostring(applyErr))
+                            -- Re-raise so it's counted as a per-clip failure.
+                            error("preset apply failed: " .. tostring(applyErr))
                         end
                     end
                 else
@@ -1117,9 +1141,17 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
         end)
 
         if not success then
-            print("Failed to add subtitle to timeline: " .. err)
+            failed = failed + 1
+            if firstError == nil then firstError = tostring(err) end
         end
     end
+
+    if failed > 0 then
+        print(string.format("[AutoSubs] Failed to place %d of %d subtitles. First error: %s",
+            failed, #timelineItems, tostring(firstError)))
+    end
+
+    return { failed = failed, total = #timelineItems, firstError = firstError }
 end
 
 -- Forces timeline view to update and show new subtitle clips
@@ -1134,19 +1166,26 @@ end
 function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSettings)
     resolve:OpenPage("edit")
 
-    local data = load_subtitle_data(filePath)
+    local data, loadErr = load_subtitle_data(filePath)
     if not data then
-        return false
+        return make_error("Failed to load subtitle file", loadErr)
     end
 
     ---@type { mark_in: integer, mark_out: integer, segments: table, speakers: table }
     data = data
 
     local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return make_error("Failed to add subtitles", "No active timeline in Resolve")
+    end
     local timelineStart = timeline:GetStartFrame()
     local markIn, markOut = get_mark_in_out(timeline, data)
     local subtitles = data["segments"]
     local speakers = data["speakers"]
+
+    if not subtitles or #subtitles == 0 then
+        return make_error("Failed to add subtitles", "Transcript has no segments")
+    end
 
     local speakersExist = false
     if speakers and #speakers > 0 then
@@ -1167,14 +1206,26 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
     local rootFolder = mediaPool:GetRootFolder()
-    local templateItem, template_frame_rate = get_template(rootFolder, templateName)
+    local templateItem, template_frame_rate, templateErr = get_template(rootFolder, templateName)
     if not templateItem then
-        return false
+        return make_error("Template not found", templateErr)
     end
 
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
         template_frame_rate, timelineStart)
-    local timelineItems = mediaPool:AppendToTimeline(clipList)
+
+    -- AppendToTimeline can fail (e.g. locked timeline, invalid clips). Surface
+    -- the real Resolve error instead of silently returning an empty table.
+    local appendOk, timelineItems = pcall(function()
+        return mediaPool:AppendToTimeline(clipList)
+    end)
+    if not appendOk then
+        return make_error("Failed to add subtitles to timeline", timelineItems)
+    end
+    if type(timelineItems) ~= "table" or #timelineItems == 0 then
+        return make_error("Failed to add subtitles to timeline",
+            "Resolve did not return any timeline items from AppendToTimeline")
+    end
 
     local isAnimated = templateName == ANIMATED_CAPTION and true or false
 
@@ -1187,8 +1238,25 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
     end
 
-    apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
+    local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
+        presetSettings)
     refresh_timeline(timeline)
+
+    -- If some (but not all) clips failed to receive text/styling, still report
+    -- success but include a warning summary so the UI can mention it.
+    if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
+        return {
+            ok = true,
+            fontSwap = fontSwap,
+            warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total),
+            detail = applyStats.firstError
+        }
+    elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
+        return make_error(
+            string.format("Failed to place all %d subtitles", applyStats.total),
+            applyStats.firstError
+        )
+    end
 
     return { ok = true, fontSwap = fontSwap }
 end
@@ -1250,27 +1318,44 @@ end
 -- used for language-aware font fallback on the AutoSubs Caption macro.
 function GeneratePreview(speaker, templateName, presetSettings, exportDir, language)
     local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return make_error("Failed to generate preview", "No active timeline in Resolve")
+    end
     local rootFolder = mediaPool:GetRootFolder()
 
     -- Resolve the template item
     local templateItem = get_template_item(rootFolder, templateName)
     if not templateItem then
-        print("Error: Could not find subtitle template '" .. tostring(templateName) .. "' in media pool.")
-        return ""
+        return make_error("Failed to generate preview",
+            "Could not find subtitle template '" .. tostring(templateName) .. "' in media pool")
     end
 
     -- Add new track and place item at start of timeline (avoids overwriting existing clips)
-    timeline:AddTrack("video")
+    local setupOk, setupErr = pcall(function()
+        timeline:AddTrack("video")
+    end)
+    if not setupOk then
+        return make_error("Failed to generate preview", setupErr)
+    end
+
     local trackIndex = timeline:GetTrackCount("video")
     local fps = templateItem:GetClipProperty()["FPS"]
 
-    local timelineItem = mediaPool:AppendToTimeline({ {
-        mediaPoolItem = templateItem,
-        startFrame = 0,
-        endFrame = fps * 5, -- set preview to 5 seconds long
-        recordFrame = timeline:GetStartFrame(),
-        trackIndex = trackIndex
-    } })[1]
+    local appendOk, appended = pcall(function()
+        return mediaPool:AppendToTimeline({ {
+            mediaPoolItem = templateItem,
+            startFrame = 0,
+            endFrame = fps * 5, -- set preview to 5 seconds long
+            recordFrame = timeline:GetStartFrame(),
+            trackIndex = trackIndex
+        } })
+    end)
+    if not appendOk or type(appended) ~= "table" or not appended[1] then
+        pcall(function() timeline:DeleteTrack("video", trackIndex) end)
+        return make_error("Failed to generate preview",
+            (not appendOk) and tostring(appended) or "AppendToTimeline returned no items")
+    end
+    local timelineItem = appended[1]
 
     local isAnimated = templateName == ANIMATED_CAPTION and true or false
     local fontSwap = nil
@@ -1291,14 +1376,18 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
             outputPath = extract_frame(comp, exportDir)
         end
     end)
-    if not success then
-        print("Failed to generate preview: " .. err)
-        return ""
-    end
 
-    -- Cleanup preview clip and tracks
-    timeline:DeleteClips({ timelineItem })
-    timeline:DeleteTrack("video", trackIndex)
+    -- Always clean up, even on failure, so the user isn't left with a stray track.
+    pcall(function() timeline:DeleteClips({ timelineItem }) end)
+    pcall(function() timeline:DeleteTrack("video", trackIndex) end)
+
+    if not success then
+        return make_error("Failed to generate preview", err)
+    end
+    if not outputPath or outputPath == "" then
+        return make_error("Failed to generate preview",
+            "Template has no Fusion composition to render from")
+    end
 
     return { path = outputPath, fontSwap = fontSwap }
 end
@@ -1691,10 +1780,15 @@ function StartServer()
                     end
 
                     if not success then
+                        local errMsg = tostring(err)
                         body = safe_json({
-                            message = "Job failed with error: " .. tostring(err)
+                            error = true,
+                            message = "Server handler failed",
+                            detail = errMsg,
+                            func = data and data.func or nil
                         })
-                        print("Error:", err)
+                        print("[AutoSubs Server] handler error (" ..
+                            tostring(data and data.func or "<unknown>") .. "): " .. errMsg)
                     end
 
                     -- Send HTTP response content (don't assert to avoid crashing on client disconnect)

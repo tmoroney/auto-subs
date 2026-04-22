@@ -55,13 +55,19 @@ const inputGroupAddonVariants = cva(
   }
 )
 
-function InputGroupAddon({
-  className,
-  align = "inline-start",
-  ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
+// Wrapped in forwardRef so Radix's Slot (e.g. `<TooltipTrigger asChild>`) can
+// forward its ref to the underlying <div> without triggering the
+// "Function components cannot be given refs" warning.
+const InputGroupAddon = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>
+>(function InputGroupAddon(
+  { className, align = "inline-start", ...props },
+  ref,
+) {
   return (
     <div
+      ref={ref}
       role="group"
       data-slot="input-group-addon"
       data-align={align}
@@ -75,7 +81,7 @@ function InputGroupAddon({
       {...props}
     />
   )
-}
+})
 
 const inputGroupButtonVariants = cva(
   "flex items-center gap-2 text-sm shadow-none",
@@ -126,12 +132,16 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   )
 }
 
-function InputGroupInput({
-  className,
-  ...props
-}: React.ComponentProps<"input">) {
+// Wrapped in forwardRef so callers can imperatively focus the input (e.g.
+// `SearchSection`'s find/replace flow uses a ref to return focus after a
+// keyboard shortcut).
+const InputGroupInput = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<"input">
+>(function InputGroupInput({ className, ...props }, ref) {
   return (
     <Input
+      ref={ref}
       data-slot="input-group-control"
       className={cn(
         "flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent",
@@ -140,7 +150,7 @@ function InputGroupInput({
       {...props}
     />
   )
-}
+})
 
 function InputGroupTextarea({
   className,

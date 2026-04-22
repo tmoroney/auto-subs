@@ -147,6 +147,13 @@
         { "path": "$APPCACHE/**" },
         { "path": "$APPLOCALDATA/**" }
       ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/tmoroney/auto-subs" },
+        { "url": "https://github.com/tmoroney/auto-subs/*" }
+      ]
     }
   ]
 }

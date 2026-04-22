@@ -5,6 +5,7 @@ import { ResolveProvider } from './ResolveContext';
 import { TranscriptProvider } from './TranscriptContext';
 import { ProgressProvider } from './ProgressContext';
 import { PresetsProvider } from './PresetsContext';
+import { ErrorDialogProvider } from './ErrorDialogContext';
 
 interface GlobalProviderProps {
   children: React.ReactNode;
@@ -24,19 +25,24 @@ interface GlobalProviderProps {
  * without creating circular dependencies.
  */
 export function GlobalProvider({ children }: GlobalProviderProps) {
+  // ErrorDialogProvider is mounted at the outermost layer so any inner
+  // provider or component (transcription, Resolve calls, etc.) can reach the
+  // single app-wide error dialog via `useErrorDialog()`.
   return (
-    <SettingsProvider>
-      <ModelsProvider>
-        <ResolveProvider>
-          <TranscriptProvider>
-            <ProgressProvider>
-              <PresetsProvider>
-                {children}
-              </PresetsProvider>
-            </ProgressProvider>
-          </TranscriptProvider>
-        </ResolveProvider>
-      </ModelsProvider>
-    </SettingsProvider>
+    <ErrorDialogProvider>
+      <SettingsProvider>
+        <ModelsProvider>
+          <ResolveProvider>
+            <TranscriptProvider>
+              <ProgressProvider>
+                <PresetsProvider>
+                  {children}
+                </PresetsProvider>
+              </ProgressProvider>
+            </TranscriptProvider>
+          </ResolveProvider>
+        </ModelsProvider>
+      </SettingsProvider>
+    </ErrorDialogProvider>
   );
 }

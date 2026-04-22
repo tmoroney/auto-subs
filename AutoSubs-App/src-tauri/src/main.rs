@@ -28,6 +28,7 @@ mod models;
 mod transcription_api;
 mod transcript_types;
 mod logging;
+mod resolve_bridge;
 
 // Include integration-like tests that need crate visibility
 #[cfg(test)]
@@ -179,7 +180,7 @@ fn main() {
                                 {
                                   Ok(bytes) => bytes,
                                   Err(e) => {
-                                    eprintln!("Update download failed: {e}");
+                                    tracing::error!("Update download failed: {}", e);
                                     let _ = handle_for_dl.emit("update-error", json!({ "error": e.to_string() }));
                                     return;
                                   }
@@ -193,7 +194,7 @@ fn main() {
 
                                 // Install the update (this calls std::process::exit internally)
                                 if let Err(e) = update2.install(bytes) {
-                                  eprintln!("Update install failed: {e}");
+                                  tracing::error!("Update install failed: {}", e);
                                   let _ = handle_for_dl.emit("update-error", json!({ "error": e.to_string() }));
                                 }
                               }
@@ -217,6 +218,7 @@ fn main() {
             logging::clear_backend_logs,
             logging::get_log_dir,
             logging::export_backend_logs,
+            resolve_bridge::resolve_bridge,
             trigger_install_update
         ])
         .build(tauri::generate_context!())

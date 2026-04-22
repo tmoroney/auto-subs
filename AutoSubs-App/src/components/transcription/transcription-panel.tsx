@@ -21,6 +21,8 @@ import { useProgress } from "@/contexts/ProgressContext"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useResolve } from "@/contexts/ResolveContext"
+import { useErrorDialog } from "@/contexts/ErrorDialogContext"
+import { ResolveApiError } from "@/api/resolve-api"
 import { languages, translateLanguages } from "@/lib/languages"
 import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types"
 import { useTranslation } from "react-i18next"
@@ -409,6 +411,32 @@ function TranscriptionPanelView({
   )
 }
 
+/**
+ * Normalise any thrown value (native `Error`, `ResolveApiError`, plain
+ * strings from Tauri `invoke`, unknown) into the fields the error dialog
+ * expects. `ResolveApiError` carries a richer `detail` from Resolve which
+ * we surface in the dialog's collapsible "Show details" section.
+ */
+function describeError(
+  error: unknown,
+  fallbackTitle: string,
+): { title: string; message: string; detail?: string } {
+  if (error instanceof ResolveApiError) {
+    return {
+      title: fallbackTitle,
+      message: error.message,
+      detail: error.detail,
+    }
+  }
+  if (error instanceof Error) {
+    return { title: fallbackTitle, message: error.message || fallbackTitle }
+  }
+  if (typeof error === "string") {
+    return { title: fallbackTitle, message: error }
+  }
+  return { title: fallbackTitle, message: fallbackTitle }
+}
+
 export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () => void } = {}) {
   const { subtitles, speakers, currentTranscriptFilename, processTranscriptionResults, exportSubtitlesAs, loadSubtitles } = useTranscript()
   const { settings, updateSetting } = useSettings()
@@ -433,6 +461,8 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
     updateProgressStep,
     setupEventListeners,
   } = useProgress()
+  const { showError } = useErrorDialog()
+  const { t: tErr } = useTranslation()
 
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [, setTranscriptionProgress] = React.useState(0)
@@ -517,6 +547,11 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
       )
     } catch (error) {
       console.error("Failed to add to timeline:", error)
+      const { title, message, detail } = describeError(
+        error,
+        tErr("errorDialog.addToTimelineFailed", "Couldn't add subtitles to timeline"),
+      )
+      showError({ title, message, detail })
     }
   }
 
@@ -543,19 +578,20 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
       enableDiarize: settings.enableDiarize,
     })
 
-    const audioInfo = await getSourceAudio(
-      settings.isStandaloneMode,
-      fileInput,
-      settings.selectedInputTracks,
-    )
-
-    if (!audioInfo) {
-      console.error("Failed to get audio")
-      setIsProcessing(false)
-      return
-    }
-
     try {
+      const audioInfo = await getSourceAudio(
+        settings.isStandaloneMode,
+        fileInput,
+        settings.selectedInputTracks,
+      )
+
+      if (!audioInfo) {
+        // `getSourceAudio` returns null only on user-initiated cancellation.
+        // Silently clean up without showing an error dialog.
+        console.log("Audio source unavailable (cancelled or missing)")
+        return
+      }
+
       const options: TranscriptionOptions = {
         audioPath: audioInfo.path,
         offset: Math.round(audioInfo.offset * 1000) / 1000,
@@ -586,6 +622,28 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
       )
     } catch (error) {
       console.error("Transcription failed:", error)
+
+      // User-initiated cancellation is a normal path, not an error.
+      const isCancellation =
+        (error instanceof Error && /cancell?ed/i.test(error.message)) ||
+        (typeof error === "string" && /cancell?ed/i.test(error))
+      if (isCancellation) {
+        return
+      }
+
+      // Distinguish export-stage failures (thrown by `getSourceAudio` via
+      // `exportAudio`) from transcription-stage failures so the dialog title
+      // accurately reflects where things went wrong.
+      const isExportFailure =
+        error instanceof ResolveApiError &&
+        (error.func === "ExportAudio" || error.func === "GetExportProgress")
+
+      const fallbackTitle = isExportFailure
+        ? tErr("errorDialog.exportFailed", "Audio export failed")
+        : tErr("errorDialog.transcriptionFailed", "Transcription failed")
+
+      const { title, message, detail } = describeError(error, fallbackTitle)
+      showError({ title, message, detail })
     } finally {
       setIsProcessing(false)
       setTranscriptionProgress(0)

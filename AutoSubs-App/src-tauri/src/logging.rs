@@ -106,6 +106,13 @@ pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
     let _ = tracing::subscriber::set_global_default(subscriber);
 
     tracing::info!(target: "autosubs", path = %log_dir.display(), "logging initialized");
+    tracing::info!(
+        target: "autosubs",
+        "autosubs v{} ({} {})",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
 }
 
 #[tauri::command]

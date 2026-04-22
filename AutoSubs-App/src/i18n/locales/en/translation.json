@@ -506,5 +506,18 @@
     "noOccurrencesFound": "No occurrences found",
     "replaceCurrent": "Replace Current",
     "replaceAll": "Replace All ({{count}})"
+  },
+  "errorDialog": {
+    "transcriptionFailed": "Transcription failed",
+    "addToTimelineFailed": "Couldn't add subtitles to timeline",
+    "exportFailed": "Audio export failed",
+    "previewFailed": "Couldn't generate preview",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "logFileLabel": "Log file",
+    "copyPath": "Copy path",
+    "copied": "Copied",
+    "openLogFolder": "Open log folder",
+    "reportOnGithub": "Report on GitHub"
   }
 }

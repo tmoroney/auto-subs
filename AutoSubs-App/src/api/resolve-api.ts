@@ -1,54 +1,118 @@
-import { fetch } from '@tauri-apps/plugin-http';
+import { invoke } from '@tauri-apps/api/core';
 import { downloadDir } from '@tauri-apps/api/path';
 import { getTranscriptPath } from '@/utils/file-utils';
 import { Speaker } from '@/types';
 
-const resolveAPI = "http://localhost:56002/";
+/**
+ * Error thrown when the AutoSubs Lua server (inside Resolve) reports a failure
+ * in its response body. Carries both the short user-facing message and the
+ * underlying Resolve error so the frontend error dialog can surface both.
+ */
+export class ResolveApiError extends Error {
+  public detail?: string;
+  public func?: string;
+
+  constructor(message: string, detail?: string, func?: string) {
+    super(message);
+    this.name = "ResolveApiError";
+    this.detail = detail;
+    this.func = func;
+  }
+}
+
+/**
+ * Inspect a Lua-server JSON response and throw if it indicates failure. The
+ * Lua server returns `{ error: "<short>", detail: "<raw>" }` (or
+ * `{ error: true, message, detail }` for legacy handlers) on failure; on
+ * success it returns handler-specific shapes that never have a non-empty
+ * `error` field.
+ */
+function throwIfError(data: any, fallbackFunc?: string): void {
+  if (data == null || typeof data !== "object") return;
+  const err = (data as { error?: unknown }).error;
+  if (!err) return;
+
+  // Two supported shapes:
+  //   { error: "short reason", detail?: "..." }
+  //   { error: true, message: "short reason", detail?: "..." }
+  const shortMessage =
+    typeof err === "string"
+      ? err
+      : typeof (data as any).message === "string"
+      ? (data as any).message
+      : "Resolve reported an error";
+  const detail =
+    typeof (data as any).detail === "string"
+      ? (data as any).detail
+      : undefined;
+  const func =
+    typeof (data as any).func === "string"
+      ? (data as any).func
+      : fallbackFunc;
+
+  throw new ResolveApiError(shortMessage, detail, func);
+}
+
+/**
+ * Posts `payload` to the AutoSubs Lua server via a small Rust shim
+ * (`resolve_bridge`) and returns the parsed JSON body.
+ *
+ * We used to call `@tauri-apps/plugin-http` directly, but its response-body
+ * stream was observed to hang indefinitely against this specific server's
+ * short `Connection: close` responses (headers would arrive with `200 OK`
+ * but neither `.json()` nor `.text()` would ever resolve). Routing through
+ * Rust/reqwest bypasses that plugin entirely.
+ */
+async function callResolve(
+  payload: Record<string, unknown>,
+  timeoutSecs?: number,
+): Promise<any> {
+  const text = await invoke<string>('resolve_bridge', {
+    args: { payload, timeoutSecs },
+  });
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error('[resolve-api] Failed to parse JSON response:', err, text);
+    throw new Error(
+      `Invalid JSON response from AutoSubs server: ${text.slice(0, 200)}`,
+    );
+  }
+}
 
 export async function exportAudio(inputTracks: Array<string>) {
   const outputDir = await downloadDir();
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      func: "ExportAudio",
-      outputDir,
-      inputTracks,
-    }),
+  const data = await callResolve({
+    func: 'ExportAudio',
+    outputDir,
+    inputTracks,
   });
-  const data = await response.json();
-  
-  // Check for errors in starting export
-  if (data.error) {
-    throw new Error(data.message || "Failed to start audio export");
-  }
-  
-  // New non-blocking API returns started: true instead of timeline data
+
+  // Surface any Resolve-side error with underlying detail so the frontend
+  // error dialog can show it to the user.
+  throwIfError(data, 'ExportAudio');
+
+  // New non-blocking API returns started: true instead of timeline data.
   if (!data.started) {
-    throw new Error("Export did not start successfully");
+    throw new ResolveApiError(
+      'Export did not start successfully',
+      typeof data.detail === 'string' ? data.detail : undefined,
+      'ExportAudio',
+    );
   }
-  
+
   return data;
 }
 
 export async function jumpToTime(seconds: number) {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "JumpToTime", seconds }),
-  });
-  return response.json();
+  return callResolve({ func: 'JumpToTime', seconds });
 }
 
 export async function getTimelineInfo() {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GetTimelineInfo" }),
-  });
-  const data = await response.json();
+  const data = await callResolve({ func: 'GetTimelineInfo' });
   if (!data.timelineId) {
-    throw new Error("No timeline detected in Resolve.");
+    throw new Error('No timeline detected in Resolve.');
   }
   return data;
 }
@@ -91,18 +155,16 @@ export interface GeneratePreviewResult {
   fontSwap?: FontSwapInfo | null;
 }
 
-export async function checkTrackConflicts(filename: string, outputTrack: string): Promise<ConflictInfo> {
+export async function checkTrackConflicts(
+  filename: string,
+  outputTrack: string,
+): Promise<ConflictInfo> {
   const filePath = await getTranscriptPath(filename);
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      func: "CheckTrackConflicts",
-      filePath,
-      trackIndex: outputTrack,
-    }),
+  return callResolve({
+    func: 'CheckTrackConflicts',
+    filePath,
+    trackIndex: outputTrack,
   });
-  return response.json();
 }
 
 export async function addSubtitlesToTimeline(
@@ -113,55 +175,37 @@ export async function addSubtitlesToTimeline(
   presetSettings?: Record<string, unknown>,
 ): Promise<AddSubtitlesResult> {
   const filePath = await getTranscriptPath(filename);
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      func: "AddSubtitles",
-      filePath,
-      templateName: currentTemplate,
-      trackIndex: outputTrack,
-      conflictMode,
-      presetSettings,
-    }),
+  const data = await callResolve({
+    func: 'AddSubtitles',
+    filePath,
+    templateName: currentTemplate,
+    trackIndex: outputTrack,
+    conflictMode,
+    presetSettings,
   });
-  return response.json();
+  // Top-level failure (e.g. the server-side handler's pcall caught an error).
+  throwIfError(data, 'AddSubtitles');
+  // Nested failure: `AddSubtitles()` returns `{ error, detail }` inside `result`.
+  if (data && typeof data === 'object' && data.result) {
+    throwIfError(data.result, 'AddSubtitles');
+  }
+  return data;
 }
 
 export async function closeResolveLink() {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "Exit" }),
-  });
-  return response.json();
+  return callResolve({ func: 'Exit' });
 }
 
 export async function getExportProgress() {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GetExportProgress" }),
-  });
-  return response.json();
+  return callResolve({ func: 'GetExportProgress' });
 }
 
 export async function cancelExport() {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "CancelExport" }),
-  });
-  return response.json();
+  return callResolve({ func: 'CancelExport' });
 }
 
 export async function getRenderJobStatus() {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GetRenderJobStatus" }),
-  });
-  return response.json();
+  return callResolve({ func: 'GetRenderJobStatus' });
 }
 
 export async function generatePreview(
@@ -171,12 +215,16 @@ export async function generatePreview(
   presetSettings?: Record<string, unknown>,
   language?: string,
 ): Promise<GeneratePreviewResult> {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: "GeneratePreview", speaker, templateName, exportPath, presetSettings, language }),
+  const data = await callResolve({
+    func: 'GeneratePreview',
+    speaker,
+    templateName,
+    exportPath,
+    presetSettings,
+    language,
   });
-  return response.json();
+  throwIfError(data, 'GeneratePreview');
+  return data;
 }
 
 // Starts an interactive caption-preset edit session in Resolve. Adds a new
@@ -186,32 +234,20 @@ export async function generatePreview(
 export async function startPresetEdit(
   initialSettings?: Record<string, unknown>,
 ): Promise<{ ok?: true; error?: string }> {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: 'StartPresetEdit', initialSettings }),
-  });
-  return response.json();
+  return callResolve({ func: 'StartPresetEdit', initialSettings });
 }
 
 // Reads the AutoSubs tool's current input values via the macro's GetInputValues
 // helper, then tears down the preset-edit clip/track.
-export async function capturePresetSettings(): Promise<{ settings?: Record<string, unknown>; error?: string }> {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: 'CapturePresetSettings' }),
-  });
-  return response.json();
+export async function capturePresetSettings(): Promise<{
+  settings?: Record<string, unknown>;
+  error?: string;
+}> {
+  return callResolve({ func: 'CapturePresetSettings' });
 }
 
 // Tears down the preset-edit clip/track without capturing. Safe to call with
 // no active session.
 export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }> {
-  const response = await fetch(resolveAPI, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ func: 'CancelPresetEdit' }),
-  });
-  return response.json();
+  return callResolve({ func: 'CancelPresetEdit' });
 }

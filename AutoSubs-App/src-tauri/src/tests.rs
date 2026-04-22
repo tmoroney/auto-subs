@@ -30,6 +30,10 @@ mod tests {
             enable_diarize: Some(false),
             max_speakers: None,
             density: None,
+            max_lines: None,
+            text_case: None,
+            remove_punctuation: None,
+            censored_words: None,
         };
 
         let res = transcribe_audio(handle, options).await;
@@ -72,6 +76,10 @@ mod tests {
             enable_diarize: Some(true),
             max_speakers: None,
             density: None,
+            max_lines: None,
+            text_case: None,
+            remove_punctuation: None,
+            censored_words: None,
         };
 
         let res = transcribe_audio(handle, options).await;

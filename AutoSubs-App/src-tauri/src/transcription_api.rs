@@ -38,6 +38,9 @@ pub static SHOULD_CANCEL: Mutex<bool> = Mutex::new(false);
 static LATEST_PROGRESS: AtomicI32 = AtomicI32::new(0);
 static LATEST_PROGRESS_TYPE: Mutex<Option<ProgressType>> = Mutex::new(None);
 static LATEST_PROGRESS_LABEL: Mutex<Option<String>> = Mutex::new(None);
+// Tracks the last progress stage we emitted an info-level log for; used to
+// rate-limit logs to one line per stage transition.
+static LAST_LOGGED_PROGRESS_TYPE: Mutex<Option<ProgressType>> = Mutex::new(None);
 
 static NORMALIZED_AUDIO_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -81,14 +84,62 @@ fn parse_text_case(s: Option<&str>) -> TextCase {
 
 #[command]
 pub async fn cancel_transcription() -> Result<(), String> {
-    println!("Cancellation requested");
+    tracing::info!("cancel_transcription: requested");
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = true;
-        println!("Cancellation flag set to true");
     } else {
+        tracing::error!("cancel_transcription: failed to acquire SHOULD_CANCEL lock");
         return Err("Failed to acquire cancellation lock".to_string());
     }
     Ok(())
+}
+
+/// Sanitized view of transcription options suitable for logging. Strips the
+/// full absolute `audio_path` down to a basename so user paths don't leak into
+/// logs that may be shared on GitHub issues.
+#[derive(Serialize)]
+struct TranscribeOptionsLogView<'a> {
+    audio_file: String,
+    offset: Option<f64>,
+    model: &'a str,
+    lang: Option<&'a str>,
+    translate: Option<bool>,
+    target_language: Option<&'a str>,
+    enable_dtw: Option<bool>,
+    enable_gpu: Option<bool>,
+    enable_diarize: Option<bool>,
+    max_speakers: Option<usize>,
+    density: Option<String>,
+    max_lines: Option<usize>,
+    text_case: Option<&'a str>,
+    remove_punctuation: Option<bool>,
+    censored_words_count: usize,
+}
+
+impl<'a> From<&'a FrontendTranscribeOptions> for TranscribeOptionsLogView<'a> {
+    fn from(o: &'a FrontendTranscribeOptions) -> Self {
+        let audio_file = std::path::Path::new(&o.audio_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "<unknown>".to_string());
+        Self {
+            audio_file,
+            offset: o.offset,
+            model: &o.model,
+            lang: o.lang.as_deref(),
+            translate: o.translate,
+            target_language: o.target_language.as_deref(),
+            enable_dtw: o.enable_dtw,
+            enable_gpu: o.enable_gpu,
+            enable_diarize: o.enable_diarize,
+            max_speakers: o.max_speakers,
+            density: o.density.as_ref().map(|d| format!("{:?}", d)),
+            max_lines: o.max_lines,
+            text_case: o.text_case.as_deref(),
+            remove_punctuation: o.remove_punctuation,
+            censored_words_count: o.censored_words.as_ref().map(|v| v.len()).unwrap_or(0),
+        }
+    }
 }
 
 #[command]
@@ -97,7 +148,11 @@ pub async fn transcribe_audio<R: Runtime>(
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
     let start_time = Instant::now();
-    println!("Starting transcription with options: {:?}", options);
+    let options_log = TranscribeOptionsLogView::from(&options);
+    match serde_json::to_string(&options_log) {
+        Ok(j) => tracing::info!(target: "autosubs::transcribe", "transcribe_audio: starting options={}", j),
+        Err(_) => tracing::info!(target: "autosubs::transcribe", "transcribe_audio: starting (options failed to serialize)"),
+    }
 
     // Reset progress and cancellation state
     LATEST_PROGRESS.store(0, Ordering::Relaxed);
@@ -110,7 +165,6 @@ pub async fn transcribe_audio<R: Runtime>(
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = false;
     }
-    println!("Cancellation flag reset to false");
 
     let emit_app = app.clone();
     let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel::<()>();
@@ -146,22 +200,46 @@ pub async fn transcribe_audio<R: Runtime>(
     let audio_path = if should_normalize(options.audio_path.clone().into()) {
         create_normalized_audio(app.clone(), options.audio_path.clone().into(), None)
             .await
-            .map_err(|e| format!("Failed to normalize audio: {}", e))?
+            .map_err(|e| {
+                tracing::error!("audio normalization failed: {}", e);
+                format!("Failed to normalize audio: {}", e)
+            })?
     } else {
-        println!("Skip normalize");
+        tracing::info!("audio normalization skipped");
         options.audio_path.clone().into()
     };
-    println!("Normalized audio path: {}", audio_path.display());
+    tracing::debug!("normalized audio path: {}", audio_path.display());
 
     // Clone app handle for segment callback and wrap in Arc for thread-safe sharing
     let segment_emit_app = Arc::new(app.clone());
     let segment_emit_app_clone = Arc::clone(&segment_emit_app);
 
     // Run transcription using the whisper-diarize-rs crate (it's async)
+    let model_name_for_log = options.model.clone();
+    let enable_diarize_for_log = options.enable_diarize.unwrap_or(false);
     let res = async move {
         // Get the proper cache directory for models
         let cache_dir = get_cache_dir(app.clone())
-            .map_err(|e| format!("Failed to get cache directory: {}", e))?;
+            .map_err(|e| {
+                tracing::error!("get_cache_dir failed: {}", e);
+                format!("Failed to get cache directory: {}", e)
+            })?;
+
+        // Pre-check whether the selected model is already cached so we can
+        // tell users/triagers whether this run will download.
+        match transcription_engine::list_cached_models(&cache_dir) {
+            Ok(models) => {
+                if models.iter().any(|m| m == &model_name_for_log) {
+                    tracing::info!("whisper model '{}' already cached", model_name_for_log);
+                } else {
+                    tracing::info!("whisper model '{}' not cached, will download", model_name_for_log);
+                }
+                if enable_diarize_for_log {
+                    tracing::info!("diarization enabled (models will be downloaded if missing)");
+                }
+            }
+            Err(e) => tracing::warn!("list_cached_models failed: {}", e),
+        }
         
         // Create engine config with proper cache directory
         let engine_config = EngineConfig {
@@ -217,16 +295,29 @@ pub async fn transcribe_audio<R: Runtime>(
 
         // Set up callbacks using whisper-diarize-rs built-in cancellation
         let segment_callback = move |segment: &WDSegment| {
-            println!("New segment: {}", segment.text);
-            
+            tracing::trace!("new segment: {}", segment.text);
+
             // Emit the segment text to frontend for live preview
             let _ = segment_emit_app_clone.emit("new-segment", segment.text.clone());
         };
-        
+
+        // Reset per-run stage log de-dup state.
+        if let Ok(mut g) = LAST_LOGGED_PROGRESS_TYPE.lock() {
+            *g = None;
+        }
+
+        // Log one info! per distinct ProgressType transition; tick-by-tick
+        // progress stays at trace level to avoid filling the log with %s.
         let callbacks = Callbacks {
             progress: Some(&|percent: i32, progress_type: ProgressType, label: &str| {
-                println!("{}: {}% - {:?}", label, percent, progress_type);
-                
+                if let Ok(mut guard) = LAST_LOGGED_PROGRESS_TYPE.lock() {
+                    if guard.as_ref() != Some(&progress_type) {
+                        tracing::info!("{}: stage={:?}", label, progress_type);
+                        *guard = Some(progress_type.clone());
+                    }
+                }
+                tracing::trace!("{}: {}% - {:?}", label, percent, progress_type);
+
                 // Update global progress state
                 LATEST_PROGRESS.store(percent, Ordering::Relaxed);
                 if let Ok(mut progress_type_lock) = LATEST_PROGRESS_TYPE.lock() {
@@ -263,6 +354,7 @@ pub async fn transcribe_audio<R: Runtime>(
         // Run transcription.
         // `raw_segments` preserves the engine's pre-formatting word data (used as
         // `originalSegments` for reformatting). `segments` are fully formatted for display.
+        tracing::info!("transcription pipeline started");
         let (raw_segments, segments, output_language) = engine
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
@@ -277,11 +369,14 @@ pub async fn transcribe_audio<R: Runtime>(
                 // Check if this was a cancellation error
                 if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
                     if *should_cancel {
+                        tracing::info!("transcription cancelled by user");
                         "Transcription cancelled".to_string()
                     } else {
+                        tracing::error!("transcription failed: {}", e);
                         format!("Transcription failed: {}", e)
                     }
                 } else {
+                    tracing::error!("transcription failed: {}", e);
                     format!("Transcription failed: {}", e)
                 }
             })?;
@@ -343,50 +438,34 @@ pub async fn transcribe_audio<R: Runtime>(
     match res {
         Ok(mut transcript) => {
             transcript.processing_time_sec = start_time.elapsed().as_secs();
-            println!(
-                "Transcription successful in {:.2}s",
-                transcript.processing_time_sec
+
+            tracing::info!(
+                target: "autosubs::transcribe",
+                "transcribe_audio: success ({}s, segments={}, speakers={}, language={})",
+                transcript.processing_time_sec,
+                transcript.segments.len(),
+                transcript.speakers.len(),
+                transcript.language
             );
 
-            // Debug: inspect what we're actually returning to the frontend.
-            // Set AUTOSUBS_DEBUG_TRANSCRIPT=1 to pretty-print the full JSON.
+            // Optional deep-debug dump controlled by env var.
+            if std::env::var("AUTOSUBS_DEBUG_TRANSCRIPT")
+                .ok()
+                .as_deref()
+                == Some("1")
             {
-                use std::collections::BTreeMap;
-
-                let mut counts: BTreeMap<String, usize> = BTreeMap::new();
-                for seg in transcript.segments.iter() {
-                    let key = seg
-                        .speaker_id
-                        .as_deref()
-                        .unwrap_or("<none>")
-                        .trim()
-                        .to_string();
-                    *counts.entry(key).or_insert(0) += 1;
-                }
-
-                println!(
-                    "Returning transcript to frontend: segments={}, speakers={}, speaker_id_counts={:?}",
-                    transcript.segments.len(),
-                    transcript.speakers.len(),
-                    counts
-                );
-
-                if std::env::var("AUTOSUBS_DEBUG_TRANSCRIPT")
-                    .ok()
-                    .as_deref()
-                    == Some("1")
-                {
-                    match serde_json::to_string_pretty(&transcript) {
-                        Ok(json) => println!("Final transcript JSON:\n{}", json),
-                        Err(e) => eprintln!("Failed to serialize transcript for debug: {}", e),
-                    }
+                match serde_json::to_string_pretty(&transcript) {
+                    Ok(json) => tracing::debug!("final transcript JSON:\n{}", json),
+                    Err(e) => tracing::warn!("failed to serialize transcript for debug: {}", e),
                 }
             }
 
             Ok(transcript)
         }
         Err(e) => {
-            eprintln!("Error during transcription: {}", e);
+            // Note: detailed error was already logged at the map_err site. Avoid
+            // double-logging the same message at `error` level here.
+            tracing::debug!("transcribe_audio returning Err to frontend: {}", e);
             Err(e)
         }
     }
@@ -405,7 +484,7 @@ pub async fn create_normalized_audio<R: Runtime>(
     source: PathBuf,
     additional_ffmpeg_args: Option<Vec<String>>,
 ) -> Result<PathBuf> {
-    tracing::debug!("normalize {:?}", source.display());
+    tracing::info!("audio normalization: start input={}", source.display());
 
     let path_resolver = app.path();
 
