@@ -381,8 +381,37 @@
   },
   "gettingStarted": {
     "title": "欢迎使用 AutoSubs",
-    "description": "选择您使用的语言。我们将用它作为界面语言（如有）和转录语言。",
+    "description": "选择您使用的语言。它将用作界面语言（如有）和转录语言。",
     "continue": "开始使用"
+  },
+  "tour": {
+    "connection": {
+      "title": "连接状态",
+      "description": "显示 AutoSubs 是否已连接到 DaVinci Resolve。绿色表示已连接，可以访问时间线。"
+    },
+    "modeSwitcher": {
+      "title": "输入模式",
+      "description": "切换直接转录文件，或从 DaVinci Resolve 时间线提取音频。"
+    },
+    "modelPicker": {
+      "title": "AI 模型",
+      "description": "选择语音识别模型。已自动选择支持您所用语言的模型。不同模型在速度与准确度之间有所权衡。"
+    },
+    "audioInput": {
+      "title": "音频来源",
+      "description": "从 Resolve 时间线中选择音频轨道，或将媒体文件拖放到此处直接转录。"
+    },
+    "controls": {
+      "title": "转录控制",
+      "description": "配置语言、说话人识别、文本格式，然后点击生成字幕以开始。"
+    },
+    "history": {
+      "title": "历史转录",
+      "description": "在此处访问和搜索您所有的历史转录记录。"
+    },
+    "skip": "跳过导览",
+    "next": "下一步",
+    "finish": "开始使用"
   },
   "titlebar": {
     "transcripts": {

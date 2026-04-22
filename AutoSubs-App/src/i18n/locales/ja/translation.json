@@ -107,8 +107,37 @@
   },
   "gettingStarted": {
     "title": "AutoSubs へようこそ",
-    "description": "使用する言語を選択してください。インターフェース（利用可能な場合）と文字起こしに使用します。",
+    "description": "使用する言語を選択してください。インターフェース（利用可能な場合）と文字起こしに使用されます。",
     "continue": "始める"
+  },
+  "tour": {
+    "connection": {
+      "title": "接続状態",
+      "description": "AutoSubs が DaVinci Resolve に接続されているかを表示します。緑は接続され、タイムラインにアクセスする準備ができていることを示します。"
+    },
+    "modeSwitcher": {
+      "title": "入力モード",
+      "description": "ファイルを直接文字起こしするか、DaVinci Resolve のタイムラインから音声を抽出するかを切り替えます。"
+    },
+    "modelPicker": {
+      "title": "AI モデル",
+      "description": "音声認識モデルを選択してください。使用言語をサポートするモデルが自動的に選択されています。モデルによって速度と精度のバランスが異なります。"
+    },
+    "audioInput": {
+      "title": "音声ソース",
+      "description": "Resolve タイムラインから音声トラックを選択するか、メディアファイルをここにドロップして直接文字起こしします。"
+    },
+    "controls": {
+      "title": "文字起こし設定",
+      "description": "言語、話者識別、テキスト書式を設定し、「字幕を生成」をクリックして開始します。"
+    },
+    "history": {
+      "title": "過去の文字起こし",
+      "description": "ここですべての過去の文字起こしにアクセスして検索できます。"
+    },
+    "skip": "ツアーをスキップ",
+    "next": "次へ",
+    "finish": "始める"
   },
   "modelStatus": {
     "available": "ダウンロード可能",

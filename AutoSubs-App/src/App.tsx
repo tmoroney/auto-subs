@@ -17,6 +17,8 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/layout/titlebar"
 import { useResolve } from "@/contexts/ResolveContext"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
+import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
+import { useSettings } from "@/contexts/SettingsContext"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -39,6 +41,7 @@ function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
   const { timelineInfo } = useResolve()
+  const { settings, isHydrated } = useSettings()
   const handleOpenCompactViewer = React.useCallback(() => {
     if (isMobile) {
       setShowMobileSubtitles(true)
@@ -82,6 +85,9 @@ function AppContent() {
         </div>
 
         <GettingStartedOverlay />
+        {isHydrated && settings.onboardingCompleted && !settings.tourCompleted && (
+          <OnboardingTour />
+        )}
       </div>
     </TooltipProvider>
   )

@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // UI settings
   uiLanguage: "en",
   onboardingCompleted: false,
+  tourCompleted: false,
   showEnglishOnlyModels: false,
 
   // Survey notification settings
@@ -87,13 +88,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             uiLanguage: storedSettings.onboardingCompleted
               ? normalizeUiLanguage(storedSettings.uiLanguage)
               : getPreferredUiLanguage(),
-            onboardingCompleted: false,
           } as Settings)
         : ({
             ...DEFAULT_SETTINGS,
             enableDTW: !isWindows,
             uiLanguage: getPreferredUiLanguage(),
-            onboardingCompleted: false,
           } as Settings);
 
       initI18n(hydratedSettings.uiLanguage);

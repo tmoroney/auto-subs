@@ -120,6 +120,35 @@
     "description": "사용하실 언어를 선택하세요. 인터페이스(지원 시)와 전사에 사용됩니다.",
     "continue": "시작하기"
   },
+  "tour": {
+    "connection": {
+      "title": "연결 상태",
+      "description": "AutoSubs가 DaVinci Resolve와 연결되어 있는지 표시합니다. 초록색은 연결되어 타임라인에 접근할 준비가 되었음을 의미합니다."
+    },
+    "modeSwitcher": {
+      "title": "입력 모드",
+      "description": "파일을 직접 전사하거나 DaVinci Resolve 타임라인에서 오디오를 추출하는 모드를 전환하세요."
+    },
+    "modelPicker": {
+      "title": "AI 모델",
+      "description": "음성 인식 모델을 선택하세요. 사용 언어를 지원하는 모델이 자동으로 선택되었습니다. 모델마다 속도와 정확도의 균형이 다릅니다."
+    },
+    "audioInput": {
+      "title": "오디오 소스",
+      "description": "Resolve 타임라인에서 오디오 트랙을 선택하거나 미디어 파일을 여기에 드롭하여 직접 전사하세요."
+    },
+    "controls": {
+      "title": "전사 설정",
+      "description": "언어, 화자 식별, 텍스트 서식을 구성한 다음 '자막 생성'을 클릭하여 시작하세요."
+    },
+    "history": {
+      "title": "이전 전사 기록",
+      "description": "여기에서 모든 이전 전사 기록에 접근하고 검색할 수 있습니다."
+    },
+    "skip": "투어 건너뛰기",
+    "next": "다음",
+    "finish": "시작하기"
+  },
   "modelStatus": {
     "available": "다운로드 안 됨",
     "cached": "다운로드됨",

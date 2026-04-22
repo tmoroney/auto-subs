@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "@/contexts/SettingsContext";
 import { initI18n, normalizeUiLanguage, SUPPORTED_UI_LANGUAGES } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { models, getFirstRecommendedModelForLanguage } from "@/lib/models";
 import {
   Select,
   SelectContent,
@@ -52,6 +53,16 @@ export function GettingStartedOverlay() {
     }
 
     updateSetting("language", selection);
+
+    // Auto-select first recommended model that supports the selected language
+    const recommendedModel = getFirstRecommendedModelForLanguage(selection);
+    if (recommendedModel) {
+      const modelIndex = models.findIndex(m => m.value === recommendedModel.value);
+      if (modelIndex !== -1) {
+        updateSetting("model", modelIndex);
+      }
+    }
+
     updateSetting("onboardingCompleted", true);
   };
 

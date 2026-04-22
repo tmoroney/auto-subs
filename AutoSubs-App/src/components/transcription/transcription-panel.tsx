@@ -188,6 +188,7 @@ function TranscriptionPanelView({
         <Tabs
           value={isStandaloneMode ? "file" : "timeline"}
           onValueChange={(value) => onStandaloneModeChange(value === "file")}
+          data-tour="mode-switcher"
         >
           <TabsList className="p-1 h-auto">
             <TabsTrigger
@@ -260,7 +261,7 @@ function TranscriptionPanelView({
       </div>
 
       <div className="flex-shrink-0">
-        <Card className="p-3 sticky bottom-4 mx-4 z-50 shadow-lg bg-card">
+        <Card className="p-3 sticky bottom-4 mx-4 z-50 shadow-lg bg-card" data-tour="transcription-controls">
           <div className="grid w-full gap-3">
             <div className="flex items-center gap-1.5">
               <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
@@ -326,7 +327,7 @@ function TranscriptionPanelView({
             </div>
 
             {!currentSettings.isStandaloneMode ? (
-              <Popover open={openTrackSelector} onOpenChange={handleTrackSelectorOpen}>
+              <Popover open={openTrackSelector} onOpenChange={handleTrackSelectorOpen} data-tour="audio-input">
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -355,6 +356,7 @@ function TranscriptionPanelView({
             ) : (
               <div
                 className="w-full h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-4 px-2 cursor-pointer transition-colors hover:bg-muted/50 hover:dark:bg-muted outline-none"
+                data-tour="audio-input"
                 tabIndex={0}
                 role="button"
                 aria-label={t("actionBar.fileDrop.aria")}

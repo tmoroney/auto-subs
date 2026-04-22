@@ -381,8 +381,37 @@
   },
   "gettingStarted": {
     "title": "Willkommen bei AutoSubs",
-    "description": "Wähle deine Sprache. Wir verwenden sie für die Oberfläche (falls verfügbar) und die Transkription.",
+    "description": "Wähle deine Sprache. Sie wird für die Oberfläche (falls verfügbar) und die Transkription verwendet.",
     "continue": "Los geht's"
+  },
+  "tour": {
+    "connection": {
+      "title": "Verbindungsstatus",
+      "description": "Zeigt an, ob AutoSubs mit DaVinci Resolve verbunden ist. Grün bedeutet verbunden und bereit, auf die Timeline zuzugreifen."
+    },
+    "modeSwitcher": {
+      "title": "Eingabemodus",
+      "description": "Wechsle zwischen der direkten Transkription einer Datei oder dem Extrahieren von Audio aus einer DaVinci Resolve-Timeline."
+    },
+    "modelPicker": {
+      "title": "KI-Modell",
+      "description": "Wähle das Spracherkennungsmodell. Es wurde automatisch ein Modell ausgewählt, das deine Sprache unterstützt. Unterschiedliche Modelle bieten Kompromisse zwischen Geschwindigkeit und Genauigkeit."
+    },
+    "audioInput": {
+      "title": "Audioquelle",
+      "description": "Wähle Audiospuren aus deiner Resolve-Timeline oder ziehe eine Mediendatei hierher, um sie direkt zu transkribieren."
+    },
+    "controls": {
+      "title": "Transkriptionssteuerung",
+      "description": "Konfiguriere Sprache, Sprecheridentifikation, Textformatierung und klicke dann auf Untertitel generieren, um zu starten."
+    },
+    "history": {
+      "title": "Frühere Transkripte",
+      "description": "Greife hier auf alle früheren Transkriptionen zu und durchsuche sie."
+    },
+    "skip": "Tour überspringen",
+    "next": "Weiter",
+    "finish": "Los geht's"
   },
   "titlebar": {
     "transcripts": {

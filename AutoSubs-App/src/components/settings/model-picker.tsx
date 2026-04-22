@@ -166,6 +166,7 @@ export function ModelPicker({
             role="combobox"
             className="p-2"
             aria-expanded={open}
+            data-tour="model-picker"
             onMouseEnter={() => {
               chevronsIconRef.current?.startAnimation()
             }}

@@ -338,13 +338,13 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
           <div className="w-20" data-tauri-drag-region />
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
+          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
             {centerContent}
           </div>
 
           {/* Right side - Transcripts and Settings buttons */}
           <div className="flex items-center w-24 justify-end">
-            <div data-tauri-drag-region="false">
+            <div data-tauri-drag-region="false" data-tour="history-button">
               <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>
             <div data-tauri-drag-region="false">
@@ -357,7 +357,7 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
         <>
           {/* Left side - Transcripts and Settings */}
           <div className="flex items-center">
-            <div data-tauri-drag-region="false">
+            <div data-tauri-drag-region="false" data-tour="history-button">
               <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>
             <div data-tauri-drag-region="false">
@@ -366,7 +366,7 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
           </div>
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region>
+          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
             {centerContent}
           </div>
 

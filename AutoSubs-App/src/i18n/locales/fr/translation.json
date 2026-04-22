@@ -357,8 +357,37 @@
   },
   "gettingStarted": {
     "title": "Bienvenue dans AutoSubs",
-    "description": "Sélectionnez la langue que vous parlez. Nous l'utiliserons pour l'interface (si disponible) et la transcription.",
+    "description": "Sélectionnez la langue que vous parlez. Elle sera utilisée pour l'interface (si disponible) et la transcription.",
     "continue": "Commencer"
+  },
+  "tour": {
+    "connection": {
+      "title": "État de la connexion",
+      "description": "Indique si AutoSubs est connecté à DaVinci Resolve. Le vert signifie connecté et prêt à accéder à la timeline."
+    },
+    "modeSwitcher": {
+      "title": "Mode d'entrée",
+      "description": "Basculez entre la transcription directe d'un fichier ou l'extraction audio d'une timeline DaVinci Resolve."
+    },
+    "modelPicker": {
+      "title": "Modèle IA",
+      "description": "Choisissez le modèle de reconnaissance vocale. Un modèle prenant en charge votre langue a été automatiquement sélectionné. Les différents modèles privilégient la vitesse ou la précision."
+    },
+    "audioInput": {
+      "title": "Source audio",
+      "description": "Sélectionnez les pistes audio de votre timeline Resolve ou déposez un fichier média ici pour le transcrire directement."
+    },
+    "controls": {
+      "title": "Contrôles de transcription",
+      "description": "Configurez la langue, l'identification des locuteurs, le formatage du texte, puis cliquez sur Générer les sous-titres pour démarrer."
+    },
+    "history": {
+      "title": "Transcriptions précédentes",
+      "description": "Accédez et recherchez toutes vos transcriptions précédentes ici."
+    },
+    "skip": "Ignorer le tour",
+    "next": "Suivant",
+    "finish": "Commencer"
   },
   "titlebar": {
     "transcripts": { "searchPlaceholder": "Rechercher des transcriptions...", "loading": "Chargement...", "empty": "Aucune transcription trouvée." },
