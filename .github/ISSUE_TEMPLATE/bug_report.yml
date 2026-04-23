@@ -14,7 +14,7 @@ body:
     attributes:
       label: What happened?
       description: Describe the bug, including any error message shown by AutoSubs.
-      placeholder: e.g. Transcription failed with "Failed to normalize audio: ffmpeg exited with code 1"
+      placeholder: 'e.g. Transcription failed with "Failed to normalize audio: ffmpeg exited with code 1"'
     validations:
       required: true
 
