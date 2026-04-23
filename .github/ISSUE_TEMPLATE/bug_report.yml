@@ -45,7 +45,7 @@ body:
     id: autosubs-version
     attributes:
       label: AutoSubs version
-      placeholder: e.g. 3.2.1
+      description: e.g. 3.2.1
     validations:
       required: true
 
@@ -53,8 +53,7 @@ body:
     id: resolve-version
     attributes:
       label: DaVinci Resolve version
-      description: Leave blank if running in standalone mode.
-      placeholder: e.g. 19.1.2
+      description: Leave blank if running in standalone mode. e.g. 19.1.2
     validations:
       required: false
 
