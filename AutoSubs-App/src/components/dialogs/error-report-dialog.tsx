@@ -69,19 +69,19 @@ export function ErrorReportDialog({
     if (!open || loadedRef.current) return
     loadedRef.current = true
     let cancelled = false
-    ;(async () => {
-      try {
-        const [version, plat] = await Promise.all([
-          getAppVersion().catch(() => ""),
-          Promise.resolve(platform()).catch(() => "" as string),
-        ])
-        if (cancelled) return
-        setAppVersion(version || "")
-        setOsName(mapOsForIssue(plat))
-      } catch (err) {
-        console.warn("[ErrorReportDialog] failed to load diagnostics:", err)
-      }
-    })()
+      ; (async () => {
+        try {
+          const [version, plat] = await Promise.all([
+            getAppVersion().catch(() => ""),
+            Promise.resolve(platform()).catch(() => "" as string),
+          ])
+          if (cancelled) return
+          setAppVersion(version || "")
+          setOsName(mapOsForIssue(plat))
+        } catch (err) {
+          console.warn("[ErrorReportDialog] failed to load diagnostics:", err)
+        }
+      })()
     return () => {
       cancelled = true
     }
@@ -127,25 +127,22 @@ export function ErrorReportDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <AlertDialogContent className="sm:max-w-md">
+      <AlertDialogContent>
         <AlertDialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-          </div>
-          <AlertDialogDescription className="pt-2 whitespace-pre-wrap break-words">
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertCircle className="h-6 w-6 text-red-500" />
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-lg">
             {message}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter>
+        <AlertDialogFooter className="pt-3">
           <AlertDialogCancel>{t("common.close", "Close")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleCopyAndReport}
             disabled={isCopying}
-            className="gap-1.5"
           >
             {isCopying ? (
               "Copying..."
