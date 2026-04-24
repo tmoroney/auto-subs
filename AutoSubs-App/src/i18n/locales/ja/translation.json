@@ -108,6 +108,9 @@
   "gettingStarted": {
     "title": "AutoSubs へようこそ",
     "description": "使用する言語を選択してください。インターフェース（利用可能な場合）と文字起こしに使用されます。",
+    "selectLanguage": "言語を選択",
+    "searchLanguage": "言語を検索...",
+    "noLanguageFound": "言語が見つかりません。",
     "continue": "始める"
   },
   "tour": {

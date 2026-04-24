@@ -50,9 +50,8 @@ pub async fn resolve_bridge(args: ResolveBridgeArgs) -> Result<String, String> {
         .send()
         .await
         .map_err(|e| {
-            // Don't log at error level — "Resolve offline" is a normal state
-            // the UI polls for to decide connection status.
-            tracing::debug!("resolve_bridge POST failed: {}", e);
+            // "Resolve offline" is normal if Resolve isn't running or the user is in standalone mode.
+            tracing::debug!("resolve_bridge: could not connect to Resolve (this is normal if Resolve is closed): {}", e);
             format!("resolve request failed: {}", e)
         })?;
 

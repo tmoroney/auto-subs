@@ -6,13 +6,19 @@ import { initI18n, normalizeUiLanguage, SUPPORTED_UI_LANGUAGES } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { models, getFirstRecommendedModelForLanguage } from "@/lib/models";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Globe } from "lucide-react";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Globe, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const UI_LANGUAGE_OPTIONS = [
@@ -34,6 +40,7 @@ export function GettingStartedOverlay() {
   const [selection, setSelection] = React.useState(() => {
     return normalizeUiLanguage(settings.uiLanguage);
   });
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (shouldShow) {
@@ -91,21 +98,49 @@ export function GettingStartedOverlay() {
         </div>
 
         <div className="space-y-4">
-          <Select
-            value={selection}
-            onValueChange={(v) => setSelection(normalizeUiLanguage(v))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {UI_LANGUAGE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between"
+              >
+                {selection
+                  ? UI_LANGUAGE_OPTIONS.find((opt) => opt.value === selection)?.label
+                  : t("gettingStarted.selectLanguage")}
+                <Globe className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command>
+                <CommandInput placeholder={t("gettingStarted.searchLanguage")} />
+                <CommandList>
+                  <CommandEmpty>{t("gettingStarted.noLanguageFound")}</CommandEmpty>
+                  <CommandGroup>
+                    {UI_LANGUAGE_OPTIONS.map((opt) => (
+                      <CommandItem
+                        key={opt.value}
+                        value={`${opt.label} ${opt.value}`}
+                        onSelect={() => {
+                          setSelection(normalizeUiLanguage(opt.value));
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selection === opt.value ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {opt.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           <Button onClick={handleContinue} className="w-full">
             {t("gettingStarted.continue")}

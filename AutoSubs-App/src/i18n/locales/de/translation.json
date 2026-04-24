@@ -382,6 +382,9 @@
   "gettingStarted": {
     "title": "Willkommen bei AutoSubs",
     "description": "Wähle deine Sprache. Sie wird für die Oberfläche (falls verfügbar) und die Transkription verwendet.",
+    "selectLanguage": "Sprache auswählen",
+    "searchLanguage": "Sprachen suchen...",
+    "noLanguageFound": "Keine Sprache gefunden.",
     "continue": "Los geht's"
   },
   "tour": {

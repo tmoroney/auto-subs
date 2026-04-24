@@ -358,6 +358,9 @@
   "gettingStarted": {
     "title": "Bienvenue dans AutoSubs",
     "description": "Sélectionnez la langue que vous parlez. Elle sera utilisée pour l'interface (si disponible) et la transcription.",
+    "selectLanguage": "Sélectionner la langue",
+    "searchLanguage": "Rechercher des langues...",
+    "noLanguageFound": "Aucune langue trouvée.",
     "continue": "Commencer"
   },
   "tour": {

@@ -183,12 +183,20 @@ impl Engine {
         }
 
         let num_samples: usize = speech_segments.iter().map(|s| s.samples.len()).sum();
+        let audio_duration_sec = num_samples as f64 / 16000.0;
 
-        println!("Transcribing {} segments", speech_segments.len());
+        tracing::info!(
+            "starting transcription pipeline: segments={}, total_audio_duration={:.2}s, model={}",
+            speech_segments.len(),
+            audio_duration_sec,
+            options.model
+        );
 
         if let Some(progress_callback) = cb.progress {
             progress_callback(0, crate::ProgressType::Transcribe, "workspace.empty.loadingModel");
         }
+
+        let transcribe_start = std::time::Instant::now();
 
         // Capture translation options before moving `options` into the pipeline
         let translate_to = options.translate_target.clone();
@@ -285,6 +293,15 @@ impl Engine {
         // while preserving the raw post-translation `segments` as `original_segments`
         // so the frontend can reformat later without re-transcribing.
         let formatted_segments = process_segments(&segments, &pp_cfg);
+
+        let elapsed = transcribe_start.elapsed();
+        tracing::info!(
+            "transcription complete: processed {:.2}s of audio in {:.2}s ({:.2}x speed)",
+            audio_duration_sec,
+            elapsed.as_secs_f64(),
+            audio_duration_sec / elapsed.as_secs_f64()
+        );
+
         Ok((segments, formatted_segments, output_lang))
     }
 

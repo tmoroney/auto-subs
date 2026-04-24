@@ -242,7 +242,7 @@ impl ModelManager {
                 {
                     Ok(p) => p,
                     Err(e) => {
-                        eprintln!(
+                        tracing::warn!(
                             "Warning: CoreML encoder download failed ({}). Proceeding without CoreML encoder.",
                             e
                         );
@@ -599,7 +599,7 @@ impl ModelManager {
                         if path.exists() {
                             let _ = fs::remove_file(&path);
                             deleted_any = true;
-                            eprintln!("Removed model symlink: {}", path.display());
+                            tracing::info!("Removed model symlink: {}", path.display());
                         }
                     }
                 }
@@ -627,7 +627,7 @@ impl ModelManager {
 
         fs::remove_dir_all(&model_dir)
             .with_context(|| format!("Failed to delete Moonshine model directory: {}", model_dir.display()))?;
-        eprintln!("Deleted Moonshine model: {}", model_dir.display());
+        tracing::info!("Deleted Moonshine model: {}", model_dir.display());
         Ok(())
     }
 
@@ -642,7 +642,7 @@ impl ModelManager {
 
         fs::remove_dir_all(&parakeet_repo_dir)
             .with_context(|| format!("Failed to delete Parakeet model directory: {}", parakeet_repo_dir.display()))?;
-        eprintln!("Deleted Parakeet model: {}", parakeet_repo_dir.display());
+        tracing::info!("Deleted Parakeet model: {}", parakeet_repo_dir.display());
         Ok(())
     }
 
@@ -655,7 +655,7 @@ impl ModelManager {
 
         fs::remove_dir_all(&diarize_repo_dir)
             .with_context(|| format!("Failed to delete diarization model directory: {}", diarize_repo_dir.display()))?;
-        eprintln!("Deleted diarization model: {}", diarize_repo_dir.display());
+        tracing::info!("Deleted diarization model: {}", diarize_repo_dir.display());
         Ok(())
     }
 
@@ -709,13 +709,13 @@ impl ModelManager {
                 let blob_path = blobs_dir.join(&blob_name);
                 if fs::remove_file(&blob_path).is_ok() {
                     cleaned_count += 1;
-                    eprintln!("Removed orphaned blob: {}", blob_name);
+                    tracing::info!("Removed orphaned blob: {}", blob_name);
                 }
             }
         }
 
         if cleaned_count > 0 {
-            eprintln!("Cleaned up {} orphaned blob files", cleaned_count);
+            tracing::info!("Cleaned up {} orphaned blob files", cleaned_count);
         }
 
         Ok(())
@@ -738,7 +738,7 @@ impl ModelManager {
                     if name.ends_with(".lock") || name.ends_with(".incomplete") || name.ends_with(".part") {
                         if let Err(e) = fs::remove_file(&path) {
                             // Log but don't fail - some files might be in use
-                            eprintln!("Failed to remove {}: {}", path.display(), e);
+                            tracing::warn!("Failed to remove {}: {}", path.display(), e);
                         }
                     }
                 }
@@ -942,7 +942,7 @@ impl ModelManager {
 
         // Validate the downloaded/cached file; if invalid, remove and retry once
         if let Err(e) = validate_model_file(&path) {
-            eprintln!(
+            tracing::warn!(
                 "Model file validation failed after initial retrieval ({}). Attempting one re-download...",
                 e
             );

@@ -382,6 +382,9 @@
   "gettingStarted": {
     "title": "欢迎使用 AutoSubs",
     "description": "选择您使用的语言。它将用作界面语言（如有）和转录语言。",
+    "selectLanguage": "选择语言",
+    "searchLanguage": "搜索语言...",
+    "noLanguageFound": "未找到语言。",
     "continue": "开始使用"
   },
   "tour": {

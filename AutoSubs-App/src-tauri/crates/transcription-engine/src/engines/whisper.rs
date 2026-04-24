@@ -128,7 +128,7 @@ pub fn create_context(
         };
 
         let dtw_mem_size = calculate_dtw_mem_size(num_samples.unwrap_or(0));
-        println!("dtw mem size: {} MB", dtw_mem_size / 1024 / 1024);
+        tracing::info!("DTW enabled: allocating {} MB for DTW memory", dtw_mem_size / 1024 / 1024);
         ctx_params.dtw_parameters(DtwParameters {
             mode: DtwMode::ModelPreset { model_preset },
             dtw_mem_size,
@@ -140,11 +140,13 @@ pub fn create_context(
         }
     }
 
-    println!("gpu device: {:?}", ctx_params.gpu_device);
-    println!("use gpu: {:?}", ctx_params.use_gpu);
-    println!("DTW enabled: {}", enable_dtw.unwrap_or(false));
-    println!("flash attn: {}", ctx_params.flash_attn);
-    println!("num samples: {}", num_samples.unwrap_or(0));
+    tracing::info!(
+        "whisper context initialized: gpu={}, device={:?}, flash_attn={}, dtw={}",
+        ctx_params.use_gpu,
+        ctx_params.gpu_device,
+        ctx_params.flash_attn,
+        enable_dtw.unwrap_or(false)
+    );
     let model_path = model_path
         .to_str()
         .ok_or_eyre("can't convert model option to str")?;
