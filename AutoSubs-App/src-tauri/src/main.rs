@@ -218,6 +218,7 @@ fn main() {
             logging::clear_backend_logs,
             logging::get_log_dir,
             logging::export_backend_logs,
+            logging::open_log_dir,
             resolve_bridge::resolve_bridge,
             trigger_install_update
         ])

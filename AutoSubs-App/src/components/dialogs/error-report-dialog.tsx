@@ -4,7 +4,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { platform } from "@tauri-apps/plugin-os"
 import { getVersion as getAppVersion } from "@tauri-apps/api/app"
-import { AlertCircle, ExternalLink } from "lucide-react"
+import { AlertCircle, ExternalLink, Terminal } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 import {
@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "../ui/button"
 
 interface ErrorReportDialogProps {
   open: boolean
@@ -61,7 +62,7 @@ export function ErrorReportDialog({
   const { t } = useTranslation()
   const [appVersion, setAppVersion] = React.useState<string>("")
   const [osName, setOsName] = React.useState<string>("")
-  const [isCopying, setIsCopying] = React.useState(false)
+  const [copied, setCopied] = React.useState(false)
 
   // Load diagnostics lazily the first time the dialog opens
   const loadedRef = React.useRef(false)
@@ -87,8 +88,15 @@ export function ErrorReportDialog({
     }
   }, [open])
 
-  const handleCopyAndReport = React.useCallback(async () => {
-    setIsCopying(true)
+  // Reset copied state when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setCopied(false)
+    }
+  }, [open])
+
+  const handleCopyAndReport = React.useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault()
 
     try {
       // Get log contents from the backend (avoids permission issues)
@@ -96,6 +104,7 @@ export function ErrorReportDialog({
 
       // Copy logs to clipboard
       await writeText(logContents)
+      setCopied(true)
 
       // Build GitHub issue URL with pre-filled fields
       const params = new URLSearchParams()
@@ -120,10 +129,16 @@ export function ErrorReportDialog({
       await openUrl(issueUrl)
     } catch (err) {
       console.error("[ErrorReportDialog] copy and report failed:", err)
-    } finally {
-      setIsCopying(false)
     }
   }, [title, message, detail, osName, appVersion])
+
+  const handleOpenLogsFolder = React.useCallback(async () => {
+    try {
+      await invoke("open_log_dir")
+    } catch (err) {
+      console.error("[ErrorReportDialog] failed to open logs folder:", err)
+    }
+  }, [])
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -139,13 +154,20 @@ export function ErrorReportDialog({
         </AlertDialogHeader>
 
         <AlertDialogFooter className="pt-3">
+          <Button
+            variant="outline"
+            onClick={handleOpenLogsFolder}
+          >
+            <Terminal className="h-4 w-4" />
+            logs/
+          </Button>
+          <div className="flex-1" />
           <AlertDialogCancel>{t("common.close", "Close")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleCopyAndReport}
-            disabled={isCopying}
           >
-            {isCopying ? (
-              "Copying..."
+            {copied ? (
+              "Copied to Clipboard!"
             ) : (
               <>
                 <ExternalLink className="h-4 w-4" />

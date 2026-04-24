@@ -155,3 +155,37 @@ pub fn export_backend_logs<R: Runtime>(app: AppHandle<R>) -> Result<String, Stri
 
     Ok(out_path.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub fn open_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let dir = resolve_log_dir(&app);
+    ensure_dir(&dir).map_err(|e| e.to_string())?;
+
+    let path = dir.to_string_lossy().to_string();
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
