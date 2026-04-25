@@ -36,6 +36,7 @@
 					"SlideUpEnabled",
 					"AnimationLength",
 					"AnimationLevel",
+					"AnimationMode",
 					"HighlightExtendHorizontal",
 					"HighlightExtendVertical",
 					"HighlightRound",
@@ -1534,88 +1535,88 @@
 					SplineColor = { Red = 240, Green = 105, Blue = 156 },
 					CtrlWZoom = false,
 					KeyFrames = {
-						[0] = { 0, RH = { 9.66666666666667, 0.333333333333333 }, Flags = { LockedY = true }, Value = StyledText {
+						[0] = { 0, RH = { 5, 0.333333333333333 }, Flags = { LockedY = true }, Value = StyledText {
 								Array = {
+									{ 2401, 0, 7, Index = 1, Value = 1 },
 									{ 2402, 0, 7, Index = 1 },
 									{ 2403, 0, 7, Index = 1 },
 									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
 									{ 2402, 8, 15, Index = 1, Value = 0.35 },
 									{ 2403, 8, 15, Index = 1, Value = 1 },
 									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1 },
+									{ 2401, 16, 20, Index = 1 },
 									{ 2402, 16, 20, Index = 1, Value = 0.35 },
 									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 }
+									{ 2000, 16, 20, Index = 1, Value = 1 }
 								},
 								Value = ""
 							} },
-						[29] = { 1, LH = { 19.3333333333333, 0.666666666666667 }, RH = { 30, 1.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+						[15] = { 1, LH = { 10, 0.666666666666667 }, RH = { 15.3333333333333, 1.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
 								Array = {
+									{ 2401, 0, 7, Index = 1, Value = 1 },
 									{ 2402, 0, 7, Index = 1 },
 									{ 2403, 0, 7, Index = 1 },
 									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
 									{ 2402, 8, 15, Index = 1, Value = 0.35 },
 									{ 2403, 8, 15, Index = 1, Value = 1 },
 									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 }
+								},
+								Value = ""
+							} },
+						[16] = { 2, LH = { 15.6666666666667, 1.66666666666667 }, RH = { 20.6666666666667, 2.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 }
+								},
+								Value = ""
+							} },
+						[30] = { 3, LH = { 25.3333333333333, 2.66666666666667 }, RH = { 30.3333333333333, 3.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 }
+								},
+								Value = ""
+							} },
+						[31] = { 4, LH = { 30.6666666666667, 3.66666666666667 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
 									{ 2401, 8, 15, Index = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 }
-								},
-								Value = ""
-							} },
-						[32] = { 2, LH = { 31, 1.66666666666667 }, RH = { 41, 2.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 0, 7, Index = 1 },
-									{ 2402, 8, 15, Index = 1 },
-									{ 2403, 8, 15, Index = 1 },
-									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1, Value = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 }
-								},
-								Value = ""
-							} },
-						[59] = { 3, LH = { 50, 2.66666666666667 }, RH = { 60, 3.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 0, 7, Index = 1 },
-									{ 2402, 8, 15, Index = 1 },
-									{ 2403, 8, 15, Index = 1 },
-									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1, Value = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 }
-								},
-								Value = ""
-							} },
-						[62] = { 4, LH = { 61, 3.66666666666667 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 0, 7, Index = 1 },
 									{ 2402, 8, 15, Index = 1, Value = 0.35 },
 									{ 2403, 8, 15, Index = 1, Value = 1 },
 									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1 },
+									{ 2401, 16, 20, Index = 1, Value = 1 },
 									{ 2402, 16, 20, Index = 1 },
 									{ 2403, 16, 20, Index = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1, Value = 1 }
+									{ 2000, 16, 20, Index = 1, Value = 1 }
 								},
 								Value = ""
 							} }
@@ -1947,9 +1948,9 @@
 		Follower1DelaybyCharacterPosition = BezierSpline {
 			SplineColor = { Red = 33, Green = 7, Blue = 252 },
 			KeyFrames = {
-				[0] = { 0, Flags = { StepIn = true } },
-				[8] = { 30, Flags = { StepIn = true } },
-				[16] = { 60, Flags = { StepIn = true } },
+				[0] = { 0, RH = { 2.66666666666667, 5.33333333333333 }, Flags = { StepIn = true } },
+				[8] = { 16, LH = { 5.33333333333333, 10.6666666666667 }, RH = { 10.6666666666667, 21 }, Flags = { StepIn = true } },
+				[16] = { 31, LH = { 13.3333333333333, 26 }, Flags = { StepIn = true } }
 			}
 		},
 	}
