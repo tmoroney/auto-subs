@@ -451,10 +451,65 @@
     "outputTrack": "出力トラック",
     "selectOutputTrack": "出力トラックを選択",
     "adding": "追加中...",
+    "success": "タイムラインに追加されました",
     "steps": {
       "template": { "title": "テンプレート", "description": "スタイルテンプレートを選択" },
       "speakers": { "title": "話者", "description": "話者トラックと色を設定" },
       "outputTrack": { "title": "出力トラック", "description": "字幕トラックを選択" }
+    },
+    "mode": {
+      "regular": "通常",
+      "animated": "アニメーション"
+    },
+    "preset": {
+      "new": "新規プリセット",
+      "newDescription": "Resolveで字幕をデザイン",
+      "builtIn": "組み込み",
+      "custom": "カスタム",
+      "preview": "Resolveでプレビュー",
+      "edit": "編集",
+      "duplicate": "複製",
+      "delete": "削除",
+      "rename": "名前を変更",
+      "export": "JSONをエクスポート",
+      "copyJson": "JSONをコピー",
+      "copied": "クリップボードにコピーしました",
+      "import": "ファイルをインポート",
+      "paste": "JSONを貼り付け",
+      "emptyTitle": "カスタムプリセットがまだありません",
+      "emptyHint": "新規プリセットをクリックして自分でデザインするか、ファイルからインポートしてください。",
+      "phase": {
+        "launchingTitle": "Resolveで字幕を開いています\u2026",
+        "launchingHint": "一時トラックにプレビュー字幕を配置します。",
+        "editingTitle": "DaVinci Resolveに切り替え",
+        "editingBody": "字幕が新しいトラックに配置され、Fusionページで開かれました。インスペクターを使用してカスタマイズし、ここに戻ってください。",
+        "capturingTitle": "Resolveから設定を読み込んでいます\u2026",
+        "nameTitle": "プリセットに名前を付ける",
+        "nameHint": "短くて説明的な名前を付けてください。"
+      },
+      "action": {
+        "cancel": "キャンセル",
+        "save": "プリセットを保存",
+        "back": "戻る",
+        "startEditing": "Resolveで編集を開始",
+        "captureSettings": "設定をキャプチャ"
+      },
+      "nameLabel": "プリセット名",
+      "namePlaceholder": "例：太字の黄色、TikTokスタイル",
+      "descriptionLabel": "説明",
+      "descriptionPlaceholder": "このプリセットに関するオプションのメモ",
+      "confirmDeleteTitle": "プリセットを削除しますか？",
+      "confirmDelete": "このプリセットはライブラリから削除されます。組み込みプリセットは影響を受けません。",
+      "confirmDeleteConfirm": "削除",
+      "importTitle": "プリセットJSONを貼り付け",
+      "importPlaceholder": "プリセットファイルの内容をここに貼り付けてください\u2026",
+      "importSubmit": "プリセットをインポート",
+      "errors": {
+        "invalidJson": "有効なプリセットファイルのように見えません。",
+        "startFailed": "Resolveでプリセットエディターを開けませんでした。",
+        "captureFailed": "Resolveから字幕設定を読み取れませんでした。",
+        "nameRequired": "名前を入力してください。"
+      }
     }
   },
   "replaceStrings": {

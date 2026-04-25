@@ -470,6 +470,7 @@
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
     },
     "adding": "추가하는 중...",
+    "success": "타임라인에 추가됨",
     "outputTrack": "출력 트랙",
     "selectOutputTrack": "출력 트랙 선택",
     "selectTemplate": "템플릿 선택",
@@ -488,7 +489,61 @@
       }
     },
     "templateTheme": "템플릿 테마",
-    "title": "타임라인에 추가"
+    "title": "타임라인에 추가",
+    "mode": {
+      "regular": "일반",
+      "animated": "애니메이션"
+    },
+    "preset": {
+      "new": "새 프리셋",
+      "newDescription": "Resolve에서 자막 디자인",
+      "builtIn": "내장됨",
+      "custom": "사용자 정의",
+      "preview": "Resolve에서 미리보기",
+      "edit": "편집",
+      "duplicate": "복제",
+      "delete": "삭제",
+      "rename": "이름 변경",
+      "export": "JSON 내보내기",
+      "copyJson": "JSON 복사",
+      "copied": "클립보드에 복사됨",
+      "import": "파일 가져오기",
+      "paste": "JSON 붙여넣기",
+      "emptyTitle": "사용자 정의 프리셋이 없습니다",
+      "emptyHint": "새 프리셋을 클릭하여 직접 디자인하거나 파일에서 가져오세요.",
+      "phase": {
+        "launchingTitle": "Resolve에서 자막 열기 중\u2026",
+        "launchingHint": "임시 트랙에 미리보기 자막을 배치합니다.",
+        "editingTitle": "DaVinci Resolve로 전환",
+        "editingBody": "새 트랙에 자막이 배치되고 Fusion 페이지에서 열렸습니다. 검사기를 사용하여 사용자 정의한 후 여기로 돌아오세요.",
+        "capturingTitle": "Resolve에서 설정 읽기 중\u2026",
+        "nameTitle": "프리셋 이름 지정",
+        "nameHint": "짧고 설명적인 이름을 지정하세요."
+      },
+      "action": {
+        "cancel": "취소",
+        "save": "프리셋 저장",
+        "back": "뒤로",
+        "startEditing": "Resolve에서 편집 시작",
+        "captureSettings": "설정 캡처"
+      },
+      "nameLabel": "프리셋 이름",
+      "namePlaceholder": "예: 굵은 노란색, 틱톡 스타일",
+      "descriptionLabel": "설명",
+      "descriptionPlaceholder": "이 프리셋에 대한 선택적 메모",
+      "confirmDeleteTitle": "프리셋을 삭제하시겠습니까?",
+      "confirmDelete": "이 프리셋이 라이브러리에서 제거됩니다. 내장 프리셋은 영향을 받지 않습니다.",
+      "confirmDeleteConfirm": "삭제",
+      "importTitle": "프리셋 JSON 붙여넣기",
+      "importPlaceholder": "프리셋 파일 내용을 여기에 붙여넣으세요\u2026",
+      "importSubmit": "프리셋 가져오기",
+      "errors": {
+        "invalidJson": "유효한 프리셋 파일처럼 보이지 않습니다.",
+        "startFailed": "Resolve에서 프리셋 편집기를 열 수 없습니다.",
+        "captureFailed": "Resolve에서 자막 설정을 읽을 수 없습니다.",
+        "nameRequired": "이름을 입력하세요."
+      }
+    }
   },
   "replaceStrings": {
     "find": "찾기",

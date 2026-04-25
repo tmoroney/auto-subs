@@ -241,11 +241,16 @@ export function AddToTimelineDialog({
         setOpen(false)
 
         // Run the operation in background
-        onAddToTimeline(selection.outputTrack, templateName, presetSettings).catch((err) => {
-            console.error("Failed to add to timeline:", err)
-        }).finally(() => {
-            setIsSubmitting(false)
-        })
+        onAddToTimeline(selection.outputTrack, templateName, presetSettings)
+            .then(() => {
+                toast.success(t("addToTimeline.success"))
+            })
+            .catch((err) => {
+                console.error("Failed to add to timeline:", err)
+            })
+            .finally(() => {
+                setIsSubmitting(false)
+            })
     }
 
     function canProceed(): boolean {

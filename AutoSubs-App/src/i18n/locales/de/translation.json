@@ -466,15 +466,12 @@
   },
   "addToTimeline": {
     "title": "Zur Timeline hinzufügen",
-    "conflict": {
-      "checking": "Konflikte werden überprüft...",
-      "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
-    },
     "templateTheme": "Vorlagenstil",
     "selectTemplate": "Vorlage auswählen",
     "outputTrack": "Ausgabespur",
     "selectOutputTrack": "Ausgabespur auswählen",
     "adding": "Wird hinzugefügt...",
+    "success": "Zur Timeline hinzugefügt",
     "steps": {
       "template": {
         "title": "Vorlage",
@@ -487,6 +484,64 @@
       "outputTrack": {
         "title": "Ausgabespur",
         "description": "Wähle die Untertitelspur"
+      }
+    },
+    "mode": {
+      "regular": "Normal",
+      "animated": "Animiert"
+    },
+    "conflict": {
+      "checking": "Konflikte werden überprüft...",
+      "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
+    },
+    "preset": {
+      "new": "Neue Voreinstellung",
+      "newDescription": "Untertitel in Resolve entwerfen",
+      "builtIn": "Integriert",
+      "custom": "Benutzerdefiniert",
+      "preview": "Vorschau in Resolve",
+      "edit": "Bearbeiten",
+      "duplicate": "Duplizieren",
+      "delete": "Löschen",
+      "rename": "Umbenennen",
+      "export": "JSON exportieren",
+      "copyJson": "JSON kopieren",
+      "copied": "In die Zwischenablage kopiert",
+      "import": "Datei importieren",
+      "paste": "JSON einfügen",
+      "emptyTitle": "Noch keine benutzerdefinierten Voreinstellungen",
+      "emptyHint": "Klicke auf Neue Voreinstellung, um deine eigene zu entwerfen, oder importiere eine aus einer Datei.",
+      "phase": {
+        "launchingTitle": "Untertitel in Resolve öffnen\u2026",
+        "launchingHint": "Wir platzieren einen Vorschau-Untertitel auf einer temporären Spur.",
+        "editingTitle": "Zu DaVinci Resolve wechseln",
+        "editingBody": "Ein Untertitel wurde auf einer neuen Spur platziert und auf der Fusion-Seite geöffnet. Passe ihn mit dem Inspektor an und komme dann hierher zurück.",
+        "capturingTitle": "Einstellungen aus Resolve lesen\u2026",
+        "nameTitle": "Voreinstellung benennen",
+        "nameHint": "Gib ihr einen kurzen, beschreibenden Namen."
+      },
+      "action": {
+        "cancel": "Abbrechen",
+        "save": "Voreinstellung speichern",
+        "back": "Zurück",
+        "startEditing": "Bearbeitung in Resolve starten",
+        "captureSettings": "Einstellungen erfassen"
+      },
+      "nameLabel": "Name der Voreinstellung",
+      "namePlaceholder": "z.B. Fett Gelb, TikTok-Stil",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Optionale Notiz zu dieser Voreinstellung",
+      "confirmDeleteTitle": "Voreinstellung löschen?",
+      "confirmDelete": "Diese Voreinstellung wird aus deiner Bibliothek entfernt. Integrierte Voreinstellungen sind nicht betroffen.",
+      "confirmDeleteConfirm": "Löschen",
+      "importTitle": "Voreinstellungs-JSON einfügen",
+      "importPlaceholder": "Füge den Inhalt einer Voreinstellungsdatei hier ein\u2026",
+      "importSubmit": "Voreinstellung importieren",
+      "errors": {
+        "invalidJson": "Das sieht nicht nach einer gültigen Voreinstellungsdatei aus.",
+        "startFailed": "Voreinstellungs-Editor konnte nicht in Resolve geöffnet werden.",
+        "captureFailed": "Untertitel-Einstellungen konnten nicht aus Resolve gelesen werden.",
+        "nameRequired": "Bitte gib einen Namen ein."
       }
     }
   },

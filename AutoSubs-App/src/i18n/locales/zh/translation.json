@@ -475,6 +475,7 @@
     "outputTrack": "输出轨道",
     "selectOutputTrack": "选择输出轨道",
     "adding": "正在添加...",
+    "success": "已添加到时间线",
     "steps": {
       "template": {
         "title": "模板",
@@ -487,6 +488,60 @@
       "outputTrack": {
         "title": "输出轨道",
         "description": "选择字幕轨道"
+      }
+    },
+    "mode": {
+      "regular": "常规",
+      "animated": "动画"
+    },
+    "preset": {
+      "new": "新建预设",
+      "newDescription": "在 Resolve 中设计字幕",
+      "builtIn": "内置",
+      "custom": "自定义",
+      "preview": "在 Resolve 中预览",
+      "edit": "编辑",
+      "duplicate": "复制",
+      "delete": "删除",
+      "rename": "重命名",
+      "export": "导出 JSON",
+      "copyJson": "复制 JSON",
+      "copied": "已复制到剪贴板",
+      "import": "导入文件",
+      "paste": "粘贴 JSON",
+      "emptyTitle": "还没有自定义预设",
+      "emptyHint": "点击新建预设来设计您自己的预设，或从文件导入。",
+      "phase": {
+        "launchingTitle": "正在 Resolve 中打开字幕\u2026",
+        "launchingHint": "我们将在临时轨道上放置一个预览字幕。",
+        "editingTitle": "切换到 DaVinci Resolve",
+        "editingBody": "字幕已放置在新轨道上并在 Fusion 页面打开。使用检查器进行自定义，然后返回这里。",
+        "capturingTitle": "正在从 Resolve 读取设置\u2026",
+        "nameTitle": "为您的预设命名",
+        "nameHint": "给它一个简短且描述性的名称。"
+      },
+      "action": {
+        "cancel": "取消",
+        "save": "保存预设",
+        "back": "返回",
+        "startEditing": "在 Resolve 中开始编辑",
+        "captureSettings": "捕获设置"
+      },
+      "nameLabel": "预设名称",
+      "namePlaceholder": "例如：粗体黄色、TikTok 风格",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "关于此预设的可选说明",
+      "confirmDeleteTitle": "删除预设？",
+      "confirmDelete": "此预设将从您的库中移除。内置预设不受影响。",
+      "confirmDeleteConfirm": "删除",
+      "importTitle": "粘贴预设 JSON",
+      "importPlaceholder": "在此处粘贴预设文件的内容\u2026",
+      "importSubmit": "导入预设",
+      "errors": {
+        "invalidJson": "这看起来不像是一个有效的预设文件。",
+        "startFailed": "无法在 Resolve 中打开预设编辑器。",
+        "captureFailed": "无法从 Resolve 读取字幕设置。",
+        "nameRequired": "请输入名称。"
       }
     }
   },

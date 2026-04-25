@@ -438,19 +438,74 @@
   },
   "addToTimeline": {
     "title": "Ajouter à la timeline",
-    "conflict": {
-      "checking": "Vérification des conflits...",
-      "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existant."
-    },
     "templateTheme": "Thème du modèle",
     "selectTemplate": "Sélectionner un modèle",
     "outputTrack": "Piste de sortie",
     "selectOutputTrack": "Sélectionner la piste de sortie",
     "adding": "Ajout en cours...",
+    "success": "Ajouté à la timeline",
     "steps": {
       "template": { "title": "Modèle", "description": "Choisissez un modèle de style" },
       "speakers": { "title": "Intervenants", "description": "Configurer les pistes et couleurs des intervenants" },
       "outputTrack": { "title": "Piste de sortie", "description": "Sélectionnez la piste de sous-titres" }
+    },
+    "mode": {
+      "regular": "Normal",
+      "animated": "Animé"
+    },
+    "conflict": {
+      "checking": "Vérification des conflits...",
+      "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existent."
+    },
+    "preset": {
+      "new": "Nouveau préréglage",
+      "newDescription": "Concevoir un sous-titre dans Resolve",
+      "builtIn": "Intégré",
+      "custom": "Personnalisé",
+      "preview": "Aperçu dans Resolve",
+      "edit": "Modifier",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer",
+      "rename": "Renommer",
+      "export": "Exporter JSON",
+      "copyJson": "Copier JSON",
+      "copied": "Copié dans le presse-papiers",
+      "import": "Importer un fichier",
+      "paste": "Coller JSON",
+      "emptyTitle": "Aucun préréglage personnalisé",
+      "emptyHint": "Cliquez sur Nouveau préréglage pour concevoir le vôtre, ou importez-en un depuis un fichier.",
+      "phase": {
+        "launchingTitle": "Ouverture du sous-titre dans Resolve\u2026",
+        "launchingHint": "Nous allons placer un sous-titre d'aperçu sur une piste temporaire.",
+        "editingTitle": "Basculer vers DaVinci Resolve",
+        "editingBody": "Un sous-titre a été placé sur une nouvelle piste et ouvert dans la page Fusion. Personnalisez-le à l'aide de l'inspecteur, puis revenez ici.",
+        "capturingTitle": "Lecture des paramètres depuis Resolve\u2026",
+        "nameTitle": "Nommez votre préréglage",
+        "nameHint": "Donnez-lui un nom court et descriptif."
+      },
+      "action": {
+        "cancel": "Annuler",
+        "save": "Enregistrer le préréglage",
+        "back": "Retour",
+        "startEditing": "Commencer l'édition dans Resolve",
+        "captureSettings": "Capturer les paramètres"
+      },
+      "nameLabel": "Nom du préréglage",
+      "namePlaceholder": "ex. Jaune gras, Style TikTok",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Note facultative sur ce préréglage",
+      "confirmDeleteTitle": "Supprimer le préréglage ?",
+      "confirmDelete": "Ce préréglage sera supprimé de votre bibliothèque. Les préréglages intégrés ne sont pas affectés.",
+      "confirmDeleteConfirm": "Supprimer",
+      "importTitle": "Coller le JSON du préréglage",
+      "importPlaceholder": "Collez le contenu d'un fichier de préréglage ici\u2026",
+      "importSubmit": "Importer le préréglage",
+      "errors": {
+        "invalidJson": "Cela ne ressemble pas à un fichier de préréglage valide.",
+        "startFailed": "Impossible d'ouvrir l'éditeur de préréglages dans Resolve.",
+        "captureFailed": "Impossible de lire les paramètres du sous-titre depuis Resolve.",
+        "nameRequired": "Veuillez entrer un nom."
+      }
     }
   },
   "replaceStrings": {

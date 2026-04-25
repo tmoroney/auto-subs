@@ -474,6 +474,7 @@
     "outputTrack": "Output Track",
     "selectOutputTrack": "Select output track",
     "adding": "Adding...",
+    "success": "Added to timeline",
     "steps": {
       "template": {
         "title": "Template",
@@ -500,12 +501,15 @@
       "new": "New preset",
       "newDescription": "Design a caption in Resolve",
       "builtIn": "Built-in",
+      "custom": "Custom",
       "preview": "Preview in Resolve",
       "edit": "Edit",
       "duplicate": "Duplicate",
       "delete": "Delete",
       "rename": "Rename",
       "export": "Export JSON",
+      "copyJson": "Copy JSON",
+      "copied": "Copied to clipboard",
       "import": "Import file",
       "paste": "Paste JSON",
       "emptyTitle": "No custom presets yet",

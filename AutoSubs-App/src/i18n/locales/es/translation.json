@@ -466,15 +466,12 @@
   },
   "addToTimeline": {
     "title": "Añadir a la línea de tiempo",
-    "conflict": {
-      "checking": "Comprobando conflictos...",
-      "hasConflicts": "Esta pista tiene clips en conflicto. Los subtítulos pueden superponerse con el contenido existente."
-    },
     "templateTheme": "Tema de plantilla",
     "selectTemplate": "Seleccionar plantilla",
     "outputTrack": "Pista de salida",
     "selectOutputTrack": "Seleccionar pista de salida",
     "adding": "Añadiendo...",
+    "success": "Añadido a la línea de tiempo",
     "steps": {
       "template": {
         "title": "Plantilla",
@@ -487,6 +484,64 @@
       "outputTrack": {
         "title": "Pista de salida",
         "description": "Selecciona la pista de subtítulos"
+      }
+    },
+    "mode": {
+      "regular": "Normal",
+      "animated": "Animado"
+    },
+    "conflict": {
+      "checking": "Comprobando conflictos...",
+      "hasConflicts": "Esta pista tiene clips en conflicto. Los subtítulos pueden superponerse con el contenido existente."
+    },
+    "preset": {
+      "new": "Nuevo preajuste",
+      "newDescription": "Diseña un subtítulo en Resolve",
+      "builtIn": "Integrado",
+      "custom": "Personalizado",
+      "preview": "Vista previa en Resolve",
+      "edit": "Editar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar",
+      "rename": "Cambiar nombre",
+      "export": "Exportar JSON",
+      "copyJson": "Copiar JSON",
+      "copied": "Copiado al portapapeles",
+      "import": "Importar archivo",
+      "paste": "Pegar JSON",
+      "emptyTitle": "Aún no hay preajustes personalizados",
+      "emptyHint": "Haz clic en Nuevo preajuste para diseñar el tuyo, o importa uno desde un archivo.",
+      "phase": {
+        "launchingTitle": "Abriendo subtítulo en Resolve\u2026",
+        "launchingHint": "Colocaremos un subtítulo de vista previa en una pista temporal.",
+        "editingTitle": "Cambia a DaVinci Resolve",
+        "editingBody": "Se ha colocado un subtítulo en una pista nueva y abierto en la página Fusion. Personalízalo usando el inspector, luego vuelve aquí.",
+        "capturingTitle": "Leyendo ajustes de Resolve\u2026",
+        "nameTitle": "Nombra tu preajuste",
+        "nameHint": "Dale un nombre corto y descriptivo."
+      },
+      "action": {
+        "cancel": "Cancelar",
+        "save": "Guardar preajuste",
+        "back": "Atrás",
+        "startEditing": "Empezar a editar en Resolve",
+        "captureSettings": "Capturar ajustes"
+      },
+      "nameLabel": "Nombre del preajuste",
+      "namePlaceholder": "ej. Amarillo negrita, Estilo TikTok",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Nota opcional sobre este preajuste",
+      "confirmDeleteTitle": "¿Eliminar preajuste?",
+      "confirmDelete": "Este preajuste se eliminará de tu biblioteca. Los preajustes integrados no se ven afectados.",
+      "confirmDeleteConfirm": "Eliminar",
+      "importTitle": "Pegar JSON del preajuste",
+      "importPlaceholder": "Pega el contenido de un archivo de preajuste aquí\u2026",
+      "importSubmit": "Importar preajuste",
+      "errors": {
+        "invalidJson": "Eso no parece un archivo de preajuste válido.",
+        "startFailed": "No se pudo abrir el editor de preajustes en Resolve.",
+        "captureFailed": "No se pudieron leer los ajustes del subtítulo desde Resolve.",
+        "nameRequired": "Por favor introduce un nombre."
       }
     }
   },
