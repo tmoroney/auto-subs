@@ -15,7 +15,7 @@ export default function SubSlateCard({
   open,
   onClose,
   milestone = "Achievement unlocked",
-  bgImage = "https://subslate.app/bg.jpg",
+  bgImage = "/bg.webp",
   url = "https://subslate.app",
 }: Props) {
   const cardRef = useRef<HTMLDivElement | null>(null);
