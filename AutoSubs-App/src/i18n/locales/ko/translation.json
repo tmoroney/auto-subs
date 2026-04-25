@@ -36,10 +36,17 @@
         "uppercase": "대문자"
       },
       "textCaseDescription": "자막 대소문자 변경",
-      "textCaseTitle": "텍스트 케이스"
+      "textCaseTitle": "텍스트 케이스",
+      "textDensityTitle": "텍스트 밀도",
+      "textDensityDescription": "화면에 표시할 텍스트 양",
+      "textDensity": {
+        "single": "단어 단위",
+        "less": "적게",
+        "standard": "표준",
+        "more": "많이"
+      }
     },
     "language": {
-      "arrow": "→",
       "noLanguageFound": "언어를 찾을 수 없습니다.",
       "searchSourcePlaceholder": "언어 검색...",
       "searchTargetPlaceholder": "대상 언어 검색...",
@@ -121,6 +128,12 @@
     "selectLanguage": "언어 선택",
     "searchLanguage": "언어 검색...",
     "noLanguageFound": "언어를 찾을 수 없습니다.",
+    "resolveNote": {
+      "openResolve": "DaVinci Resolve를 열고 다음으로 이동:",
+      "workspace": "Workspace(상단 메뉴)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "시작하기"
   },
   "tour": {
@@ -329,6 +342,7 @@
       "description": "단어 수준 타이밍 정확도 향상",
       "title": "동적 시간 왜곡"
     },
+    "restartOnboarding": "온보딩 다시 시작",
     "gpu": {
       "description": "GPU를 사용하여 빠른 자막 생성",
       "title": "GPU 가속"

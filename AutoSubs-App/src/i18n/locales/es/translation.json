@@ -21,6 +21,7 @@
       "description": "Actualiza menús y botones",
       "showPickerAgain": "Mostrar selector de idioma otra vez"
     },
+    "restartOnboarding": "Reiniciar integración",
     "reset": {
       "button": "Restablecer ajustes",
       "confirm": "¿Seguro que quieres restablecer todos los ajustes a los valores predeterminados? Esto no se puede deshacer.",
@@ -95,7 +96,15 @@
       "characterLimitTitle": "Límite de caracteres",
       "characterLimitDescription": "Por línea (0 = auto)",
       "lineCountTitle": "Número de líneas",
-      "lineCountDescription": "Máx. líneas por subtítulo"
+      "lineCountDescription": "Máx. líneas por subtítulo",
+      "textDensityTitle": "Densidad de texto",
+      "textDensityDescription": "Cantidad de texto en pantalla",
+      "textDensity": {
+        "single": "Palabra única",
+        "less": "Menos",
+        "standard": "Estándar",
+        "more": "Más"
+      }
     },
     "censor": {
       "title": "Censurar palabras",
@@ -137,8 +146,7 @@
       "translate": "Traducir",
       "searchSourcePlaceholder": "Buscar idiomas...",
       "searchTargetPlaceholder": "Buscar idiomas de destino...",
-      "noLanguageFound": "No se encontró ningún idioma.",
-      "arrow": "→"
+      "noLanguageFound": "No se encontró ningún idioma."
     }
   },
   "speakerEditor": {
@@ -385,6 +393,12 @@
     "selectLanguage": "Seleccionar idioma",
     "searchLanguage": "Buscar idiomas...",
     "noLanguageFound": "No se encontró ningún idioma.",
+    "resolveNote": {
+      "openResolve": "Abre DaVinci Resolve y ve a:",
+      "workspace": "Workspace (menú superior)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "Empezar"
   },
   "tour": {

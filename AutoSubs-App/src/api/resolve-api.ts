@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { downloadDir } from '@tauri-apps/api/path';
-import { getTranscriptPath } from '@/utils/file-utils';
+import { getTranscriptPath, getAudioExportDir } from '@/utils/file-utils';
 import { Speaker } from '@/types';
 
 /**
@@ -82,7 +81,7 @@ async function callResolve(
 }
 
 export async function exportAudio(inputTracks: Array<string>) {
-  const outputDir = await downloadDir();
+  const outputDir = await getAudioExportDir();
   const data = await callResolve({
     func: 'ExportAudio',
     outputDir,

@@ -130,7 +130,7 @@ export function ImportExportPopover({ onImport, onExport, hasSubtitles, trigger 
                         </Button>
                         <Button
                             onClick={handleExportFile}
-                            className="w-full mt-4"
+                            className="w-full"
                             disabled={!hasSubtitles}
                         >
                             <Download className="h-4 w-4 mr-2" />

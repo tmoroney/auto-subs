@@ -402,6 +402,23 @@ export async function getTranscriptsDir(): Promise<string> {
   return dir;
 }
 
+export async function getAudioExportDir(): Promise<string> {
+  const dir = await join(await appLocalDataDir(), "Audio");
+
+  // Ensure the directory exists
+  try {
+    if (!(await exists(dir))) {
+      await mkdir(dir, { recursive: true });
+      console.log('Created audio export directory:', dir);
+    }
+  } catch (error) {
+    console.error('Failed to create audio export directory:', error);
+    throw new Error(`Failed to create audio export directory: ${error}`);
+  }
+
+  return dir;
+}
+
 export async function getTranscriptPath(filename: string): Promise<string> {
   const dir = await getTranscriptsDir();
   return await join(dir, filename);

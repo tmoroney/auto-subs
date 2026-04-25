@@ -21,6 +21,7 @@
       "description": "更新菜单和按钮",
       "showPickerAgain": "再次显示语言选择器"
     },
+    "restartOnboarding": "重新开始入门",
     "reset": {
       "button": "重置设置",
       "confirm": "您确定要将所有设置重置为默认值吗？此操作无法撤销。",
@@ -95,7 +96,15 @@
       "characterLimitTitle": "字符限制",
       "characterLimitDescription": "每行（0 = 自动）",
       "lineCountTitle": "行数",
-      "lineCountDescription": "每个字幕的最大行数"
+      "lineCountDescription": "每个字幕的最大行数",
+      "textDensityTitle": "文本密度",
+      "textDensityDescription": "屏幕上的文本量",
+      "textDensity": {
+        "single": "单词",
+        "less": "较少",
+        "standard": "标准",
+        "more": "较多"
+      }
     },
     "censor": {
       "title": "审查词汇",
@@ -133,7 +142,6 @@
       "mediaFiles": "媒体文件（ffmpeg 支持）"
     },
     "language": {
-      "arrow": "→",
       "source": "源语言",
       "translate": "翻译",
       "searchSourcePlaceholder": "搜索语言...",
@@ -385,6 +393,12 @@
     "selectLanguage": "选择语言",
     "searchLanguage": "搜索语言...",
     "noLanguageFound": "未找到语言。",
+    "resolveNote": {
+      "openResolve": "打开 DaVinci Resolve 并前往：",
+      "workspace": "Workspace（顶部菜单）",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "开始使用"
   },
   "tour": {

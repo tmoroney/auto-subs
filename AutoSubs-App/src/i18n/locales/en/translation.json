@@ -21,6 +21,7 @@
       "description": "Updates menus and buttons",
       "showPickerAgain": "Show language picker again"
     },
+    "restartOnboarding": "Restart Onboarding",
     "reset": {
       "button": "Reset Settings",
       "confirm": "Are you sure you want to reset all settings, including transcription settings? This action cannot be undone.",
@@ -95,7 +96,15 @@
       "characterLimitTitle": "Character Limit",
       "characterLimitDescription": "Per line (0 = auto)",
       "lineCountTitle": "Line Count",
-      "lineCountDescription": "Max lines per subtitle"
+      "lineCountDescription": "Max lines per subtitle",
+      "textDensityTitle": "Text Density",
+      "textDensityDescription": "Amount of text on screen",
+      "textDensity": {
+        "single": "Single Word",
+        "less": "Less",
+        "standard": "Standard",
+        "more": "More"
+      }
     },
     "censor": {
       "title": "Censor Words",
@@ -137,8 +146,7 @@
       "translate": "Translate",
       "searchSourcePlaceholder": "Search languages...",
       "searchTargetPlaceholder": "Search target languages...",
-      "noLanguageFound": "No language found.",
-      "arrow": "→"
+      "noLanguageFound": "No language found."
     }
   },
   "speakerEditor": {
@@ -388,6 +396,12 @@
     "selectLanguage": "Select language",
     "searchLanguage": "Search languages...",
     "noLanguageFound": "No language found.",
+    "resolveNote": {
+      "openResolve": "Open DaVinci Resolve and go to:",
+      "workspace": "Workspace (top menu)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "Get Started"
   },
   "tour": {

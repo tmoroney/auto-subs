@@ -45,7 +45,10 @@ fn trigger_install_update(state: tauri::State<InstallSignal>) {
 }
 
 fn main() {
-    // Note: whisper-diarize-rs handles whisper_rs logging internally
+    // Route whisper.cpp C-side logs through Rust's tracing system so they can be
+    // filtered rather than being dumped raw to stderr.
+    transcription_engine::install_logging_hooks();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())

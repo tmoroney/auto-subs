@@ -21,6 +21,7 @@
       "description": "Met à jour menus et boutons",
       "showPickerAgain": "Réafficher le sélecteur de langue"
     },
+    "restartOnboarding": "Redémarrer l'intégration",
     "reset": {
       "button": "Réinitialiser les paramètres",
       "confirm": "Voulez-vous vraiment réinitialiser tous les paramètres ? Cette action est irréversible.",
@@ -87,7 +88,15 @@
       "characterLimitTitle": "Limite de caractères",
       "characterLimitDescription": "Par ligne (0 = auto)",
       "lineCountTitle": "Nombre de lignes",
-      "lineCountDescription": "Max. lignes par sous-titre"
+      "lineCountDescription": "Max. lignes par sous-titre",
+      "textDensityTitle": "Densité du texte",
+      "textDensityDescription": "Quantité de texte à l'écran",
+      "textDensity": {
+        "single": "Mot unique",
+        "less": "Moins",
+        "standard": "Standard",
+        "more": "Plus"
+      }
     },
     "censor": {
       "title": "Censurer des mots",
@@ -127,8 +136,7 @@
       "translate": "Traduire",
       "searchSourcePlaceholder": "Rechercher des langues...",
       "searchTargetPlaceholder": "Rechercher des langues cibles...",
-      "noLanguageFound": "Aucune langue trouvée.",
-      "arrow": "→"
+      "noLanguageFound": "Aucune langue trouvée."
     }
   },
   "speakerEditor": {
@@ -361,6 +369,12 @@
     "selectLanguage": "Sélectionner la langue",
     "searchLanguage": "Rechercher des langues...",
     "noLanguageFound": "Aucune langue trouvée.",
+    "resolveNote": {
+      "openResolve": "Ouvrez DaVinci Resolve et allez à :",
+      "workspace": "Workspace (menu du haut)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "Commencer"
   },
   "tour": {

@@ -128,46 +128,41 @@ export function AnimatedPresetPicker({
 
     return (
         <>
-            {/* Top action row: import + paste */}
-            <div className="flex items-center justify-end gap-2">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => setPasteOpen(true)}
-                >
-                    <ClipboardPaste className="h-3.5 w-3.5" />
-                    {t("addToTimeline.preset.paste")}
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={handleImportFromFile}
-                >
-                    <FileUp className="h-3.5 w-3.5" />
-                    {t("addToTimeline.preset.import")}
-                </Button>
-            </div>
-
             <ScrollArea className="h-[240px] rounded-md border">
                 <div className="p-2 grid grid-cols-2 gap-2">
-                    {/* Create new tile */}
-                    <button
-                        type="button"
-                        onClick={onRequestCreate}
-                        className="group relative flex min-h-[96px] flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-muted-foreground/30 bg-card/50 p-3 text-sm transition-colors hover:border-primary/60 hover:bg-primary/5"
-                    >
-                        <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
-                        <div className="font-medium text-sm">
-                            {t("addToTimeline.preset.new")}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground text-center leading-tight">
-                            {t("addToTimeline.preset.newDescription")}
-                        </div>
-                    </button>
+                    {/* Create / Import group */}
+                    <div className="grid grid-cols-2 gap-2 min-h-[96px]">
+                        <button
+                            type="button"
+                            onClick={onRequestCreate}
+                            className="group col-span-2 relative flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/30 bg-card/50 p-2 text-sm transition-colors hover:border-primary/60 hover:bg-primary/5"
+                        >
+                            <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                            <div className="font-medium text-xs">
+                                {t("addToTimeline.preset.new")}
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPasteOpen(true)}
+                            className="group flex items-center justify-center gap-1.5 rounded-md border border-dashed border-muted-foreground/30 bg-card/50 p-1.5 text-xs transition-colors hover:border-primary/60 hover:bg-primary/5"
+                        >
+                            <ClipboardPaste className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                            <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary leading-none">
+                                {t("addToTimeline.preset.paste")}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleImportFromFile}
+                            className="group flex items-center justify-center gap-1.5 rounded-md border border-dashed border-muted-foreground/30 bg-card/50 p-1.5 text-xs transition-colors hover:border-primary/60 hover:bg-primary/5"
+                        >
+                            <FileUp className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                            <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary leading-none">
+                                {t("addToTimeline.preset.import")}
+                            </span>
+                        </button>
+                    </div>
 
                     {presets.map((preset) => (
                         <PresetCard

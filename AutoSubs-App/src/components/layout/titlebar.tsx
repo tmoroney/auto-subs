@@ -357,11 +357,11 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
         <>
           {/* Left side - Transcripts and Settings */}
           <div className="flex items-center">
-            <div data-tauri-drag-region="false" data-tour="history-button">
-              <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
-            </div>
             <div data-tauri-drag-region="false">
               <SettingsDropdown />
+            </div>
+            <div data-tauri-drag-region="false" data-tour="history-button">
+              <TranscriptsButton onTranscriptOpen={onOpenCompactViewer} />
             </div>
           </div>
 

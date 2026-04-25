@@ -43,7 +43,7 @@ function TourTooltip({
           {continuous && (
             <>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="h-8 text-xs text-muted-foreground hover:text-foreground"
                 {...skipProps}
@@ -52,7 +52,7 @@ function TourTooltip({
               </Button>
               {index > 0 && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   className="h-8 text-xs"
                   {...backProps}

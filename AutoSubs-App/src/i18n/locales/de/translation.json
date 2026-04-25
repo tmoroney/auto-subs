@@ -21,6 +21,7 @@
       "description": "Aktualisiert Menüs und Buttons",
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
+    "restartOnboarding": "Onboarding neu starten",
     "preset": {
       "button": "Einstellungen zurücksetzen",
       "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",
@@ -95,7 +96,15 @@
       "characterLimitTitle": "Zeichenlimit",
       "characterLimitDescription": "Pro Zeile (0 = auto)",
       "lineCountTitle": "Zeilenanzahl",
-      "lineCountDescription": "Max. Zeilen pro Untertitel"
+      "lineCountDescription": "Max. Zeilen pro Untertitel",
+      "textDensityTitle": "Textdichte",
+      "textDensityDescription": "Textmenge auf dem Bildschirm",
+      "textDensity": {
+        "single": "Einzelnes Wort",
+        "less": "Weniger",
+        "standard": "Standard",
+        "more": "Mehr"
+      }
     },
     "censor": {
       "title": "Wörter zensieren",
@@ -137,8 +146,7 @@
       "translate": "Übersetzen",
       "searchSourcePlaceholder": "Sprachen suchen...",
       "searchTargetPlaceholder": "Zielsprachen suchen...",
-      "noLanguageFound": "Keine Sprache gefunden.",
-      "arrow": "→"
+      "noLanguageFound": "Keine Sprache gefunden."
     }
   },
   "speakerEditor": {
@@ -385,6 +393,12 @@
     "selectLanguage": "Sprache auswählen",
     "searchLanguage": "Sprachen suchen...",
     "noLanguageFound": "Keine Sprache gefunden.",
+    "resolveNote": {
+      "openResolve": "Öffne DaVinci Resolve und gehe zu:",
+      "workspace": "Workspace (oberes Menü)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "Los geht's"
   },
   "tour": {

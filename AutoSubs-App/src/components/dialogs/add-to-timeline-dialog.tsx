@@ -109,7 +109,7 @@ export function AddToTimelineDialog({
     // Only show the speakers step when we actually have speakers to configure.
     const hasSpeakers = speakers.length > 0
     const activeSteps = React.useMemo<ReadonlyArray<typeof STEPS[number]>>(
-        () => (hasSpeakers ? STEPS : [STEPS[0], STEPS[2]]),
+        () => (hasSpeakers ? STEPS : [STEPS[0], STEPS[1]]),
         [hasSpeakers],
     )
     const totalSteps = activeSteps.length

@@ -45,8 +45,8 @@ export function TextFormattingPanel({
                 {/* Text Density */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <Label className="text-sm font-medium">Text Density</Label>
-                        <p className="text-xs text-muted-foreground">Amount of text on screen</p>
+                        <Label className="text-sm font-medium">{t("actionBar.format.textDensityTitle")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textDensityDescription")}</p>
                     </div>
                     <Select
                         value={settings.textDensity}
@@ -56,10 +56,10 @@ export function TextFormattingPanel({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="single">Single Word</SelectItem>
-                            <SelectItem value="less">Less</SelectItem>
-                            <SelectItem value="standard">Standard</SelectItem>
-                            <SelectItem value="more">More</SelectItem>
+                            <SelectItem value="single">{t("actionBar.format.textDensity.single")}</SelectItem>
+                            <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
+                            <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
+                            <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

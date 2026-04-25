@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Speech, Type, AudioLines, Globe, X, PlayCircle } from "lucide-react"
+import { Speech, Type, AudioLines, Globe, X, PlayCircle, ChevronRight } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
 import { downloadDir } from "@tauri-apps/api/path"
@@ -100,9 +100,10 @@ function TranscriptionPanelView({
   onCancel,
   isProcessing,
 }: TranscriptionPanelViewProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { refresh } = useResolve()
   const { settings: currentSettings } = useSettings()
+  const isTourActive = !currentSettings.tourCompleted
   const uploadIconRef = React.useRef<UploadIconHandle>(null)
   const dropAreaUploadIconRef = React.useRef<UploadIconHandle>(null)
   const [openLanguage, setOpenLanguage] = React.useState(false)
@@ -189,6 +190,7 @@ function TranscriptionPanelView({
           value={isStandaloneMode ? "file" : "timeline"}
           onValueChange={(value) => onStandaloneModeChange(value === "file")}
           data-tour="mode-switcher"
+          key={i18n.language}
         >
           <TabsList className="p-1 h-auto">
             <TabsTrigger
@@ -261,8 +263,8 @@ function TranscriptionPanelView({
       </div>
 
       <div className="flex-shrink-0">
-        <Card className="p-3 sticky bottom-4 mx-4 z-50 shadow-lg bg-card" data-tour="transcription-controls">
-          <div className="grid w-full gap-3">
+        <Card className={`p-3 ${isTourActive ? '' : 'sticky bottom-4'} mx-4 z-50 shadow-lg bg-card`}>
+          <div className="grid w-full gap-3" data-tour="transcription-controls">
             <div className="flex items-center gap-1.5">
               <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
                 <PopoverTrigger asChild>
@@ -272,11 +274,18 @@ function TranscriptionPanelView({
                     role="combobox"
                     aria-expanded={openLanguage}
                     className="dark:bg-background dark:hover:bg-accent rounded-full"
+                    data-tour="transcription-controls-target"
                   >
                     <Globe className="h-4 w-4" />
-                    <span className="text-xs truncate">
+                    <span className="text-xs truncate flex items-center gap-1">
                       {currentSettings.translate
-                        ? `${currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label} ${t("actionBar.language.arrow")} ${translateLanguages.find((l) => l.value === currentSettings.targetLanguage)?.label}`
+                        ? (
+                          <>
+                            {currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label}
+                            <ChevronRight className="h-3 w-3" />
+                            {translateLanguages.find((l) => l.value === currentSettings.targetLanguage)?.label}
+                          </>
+                        )
                         : currentSettings.language === "auto" ? t("actionBar.common.auto") : languages.find((l) => l.value === currentSettings.language)?.label}
                     </span>
                   </Button>

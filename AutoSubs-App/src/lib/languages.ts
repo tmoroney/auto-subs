@@ -1,3 +1,13 @@
+export const uiLanguages = [
+  { label: "English", value: "en" },
+  { label: "Español", value: "es" },
+  { label: "Français", value: "fr" },
+  { label: "Deutsch", value: "de" },
+  { label: "日本語", value: "ja" },
+  { label: "한국어", value: "ko" },
+  { label: "中文", value: "zh" },
+]
+
 export const languages = [
     { label: "Auto (default)", value: "auto" },
     { label: "Afrikaans", value: "af" },

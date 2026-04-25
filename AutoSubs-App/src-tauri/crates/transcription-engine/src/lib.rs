@@ -17,6 +17,10 @@ pub use model_manager::ModelManager;
 pub use utils::{get_translate_languages, get_whisper_languages};
 pub use formatting::{PostProcessConfig, process_segments, TextCase, TextDensity};
 
+/// Install whisper.cpp logging hooks so output is routed through Rust's tracing system
+/// instead of raw stderr, allowing filters to suppress chatty internal logs.
+pub use whisper_rs::install_logging_hooks;
+
 /// Convenience function to list all cached Whisper models.
 /// Creates a temporary Engine with default config (except cache_dir) to access the cache.
 pub fn list_cached_models(cache_dir: &std::path::Path) -> eyre::Result<Vec<String>> {

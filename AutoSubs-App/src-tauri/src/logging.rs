@@ -237,6 +237,7 @@ pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
                 .add_directive("tauri=info".parse().unwrap())
                 .add_directive("autosubs=debug".parse().unwrap())
                 .add_directive("transcription_engine=debug".parse().unwrap())
+                .add_directive("whisper_rs=warn".parse().unwrap())
         });
 
     let subscriber = Registry::default()

@@ -1,4 +1,4 @@
-import { Gauge, Clock } from "lucide-react";
+import { Gauge, Clock, RotateCcw, GraduationCap } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -24,6 +24,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Field, FieldGroup } from "@/components/ui/field";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
+import { uiLanguages } from "@/lib/languages";
 import { useRef } from "react";
 
 interface SettingsDialogProps {
@@ -33,7 +34,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { settings, updateSetting, resetSettings } = useSettings();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const deleteIconRef = useRef<DeleteIconHandle>(null);
 
   const handleResetSettings = async () => {
@@ -41,16 +42,22 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       title: t("settings.reset.confirmTitle"),
       kind: "warning"
     });
-    
+
     if (shouldReset) {
       resetSettings();
     }
   };
 
+  const handleRestartOnboarding = () => {
+    updateSetting("onboardingCompleted", false);
+    updateSetting("tourCompleted", false);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form>
-        <DialogContent className="sm:max-w-[560px]">
+        <DialogContent className="sm:max-w-[560px]" key={i18n.language}>
           <DialogHeader>
             <DialogTitle>{t("settings.title")}</DialogTitle>
             <DialogDescription className="text-xs">
@@ -58,7 +65,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-2 space-y-6">
+          <div className="space-y-6">
             {/* Language Settings */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -88,19 +95,26 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Español</SelectItem>
-                          <SelectItem value="fr">Français</SelectItem>
-                          <SelectItem value="de">Deutsch</SelectItem>
-                          <SelectItem value="ja">日本語</SelectItem>
-                          <SelectItem value="ko">한국어</SelectItem>
-                          <SelectItem value="zh">中文</SelectItem>
+                          {uiLanguages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </ItemActions>
                   </Item>
                 </Field>
               </FieldGroup>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleRestartOnboarding}
+              >
+                <GraduationCap/>
+                {t("settings.restartOnboarding")}
+              </Button>
             </div>
 
             {/* Transcription Settings */}
@@ -154,9 +168,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="destructive" 
-              size="sm" 
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={handleResetSettings}
               onMouseEnter={() => deleteIconRef.current?.startAnimation()}
               onMouseLeave={() => deleteIconRef.current?.stopAnimation()}

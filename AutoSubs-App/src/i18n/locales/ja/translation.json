@@ -33,15 +33,22 @@
         "uppercase": "大文字"
       },
       "textCaseDescription": "字幕の大文字・小文字を変更",
-      "textCaseTitle": "文字ケース"
+      "textCaseTitle": "文字ケース",
+      "textDensityTitle": "テキスト密度",
+      "textDensityDescription": "画面上のテキスト量",
+      "textDensity": {
+        "single": "単語単位",
+        "less": "少なめ",
+        "standard": "標準",
+        "more": "多め"
+      }
     },
     "language": {
       "noLanguageFound": "言語が見つかりません。",
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
       "source": "ソース",
-      "translate": "翻訳",
-      "arrow": "→"
+      "translate": "翻訳"
     },
     "fileDialog": { "mediaFiles": "メディアファイル (ffmpeg 対応)" },
     "mode": {
@@ -111,6 +118,12 @@
     "selectLanguage": "言語を選択",
     "searchLanguage": "言語を検索...",
     "noLanguageFound": "言語が見つかりません。",
+    "resolveNote": {
+      "openResolve": "DaVinci Resolve を開いて以下に移動：",
+      "workspace": "Workspace（上部メニュー）",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
     "continue": "始める"
   },
   "tour": {
@@ -314,6 +327,7 @@
       "description": "単語レベルのタイミング精度を向上",
       "title": "動的時間伸縮法"
     },
+    "restartOnboarding": "オンボーディングを再開",
     "gpu": {
       "description": "GPUを使用して高速な文字起こし",
       "title": "GPU アクセラレーション"
