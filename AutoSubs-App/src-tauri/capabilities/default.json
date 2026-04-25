@@ -27,6 +27,9 @@
         },
         {
           "url": "https://cdn-lfs-us-1.huggingface.co/*"
+        },
+        {
+          "url": "https://docs.google.com/*"
         }
       ],
       "deny": [

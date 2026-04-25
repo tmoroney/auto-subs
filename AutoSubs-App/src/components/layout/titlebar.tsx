@@ -24,6 +24,7 @@ import type { Model } from "@/types";
 import { useState, useEffect, useRef } from "react";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
+import { SupportDialog } from "@/components/dialogs/support-dialog";
 import { ArchiveIcon } from "../ui/archive";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdateStatus } from "@/hooks/use-update-status";
@@ -109,6 +110,7 @@ function SettingsDropdown() {
   const { modelsState, downloadedModelValues, handleDeleteModel } = useModels();
   const [manageModelsOpen, setManageModelsOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
 
   // The diarization model is handled separately from transcription models and only added
   // to the model manager when it's actually downloaded. This is because it's a different
@@ -170,13 +172,10 @@ function SettingsDropdown() {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem
-              asChild
+              onClick={() => setSupportDialogOpen(true)}
               className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
             >
-              <a
-                href="https://buymeacoffee.com/tmoroney"
-                target="_blank"
-                rel="noopener noreferrer"
+              <div
                 className="group relative flex w-full items-center"
               >
                 <Heart className="h-4 w-4 mr-2 text-pink-500 group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500 transition-all" />
@@ -206,7 +205,7 @@ function SettingsDropdown() {
                     />
                   ))}
                 </div>
-              </a>
+              </div>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -241,6 +240,11 @@ function SettingsDropdown() {
       <SettingsDialog
         open={settingsDialogOpen}
         onOpenChange={setSettingsDialogOpen}
+      />
+
+      <SupportDialog
+        open={supportDialogOpen}
+        onOpenChange={setSupportDialogOpen}
       />
     </>
   );
