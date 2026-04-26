@@ -27,8 +27,8 @@
 					}
 				},
 				InputKeys = {
-					"Style",
 					"Font",
+					"Style",
 					"TextSize",
 					"TextPosition",
 					"FadeEnabled",
