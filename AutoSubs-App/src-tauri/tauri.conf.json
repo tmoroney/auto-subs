@@ -43,7 +43,8 @@
     "targets": [
       "nsis",
       "app",
-      "deb"
+      "deb",
+      "rpm"
     ],
     "icon": [
       "icons/32x32.png",
@@ -55,14 +56,23 @@
     "resources": [
       "resources/"
     ],
-    "externalBin": [
-      "binaries/ffmpeg"
-    ],
     "macOS": {
       "minimumSystemVersion": "13.3"
     },
     "linux": {
       "deb": {
+        "desktopTemplate": "./linux/autosubs.desktop",
+        "depends": ["ffmpeg"],
+        "files": {
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "./linux/autosubs.desktop",
+        "epoch": 0,
+        "release": "1",
+        "depends": ["webkit2gtk4.1", "openssl", "libappindicator-gtk3", "librsvg2", "ffmpeg"],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"

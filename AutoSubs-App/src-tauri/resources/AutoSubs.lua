@@ -92,18 +92,8 @@ elseif os_name == "OSX" then
     app_executable = "/Applications/AutoSubs.app"
     resources_folder = app_executable .. "/Contents/Resources/resources"
 else
-    -- Flatpak installs copy resources to a user-space path at launch (see flatpak/autosubs-launch.sh).
-    -- Check that path first; fall back to the standard .deb install paths.
-    local flatpak_resources = os.getenv("HOME") .. "/.local/share/autosubs/resources"
-    local f = io.open(flatpak_resources .. "/AutoSubs.lua", "r")
-    if f then
-        f:close()
-        app_executable = "flatpak run org.autosubs.AutoSubs"
-        resources_folder = flatpak_resources
-    else
-        app_executable = "/usr/bin/autosubs"
-        resources_folder = "/usr/lib/autosubs/resources"
-    end
+    app_executable = "/usr/bin/autosubs"
+    resources_folder = "/usr/lib/autosubs/resources"
 end
 
 -- temporarily redefine path for dev_mode (replace with correct path to resources folder in repo)
