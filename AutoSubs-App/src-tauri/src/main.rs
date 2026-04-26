@@ -29,6 +29,8 @@ mod transcription_api;
 mod transcript_types;
 mod logging;
 mod resolve_bridge;
+#[cfg(target_os = "macos")]
+mod traffic_lights;
 
 // Include integration-like tests that need crate visibility
 #[cfg(test)]
@@ -85,11 +87,15 @@ fn main() {
                 }
             }
 
-            // Set traffic light position programmatically on macOS (Tauri v2 bug workaround)
+
+            // Set traffic light position programmatically on macOS.
+            // `trafficLightPosition` in tauri.conf.json is only applied at window
+            // creation and AppKit resets the button layout on various lifecycle
+            // events in packaged builds, so re-apply it here and on window events.
             #[cfg(target_os = "macos")]
             {
                 if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.set_traffic_lights_position(10.0, 20.0);
+                    crate::traffic_lights::install(&window);
                 }
             }
 

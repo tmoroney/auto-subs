@@ -2,7 +2,7 @@
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global
 local ffi = ffi
-local resolve = Resolve()
+-- resolve is provided implicitly by the Resolve environment (no need to call Resolve())
 
 local DEV_MODE = false
 
