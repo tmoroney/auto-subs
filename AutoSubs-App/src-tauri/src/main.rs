@@ -85,6 +85,14 @@ fn main() {
                 }
             }
 
+            // Set traffic light position programmatically on macOS (Tauri v2 bug workaround)
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_traffic_lights_position(10.0, 20.0);
+                }
+            }
+
             // Startup sidecar health check: ffmpeg availability & version
             {
                 let app_handle = app.handle().clone();
