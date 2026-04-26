@@ -37,6 +37,7 @@ mod tests;
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
 
+#[cfg(target_os = "linux")]
 fn is_newer_version(latest: &str, current: &str) -> bool {
     let parse = |s: &str| -> Option<(u32, u32, u32)> {
         let parts: Vec<u32> = s.trim_start_matches('v')

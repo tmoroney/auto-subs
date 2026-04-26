@@ -12,7 +12,10 @@
     "build:win": "npm run tauri build -- --no-default-features --features windows",
     "build:linux": "npm run tauri build -- --no-default-features --features linux",
     "build:mac:arm64": "npm run tauri build -- -- --no-default-features --features mac-aarch",
-    "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64"
+    "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64",
+    "build:mac:arm64:local": "dotenv -- npm run build:mac:arm64",
+    "build:mac:x86_64:local": "dotenv -- npm run build:mac:x86_64",
+    "build:win:local": "dotenv -- npm run build:win"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
@@ -108,6 +111,7 @@
     "@types/react-joyride": "^2.0.2",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.20",
+    "dotenv-cli": "^11.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.2.2",

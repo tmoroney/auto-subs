@@ -27,7 +27,7 @@ jobs:
             target: aarch64-apple-darwin
             features: mac-aarch
             pkg_suffix: ARM
-          - platform: macos-13
+          - platform: macos-15-intel
             arch: x86_64
             target: x86_64-apple-darwin
             features: mac-x86_64
