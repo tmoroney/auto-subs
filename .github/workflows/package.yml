@@ -258,7 +258,7 @@ jobs:
 
   build-linux:
     needs: [build-mac]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout AutoSubs Repo Code
         uses: actions/checkout@v4
