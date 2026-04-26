@@ -2,8 +2,12 @@
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global
 local ffi = ffi
-local resolve = resolve
--- resolve is provided implicitly by the Resolve environment (no need to call Resolve())
+
+-- resolve is provided implicitly by the Resolve environment - no need to call Resolve() unless running in terminal
+local resolve = rawget(_G, "resolve")
+if resolve == nil and type(rawget(_G, "Resolve")) == "function" then
+    resolve = Resolve()
+end
 
 local DEV_MODE = false
 
