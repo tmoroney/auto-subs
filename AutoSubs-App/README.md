@@ -110,11 +110,11 @@ In addition to the standard Tauri prerequisites, Windows builds require:
 2. **Vulkan SDK** — needed for GPU-accelerated transcription via Whisper:
    Download from [vulkan.lunarg.com](https://vulkan.lunarg.com/sdk/home#windows) and install. The installer sets `VULKAN_SDK` automatically.
 
-3. **Windows Long Path support** — the Vulkan shader build generates deeply nested paths that exceed Windows' 260-character default limit. Enable long paths once with an elevated PowerShell:
+3. **Short Cargo target directory** — the Vulkan shader build generates deeply nested paths that exceed Windows' 260-character limit. Set a short output directory once as a user environment variable (no admin required):
    ```powershell
-   Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -Type DWord
+   [System.Environment]::SetEnvironmentVariable("CARGO_TARGET_DIR", "C:\cargo-target", "User")
    ```
-   A restart or new terminal session is required for this to take effect.
+   Open a new terminal after running this for it to take effect.
 
 ## Detailed Documentation
 
