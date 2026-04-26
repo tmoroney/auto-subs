@@ -361,54 +361,49 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Compose latest.json with macOS and Windows artifacts
+      - name: Compose latest.json with macOS artifacts
         env:
           TAG: ${{ env.TAG }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: ${{ github.repository }}
+          NOTES: ${{ github.event.release.name }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          shopt -s inherit_errexit
           if [ -z "${TAG}" ]; then
             echo "ERROR: TAG is empty. Ensure this workflow is triggered from a Release event or provide the 'tag' input when using workflow_dispatch."
             exit 1
           fi
           mkdir -p latest
 
-          # Download signature files from the release assets
+          # Download macOS signature files from the release assets
           gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
+            --repo "$REPO" \
             --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" \
             --dir latest \
             --clobber
 
           gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
+            --repo "$REPO" \
             --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" \
             --dir latest \
             --clobber
 
-          gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "AutoSubs-windows-x86_64.exe.sig" \
-            --dir latest \
-            --clobber || true
-
           ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
           INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
-          WINDOWS_SIG="$(cat latest/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || true)"
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          NOTES='${{ github.event.release.name }}'
 
-          JSON_OUTPUT=$(jq -n \
+          jq -n \
             --arg version "$VERSION" \
             --arg pub_date "$PUB_DATE" \
             --arg notes "$NOTES" \
             --arg arm_sig "$ARM_SIG" \
             --arg intel_sig "$INTEL_SIG" \
-            --arg windows_sig "$WINDOWS_SIG" \
             --arg tag "$TAG" \
+            --arg repo "$REPO" \
             '{
               version: $version,
               pub_date: $pub_date,
@@ -416,21 +411,17 @@ jobs:
               platforms: {
                 "darwin-aarch64": {
                   signature: $arm_sig,
-                  url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-aarch64.app.tar.gz")
+                  url: ("https://github.com/" + $repo + "/releases/download/" + $tag + "/AutoSubs-macos-aarch64.app.tar.gz")
                 },
                 "darwin-x86_64": {
                   signature: $intel_sig,
-                  url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
-                },
-                "windows-x86_64": (
-                  if ($windows_sig | length) > 0 then
-                    { signature: $windows_sig,
-                      url: ("https://github.com/" + env.GITHUB_REPOSITORY + "/releases/download/" + $tag + "/AutoSubs-windows-x86_64.exe") }
-                  else empty end
-                )
+                  url: ("https://github.com/" + $repo + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
+                }
               }
-            }')
-          echo "$JSON_OUTPUT" > latest.json
+            }' > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
 
       - name: Upload unified latest.json to Release
         uses: softprops/action-gh-release@v2

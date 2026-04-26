@@ -1,0 +1,88 @@
+name: Add Windows to latest.json
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to update (e.g. v3.5.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  add-windows:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Ensure jq is available
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Download existing latest.json and Windows signature
+        run: |
+          set -Eeuo pipefail
+          shopt -s inherit_errexit
+          mkdir -p work
+
+          echo "Downloading existing latest.json from release $TAG..."
+          gh release download "$TAG" \
+            --repo "$REPO" \
+            --pattern "latest.json" \
+            --dir work \
+            --clobber
+
+          echo "Downloading AutoSubs-windows-x86_64.exe.sig from release $TAG..."
+          gh release download "$TAG" \
+            --repo "$REPO" \
+            --pattern "AutoSubs-windows-x86_64.exe.sig" \
+            --dir work \
+            --clobber
+
+          # Sanity checks
+          if [ ! -s work/latest.json ]; then
+            echo "ERROR: latest.json is missing or empty."
+            exit 1
+          fi
+          if [ ! -s work/AutoSubs-windows-x86_64.exe.sig ]; then
+            echo "ERROR: Windows signature file is missing or empty. Upload AutoSubs-windows-x86_64.exe and AutoSubs-windows-x86_64.exe.sig to the release first."
+            exit 1
+          fi
+
+      - name: Merge Windows entry into latest.json
+        run: |
+          set -Eeuo pipefail
+          shopt -s inherit_errexit
+
+          WINDOWS_SIG="$(cat work/AutoSubs-windows-x86_64.exe.sig)"
+          WINDOWS_URL="https://github.com/${REPO}/releases/download/${TAG}/AutoSubs-windows-x86_64.exe"
+
+          jq \
+            --arg sig "$WINDOWS_SIG" \
+            --arg url "$WINDOWS_URL" \
+            '.platforms["windows-x86_64"] = {signature: $sig, url: $url}' \
+            work/latest.json > latest.json
+
+          echo "Updated latest.json:"
+          cat latest.json
+
+      - name: Delete old latest.json asset from release
+        run: |
+          set -Eeuo pipefail
+          # delete-asset is idempotent-ish; use --yes to skip prompt. Ignore failure if missing.
+          gh release delete-asset "$TAG" latest.json \
+            --repo "$REPO" \
+            --yes || echo "No existing latest.json asset to delete (or deletion failed non-fatally)."
+
+      - name: Upload updated latest.json to release
+        run: |
+          set -Eeuo pipefail
+          gh release upload "$TAG" latest.json \
+            --repo "$REPO" \
+            --clobber

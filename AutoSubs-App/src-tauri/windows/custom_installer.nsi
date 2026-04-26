@@ -219,7 +219,6 @@ Function PageReinstall
   ${ElseIf} $R0 = 1
     StrCpy $R1 "$(olderOrUnknownVersionInstalled)"
     StrCpy $R2 "$(uninstallBeforeInstalling)"
-    StrCpy $R3 "$(dontUninstall)"
     !insertmacro MUI_HEADER_TEXT "$(alreadyInstalled)" "$(choowHowToInstall)"
   ; Downgrading
   ${ElseIf} $R0 = -1
@@ -251,28 +250,37 @@ Function PageReinstall
     ${NSD_CreateLabel} 0 0 100% 24u $R1
     Pop $R1
 
-    ${NSD_CreateRadioButton} 30u 50u -30u 8u $R2
-    Pop $R2
-    ${NSD_OnClick} $R2 PageReinstallUpdateSelection
-
-    ${NSD_CreateRadioButton} 30u 70u -30u 8u $R3
-    Pop $R3
-    ; Disable this radio button if downgrading and downgrades are disabled
-    !if "${ALLOWDOWNGRADES}" == "false"
-      ${IfThen} $R0 = -1 ${|} EnableWindow $R3 0 ${|}
-    !endif
-    ${NSD_OnClick} $R3 PageReinstallUpdateSelection
-
-    ; Check the first radio button if this the first time
-    ; we enter this page or if the second button wasn't
-    ; selected the last time we were on this page
-    ${If} $ReinstallPageCheck <> 2
-      SendMessage $R2 ${BM_SETCHECK} ${BST_CHECKED} 0
+    ; For upgrades, only show the uninstall option (no choice)
+    ${If} $R0 = 1
+      ${NSD_CreateLabel} 0 50u 100% 24u $R2
+      Pop $R2
+      StrCpy $ReinstallPageCheck 1
+    ; For same version and downgrades, show radio buttons
     ${Else}
-      SendMessage $R3 ${BM_SETCHECK} ${BST_CHECKED} 0
+      ${NSD_CreateRadioButton} 30u 50u -30u 8u $R2
+      Pop $R2
+      ${NSD_OnClick} $R2 PageReinstallUpdateSelection
+
+      ${NSD_CreateRadioButton} 30u 70u -30u 8u $R3
+      Pop $R3
+      ; Disable this radio button if downgrading and downgrades are disabled
+      !if "${ALLOWDOWNGRADES}" == "false"
+        ${IfThen} $R0 = -1 ${|} EnableWindow $R3 0 ${|}
+      !endif
+      ${NSD_OnClick} $R3 PageReinstallUpdateSelection
+
+      ; Check the first radio button if this the first time
+      ; we enter this page or if the second button wasn't
+      ; selected the last time we were on this page
+      ${If} $ReinstallPageCheck <> 2
+        SendMessage $R2 ${BM_SETCHECK} ${BST_CHECKED} 0
+      ${Else}
+        SendMessage $R3 ${BM_SETCHECK} ${BST_CHECKED} 0
+      ${EndIf}
+
+      ${NSD_SetFocus} $R2
     ${EndIf}
 
-    ${NSD_SetFocus} $R2
     nsDialogs::Show
   ${EndIf}
 FunctionEnd
