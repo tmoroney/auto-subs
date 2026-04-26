@@ -187,7 +187,7 @@
       "description": "Afficher des modèles anglais spécialisés avec une meilleure précision."
     },
     "manage": {
-      "title": "Gérer les modèles téléchargés",
+      "title": "Modèles",
       "description": "Supprimez les modèles en cache pour libérer de l’espace disque.",
       "empty": "Aucun modèle téléchargé",
       "deleteModel": "Supprimer le modèle",

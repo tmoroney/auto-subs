@@ -206,7 +206,7 @@
       "description": "Mostrar modelos especializados en inglés con mayor precisión."
     },
     "manage": {
-      "title": "Gestionar modelos descargados",
+      "title": "Modelos",
       "description": "Elimina modelos en caché para liberar espacio.",
       "empty": "No se encontraron modelos descargados",
       "deleteModel": "Eliminar modelo",

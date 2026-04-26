@@ -1,4 +1,4 @@
-import { Gauge, Clock, RotateCcw, GraduationCap } from "lucide-react";
+import { Gauge, Clock, GraduationCap } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";

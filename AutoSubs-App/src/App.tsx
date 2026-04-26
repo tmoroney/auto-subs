@@ -18,7 +18,9 @@ import { Titlebar } from "@/components/layout/titlebar"
 import { useResolve } from "@/contexts/ResolveContext"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
+import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
 import { useSettings } from "@/contexts/SettingsContext"
+import { getVersion } from "@tauri-apps/api/app"
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -42,6 +44,34 @@ function AppContent() {
   const isMobile = useIsMobile()
   const { timelineInfo } = useResolve()
   const { settings, isHydrated } = useSettings()
+  const [currentVersion, setCurrentVersion] = React.useState<string>("")
+
+  React.useEffect(() => {
+    let cancelled = false
+    getVersion()
+      .then((v) => {
+        if (!cancelled) setCurrentVersion(v)
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentVersion("")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Priority gating: only show one onboarding-style dialog at a time.
+  const showGettingStarted = isHydrated && !settings.onboardingCompleted
+  const showWhatsNew =
+    isHydrated &&
+    settings.onboardingCompleted &&
+    !!currentVersion &&
+    settings.lastSeenVersion !== currentVersion
+  const showTour =
+    isHydrated &&
+    settings.onboardingCompleted &&
+    settings.tourCompleted === false &&
+    !showWhatsNew
   const handleOpenCompactViewer = React.useCallback(() => {
     if (isMobile) {
       setShowMobileSubtitles(true)
@@ -84,10 +114,9 @@ function AppContent() {
           )}
         </div>
 
-        <GettingStartedOverlay />
-        {isHydrated && settings.onboardingCompleted && !settings.tourCompleted && (
-          <OnboardingTour />
-        )}
+        {showGettingStarted && <GettingStartedOverlay />}
+        {showWhatsNew && <WhatsNewDialog />}
+        {showTour && <OnboardingTour />}
       </div>
     </TooltipProvider>
   )

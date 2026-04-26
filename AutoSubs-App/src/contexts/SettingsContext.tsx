@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: "en",
   onboardingCompleted: false,
   tourCompleted: false,
+  lastSeenVersion: "",
   showEnglishOnlyModels: false,
 
   // Survey notification settings

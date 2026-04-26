@@ -110,7 +110,7 @@ jobs:
         cd AutoSubs-App
         npm install
 
-    - name: Download ffmpeg/ffprobe binaries
+    - name: Download ffmpeg binary
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |

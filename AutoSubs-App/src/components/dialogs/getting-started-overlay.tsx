@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { getVersion } from "@tauri-apps/api/app";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { useResolve } from "@/contexts/ResolveContext";
@@ -20,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Globe, Check, ArrowRight, MoveRight } from "lucide-react";
+import { Globe, Check, MoveRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function GettingStartedOverlay() {
@@ -58,7 +59,7 @@ export function GettingStartedOverlay() {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const normalizedUi = normalizeUiLanguage(selection);
     const hasUiTranslation = uiLanguages.some(
       (lang) => lang.value === selection.toLowerCase()
@@ -78,6 +79,15 @@ export function GettingStartedOverlay() {
       if (modelIndex !== -1) {
         updateSetting("model", modelIndex);
       }
+    }
+
+    // Mark current version as seen so brand-new users don't see the
+    // "What's New" popup immediately after onboarding.
+    try {
+      const version = await getVersion();
+      if (version) updateSetting("lastSeenVersion", version);
+    } catch {
+      /* ignore */
     }
 
     updateSetting("onboardingCompleted", true);

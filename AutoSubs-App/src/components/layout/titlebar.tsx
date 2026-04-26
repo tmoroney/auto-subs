@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes, RotateCcw } from "lucide-react";
+import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes, RotateCcw, GitMerge } from "lucide-react";
 import type { HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
@@ -148,11 +148,11 @@ function SettingsDropdown() {
         >
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)} className="cursor-pointer">
-              <Settings className="h-4 w-4 mr-2" />
+              <Settings />
               <span>{t("settings.title", "Settings")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setManageModelsOpen(true)} className="cursor-pointer">
-              <Boxes className="h-4 w-4 mr-2" />
+              <Boxes />
               <span>{t("models.manage.title", "Manage Models")}</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
@@ -167,7 +167,7 @@ function SettingsDropdown() {
                 rel="noopener noreferrer"
                 className="group"
               >
-                <Github className="h-4 w-4 mr-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" />
+                <GitMerge/>
                 <span>{t("settings.support.viewSource", "View Source")}</span>
               </a>
             </DropdownMenuItem>
