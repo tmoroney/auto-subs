@@ -2,7 +2,7 @@ id: org.autosubs.AutoSubs
 runtime: org.gnome.Platform
 runtime-version: '47'
 sdk: org.gnome.Sdk
-command: autosubs
+command: autosubs-launch
 
 finish-args:
   - --share=network
@@ -30,8 +30,13 @@ modules:
       # Install bundled resources and external binaries
       - if [ -d usr/lib/autosubs ]; then mkdir -p /app/lib/autosubs && cp -r usr/lib/autosubs/* /app/lib/autosubs/; fi
 
+      # Install the wrapper launch script
+      - install -Dm755 autosubs-launch.sh /app/bin/autosubs-launch
+
     sources:
       - type: file
         path: AutoSubs-linux-x86_64.deb
       - type: file
         path: org.autosubs.AutoSubs.desktop
+      - type: file
+        path: autosubs-launch.sh

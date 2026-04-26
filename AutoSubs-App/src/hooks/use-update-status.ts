@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 
-type UpdatePhase = "idle" | "downloading" | "ready" | "error";
+type UpdatePhase = "idle" | "downloading" | "ready" | "available-link" | "error";
 
 interface UpdateStatus {
   phase: UpdatePhase;
   percentage: number | null;
+  version: string | null;
 }
 
 export function useUpdateStatus(): UpdateStatus {
   const [phase, setPhase] = useState<UpdatePhase>("idle");
   const [percentage, setPercentage] = useState<number | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
 
   useEffect(() => {
     const unlisten: Array<() => void> = [];
@@ -34,10 +36,16 @@ export function useUpdateStatus(): UpdateStatus {
       );
 
       unlisten.push(
+        await listen<{ version: string }>("update-available-link", (event) => {
+          setPhase("available-link");
+          setVersion(event.payload.version);
+        })
+      );
+
+      unlisten.push(
         await listen("update-error", () => {
           setPhase("error");
           setPercentage(null);
-          // Revert to idle after a few seconds so ResolveStatus reappears
           setTimeout(() => setPhase("idle"), 5000);
         })
       );
@@ -50,5 +58,5 @@ export function useUpdateStatus(): UpdateStatus {
     };
   }, []);
 
-  return { phase, percentage };
+  return { phase, percentage, version };
 }

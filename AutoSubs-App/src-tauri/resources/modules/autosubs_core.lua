@@ -1848,7 +1848,12 @@ local AutoSubs = {
             else -- Linux
                 main_app = executable_path
                 resources_path = resources_folder
-                command_open = string.format("'%s' &", main_app)
+                -- Flatpak is launched via "flatpak run <id>" so don't single-quote it
+                if main_app:sub(1, 7) == "flatpak" then
+                    command_open = main_app .. " &"
+                else
+                    command_open = string.format("'%s' &", main_app)
+                end
             end
         end
 

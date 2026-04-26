@@ -273,7 +273,7 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
   );
 }
 
-function UpdateStatusIndicator({ phase, percentage }: { phase: string; percentage: number | null }) {
+function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; percentage: number | null; version: string | null }) {
   const { t } = useTranslation();
 
   if (phase === "downloading") {
@@ -298,13 +298,27 @@ function UpdateStatusIndicator({ phase, percentage }: { phase: string; percentag
     );
   }
 
+  if (phase === "available-link") {
+    return (
+      <a
+        href="https://github.com/tmoroney/auto-subs/releases/latest"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 h-7 px-2 rounded text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300 transition-colors"
+      >
+        <RotateCcw className="h-3 w-3" />
+        {t("titlebar.update.newVersionAvailable", "Update Available")}{version ? ` (v${version})` : ""}
+      </a>
+    );
+  }
+
   return null;
 }
 
 export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
-  const { phase, percentage } = useUpdateStatus();
+  const { phase, percentage, version } = useUpdateStatus();
 
   useEffect(() => {
     const checkPlatform = async () => {
@@ -314,8 +328,8 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
     checkPlatform();
   }, []);
 
-  const centerContent = phase === "downloading" || phase === "ready"
-    ? <UpdateStatusIndicator phase={phase} percentage={percentage} />
+  const centerContent = phase === "downloading" || phase === "ready" || phase === "available-link"
+    ? <UpdateStatusIndicator phase={phase} percentage={percentage} version={version} />
     : <ResolveStatus timelineInfo={timelineInfo} />;
 
   const handleMinimize = () => {

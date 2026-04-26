@@ -37,6 +37,17 @@ mod tests;
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
 
+fn is_newer_version(latest: &str, current: &str) -> bool {
+    let parse = |s: &str| -> Option<(u32, u32, u32)> {
+        let parts: Vec<u32> = s.trim_start_matches('v')
+            .split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect();
+        if parts.len() >= 3 { Some((parts[0], parts[1], parts[2])) } else { None }
+    };
+    matches!((parse(latest), parse(current)), (Some(l), Some(c)) if l > c)
+}
+
 struct InstallSignal(Arc<Notify>);
 
 #[tauri::command]
@@ -136,15 +147,37 @@ fn main() {
                 });
             }
 
-            // Check for updates in the background on startup (Tauri v2 Updater)
+            // Check for updates in the background on startup
             let install_signal = Arc::new(Notify::new());
             app.manage(InstallSignal(install_signal.clone()));
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                #[cfg(target_os = "linux")]
+                {
+                    // The Tauri updater only supports AppImage on Linux; we distribute .deb and
+                    // Flatpak instead. Fetch latest.json ourselves and emit a link for the user.
+                    let current = handle.package_info().version.to_string();
+                    let endpoint = "https://github.com/tmoroney/auto-subs/releases/latest/download/latest.json";
+                    if let Ok(client) = reqwest::Client::builder()
+                        .timeout(Duration::from_secs(10))
+                        .build()
+                    {
+                        if let Ok(resp) = client.get(endpoint).send().await {
+                            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                                if let Some(latest) = body.get("version").and_then(|v| v.as_str()) {
+                                    if is_newer_version(latest, &current) {
+                                        let _ = handle.emit("update-available-link", json!({ "version": latest }));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                #[cfg(not(target_os = "linux"))]
                 if let Ok(builder) = handle.updater_builder().build() {
                   if let Ok(Some(info)) = builder.check().await {
-                    // Show a non-blocking confirmation dialog
                     let title = "Update available".to_string();
                     let message = format!("Version {} is available.\nInstall now?", info.version);
                     let handle_for_cb = handle.clone();
@@ -155,7 +188,6 @@ fn main() {
                       .buttons(MessageDialogButtons::OkCancelCustom("Install".to_string(), "Later".to_string()))
                       .show(move |should_update| {
                         if should_update {
-                          // Perform download asynchronously, defer install until user triggers it
                           let handle_for_dl = handle_for_cb.clone();
                           let signal = install_signal.clone();
                           tauri::async_runtime::spawn(async move {
@@ -164,7 +196,6 @@ fn main() {
                                 let downloaded = Arc::new(AtomicU64::new(0));
                                 let handle_progress = handle_for_dl.clone();
 
-                                // Download only — do NOT install yet
                                 let bytes = match update2
                                   .download(
                                     move |chunk, total| {
@@ -189,13 +220,9 @@ fn main() {
                                   }
                                 };
 
-                                // Notify frontend that update is ready to install
                                 let _ = handle_for_dl.emit("update-ready", json!({}));
-
-                                // Wait for user to click "Restart to Update"
                                 signal.notified().await;
 
-                                // Install the update (this calls std::process::exit internally)
                                 if let Err(e) = update2.install(bytes) {
                                   tracing::error!("Update install failed: {}", e);
                                   let _ = handle_for_dl.emit("update-error", json!({ "error": e.to_string() }));
