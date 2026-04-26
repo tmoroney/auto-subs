@@ -1,5 +1,17 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Github, Boxes, RotateCcw, GitMerge } from "lucide-react";
+import {
+  Minus,
+  Square,
+  X,
+  Settings,
+  Sun,
+  Moon,
+  Monitor,
+  Heart,
+  Boxes,
+  RotateCcw,
+  GitMerge,
+} from "lucide-react";
 import type { HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
@@ -55,17 +67,18 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
       <HoverCardTrigger asChild>
         <Button
           variant="ghost"
-          className={`flex items-center gap-2 h-7 text-xs ${isConnected
-            ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
-            : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
-            }`}
+          className={`flex items-center gap-2 h-7 text-xs ${
+            isConnected
+              ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+              : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
+          }`}
           data-tauri-drag-region
         >
           <div
-            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+            className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
           />
           {isConnected
-            ? (timelineInfo?.name || t("titlebar.resolve.status.connected"))
+            ? timelineInfo?.name || t("titlebar.resolve.status.connected")
             : t("titlebar.resolve.status.disconnected")}
         </Button>
       </HoverCardTrigger>
@@ -77,7 +90,9 @@ function ResolveStatus({ timelineInfo }: ResolveStatusProps) {
             className="h-8 w-8"
           />
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold">{t("titlebar.resolve.productName")}</h4>
+            <h4 className="text-sm font-semibold">
+              {t("titlebar.resolve.productName")}
+            </h4>
             {isConnected ? (
               <div className="space-y-1">
                 <p className="text-sm text-green-600 dark:text-green-400">
@@ -116,11 +131,10 @@ function SettingsDropdown() {
   // to the model manager when it's actually downloaded. This is because it's a different
   // type of model (speaker diarization vs speech transcription) and has a different
   // download/management pattern.
-  const managerModels: Model[] = downloadedModelValues.includes(diarizeModel.value)
-    ? [
-        ...modelsState,
-        { ...diarizeModel, isDownloaded: true },
-      ]
+  const managerModels: Model[] = downloadedModelValues.includes(
+    diarizeModel.value,
+  )
+    ? [...modelsState, { ...diarizeModel, isDownloaded: true }]
     : modelsState;
 
   const handleThemeChange = (themeValue: string) => {
@@ -147,11 +161,17 @@ function SettingsDropdown() {
           sideOffset={4}
         >
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => setSettingsDialogOpen(true)}
+              className="cursor-pointer"
+            >
               <Settings />
               <span>{t("settings.title", "Settings")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setManageModelsOpen(true)} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => setManageModelsOpen(true)}
+              className="cursor-pointer"
+            >
               <Boxes />
               <span>{t("models.manage.title", "Manage Models")}</span>
             </DropdownMenuItem>
@@ -167,7 +187,7 @@ function SettingsDropdown() {
                 rel="noopener noreferrer"
                 className="group"
               >
-                <GitMerge/>
+                <GitMerge />
                 <span>{t("settings.support.viewSource", "View Source")}</span>
               </a>
             </DropdownMenuItem>
@@ -175,33 +195,53 @@ function SettingsDropdown() {
               onClick={() => setSupportDialogOpen(true)}
               className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
             >
-              <div
-                className="group relative flex w-full items-center"
-              >
+              <div className="group relative flex w-full items-center">
                 <Heart className="h-4 w-4 mr-2 text-pink-500 group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500 transition-all" />
-                <span>{t("settings.support.supportAutoSubs", "Support AutoSubs")}</span>
+                <span>
+                  {t("settings.support.supportAutoSubs", "Support AutoSubs")}
+                </span>
 
                 {/* Bursting hearts animation */}
                 <div className="absolute inset-0 pointer-events-none">
                   {[
-                    { tx: '-90px', ty: '-90px', s: 1.8, r: '-20deg', d: '0s' },
-                    { tx: '80px', ty: '-100px', s: 1.5, r: '25deg', d: '0.05s' },
-                    { tx: '-30px', ty: '-120px', s: 1.7, r: '5deg', d: '0.1s' },
-                    { tx: '100px', ty: '-80px', s: 1.4, r: '-15deg', d: '0.15s' },
-                    { tx: '0px', ty: '-115px', s: 1.9, r: '0deg', d: '0.2s' },
-                    { tx: '-100px', ty: '-75px', s: 1.5, r: '15deg', d: '0.25s' },
-                    { tx: '70px', ty: '-115px', s: 1.6, r: '-5deg', d: '0.3s' },
+                    { tx: "-90px", ty: "-90px", s: 1.8, r: "-20deg", d: "0s" },
+                    {
+                      tx: "80px",
+                      ty: "-100px",
+                      s: 1.5,
+                      r: "25deg",
+                      d: "0.05s",
+                    },
+                    { tx: "-30px", ty: "-120px", s: 1.7, r: "5deg", d: "0.1s" },
+                    {
+                      tx: "100px",
+                      ty: "-80px",
+                      s: 1.4,
+                      r: "-15deg",
+                      d: "0.15s",
+                    },
+                    { tx: "0px", ty: "-115px", s: 1.9, r: "0deg", d: "0.2s" },
+                    {
+                      tx: "-100px",
+                      ty: "-75px",
+                      s: 1.5,
+                      r: "15deg",
+                      d: "0.25s",
+                    },
+                    { tx: "70px", ty: "-115px", s: 1.6, r: "-5deg", d: "0.3s" },
                   ].map((p, i) => (
                     <Heart
                       key={i}
                       className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
-                      style={{
-                        '--tx': p.tx,
-                        '--ty': p.ty,
-                        '--s': p.s,
-                        '--r': p.r,
-                        animationDelay: p.d,
-                      } as React.CSSProperties}
+                      style={
+                        {
+                          "--tx": p.tx,
+                          "--ty": p.ty,
+                          "--s": p.s,
+                          "--r": p.r,
+                          animationDelay: p.d,
+                        } as React.CSSProperties
+                      }
                     />
                   ))}
                 </div>
@@ -250,7 +290,11 @@ function SettingsDropdown() {
   );
 }
 
-function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void }) {
+function TranscriptsButton({
+  onTranscriptOpen,
+}: {
+  onTranscriptOpen?: () => void;
+}) {
   const historyIconRef = useRef<HistoryIconHandle>(null);
 
   return (
@@ -273,14 +317,25 @@ function TranscriptsButton({ onTranscriptOpen }: { onTranscriptOpen?: () => void
   );
 }
 
-function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; percentage: number | null; version: string | null }) {
+function UpdateStatusIndicator({
+  phase,
+  percentage,
+  version,
+}: {
+  phase: string;
+  percentage: number | null;
+  version: string | null;
+}) {
   const { t } = useTranslation();
 
   if (phase === "downloading") {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Spinner className="h-3 w-3" />
-        <span>{t("titlebar.update.downloading", "Downloading Update")} {percentage != null ? `${percentage}%` : ""}</span>
+        <span>
+          {t("titlebar.update.downloading", "Downloading Update")}{" "}
+          {percentage != null ? `${percentage}%` : ""}
+        </span>
       </div>
     );
   }
@@ -307,7 +362,8 @@ function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; 
         className="flex items-center gap-2 h-7 px-2 rounded text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300 transition-colors"
       >
         <RotateCcw className="h-3 w-3" />
-        {t("titlebar.update.newVersionAvailable", "Update Available")}{version ? ` (v${version})` : ""}
+        {t("titlebar.update.newVersionAvailable", "Update Available")}
+        {version ? ` (v${version})` : ""}
       </a>
     );
   }
@@ -328,9 +384,18 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
     checkPlatform();
   }, []);
 
-  const centerContent = phase === "downloading" || phase === "ready" || phase === "available-link"
-    ? <UpdateStatusIndicator phase={phase} percentage={percentage} version={version} />
-    : <ResolveStatus timelineInfo={timelineInfo} />;
+  const centerContent =
+    phase === "downloading" ||
+    phase === "ready" ||
+    phase === "available-link" ? (
+      <UpdateStatusIndicator
+        phase={phase}
+        percentage={percentage}
+        version={version}
+      />
+    ) : (
+      <ResolveStatus timelineInfo={timelineInfo} />
+    );
 
   const handleMinimize = () => {
     getCurrentWindow().minimize();
@@ -356,7 +421,11 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
           <div className="w-20" data-tauri-drag-region />
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
+          <div
+            className="flex items-center justify-center flex-1"
+            data-tauri-drag-region
+            data-tour="connection-indicator"
+          >
             {centerContent}
           </div>
 
@@ -384,7 +453,11 @@ export function Titlebar({ timelineInfo, onOpenCompactViewer }: TitlebarProps) {
           </div>
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
+          <div
+            className="flex items-center justify-center flex-1"
+            data-tauri-drag-region
+            data-tour="connection-indicator"
+          >
             {centerContent}
           </div>
 
