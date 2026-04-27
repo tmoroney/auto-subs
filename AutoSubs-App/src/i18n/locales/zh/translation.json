@@ -103,8 +103,11 @@
         "single": "单词",
         "less": "较少",
         "standard": "标准",
-        "more": "较多"
-      }
+        "more": "较多",
+        "custom": "自定义"
+      },
+      "customCharsTitle": "最大字符数",
+      "customCharsDescription": "每行字符数"
     },
     "censor": {
       "title": "审查词汇",

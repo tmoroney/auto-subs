@@ -50,7 +50,7 @@ export function TextFormattingPanel({
                     </div>
                     <Select
                         value={settings.textDensity}
-                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single")}
+                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single" | "custom")}
                     >
                         <SelectTrigger className="w-32">
                             <SelectValue />
@@ -60,9 +60,28 @@ export function TextFormattingPanel({
                             <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
                             <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
                             <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
+                            <SelectItem value="custom">{t("actionBar.format.textDensity.custom")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
+
+                {/* Custom Max Chars Per Line (only shown when custom density is selected) */}
+                {settings.textDensity === "custom" && (
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <Label className="text-sm font-medium">{t("actionBar.format.customCharsTitle")}</Label>
+                            <p className="text-xs text-muted-foreground">{t("actionBar.format.customCharsDescription")}</p>
+                        </div>
+                        <Input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={settings.customMaxCharsPerLine}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("customMaxCharsPerLine", Number(e.target.value))}
+                            className="w-20"
+                        />
+                    </div>
+                )}
 
                 {/* Line Count */}
                 <div className="flex items-center justify-between">

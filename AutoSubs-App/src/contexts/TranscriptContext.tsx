@@ -174,6 +174,7 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
     const segments = await rustReformatSubtitles(originalSegments, {
       maxLines: settings.maxLinesPerSubtitle,
       textDensity: settings.textDensity,
+      customMaxCharsPerLine: settings.textDensity === "custom" ? settings.customMaxCharsPerLine : undefined,
       language: transcript.language,
       textCase: settings.textCase,
       removePunctuation: settings.removePunctuation,

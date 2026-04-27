@@ -106,13 +106,14 @@ export interface Settings {
     enableGpu: boolean,
 
     // Text settings
-    textDensity: "less" | "standard" | "more" | "single",
+    textDensity: "less" | "standard" | "more" | "single" | "custom",
     maxLinesPerSubtitle: number,
     splitOnPunctuation: boolean,
     textCase: "none" | "uppercase" | "lowercase" | "titlecase";
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
+    customMaxCharsPerLine: number,
 
     // Davinci Resolve settings
     selectedInputTracks: string[];
@@ -154,8 +155,9 @@ export interface TranscriptionOptions {
     enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
-    density: "less" | "standard" | "more" | "single",
+    density: "less" | "standard" | "more" | "single" | "custom",
     maxLines: number,
+    customMaxCharsPerLine?: number | undefined,
     // Content formatting applied in the Rust backend.
     textCase: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation: boolean,
@@ -165,7 +167,8 @@ export interface TranscriptionOptions {
 // Formatting options for reformatting subtitles without re-transcribing
 export interface FormattingOptions {
     maxLines?: number,
-    textDensity?: "less" | "standard" | "more" | "single",
+    textDensity?: "less" | "standard" | "more" | "single" | "custom",
+    customMaxCharsPerLine?: number,
     language?: string,
     // Content formatting (applied by Rust backend after structural line wrapping).
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase",

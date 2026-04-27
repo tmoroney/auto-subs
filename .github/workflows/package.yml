@@ -350,82 +350,8 @@ jobs:
           tag_name: ${{ env.TAG }}
 
   compose-latest-json:
-    needs: [build-mac, build-linux]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Ensure jq is available
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-
-      - name: Compose latest.json with macOS artifacts
-        env:
-          TAG: ${{ env.TAG }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          REPO: ${{ github.repository }}
-          NOTES: ${{ github.event.release.name }}
-        run: |
-          set -Eeuo pipefail
-          shopt -s inherit_errexit
-          if [ -z "${TAG}" ]; then
-            echo "ERROR: TAG is empty. Ensure this workflow is triggered from a Release event or provide the 'tag' input when using workflow_dispatch."
-            exit 1
-          fi
-          mkdir -p latest
-
-          # Download macOS signature files from the release assets
-          gh release download "$TAG" \
-            --repo "$REPO" \
-            --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" \
-            --dir latest \
-            --clobber
-
-          gh release download "$TAG" \
-            --repo "$REPO" \
-            --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" \
-            --dir latest \
-            --clobber
-
-          ARM_SIG="$(cat latest/AutoSubs-macos-aarch64.app.tar.gz.sig)"
-          INTEL_SIG="$(cat latest/AutoSubs-macos-x86_64.app.tar.gz.sig)"
-
-          VERSION="${TAG#v}"
-          PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-          jq -n \
-            --arg version "$VERSION" \
-            --arg pub_date "$PUB_DATE" \
-            --arg notes "$NOTES" \
-            --arg arm_sig "$ARM_SIG" \
-            --arg intel_sig "$INTEL_SIG" \
-            --arg tag "$TAG" \
-            --arg repo "$REPO" \
-            '{
-              version: $version,
-              pub_date: $pub_date,
-              notes: $notes,
-              platforms: {
-                "darwin-aarch64": {
-                  signature: $arm_sig,
-                  url: ("https://github.com/" + $repo + "/releases/download/" + $tag + "/AutoSubs-macos-aarch64.app.tar.gz")
-                },
-                "darwin-x86_64": {
-                  signature: $intel_sig,
-                  url: ("https://github.com/" + $repo + "/releases/download/" + $tag + "/AutoSubs-macos-x86_64.app.tar.gz")
-                }
-              }
-            }' > latest.json
-
-          echo "Generated latest.json:"
-          cat latest.json
-
-      - name: Upload unified latest.json to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: latest.json
-          token: ${{ secrets.GH_TOKEN }}
-          tag_name: ${{ env.TAG }}
+    needs: [build-mac]
+    uses: ./.github/workflows/generate-updater-json.yml
+    with:
+      tag: ${{ github.event.release.tag_name || inputs.tag }}
+    secrets: inherit

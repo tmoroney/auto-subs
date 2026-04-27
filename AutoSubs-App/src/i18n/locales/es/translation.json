@@ -103,8 +103,11 @@
         "single": "Palabra única",
         "less": "Menos",
         "standard": "Estándar",
-        "more": "Más"
-      }
+        "more": "Más",
+        "custom": "Personalizado"
+      },
+      "customCharsTitle": "Máx. caracteres",
+      "customCharsDescription": "Caracteres por línea"
     },
     "censor": {
       "title": "Censurar palabras",

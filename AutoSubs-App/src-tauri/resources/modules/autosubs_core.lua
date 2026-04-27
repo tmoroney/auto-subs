@@ -1,6 +1,6 @@
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, deprecated
 local ffi = ffi
 
 -- resolve is provided implicitly by the Resolve environment - no need to call Resolve() unless running in terminal
@@ -120,7 +120,8 @@ local currentExportJob = {
         markOut = 0, -- mark out (frames) - may display in UI as timecode
         offset = 0   -- offset on timeline in seconds (regardless of timeline start)
     },
-    trackStates = nil
+    trackStates = nil,
+    clipBoundaries = nil
 }
 
 -- UTF-8 aware character count
@@ -377,9 +378,9 @@ local function reset_tracks()
     local timeline = project:GetCurrentTimeline()
     local audioTracks = timeline:GetTrackCount("audio")
     for i = 1, audioTracks do
-        timeline:SetTrackEnable("audio", i, currentExportJob.trackStates[i])
+        timeline:SetTrackEnable("audio", i, currentExportJob["trackStates"][i])
     end
-    currentExportJob.clipBoundaries = nil
+    currentExportJob["clipBoundaries"] = nil
 end
 
 local function check_track_empty(trackIndex, markIn, markOut)
@@ -527,8 +528,11 @@ function CancelExport()
     end
 end
 
--- Helper function to find clip boundaries on selected audio tracks
+-- Helper function to find clip boundaries on selected audio tracks within in/out markers
 local function get_clip_boundaries(timeline, selectedTracks)
+    local inMarker, outMarker = timeline:GetMarkInOut()
+    local hasMarkers = inMarker and outMarker
+
     local earliestStart = nil
     local latestEnd = nil
 
@@ -539,11 +543,15 @@ local function get_clip_boundaries(timeline, selectedTracks)
                 local clipStart = clip:GetStart()
                 local clipEnd = clip:GetEnd()
 
-                if earliestStart == nil or clipStart < earliestStart then
-                    earliestStart = clipStart
+                -- Constrain to marker region if markers are set
+                local start = hasMarkers and math.max(clipStart, inMarker) or clipStart
+                local end_ = hasMarkers and math.min(clipEnd, outMarker) or clipEnd
+
+                if earliestStart == nil or start < earliestStart then
+                    earliestStart = start
                 end
-                if latestEnd == nil or clipEnd > latestEnd then
-                    latestEnd = clipEnd
+                if latestEnd == nil or end_ > latestEnd then
+                    latestEnd = end_
                 end
             end
         end
@@ -621,7 +629,8 @@ function ExportAudio(outputDir, inputTracks)
         progress = 0,
         cancelled = false,
         startTime = os.time(),
-        audioInfo = nil
+        audioInfo = nil,
+        trackStates = nil
     }
 
     local audioInfo = {
@@ -641,6 +650,9 @@ function ExportAudio(outputDir, inputTracks)
         trackStates[i] = state
     end
 
+    -- Save track states to currentExportJob immediately for restoration on error
+    currentExportJob["trackStates"] = trackStates
+
     -- Build a set of selected track indices for O(1) membership checks
     local selected = {}
     for _, v in ipairs(inputTracks) do
@@ -653,9 +665,6 @@ function ExportAudio(outputDir, inputTracks)
         local isEnabled = selected[i] == true
         timeline:SetTrackEnable("audio", i, isEnabled)
     end
-
-    -- save track states for later use
-    currentExportJob.trackStates = trackStates
 
     -- Find clip boundaries on selected tracks to only export the relevant portion
     local clipStart, clipEnd = get_clip_boundaries(timeline, selected)
@@ -734,6 +743,7 @@ function ExportAudio(outputDir, inputTracks)
 
     -- Handle export start result
     if not success then
+        reset_tracks()
         currentExportJob.active = false
         local detail = tostring(err or "unknown error")
         print("[AutoSubs] ExportAudio failed to start: " .. detail)
@@ -1108,7 +1118,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
 
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local template = comp:FindTool("Template")
+                local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)

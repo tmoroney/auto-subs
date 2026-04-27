@@ -66,6 +66,7 @@ pub struct FrontendTranscribeOptions {
     pub max_speakers: Option<usize>,
     pub density: Option<TextDensity>,
     pub max_lines: Option<usize>,
+    pub custom_max_chars_per_line: Option<usize>,
     // Content formatting (applied after structural line wrapping).
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
@@ -361,6 +362,7 @@ pub async fn transcribe_audio<R: Runtime>(
                 transcribe_options,
                 options.max_lines, // max_lines
                 options.density, // density
+                options.custom_max_chars_per_line, // custom_max_chars_per_line
                 Some(content_formatting),
                 Some(callbacks),
             )
@@ -603,6 +605,7 @@ pub struct FrontendFormattingOptions {
     pub language: Option<String>,
     pub max_lines: Option<usize>,
     pub text_density: Option<String>,
+    pub custom_max_chars_per_line: Option<usize>,
     // Content formatting (applied after structural line wrapping).
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
@@ -651,9 +654,17 @@ pub async fn reformat_subtitles(
             "less" => TextDensity::Less,
             "more" => TextDensity::More,
             "single" => TextDensity::Single,
+            "custom" => TextDensity::Custom,
             _ => TextDensity::Standard,
         };
         config.apply_density(density);
+        
+        // If custom density, set max_chars_per_line directly from the provided value
+        if density == TextDensity::Custom {
+            if let Some(custom_cpl) = options.custom_max_chars_per_line {
+                config.max_chars_per_line = custom_cpl;
+            }
+        }
     }
     if let Some(ml) = options.max_lines {
         config.max_lines = ml;

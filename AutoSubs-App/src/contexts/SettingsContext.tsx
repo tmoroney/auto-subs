@@ -40,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   removePunctuation: false,
   enableCensor: false,
   censoredWords: [],
+  customMaxCharsPerLine: 38,
 
   // Resolve settings
   selectedInputTracks: ["1"],

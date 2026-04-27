@@ -6,9 +6,9 @@
 use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use eyre::{Result, eyre};
 use std::path::Path;
-use transcribe_rs::{
-    TranscriptionEngine,
-    engines::parakeet::{ParakeetEngine, ParakeetModelParams, ParakeetInferenceParams, TimestampGranularity},
+use transcribe_rs::onnx::{
+    Quantization,
+    parakeet::{ParakeetModel, ParakeetParams, TimestampGranularity},
 };
 
 /// Transcribe audio segments using the Parakeet engine.
@@ -36,17 +36,14 @@ pub async fn transcribe_parakeet(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Parakeet transcribe called with model: {:?}", model_path);
 
-    // Create and load Parakeet engine
-    let mut engine = ParakeetEngine::new();
-    
-    let model_params = ParakeetModelParams::int8();
-    
-    engine.load_model_with_params(model_path, model_params)
+    // Create and load Parakeet model
+    let mut model = ParakeetModel::load(model_path, &Quantization::Int8)
         .map_err(|e| eyre!("Failed to load Parakeet model: {}", e))?;
 
     // Configure inference for word-level timestamps
-    let inference_params = ParakeetInferenceParams {
-        timestamp_granularity: TimestampGranularity::Word,
+    let inference_params = ParakeetParams {
+        timestamp_granularity: Some(TimestampGranularity::Word),
+        ..Default::default()
     };
 
     // Apply user offset
@@ -63,7 +60,7 @@ pub async fn transcribe_parakeet(
             .collect();
 
         // Transcribe this segment
-        let result = engine.transcribe_samples(samples, Some(inference_params.clone()))
+        let result = model.transcribe_with(&samples, &inference_params)
             .map_err(|e| eyre!("Parakeet transcription failed: {}", e))?;
 
         // Base offset for this chunk

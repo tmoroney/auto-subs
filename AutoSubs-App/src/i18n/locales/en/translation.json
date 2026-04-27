@@ -103,8 +103,11 @@
         "single": "Single Word",
         "less": "Less",
         "standard": "Standard",
-        "more": "More"
-      }
+        "more": "More",
+        "custom": "Custom"
+      },
+      "customCharsTitle": "Max Characters",
+      "customCharsDescription": "Characters per line"
     },
     "censor": {
       "title": "Censor Words",

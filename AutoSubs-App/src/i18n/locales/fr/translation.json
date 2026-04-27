@@ -95,8 +95,11 @@
         "single": "Mot unique",
         "less": "Moins",
         "standard": "Standard",
-        "more": "Plus"
-      }
+        "more": "Plus",
+        "custom": "Personnalisé"
+      },
+      "customCharsTitle": "Max caractères",
+      "customCharsDescription": "Caractères par ligne"
     },
     "censor": {
       "title": "Censurer des mots",

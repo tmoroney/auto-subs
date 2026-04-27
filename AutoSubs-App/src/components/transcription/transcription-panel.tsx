@@ -616,6 +616,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         maxSpeakers: settings.maxSpeakers,
         density: settings.textDensity,
         maxLines: settings.maxLinesPerSubtitle,
+        customMaxCharsPerLine: settings.textDensity === "custom" ? settings.customMaxCharsPerLine : undefined,
         textCase: settings.textCase,
         removePunctuation: settings.removePunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],

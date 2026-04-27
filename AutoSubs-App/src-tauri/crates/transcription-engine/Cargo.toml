@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
 pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
-transcribe-rs = { version = "0.2.1", features = ["parakeet", "moonshine"] }
+transcribe-rs = { version = "0.3", features = ["onnx"] }
 ort-sys = "=2.0.0-rc.10" # prevents error with pyannote-rs
 hf-hub = "0.4.3"
 dirs = "5.0"
@@ -42,7 +42,7 @@ mac-x86_64 = ["metal"]
 windows = ["vulkan", "directml"]  # Whisper GPU via Vulkan + Pyannote via DirectML (requires Vulkan SDK: https://vulkan.lunarg.com)
 linux = ["vulkan"]
 
-# Note: Had issues with OpenBLAS + Vulkan, so removed it
+# Note: Had issues with OpenBLAS + Vulkan, so removed OpenBLAS
 
 default = ["mac-aarch"]
 
