@@ -52,7 +52,8 @@
         "depends": ["ffmpeg"],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
-          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
+          "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
+          "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }
       },
       "rpm": {
@@ -68,7 +69,8 @@
         ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
-          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs": "resources/AutoSubs/"
+          "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
+          "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }
       }
     },

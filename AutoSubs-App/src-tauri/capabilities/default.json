@@ -50,6 +50,9 @@
         },
         {
           "path": "$APPLOCALDATA/**"
+        },
+        {
+          "path": "$VIDEO/**"
         }
       ]
     },
@@ -73,6 +76,9 @@
         },
         {
           "path": "$APPLOCALDATA/**"
+        },
+        {
+          "path": "$VIDEO/**"
         }
       ]
     },
