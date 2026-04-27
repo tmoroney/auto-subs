@@ -167,13 +167,14 @@ impl PostProcessConfig {
     /// Convenience constructors for common profiles
     pub fn latin() -> Self { Self::with_profile(ScriptProfile::Latin) }
     pub fn cjk() -> Self { Self::with_profile(ScriptProfile::CJK) }
+    pub fn korean() -> Self { Self::with_profile(ScriptProfile::Korean) }
     pub fn se_asian_no_space() -> Self { Self::with_profile(ScriptProfile::SEAsianNoSpace) }
     pub fn rtl() -> Self { Self::with_profile(ScriptProfile::RTL) }
     pub fn indic() -> Self { Self::with_profile(ScriptProfile::Indic) }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ScriptProfile { Latin, CJK, SEAsianNoSpace, RTL, Indic }
+pub enum ScriptProfile { Latin, CJK, Korean, SEAsianNoSpace, RTL, Indic }
 
 pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
     match p {
@@ -190,6 +191,15 @@ pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
             cfg.insert_interword_space = false;
             cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = true; // simple blacklist rules
+        }
+        ScriptProfile::Korean => {
+            // Korean uses Hangul (CJK-width characters) but, unlike Chinese/Japanese,
+            // separates words with spaces (eojeol). Treat width like CJK but keep spaces.
+            cfg.max_chars_per_line = 22;
+            cfg.cps_cap = 12.0;
+            cfg.insert_interword_space = true;
+            cfg.use_grapheme_len = true;
+            cfg.enforce_kinsoku = false; // kinsoku is a Japanese convention
         }
         ScriptProfile::SEAsianNoSpace => { // Thai, Khmer, Lao, etc.
             cfg.max_chars_per_line = 22; // previously 18..=26; pick 22
@@ -217,8 +227,10 @@ pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
 
 pub fn profile_for_lang(lang: &str) -> ScriptProfile {
     match lang {
-        // CJK
-        "zh" | "zh-CN" | "zh-TW" | "ja" | "ko" => ScriptProfile::CJK,
+        // CJK (Chinese & Japanese — no inter-word spaces)
+        "zh" | "zh-CN" | "zh-TW" | "ja" => ScriptProfile::CJK,
+        // Korean uses Hangul but separates words with spaces (eojeol)
+        "ko" => ScriptProfile::Korean,
         // SE Asian no-space
         "th" | "lo" | "km" | "my" => ScriptProfile::SEAsianNoSpace,
         // RTL
