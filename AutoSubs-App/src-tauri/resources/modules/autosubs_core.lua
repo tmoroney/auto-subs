@@ -92,6 +92,7 @@ local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
 local ANIMATED_CAPTION = "AutoSubs Caption"
+local defaultTemplateImportAttempted = false
 
 local STYLE_INDEX = {
     Fill = 1,
@@ -276,9 +277,10 @@ get_templates = function()
         end
     end)
 
-    -- Add default template to mediapool if not available
-    if not hasDefault and tonumber(resolve:GetVersion()[1]) >= 19 then
+    -- Add default template to mediapool if not available (get version with resolve:GetVersion()[1])
+    if not hasDefault and not defaultTemplateImportAttempted then
         print("Default template not found. Importing default template...")
+        defaultTemplateImportAttempted = true
         pcall(function()
             mediaPool:ImportFolderFromFile(join_path(assets_path, "caption-bin.drb"))
             -- Append the default template to the list

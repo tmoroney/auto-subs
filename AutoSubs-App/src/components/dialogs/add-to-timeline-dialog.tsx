@@ -267,6 +267,11 @@ export function AddToTimelineDialog({
     const editingPreset =
         createSession.kind === "edit" ? getPreset(createSession.presetId) : undefined
 
+    // Check if the AutoSubs Caption template is available in Resolve
+    const hasAnimatedTemplate = timelineInfo.templates.some(
+        (t) => t.value === ANIMATED_CAPTION_TEMPLATE,
+    )
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{children}</DialogTrigger>
@@ -320,6 +325,7 @@ export function AddToTimelineDialog({
                                 return imported
                             }}
                             onExportPreset={exportPreset}
+                            hasAnimatedTemplate={hasAnimatedTemplate}
                         />
                     )}
 
@@ -487,6 +493,7 @@ interface TemplateStepProps {
     onDuplicatePreset: (preset: import("@/types").CaptionPreset) => Promise<void> | void
     onImportPreset: (json: string) => Promise<import("@/types").CaptionPreset>
     onExportPreset: (id: string) => string
+    hasAnimatedTemplate: boolean
 }
 
 function TemplateStep({
@@ -510,8 +517,16 @@ function TemplateStep({
     onDuplicatePreset,
     onImportPreset,
     onExportPreset,
+    hasAnimatedTemplate,
 }: TemplateStepProps) {
     const { t } = useTranslation()
+
+    // If animated mode is selected but the template is not available, switch to regular mode
+    React.useEffect(() => {
+        if (mode === "animated" && !hasAnimatedTemplate) {
+            onModeChange("regular")
+        }
+    }, [mode, hasAnimatedTemplate, onModeChange])
 
     if (createSession.kind !== "closed") {
         return (
@@ -532,7 +547,7 @@ function TemplateStep({
                 <TabsTrigger value="regular">
                     {t("addToTimeline.mode.regular")}
                 </TabsTrigger>
-                <TabsTrigger value="animated">
+                <TabsTrigger value="animated" disabled={!hasAnimatedTemplate}>
                     {t("addToTimeline.mode.animated")}
                 </TabsTrigger>
             </TabsList>
