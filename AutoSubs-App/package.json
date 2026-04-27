@@ -15,7 +15,8 @@
     "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64",
     "build:mac:arm64:local": "dotenv -- npm run build:mac:arm64",
     "build:mac:x86_64:local": "dotenv -- npm run build:mac:x86_64",
-    "build:win:local": "dotenv -- npm run build:win"
+    "build:win:local": "dotenv -- npm run build:win",
+    "sync-version": "node scripts/update-version.js"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
