@@ -22,6 +22,7 @@
       "showPickerAgain": "Réafficher le sélecteur de langue"
     },
     "restartOnboarding": "Redémarrer l'intégration",
+    "openLogsFolder": "Ouvrir le dossier des logs",
     "reset": {
       "button": "Réinitialiser les paramètres",
       "confirm": "Voulez-vous vraiment réinitialiser tous les paramètres ? Cette action est irréversible.",

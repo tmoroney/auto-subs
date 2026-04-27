@@ -22,6 +22,7 @@
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
     "restartOnboarding": "Onboarding neu starten",
+    "openLogsFolder": "Logs-Ordner öffnen",
     "preset": {
       "button": "Einstellungen zurücksetzen",
       "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",

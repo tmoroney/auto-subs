@@ -22,6 +22,7 @@
       "showPickerAgain": "再次显示语言选择器"
     },
     "restartOnboarding": "重新开始入门",
+    "openLogsFolder": "打开日志文件夹",
     "reset": {
       "button": "重置设置",
       "confirm": "您确定要将所有设置重置为默认值吗？此操作无法撤销。",

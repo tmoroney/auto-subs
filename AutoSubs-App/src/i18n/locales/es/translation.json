@@ -22,6 +22,7 @@
       "showPickerAgain": "Mostrar selector de idioma otra vez"
     },
     "restartOnboarding": "Reiniciar integración",
+    "openLogsFolder": "Abrir carpeta de registros",
     "reset": {
       "button": "Restablecer ajustes",
       "confirm": "¿Seguro que quieres restablecer todos los ajustes a los valores predeterminados? Esto no se puede deshacer.",

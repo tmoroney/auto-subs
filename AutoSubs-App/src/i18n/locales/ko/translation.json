@@ -346,6 +346,7 @@
       "title": "동적 시간 왜곡"
     },
     "restartOnboarding": "온보딩 다시 시작",
+    "openLogsFolder": "로그 폴더 열기",
     "gpu": {
       "description": "GPU를 사용하여 빠른 자막 생성",
       "title": "GPU 가속"

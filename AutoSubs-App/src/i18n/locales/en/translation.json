@@ -22,6 +22,7 @@
       "showPickerAgain": "Show language picker again"
     },
     "restartOnboarding": "Restart Onboarding",
+    "openLogsFolder": "Open Logs Folder",
     "reset": {
       "button": "Reset Settings",
       "confirm": "Are you sure you want to reset all settings, including transcription settings? This action cannot be undone.",
