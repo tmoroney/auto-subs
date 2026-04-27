@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es3",
+    "noLib": true,
+    "strict": true,
+    "types": [
+      "../global",
+      "../../../node_modules/types-for-adobe/Premiere/24.0",
+      "../../../node_modules/types-for-adobe-extras/Premiere/12.0/qeDom",
+      "../../../node_modules/types-for-adobe/shared/PlugPlugExternalObject"
+    ]
+  },
+  "include": ["./**/*"]
+}

@@ -113,6 +113,7 @@ export interface Settings {
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
+    exportRange?: "entire" | "inout",
 
     // Davinci Resolve settings
     selectedInputTracks: string[];

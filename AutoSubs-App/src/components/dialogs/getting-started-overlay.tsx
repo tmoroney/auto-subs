@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { useResolve } from "@/contexts/ResolveContext";
+import { usePremiere } from "@/contexts/PremiereContext";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { models, getFirstRecommendedModelForLanguage } from "@/lib/models";
@@ -27,10 +28,12 @@ import { cn } from "@/lib/utils";
 export function GettingStartedOverlay() {
   const { settings, updateSetting, isHydrated } = useSettings();
   const { t } = useTranslation();
-  const { timelineInfo } = useResolve();
-
+  const { timelineInfo: resolveTimeline } = useResolve();
+  const { isConnected: isPremiereConnected } = usePremiere();
+  
+  const isResolveConnected = resolveTimeline.timelineId !== "";
+  const isIntegrationConnected = isResolveConnected || isPremiereConnected;
   const shouldShow = isHydrated && !settings.onboardingCompleted;
-  const isResolveConnected = timelineInfo.timelineId !== "";
 
   const [selection, setSelection] = React.useState<string>(() => {
     return normalizeUiLanguage(settings.uiLanguage);
@@ -117,7 +120,7 @@ export function GettingStartedOverlay() {
           </div>
         </div>
 
-        {!isResolveConnected && (
+        {!isIntegrationConnected && (
           <div className="flex items-start rounded-lg border text-amber-800 dark:text-amber-200 border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
             <p className="space-y-0.5">
               <div>{t("gettingStarted.resolveNote.openResolve")}</div>

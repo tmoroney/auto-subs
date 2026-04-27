@@ -1,0 +1,115 @@
+@use "./variables.scss" as *;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+.app {
+  background-color: #282c34;
+  text-align: center;
+}
+
+.app-header {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: white;
+}
+
+.app-link {
+  color: white;
+}
+
+button {
+  font-size: 0.8rem;
+  background-color: $darker;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 5px;
+  color: white;
+  border: none;
+  outline: none;
+  user-select: none;
+}
+
+button:hover {
+  background-color: $active;
+}
+
+button:active {
+  background-color: $active;
+}
+
+label {
+  color: $font;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.stack-icons {
+  display: flex;
+  margin: 2rem 0rem 2rem 0rem;
+  font-size: 2.5rem;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin: 0rem 1rem 0rem 1rem;
+  }
+
+  img {
+    margin: auto;
+    display: block;
+    height: 3rem;
+    width: 3rem;
+  }
+}
+
+.icon {
+  width: 350px;
+  height: 150px;
+}
+
+.icon-button {
+  width: 20px;
+  height: 20px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  -webkit-appearance: always;
+}
+
+::-webkit-scrollbar-track {
+  background: $darkest;
+  padding: 2.25em 1.6875em;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $darker;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: $dark;
+}

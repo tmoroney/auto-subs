@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 683.5 255.5">
+  <!-- Generator: Adobe Illustrator 29.6.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 9)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: url(#linear-gradient2);
+      }
+
+      .st1 {
+        fill: url(#linear-gradient1);
+      }
+
+      .st2 {
+        fill: url(#linear-gradient4);
+      }
+
+      .st3 {
+        fill: url(#linear-gradient3);
+      }
+
+      .st4 {
+        fill: #7f7f7f;
+      }
+
+      .st5 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="91.75" y1="27.3" x2="91.75" y2="186.3" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5923"/>
+      <stop offset=".97" stop-color="#f69000"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient1" x1="385.85" y1="27.5" x2="385.85" y2="186.4" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5923"/>
+      <stop offset=".97" stop-color="#f69000"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient2" x1="480.1" y1="27.5" x2="480.1" y2="186.4" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5923"/>
+      <stop offset=".97" stop-color="#f69000"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient3" x1="214.6" y1="-2.64" x2="214.6" y2="216.5" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5923"/>
+      <stop offset=".97" stop-color="#f69000"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient4" x1="279.15" y1="-2.64" x2="279.15" y2="216.5" gradientTransform="translate(0 258) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5923"/>
+      <stop offset=".97" stop-color="#f69000"/>
+    </linearGradient>
+  </defs>
+  <g id="_x3C_Layer_x3E_">
+    <g>
+      <path class="st4" d="M525,207.8c0-13.8,10.6-23.6,24.8-23.6,7.9,0,14.5,2.9,18.8,8.1l-6.8,6.3c-3.1-3.5-6.9-5.4-11.5-5.4-8.6,0-14.6,6-14.6,14.6s6.1,14.6,14.6,14.6c4.6,0,8.4-1.8,11.5-5.4l6.8,6.3c-4.3,5.3-10.9,8.2-18.9,8.2-14.1-.1-24.7-9.9-24.7-23.7Z"/>
+      <path class="st4" d="M611.1,222.2v8.5h-35.4v-45.7h34.6v8.5h-24v9.9h21.2v8.2h-21.2v10.6h24.8Z"/>
+      <path class="st4" d="M659.2,201.5c0,10.2-7.6,16.5-19.9,16.5h-9.2v12.6h-10.6v-45.7h19.8c12.3,0,19.9,6.4,19.9,16.6ZM648.5,201.5c0-5-3.3-8-9.7-8h-8.6v15.9h8.6c6.4,0,9.7-2.9,9.7-7.9Z"/>
+    </g>
+    <path class="st5" d="M23.6,230.7h136.3v-66.1l-13.7-11.7,13.7-11.4v-69.8H23.6v159ZM69.1,112.8h45.4v20h-45.4v-20ZM69.1,172.3h45.4v20h-45.4v-20Z"/>
+    <polygon class="st1" points="379.1 71.6 333.7 71.6 333.7 230.5 438 230.5 438 185.1 379.1 185.1 379.1 71.6"/>
+    <polygon class="st0" points="412 71.6 412 117 457.4 117 457.4 230.5 502.8 230.5 502.8 117 548.2 117 548.2 71.6 412 71.6"/>
+    <g>
+      <polygon class="st3" points="211.2 170 250.8 71.6 178.4 71.6 178.4 230.5 234.8 230.5 241.3 170 211.2 170"/>
+      <polygon class="st2" points="314.7 71.6 259.7 71.6 253.1 132.1 283.3 132.1 243.6 230.5 314.7 230.5 314.7 71.6"/>
+    </g>
+    <g>
+      <path class="st4" d="M47.4,42.2c0,4.3-3.4,6.8-9.9,6.8h-12.9v-24.9h12.1c6.2,0,9.4,2.6,9.4,6.5,0,2.5-1.3,4.4-3.3,5.5,2.8.8,4.6,2.9,4.6,6.1ZM30.3,28.4v5.9h5.7c2.8,0,4.3-1,4.3-2.9,0-2-1.5-2.9-4.3-2.9h-5.7v-.1ZM41.6,41.5c0-2.1-1.6-3.1-4.6-3.1h-6.7v6.1h6.7c3,.1,4.6-.8,4.6-3Z"/>
+      <path class="st4" d="M60,38v-13.9h5.7v13.7c0,4.7,2.1,6.7,5.5,6.7s5.5-2,5.5-6.7v-13.7h5.7v13.9c0,7.3-4.2,11.4-11.2,11.4s-11.2-4.1-11.2-11.4Z"/>
+      <path class="st4" d="M96.7,24.1h5.7v24.8h-5.7v-24.8Z"/>
+      <path class="st4" d="M116.8,24.1h5.7v20.2h12.5v4.7h-18.2v-24.9Z"/>
+      <path class="st4" d="M149.6,28.8h-7.9v-4.7h21.6v4.7h-7.9v20.2h-5.7v-20.2h-.1Z"/>
+      <path class="st4" d="M228.9,24.1l-8.1,24.8h-6.2l-5.5-16.8-5.6,16.8h-6.1l-8.2-24.8h6l5.6,17.5,5.9-17.5h5.3l5.7,17.6,5.8-17.6s5.4,0,5.4,0Z"/>
+      <path class="st4" d="M240.6,24.1h5.7v24.8h-5.7v-24.8Z"/>
+      <path class="st4" d="M265.9,28.8h-7.9v-4.7h21.6v4.7h-7.9v20.2h-5.7v-20.2h-.1Z"/>
+      <path class="st4" d="M313.9,24.1v24.8h-5.7v-10.2h-11.3v10.2h-5.7v-24.8h5.7v9.8h11.3v-9.8s5.7,0,5.7,0Z"/>
+    </g>
+  </g>
+</svg>

@@ -65,6 +65,7 @@ interface AddToTimelineDialogProps {
         presetSettings?: Record<string, unknown>,
     ) => Promise<void>
     isAdding?: boolean
+    selectedIntegration?: "davinci" | "premiere"
 }
 
 const STEPS = [
@@ -79,7 +80,9 @@ export function AddToTimelineDialog({
     timelineInfo,
     onAddToTimeline,
     isAdding = false,
+    selectedIntegration,
 }: AddToTimelineDialogProps) {
+    const isPremiere = selectedIntegration === "premiere"
     const { t } = useTranslation()
     const { speakers, updateSpeakers, currentTranscriptFilename } = useTranscript()
     const { updateSetting } = useSettings()
@@ -254,6 +257,7 @@ export function AddToTimelineDialog({
     }
 
     function canProceed(): boolean {
+        if (isPremiere) return true
         const stepKey = activeSteps[currentStep]?.key
         if (stepKey === "template") {
             if (selection.mode === "regular") return !!selection.templateValue
@@ -289,10 +293,20 @@ export function AddToTimelineDialog({
                         if (target <= currentStep) return true
                         return target === currentStep + 1 && canProceed()
                     }}
+                    isPremiere={isPremiere}
                 />
 
                 {/* Step body */}
-                <div className="py-1 min-h-[280px]">
+                <div className="py-1 min-h-[280px] relative">
+                    {isPremiere && (activeSteps[currentStep]?.key === "outputTrack" || activeSteps[currentStep]?.key === "template") && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/50 backdrop-blur-[1px] rounded-md border border-dashed">
+                            <div className="text-center px-4 p-4 rounded-xl bg-background/80 shadow-sm border">
+                                <AlertTriangle className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                                <p className="text-sm font-medium">Not applicable for Premiere Pro</p>
+                                <p className="text-xs text-muted-foreground max-w-[200px] mt-1">Premiere handles caption tracks automatically.</p>
+                            </div>
+                        </div>
+                    )}
                     {activeSteps[currentStep]?.key === "template" && (
                         <TemplateStep
                             mode={selection.mode}
@@ -425,28 +439,33 @@ interface StepperProps {
     currentStep: number
     onJump: (index: number) => void
     canAdvanceTo: (index: number) => boolean
+    isPremiere?: boolean
 }
 
-function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
+function Stepper({ steps, currentStep, onJump, canAdvanceTo, isPremiere }: StepperProps) {
     return (
         <div className="flex items-center gap-1">
             {steps.map((step, index) => {
                 const Icon = step.icon
                 const isCompleted = index < currentStep
                 const isCurrent = index === currentStep
-                const clickable = canAdvanceTo(index)
+                const isBlocked = isPremiere && (step.key === "outputTrack" || step.key === "template")
+                const clickable = canAdvanceTo(index) && !isBlocked
                 return (
                     <React.Fragment key={step.key}>
                         <button
                             type="button"
-                            onClick={() => clickable && onJump(index)}
-                            disabled={!clickable}
-                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${isCompleted
-                                ? "bg-primary/10 text-primary hover:bg-primary/20"
-                                : isCurrent
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground"
-                                } ${!clickable && !isCurrent ? "cursor-not-allowed" : "cursor-pointer"}`}
+                            onClick={() => clickable && !isBlocked && onJump(index)}
+                            disabled={!clickable || isBlocked}
+                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                                isBlocked
+                                    ? "opacity-50 bg-muted text-muted-foreground cursor-not-allowed"
+                                    : isCompleted
+                                        ? "bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                                        : isCurrent
+                                            ? "bg-primary text-primary-foreground cursor-pointer"
+                                            : (!clickable ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-muted text-muted-foreground hover:bg-muted/80 cursor-pointer")
+                                }`}
                         >
                             {isCompleted ? (
                                 <Check className="w-3.5 h-3.5" />
@@ -527,7 +546,6 @@ function TemplateStep({
             onModeChange("regular")
         }
     }, [mode, hasAnimatedTemplate, onModeChange])
-
     if (createSession.kind !== "closed") {
         return (
             <CreatePresetFlow

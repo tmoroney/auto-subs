@@ -19,6 +19,7 @@ import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { useResolve } from "@/contexts/ResolveContext"
+import { usePremiere } from "@/contexts/PremiereContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { Speaker, Track } from "@/types"
 import { useTranslation } from "react-i18next"
@@ -508,6 +509,7 @@ interface AddToTimelineFooterProps {
   onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>
   t: (key: string) => string
   isAdding: boolean
+  selectedIntegration?: "davinci" | "premiere"
 }
 
 function AddToTimelineFooter({
@@ -518,6 +520,7 @@ function AddToTimelineFooter({
   onAddToTimeline,
   t,
   isAdding,
+  selectedIntegration,
 }: AddToTimelineFooterProps) {
   return (
     <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
@@ -526,6 +529,7 @@ function AddToTimelineFooter({
         timelineInfo={timelineInfo}
         onAddToTimeline={onAddToTimeline}
         isAdding={isAdding}
+        selectedIntegration={selectedIntegration}
       >
         <Button
           variant={variant === "desktop" ? "secondary" : "default"}
@@ -565,7 +569,14 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const layersIconRef = React.useRef<PlusIconHandle>(null)
   const { subtitles, currentTranscriptFilename, updateSubtitles, exportSubtitlesAs, importSubtitles, reformatSubtitles, speakers, updateSpeakers } = useTranscript()
-  const { pushToTimeline, timelineInfo } = useResolve()
+  const { timelineInfo: resolveTimeline, pushToTimeline: resolvePush } = useResolve()
+  const { timelineInfo: premiereTimeline, pushToTimeline: premierePush, isConnected: isPremiereConnected } = usePremiere()
+  
+  const isPremiereActive = isPremiereConnected;
+  const timelineInfo = isPremiereActive ? premiereTimeline : resolveTimeline;
+  const pushToTimeline = isPremiereActive 
+    ? (filename?: string, _selectedTemplate?: string, _selectedOutputTrack?: string, _presetSettings?: Record<string, unknown>) => premierePush(filename) 
+    : resolvePush;
   const { settings } = useSettings()
   const { t } = useTranslation()
 
@@ -597,7 +608,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
   }, [searchCaseSensitive, searchQuery, searchWholeWord])
 
   const canReplace = variant === "desktop" ? Boolean(replaceValue.trim()) : Boolean(searchQuery.trim())
-  const isResolveConnected = Boolean(timelineInfo?.timelineId)
+  const isIntegrationConnected = Boolean(timelineInfo?.timelineId) || isPremiereConnected;
   const shellClassName = variant === "desktop"
     ? "flex flex-col h-full border-l bg-card/50"
     : "flex flex-col h-full min-h-0 bg-background"
@@ -701,7 +712,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
         t={t}
       />
 
-      {isResolveConnected && subtitles.length > 0 && (
+      {isIntegrationConnected && subtitles.length > 0 && (
         <AddToTimelineFooter
           variant={variant}
           settings={settings}
@@ -710,6 +721,7 @@ export function SubtitleViewerPanel({ variant, isOpen = true, onClose }: Subtitl
           onAddToTimeline={handleAddToTimeline}
           t={t}
           isAdding={isAddingToTimeline}
+          selectedIntegration={isPremiereActive ? "premiere" : "davinci"}
         />
       )}
     </div>

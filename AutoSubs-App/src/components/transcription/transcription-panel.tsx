@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Speech, Type, AudioLines, Globe, X, PlayCircle, ChevronRight } from "lucide-react"
+import { Speech, Type, AudioLines, Globe, X, PlayCircle, ChevronRight, ChevronDown } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
 import { downloadDir } from "@tauri-apps/api/path"
@@ -10,6 +10,7 @@ import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ModelPicker } from "@/components/settings/model-picker"
 import { LanguageSelector } from "@/components/settings/language-selector"
 import { SpeakerSelector } from "@/components/settings/diarize-selector"
@@ -21,6 +22,7 @@ import { useProgress } from "@/contexts/ProgressContext"
 import { useTranscript } from "@/contexts/TranscriptContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useResolve } from "@/contexts/ResolveContext"
+import { usePremiere } from "@/contexts/PremiereContext"
 import { useErrorDialog } from "@/contexts/ErrorDialogContext"
 import { ResolveApiError } from "@/api/resolve-api"
 import { languages, translateLanguages } from "@/lib/languages"
@@ -72,6 +74,8 @@ interface TranscriptionPanelViewProps {
   onStart?: () => void
   onCancel?: () => void
   isProcessing?: boolean
+  selectedIntegration: "davinci" | "premiere"
+  onSelectedIntegrationChange: (integration: "davinci" | "premiere") => void
 }
 
 function TranscriptionPanelView({
@@ -99,10 +103,14 @@ function TranscriptionPanelView({
   onStart,
   onCancel,
   isProcessing,
+  selectedIntegration,
+  onSelectedIntegrationChange,
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation()
-  const { refresh } = useResolve()
+  const { refresh: refreshResolve } = useResolve()
+  const { refresh: refreshPremiere } = usePremiere()
   const { settings: currentSettings } = useSettings()
+  const isPremiereActive = selectedIntegration === "premiere";
   const isTourActive = !currentSettings.tourCompleted
   const uploadIconRef = React.useRef<UploadIconHandle>(null)
   const dropAreaUploadIconRef = React.useRef<UploadIconHandle>(null)
@@ -162,7 +170,11 @@ function TranscriptionPanelView({
     setOpenTrackSelector(open)
     if (open && !currentSettings.isStandaloneMode) {
       try {
-        await refresh()
+        if (selectedIntegration === "premiere") {
+          await refreshPremiere()
+        } else {
+          await refreshResolve()
+        }
       } catch (error) {
         console.error("Failed to refresh timeline info:", error)
       }
@@ -202,14 +214,36 @@ function TranscriptionPanelView({
               <UploadIcon ref={uploadIconRef} size={14} />
               {t("actionBar.mode.fileInput")}
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="text-sm px-4">
-              <img
-                src="/davinci-resolve-logo.png"
-                alt={t("titlebar.resolve.productName")}
-                className="w-5 h-5"
-              />
-              {t("actionBar.mode.timeline")}
-            </TabsTrigger>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onPointerDown={() => onStandaloneModeChange(false)}>
+                <TabsTrigger value="timeline" data-state={!isStandaloneMode ? "active" : "inactive"} className="text-sm px-4 flex items-center gap-1" onPointerDown={() => onStandaloneModeChange(false)}>
+                  <img
+                    src={selectedIntegration === "premiere" ? "/premiere-logo.png" : "/davinci-resolve-logo.png"}
+                    alt={selectedIntegration === "premiere" ? "Premiere Pro" : "DaVinci Resolve"}
+                    className="w-5 h-5 mr-1"
+                  />
+                  {t("actionBar.mode.timeline")}
+                  <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
+                </TabsTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100]">
+                <DropdownMenuItem onClick={() => {
+                  onStandaloneModeChange(false);
+                  onSelectedIntegrationChange("davinci");
+                }} className="cursor-pointer">
+                  <img src="/davinci-resolve-logo.png" alt="DaVinci" className="w-4 h-4 mr-2" />
+                  <span>DaVinci Resolve</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  onStandaloneModeChange(false);
+                  onSelectedIntegrationChange("premiere");
+                }} className="cursor-pointer">
+                  <img src="/premiere-logo.png" alt="Premiere" className="w-4 h-4 mr-2" />
+                  <span>Premiere Pro</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </TabsList>
         </Tabs>
       </div>
@@ -240,6 +274,7 @@ function TranscriptionPanelView({
                     livePreviewSegments={livePreviewSegments}
                     settings={settings}
                     timelineInfo={timelineInfo}
+                    selectedIntegration={selectedIntegration}
                   />
                 </div>
               ))}
@@ -359,7 +394,7 @@ function TranscriptionPanelView({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="min-w-[320px] p-0 overflow-hidden" align="center">
-                  <TrackSelector inputTracks={inputTracks} />
+                  <TrackSelector inputTracks={inputTracks} isPremiereActive={isPremiereActive} />
                 </PopoverContent>
               </Popover>
             ) : (
@@ -453,16 +488,58 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
   const { settings, updateSetting } = useSettings()
   const { modelsState, downloadedModelValues, checkDownloadedModels } = useModels()
   const {
-    timelineInfo,
-    pushToTimeline,
-    cancelExport,
-    isExporting,
-    exportProgress,
-    setIsExporting,
-    setExportProgress,
-    cancelRequestedRef,
-    getSourceAudio,
+    timelineInfo: resolveTimeline,
+    pushToTimeline: resolvePush,
+    cancelExport: resolveCancelExport,
+    isExporting: resolveIsExporting,
+    exportProgress: resolveExportProgress,
+    setIsExporting: resolveSetIsExporting,
+    setExportProgress: resolveSetExportProgress,
+    cancelRequestedRef: resolveCancelRequestedRef,
+    getSourceAudio: resolveGetSourceAudio,
+    refresh: resolveRefresh,
   } = useResolve()
+
+  const {
+    timelineInfo: premiereTimeline,
+    isConnected: isPremiereConnected,
+    pushToTimeline: premierePush,
+    isExporting: premiereIsExporting,
+    exportProgress: premiereExportProgress,
+    getSourceAudio: premiereGetSourceAudio,
+    refresh: premiereRefresh,
+  } = usePremiere()
+
+  const [selectedIntegration, setSelectedIntegration] = React.useState<"davinci" | "premiere">("davinci");
+  const [hasInitializedIntegration, setHasInitializedIntegration] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!hasInitializedIntegration && isPremiereConnected) {
+      setSelectedIntegration("premiere");
+      setHasInitializedIntegration(true);
+    }
+  }, [isPremiereConnected, hasInitializedIntegration]);
+
+  React.useEffect(() => {
+    if (selectedIntegration === "premiere" && isPremiereConnected) {
+      premiereRefresh();
+    } else if (selectedIntegration === "davinci") {
+      resolveRefresh();
+    }
+  }, [selectedIntegration, isPremiereConnected, premiereRefresh, resolveRefresh]);
+
+  const isPremiereActive = selectedIntegration === "premiere";
+  const timelineInfo = isPremiereActive ? premiereTimeline : resolveTimeline;
+  const getSourceAudio = isPremiereActive ? premiereGetSourceAudio : resolveGetSourceAudio;
+  const pushToTimeline = isPremiereActive 
+    ? (filename?: string, _selectedTemplate?: string, _selectedOutputTrack?: string, _presetSettings?: Record<string, unknown>) => premierePush(filename) 
+    : resolvePush;
+  const cancelRequestedRef = resolveCancelRequestedRef;
+  const isExporting = isPremiereActive ? premiereIsExporting : resolveIsExporting;
+  const exportProgress = isPremiereActive ? premiereExportProgress : resolveExportProgress;
+  const cancelExport = resolveCancelExport; // Fallback for cancel
+  const setIsExporting = resolveSetIsExporting; // Fallback
+  const setExportProgress = resolveSetExportProgress; // Fallback
   const {
     processingSteps,
     livePreviewSegments,
@@ -726,6 +803,8 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
       onStart={handleStartTranscription}
       onCancel={handleCancelTranscription}
       isProcessing={isProcessing}
+      selectedIntegration={selectedIntegration}
+      onSelectedIntegrationChange={setSelectedIntegration}
     />
   )
 }

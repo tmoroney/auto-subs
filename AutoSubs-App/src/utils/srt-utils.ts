@@ -18,24 +18,64 @@ export function generateSrt(subtitles: Subtitle[]): string {
         throw new Error('Subtitles must be an array');
     }
 
-    return subtitles
-        .map((sub, i) => {
-            // Log each subtitle being processed
-            console.log(`Processing subtitle ${i}:`, sub);
+    // Deep clone to avoid mutating original
+    const sanitized = JSON.parse(JSON.stringify(subtitles)) as Subtitle[];
 
-            // Ensure required fields exist
-            if (sub === null || typeof sub !== 'object') {
-                console.error('Invalid subtitle at index', i, ':', sub);
-                return ''; // Skip invalid entries
+    // 1. Enforce minimum duration and fix overlaps
+    const MIN_DURATION = 0.4; // 400ms minimum duration for readability
+    
+    for (let i = 0; i < sanitized.length; i++) {
+        let current = sanitized[i];
+        let start = Number(current.start);
+        let end = Number(current.end);
+        
+        if (isNaN(start) || isNaN(end)) continue;
+
+        // Enforce minimum duration
+        if (end - start < MIN_DURATION) {
+            let needed = MIN_DURATION - (end - start);
+            
+            // Try to expand backward into previous gap
+            let prevEnd = i > 0 ? Number(sanitized[i-1].end) : 0;
+            let availableBackward = start - prevEnd;
+            if (availableBackward > 0) {
+                let expandBackward = Math.min(needed, availableBackward);
+                start -= expandBackward;
+                needed -= expandBackward;
             }
+            
+            // Try to expand forward into next gap
+            if (needed > 0) {
+                let nextStart = i < sanitized.length - 1 ? Number(sanitized[i+1].start) : end + needed;
+                let availableForward = nextStart - end;
+                if (availableForward > 0) {
+                    let expandForward = Math.min(needed, availableForward);
+                    end += expandForward;
+                }
+            }
+        }
+        
+        // Prevent exact overlaps (SRT importers like Premiere prefer a small gap)
+        if (i > 0) {
+            let prevEnd = Number(sanitized[i-1].end);
+            if (start <= prevEnd) {
+                start = prevEnd + 0.001; // Push it forward to create a 1ms gap
+                if (end < start) end = start + MIN_DURATION; // Ensure valid duration
+            }
+        }
 
+        sanitized[i].start = start;
+        sanitized[i].end = end;
+    }
+
+    return sanitized
+        .map((sub, i) => {
             const start = Number(sub.start);
             const end = Number(sub.end);
             let text = sub.text !== undefined ? String(sub.text).trim() : '';
 
-            if (isNaN(start) || isNaN(end)) {
-                console.error('Invalid timestamp in subtitle:', sub);
-                return ''; // Skip entries with invalid timestamps
+            if (isNaN(start) || isNaN(end) || !text) {
+                return ''; // Skip invalid or empty entries
             }
 
             return `${i + 1}\n${formatTimecode(start)} --> ${formatTimecode(end)}\n${text}\n`;

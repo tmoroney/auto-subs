@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Subtitle, Speaker, Settings } from '@/types';
 import { useResolve } from '@/contexts/ResolveContext';
+import { usePremiere } from '@/contexts/PremiereContext';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
@@ -40,7 +41,9 @@ export function TranscriptProvider({ children }: { children: React.ReactNode }) 
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [markIn, setMarkIn] = useState(0);
   const [currentTranscriptFilename, setCurrentTranscriptFilename] = useState<string | null>(null);
-  const { timelineInfo } = useResolve();
+  const { timelineInfo: resolveTimeline } = useResolve();
+  const { timelineInfo: premiereTimeline, isConnected: isPremiereConnected } = usePremiere();
+  const timelineInfo = isPremiereConnected ? premiereTimeline : resolveTimeline;
 
   // Load subtitles when timelineId or fileInput changes
   const loadSubtitles = useCallback(async (isStandaloneMode: boolean, fileInput: string | null, timelineId: string) => {

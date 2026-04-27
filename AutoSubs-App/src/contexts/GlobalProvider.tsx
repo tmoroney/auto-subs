@@ -7,6 +7,8 @@ import { ProgressProvider } from './ProgressContext';
 import { PresetsProvider } from './PresetsContext';
 import { ErrorDialogProvider } from './ErrorDialogContext';
 
+import { PremiereProvider } from './PremiereContext';
+
 interface GlobalProviderProps {
   children: React.ReactNode;
 }
@@ -33,13 +35,15 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       <SettingsProvider>
         <ModelsProvider>
           <ResolveProvider>
-            <TranscriptProvider>
-              <ProgressProvider>
-                <PresetsProvider>
-                  {children}
-                </PresetsProvider>
-              </ProgressProvider>
-            </TranscriptProvider>
+            <PremiereProvider>
+              <TranscriptProvider>
+                <ProgressProvider>
+                  <PresetsProvider>
+                    {children}
+                  </PresetsProvider>
+                </ProgressProvider>
+              </TranscriptProvider>
+            </PremiereProvider>
           </ResolveProvider>
         </ModelsProvider>
       </SettingsProvider>
