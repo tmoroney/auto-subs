@@ -25,9 +25,9 @@ AutoSubs runs **AI transcription models locally** on your machine — no cloud, 
 - Export to SRT, plain text, or directly into DaVinci Resolve
 - Per-speaker subtitle styling (color, outline, border) when using Resolve
 
-Generate Subtitles & Label Speakers |  Advanced Settings
+Generate Subtitles with Speaker Labels |  Animated Captions
 :-------------------------:|:-------------------------:
-<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/ca00769b-93e2-4127-b604-a9108bf8451a"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/be1a111a-71c5-4d8d-ad8c-d9e889e3e7ab">
+<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/fbdba848-46d5-451c-b671-06bf3237b08c"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/3a707940-7f2d-4052-990c-58cd913c185c">
 
 ---
 
