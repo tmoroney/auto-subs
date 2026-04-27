@@ -21,6 +21,7 @@ use tauri_plugin_shell::ShellExt; // for app.shell()
 use tauri_plugin_store::Builder as StoreBuilder;
 use tauri_plugin_clipboard_manager::init as clipboard_plugin;
 use tauri_plugin_opener::init as opener_plugin;
+use tauri_plugin_single_instance::init as single_instance_plugin;
 use tokio::process::Command as TokioCommand;
 
 mod audio_preprocess;
@@ -75,19 +76,29 @@ fn main() {
         .plugin(shell_plugin())
         .plugin(clipboard_plugin())
         .plugin(opener_plugin())
+        .plugin(single_instance_plugin(|app, _args, _cwd| {
+            // Focus the existing window when a second instance is launched
+            let _ = app.get_webview_window("main").map(|w| w.set_focus());
+        }))
         .setup(|app| {
             // Initialize backend logging (file + in-memory ring buffer)
             crate::logging::init_logging(&app.handle());
+
+            // Set window title to "AutoSubs" on Windows and Linux for taskbar display
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_title("AutoSubs");
+                }
+            }
 
             // Hide native titlebar on Windows so the custom HTML titlebar is used exclusively
             #[cfg(target_os = "windows")]
             {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
-                    let _ = window.set_title("AutoSubs");
                 }
             }
-
 
             // Set traffic light position programmatically on macOS.
             // `trafficLightPosition` in tauri.conf.json is only applied at window
