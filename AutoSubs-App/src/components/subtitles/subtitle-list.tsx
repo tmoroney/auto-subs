@@ -295,7 +295,7 @@ const SubtitleList = ({
                 return (
                     <div
                         key={subtitle.id}
-                        className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-all duration-200 ease-out hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
+                        className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-colors duration-150 hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
                         onClick={() => selectSubtitle(index)}
                     >
                                     <div className="flex w-full items-center gap-2">
@@ -417,7 +417,7 @@ const SubtitleList = ({
                                         )}
 
                                         <ButtonGroup
-                                            className={`overflow-hidden transition-all duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
+                                            className={`overflow-hidden transition-[max-height,opacity,margin-top] duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
                                         >
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
