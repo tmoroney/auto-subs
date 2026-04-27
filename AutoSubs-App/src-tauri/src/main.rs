@@ -84,6 +84,7 @@ fn main() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
+                    let _ = window.set_title("AutoSubs");
                 }
             }
 
@@ -96,6 +97,7 @@ fn main() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     crate::traffic_lights::install(&window);
+                    let _ = window.set_title("");
                 }
             }
 
