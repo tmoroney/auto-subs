@@ -1,6 +1,6 @@
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, deprecated
 local ffi = ffi
 
 -- resolve is provided implicitly by the Resolve environment - no need to call Resolve() unless running in terminal
@@ -120,7 +120,8 @@ local currentExportJob = {
         markOut = 0, -- mark out (frames) - may display in UI as timecode
         offset = 0   -- offset on timeline in seconds (regardless of timeline start)
     },
-    trackStates = nil
+    trackStates = nil,
+    clipBoundaries = nil
 }
 
 -- UTF-8 aware character count
@@ -377,9 +378,9 @@ local function reset_tracks()
     local timeline = project:GetCurrentTimeline()
     local audioTracks = timeline:GetTrackCount("audio")
     for i = 1, audioTracks do
-        timeline:SetTrackEnable("audio", i, currentExportJob.trackStates[i])
+        timeline:SetTrackEnable("audio", i, currentExportJob["trackStates"][i])
     end
-    currentExportJob.clipBoundaries = nil
+    currentExportJob["clipBoundaries"] = nil
 end
 
 local function check_track_empty(trackIndex, markIn, markOut)
@@ -527,8 +528,33 @@ function CancelExport()
     end
 end
 
--- Helper function to find clip boundaries on selected audio tracks
+-- Helper function to resolve in/out markers to absolute timeline frame positions.
+-- timeline:GetMarkInOut() returns a dict like {audio={in=0,out=134}, video={...}}
+-- where values are RELATIVE to the timeline start (0-based). Clip positions
+-- (clip:GetStart()/GetEnd()) however are ABSOLUTE timeline frames, so we must
+-- offset markers by timeline:GetStartFrame() before comparing.
+-- If only one of in/out is set, the missing side defaults to the timeline
+-- start/end frame respectively.
+local function get_marker_range(timeline)
+    local startFrame = timeline:GetStartFrame()
+    local endFrame = timeline:GetEndFrame()
+
+    local marks = timeline:GetMarkInOut() or {}
+    -- Prefer audio markers; fall back to video if audio not present
+    local m = marks["audio"] or marks["video"] or {}
+
+    local inAbs = m["in"] and (m["in"] + startFrame) or startFrame
+    local outAbs = m["out"] and (m["out"] + startFrame) or endFrame
+
+    return inAbs, outAbs
+end
+
+-- Helper function to find clip boundaries on selected audio tracks within in/out markers.
+-- Clips entirely outside the marker region are ignored. Clips that overlap the
+-- region are clamped to the marker boundaries.
 local function get_clip_boundaries(timeline, selectedTracks)
+    local rangeStart, rangeEnd = get_marker_range(timeline)
+
     local earliestStart = nil
     local latestEnd = nil
 
@@ -539,11 +565,17 @@ local function get_clip_boundaries(timeline, selectedTracks)
                 local clipStart = clip:GetStart()
                 local clipEnd = clip:GetEnd()
 
-                if earliestStart == nil or clipStart < earliestStart then
-                    earliestStart = clipStart
-                end
-                if latestEnd == nil or clipEnd > latestEnd then
-                    latestEnd = clipEnd
+                -- Skip clips completely outside the marker region
+                if clipEnd > rangeStart and clipStart < rangeEnd then
+                    local start = math.max(clipStart, rangeStart)
+                    local end_ = math.min(clipEnd, rangeEnd)
+
+                    if earliestStart == nil or start < earliestStart then
+                        earliestStart = start
+                    end
+                    if latestEnd == nil or end_ > latestEnd then
+                        latestEnd = end_
+                    end
                 end
             end
         end
@@ -558,6 +590,7 @@ local function get_individual_clips(timeline, selectedTracks)
     local allClips = {}
     local timelineStart = timeline:GetStartFrame()
     local frameRate = timeline:GetSetting("timelineFrameRate")
+    local rangeStart, rangeEnd = get_marker_range(timeline)
 
     for trackIndex, _ in pairs(selectedTracks) do
         local clips = timeline:GetItemListInTrack("audio", trackIndex)
@@ -567,14 +600,20 @@ local function get_individual_clips(timeline, selectedTracks)
                 local clipEnd = clip:GetEnd()
                 local clipName = clip:GetName() or "Unnamed"
 
-                table.insert(allClips, {
-                    startFrame = clipStart,
-                    endFrame = clipEnd,
-                    -- Convert to seconds relative to timeline start
-                    start = (clipStart - timelineStart) / frameRate,
-                    ["end"] = (clipEnd - timelineStart) / frameRate,
-                    name = clipName
-                })
+                -- Skip clips entirely outside the marker region; clamp those that overlap
+                if clipEnd > rangeStart and clipStart < rangeEnd then
+                    local cs = math.max(clipStart, rangeStart)
+                    local ce = math.min(clipEnd, rangeEnd)
+
+                    table.insert(allClips, {
+                        startFrame = cs,
+                        endFrame = ce,
+                        -- Convert to seconds relative to timeline start
+                        start = (cs - timelineStart) / frameRate,
+                        ["end"] = (ce - timelineStart) / frameRate,
+                        name = clipName
+                    })
+                end
             end
         end
     end
@@ -621,7 +660,8 @@ function ExportAudio(outputDir, inputTracks)
         progress = 0,
         cancelled = false,
         startTime = os.time(),
-        audioInfo = nil
+        audioInfo = nil,
+        trackStates = nil
     }
 
     local audioInfo = {
@@ -641,6 +681,9 @@ function ExportAudio(outputDir, inputTracks)
         trackStates[i] = state
     end
 
+    -- Save track states to currentExportJob immediately for restoration on error
+    currentExportJob["trackStates"] = trackStates
+
     -- Build a set of selected track indices for O(1) membership checks
     local selected = {}
     for _, v in ipairs(inputTracks) do
@@ -654,10 +697,11 @@ function ExportAudio(outputDir, inputTracks)
         timeline:SetTrackEnable("audio", i, isEnabled)
     end
 
-    -- save track states for later use
-    currentExportJob.trackStates = trackStates
+    -- Get in/out markers as the base export range
+    local inMarker, outMarker = timeline:GetMarkInOut()
+    local hasMarkers = inMarker and outMarker
 
-    -- Find clip boundaries on selected tracks to only export the relevant portion
+    -- Find clip boundaries on selected tracks to potentially narrow the range (avoid exporting silence)
     local clipStart, clipEnd = get_clip_boundaries(timeline, selected)
 
     -- Get individual clips for segment-based transcription
@@ -665,11 +709,34 @@ function ExportAudio(outputDir, inputTracks)
     currentExportJob.individualClips = individualClips
     print("[AutoSubs] Found " .. #individualClips .. " individual clip(s) for transcription")
 
-    if clipStart and clipEnd then
-        print("[AutoSubs] Found clip boundaries: " .. clipStart .. " - " .. clipEnd)
-        currentExportJob.clipBoundaries = { start = clipStart, ["end"] = clipEnd }
+    -- Determine the final export range
+    local exportStart, exportEnd
+
+    if hasMarkers then
+        -- Markers are set - use them as the base range
+        exportStart = inMarker
+        exportEnd = outMarker
+        print("[AutoSubs] Using marker region: " .. exportStart .. " - " .. exportEnd)
+
+        -- Narrow to clip boundaries if clips are found within the marker region
+        if clipStart and clipEnd then
+            exportStart = math.max(exportStart, clipStart)
+            exportEnd = math.min(exportEnd, clipEnd)
+            print("[AutoSubs] Narrowed to clip boundaries: " .. exportStart .. " - " .. exportEnd)
+        end
     else
-        print("[AutoSubs] No clips found on selected tracks, using full timeline")
+        -- No markers - use clip boundaries if found, otherwise full timeline
+        if clipStart and clipEnd then
+            exportStart = clipStart
+            exportEnd = clipEnd
+            print("[AutoSubs] No markers, using clip boundaries: " .. exportStart .. " - " .. exportEnd)
+        else
+            print("[AutoSubs] No markers or clips found, using full timeline")
+        end
+    end
+
+    if exportStart and exportEnd then
+        currentExportJob.clipBoundaries = { start = exportStart, ["end"] = exportEnd }
     end
 
     resolve:OpenPage("deliver")
@@ -734,6 +801,7 @@ function ExportAudio(outputDir, inputTracks)
 
     -- Handle export start result
     if not success then
+        reset_tracks()
         currentExportJob.active = false
         local detail = tostring(err or "unknown error")
         print("[AutoSubs] ExportAudio failed to start: " .. detail)
@@ -1108,7 +1176,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
 
             if timelineItem:GetFusionCompCount() > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local template = comp:FindTool("Template")
+                local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)

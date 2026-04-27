@@ -60,6 +60,16 @@ graph TB
     LUA <-.-> Tauri
 ```
 
+**How a transcription works end-to-end:**
+1. User selects a file and clicks Transcribe
+2. Rust backend preprocesses audio via FFmpeg (normalization, format conversion)
+3. Transcription engine runs the chosen AI model (Whisper / Parakeet / Moonshine) locally
+4. Optionally runs Pyannote for speaker diarization and Google Translate for translation
+5. Formatter applies line-breaking, timing constraints, and language-specific rules
+6. Results stream back to the UI in real time; user edits and exports
+
+---
+
 ## Key Directories
 
 | Directory | Purpose |

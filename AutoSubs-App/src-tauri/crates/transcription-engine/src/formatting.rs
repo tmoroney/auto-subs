@@ -43,13 +43,14 @@ struct Tok {
 fn round3(x: f64) -> f64 { (x * 1000.0).round() / 1000.0 }
 
 /// User-facing text density control that scales `max_chars_per_line`.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TextDensity {
     Less,
     Standard,
     More,
     Single,
+    Custom,
 }
 
 impl Default for TextDensity {
@@ -147,12 +148,16 @@ impl PostProcessConfig {
             TextDensity::Single => {
                 self.single_word = true;
             }
+            TextDensity::Custom => {
+                // Custom density doesn't modify max_chars_per_line here;
+                // it should be set directly by the caller using custom_max_chars_per_line
+            }
             other => {
                 let factor = match other {
                     TextDensity::Less => 0.7,
                     TextDensity::Standard => 1.0,
                     TextDensity::More => 1.3,
-                    TextDensity::Single => unreachable!(),
+                    TextDensity::Single | TextDensity::Custom => unreachable!(),
                 };
                 self.max_chars_per_line = ((self.max_chars_per_line as f64) * factor).round() as usize;
             }
@@ -162,13 +167,14 @@ impl PostProcessConfig {
     /// Convenience constructors for common profiles
     pub fn latin() -> Self { Self::with_profile(ScriptProfile::Latin) }
     pub fn cjk() -> Self { Self::with_profile(ScriptProfile::CJK) }
+    pub fn korean() -> Self { Self::with_profile(ScriptProfile::Korean) }
     pub fn se_asian_no_space() -> Self { Self::with_profile(ScriptProfile::SEAsianNoSpace) }
     pub fn rtl() -> Self { Self::with_profile(ScriptProfile::RTL) }
     pub fn indic() -> Self { Self::with_profile(ScriptProfile::Indic) }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ScriptProfile { Latin, CJK, SEAsianNoSpace, RTL, Indic }
+pub enum ScriptProfile { Latin, CJK, Korean, SEAsianNoSpace, RTL, Indic }
 
 pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
     match p {
@@ -185,6 +191,15 @@ pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
             cfg.insert_interword_space = false;
             cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = true; // simple blacklist rules
+        }
+        ScriptProfile::Korean => {
+            // Korean uses Hangul (CJK-width characters) but, unlike Chinese/Japanese,
+            // separates words with spaces (eojeol). Treat width like CJK but keep spaces.
+            cfg.max_chars_per_line = 22;
+            cfg.cps_cap = 12.0;
+            cfg.insert_interword_space = true;
+            cfg.use_grapheme_len = true;
+            cfg.enforce_kinsoku = false; // kinsoku is a Japanese convention
         }
         ScriptProfile::SEAsianNoSpace => { // Thai, Khmer, Lao, etc.
             cfg.max_chars_per_line = 22; // previously 18..=26; pick 22
@@ -212,8 +227,10 @@ pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
 
 pub fn profile_for_lang(lang: &str) -> ScriptProfile {
     match lang {
-        // CJK
-        "zh" | "zh-CN" | "zh-TW" | "ja" | "ko" => ScriptProfile::CJK,
+        // CJK (Chinese & Japanese — no inter-word spaces)
+        "zh" | "zh-CN" | "zh-TW" | "ja" => ScriptProfile::CJK,
+        // Korean uses Hangul but separates words with spaces (eojeol)
+        "ko" => ScriptProfile::Korean,
         // SE Asian no-space
         "th" | "lo" | "km" | "my" => ScriptProfile::SEAsianNoSpace,
         // RTL
@@ -420,14 +437,20 @@ fn apply_content_formatting(t: &mut Tok, cfg: &PostProcessConfig, censor_set: &H
     }
 }
 
+/// Unicode-aware "is this a plain alphabetic word fragment" check used for
+/// subword-continuation merging. Accepts any alphabetic codepoint (Latin,
+/// Cyrillic, Greek, Armenian, etc.) plus apostrophe-like marks that commonly
+/// appear inside words.
 #[inline]
-fn is_ascii_word(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_ascii_alphabetic() || c == '\'')
+fn is_letter_word(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_alphabetic() || c == '\'' || c == '\u{2019}')
 }
 
 /// Merge tokens where the right token is a continuation piece (no leading space)
-/// and both sides look like ASCII words (Latin). This avoids outputs like
-/// "trans" + "human" + "ism" and instead yields "transhumanism".
+/// and both sides look like alphabetic words. This avoids outputs like
+/// "trans" + "human" + "ism" and instead yields "transhumanism", and equally
+/// fixes Cyrillic/Greek/etc. BPE fragments that Whisper emits without a leading
+/// space (e.g. "при" + "ветствую" -> "приветствую").
 fn merge_continuations(toks: &mut Vec<Tok>) {
     if toks.is_empty() { return; }
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
@@ -443,7 +466,7 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
                 continue;
             }
             let right_cont = !t.leading_space;
-            let both_ascii_word = is_ascii_word(&prev.word) && is_ascii_word(&t.word);
+            let both_ascii_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
             let no_prev_punc = prev.punc.is_empty();
             // Only merge if the boundary is essentially contiguous (tiny gap)
             let tiny_gap = (t.start - prev.end) <= 0.03;

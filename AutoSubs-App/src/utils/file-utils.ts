@@ -1,6 +1,7 @@
 // src/utils/fileUtils.ts
-import { join, documentDir, appLocalDataDir } from '@tauri-apps/api/path';
+import { join, documentDir, appLocalDataDir, videoDir } from '@tauri-apps/api/path';
 import { readDir, readTextFile, exists, writeTextFile, mkdir, stat, rename, copyFile, remove } from '@tauri-apps/plugin-fs';
+import { platform } from '@tauri-apps/plugin-os';
 import { Subtitle, Speaker } from '@/types';
 
 const TRANSCRIPT_INDEX_FILENAME = 'transcript-index.json';
@@ -403,7 +404,13 @@ export async function getTranscriptsDir(): Promise<string> {
 }
 
 export async function getAudioExportDir(): Promise<string> {
-  const dir = await join(await appLocalDataDir(), "Audio");
+  // Resolve on Linux only allows rendering into paths registered as Media
+  // Storage locations. ~/Videos is registered by default, so use it there.
+  // Other platforms keep using appLocalDataDir.
+  const dir =
+    platform() === 'linux'
+      ? await join(await videoDir(), 'AutoSubs')
+      : await join(await appLocalDataDir(), 'Audio');
 
   // Ensure the directory exists
   try {

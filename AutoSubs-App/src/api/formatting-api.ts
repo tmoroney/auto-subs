@@ -90,13 +90,14 @@ export async function reformatSubtitles(
 export function getDefaultFormattingOptions(settings: {
     maxLinesPerSubtitle: number;
     language: string;
-    textDensity?: "less" | "standard" | "more" | "single";
+    textDensity?: "less" | "standard" | "more" | "single" | "custom";
+    customMaxCharsPerLine?: number;
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase";
     removePunctuation?: boolean;
     enableCensor?: boolean;
     censoredWords?: string[];
 }): FormattingOptions {
-    return {
+    const options: FormattingOptions = {
         maxLines: settings.maxLinesPerSubtitle,
         textDensity: settings.textDensity ?? "standard",
         language: settings.language,
@@ -104,4 +105,11 @@ export function getDefaultFormattingOptions(settings: {
         removePunctuation: settings.removePunctuation ?? false,
         censoredWords: settings.enableCensor ? (settings.censoredWords ?? []) : [],
     };
+    
+    // Only include customMaxCharsPerLine if textDensity is "custom"
+    if (settings.textDensity === "custom" && settings.customMaxCharsPerLine !== undefined) {
+        options.customMaxCharsPerLine = settings.customMaxCharsPerLine;
+    }
+    
+    return options;
 }

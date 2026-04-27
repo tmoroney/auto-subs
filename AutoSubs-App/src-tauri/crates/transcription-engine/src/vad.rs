@@ -15,7 +15,10 @@ pub fn get_segments(
     let mut vad = WhisperVadContext::new(vad_model, ctx)?;
 
     let mut vadp = WhisperVadParams::new();
-    vadp.set_min_silence_duration(200); // ms — silences shorter than this are not treated as breaks
+    // 500 ms aligns with common VAD defaults (Silero/pyannote). 200 ms was
+    // aggressive and chopped natural mid-phrase pauses, particularly in
+    // languages with more inter-word pausing (e.g. Russian).
+    vadp.set_min_silence_duration(500); // ms — silences shorter than this are not treated as breaks
 
     let segs = vad.segments_from_samples(vadp, &samples)?;
 

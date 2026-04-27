@@ -414,7 +414,7 @@ function TranscriptionPanelView({
                 {selectedFile ? (
                   <div className="flex flex-col items-center gap-1">
                     <UploadIcon ref={dropAreaUploadIconRef} size={24} className="text-green-500" />
-                    <span className="text-sm font-medium text-muted-foreground truncate max-w-full px-2">
+                    <span className="text-sm font-medium text-muted-foreground truncate px-2 text-center max-w-[280px]">
                       {selectedFile.split("/").pop()}
                     </span>
                   </div>
@@ -693,6 +693,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         maxSpeakers: settings.maxSpeakers,
         density: settings.textDensity,
         maxLines: settings.maxLinesPerSubtitle,
+        customMaxCharsPerLine: settings.textDensity === "custom" ? settings.customMaxCharsPerLine : undefined,
         textCase: settings.textCase,
         removePunctuation: settings.removePunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],

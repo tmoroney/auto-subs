@@ -22,6 +22,7 @@
       "showPickerAgain": "Sprachauswahl erneut anzeigen"
     },
     "restartOnboarding": "Onboarding neu starten",
+    "openLogsFolder": "Logs-Ordner öffnen",
     "preset": {
       "button": "Einstellungen zurücksetzen",
       "confirm": "Möchtest du wirklich alle Einstellungen auf Standard zurücksetzen? Das kann nicht rückgängig gemacht werden.",
@@ -103,8 +104,11 @@
         "single": "Einzelnes Wort",
         "less": "Weniger",
         "standard": "Standard",
-        "more": "Mehr"
-      }
+        "more": "Mehr",
+        "custom": "Benutzerdefiniert"
+      },
+      "customCharsTitle": "Max. Zeichen",
+      "customCharsDescription": "Zeichen pro Zeile"
     },
     "censor": {
       "title": "Wörter zensieren",

@@ -12,12 +12,25 @@ export function LanguageSelector() {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
+    const sourceInputRef = React.useRef<HTMLInputElement>(null)
+    const translateInputRef = React.useRef<HTMLInputElement>(null)
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            const input = languageTab === 'source' ? sourceInputRef.current : translateInputRef.current
+            if (input) {
+                input.focus()
+                input.select()
+            }
+        }, 50)
+        return () => clearTimeout(timer)
+    }, [languageTab])
 
     return (
         <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
             <TabsContent value="source" className="mt-0 border-b">
                 <Command className="max-h-[260px] rounded-b-none">
-                    <CommandInput placeholder={t("actionBar.language.searchSourcePlaceholder")} />
+                    <CommandInput ref={sourceInputRef} placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                     <CommandList>
                         <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                         <CommandGroup>
@@ -50,7 +63,7 @@ export function LanguageSelector() {
             <TabsContent value="translate" className="mt-0 border-b">
                 <Command className="max-h-[260px] rounded-b-none">
                     <div className="relative">
-                        <CommandInput placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
+                        <CommandInput ref={translateInputRef} placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                         <Switch
                             checked={settings.translate}
                             onCheckedChange={(checked: boolean) => updateSetting("translate", checked)}

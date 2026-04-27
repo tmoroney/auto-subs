@@ -81,6 +81,7 @@ impl Engine {
         options: crate::TranscribeOptions,
         max_lines: Option<usize>,
         density: Option<TextDensity>,
+        custom_max_chars_per_line: Option<usize>,
         content_formatting: Option<ContentFormatting>,
         cb: Option<Callbacks<'_>>,
     ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
@@ -269,7 +270,15 @@ impl Engine {
 
         // Build a config from the chosen preset; apply density, max_lines, and content formatting.
         let mut pp_cfg = PostProcessConfig::for_language(effective_lang);
-        if let Some(d) = density { pp_cfg.apply_density(d); }
+        if let Some(d) = density {
+            pp_cfg.apply_density(d);
+            // If custom density, set max_chars_per_line directly from the provided value
+            if d == TextDensity::Custom {
+                if let Some(custom_cpl) = custom_max_chars_per_line {
+                    pp_cfg.max_chars_per_line = custom_cpl;
+                }
+            }
+        }
         if let Some(ml) = max_lines { pp_cfg.max_lines = ml; }
         if let Some(cf) = content_formatting {
             pp_cfg.text_case = cf.text_case;

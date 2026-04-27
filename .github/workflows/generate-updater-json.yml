@@ -1,0 +1,100 @@
+name: Generate Updater JSON
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to update (e.g. v3.5.0)'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag to update (e.g. v3.5.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  compose-json:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure jq is available
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Download signatures from release
+        run: |
+          set -Eeuo pipefail
+          mkdir -p artifacts
+
+          echo "Downloading signatures for $TAG..."
+          
+          # Mac ARM
+          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" --dir artifacts --clobber || echo "Mac ARM signature not found"
+          
+          # Mac Intel
+          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" --dir artifacts --clobber || echo "Mac Intel signature not found"
+          
+          # Windows
+          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-windows-x86_64.exe.sig" --dir artifacts --clobber || echo "Windows signature not found"
+
+      - name: Compose latest.json
+        run: |
+          set -Eeuo pipefail
+          
+          # Read signatures or set to empty if missing
+          ARM_SIG=$(cat artifacts/AutoSubs-macos-aarch64.app.tar.gz.sig 2>/dev/null || echo "")
+          INTEL_SIG=$(cat artifacts/AutoSubs-macos-x86_64.app.tar.gz.sig 2>/dev/null || echo "")
+          WINDOWS_SIG=$(cat artifacts/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || echo "")
+
+          VERSION="${TAG#v}"
+          PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          
+          # Fetch release notes/name
+          NOTES=$(gh release view "$TAG" --repo "$REPO" --json name --jq .name || echo "$TAG")
+
+          # Build the JSON object
+          # We only include platforms that have a signature
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUB_DATE" \
+            --arg notes "$NOTES" \
+            --arg arm_sig "$ARM_SIG" \
+            --arg intel_sig "$INTEL_SIG" \
+            --arg win_sig "$WINDOWS_SIG" \
+            --arg tag "$TAG" \
+            --arg repo "$REPO" \
+            '{
+              version: $version,
+              pub_date: $pub_date,
+              notes: $notes,
+              platforms: {}
+            } 
+            | if $arm_sig != "" then .platforms["darwin-aarch64"] = { signature: $arm_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-aarch64.app.tar.gz" } else . end
+            | if $intel_sig != "" then .platforms["darwin-x86_64"] = { signature: $intel_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-x86_64.app.tar.gz" } else . end
+            | if $win_sig != "" then .platforms["windows-x86_64"] = { signature: $win_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-windows-x86_64.exe" } else . end
+            ' > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Upload latest.json to release
+        run: |
+          set -Eeuo pipefail
+          # Delete existing asset if it exists
+          gh release delete-asset "$TAG" latest.json --repo "$REPO" --yes || echo "No existing latest.json to delete"
+          
+          # Upload new asset
+          gh release upload "$TAG" latest.json --repo "$REPO" --clobber

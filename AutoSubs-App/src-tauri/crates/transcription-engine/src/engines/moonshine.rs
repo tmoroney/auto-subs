@@ -1,9 +1,9 @@
 use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use eyre::{Result, eyre};
 use std::path::Path;
-use transcribe_rs::{
-    TranscriptionEngine,
-    engines::moonshine::{ModelVariant, MoonshineEngine, MoonshineInferenceParams, MoonshineModelParams},
+use transcribe_rs::onnx::{
+    Quantization,
+    moonshine::{MoonshineModel, MoonshineParams, MoonshineVariant},
 };
 
 const SAMPLE_RATE: usize = 16000;
@@ -38,20 +38,20 @@ pub fn is_moonshine_model(model_name: &str) -> bool {
     model_name.to_lowercase().starts_with("moonshine-")
 }
 
-pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(ModelVariant, Option<&'static str>)> {
+pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(MoonshineVariant, Option<&'static str>)> {
     let m = model_name.to_lowercase();
     let suffix = m.strip_prefix("moonshine-")?;
 
     let (variant, lang) = match suffix {
-        "tiny" => (ModelVariant::Tiny, Some("en")),
-        "tiny-ar" => (ModelVariant::TinyAr, Some("ar")),
-        "tiny-zh" => (ModelVariant::TinyZh, Some("zh")),
-        "tiny-ja" => (ModelVariant::TinyJa, Some("ja")),
-        "tiny-ko" => (ModelVariant::TinyKo, Some("ko")),
-        "tiny-uk" => (ModelVariant::TinyUk, Some("uk")),
-        "tiny-vi" => (ModelVariant::TinyVi, Some("vi")),
-        "base" => (ModelVariant::Base, Some("en")),
-        "base-es" => (ModelVariant::BaseEs, Some("es")),
+        "tiny" => (MoonshineVariant::Tiny, Some("en")),
+        "tiny-ar" => (MoonshineVariant::TinyAr, Some("ar")),
+        "tiny-zh" => (MoonshineVariant::TinyZh, Some("zh")),
+        "tiny-ja" => (MoonshineVariant::TinyJa, Some("ja")),
+        "tiny-ko" => (MoonshineVariant::TinyKo, Some("ko")),
+        "tiny-uk" => (MoonshineVariant::TinyUk, Some("uk")),
+        "tiny-vi" => (MoonshineVariant::TinyVi, Some("vi")),
+        "base" => (MoonshineVariant::Base, Some("en")),
+        "base-es" => (MoonshineVariant::BaseEs, Some("es")),
         _ => return None,
     };
 
@@ -60,7 +60,7 @@ pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(ModelVaria
 
 pub async fn transcribe_moonshine(
     model_path: &Path,
-    variant: ModelVariant,
+    variant: MoonshineVariant,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
     progress_callback: Option<&LabeledProgressFn>,
@@ -69,12 +69,10 @@ pub async fn transcribe_moonshine(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Moonshine transcribe called with model: {:?}", model_path);
 
-    let mut engine = MoonshineEngine::new();
-    engine
-        .load_model_with_params(model_path, MoonshineModelParams::variant(variant))
+    let mut model = MoonshineModel::load(model_path, variant, &Quantization::default())
         .map_err(|e| eyre!("Failed to load Moonshine model: {}", e))?;
 
-    let params = MoonshineInferenceParams { max_length: None };
+    let params = MoonshineParams { max_length: None, ..Default::default() };
     let user_offset = options.offset.unwrap_or(0.0);
 
     let mut expanded: Vec<SpeechSegment> = Vec::new();
@@ -91,8 +89,8 @@ pub async fn transcribe_moonshine(
             .map(|&s| s as f32 / 32768.0)
             .collect();
 
-        let result = engine
-            .transcribe_samples(samples, Some(params.clone()))
+        let result = model
+            .transcribe_with(&samples, &params)
             .map_err(|e| eyre!("Moonshine transcription failed: {}", e))?;
 
         let text = result.text.trim().to_string();

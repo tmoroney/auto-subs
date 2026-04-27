@@ -121,6 +121,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
           // Check if cancellation was requested before making the next API call
           if (cancelRequestedRef.current) {
             console.log("Export polling interrupted by cancellation request");
+            await cancelExport();
             break;
           }
 
@@ -153,13 +154,20 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
             // Check again after timeout in case cancellation happened during the wait
             if (cancelRequestedRef.current) {
               console.log("Export polling interrupted during wait interval");
+              await cancelExport();
               break;
             }
           }
         }
 
         setIsExporting(false);
-        setExportProgress(100);
+        setExportProgress(0);
+
+        // If audioInfo is null, the export was cancelled or failed
+        if (!audioInfo) {
+          console.log("Export cancelled or failed - no audio info available");
+          return null;
+        }
 
         let audioPath = audioInfo["path"];
         let audioOffset = audioInfo["offset"];

@@ -1,7 +1,7 @@
 {
   "name": "autosubs",
   "private": true,
-  "version": "3.5.0",
+  "version": "3.5.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,8 @@
     "build:mac:x86_64": "npm run tauri build -- -- --no-default-features --features mac-x86_64",
     "build:mac:arm64:local": "dotenv -- npm run build:mac:arm64",
     "build:mac:x86_64:local": "dotenv -- npm run build:mac:x86_64",
-    "build:win:local": "dotenv -- npm run build:win"
+    "build:win:local": "dotenv -- npm run build:win",
+    "sync-version": "node scripts/update-version.js"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
@@ -96,7 +97,7 @@
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/cli": "^2.7.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.0",
-    "@tauri-apps/plugin-dialog": "^2.3.2",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.4.1",
     "@tauri-apps/plugin-http": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2.3.0",

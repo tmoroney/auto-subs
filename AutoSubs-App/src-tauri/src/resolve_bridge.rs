@@ -22,8 +22,8 @@ pub struct ResolveBridgeArgs {
     /// Arbitrary JSON object to send as the POST body.
     pub payload: serde_json::Value,
     /// Optional override of the default request timeout (seconds). Defaults
-    /// to a generous value because `ExportAudio` etc. can stall Resolve's
-    /// scripting API for several seconds before returning.
+    /// to 180 seconds because `ExportAudio` etc. can stall Resolve's
+    /// scripting API for many seconds before returning, especially on Windows.
     #[serde(default)]
     pub timeout_secs: Option<u64>,
 }
@@ -33,7 +33,7 @@ pub struct ResolveBridgeArgs {
 /// rejected invoke promises.
 #[tauri::command]
 pub async fn resolve_bridge(args: ResolveBridgeArgs) -> Result<String, String> {
-    let timeout = Duration::from_secs(args.timeout_secs.unwrap_or(60));
+    let timeout = Duration::from_secs(args.timeout_secs.unwrap_or(180));
 
     // One-shot client so we never hold a connection open between calls (the
     // Lua server closes the socket after each response anyway).

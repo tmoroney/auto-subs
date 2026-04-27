@@ -1,8 +1,10 @@
-import { Gauge, Clock, GraduationCap } from "lucide-react";
+import * as React from "react";
+import { Gauge, Clock, GraduationCap, Terminal } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
   DialogClose,
@@ -53,6 +55,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     updateSetting("tourCompleted", false);
     onOpenChange(false);
   };
+
+  const handleOpenLogsFolder = React.useCallback(async () => {
+    try {
+      await invoke("open_log_dir");
+    } catch (err) {
+      console.error("[SettingsDialog] failed to open logs folder:", err);
+    }
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,14 +117,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </Field>
               </FieldGroup>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleRestartOnboarding}
-              >
-                <GraduationCap/>
-                {t("settings.restartOnboarding")}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleRestartOnboarding}
+                >
+                  <GraduationCap/>
+                  {t("settings.restartOnboarding")}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleOpenLogsFolder}
+                >
+                  <Terminal className="h-4 w-4" />
+                  {t("settings.openLogsFolder")}
+                </Button>
+              </div>
             </div>
 
             {/* Transcription Settings */}

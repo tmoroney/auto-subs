@@ -22,6 +22,7 @@
       "showPickerAgain": "Réafficher le sélecteur de langue"
     },
     "restartOnboarding": "Redémarrer l'intégration",
+    "openLogsFolder": "Ouvrir le dossier des logs",
     "reset": {
       "button": "Réinitialiser les paramètres",
       "confirm": "Voulez-vous vraiment réinitialiser tous les paramètres ? Cette action est irréversible.",
@@ -95,8 +96,11 @@
         "single": "Mot unique",
         "less": "Moins",
         "standard": "Standard",
-        "more": "Plus"
-      }
+        "more": "Plus",
+        "custom": "Personnalisé"
+      },
+      "customCharsTitle": "Max caractères",
+      "customCharsDescription": "Caractères par ligne"
     },
     "censor": {
       "title": "Censurer des mots",

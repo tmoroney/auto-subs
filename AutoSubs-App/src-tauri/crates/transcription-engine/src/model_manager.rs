@@ -727,13 +727,38 @@ impl ModelManager {
 
         let mut stack = vec![root];
         while let Some(dir) = stack.pop() {
-            for entry in fs::read_dir(&dir).context("Failed to read cache dir")? {
-                let entry = entry?;
+            // Use symlink_metadata to avoid following dangling symlinks when classifying entries.
+            let read = match fs::read_dir(&dir) {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!("Failed to read {}: {}", dir.display(), e);
+                    continue;
+                }
+            };
+            for entry in read {
+                let entry = match entry { Ok(e) => e, Err(_) => continue };
                 let path = entry.path();
-                if path.is_dir() {
+                let md = match fs::symlink_metadata(&path) { Ok(m) => m, Err(_) => continue };
+                let ft = md.file_type();
+
+                if ft.is_symlink() {
+                    // Remove dangling snapshot symlinks whose blob target no longer exists.
+                    // These commonly remain after a partial/cancelled download and cause
+                    // hf-hub to fail fast on Windows when it tries to reuse them.
+                    let target_exists = fs::metadata(&path).is_ok();
+                    if !target_exists {
+                        if let Err(e) = fs::remove_file(&path) {
+                            tracing::warn!("Failed to remove dangling symlink {}: {}", path.display(), e);
+                        }
+                    }
+                    continue;
+                }
+
+                if ft.is_dir() {
                     stack.push(path);
                     continue;
                 }
+
                 if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
                     if name.ends_with(".lock") || name.ends_with(".incomplete") || name.ends_with(".part") {
                         if let Err(e) = fs::remove_file(&path) {
@@ -892,11 +917,24 @@ impl ModelManager {
 
         // Fast path: if a valid cached file exists under snapshots, return it immediately to avoid
         // hitting the network. We do this conservatively and validate before returning.
+        // If a cached file exists but fails validation (corrupted/partial from a previous run or
+        // a prior install), purge it before handing control to hf-hub so we don't trip on stale
+        // snapshot symlinks / blobs (a common cause of immediate download failures on Windows).
         if let Some(cached) = self.find_cached_file(repo_id, filename)? {
-            if validate_model_file(&cached).is_ok() {
-                // Do NOT emit progress here; caller requested to only start progress
-                // reporting if a download actually occurs.
-                return Ok(cached);
+            match validate_model_file(&cached) {
+                Ok(()) => {
+                    // Do NOT emit progress here; caller requested to only start progress
+                    // reporting if a download actually occurs.
+                    return Ok(cached);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Cached '{}' from '{}' is invalid ({}); removing before re-download",
+                        filename, repo_id, e
+                    );
+                    let _ = remove_snapshot_file_and_blob(&cached);
+                    self.cleanup_stale_locks().ok();
+                }
             }
         }
 
@@ -936,9 +974,15 @@ impl ModelManager {
             bail!("Download cancelled");
         }
         
-        // Only propagate error if download wasn't cancelled
-        let path = download_result
-            .with_context(|| format!("Failed to download '{}' from '{}'", filename, repo_id))?;
+        // Only propagate error if download wasn't cancelled. Include the underlying hf-hub error
+        // message in the wrapper so users/triagers can see the real cause (TLS, lock acquisition,
+        // file rename, DNS, etc.) instead of just the generic wrapper.
+        let path = match download_result {
+            Ok(p) => p,
+            Err(e) => {
+                bail!("Failed to download '{}' from '{}': {}", filename, repo_id, e);
+            }
+        };
 
         // Validate the downloaded/cached file; if invalid, remove and retry once
         if let Err(e) = validate_model_file(&path) {
@@ -950,9 +994,10 @@ impl ModelManager {
             self.cleanup_stale_locks().ok();
 
             let prog2 = DownloadProgress::new(progress, is_cancelled, offset, scale, None, label, cancel_token.clone());
-            let path2 = repo
-                .download_with_progress(filename, prog2)
-                .with_context(|| format!("Failed to re-download '{}' from '{}'", filename, repo_id))?;
+            let path2 = match repo.download_with_progress(filename, prog2) {
+                Ok(p) => p,
+                Err(e) => bail!("Failed to re-download '{}' from '{}': {}", filename, repo_id, e),
+            };
             validate_model_file(&path2)
                 .with_context(|| format!("Model validation failed for '{}' from '{}'", filename, repo_id))?;
 

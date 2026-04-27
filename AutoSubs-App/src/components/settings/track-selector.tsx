@@ -70,7 +70,7 @@ export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorPr
             )}
 
             {inputTracks.length > 0 ? (
-                <ScrollArea style={{ maxHeight: '200px', width: '100%' }}>
+                <ScrollArea className="max-h-[200px] w-full h-64">
                     <div className="flex flex-col gap-1 p-2">
                         {inputTracks.map((track) => {
                             const trackId = track.value;

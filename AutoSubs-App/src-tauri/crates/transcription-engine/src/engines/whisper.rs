@@ -42,7 +42,15 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
     params.set_print_timestamps(false);
     params.set_suppress_blank(true);
     params.set_token_timestamps(true);
-    params.set_single_segment(true); // Works better for speech segments
+    // Let whisper.cpp run its native sub-segmentation and internal token-level
+    // `previous_text` context. This is the single biggest quality lever for
+    // inflected non-English languages (e.g. Russian).
+    params.set_single_segment(false);
+
+    // Note: whisper-rs already defaults the decoder's quality-fallback
+    // thresholds to the original Whisper paper values
+    // (no_speech=0.6, logprob=-1.0, entropy=2.4), so we don't need to set
+    // them explicitly here.
 
     // Set input language
     if let Some(ref lang) = options.lang {
@@ -321,7 +329,6 @@ pub async fn run_transcription_pipeline(
 
     // List for subtitle segments
     let mut segments: Vec<Segment> = Vec::with_capacity(speech_segments.len());
-    let mut previous_text: Option<String> = None;
     let mut detected_lang: Option<String> = None;
 
 
@@ -338,10 +345,13 @@ pub async fn run_transcription_pipeline(
         let mut samples = vec![0.0f32; original_samples.len()];
         whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
 
-        // Set initial prompt if available (borrow to avoid moving out of Option)
-        if let Some(ref previous_text) = previous_text {
-            params.set_initial_prompt(previous_text);
-        }
+        // Note: we deliberately do NOT chain a manual `initial_prompt` across
+        // VAD chunks. With `single_segment=false`, whisper.cpp handles
+        // cross-segment context internally at the token level, which is
+        // higher-quality than re-injecting stale text across silence gaps
+        // (especially harmful for inflected languages like Russian).
+        // User-supplied glossary via `advanced.init_prompt` is still applied
+        // in `setup_params`.
 
         // Transcribe the segment
         state.full(params.clone(), &samples).context("failed to transcribe")?;
@@ -375,11 +385,15 @@ pub async fn run_transcription_pipeline(
             );
     
             if text.trim().is_empty() {
+                // With `single_segment=false`, whisper.cpp may emit trailing
+                // empty sub-segments from padded-silence regions. Skip them
+                // entirely rather than committing empty cues.
                 empty_segments += 1;
-                tracing::warn!(
-                    "Seg has empty/whitespace text in [{:.2}-{:.2}]",
+                tracing::debug!(
+                    "Skipping empty/whitespace seg in [{:.2}-{:.2}]",
                     approx_start, approx_end
                 );
+                continue;
             }
         
             // Choose word timestamps strategy and apply offset where needed in one place
@@ -423,9 +437,6 @@ pub async fn run_transcription_pipeline(
             }
 
             total_chars += text.len();
-
-            // Update previous_text before moving `text` into the Segment (or None if empty)
-            previous_text = (!text.trim().is_empty()).then(|| text.clone());
 
             let segment = Segment {
                 speaker_id,

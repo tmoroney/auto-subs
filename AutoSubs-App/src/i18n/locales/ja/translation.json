@@ -40,8 +40,11 @@
         "single": "単語単位",
         "less": "少なめ",
         "standard": "標準",
-        "more": "多め"
-      }
+        "more": "多め",
+        "custom": "カスタム"
+      },
+      "customCharsTitle": "最大文字数",
+      "customCharsDescription": "1行あたりの文字数"
     },
     "language": {
       "noLanguageFound": "言語が見つかりません。",
@@ -328,6 +331,7 @@
       "title": "動的時間伸縮法"
     },
     "restartOnboarding": "オンボーディングを再開",
+    "openLogsFolder": "ログフォルダを開く",
     "gpu": {
       "description": "GPUを使用して高速な文字起こし",
       "title": "GPU アクセラレーション"
