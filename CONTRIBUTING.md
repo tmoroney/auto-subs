@@ -4,6 +4,26 @@
 Thank you for considering contributing to AutoSubs! <br>
 I welcome contributions from everyone. I will try to review any pull requests as soon possible 😊
 
+## Dev Setup
+
+1. Clone the repo.
+2. Install prerequisites: Node.js + Rust toolchain — see [tauri.app](https://tauri.app).
+3. Start the app in dev mode:
+   ```bash
+   cd AutoSubs-App
+   npm install
+   npm run tauri dev
+   ```
+4. For Resolve integration during development, copy `AutoSubs-App/src-tauri/resources/Testing-AutoSubs.lua` into your Resolve scripts folder:
+   - **Windows:** `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
+   - **macOS:** `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+
+   Then change the path in `Testing-AutoSubs.lua` to point to your local AutoSubs installation and open it from Resolve via **Workspace → Scripts → Testing-AutoSubs**.
+
+Backend code lives under `AutoSubs-App/src-tauri/`. For a full breakdown of the codebase before diving in, see the **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
+
+---
+
 ## Getting Started
 
 ### Fork and Clone the Repository
