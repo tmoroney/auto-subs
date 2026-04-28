@@ -13,13 +13,12 @@ const ProgressBar = ({ progress, status }: { progress: number; status: string })
   </div>
 );
 
-const ConnectionStatus = ({ status, port, attempts, pending }: { status: string; port: number; attempts: number; pending: number }) => (
+const ConnectionStatus = ({ status, attempts, pending }: { status: string; attempts: number; pending: number }) => (
   <div className="connection-info">
     <span className={`dot ${status}`} />
     <span className="text">
       {status === "connected" ? "Connected" : status === "connecting" ? "Connecting..." : "Disconnected"}
     </span>
-    <span className="port">Port: {port}</span>
     {attempts > 0 && <span className="attempts">Reconnect: {attempts}</span>}
     {pending > 0 && <span className="pending">Pending: {pending}</span>}
   </div>
@@ -59,7 +58,7 @@ const AppContent = () => {
       <section className="section">
         <label className="label">Status</label>
         <div className="card status-header">
-          <ConnectionStatus status={status} port={8085} attempts={reconnectAttempts} pending={pendingMessages} />
+          <ConnectionStatus status={status} attempts={reconnectAttempts} pending={pendingMessages} />
         </div>
       </section>
 

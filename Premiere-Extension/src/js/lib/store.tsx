@@ -57,7 +57,7 @@ type Action =
   | { type: 'RESET' };
 
 const initialState: AppState = {
-  connection: { status: 'disconnected', port: 8085, lastHeartbeat: 0, reconnectAttempts: 0, pendingMessages: 0 },
+  connection: { status: 'disconnected', port: 8185, lastHeartbeat: 0, reconnectAttempts: 0, pendingMessages: 0 },
   sequence: { info: null, loading: false, lastUpdated: null },
   operations: { current: null, history: [] },
   logs: { entries: [] },
