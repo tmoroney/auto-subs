@@ -66,8 +66,8 @@ function IntegrationStatus() {
             />
             <span className="max-w-[120px] truncate">
               {isResolveConnected
-                ? (resolveTimeline?.name || "Resolve Connected")
-                : "DaVinci"}
+                ? (resolveTimeline?.name || t("titlebar.resolve.status.connected"))
+                : t("titlebar.resolve.productName")}
             </span>
           </Button>
         </HoverCardTrigger>
@@ -124,8 +124,8 @@ function IntegrationStatus() {
             />
             <span className="max-w-[120px] truncate">
               {isPremiereConnected
-                ? (premiereTimeline?.name || "Premiere Connected")
-                : "Premiere"}
+                ? (premiereTimeline?.name || t("titlebar.premiere.status.connected"))
+                : t("titlebar.premiere.productName")}
             </span>
           </Button>
         </HoverCardTrigger>
