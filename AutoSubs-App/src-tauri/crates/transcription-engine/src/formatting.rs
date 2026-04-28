@@ -437,20 +437,27 @@ fn apply_content_formatting(t: &mut Tok, cfg: &PostProcessConfig, censor_set: &H
     }
 }
 
-/// Unicode-aware "is this a plain alphabetic word fragment" check used for
-/// subword-continuation merging. Accepts any alphabetic codepoint (Latin,
-/// Cyrillic, Greek, Armenian, etc.) plus apostrophe-like marks that commonly
-/// appear inside words.
+/// Unicode-aware "is this a plain word fragment" check used for
+/// subword-continuation merging. Accepts any alphanumeric codepoint (Latin,
+/// Cyrillic, Greek, Korean Hangul, etc.) plus apostrophe-like marks that
+/// commonly appear inside words.
 #[inline]
-fn is_letter_word(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_alphabetic() || c == '\'' || c == '\u{2019}')
+fn is_word_fragment(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '\'' || c == '\u{2019}')
 }
 
 /// Merge tokens where the right token is a continuation piece (no leading space)
-/// and both sides look like alphabetic words. This avoids outputs like
+/// and both sides look like word fragments. This avoids outputs like
 /// "trans" + "human" + "ism" and instead yields "transhumanism", and equally
-/// fixes Cyrillic/Greek/etc. BPE fragments that Whisper emits without a leading
-/// space (e.g. "при" + "ветствую" -> "приветствую").
+/// fixes Cyrillic/Greek/Korean/etc. BPE fragments that Whisper emits without a
+/// leading space (e.g. "при" + "ветствую" -> "приветствую",
+/// "테트" + "리스" -> "테트리스").
+///
+/// The absence of a leading space (`leading_space == false`) is the definitive
+/// signal from the BPE tokenizer that this token continues the previous word.
+/// We do NOT gate on a tiny-gap threshold because Whisper's timestamp alignment
+/// can produce larger-than-expected gaps between syllable tokens, especially for
+/// Korean Hangul and other CJK-adjacent scripts.
 fn merge_continuations(toks: &mut Vec<Tok>) {
     if toks.is_empty() { return; }
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
@@ -466,11 +473,9 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
                 continue;
             }
             let right_cont = !t.leading_space;
-            let both_ascii_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
+            let both_word = is_word_fragment(&prev.word) && is_word_fragment(&t.word);
             let no_prev_punc = prev.punc.is_empty();
-            // Only merge if the boundary is essentially contiguous (tiny gap)
-            let tiny_gap = (t.start - prev.end) <= 0.03;
-            if right_cont && both_ascii_word && no_prev_punc && tiny_gap {
+            if right_cont && both_word && no_prev_punc {
                 // Merge t into prev without inserting a space
                 let merged = join_tokens(prev, &t, /*insert_space*/ false);
                 prev.word = merged.0;
@@ -893,6 +898,30 @@ fn group_lines_into_cues(lines: Vec<Vec<Tok>>, cfg: &PostProcessConfig) -> Vec<S
     cues
 }
 
+/// Rebuild display text from a slice of WordTimestamp entries in a way that is
+/// consistent with `render_slice`. `render_token` unconditionally prepends a
+/// space when `leading_space` is true, but `render_slice` only inserts inter-word
+/// spaces when `insert_interword_space` is enabled and the token is not the first
+/// in the line. This helper mirrors the `render_slice` logic so that text rebuilt
+/// after a cue split matches what `group_lines_into_cues` would produce.
+fn rebuild_text_from_words(words: &[WordTimestamp], cfg: &PostProcessConfig) -> String {
+    let mut s = String::new();
+    for (i, w) in words.iter().enumerate() {
+        let raw = &w.text;
+        let has_leading = raw.starts_with(' ');
+        if cfg.insert_interword_space && has_leading && i > 0 {
+            s.push(' ');
+        }
+        // Append the word text without its leading space (if any)
+        if has_leading {
+            s.push_str(&raw[1..]);
+        } else {
+            s.push_str(raw);
+        }
+    }
+    s
+}
+
 /// Post-pass: enforce min/max subtitle duration and characters-per-second cap.
 /// - Extends short cues to `min_sub_dur` (clamped to not overlap the next cue).
 /// - Splits cues that exceed `max_sub_dur` at the best word boundary.
@@ -928,21 +957,21 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
                     let first_words: Vec<WordTimestamp> = words[..split_at].to_vec();
 
                     if first_words.len() >= 2 && second_words.len() >= 2 {
-                        let first_text = first_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                        let second_text = second_words.iter().map(|w| w.text.as_str()).collect::<String>();
+                        let first_text = rebuild_text_from_words(&first_words, cfg);
+                        let second_text = rebuild_text_from_words(&second_words, cfg);
                         let first_end = first_words.last().unwrap().end;
                         let second_start = second_words.first().unwrap().start;
 
                         let second_cue = Segment {
                             start: round3(second_start),
                             end: cues[i].end,
-                            text: second_text.trim().to_string(),
+                            text: second_text,
                             words: Some(second_words),
                             speaker_id: cues[i].speaker_id.clone(),
                         };
 
                         cues[i].end = round3(first_end);
-                        cues[i].text = first_text.trim().to_string();
+                        cues[i].text = first_text;
                         cues[i].words = Some(first_words);
 
                         cues.insert(i + 1, second_cue);
@@ -983,8 +1012,8 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
                         let first_words: Vec<WordTimestamp> = words[..split_at].to_vec();
 
                         if first_words.len() >= 2 && second_words.len() >= 2 {
-                            let first_text = first_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                            let second_text = second_words.iter().map(|w| w.text.as_str()).collect::<String>();
+                            let first_text = rebuild_text_from_words(&first_words, cfg);
+                            let second_text = rebuild_text_from_words(&second_words, cfg);
                             let first_end = first_words.last().unwrap().end;
                             let second_start = second_words.first().unwrap().start;
 
@@ -993,11 +1022,11 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
                             let first_dur = first_end - cues[i].start;
                             let second_dur = cues[i].end - second_start;
                             let first_chars = if cfg.use_grapheme_len {
-                                UnicodeSegmentation::graphemes(first_text.trim(), true).count()
-                            } else { first_text.trim().len() };
+                                UnicodeSegmentation::graphemes(first_text.as_str(), true).count()
+                            } else { first_text.len() };
                             let second_chars = if cfg.use_grapheme_len {
-                                UnicodeSegmentation::graphemes(second_text.trim(), true).count()
-                            } else { second_text.trim().len() };
+                                UnicodeSegmentation::graphemes(second_text.as_str(), true).count()
+                            } else { second_text.len() };
 
                             // Don't create orphan cues shorter than ~10 chars
                             let min_cue_chars = 10;
@@ -1014,13 +1043,13 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
                                 let second_cue = Segment {
                                     start: round3(second_start),
                                     end: cues[i].end,
-                                    text: second_text.trim().to_string(),
+                                    text: second_text,
                                     words: Some(second_words),
                                     speaker_id: cues[i].speaker_id.clone(),
                                 };
 
                                 cues[i].end = round3(first_end);
-                                cues[i].text = first_text.trim().to_string();
+                                cues[i].text = first_text;
                                 cues[i].words = Some(first_words);
 
                                 cues.insert(i + 1, second_cue);
@@ -1534,5 +1563,202 @@ mod tests {
 
         let cfg = PostProcessConfig::default();
         assert_eq!(cfg.lang, "en");
+    }
+
+    #[test]
+    fn korean_no_character_truncation() {
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 1;
+
+        // Simulate Whisper output for Korean: "안녕하세요 저는 학생입니다"
+        // Whisper often splits Korean into sub-word BPE tokens
+        let seg = Segment {
+            start: 0.0,
+            end: 4.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: " 안녕".into(),     start: 0.0, end: 0.3, probability: None },
+                WordTimestamp { text: "하세요".into(),    start: 0.35, end: 0.7, probability: None },
+                WordTimestamp { text: " 저는".into(),     start: 0.8, end: 1.2, probability: None },
+                WordTimestamp { text: " 학생".into(),     start: 1.3, end: 1.7, probability: None },
+                WordTimestamp { text: "입니다".into(),    start: 1.75, end: 2.2, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        // All Korean characters must be preserved
+        assert!(all_text.contains("안녕하세요"), "missing 안녕하세요 in: {}", all_text);
+        assert!(all_text.contains("저는"), "missing 저는 in: {}", all_text);
+        assert!(all_text.contains("학생입니다"), "missing 학생입니다 in: {}", all_text);
+    }
+
+    #[test]
+    fn korean_bpe_large_gap_merge() {
+        // Regression test for issue #378: Whisper outputs Korean syllable tokens
+        // with gaps > 0.03s between them. Previously, merge_continuations refused
+        // to merge these because of a tiny_gap threshold, leaving individual
+        // syllables as separate "words" which caused truncation during cue splitting.
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 2;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 6.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                // "테트리스" split into syllable tokens with large gaps (> 0.03s)
+                WordTimestamp { text: " 테".into(),    start: 0.0,  end: 0.10, probability: None },
+                WordTimestamp { text: "트".into(),     start: 0.20, end: 0.30, probability: None },
+                WordTimestamp { text: "리스".into(),   start: 0.40, end: 0.55, probability: None },
+                WordTimestamp { text: " 공격이".into(), start: 0.7,  end: 1.0, probability: None },
+                WordTimestamp { text: " 들어".into(),   start: 1.1,  end: 1.3, probability: None },
+                WordTimestamp { text: "가도".into(),    start: 1.40, end: 1.60, probability: None },
+                // Another word split with large gaps
+                WordTimestamp { text: " 어렵".into(),   start: 1.8,  end: 1.95, probability: None },
+                WordTimestamp { text: "게".into(),      start: 2.10, end: 2.20, probability: None },
+                WordTimestamp { text: " 하고".into(),   start: 2.4,  end: 2.7, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        // Every syllable must be present — no truncation despite large gaps
+        assert!(all_text.contains("테트리스"), "missing 테트리스 in: {}", all_text);
+        assert!(all_text.contains("공격이"), "missing 공격이 in: {}", all_text);
+        assert!(all_text.contains("들어가도"), "missing 들어가도 in: {}", all_text);
+        assert!(all_text.contains("어렵게"), "missing 어렵게 in: {}", all_text);
+        assert!(all_text.contains("하고"), "missing 하고 in: {}", all_text);
+    }
+
+    #[test]
+    fn korean_syllable_tokens_all_preserved() {
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 1;
+
+        // Individual syllables as separate tokens with varied gaps
+        let seg = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: " 안".into(),   start: 0.0,  end: 0.08, probability: None },
+                WordTimestamp { text: "녕".into(),    start: 0.12, end: 0.20, probability: None },
+                WordTimestamp { text: "하".into(),    start: 0.24, end: 0.32, probability: None },
+                WordTimestamp { text: "세".into(),    start: 0.36, end: 0.44, probability: None },
+                WordTimestamp { text: "요".into(),    start: 0.48, end: 0.56, probability: None },
+                WordTimestamp { text: " 반".into(),   start: 0.7,  end: 0.78, probability: None },
+                WordTimestamp { text: "갑".into(),    start: 0.82, end: 0.90, probability: None },
+                WordTimestamp { text: "습".into(),    start: 0.94, end: 1.02, probability: None },
+                WordTimestamp { text: "니".into(),    start: 1.06, end: 1.14, probability: None },
+                WordTimestamp { text: "다".into(),    start: 1.18, end: 1.30, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        // After merging, should produce "안녕하세요 반갑습니다"
+        assert!(all_text.contains("안녕하세요"), "missing 안녕하세요 in: {}", all_text);
+        assert!(all_text.contains("반갑습니다"), "missing 반갑습니다 in: {}", all_text);
+    }
+
+    #[test]
+    fn korean_multiline_wrap_preserves_all_characters() {
+        // Test that multi-line wrapping does not drop any characters
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 2;
+        cfg.max_chars_per_line = 12; // narrow to force wrapping
+
+        let seg = Segment {
+            start: 0.0,
+            end: 5.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: " 이것은".into(),     start: 0.0,  end: 0.5, probability: None },
+                WordTimestamp { text: " 테스트".into(),     start: 0.6,  end: 1.0, probability: None },
+                WordTimestamp { text: " 문장입니다".into(), start: 1.1,  end: 1.8, probability: None },
+                WordTimestamp { text: " 감사합니다".into(), start: 2.0,  end: 2.8, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        // Every word must be present across all cues
+        let expected_words = ["이것은", "테스트", "문장입니다", "감사합니다"];
+        for word in &expected_words {
+            assert!(all_text.contains(word), "missing {} in: {}", word, all_text);
+        }
+    }
+
+    #[test]
+    fn korean_cps_split_preserves_characters() {
+        // Test that CPS-triggered splitting does not lose characters
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 2;
+        cfg.cps_cap = 8.0; // low cap to force CPS splitting
+
+        // Long Korean text in a short time window → high CPS
+        let seg = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: " 안녕하세요".into(),   start: 0.0,  end: 0.3, probability: None },
+                WordTimestamp { text: " 저는".into(),        start: 0.3,  end: 0.5, probability: None },
+                WordTimestamp { text: " 한국어를".into(),     start: 0.5,  end: 0.8, probability: None },
+                WordTimestamp { text: " 공부하고".into(),     start: 0.8,  end: 1.1, probability: None },
+                WordTimestamp { text: " 있습니다".into(),     start: 1.1,  end: 1.5, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        let expected_words = ["안녕하세요", "저는", "한국어를", "공부하고", "있습니다"];
+        for word in &expected_words {
+            assert!(all_text.contains(word), "missing {} in: {}", word, all_text);
+        }
+    }
+
+    #[test]
+    fn korean_mixed_alphanumeric_merge() {
+        // Test that mixed Korean + number tokens are properly merged
+        let mut cfg = PostProcessConfig::korean();
+        cfg.lang = "ko".to_string();
+        cfg.max_lines = 1;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                // "2024년" split as " 2024" + "년"
+                WordTimestamp { text: " 2024".into(), start: 0.0,  end: 0.3, probability: None },
+                WordTimestamp { text: "년".into(),    start: 0.35, end: 0.5, probability: None },
+                WordTimestamp { text: " 최상위권".into(), start: 0.6, end: 1.0, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+
+        // "2024" and "년" should be merged into "2024년"
+        assert!(all_text.contains("2024년"), "expected '2024년' in: {}", all_text);
+        assert!(all_text.contains("최상위권"), "missing 최상위권 in: {}", all_text);
     }
 }
