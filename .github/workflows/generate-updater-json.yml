@@ -98,3 +98,8 @@ jobs:
           
           # Upload new asset
           gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+
+      - name: Mark release as latest
+        run: |
+          set -Eeuo pipefail
+          gh release edit "$TAG" --repo "$REPO" --latest
