@@ -24,10 +24,18 @@ pub async fn send_to_premiere(
     state: tauri::State<'_, PremiereState>,
     payload: serde_json::Value,
 ) -> Result<String, String> {
-    let conn_guard = state.connection.lock().await;
-    if let Some(conn) = &*conn_guard {
+    let sender = {
+        let conn_guard = state.connection.lock().await;
+        if let Some(conn) = &*conn_guard {
+            Some(conn.sender.clone())
+        } else {
+            None
+        }
+    };
+
+    if let Some(sender) = sender {
         let msg = payload.to_string();
-        if conn.sender.send(msg).await.is_err() {
+        if sender.send(msg).await.is_err() {
             return Err("Failed to send message to Premiere (connection lost)".into());
         }
         Ok("Message sent".into())
