@@ -55,11 +55,15 @@ export function PremiereProvider({ children }: { children: React.ReactNode }) {
       // Extract sessionId from payload if it's nested
       const sessionId = msg.sessionId || (msg.payload && typeof msg.payload === 'object' ? msg.payload.sessionId : undefined);
 
-      if (sessionId && pendingRequests.current.has(sessionId)) {
-        const resolve = pendingRequests.current.get(sessionId);
-        if (resolve) {
-          resolve(msg.payload);
-          pendingRequests.current.delete(sessionId);
+      if (sessionId) {
+        if (pendingRequests.current.has(sessionId)) {
+          const resolve = pendingRequests.current.get(sessionId);
+          if (resolve) {
+            resolve(msg.payload);
+            pendingRequests.current.delete(sessionId);
+          }
+        } else {
+          console.warn(`Received late response for timed out session: ${sessionId}`);
         }
       } else if (msg.type === 'sequence_info_response') {
          // Fallback for sequence info without matching sessionId
@@ -88,11 +92,12 @@ export function PremiereProvider({ children }: { children: React.ReactNode }) {
 
   const sendRequestAndWait = (fn: (sessionId: string) => Promise<string>): Promise<any> => {
     return new Promise((resolve, reject) => {
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
       const timeout = setTimeout(() => {
+        pendingRequests.current.delete(sessionId);
         reject(new Error('Request timed out'));
       }, 30000);
-
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       pendingRequests.current.set(sessionId, (val) => {
         clearTimeout(timeout);

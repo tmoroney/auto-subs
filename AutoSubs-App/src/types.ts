@@ -70,10 +70,10 @@ export interface Model {
     image: string
     details: string
     badge: string
-    languageSupport: 
-        | { kind: "multilingual" }
-        | { kind: "single_language"; language: string }
-        | { kind: "restricted"; languages: string[] }
+    languageSupport:
+    | { kind: "multilingual" }
+    | { kind: "single_language"; language: string }
+    | { kind: "restricted"; languages: string[] }
     accuracy: 1 | 2 | 3 | 4 // 1 = Poor, 2 = Standard, 3 = Excellent, 4 = Best-in-class
     weight: 1 | 2 | 3 | 4 // 1 = Very Heavy, 2 = Heavy, 3 = Standard, 4 = Lightweight
     isDownloaded: boolean
