@@ -481,7 +481,7 @@
         "connected": "Connected",
         "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
         "disconnected": "Extension disconnected",
-        "openPremiere": "Open Premiere Pro and ensure the AutoSubs extension is open in Window → Extensions."
+        "openPremiere": "Open Premiere Pro to connect automatically."
       }
     }
   },

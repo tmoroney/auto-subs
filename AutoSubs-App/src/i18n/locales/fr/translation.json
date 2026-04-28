@@ -439,6 +439,19 @@
         "cantConnect": "Impossible de se connecter à la timeline",
         "openResolve": "Ouvrez DaVinci Resolve et allez dans Espace de travail → Scripts → AutoSubs"
       }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "status": {
+        "connected": "Connecté",
+        "disconnected": "Déconnecté"
+      },
+      "tooltip": {
+        "connected": "Connecté",
+        "canGetAudio": "Vous pouvez récupérer l'audio de la timeline et y ajouter des sous-titres.",
+        "disconnected": "Extension déconnectée",
+        "openPremiere": "Ouvrez Premiere Pro pour vous connecter automatiquement."
+      }
     }
   },
   "theme": {

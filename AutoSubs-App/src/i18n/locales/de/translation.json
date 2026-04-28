@@ -467,6 +467,19 @@
         "cantConnect": "Keine Verbindung zur Timeline möglich",
         "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
       }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "status": {
+        "connected": "Verbunden",
+        "disconnected": "Getrennt"
+      },
+      "tooltip": {
+        "connected": "Verbunden",
+        "canGetAudio": "Sie können Audio von der Timeline abrufen und Untertitel hinzufügen.",
+        "disconnected": "Erweiterung getrennt",
+        "openPremiere": "Premiere Pro öffnen, um automatisch eine Verbindung herzustellen."
+      }
     }
   },
   "theme": {

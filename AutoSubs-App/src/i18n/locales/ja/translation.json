@@ -428,6 +428,19 @@
         "currentlyViewing": "現在表示中：{{name}}",
         "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください",
         "ready": "タイムラインへのアクセスの準備が完了"
+      },
+      "premiere": {
+        "productName": "Premiere Pro",
+        "status": {
+          "connected": "接続済み",
+          "disconnected": "切断済み"
+        },
+        "tooltip": {
+          "connected": "接続済み",
+          "canGetAudio": "タイムラインから音声を抽出し、字幕を追加できます。",
+          "disconnected": "拡張機能が切断されました",
+          "openPremiere": "Premiere Proを開くと自動的に接続されます。"
+        }
       }
     },
     "windowControls": {
