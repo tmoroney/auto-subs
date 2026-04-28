@@ -17,7 +17,7 @@ if ($ext -in @('.exe', '.dll', '.msi')) {
     /tr http://time.certum.pl `
     /td sha256 `
     /fd sha256 `
-    /sha1 df6635960a607103e4882c0671c2f8d0ef2ace18 `
+    /sha1 4913cafc886d055b1634b0e191ede45034563b4a `
     $Path
 } else {
   Write-Host "Skipping non-signable file: $Path"
