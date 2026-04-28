@@ -1,5 +1,5 @@
 use eyre::{Result, eyre};
-use transcription_engine::{Callbacks, Engine, EngineConfig, ProgressType, Segment, TranscribeOptions};
+use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TextDensity, TranscribeOptions};
 
 struct CliArgs {
     audio_path: String,
@@ -151,20 +151,26 @@ async fn main() -> Result<()> {
     };
 
     let callbacks = Callbacks {
-        progress: Some(&on_progress),
+        progress: None, // Some(&on_progress),
         new_segment_callback: Some(&on_new_segment),
         is_cancelled: None,
     };
 
+    let content_formatting = ContentFormatting {
+        text_case: TextCase::None,
+        remove_punctuation: false,
+        censored_words: vec![],
+    };
+
     let mut engine = Engine::new(config);
-    let (segments, language) = engine
-        .transcribe_audio(&args.audio_path, options, None, None, Some(callbacks))
+    let (segments, _, language) = engine
+        .transcribe_audio(&args.audio_path, options, None, None, None, Some(content_formatting), Some(callbacks))
         .await?;
 
     println!("\nTranscribed {} segments (language: {})", segments.len(), language);
 
     let json = serde_json::to_string_pretty(&segments)?;
-    std::fs::write(&args.output_path, json)?;
+    std::fs::write(&args.output_path, json.as_bytes())?;
     println!("Saved transcript JSON to {}", args.output_path);
 
     Ok(())
