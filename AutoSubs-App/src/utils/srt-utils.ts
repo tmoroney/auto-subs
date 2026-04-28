@@ -18,35 +18,37 @@ export function generateSrt(subtitles: Subtitle[]): string {
         throw new Error('Subtitles must be an array');
     }
 
-    // Deep clone to avoid mutating original
-    const sanitized = JSON.parse(JSON.stringify(subtitles)) as Subtitle[];
+    // Deep clone and filter out invalid/malformed entries upfront
+    const sanitized = (JSON.parse(JSON.stringify(subtitles)) as any[]).filter(
+        sub => sub && typeof sub === 'object' && 'start' in sub && 'end' in sub
+    ) as Subtitle[];
 
     // 1. Enforce minimum duration and fix overlaps
     const MIN_DURATION = 0.4; // 400ms minimum duration for readability
-    
+
     for (let i = 0; i < sanitized.length; i++) {
         let current = sanitized[i];
         let start = Number(current.start);
         let end = Number(current.end);
-        
+
         if (isNaN(start) || isNaN(end)) continue;
 
         // Enforce minimum duration
         if (end - start < MIN_DURATION) {
             let needed = MIN_DURATION - (end - start);
-            
+
             // Try to expand backward into previous gap
-            let prevEnd = i > 0 ? Number(sanitized[i-1].end) : 0;
+            let prevEnd = i > 0 ? Number(sanitized[i - 1].end) : 0;
             let availableBackward = start - prevEnd;
             if (availableBackward > 0) {
                 let expandBackward = Math.min(needed, availableBackward);
                 start -= expandBackward;
                 needed -= expandBackward;
             }
-            
+
             // Try to expand forward into next gap
             if (needed > 0) {
-                let nextStart = i < sanitized.length - 1 ? Number(sanitized[i+1].start) : end + needed;
+                let nextStart = i < sanitized.length - 1 ? Number(sanitized[i + 1].start) : end + needed;
                 let availableForward = nextStart - end;
                 if (availableForward > 0) {
                     let expandForward = Math.min(needed, availableForward);
@@ -54,10 +56,10 @@ export function generateSrt(subtitles: Subtitle[]): string {
                 }
             }
         }
-        
+
         // Prevent exact overlaps (SRT importers like Premiere prefer a small gap)
         if (i > 0) {
-            let prevEnd = Number(sanitized[i-1].end);
+            let prevEnd = Number(sanitized[i - 1].end);
             if (start <= prevEnd) {
                 start = prevEnd + 0.001; // Push it forward to create a 1ms gap
                 if (end < start) end = start + MIN_DURATION; // Ensure valid duration
