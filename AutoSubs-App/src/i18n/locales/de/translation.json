@@ -125,6 +125,10 @@
       "disabled": "Deaktiviert"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Ganze Timeline",
+        "inout": "In/Out Punkte"
+      },
       "selectTracks": "Spuren auswählen...",
       "trackN": "Spur {{n}}",
       "countSelected": "{{count}} Spuren ausgewählt",

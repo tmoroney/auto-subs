@@ -125,6 +125,10 @@
       "disabled": "Disabled"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Entire Timeline",
+        "inout": "In/Out Points"
+      },
       "selectTracks": "Select tracks...",
       "trackN": "Track {{n}}",
       "countSelected": "{{count}} tracks selected",

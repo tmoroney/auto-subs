@@ -65,6 +65,10 @@
       "title": "話者ラベル"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "タイムライン全体",
+        "inout": "イン/アウトポイント"
+      },
       "clearAll": "すべてクリア",
       "clickToSelect": "クリックして音声トラックを選択",
       "countSelected": "{{count}} トラック選択済み",

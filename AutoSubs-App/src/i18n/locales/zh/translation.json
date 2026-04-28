@@ -125,6 +125,10 @@
       "disabled": "已禁用"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "整个时间线",
+        "inout": "入点/出点"
+      },
       "selectTracks": "选择轨道...",
       "trackN": "轨道 {{n}}",
       "countSelected": "已选择 {{count}} 个轨道",

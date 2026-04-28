@@ -125,6 +125,10 @@
       "disabled": "Desactivado"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Toda la línea de tiempo",
+        "inout": "Puntos de entrada/salida"
+      },
       "selectTracks": "Selecciona pistas...",
       "trackN": "Pista {{n}}",
       "countSelected": "{{count}} pistas seleccionadas",

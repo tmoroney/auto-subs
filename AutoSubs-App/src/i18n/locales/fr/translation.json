@@ -117,6 +117,10 @@
       "disabled": "Désactivé"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Toute la timeline",
+        "inout": "Points d'entrée/sortie"
+      },
       "selectTracks": "Sélectionner des pistes...",
       "trackN": "Piste {{n}}",
       "countSelected": "{{count}} pistes sélectionnées",

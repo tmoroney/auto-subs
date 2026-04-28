@@ -67,6 +67,10 @@
       "title": "화자 레이블"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "전체 타임라인",
+        "inout": "인/아웃 포인트"
+      },
       "clearAll": "모두 지우기",
       "clickToSelect": "클릭하여 오디오 트랙 선택",
       "countSelected": "{{count}}개 트랙 선택됨",

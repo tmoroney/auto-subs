@@ -62,8 +62,12 @@ export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorPr
                         className="w-full"
                     >
                         <TabsList className="grid grid-cols-2 w-full h-8 p-1">
-                            <TabsTrigger value="entire" className="text-xs">Linha do Tempo</TabsTrigger>
-                            <TabsTrigger value="inout" className="text-xs">In/Out Points</TabsTrigger>
+                            <TabsTrigger value="entire" className="text-xs">
+                                {t("actionBar.tracks.exportRange.entire")}
+                            </TabsTrigger>
+                            <TabsTrigger value="inout" className="text-xs">
+                                {t("actionBar.tracks.exportRange.inout")}
+                            </TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>
