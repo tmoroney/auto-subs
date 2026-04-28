@@ -31,3 +31,4 @@ dist-ssr
 
 # Local environment variables (contains secrets)
 .env
+

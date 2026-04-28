@@ -67,6 +67,10 @@
       "title": "화자 레이블"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "전체 타임라인",
+        "inout": "인/아웃 포인트"
+      },
       "clearAll": "모두 지우기",
       "clickToSelect": "클릭하여 오디오 트랙 선택",
       "countSelected": "{{count}}개 트랙 선택됨",
@@ -448,6 +452,19 @@
         "currentlyViewing": "현재 보기: {{name}}",
         "openResolve": "DaVinci Resolve를 열고 작업 공간 → 스크립트 → AutoSubs로 이동하세요",
         "ready": "타임라인 접근 준비 완료"
+      },
+      "premiere": {
+        "productName": "Premiere Pro",
+        "status": {
+          "connected": "연결됨",
+          "disconnected": "연결 끊김"
+        },
+        "tooltip": {
+          "connected": "연결됨",
+          "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
+          "disconnected": "확장 프로그램 연결 끊김",
+          "openPremiere": "자동으로 연결하려면 Premiere Pro를 여십시오."
+        }
       }
     },
     "windowControls": {

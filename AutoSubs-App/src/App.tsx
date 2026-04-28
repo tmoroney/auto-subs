@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Titlebar } from "@/components/layout/titlebar"
-import { useResolve } from "@/contexts/ResolveContext"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
@@ -42,7 +41,7 @@ export function ThemeToggle() {
 function AppContent() {
   const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
   const isMobile = useIsMobile()
-  const { timelineInfo } = useResolve()
+
   const { settings, isHydrated } = useSettings()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
 
@@ -83,7 +82,6 @@ function AppContent() {
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Use actual timeline info from Resolve context */}
         <Titlebar
-          timelineInfo={timelineInfo}
           onOpenCompactViewer={handleOpenCompactViewer}
         />
 

@@ -125,6 +125,10 @@
       "disabled": "Desactivado"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Toda la línea de tiempo",
+        "inout": "Puntos de entrada/salida"
+      },
       "selectTracks": "Selecciona pistas...",
       "trackN": "Pista {{n}}",
       "countSelected": "{{count}} pistas seleccionadas",
@@ -462,6 +466,19 @@
         "canGetAudio": "Puedes obtener el audio de la línea de tiempo y añadirle subtítulos.",
         "cantConnect": "No se puede conectar a la línea de tiempo",
         "openResolve": "Abre DaVinci Resolve y ve a Workspace → Scripts → AutoSubs"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "status": {
+        "connected": "Conectado",
+        "disconnected": "Desconectado"
+      },
+      "tooltip": {
+        "connected": "Conectado",
+        "canGetAudio": "Puedes obter el audio de la línea de tiempo y añadirle subtítulos.",
+        "disconnected": "Extensión desconectada",
+        "openPremiere": "Abre Premiere Pro para conectarte automáticamente."
       }
     }
   },

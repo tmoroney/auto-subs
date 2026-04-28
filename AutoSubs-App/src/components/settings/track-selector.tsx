@@ -5,12 +5,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Track } from "@/types"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useTranslation } from "react-i18next"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface TrackSelectorProps {
     inputTracks: Track[]
+    isPremiereActive?: boolean
 }
 
-export function TrackSelector({ inputTracks }: TrackSelectorProps) {
+export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorProps) {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
 
@@ -51,6 +53,26 @@ export function TrackSelector({ inputTracks }: TrackSelectorProps) {
                     </p>
                 </div>
             )}
+
+            {isPremiereActive && (
+                <div className="px-4 py-2 border-b bg-muted/10">
+                    <Tabs 
+                        value={settings.exportRange || "entire"} 
+                        onValueChange={(val) => updateSetting("exportRange", val as "entire" | "inout")}
+                        className="w-full"
+                    >
+                        <TabsList className="grid grid-cols-2 w-full h-8 p-1">
+                            <TabsTrigger value="entire" className="text-xs">
+                                {t("actionBar.tracks.exportRange.entire")}
+                            </TabsTrigger>
+                            <TabsTrigger value="inout" className="text-xs">
+                                {t("actionBar.tracks.exportRange.inout")}
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+            )}
+
             {inputTracks.length > 0 ? (
                 <ScrollArea className="max-h-[200px] w-full h-64">
                     <div className="flex flex-col gap-1 p-2">

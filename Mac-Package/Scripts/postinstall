@@ -27,4 +27,18 @@ rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
 # Also copy lua file to Workflow Integration Plugin for ease of use
 cp "$RESOURCES_PATH/AutoSubs.lua" "$WORKFLOW_INTEGRATION_PATH"
 
+# Premiere Pro Extension Installation
+PREMIERE_PATH="$HOME/Library/Application Support/Adobe/CEP/extensions"
+mkdir -p "$PREMIERE_PATH"
+cp -r "$RESOURCES_PATH/com.autosubs.premiere" "$PREMIERE_PATH"
+
+# Enable PlayerDebugMode for Adobe CEP extensions (CSXS 6-12)
+defaults write com.adobe.CSXS.6 PlayerDebugMode 1
+defaults write com.adobe.CSXS.7 PlayerDebugMode 1
+defaults write com.adobe.CSXS.8 PlayerDebugMode 1
+defaults write com.adobe.CSXS.9 PlayerDebugMode 1
+defaults write com.adobe.CSXS.10 PlayerDebugMode 1
+defaults write com.adobe.CSXS.11 PlayerDebugMode 1
+defaults write com.adobe.CSXS.12 PlayerDebugMode 1
+
 exit 0

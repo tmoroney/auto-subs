@@ -182,22 +182,27 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
   
   const completeAllProgressSteps = () => {
-    setProcessingSteps(prev => [
-      ...prev.map(step => ({
+    setProcessingSteps(prev => {
+      const updatedSteps = prev.map(step => ({
         ...step,
         progress: 100,
         isActive: false,
         isCompleted: true
-      })),
-      {
-        id: 'Complete',
-        title: i18n.t('completion.processingComplete'),
-        description: i18n.t('completion.subtitlesReady'),
-        progress: 100,
-        isActive: false,
-        isCompleted: true
+      }));
+
+      if (!prev.some(step => step.id === 'Complete')) {
+        updatedSteps.push({
+          id: 'Complete',
+          title: i18n.t('completion.processingComplete'),
+          description: i18n.t('completion.subtitlesReady'),
+          progress: 100,
+          isActive: false,
+          isCompleted: true
+        });
       }
-    ])
+
+      return updatedSteps;
+    })
   }
 
   // Cancel all progress steps and show cancelled state

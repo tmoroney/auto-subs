@@ -24,6 +24,7 @@ export interface ProcessingStepProps {
     livePreviewSegments?: any[];
     settings?: Settings;
     timelineInfo?: TimelineInfo;
+    selectedIntegration?: "davinci" | "premiere";
 }
 
 export function ProcessingStepItem({
@@ -39,11 +40,12 @@ export function ProcessingStepItem({
     onViewSubtitles,
     livePreviewSegments = [],
     settings,
-    timelineInfo
+    timelineInfo,
+    selectedIntegration
 }: ProcessingStepProps) {
     // If this is the completion step, render the special completion component
     if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} settings={settings} timelineInfo={timelineInfo} />;
+        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} settings={settings} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
     }
 
     return (

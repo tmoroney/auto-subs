@@ -125,6 +125,10 @@
       "disabled": "已禁用"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "整个时间线",
+        "inout": "入点/出点"
+      },
       "selectTracks": "选择轨道...",
       "trackN": "轨道 {{n}}",
       "countSelected": "已选择 {{count}} 个轨道",
@@ -462,6 +466,19 @@
         "canGetAudio": "您可以从时间线获取音频，并将字幕添加回时间线。",
         "cantConnect": "无法连接到时间线",
         "openResolve": "打开 DaVinci Resolve，然后前往 Workspace → Scripts → AutoSubs"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "status": {
+        "connected": "已连接",
+        "disconnected": "已断开"
+      },
+      "tooltip": {
+        "connected": "已连接",
+        "canGetAudio": "你可以从时间线获取音频并添加字幕。",
+        "disconnected": "扩展已断开",
+        "openPremiere": "打开 Premiere Pro 即可自动连接。"
       }
     }
   },

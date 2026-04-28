@@ -17,6 +17,7 @@ export interface CompletionStepProps {
     onViewSubtitles?: () => void;
     settings: Settings;
     timelineInfo: TimelineInfo;
+    selectedIntegration?: "davinci" | "premiere";
 }
 
 export function CompletionStepItem({
@@ -24,10 +25,12 @@ export function CompletionStepItem({
     onAddToTimeline,
     onViewSubtitles,
     settings,
-    timelineInfo
+    timelineInfo,
+    selectedIntegration
 }: CompletionStepProps) {
     const { t } = useTranslation()
-    const isResolveConnected = Boolean(timelineInfo?.timelineId)
+    const isResolveConnected = Boolean(timelineInfo?.timelineId) && selectedIntegration !== "premiere"
+    const isPremiereConnected = Boolean(timelineInfo?.timelineId) && selectedIntegration === "premiere"
 
     return (
         <div className="flex w-full flex-col gap-2">
@@ -64,11 +67,12 @@ export function CompletionStepItem({
                                 {t("completion.exportToFile")}
                             </Button>
                         )}
-                        {isResolveConnected && (
+                        {(isResolveConnected || isPremiereConnected) && (
                             <AddToTimelineDialog
                                 settings={settings}
                                 timelineInfo={timelineInfo}
                                 onAddToTimeline={onAddToTimeline}
+                                selectedIntegration={selectedIntegration}
                             >
                                 <Button
                                     variant="outline"

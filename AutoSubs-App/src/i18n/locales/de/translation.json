@@ -125,6 +125,10 @@
       "disabled": "Deaktiviert"
     },
     "tracks": {
+      "exportRange": {
+        "entire": "Ganze Timeline",
+        "inout": "In/Out Punkte"
+      },
       "selectTracks": "Spuren auswählen...",
       "trackN": "Spur {{n}}",
       "countSelected": "{{count}} Spuren ausgewählt",
@@ -462,6 +466,19 @@
         "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
         "cantConnect": "Keine Verbindung zur Timeline möglich",
         "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "status": {
+        "connected": "Verbunden",
+        "disconnected": "Getrennt"
+      },
+      "tooltip": {
+        "connected": "Verbunden",
+        "canGetAudio": "Sie können Audio von der Timeline abrufen und Untertitel hinzufügen.",
+        "disconnected": "Erweiterung getrennt",
+        "openPremiere": "Premiere Pro öffnen, um automatisch eine Verbindung herzustellen."
       }
     }
   },
