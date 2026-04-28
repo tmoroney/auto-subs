@@ -37,7 +37,17 @@ struct Tok {
     pub prob: Option<f32>,
     pub speaker: Option<String>,
     pub leading_space: bool, // whether original token text began with a space/newline
+    /// True if this token is the first word of a new whisper segment that was
+    /// preceded by a meaningful pause. Used to force line + cue breaks so the
+    /// formatter respects whisper's natural utterance boundaries instead of
+    /// re-merging short utterances across silence gaps.
+    pub segment_break: bool,
 }
+
+/// Minimum inter-segment silence (seconds) for a whisper segment boundary to
+/// be promoted to a forced cue break. Below this we assume whisper sub-split
+/// the same phrase rather than detecting a real pause.
+const SEGMENT_BREAK_GAP_SEC: f64 = 0.3;
 
 #[inline]
 fn round3(x: f64) -> f64 { (x * 1000.0).round() / 1000.0 }
@@ -248,20 +258,32 @@ pub fn process_segments(
     cfg: &PostProcessConfig,
 ) -> Vec<Segment> {
     // 1) Collect words from all segments, keep speaker_id continuity.
-    let mut all: Vec<(Option<String>, WordTimestamp)> = Vec::new();
-    for seg in segments {
+    //    Mark the first word of each non-first segment with `segment_break`
+    //    when the gap from the previous word's end is large enough to be a
+    //    real utterance boundary (vs. whisper sub-splitting one phrase).
+    let mut all: Vec<(Option<String>, WordTimestamp, bool)> = Vec::new();
+    let mut prev_end: Option<f64> = None;
+    for (seg_idx, seg) in segments.iter().enumerate() {
         let speaker = seg.speaker_id.clone();
-        if let Some(ws) = &seg.words {
-            for w in ws {
-                all.push((speaker.clone(), w.clone()));
+        let words: Vec<WordTimestamp> = match &seg.words {
+            Some(ws) if !ws.is_empty() => ws.clone(),
+            _ => {
+                if !seg.text.trim().is_empty() {
+                    vec![WordTimestamp {
+                        text: seg.text.clone(), start: seg.start, end: seg.end, probability: None,
+                    }]
+                } else {
+                    Vec::new()
+                }
             }
-        } else {
-            // fallback: treat the whole segment as one word if needed
-            if !seg.text.trim().is_empty() {
-                all.push((speaker.clone(), WordTimestamp {
-                    text: seg.text.clone(), start: seg.start, end: seg.end, probability: None,
-                }));
-            }
+        };
+        for (w_idx, w) in words.into_iter().enumerate() {
+            let is_first_in_seg = w_idx == 0;
+            let segment_break = is_first_in_seg
+                && seg_idx > 0
+                && prev_end.map(|pe| (w.start - pe) >= SEGMENT_BREAK_GAP_SEC).unwrap_or(false);
+            prev_end = Some(w.end);
+            all.push((speaker.clone(), w, segment_break));
         }
     }
     if all.is_empty() { return Vec::new(); }
@@ -269,7 +291,7 @@ pub fn process_segments(
     // 2) Normalize tokens: separate trailing punctuation for split logic.
 
     let mut toks: Vec<Tok> = Vec::with_capacity(all.len());
-    for (speaker, w) in all.into_iter() {
+    for (speaker, w, segment_break) in all.into_iter() {
         let (core_raw, punc_raw) = split_trailing_punct(&w.text);
         // Capture whether this token originally had a leading space/newline indicator
         let leading_space = core_raw.starts_with(' ') || core_raw.starts_with('\n');
@@ -288,6 +310,7 @@ pub fn process_segments(
             prob: w.probability,
             speaker,
             leading_space,
+            segment_break,
         });
     }
 
@@ -456,12 +479,17 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
     for t in std::mem::take(toks).into_iter() {
         if let Some(prev) = out.last_mut() {
-            // Case 1: punctuation-only token -> merge into previous token
+            // Never merge across a forced segment boundary.
+            if t.segment_break {
+                out.push(t);
+                continue;
+            }
+            // Case 1: punctuation-only token -> append its punc to previous's
+            // punc field rather than absorbing prev.punc into the word body.
+            // This preserves terminal markers like "." when followed by a
+            // closing quote/bracket (e.g. `같아요.` + `"` -> punc=`."`).
             if t.word.is_empty() && !t.punc.is_empty() {
-                // Append punctuation to previous without adding space
-                let merged = join_tokens(prev, &t, /*insert_space*/ false);
-                prev.word = merged.0;
-                prev.punc = merged.1;
+                prev.punc.push_str(&t.punc);
                 prev.end = prev.end.max(t.end);
                 continue;
             }
@@ -499,7 +527,10 @@ fn split_trailing_punct(s: &str) -> (&str, &str) {
 }
 
 fn is_terminal_punct(p: &str) -> bool {
-    matches!(p, "." | "!" | "?" | "…" | "。" | "！" | "？")
+    // Match if any character in the punc string is a sentence terminator.
+    // Looser than equality so combos like `."`, `?)`, `…"` still trigger
+    // line breaks when a closing quote/bracket trails the terminator.
+    p.chars().any(|c| matches!(c, '.' | '!' | '?' | '…' | '。' | '！' | '？'))
 }
 
 fn is_comma_like(p: &str) -> bool { matches!(p, "," | "，" | "、" | ";") }
@@ -527,12 +558,15 @@ fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig) {
         }
     }
 
-    // Second pass: merge very tiny words with neighbors (prefer next)
+    // Third pass: merge very tiny words with neighbors (prefer next).
+    // Never merge across a forced segment boundary in either direction.
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
     let mut i = 0;
     while i < toks.len() {
         let dur = toks[i].end - toks[i].start;
-        if dur < cfg.min_word_dur && i + 1 < toks.len() {
+        let can_merge_forward = i + 1 < toks.len() && !toks[i + 1].segment_break;
+        let can_merge_back = i > 0 && !toks[i].segment_break;
+        if dur < cfg.min_word_dur && can_merge_forward {
             // merge i into i+1
             let mut next = toks[i + 1].clone();
             let merged_word = join_tokens(&toks[i], &next, cfg.insert_interword_space);
@@ -540,9 +574,11 @@ fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig) {
             next.punc = merged_word.1;
             next.start = toks[i].start.min(next.start);
             next.leading_space = merged_word.2;
+            // Preserve the boundary marker if the absorbed token carried it.
+            next.segment_break = next.segment_break || toks[i].segment_break;
             out.push(next);
             i += 2;
-        } else if dur < cfg.min_word_dur && i > 0 {
+        } else if dur < cfg.min_word_dur && can_merge_back {
             // merge into previous
             let mut prev = out.pop().unwrap();
             let merged_word = join_tokens(&prev, &toks[i], cfg.insert_interword_space);
@@ -673,6 +709,14 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
                 lines.push(std::mem::take(&mut cur));
                 cur_chars = 0;
             }
+        }
+
+        // Force line break at a whisper segment boundary with a real pause.
+        // This preserves natural utterance boundaries even for short cues
+        // that wouldn't trip the proactive line-fill threshold below.
+        if !cur.is_empty() && tok.segment_break {
+            lines.push(std::mem::take(&mut cur));
+            cur_chars = 0;
         }
 
         // Force line break after terminal punctuation on previous token
@@ -854,6 +898,10 @@ fn group_lines_into_cues(lines: Vec<Vec<Tok>>, cfg: &PostProcessConfig) -> Vec<S
             // Don't mix speakers in one cue
             let next_speaker = lines[j].first().and_then(|t| t.speaker.clone());
             if next_speaker != cue_speaker {
+                break;
+            }
+            // A whisper segment boundary forces a fresh cue, not just a new line
+            if lines[j].first().map(|t| t.segment_break).unwrap_or(false) {
                 break;
             }
             cue_lines.push(&lines[j]);
@@ -1415,9 +1463,9 @@ mod tests {
 
         // Verify adjust_kinsoku shifts the break point
         let toks = vec![
-            Tok { word: "テスト".into(), punc: "".into(), start: 0.0, end: 0.5, prob: None, speaker: None, leading_space: false },
-            Tok { word: "ー".into(), punc: "".into(), start: 0.5, end: 0.6, prob: None, speaker: None, leading_space: false },
-            Tok { word: "データ".into(), punc: "".into(), start: 0.6, end: 1.0, prob: None, speaker: None, leading_space: false },
+            Tok { word: "テスト".into(), punc: "".into(), start: 0.0, end: 0.5, prob: None, speaker: None, leading_space: false, segment_break: false },
+            Tok { word: "ー".into(), punc: "".into(), start: 0.5, end: 0.6, prob: None, speaker: None, leading_space: false, segment_break: false },
+            Tok { word: "データ".into(), punc: "".into(), start: 0.6, end: 1.0, prob: None, speaker: None, leading_space: false, segment_break: false },
         ];
         // Breaking at index 1 would put 'ー' at line start — kinsoku should shift to 2
         let adjusted = adjust_kinsoku(&toks, 1);

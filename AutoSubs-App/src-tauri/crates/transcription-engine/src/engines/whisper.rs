@@ -226,33 +226,81 @@ fn get_token_timestamps(seg: &WhisperSegment) -> Vec<WordTimestamp> {
     let n = seg.n_tokens() as usize;
     let mut toks: Vec<Tok> = Vec::with_capacity(n);
 
+    // Whisper's BPE tokenizer routinely splits a single multi-byte UTF-8
+    // codepoint (Hangul, CJK, emoji, …) across multiple consecutive tokens.
+    // Decoding each token in isolation would replace partial byte sequences
+    // with U+FFFD, so we accumulate bytes and only decode at codepoint
+    // boundaries — mirroring how whisper.cpp produces segment-level text.
+    let mut pending: Vec<u8> = Vec::new();
+    let mut pend_t0: Option<f64> = None;
+    let mut pend_t1: f64 = 0.0;
+    let mut pend_anchor: Option<f64> = None;
+    let mut pend_probs: Vec<f32> = Vec::new();
+
     for i in 0..n {
-        if let Some(tok) = seg.get_token(i as i32) {
-            let raw = tok.to_str_lossy().map(|c| c.into_owned()).unwrap_or_default();
+        let Some(tok) = seg.get_token(i as i32) else { continue };
+        let Ok(raw_bytes) = tok.to_bytes() else { continue };
 
-            // Skip whole control tokens like "[_BEG_]" or "[_TT_320]"
-            if is_whole_control_token(&raw) {
-                continue;
+        // Defensive: trim any trailing NULs.
+        let mut end = raw_bytes.len();
+        while end > 0 && raw_bytes[end - 1] == 0 { end -= 1; }
+        let bytes = &raw_bytes[..end];
+        if bytes.is_empty() { continue; }
+
+        // Whole control markers like "[_BEG_]" / "[_TT_320]" are pure ASCII;
+        // detect on raw bytes and skip without touching the pending buffer.
+        if let Ok(s) = std::str::from_utf8(bytes) {
+            if is_whole_control_token(s) { continue; }
+        }
+
+        let td = tok.token_data();
+        let anchor = if td.t_dtw >= 0 { Some(cs_to_s(td.t_dtw)) } else { None };
+        let t0 = cs_to_s(td.t0);
+        let t1 = cs_to_s(td.t1);
+
+        if pending.is_empty() { pend_t0 = Some(t0); }
+        pending.extend_from_slice(bytes);
+        pend_t1 = t1;
+        if anchor.is_some() { pend_anchor = anchor; }
+        pend_probs.push(td.p);
+
+        // If the buffer now ends on a complete codepoint, flush it.
+        if let Ok(decoded) = std::str::from_utf8(&pending) {
+            let clean = strip_embedded_control_markers(decoded);
+            if !clean.trim_matches('\0').trim().is_empty() {
+                let mean_p = pend_probs.iter().sum::<f32>() / pend_probs.len() as f32;
+                toks.push(Tok {
+                    text: clean,
+                    p: mean_p,
+                    t0: pend_t0.unwrap_or(t0),
+                    t1: pend_t1,
+                    anchor: pend_anchor,
+                });
             }
+            pending.clear();
+            pend_t0 = None;
+            pend_anchor = None;
+            pend_probs.clear();
+        }
+    }
 
-            // Remove embedded control markers that hitchhike inside printable tokens
-            let clean = strip_embedded_control_markers(&raw);
-
-            // Skip if nothing printable remains
-            if clean.trim_matches('\0').trim().is_empty() {
-                continue;
-            }
-
-            let td = tok.token_data();
-            // Use DTW anchor only if present (>= 0). Whisper uses -1 when DTW is not computed.
-            let anchor = if td.t_dtw >= 0 { Some(cs_to_s(td.t_dtw)) } else { None };
-
+    // Tail: if anything is left mid-codepoint at the end of the segment,
+    // decode lossily so we don't silently drop characters.
+    if !pending.is_empty() {
+        let decoded = String::from_utf8_lossy(&pending).into_owned();
+        let clean = strip_embedded_control_markers(&decoded);
+        if !clean.trim_matches('\0').trim().is_empty() {
+            let mean_p = if pend_probs.is_empty() {
+                0.0
+            } else {
+                pend_probs.iter().sum::<f32>() / pend_probs.len() as f32
+            };
             toks.push(Tok {
                 text: clean,
-                p: td.p,
-                t0: cs_to_s(td.t0),
-                t1: cs_to_s(td.t1),
-                anchor,
+                p: mean_p,
+                t0: pend_t0.unwrap_or(0.0),
+                t1: pend_t1,
+                anchor: pend_anchor,
             });
         }
     }
