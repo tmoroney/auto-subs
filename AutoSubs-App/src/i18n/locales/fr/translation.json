@@ -100,7 +100,16 @@
         "custom": "Personnalisé"
       },
       "customCharsTitle": "Max caractères",
-      "customCharsDescription": "Caractères par ligne"
+      "customCharsDescription": "Caractères par ligne",
+      "customPromptTitle": "Vocabulaire et contexte",
+      "customPromptDescription": "Aide Whisper à reconnaître les noms, marques, jargon, acronymes et orthographes préférées.",
+      "customPromptTermsTitle": "Termes clés",
+      "customPromptTermsPlaceholder": "Ajoutez des noms, marques, acronymes ou jargon...",
+      "customPromptTermsExample": "Exemple : OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
+      "customPromptContextTitle": "Contexte / note de style",
+      "customPromptContextPlaceholder": "Ajoutez un sujet court ou une préférence d’orthographe...",
+      "customPromptContextExample": "Exemple : Tutoriel DaVinci Resolve. Préférer « AutoSubs » plutôt que « Auto Subs ».",
+      "customPromptWhisperOnly": "Pris en charge uniquement par les modèles Whisper."
     },
     "censor": {
       "title": "Censurer des mots",

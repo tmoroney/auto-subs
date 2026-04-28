@@ -47,7 +47,16 @@
         "custom": "사용자 지정"
       },
       "customCharsTitle": "최대 문자 수",
-      "customCharsDescription": "줄당 문자 수"
+      "customCharsDescription": "줄당 문자 수",
+      "customPromptTitle": "어휘 및 맥락",
+      "customPromptDescription": "Whisper가 이름, 브랜드, 전문 용어, 약어, 선호 표기를 더 잘 인식하도록 돕습니다.",
+      "customPromptTermsTitle": "주요 용어",
+      "customPromptTermsPlaceholder": "이름, 브랜드, 약어 또는 전문 용어 입력...",
+      "customPromptTermsExample": "예: OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
+      "customPromptContextTitle": "맥락 / 스타일 메모",
+      "customPromptContextPlaceholder": "짧은 주제나 선호 표기 입력...",
+      "customPromptContextExample": "예: DaVinci Resolve 튜토리얼입니다. “Auto Subs”보다 “AutoSubs” 표기를 선호합니다.",
+      "customPromptWhisperOnly": "Whisper 모델에서만 지원됩니다."
     },
     "language": {
       "noLanguageFound": "언어를 찾을 수 없습니다.",

@@ -95,6 +95,10 @@ export interface Settings {
     timesDismissedSurvey: number;
     lastSurveyDate: string;
 
+    // Milestone tracking
+    transcriptionsCompleted: number;
+    subSlateMilestoneShown: boolean;
+
     // Processing settings
     model: number; // index of model in models array
     language: string,
@@ -113,6 +117,7 @@ export interface Settings {
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
+    customPrompt: string,
     customMaxCharsPerLine: number,
 
     // Davinci Resolve settings
@@ -162,6 +167,7 @@ export interface TranscriptionOptions {
     textCase: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation: boolean,
     censoredWords: string[],
+    customPrompt?: string,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

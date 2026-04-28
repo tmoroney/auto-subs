@@ -71,6 +71,7 @@ pub struct FrontendTranscribeOptions {
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
     pub censored_words: Option<Vec<String>>,
+    pub custom_prompt: Option<String>,
 }
 
 /// Parse a frontend text_case string ("none"|"lowercase"|"uppercase"|"titlecase") into TextCase.
@@ -115,6 +116,7 @@ struct TranscribeOptionsLogView<'a> {
     text_case: Option<&'a str>,
     remove_punctuation: Option<bool>,
     censored_words_count: usize,
+    custom_prompt_chars: usize,
 }
 
 impl<'a> From<&'a FrontendTranscribeOptions> for TranscribeOptionsLogView<'a> {
@@ -139,6 +141,7 @@ impl<'a> From<&'a FrontendTranscribeOptions> for TranscribeOptionsLogView<'a> {
             text_case: o.text_case.as_deref(),
             remove_punctuation: o.remove_punctuation,
             censored_words_count: o.censored_words.as_ref().map(|v| v.len()).unwrap_or(0),
+            custom_prompt_chars: o.custom_prompt.as_deref().map(|v| v.trim().chars().count()).unwrap_or(0),
         }
     }
 }
@@ -289,6 +292,13 @@ pub async fn transcribe_audio<R: Runtime>(
             // Translation disabled
             transcribe_options.whisper_to_english = Some(false);
             transcribe_options.translate_target = None;
+        }
+
+        if let Some(prompt) = options.custom_prompt.as_deref().map(str::trim).filter(|prompt| !prompt.is_empty()) {
+            transcribe_options
+                .advanced
+                .get_or_insert_with(Default::default)
+                .init_prompt = Some(prompt.to_string());
         }
 
         // Note: GPU is handled internally by the crate based on platform

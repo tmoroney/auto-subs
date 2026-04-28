@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react"
+import { X } from "lucide-react";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 
 type Props = {
   open: boolean;
@@ -166,7 +168,7 @@ export default function SubSlateCard({
           >
           <div ref={cardRef} className="ss-card">
             <div className="ss-card-inner">
-              <button className="ss-close" onClick={onClose} aria-label="Close">×</button>
+              <button className="ss-close" onClick={onClose} aria-label="Close"><X size={16} /></button>
               <div className="ss-bg-dots" />
 
               <div className="ss-brand-row">
@@ -227,9 +229,13 @@ export default function SubSlateCard({
                 </button>
               </form>
 
-              <a className="ss-link" href={url} target="_blank" rel="noopener noreferrer">
+              <button
+                className="ss-link"
+                onClick={() => url && openExternal(url)}
+                type="button"
+              >
                 subslate.app →
-              </a>
+              </button>
 
               <div className="ss-sheen" />
             </div>
@@ -336,10 +342,10 @@ const css = `
   border: none;
   background: rgba(0,0,0,0.06);
   color: #000;
-  font-size: 20px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s ease;
+  padding: 0;
 }
 .ss-close:hover { background: rgba(0,0,0,0.12); }
 
@@ -456,6 +462,8 @@ const css = `
   color: rgba(0,0,0,0.55);
   text-decoration: none;
   letter-spacing: 0.02em;
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-family: inherit;
 }
 .ss-link:hover { color: #000; }
 

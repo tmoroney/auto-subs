@@ -108,7 +108,16 @@
         "custom": "自定义"
       },
       "customCharsTitle": "最大字符数",
-      "customCharsDescription": "每行字符数"
+      "customCharsDescription": "每行字符数",
+      "customPromptTitle": "词汇和上下文",
+      "customPromptDescription": "帮助 Whisper 识别名称、品牌、术语、缩写和首选拼写。",
+      "customPromptTermsTitle": "关键术语",
+      "customPromptTermsPlaceholder": "添加名称、品牌、缩写或术语...",
+      "customPromptTermsExample": "示例：OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
+      "customPromptContextTitle": "上下文 / 风格说明",
+      "customPromptContextPlaceholder": "添加简短主题或拼写偏好...",
+      "customPromptContextExample": "示例：这是 DaVinci Resolve 教程。优先使用“AutoSubs”，而不是“Auto Subs”。",
+      "customPromptWhisperOnly": "仅 Whisper 模型支持。"
     },
     "censor": {
       "title": "审查词汇",

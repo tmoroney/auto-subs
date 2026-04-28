@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Speech, Type, AudioLines, Globe, X, PlayCircle, ChevronRight } from "lucide-react"
+import { Speech, Type, AudioLines, Globe, X, PlayCircle, ChevronRight, ScrollText } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
 import { downloadDir } from "@tauri-apps/api/path"
@@ -9,7 +9,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs"
 import { UploadIcon, type UploadIconHandle } from "@/components/ui/icons/upload"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Textarea } from "@/components/ui/textarea"
 import { ModelPicker } from "@/components/settings/model-picker"
 import { LanguageSelector } from "@/components/settings/language-selector"
 import { SpeakerSelector } from "@/components/settings/diarize-selector"
@@ -27,6 +29,7 @@ import { languages, translateLanguages } from "@/lib/languages"
 import { Model, Settings, TimelineInfo, Track, TranscriptionOptions } from "@/types"
 import { useTranslation } from "react-i18next"
 import { diarizeModel } from "@/lib/models"
+import SubSlateCard from "@/components/SubSlateCard"
 
  const SUPPORTED_MEDIA_EXTENSIONS = [
    "wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg", "m4v", "3gp", "aiff", "opus", "alac",
@@ -36,6 +39,80 @@ import { diarizeModel } from "@/lib/models"
    const extension = filePath.split(".").pop()?.toLowerCase()
    return extension ? SUPPORTED_MEDIA_EXTENSIONS.includes(extension) : false
  }
+
+const CUSTOM_PROMPT_TERMS_HEADER = "Key terms and preferred spellings:"
+const CUSTOM_PROMPT_CONTEXT_HEADER = "Context / style note:"
+const CUSTOM_PROMPT_EXAMPLE_TERMS = "OpenAI, DaVinci Resolve, SubSlate, FFmpeg"
+const CUSTOM_PROMPT_EXAMPLE_CONTEXT = "This is a tutorial about editing subtitles in DaVinci Resolve. Prefer “AutoSubs”, not “Auto Subs”."
+
+function normalizeExampleText(value: string): string {
+  return value.replace(/"/g, "“")
+}
+
+function scrubExampleValue(value: string, example: string): string {
+  return normalizeExampleText(value) === normalizeExampleText(example) ? "" : value
+}
+
+function parseCustomPrompt(value: string): { terms: string; context: string } {
+  const prompt = value
+  if (!prompt.trim()) return { terms: "", context: "" }
+
+  const termsIndex = prompt.indexOf(CUSTOM_PROMPT_TERMS_HEADER)
+  const contextIndex = prompt.indexOf(CUSTOM_PROMPT_CONTEXT_HEADER)
+
+  if (termsIndex === -1 && contextIndex === -1) {
+    return { terms: prompt, context: "" }
+  }
+
+  let terms = ""
+  let context = ""
+
+  if (termsIndex !== -1) {
+    const termsStart = termsIndex + CUSTOM_PROMPT_TERMS_HEADER.length
+    // Find the end: either context header or end of string
+    let termsEnd = contextIndex === -1 ? prompt.length : contextIndex
+    // If there's a double newline before context header, stop there
+    if (contextIndex !== -1) {
+      const doubleNewlineBeforeContext = prompt.lastIndexOf('\n\n', contextIndex)
+      if (doubleNewlineBeforeContext > termsStart) {
+        termsEnd = doubleNewlineBeforeContext
+      }
+    }
+    terms = prompt.slice(termsStart, termsEnd)
+    // Remove leading newline if present
+    if (terms.startsWith('\n')) {
+      terms = terms.slice(1)
+    }
+  }
+
+  if (contextIndex !== -1) {
+    const contextStart = contextIndex + CUSTOM_PROMPT_CONTEXT_HEADER.length
+    context = prompt.slice(contextStart)
+    // Remove leading newline if present
+    if (context.startsWith('\n')) {
+      context = context.slice(1)
+    }
+  }
+
+  return {
+    terms: scrubExampleValue(terms, CUSTOM_PROMPT_EXAMPLE_TERMS),
+    context: scrubExampleValue(context, CUSTOM_PROMPT_EXAMPLE_CONTEXT),
+  }
+}
+
+function composeCustomPrompt(terms: string, context: string): string {
+  const sections: string[] = []
+
+  if (terms.length > 0) {
+    sections.push(`${CUSTOM_PROMPT_TERMS_HEADER}\n${terms}`)
+  }
+
+  if (context.length > 0) {
+    sections.push(`${CUSTOM_PROMPT_CONTEXT_HEADER}\n${context}`)
+  }
+
+  return sections.join("\n\n")
+}
 
 interface ProcessingStep {
   id?: string
@@ -102,7 +179,7 @@ function TranscriptionPanelView({
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation()
   const { refresh } = useResolve()
-  const { settings: currentSettings } = useSettings()
+  const { settings: currentSettings, updateSetting } = useSettings()
   const isTourActive = !currentSettings.tourCompleted
   const uploadIconRef = React.useRef<UploadIconHandle>(null)
   const dropAreaUploadIconRef = React.useRef<UploadIconHandle>(null)
@@ -111,6 +188,28 @@ function TranscriptionPanelView({
   const [openTrackSelector, setOpenTrackSelector] = React.useState(false)
   const [openSpeakerPopover, setOpenSpeakerPopover] = React.useState(false)
   const [openTextFormattingPopover, setOpenTextFormattingPopover] = React.useState(false)
+  const [openCustomPromptPopover, setOpenCustomPromptPopover] = React.useState(false)
+  const [localTerms, setLocalTerms] = React.useState("")
+  const [localContext, setLocalContext] = React.useState("")
+  const customPromptParts = React.useMemo(
+    () => parseCustomPrompt(currentSettings.customPrompt),
+    [currentSettings.customPrompt],
+  )
+
+  // Sync local state when popover opens
+  React.useEffect(() => {
+    if (openCustomPromptPopover) {
+      setLocalTerms(customPromptParts.terms)
+      setLocalContext(customPromptParts.context)
+    }
+  }, [openCustomPromptPopover, customPromptParts.terms, customPromptParts.context])
+
+  // Sync to settings when popover closes
+  React.useEffect(() => {
+    if (!openCustomPromptPopover) {
+      updateSetting("customPrompt", composeCustomPrompt(localTerms, localContext))
+    }
+  }, [openCustomPromptPopover, localTerms, localContext, updateSetting])
 
   const selectedFile = selectedFileProp ?? localSelectedFile
 
@@ -333,6 +432,58 @@ function TranscriptionPanelView({
                   <TextFormattingPanel />
                 </PopoverContent>
               </Popover>
+
+              <Popover open={openCustomPromptPopover} onOpenChange={setOpenCustomPromptPopover}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    role="combobox"
+                    aria-expanded={openCustomPromptPopover}
+                    aria-label={t("actionBar.format.customPromptTitle")}
+                    title={t("actionBar.format.customPromptTitle")}
+                    className="relative dark:bg-background dark:hover:bg-accent rounded-full"
+                  >
+                    <ScrollText />
+                    {currentSettings.customPrompt.trim() ? (
+                      <span className="absolute right-2.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" side="top" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+                  <div className="px-4 py-3.5 space-y-2">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">{t("actionBar.format.customPromptTitle")}</Label>
+                      <p className="text-xs text-muted-foreground">{t("actionBar.format.customPromptDescription")}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">{t("actionBar.format.customPromptTermsTitle")}</Label>
+                      <Textarea
+                        value={localTerms}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLocalTerms(e.target.value)}
+                        placeholder={t("actionBar.format.customPromptTermsPlaceholder")}
+                        className="min-h-[76px] resize-none text-sm"
+                      />
+                      <p className="text-xs text-slate-500">{t("actionBar.format.customPromptTermsExample")}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">{t("actionBar.format.customPromptContextTitle")}</Label>
+                      <Textarea
+                        value={localContext}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLocalContext(e.target.value)}
+                        placeholder={t("actionBar.format.customPromptContextPlaceholder")}
+                        className="min-h-[64px] resize-none text-sm"
+                      />
+                      <p className="text-xs text-slate-500">{t("actionBar.format.customPromptContextExample")}</p>
+                    </div>
+                  </div>
+                  <div className="border-t bg-muted/30">
+                    <div className="px-4 py-3">
+                      <p className="text-xs text-muted-foreground">{t("actionBar.format.customPromptWhisperOnly")}</p>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {!currentSettings.isStandaloneMode ? (
@@ -481,6 +632,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
   const [fileInput, setFileInput] = React.useState<string | null>(null)
   const [fileInputSelectionId, setFileInputSelectionId] = React.useState(0)
   const [openModelSelector, setOpenModelSelector] = React.useState(false)
+  const [showSubSlate, setShowSubSlate] = React.useState(false)
   const isSmallScreen = useMediaQuery("(max-width: 640px)")
   const progressContainerRef = React.useRef<HTMLDivElement>(null)
 
@@ -620,6 +772,7 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         textCase: settings.textCase,
         removePunctuation: settings.removePunctuation,
         censoredWords: settings.enableCensor ? settings.censoredWords : [],
+        customPrompt: settings.customPrompt.trim() || undefined,
       }
 
       const transcript = await invoke("transcribe_audio", { options })
@@ -632,6 +785,12 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
         fileInput,
         timelineInfo.timelineId,
       )
+
+      const nextCount = (settings.transcriptionsCompleted ?? 0) + 1
+      updateSetting("transcriptionsCompleted", nextCount)
+      if (nextCount >= 10 && !settings.subSlateMilestoneShown) {
+        setShowSubSlate(true)
+      }
     } catch (error) {
       console.error("Transcription failed:", error)
 
@@ -700,33 +859,47 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
   }
 
   return (
-    <TranscriptionPanelView
-      modelsState={modelsState}
-      selectedModelIndex={settings.model}
-      selectedLanguage={settings.language}
-      onSelectModel={(modelIndex) => {
-        updateSetting("model", modelIndex)
+    <>
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0">
+        <TranscriptionPanelView
+          modelsState={modelsState}
+          selectedModelIndex={settings.model}
+          selectedLanguage={settings.language}
+          onSelectModel={(modelIndex) => {
+            updateSetting("model", modelIndex)
+          }}
+          downloadingModel={null}
+          downloadProgress={0}
+          openModelSelector={openModelSelector}
+          onOpenModelSelectorChange={setOpenModelSelector}
+          isSmallScreen={isSmallScreen}
+          isStandaloneMode={settings.isStandaloneMode}
+          onStandaloneModeChange={(standalone) => updateSetting("isStandaloneMode", standalone)}
+          processingSteps={processingSteps}
+          progressContainerRef={progressContainerRef}
+          onExportToFile={handleExportToFile}
+          onAddToTimeline={handleAddToTimeline}
+          onViewSubtitles={onViewSubtitles}
+          livePreviewSegments={livePreviewSegments}
+          settings={settings}
+          timelineInfo={timelineInfo}
+          selectedFile={fileInput}
+          onSelectedFileChange={handleSelectedFileChange}
+          onStart={handleStartTranscription}
+          onCancel={handleCancelTranscription}
+          isProcessing={isProcessing}
+        />
+      </div>
+    </div>
+    <SubSlateCard
+      open={showSubSlate}
+      onClose={() => {
+        setShowSubSlate(false)
+        updateSetting("subSlateMilestoneShown", true)
       }}
-      downloadingModel={null}
-      downloadProgress={0}
-      openModelSelector={openModelSelector}
-      onOpenModelSelectorChange={setOpenModelSelector}
-      isSmallScreen={isSmallScreen}
-      isStandaloneMode={settings.isStandaloneMode}
-      onStandaloneModeChange={(standalone) => updateSetting("isStandaloneMode", standalone)}
-      processingSteps={processingSteps}
-      progressContainerRef={progressContainerRef}
-      onExportToFile={handleExportToFile}
-      onAddToTimeline={handleAddToTimeline}
-      onViewSubtitles={onViewSubtitles}
-      livePreviewSegments={livePreviewSegments}
-      settings={settings}
-      timelineInfo={timelineInfo}
-      selectedFile={fileInput}
-      onSelectedFileChange={handleSelectedFileChange}
-      onStart={handleStartTranscription}
-      onCancel={handleCancelTranscription}
-      isProcessing={isProcessing}
+      milestone="10 transcriptions complete"
     />
+    </>
   )
 }
