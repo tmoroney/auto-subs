@@ -8,7 +8,8 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 - Works standalone or as a DaVinci Resolve plugin
 
 [![Downloads](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-downloads.json)](https://tom-moroney.com/release-tracker/)
-[![Weekly Active Users](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-users.json)](https://tom-moroney.com/release-tracker/)
+[![Weekly App Opens](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-users.json&style=flat)](https://tom-moroney.com/release-tracker/)
+[![New Downloads / Week](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tmoroney/auto-subs)
 
 ---
