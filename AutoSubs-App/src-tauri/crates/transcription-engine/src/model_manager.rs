@@ -1124,10 +1124,21 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let md = fs::metadata(&blob_path).context("metadata failed")?;
     // IMPORTANT: use the *snapshot file* extension (the symlink name) to decide the threshold.
     // The resolved blob path in HF caches is typically a hash with no extension.
-    let min_bytes: u64 = match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
-        "json" => 1,
-        "txt" => 1,
-        _ => 100_000, // 100 KB
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let stem = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    // Whisper GGUF models follow the pattern "ggml-{model}.bin" (e.g. ggml-large-v3.bin,
+    // ggml-medium.en.bin). The VAD model is "ggml-silero-v5.1.2.bin" — a different binary
+    // format that is much smaller (~885 KB), so we must not apply Whisper-specific rules to it.
+    let is_whisper_bin = ext == "bin" && stem.starts_with("ggml-") && !stem.contains("silero");
+    let min_bytes: u64 = if is_whisper_bin {
+        // Smallest Whisper model (tiny.en) is ~77 MB; 50 MB catches partial downloads that
+        // would otherwise pass the old 100 KB floor and cause a native crash in whisper.cpp.
+        50_000_000
+    } else {
+        match ext {
+            "json" | "txt" => 1,
+            _ => 100_000, // 100 KB
+        }
     };
     if md.len() < min_bytes {
         bail!("Model blob seems too small ({} bytes): {}", md.len(), blob_path.display());
@@ -1135,6 +1146,21 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let mut f = fs::File::open(&blob_path).context("open failed")?;
     let mut buf = [0u8; 16];
     let _ = f.read(&mut buf).context("read failed")?;
+
+    // Whisper models from ggerganov/whisper.cpp are GGUF format and must start with the
+    // "GGUF" magic. A partial or corrupted download that passes the size check would otherwise
+    // cause whisper.cpp to segfault — a native crash that catch_unwind cannot intercept —
+    // crashing the whole app. The VAD model uses a different binary format, so we skip it.
+    if is_whisper_bin {
+        const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF"
+        if buf[..4] != GGUF_MAGIC {
+            bail!(
+                "Model file does not start with GGUF magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
+                buf[0], buf[1], buf[2], buf[3],
+                blob_path.display()
+            );
+        }
+    }
 
     if blob_path.extension().and_then(|e| e.to_str()) == Some("zip") {
         let file = fs::File::open(&blob_path).context("open failed")?;
