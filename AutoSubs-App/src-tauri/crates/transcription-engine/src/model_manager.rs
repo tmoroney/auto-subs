@@ -1124,9 +1124,13 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let md = fs::metadata(&blob_path).context("metadata failed")?;
     // IMPORTANT: use the *snapshot file* extension (the symlink name) to decide the threshold.
     // The resolved blob path in HF caches is typically a hash with no extension.
-    let min_bytes: u64 = match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let min_bytes: u64 = match ext {
         "json" => 1,
         "txt" => 1,
+        // GGUF Whisper models: tiny.en is ~77 MB, so 50 MB catches partial downloads that
+        // would otherwise pass the old 100 KB floor and cause a native crash in whisper.cpp.
+        "bin" => 50_000_000,
         _ => 100_000, // 100 KB
     };
     if md.len() < min_bytes {
@@ -1135,6 +1139,20 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let mut f = fs::File::open(&blob_path).context("open failed")?;
     let mut buf = [0u8; 16];
     let _ = f.read(&mut buf).context("read failed")?;
+
+    // GGUF binary models must start with the "GGUF" magic. A partial or corrupted download
+    // that passes the size check would otherwise cause whisper.cpp to segfault (a native
+    // crash that catch_unwind cannot intercept), crashing the whole app.
+    if ext == "bin" {
+        const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF"
+        if buf[..4] != GGUF_MAGIC {
+            bail!(
+                "Model file does not start with GGUF magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
+                buf[0], buf[1], buf[2], buf[3],
+                blob_path.display()
+            );
+        }
+    }
 
     if blob_path.extension().and_then(|e| e.to_str()) == Some("zip") {
         let file = fs::File::open(&blob_path).context("open failed")?;
