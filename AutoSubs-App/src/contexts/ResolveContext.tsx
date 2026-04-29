@@ -170,6 +170,13 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
             }
             // Back off before retrying — Resolve may be busy rendering
             await new Promise(resolve => setTimeout(resolve, 3000));
+            // Cancellation may have been requested during the backoff; send
+            // the cancel to Resolve before exiting so the render doesn't keep
+            // running after the UI has stopped.
+            if (cancelRequestedRef.current) {
+              await cancelExport();
+              break;
+            }
             continue;
           }
 
