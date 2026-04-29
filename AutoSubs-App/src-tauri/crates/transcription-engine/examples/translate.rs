@@ -87,7 +87,9 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let translated = translate::translate_text(&args.text, &args.from, &args.to).await?;
+    let translated = translate::translate_text(&args.text, &args.from, &args.to)
+        .await
+        .map_err(|error| eyre!("{}", error))?;
     println!("Translated text: {}", translated);
 
     Ok(())

@@ -1,10 +1,10 @@
 # Transcription Engine
-Combines Whisper-rs and Pyannote-rs and adds accurate word-level timestamps with Dynamic Time Warping (DTW). Includes a subtitle formatter with language-aware presets, optional VAD, and simple override knobs for CPL/CPS.
+Combines Whisper-rs, transcribe-rs engines, and AutoSubs' internal diarization crate. Adds accurate word-level timestamps with Dynamic Time Warping (DTW), a subtitle formatter with language-aware presets, optional VAD, and simple override knobs for CPL/CPS.
 
 ## Features
 
 - __Whisper transcription__ (via `whisper-rs`) with optional GPU and DTW word alignment
-- __Speaker diarization__ (via `pyannote-rs`) or __VAD-only__ segmentation
+- __Speaker diarization__ (via the internal `diarize` crate) or __VAD-only__ segmentation
 - __Language detection__ when `options.lang = "auto"`
 - __Subtitle post-processing__ with language/script presets and easy overrides (CPL/CPS/lines, etc.)
 - __Word-level timestamps__ exported per cue for downstream formats (e.g., SRT, WebVTT)

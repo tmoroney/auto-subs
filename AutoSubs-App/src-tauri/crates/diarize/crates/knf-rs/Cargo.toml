@@ -1,0 +1,17 @@
+[package]
+name = "knf-rs"
+version = "0.3.2"
+edition = "2021"
+license = "MIT"
+description = "fbank features extractor without external dependencies"
+repository = "https://github.com/thewh1teagle/pyannote-rs"
+publish = false
+
+[dependencies]
+knf-rs-sys = { path = "sys", version = "0.3.2", features = [] }
+eyre = "0.6.12"
+ndarray = "0.16"
+
+
+[features]
+default = []

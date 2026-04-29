@@ -1,5 +1,5 @@
 use eyre::{Result, eyre};
-use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TextDensity, TranscribeOptions};
+use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TranscribeOptions};
 
 struct CliArgs {
     audio_path: String,
@@ -111,6 +111,7 @@ fn parse_args() -> Result<CliArgs> {
     })
 }
 
+#[allow(dead_code)]
 fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
     let prefix = match progress_type {
         ProgressType::Download => "📥",

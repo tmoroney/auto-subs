@@ -1,0 +1,6 @@
+target/
+build/
+*.onnx
+*.wav
+*.npz
+.DS_Store
