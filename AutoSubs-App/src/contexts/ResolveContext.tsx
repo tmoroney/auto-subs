@@ -28,26 +28,49 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
   const [exportProgress, setExportProgress] = useState<number>(0);
   const cancelRequestedRef = useRef<boolean>(false);
 
-  // Initialize timeline info
+  // Keep trying to connect to Resolve in the background while disconnected.
+  // A single one-shot attempt on mount misses two common situations: the app
+  // rendering before the Lua server has finished binding (race on launch), and
+  // the user reopening the app after the server was shut down by a previous
+  // session's Exit command.  Polling every 5 s is cheap — GetTimelineInfo is a
+  // lightweight call — and gives the user an automatic reconnect rather than
+  // requiring a manual refresh click.
   useEffect(() => {
-    async function initializeTimeline() {
-      try {
-        console.log('Fetching timeline info...');
-        const info = await getTimelineInfo().catch(() => {
-          console.log('Link to Resolve is offline');
-          return null;
-        });
+    let cancelled = false;
+    let polling = false;
 
-        if (info && info.timelineId) {
-          console.log('Timeline info received:', info);
+    async function tryConnect() {
+      if (polling) return;
+      polling = true;
+      try {
+        const info = await getTimelineInfo().catch(() => null);
+        if (!cancelled && info && info.timelineId) {
           setTimelineInfo(info);
         }
-      } catch (error) {
-        console.error('Error initializing timeline:', error);
+      } catch {
+        // ignore — we'll retry on the next interval
+      } finally {
+        polling = false;
       }
     }
 
-    initializeTimeline();
+    tryConnect();
+
+    const interval = setInterval(() => {
+      // Only poll while disconnected to avoid redundant Resolve API calls
+      // during normal operation.
+      setTimelineInfo(current => {
+        if (!current.timelineId) {
+          tryConnect();
+        }
+        return current;
+      });
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   async function refresh() {
@@ -113,9 +136,16 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         const exportResult = await exportAudio(inputTracks);
         console.log("Export started:", exportResult);
 
-        // Poll for export progress until completion
+        // Poll for export progress until completion.
+        // Resolve can stall its own Lua scripting engine during rendering, so
+        // individual GetExportProgress requests may time out even while the
+        // export is still running normally. We tolerate up to
+        // MAX_CONSECUTIVE_ERRORS consecutive network/timeout errors before
+        // giving up, so a long-running export doesn't kill the UI prematurely.
         let exportCompleted = false;
         let audioInfo = null;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 10;
 
         while (!exportCompleted && !cancelRequestedRef.current) {
           // Check if cancellation was requested before making the next API call
@@ -125,7 +155,31 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
-          const progressResult = await getExportProgress();
+          let progressResult;
+          try {
+            progressResult = await getExportProgress();
+            consecutiveErrors = 0;
+          } catch (pollErr) {
+            consecutiveErrors++;
+            console.warn(
+              `Export progress poll failed (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+              pollErr,
+            );
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw pollErr;
+            }
+            // Back off before retrying — Resolve may be busy rendering
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Cancellation may have been requested during the backoff; send
+            // the cancel to Resolve before exiting so the render doesn't keep
+            // running after the UI has stopped.
+            if (cancelRequestedRef.current) {
+              await cancelExport();
+              break;
+            }
+            continue;
+          }
+
           console.log("Export progress:", progressResult);
 
           // Update progress
