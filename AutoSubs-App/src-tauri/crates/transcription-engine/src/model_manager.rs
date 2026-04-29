@@ -1125,13 +1125,20 @@ fn validate_model_file(path: &Path) -> Result<()> {
     // IMPORTANT: use the *snapshot file* extension (the symlink name) to decide the threshold.
     // The resolved blob path in HF caches is typically a hash with no extension.
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-    let min_bytes: u64 = match ext {
-        "json" => 1,
-        "txt" => 1,
-        // GGUF Whisper models: tiny.en is ~77 MB, so 50 MB catches partial downloads that
+    let stem = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    // Whisper GGUF models follow the pattern "ggml-{model}.bin" (e.g. ggml-large-v3.bin,
+    // ggml-medium.en.bin). The VAD model is "ggml-silero-v5.1.2.bin" — a different binary
+    // format that is much smaller (~885 KB), so we must not apply Whisper-specific rules to it.
+    let is_whisper_bin = ext == "bin" && stem.starts_with("ggml-") && !stem.contains("silero");
+    let min_bytes: u64 = if is_whisper_bin {
+        // Smallest Whisper model (tiny.en) is ~77 MB; 50 MB catches partial downloads that
         // would otherwise pass the old 100 KB floor and cause a native crash in whisper.cpp.
-        "bin" => 50_000_000,
-        _ => 100_000, // 100 KB
+        50_000_000
+    } else {
+        match ext {
+            "json" | "txt" => 1,
+            _ => 100_000, // 100 KB
+        }
     };
     if md.len() < min_bytes {
         bail!("Model blob seems too small ({} bytes): {}", md.len(), blob_path.display());
@@ -1140,10 +1147,11 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let mut buf = [0u8; 16];
     let _ = f.read(&mut buf).context("read failed")?;
 
-    // GGUF binary models must start with the "GGUF" magic. A partial or corrupted download
-    // that passes the size check would otherwise cause whisper.cpp to segfault (a native
-    // crash that catch_unwind cannot intercept), crashing the whole app.
-    if ext == "bin" {
+    // Whisper models from ggerganov/whisper.cpp are GGUF format and must start with the
+    // "GGUF" magic. A partial or corrupted download that passes the size check would otherwise
+    // cause whisper.cpp to segfault — a native crash that catch_unwind cannot intercept —
+    // crashing the whole app. The VAD model uses a different binary format, so we skip it.
+    if is_whisper_bin {
         const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF"
         if buf[..4] != GGUF_MAGIC {
             bail!(
