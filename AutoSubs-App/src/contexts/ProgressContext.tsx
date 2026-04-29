@@ -21,7 +21,7 @@ interface ProgressContextType {
   completeAllProgressSteps: () => void;
   cancelAllProgressSteps: () => void;
   updateProgressStep: (event: { progress: number; type?: string; label?: string }) => void;
-  setupEventListeners: (settings: { targetLanguage: string; language: string; translate?: boolean; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => () => void;
+  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => () => void;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
@@ -34,7 +34,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const seenSegmentsRef = useRef<Set<string>>(new Set());
   
   // Ref to track latest settings for use in closures/callbacks
-  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', translate: false, isResolveMode: false, hasPendingDownloads: false, enableDiarize: false });
+  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, hasPendingDownloads: false, enableDiarize: false });
 
   const resolveProgressLabel = useCallback((label?: string, progress?: number): string => {
     if (!label) {
@@ -167,7 +167,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     if (settingsRef.current.hasPendingDownloads) order.push('Download')
     if (settingsRef.current.enableDiarize) order.push('Diarize')
     order.push('Transcribe')
-    if (settingsRef.current.translate && settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
+    if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
       order.push('Translate')
     }
     return order
@@ -214,12 +214,11 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Set up simplified event listener
-  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; translate?: boolean; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => {
+  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => {
     // Update settings ref
     settingsRef.current = {
       targetLanguage: settings.targetLanguage,
       language: settings.language,
-      translate: settings.translate ?? false,
       isResolveMode: settings.isResolveMode ?? false,
       hasPendingDownloads: settings.hasPendingDownloads ?? false,
       enableDiarize: settings.enableDiarize ?? false,

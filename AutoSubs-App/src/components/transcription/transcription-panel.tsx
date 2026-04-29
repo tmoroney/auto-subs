@@ -670,14 +670,13 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
     const cleanup = setupEventListeners({
       targetLanguage: settings.targetLanguage,
       language: settings.language,
-      translate: settings.translate,
       isResolveMode: !settings.isStandaloneMode,
       hasPendingDownloads,
       enableDiarize: settings.enableDiarize,
     })
 
     return cleanup
-  }, [setupEventListeners, settings.targetLanguage, settings.language, settings.translate, settings.isStandaloneMode, hasPendingDownloads, settings.enableDiarize])
+  }, [setupEventListeners, settings.targetLanguage, settings.language, settings.isStandaloneMode, hasPendingDownloads, settings.enableDiarize])
 
   React.useEffect(() => {
     if (!settings.isStandaloneMode && isExporting) {
@@ -737,7 +736,6 @@ export function TranscriptionPanel({ onViewSubtitles }: { onViewSubtitles?: () =
     setupEventListeners({
       targetLanguage: settings.targetLanguage,
       language: settings.language,
-      translate: settings.translate,
       isResolveMode: !settings.isStandaloneMode,
       hasPendingDownloads,
       enableDiarize: settings.enableDiarize,
