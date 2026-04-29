@@ -113,9 +113,16 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         const exportResult = await exportAudio(inputTracks);
         console.log("Export started:", exportResult);
 
-        // Poll for export progress until completion
+        // Poll for export progress until completion.
+        // Resolve can stall its own Lua scripting engine during rendering, so
+        // individual GetExportProgress requests may time out even while the
+        // export is still running normally. We tolerate up to
+        // MAX_CONSECUTIVE_ERRORS consecutive network/timeout errors before
+        // giving up, so a long-running export doesn't kill the UI prematurely.
         let exportCompleted = false;
         let audioInfo = null;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 10;
 
         while (!exportCompleted && !cancelRequestedRef.current) {
           // Check if cancellation was requested before making the next API call
@@ -125,7 +132,24 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
-          const progressResult = await getExportProgress();
+          let progressResult;
+          try {
+            progressResult = await getExportProgress();
+            consecutiveErrors = 0;
+          } catch (pollErr) {
+            consecutiveErrors++;
+            console.warn(
+              `Export progress poll failed (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+              pollErr,
+            );
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw pollErr;
+            }
+            // Back off before retrying — Resolve may be busy rendering
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+
           console.log("Export progress:", progressResult);
 
           // Update progress
