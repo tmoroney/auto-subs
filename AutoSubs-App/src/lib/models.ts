@@ -48,7 +48,12 @@ export const models: Model[] = [
     image: "/parakeet.png",
     details: "models.parakeet.details",
     badge: "models.parakeet.badge",
-    languageSupport: { kind: "single_language", language: "en" },
+    languageSupport: {
+      kind: "restricted",
+      languages: [
+        "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"
+      ],
+    },
     accuracy: 3,
     weight: 3,
     isDownloaded: false,
