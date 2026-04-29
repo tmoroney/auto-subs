@@ -1,0 +1,27 @@
+[package]
+name = "knf-rs-sys"
+version = "0.3.2"
+edition = "2021"
+license = "MIT"
+description = "fbank features extractor without external dependencies"
+repository = "https://github.com/thewh1teagle/pyannote-rs"
+publish = false
+
+include = [
+    "knfc",
+    "knf/kaldi-native-fbank/csrc",
+    "knf/kaldi-native-fbank/CMakeLists.txt",
+    "knf/cmake",
+    "knf/CMakeLists.txt",
+    "knf/LICENSE",
+    "src/*.rs",
+    "build.rs",
+    "wrapper.hpp",
+]
+
+[build-dependencies]
+bindgen = "0.69.4"
+cmake = "0.1.50"
+
+[features]
+default = []

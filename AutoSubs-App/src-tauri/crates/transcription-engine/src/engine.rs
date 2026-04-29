@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use eyre::eyre;
-use crate::types::{SpeechSegment, DiarizeOptions, LabeledProgressFn, NewSegmentFn, Segment};
+use crate::types::{SpeechSegment, LabeledProgressFn, NewSegmentFn, Segment};
 use crate::formatting::{process_segments, PostProcessConfig, TextCase, TextDensity};
 
 /// Frontend-requested content formatting applied after structural line-wrapping.
@@ -14,8 +14,6 @@ pub struct ContentFormatting {
 use crate::engines::moonshine::{is_moonshine_model, moonshine_variant_from_model_name};
 
 use crate::engines::parakeet::is_parakeet_model;
-use crate::speaker::label_speakers;
-
 // callback type aliases are defined in crate::types
 
 #[derive(Clone, Debug)]
@@ -114,7 +112,7 @@ impl Engine {
 
         let original_samples = crate::audio::read_wav(&audio_path)?;
 
-        let mut speech_segments: Vec<SpeechSegment> = Vec::new();
+        let speech_segments: Vec<SpeechSegment>;
 
         if let Some(true) = options.enable_diarize {
             let seg_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/segmentation-community-1.onnx";
@@ -129,11 +127,10 @@ impl Engine {
                     .await?,
             };
 
-            // Set diarize options
             let threshold = options.advanced.as_ref().and_then(|a| a.diarize_threshold).unwrap_or(0.5);
-            let diarize_options = DiarizeOptions {
-                segment_model_path: seg_path.to_string_lossy().to_string(),
-                embedding_model_path: emb_path.to_string_lossy().to_string(),
+            let diarize_options = diarize::DiarizeOptions {
+                segment_model_path: seg_path,
+                embedding_model_path: emb_path,
                 threshold,
                 max_speakers: match options.max_speakers {
                     Some(0) | None => usize::MAX,
@@ -141,21 +138,20 @@ impl Engine {
                 },
             };
 
-            // Consume the lazy pyannote_rs iterator: the for-loop calls `next()` under the hood,
-            // forcing evaluation as we go. Each yielded pyannote_rs::Segment is converted into
-            // our SpeechSegment and appended to `speech_segments` immediately.
-            let diarize_segments_iter = pyannote_rs::get_segments(&original_samples, 16000, &seg_path)
-                .map_err(|e| eyre!("{:?}", e))?;
-            for seg_res in diarize_segments_iter {
-                let seg = seg_res.map_err(|e| eyre!("{:?}", e))?;
-                speech_segments.push(SpeechSegment { start: seg.start, end: seg.end, samples: seg.samples, speaker_id: None });
-            }
+            let diarize_progress = |pct| {
+                if let Some(callback) = cb.progress {
+                    callback(pct, crate::ProgressType::Diarize, "progressSteps.diarize");
+                }
+            };
+            let diarize_progress_callback = cb
+                .progress
+                .map(|_| &diarize_progress as &diarize::ProgressFn<'_>);
 
-            // Compute speaker IDs once and propagate to all engines
-            label_speakers(
-                speech_segments.as_mut_slice(),
+            speech_segments = diarize::diarize(
+                &original_samples,
+                16000,
                 &diarize_options,
-                cb.progress,
+                diarize_progress_callback,
                 cb.is_cancelled.as_deref(),
             )?;
         } else if let Some(true) = options.enable_vad {
