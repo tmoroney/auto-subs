@@ -82,19 +82,4 @@ pub struct Segment {
     pub speaker_id: Option<String>,
 }
 
-// Internal struct for VAD and Pyannote diarization segments
-#[derive(Debug, Clone)]
-pub struct SpeechSegment {
-    pub start: f64,
-    pub end: f64,
-    pub samples: Vec<i16>,
-    pub speaker_id: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct DiarizeOptions {
-    pub segment_model_path: String,
-    pub embedding_model_path: String,
-    pub threshold: f32,
-    pub max_speakers: usize,
-}
+pub use diarize::SpeechSegment;

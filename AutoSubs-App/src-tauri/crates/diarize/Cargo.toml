@@ -1,0 +1,30 @@
+[package]
+name = "diarize"
+version = "0.3.4"
+edition = "2021"
+license = "MIT"
+description = "Internal AutoSubs diarization crate based on tmoroney/pyannote-rs"
+repository = "https://github.com/tmoroney/auto-subs"
+publish = false
+
+[dependencies]
+eyre = "0.6.12"
+hound = "3.5.1"
+ndarray = "0.16"
+ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
+knf-rs = { path = "crates/knf-rs", version = "0.3.2", features = [] }
+sysinfo = "0.37.2"
+ndarray-npy = { version = "0.9.1", default-features = false, features = ["npz"] }
+tracing = "0.1"
+
+[features]
+default = []
+coreml = ["ort/coreml"]
+directml = ["ort/directml"]
+load-dynamic = ["ort/load-dynamic"]
+
+[[example]]
+name = "max_speakers"
+
+[[example]]
+name = "infinite"

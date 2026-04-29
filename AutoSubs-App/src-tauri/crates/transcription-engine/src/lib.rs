@@ -7,7 +7,6 @@ pub mod types;
 pub mod translate;
 pub mod utils;
 pub mod formatting;
-pub mod speaker;
 
 // Re-exports (crate users only need these)
 pub use engine::{Engine, EngineConfig, Callbacks, ContentFormatting};

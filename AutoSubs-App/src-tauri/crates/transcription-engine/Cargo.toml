@@ -8,9 +8,8 @@ publish = false
 
 [dependencies]
 whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
-pyannote-rs = { git = "https://github.com/tmoroney/pyannote-rs", branch = "main"}
-transcribe-rs = { version = "0.3", features = ["onnx"] }
-ort-sys = "=2.0.0-rc.10" # prevents error with pyannote-rs
+diarize = { path = "../diarize" }
+transcribe-rs = { version = "0.3.11", features = ["onnx"] }
 hf-hub = "0.4.3"
 dirs = "5.0"
 regex = "1"
@@ -28,9 +27,9 @@ tokio-util = "0.7"
 unicode-segmentation = "1.11"
 
 [features]
-coreml = ["whisper-rs/coreml", "pyannote-rs/coreml"]
-directml = ["pyannote-rs/directml"]
-cuda = ["whisper-rs/cuda", "pyannote-rs/load-dynamic"]
+coreml = ["whisper-rs/coreml", "diarize/coreml"]
+directml = ["diarize/directml"]
+cuda = ["whisper-rs/cuda", "diarize/load-dynamic"]
 openblas = ["whisper-rs/openblas"]
 metal = ["whisper-rs/metal"]
 rocm = ["whisper-rs/hipblas"]
@@ -38,7 +37,7 @@ vulkan = ["whisper-rs/vulkan"]
 
 # Platform/arch presets
 mac-aarch = ["coreml", "metal"]
-mac-x86_64 = ["metal"]
+mac-x86_64 = ["metal", "diarize/load-dynamic"]
 windows = ["vulkan", "directml"]  # Whisper GPU via Vulkan + Pyannote via DirectML (requires Vulkan SDK: https://vulkan.lunarg.com)
 linux = ["vulkan"]
 
