@@ -114,26 +114,41 @@ export function AddToTimelineDialog({
     )
     const totalSteps = activeSteps.length
 
+    // Keep refs so the open-effect can read the latest values without being
+    // re-triggered every time settings/speakers get a new object reference.
+    const settingsRef = React.useRef(settings)
+    const speakersRef = React.useRef(speakers)
+    settingsRef.current = settings
+    speakersRef.current = speakers
+
     // Re-hydrate from settings whenever the dialog opens; a fresh session should
     // not carry over half-baked state from a previous open/close.
+    // NOTE: intentionally omit settings/speakers from the dep array — they are
+    // objects/arrays whose references change on every parent render. Including
+    // them would cause the effect to fire while the dialog is already open,
+    // resetting currentStep to 0 mid-session (the "glitch back to step 1" bug).
+    // We read their current values through refs instead.
     React.useEffect(() => {
         if (!open) return
+        const s = settingsRef.current
+        const sp = speakersRef.current
         setCurrentStep(0)
         setSelection({
-            mode: settings.captionMode,
-            templateValue: settings.selectedTemplate.value,
-            presetId: settings.presetId || DEFAULT_PRESET_ID,
-            outputTrack: settings.selectedOutputTrack,
+            mode: s.captionMode,
+            templateValue: s.selectedTemplate.value,
+            presetId: s.presetId || DEFAULT_PRESET_ID,
+            outputTrack: s.selectedOutputTrack,
         })
         // Initialize speakers without tracks to use the global output track
-        const initializedSpeakers = speakers.map((speaker) => ({
+        const initializedSpeakers = sp.map((speaker) => ({
             ...speaker,
-            track: speaker.track || settings.selectedOutputTrack,
+            track: speaker.track || s.selectedOutputTrack,
         }))
         setLocalSpeakers(initializedSpeakers)
         setCreateSession({ kind: "closed" })
         setConflictInfo(null)
-    }, [open, settings, speakers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open])
 
     // Check for track conflicts whenever the selected output track changes.
     React.useEffect(() => {
