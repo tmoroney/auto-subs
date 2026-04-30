@@ -114,13 +114,12 @@ export function ModelPicker({
   const filteredModels = React.useMemo(() => {
     let models
 
-    // When language is "auto", only show Whisper models and Parakeet
+    // When language is "auto", show multilingual models and English-only models (e.g. Parakeet)
     if (selectedLanguage === "auto") {
       models = modelsState.filter((model) => {
-        // Include Parakeet and all Whisper models (multilingual or restricted)
-        return model.value === "parakeet" ||
-          model.languageSupport.kind === "multilingual" ||
-          model.languageSupport.kind === "restricted"
+        return model.languageSupport.kind === "multilingual" ||
+          model.languageSupport.kind === "restricted" ||
+          (model.languageSupport.kind === "single_language" && model.languageSupport.language === "en")
       })
     } else {
       // For specific languages, use existing language support logic
