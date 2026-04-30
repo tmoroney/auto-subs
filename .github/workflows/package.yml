@@ -127,11 +127,29 @@ jobs:
           FFMPEG_SRC="ffmpeg-x86_64-apple-darwin"
         fi
 
-        # Download the appropriate archive from the ffmpeg-binaries repo
-        gh release download \
-          --repo tmoroney/ffmpeg-binaries \
-          --pattern "$ZIP_NAME" \
-          --clobber
+        gh --version
+        # This should not print the token; it just confirms auth is wired up.
+        gh auth status -h github.com || true
+
+        # Download the appropriate archive from the ffmpeg-binaries repo.
+        # GitHub-hosted runners can occasionally hit transient API/network
+        # failures, so retry before failing the whole packaging job.
+        for i in 1 2 3 4 5; do
+          echo "Attempt $i: downloading $ZIP_NAME from tmoroney/ffmpeg-binaries..."
+          if gh release download \
+              --repo tmoroney/ffmpeg-binaries \
+              --pattern "$ZIP_NAME" \
+              --clobber; then
+            break
+          fi
+
+          if [ "$i" -eq 5 ]; then
+            echo "ERROR: failed to download $ZIP_NAME after $i attempts" >&2
+            exit 1
+          fi
+
+          sleep $((i * 5))
+        done
 
         # Unzip directly into current folder (junk paths to avoid nested dirs)
         unzip -jo "$ZIP_NAME"
