@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { subscribeBackgroundColor, evalTS } from "../lib/utils/bolt";
 import { useWebSocket } from "./useWebSocket";
 import { AppProvider, useAppState, useActions } from "../lib/store";
+import { WS_PORT } from "../lib/constants";
 import "./main.scss";
 
 const ProgressBar = ({ progress, status }: { progress: number; status: string }) => (
@@ -13,12 +14,13 @@ const ProgressBar = ({ progress, status }: { progress: number; status: string })
   </div>
 );
 
-const ConnectionStatus = ({ status, attempts, pending }: { status: string; attempts: number; pending: number }) => (
-  <div className="connection-info">
+const ConnectionStatus = ({ status, port, attempts, pending }: { status: string; port: number; attempts: number; pending: number }) => (
+  <div className="status-info">
     <span className={`dot ${status}`} />
     <span className="text">
       {status === "connected" ? "Connected" : status === "connecting" ? "Connecting..." : "Disconnected"}
     </span>
+    <span className="port">Port: {port}</span>
     {attempts > 0 && <span className="attempts">Reconnect: {attempts}</span>}
     {pending > 0 && <span className="pending">Pending: {pending}</span>}
   </div>
@@ -26,7 +28,8 @@ const ConnectionStatus = ({ status, attempts, pending }: { status: string; attem
 
 const AppContent = () => {
   const [bgColor, setBgColor] = useState("#1a1a1a");
-  const { status, logs, sequenceInfo, refreshSequenceInfo, progress, pendingMessages, reconnectAttempts } = useWebSocket(8185);
+  const { connection } = useAppState();
+  const { status, logs, sequenceInfo, refreshSequenceInfo, progress, pendingMessages, reconnectAttempts } = useWebSocket(WS_PORT);
   const actions = useActions();
 
   useEffect(() => {
@@ -58,7 +61,7 @@ const AppContent = () => {
       <section className="section">
         <label className="label">Status</label>
         <div className="card status-header">
-          <ConnectionStatus status={status} attempts={reconnectAttempts} pending={pendingMessages} />
+          <ConnectionStatus status={status} port={connection.port} attempts={reconnectAttempts} pending={pendingMessages} />
         </div>
       </section>
 

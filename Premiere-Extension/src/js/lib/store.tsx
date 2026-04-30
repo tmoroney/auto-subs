@@ -1,4 +1,5 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
+import { WS_PORT } from './constants';
 
 interface SequenceInfo {
   success: boolean;
@@ -57,7 +58,7 @@ type Action =
   | { type: 'RESET' };
 
 const initialState: AppState = {
-  connection: { status: 'disconnected', port: 8185, lastHeartbeat: 0, reconnectAttempts: 0, pendingMessages: 0 },
+  connection: { status: 'disconnected', port: WS_PORT, lastHeartbeat: 0, reconnectAttempts: 0, pendingMessages: 0 },
   sequence: { info: null, loading: false, lastUpdated: null },
   operations: { current: null, history: [] },
   logs: { entries: [] },

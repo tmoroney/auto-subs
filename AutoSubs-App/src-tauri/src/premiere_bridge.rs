@@ -9,6 +9,7 @@ use tauri::Manager;
 use tauri::Emitter;
 
 static CONNECTION_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+const PREMIERE_ENDPOINT: &str = "127.0.0.1:8185";
 
 pub struct PremiereConnection {
     pub id: u64,
@@ -51,7 +52,7 @@ pub fn init_premiere_server(app_handle: tauri::AppHandle) {
     app_handle.manage(premiere_state);
 
     tauri::async_runtime::spawn(async move {
-        let addr = "127.0.0.1:8185";
+        let addr = PREMIERE_ENDPOINT;
         let listener = match TcpListener::bind(addr).await {
             Ok(l) => l,
             Err(e) => {
