@@ -79,7 +79,7 @@ function IntegrationStatus() {
               className="h-8 w-8"
             />
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold">DaVinci Resolve</h4>
+              <h4 className="text-sm font-semibold">{t("titlebar.resolve.productName")}</h4>
               {isResolveConnected ? (
                 <div className="space-y-1">
                   <p className="text-sm text-green-600 dark:text-green-400">
@@ -137,7 +137,7 @@ function IntegrationStatus() {
               className="h-8 w-8"
             />
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold">Premiere Pro</h4>
+              <h4 className="text-sm font-semibold">{t("titlebar.premiere.productName")}</h4>
               {isPremiereConnected ? (
                 <div className="space-y-1">
                   <p className="text-sm text-green-600 dark:text-green-400">
