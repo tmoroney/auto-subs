@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
+const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
+const SUBTITLE_ROW_OVERSCAN = 8;
 
 interface SubtitleListProps {
     searchQuery?: string;
@@ -47,6 +49,8 @@ const SubtitleList = ({
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const [viewport, setViewport] = useState({ scrollTop: 0, height: 0 });
+    const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
 
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -114,6 +118,76 @@ const SubtitleList = ({
                 return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
             });
     }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
+
+    const virtualLayout = useMemo(() => {
+        const offsets: number[] = [];
+        let totalHeight = 0;
+
+        for (const { subtitle } of filteredSubtitleItems) {
+            offsets.push(totalHeight);
+            totalHeight += rowHeights[subtitle.id] ?? ESTIMATED_SUBTITLE_ROW_HEIGHT;
+        }
+
+        const visibleTop = Math.max(0, viewport.scrollTop - ESTIMATED_SUBTITLE_ROW_HEIGHT * SUBTITLE_ROW_OVERSCAN);
+        const visibleBottom = viewport.scrollTop + viewport.height + ESTIMATED_SUBTITLE_ROW_HEIGHT * SUBTITLE_ROW_OVERSCAN;
+        let startIndex = 0;
+        let endIndex = filteredSubtitleItems.length;
+
+        for (let i = 0; i < filteredSubtitleItems.length; i += 1) {
+            const rowHeight = rowHeights[filteredSubtitleItems[i].subtitle.id] ?? ESTIMATED_SUBTITLE_ROW_HEIGHT;
+            if (offsets[i] + rowHeight >= visibleTop) {
+                startIndex = i;
+                break;
+            }
+        }
+
+        for (let i = startIndex; i < filteredSubtitleItems.length; i += 1) {
+            if (offsets[i] > visibleBottom) {
+                endIndex = i + 1;
+                break;
+            }
+        }
+
+        return {
+            totalHeight,
+            visibleItems: filteredSubtitleItems.slice(startIndex, endIndex).map((item, visibleIndex) => ({
+                ...item,
+                offsetTop: offsets[startIndex + visibleIndex] ?? 0,
+            })),
+        };
+    }, [filteredSubtitleItems, rowHeights, viewport]);
+
+    useEffect(() => {
+        const scrollElement = containerRef.current?.parentElement;
+        if (!scrollElement) return;
+
+        const updateViewport = () => {
+            setViewport({
+                scrollTop: scrollElement.scrollTop,
+                height: scrollElement.clientHeight,
+            });
+        };
+
+        updateViewport();
+        scrollElement.addEventListener("scroll", updateViewport, { passive: true });
+
+        const resizeObserver = new ResizeObserver(updateViewport);
+        resizeObserver.observe(scrollElement);
+
+        return () => {
+            scrollElement.removeEventListener("scroll", updateViewport);
+            resizeObserver.disconnect();
+        };
+    }, []);
+
+    const measureRow = useCallback((subtitleId: number, node: HTMLDivElement | null) => {
+        if (!node) return;
+        const height = node.getBoundingClientRect().height;
+        setRowHeights((current) => {
+            if (Math.abs((current[subtitleId] ?? 0) - height) < 1) return current;
+            return { ...current, [subtitleId]: height };
+        });
+    }, []);
 
     // Handle click outside to deselect subtitle
     useEffect(() => {
@@ -288,87 +362,102 @@ const SubtitleList = ({
     }
 
     return (
-        <div ref={containerRef} className={className}>
-            {filteredSubtitleItems.map(({ subtitle, index }: { subtitle: Subtitle; index: number }) => {
+        <div
+            ref={containerRef}
+            className={`relative ${className}`}
+            style={{ height: virtualLayout.totalHeight }}
+        >
+            {virtualLayout.visibleItems.map(({ subtitle, index, offsetTop }: { subtitle: Subtitle; index: number; offsetTop: number }) => {
                 const isSelected = selectedIndex === index;
 
                 return (
                     <div
                         key={subtitle.id}
-                        className={`group relative flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-colors duration-150 hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
+                        ref={(node) => measureRow(subtitle.id, node)}
+                        style={{ transform: `translateY(${offsetTop}px)` }}
+                        className={`group absolute left-0 right-0 top-0 flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-colors duration-150 hover:bg-muted/50 dark:hover:bg-muted/20 [content-visibility:auto] [contain-intrinsic-size:auto_96px] ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
                         onClick={() => selectSubtitle(index)}
                     >
                                     <div className="flex w-full items-center gap-2">
-                                        <Tooltip>
-                                            <TooltipTrigger>
-                                                <div
-                                                    className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary"
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        await jumpToTime(subtitle.start);
+                                        <button
+                                            type="button"
+                                            title={t("subtitles.jumpToTimeline")}
+                                            className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await jumpToTime(subtitle.start);
+                                            }}
+                                        >
+                                            {formatTimecode(subtitle.start)}
+                                        </button>
+                                        {subtitle.speaker_id && speakers.length > 0 ? (
+                                            editingSubtitleId === subtitle.id ? (
+                                                <Popover
+                                                    open
+                                                    onOpenChange={(open) => {
+                                                        if (!open) {
+                                                            setEditingSubtitleId(null);
+                                                        }
                                                     }}
                                                 >
-                                                    {formatTimecode(subtitle.start)}
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right">
-                                                <p className="text-xs">{t("subtitles.jumpToTimeline")}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        {subtitle.speaker_id && speakers.length > 0 ? (
-                                            <Popover
-                                                open={editingSubtitleId === subtitle.id}
-                                                onOpenChange={(open) => {
-                                                    if (open) {
-                                                        setEditingSubtitleId(subtitle.id);
-                                                    } else {
-                                                        setEditingSubtitleId(null);
-                                                    }
-                                                }}
-                                            >
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="ml-auto text-xs p-2 h-6"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        {(() => {
-                                                            const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                            return speakers[idx]?.name || t("subtitles.unknownSpeaker");
-                                                        })()}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent align="end" className="relative bg-card" onClick={(e) => e.stopPropagation()}>
-                                                    <div>
-                                                        {(() => {
-                                                            const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                            const speaker = speakers[idx];
-                                                            if (!speaker) return null;
-                                                            return (
-                                                                <SpeakerSettings
-                                                                    speaker={speaker}
-                                                                    onSpeakerChange={(updated) => {
-                                                                        const next = [...speakers];
-                                                                        next[idx] = updated;
-                                                                        updateSpeakers(next);
-                                                                    }}
-                                                                />
-                                                            );
-                                                        })()}
+                                                    <PopoverTrigger asChild>
                                                         <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="absolute right-2 top-2 h-6 w-6"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditingSubtitleId(null);
-                                                            }}
+                                                            variant="outline"
+                                                            className="ml-auto text-xs p-2 h-6"
+                                                            onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            <X className="h-4 w-4" />
+                                                            {(() => {
+                                                                const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                                return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                            })()}
                                                         </Button>
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent align="end" className="relative bg-card" onClick={(e) => e.stopPropagation()}>
+                                                        <div>
+                                                            {(() => {
+                                                                const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                                const speaker = speakers[idx];
+                                                                if (!speaker) return null;
+                                                                return (
+                                                                    <SpeakerSettings
+                                                                        speaker={speaker}
+                                                                        onSpeakerChange={(updated) => {
+                                                                            const next = [...speakers];
+                                                                            next[idx] = updated;
+                                                                            updateSpeakers(next);
+                                                                        }}
+                                                                    />
+                                                                );
+                                                            })()}
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="absolute right-2 top-2 h-6 w-6"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingSubtitleId(null);
+                                                                }}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    className="ml-auto text-xs p-2 h-6"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingSubtitleId(subtitle.id);
+                                                    }}
+                                                >
+                                                    {(() => {
+                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
+                                                        return speakers[idx]?.name || t("subtitles.unknownSpeaker");
+                                                    })()}
+                                                </Button>
+                                            )
                                         ) : null}
 
                                     </div>
@@ -416,15 +505,14 @@ const SubtitleList = ({
                                             </div>
                                         )}
 
-                                        <ButtonGroup
-                                            className={`overflow-hidden transition-[max-height,opacity,margin-top] duration-200 ease-out ${isSelected ? "mt-4 max-h-24 opacity-100" : "mt-0 max-h-0 opacity-0"}`}
-                                        >
+                                        {isSelected ? (
+                                        <ButtonGroup className="mt-4">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
                                                         variant="outline"
                                                         className="text-xs h-8"
-                                                        disabled={!isSelected || index <= 0 || splitIntoWords(draftText).length === 0}
+                                                        disabled={index <= 0 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -444,7 +532,7 @@ const SubtitleList = ({
                                                     <Button
                                                         variant="outline"
                                                         className="text-xs h-8"
-                                                        disabled={!isSelected || index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
+                                                        disabled={index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -460,6 +548,7 @@ const SubtitleList = ({
                                                 </TooltipContent>
                                             </Tooltip>
                                         </ButtonGroup>
+                                        ) : null}
                                     </div>
                                 </div>
                             );
