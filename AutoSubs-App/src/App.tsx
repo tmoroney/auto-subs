@@ -1,20 +1,12 @@
 // App.tsx
-import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
+import { ThemeProvider, useTheme } from "@/components/providers/theme-provider"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionPanel } from "@/components/transcription/transcription-panel"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { CompactSubtitleViewer } from "@/components/subtitles/compact-subtitle-viewer"
-import { DesktopSubtitleViewer } from "@/components/subtitles/desktop-subtitle-viewer"
+import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel"
 import { useTranslation } from "react-i18next"
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Titlebar } from "@/components/layout/titlebar"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
@@ -42,13 +34,14 @@ export function ThemeToggle() {
 }
 
 function AppContent() {
-  const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
-  const isMobile = useIsMobile()
+  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(true)
+  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(520)
   const { t } = useTranslation()
   const { settings, isHydrated } = useSettings()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const [showResolveRestartNotice, setShowResolveRestartNotice] =
     React.useState(false)
+  const mainContentRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     let cancelled = false
@@ -92,21 +85,45 @@ function AppContent() {
     settings.onboardingCompleted &&
     settings.tourCompleted === false &&
     !showWhatsNew
-  const handleOpenCompactViewer = React.useCallback(() => {
-    if (isMobile) {
-      setShowMobileSubtitles(true)
+  const handleOpenSubtitleViewer = React.useCallback(() => {
+    setShowSubtitleViewer(true)
+  }, [])
+
+  const getMaxSubtitlePanelWidth = React.useCallback(() => {
+    const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
+    return Math.max(360, containerWidth - 424)
+  }, [])
+
+  const handleSubtitleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+
+    const startX = event.clientX
+    const startWidth = subtitlePanelWidth
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = startWidth + startX - moveEvent.clientX
+      setSubtitlePanelWidth(Math.min(getMaxSubtitlePanelWidth(), Math.max(360, nextWidth)))
     }
-  }, [isMobile])
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp)
+  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth])
 
   return (
     <EditorWorkspaceProviders>
       <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden bg-card">
+        <div className="flex flex-col h-screen overflow-hidden bg-card relative">
           {/* Use actual timeline info from Resolve context */}
-          <Titlebar onOpenCompactViewer={handleOpenCompactViewer} />
+          <div className="absolute top-0 left-0 right-0 h-11 z-10" data-tauri-drag-region />
+          
 
           {showResolveRestartNotice && (
-            <div className="border-b bg-card px-3 py-2">
+            <div className="border-b bg-card px-3 py-2 z-15">
               <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
                 <Server className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -134,30 +151,27 @@ function AppContent() {
           )}
 
           {/* Main Content Area with Resizable Panels */}
-          <div className="flex-1 min-h-0 pb-0">
-            {isMobile ? (
-              <div className="h-full overflow-hidden">
-                {showMobileSubtitles ? (
-                  <CompactSubtitleViewer
-                    isOpen={showMobileSubtitles}
-                    onClose={() => setShowMobileSubtitles(false)}
-                  />
-                ) : (
-                  <TranscriptionPanel onViewSubtitles={handleOpenCompactViewer} />
-                )}
+          <div ref={mainContentRef} className="flex-1 min-h-0 pb-0">
+            <div className="flex h-full min-w-0">
+              <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
+                <TranscriptionPanel />
               </div>
-            ) : (
-              // Desktop: Resizable panels with transcription settings and subtitle viewer
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={50} className="min-w-[400px]">
-                  <TranscriptionPanel />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={50} minSize={35}>
-                  <DesktopSubtitleViewer />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            )}
+              {showSubtitleViewer && (
+                <div
+                  className="relative m-3 min-h-0 shrink-0 overflow-hidden rounded-lg border bg-background shadow-sm"
+                  style={{ width: subtitlePanelWidth }}
+                >
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize subtitles panel"
+                    className="absolute inset-y-0 left-0 z-30 w-2 cursor-col-resize touch-none"
+                    onPointerDown={handleSubtitleResizeStart}
+                  />
+                  <SubtitleViewerPanel onClose={() => setShowSubtitleViewer(false)} />
+                </div>
+              )}
+            </div>
           </div>
 
           {showGettingStarted && <GettingStartedOverlay />}

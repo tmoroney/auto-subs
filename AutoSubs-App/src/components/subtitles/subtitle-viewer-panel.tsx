@@ -64,14 +64,11 @@ import { useTranslation } from "react-i18next";
 import { PlusIcon, type PlusIconHandle } from "../ui/plus";
 import { cn } from "@/lib/utils";
 
-type SubtitleViewerVariant = "desktop" | "compact";
-
 const ESTIMATED_SUBTITLE_DOCUMENT_ROW_HEIGHT = 60;
 const SUBTITLE_DOCUMENT_ROW_OVERSCAN = 8;
 const SUBTITLE_DOCUMENT_SKELETON_ROWS = 10;
 
 interface SubtitleViewerPanelProps {
-  variant: SubtitleViewerVariant;
   isOpen?: boolean;
   onClose?: () => void;
 }
@@ -102,7 +99,6 @@ function SearchActionButton({
 }
 
 interface SearchSectionProps {
-  variant: SubtitleViewerVariant;
   headerClassName: string;
   t: (key: string) => string;
   searchQuery: string;
@@ -123,7 +119,6 @@ interface SearchSectionProps {
 }
 
 function SearchSection({
-  variant,
   headerClassName,
   t,
   searchQuery,
@@ -142,8 +137,7 @@ function SearchSection({
   searchPlaceholder,
   searchAriaLabel,
 }: SearchSectionProps) {
-  const isDesktop = variant === "desktop";
-  const showClearButton = !isDesktop && Boolean(searchQuery);
+  const showClearButton = Boolean(searchQuery);
 
   const searchActions = [
     showClearButton ? (
@@ -176,7 +170,7 @@ function SearchSection({
         </Button>
       }
       tooltip={t("subtitles.search.caseMatch")}
-      useAddon={isDesktop}
+      useAddon
     />,
     <SearchActionButton
       key="whole-word"
@@ -192,7 +186,7 @@ function SearchSection({
         </Button>
       }
       tooltip={t("subtitles.search.wholeWord")}
-      useAddon={isDesktop}
+      useAddon
     />,
     <SearchActionButton
       key="replace-toggle"
@@ -208,7 +202,7 @@ function SearchSection({
         </Button>
       }
       tooltip={t("subtitles.search.replaceAll")}
-      useAddon={isDesktop}
+      useAddon
     />,
   ].filter(Boolean);
 
@@ -236,11 +230,10 @@ function SearchSection({
       />
       <Button
         type="button"
-        variant={isDesktop ? undefined : "secondary"}
+        variant="secondary"
         disabled={!canReplace}
         onClick={onReplaceAll}
-        size={isDesktop ? undefined : "sm"}
-        className={isDesktop ? "text-xs" : undefined}
+        size="sm"
       >
         {t("subtitles.search.replaceAll")}
       </Button>
@@ -256,7 +249,6 @@ function SearchSection({
 }
 
 interface SpeakersPopoverProps {
-  variant: SubtitleViewerVariant;
   open: boolean;
   speakers: Speaker[];
   onOpenChange: (open: boolean) => void;
@@ -266,7 +258,6 @@ interface SpeakersPopoverProps {
 }
 
 function SpeakersPopover({
-  variant,
   open,
   speakers,
   onOpenChange,
@@ -274,8 +265,6 @@ function SpeakersPopover({
   t,
   tracks,
 }: SpeakersPopoverProps) {
-  const isDesktop = variant === "desktop";
-
   return (
     <Popover
       open={open}
@@ -289,23 +278,15 @@ function SpeakersPopover({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              size={isDesktop ? "sm" : "icon"}
-              className={isDesktop ? "h-9 px-3" : "h-9 w-9"}
-              title={isDesktop ? t("subtitles.speakers") : undefined}
-              aria-label={
-                variant === "compact" ? t("subtitles.editSpeakers") : undefined
-              }
+              size="sm"
+              className="h-9 px-3"
+              title={t("subtitles.speakers")}
             >
-              <Users className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-              {isDesktop ? t("subtitles.speakers") : null}
+              <Users className="h-4 w-4 mr-0.5" />
+              {t("subtitles.speakers")}
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        {variant === "compact" && (
-          <TooltipContent side="bottom">
-            {t("subtitles.editSpeakers")}
-          </TooltipContent>
-        )}
       </Tooltip>
       <PopoverContent
         align="center"
@@ -342,7 +323,6 @@ function SpeakersPopover({
 }
 
 interface ReformatPopoverProps {
-  variant: SubtitleViewerVariant;
   open: boolean;
   subtitleCount: number;
   onOpenChange: (open: boolean) => void;
@@ -351,15 +331,12 @@ interface ReformatPopoverProps {
 }
 
 function ReformatPopover({
-  variant,
   open,
   subtitleCount,
   onOpenChange,
   onApply,
   t,
 }: ReformatPopoverProps) {
-  const isDesktop = variant === "desktop";
-
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <Tooltip>
@@ -367,23 +344,15 @@ function ReformatPopover({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              size={isDesktop ? "sm" : "icon"}
-              className={isDesktop ? "h-9 px-3" : "h-9 w-9"}
-              title={isDesktop ? t("subtitles.reformat") : undefined}
-              aria-label={
-                variant === "compact" ? t("subtitles.reformat") : undefined
-              }
+              size="sm"
+              className="h-9 px-3"
+              title={t("subtitles.reformat")}
             >
-              <Type className={isDesktop ? "h-4 w-4 mr-0.5" : "h-4 w-4"} />
-              {isDesktop ? t("subtitles.reformat") : null}
+              <Type className="h-4 w-4 mr-0.5" />
+              {t("subtitles.reformat")}
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        {variant === "compact" && (
-          <TooltipContent side="bottom">
-            {t("subtitles.reformat")}
-          </TooltipContent>
-        )}
       </Tooltip>
       <PopoverContent
         align="center"
@@ -402,8 +371,6 @@ function ReformatPopover({
 }
 
 interface SubtitleToolbarProps {
-  variant: SubtitleViewerVariant;
-  onClose?: () => void;
   subtitlesLength: number;
   settings: ReturnType<typeof useSettings>["settings"];
   speakers: Speaker[];
@@ -423,8 +390,6 @@ interface SubtitleToolbarProps {
 }
 
 function SubtitleToolbar({
-  variant,
-  onClose,
   subtitlesLength,
   settings,
   speakers,
@@ -440,31 +405,9 @@ function SubtitleToolbar({
   t,
   tracks,
 }: SubtitleToolbarProps) {
-  const toolbarClassName =
-    variant === "desktop"
-      ? "shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto"
-      : "px-2 py-1.5 border-b shrink-0 relative z-20 bg-background";
-
   return (
-    <div className={toolbarClassName}>
+    <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto">
       <div className="flex items-center gap-2 w-full">
-        {variant === "compact" && onClose && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={onClose}
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0 mr-auto"
-                aria-label={t("common.back")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{t("common.close")}</TooltipContent>
-          </Tooltip>
-        )}
-
         <Tooltip>
           <TooltipTrigger asChild>
             <ImportExportPopover
@@ -474,40 +417,22 @@ function SubtitleToolbar({
               }
               hasSubtitles={subtitlesLength > 0}
               trigger={
-                variant === "desktop" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3"
-                    title={t("importExport.button")}
-                  >
-                    <Upload className="h-4 w-4 mr-0.5" />
-                    {t("importExport.button")}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    aria-label={t("importExport.button")}
-                    title={t("importExport.button")}
-                  >
-                    <Upload className="h-4 w-4" />
-                  </Button>
-                )
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3"
+                  title={t("importExport.button")}
+                >
+                  <Upload className="h-4 w-4 mr-0.5" />
+                  {t("importExport.button")}
+                </Button>
               }
             />
           </TooltipTrigger>
-          {variant === "compact" && (
-            <TooltipContent side="bottom">
-              {t("importExport.button")}
-            </TooltipContent>
-          )}
         </Tooltip>
 
         {speakers.length > 0 && (
           <SpeakersPopover
-            variant={variant}
             open={showSpeakerEditor}
             speakers={speakers}
             onOpenChange={onSpeakerEditorOpenChange}
@@ -518,7 +443,6 @@ function SubtitleToolbar({
         )}
 
         <ReformatPopover
-          variant={variant}
           open={showReformat}
           subtitleCount={subtitlesLength}
           onOpenChange={onReformatOpenChange}
@@ -531,7 +455,6 @@ function SubtitleToolbar({
 }
 
 interface SubtitleContentProps {
-  variant: SubtitleViewerVariant;
   subtitlesLength: number;
   searchQuery: string;
   searchCaseSensitive: boolean;
@@ -971,7 +894,6 @@ function SubtitleContent({
 }
 
 interface AddToTimelineFooterProps {
-  variant: SubtitleViewerVariant;
   settings: ReturnType<typeof useSettings>["settings"];
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"];
   templates: Template[];
@@ -990,7 +912,6 @@ interface AddToTimelineFooterProps {
 }
 
 function AddToTimelineFooter({
-  variant,
   settings,
   timelineInfo,
   templates,
@@ -1017,14 +938,10 @@ function AddToTimelineFooter({
         selectedIntegration={selectedIntegration}
       >
         <Button
-          variant={variant === "desktop" ? "secondary" : "default"}
+          variant="secondary"
           size="default"
           disabled={isAdding}
-          className={
-            variant === "desktop"
-              ? "w-full"
-              : "w-full bg-orange-600 hover:bg-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600"
-          }
+          className="w-full"
           onMouseEnter={() =>
             !isAdding && layersIconRef.current?.startAnimation?.()
           }
@@ -1050,7 +967,6 @@ function AddToTimelineFooter({
 }
 
 export function SubtitleViewerPanel({
-  variant,
   isOpen = true,
   onClose,
 }: SubtitleViewerPanelProps) {
@@ -1118,7 +1034,7 @@ export function SubtitleViewerPanel({
     i18n.resolvedLanguage || i18n.language || undefined;
 
   React.useEffect(() => {
-    if (variant !== "compact" || !isOpen || !onClose) return;
+    if (!isOpen || !onClose) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -1130,7 +1046,7 @@ export function SubtitleViewerPanel({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose, variant]);
+  }, [isOpen, onClose]);
 
   const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -1143,21 +1059,12 @@ export function SubtitleViewerPanel({
     return new RegExp(pattern, flags);
   }, [searchCaseSensitive, searchQuery, searchWholeWord]);
 
-  const canReplace =
-    variant === "desktop"
-      ? Boolean(replaceValue.trim())
-      : Boolean(searchQuery.trim());
+  const canReplace = Boolean(searchQuery.trim());
   const isIntegrationConnected = isAdobeActive
     ? Boolean(adobeTimeline?.timelineId)
     : Boolean(resolveTimeline?.timelineId);
-  const shellClassName =
-    variant === "desktop"
-      ? "m-3 flex h-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-lg border bg-background shadow-sm"
-      : "flex flex-col h-full min-h-0 bg-background";
-  const headerClassName =
-    variant === "desktop"
-      ? "shrink-0 p-3 pb-0"
-      : "p-2 pb-0 shrink-0 sticky top-0 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 space-y-1";
+  const shellClassName = "flex h-full min-h-0 flex-col overflow-hidden";
+  const headerClassName = "shrink-0 p-3 pb-0";
 
   function handleSpeakerChange(index: number, updated: Speaker) {
     const next = [...speakers];
@@ -1207,13 +1114,27 @@ export function SubtitleViewerPanel({
     }
   };
 
-  if (variant === "compact" && !isOpen) return null;
+  if (!isOpen) return null;
 
   return (
     <div className={shellClassName}>
+      <div className="flex shrink-0 items-center justify-between px-3 pt-2">
+        <h2 className="font-semibold pl-1">Subtitles</h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          disabled={!onClose}
+          aria-label={t("common.close")}
+          className="z-20"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
       {hasSubtitles ? (
         <SearchSection
-          variant={variant}
           headerClassName={headerClassName}
           t={t}
           searchQuery={searchQuery}
@@ -1275,8 +1196,6 @@ export function SubtitleViewerPanel({
 
       {hasSubtitles && (
         <SubtitleToolbar
-          variant={variant}
-          onClose={onClose}
           subtitlesLength={subtitles.length}
           settings={settings}
           speakers={speakers}
@@ -1295,7 +1214,6 @@ export function SubtitleViewerPanel({
       )}
 
       <SubtitleContent
-        variant={variant}
         subtitlesLength={subtitles.length}
         searchQuery={searchQuery}
         searchCaseSensitive={searchCaseSensitive}
@@ -1313,7 +1231,6 @@ export function SubtitleViewerPanel({
 
       {isIntegrationConnected && subtitles.length > 0 && (
         <AddToTimelineFooter
-          variant={variant}
           settings={settings}
           timelineInfo={timelineInfo}
           templates={isAdobeActive ? [] : resolveTemplates}
