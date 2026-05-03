@@ -14,6 +14,8 @@ import {
 
   SlidersHorizontal,
   PartyPopper,
+  MonitorIcon,
+  Baseline,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -635,92 +637,22 @@ function TranscriptionPanelView({
           data-tour="mode-switcher"
           key={i18n.language}
         >
-          <TabsList className="p-1 h-auto">
+          <TabsList className="p-1 h-auto dark:bg-background">
             <TabsTrigger
               value="file"
-              className="text-sm"
               onMouseEnter={() => uploadIconRef.current?.startAnimation()}
               onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
             >
-              <UploadIcon ref={uploadIconRef} />
+              <UploadIcon ref={uploadIconRef} className="h-4 w-4" />
               {t("actionBar.mode.fileInput")}
             </TabsTrigger>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                asChild
-                onPointerDown={() => onAudioInputModeChange("timeline")}
-              >
-                <TabsTrigger
-                  value="timeline"
-                  data-state={audioInputMode === "timeline" ? "active" : "inactive"}
-                  className="text-sm px-4 flex items-center gap-1"
-                >
-                  <img
-                    src={
-                      selectedIntegration === "premiere"
-                        ? "/premiere-logo.png"
-                        : selectedIntegration === "aftereffects"
-                        ? "/aftereffects-logo.png"
-                        : "/davinci-resolve-logo.png"
-                    }
-                    alt={
-                      selectedIntegration === "premiere"
-                        ? "Premiere Pro"
-                        : selectedIntegration === "aftereffects"
-                        ? "After Effects"
-                        : "DaVinci Resolve"
-                    }
-                    className="w-4 h-4 mr-1"
-                  />
-                  {t("actionBar.mode.timeline")}
-                  <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
-                </TabsTrigger>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[100]">
-                <DropdownMenuItem
-                  onClick={() => {
-                    onAudioInputModeChange("timeline");
-                    onSelectedIntegrationChange("davinci");
-                  }}
-                  className="cursor-pointer"
-                >
-                  <img
-                    src="/davinci-resolve-logo.png"
-                    alt="DaVinci"
-                    className="w-4 h-4 mr-2"
-                  />
-                  <span>DaVinci Resolve</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    onAudioInputModeChange("timeline");
-                    onSelectedIntegrationChange("premiere");
-                  }}
-                  className="cursor-pointer"
-                >
-                  <img
-                    src="/premiere-logo.png"
-                    alt="Premiere"
-                    className="w-4 h-4 mr-2"
-                  />
-                  <span>Premiere Pro</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    onAudioInputModeChange("timeline");
-                    onSelectedIntegrationChange("aftereffects");
-                  }}
-                  className="cursor-pointer"
-                >
-                  <img
-                    src="/aftereffects-logo.png"
-                    alt="After Effects"
-                    className="w-4 h-4 mr-2"
-                  />
-                  <span>After Effects</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TabsTrigger
+              value="timeline"
+              onPointerDown={() => onAudioInputModeChange("timeline")}
+            >
+              <MonitorIcon className="h-4 w-4" />
+              {t("actionBar.mode.timeline")}
+            </TabsTrigger>
 
           </TabsList>
         </Tabs>
@@ -788,7 +720,7 @@ function TranscriptionPanelView({
 
       <div className="flex-shrink-0">
         <Card
-          className={`p-3 ${isTourActive ? "" : "sticky bottom-4"} m-1 z-50 shadow-lg bg-card`}
+          className={`p-3 ${isTourActive ? "" : "sticky bottom-4"} m-1 z-50 shadow-lg bg-background`}
         >
           <div className="grid w-full gap-3" data-tour="transcription-controls">
             {!isProcessing &&
@@ -811,7 +743,6 @@ function TranscriptionPanelView({
                       size="default"
                       role="combobox"
                       aria-expanded={openLanguage}
-                      className="dark:bg-background dark:hover:bg-accent rounded-full"
                       data-tour="transcription-controls-target"
                     >
                       <Globe className="h-4 w-4" />
@@ -851,7 +782,6 @@ function TranscriptionPanelView({
                     type="button"
                     variant="outline"
                     size="default"
-                    className="rounded-full dark:bg-background dark:hover:bg-accent"
                     aria-expanded={optionsOpen}
                   >
                     <SlidersHorizontal className="h-4 w-4" />
@@ -878,7 +808,6 @@ function TranscriptionPanelView({
                         size="default"
                         role="combobox"
                         aria-expanded={openSpeakerPopover}
-                        className="dark:bg-background dark:hover:bg-accent rounded-full"
                       >
                         <Speech className="h-4 w-4" />
                         <span className="text-xs">
@@ -909,9 +838,8 @@ function TranscriptionPanelView({
                         size="default"
                         role="combobox"
                         aria-expanded={openTextFormattingPopover}
-                        className="dark:bg-background dark:hover:bg-accent rounded-full"
                       >
-                        <Type className="h-4 w-4" />
+                        <Baseline className="h-4 w-4" />
                         <span className="text-xs">
                           {t("actionBar.format.formatButton", "Format")}
                         </span>
@@ -938,7 +866,6 @@ function TranscriptionPanelView({
                         aria-expanded={openCustomPromptPopover}
                         aria-label={t("actionBar.format.customPromptTitle")}
                         title={t("actionBar.format.customPromptTitle")}
-                        className="relative dark:bg-background dark:hover:bg-accent rounded-full"
                       >
                         <ScrollText />
                         <span className="text-xs">

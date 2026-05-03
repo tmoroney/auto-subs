@@ -4,173 +4,209 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 210 25% 7.8431%;
-    --card: 180 6.6667% 97.0588%;
-    --card-foreground: 210 25% 7.8431%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 25% 7.8431%;
-    --primary: 217.3 91.2% 59.8%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 25% 7.8431%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 240 1.9608% 90%;
-    --muted-foreground: 210 25% 7.8431%;
-    --accent: 217.3 91.2% 59.8% / 0.1;
-    --accent-foreground: 217.3 91.2% 59.8%;
-    --destructive: 356.3033 90.5579% 54.3137%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217.3 91.2% 59.8% / 0.2;
-    --input: 217.3 91.2% 59.8% / 0.15;
-    --ring: 217.3 91.2% 59.8%;
-    --chart-1: 217.3 91.2% 59.8%;
-    --chart-2: 159.7826 100% 36.0784%;
-    --chart-3: 42.0290 92.8251% 56.2745%;
-    --chart-4: 147.1429 78.5047% 41.9608%;
-    --chart-5: 341.4894 75.2000% 50.9804%;
-    --sidebar: 180 6.6667% 97.0588%;
-    --sidebar-foreground: 210 25% 7.8431%;
-    --sidebar-primary: 217.3 91.2% 59.8%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 211.5789 51.3514% 92.7451%;
-    --sidebar-accent-foreground: 217.3 91.2% 59.8%;
-    --sidebar-border: 205.0000 25.0000% 90.5882%;
-    --sidebar-ring: 217.3 91.2% 59.8%;
-    --font-sans: "Figtree", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
-    --font-serif: Georgia, serif;
-    --font-mono: Menlo, monospace;
-    --radius: 0.8rem;
-    --shadow-x: 0px;
-    --shadow-y: 2px;
-    --shadow-blur: 0px;
-    --shadow-spread: 0px;
-    --shadow-opacity: 0;
-    --shadow-color: rgba(36, 99, 235, 0.15);
-    --shadow-2xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-sm: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-md: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 2px 4px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-lg: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 4px 6px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 8px 10px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-2xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-    --tracking-normal: 0em;
-    --spacing: 0.25rem;
-  }
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 210 25% 7.8431%;
+        --card: 180 6.6667% 97.0588%;
+        --card-foreground: 210 25% 7.8431%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 210 25% 7.8431%;
+        --primary: 217.3 91.2% 59.8%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 210 25% 7.8431%;
+        --secondary-foreground: 0 0% 100%;
+        --muted: 240 1.9608% 90%;
+        --muted-foreground: 210 25% 7.8431%;
+        --accent: 217.3 91.2% 59.8% / 0.1;
+        --accent-foreground: 217.3 91.2% 59.8%;
+        --destructive: 356.3033 90.5579% 54.3137%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 217.3 91.2% 59.8% / 0.2;
+        --input: 217.3 91.2% 59.8% / 0.15;
+        --ring: 217.3 91.2% 59.8%;
+        --chart-1: 217.3 91.2% 59.8%;
+        --chart-2: 159.7826 100% 36.0784%;
+        --chart-3: 42.029 92.8251% 56.2745%;
+        --chart-4: 147.1429 78.5047% 41.9608%;
+        --chart-5: 341.4894 75.2% 50.9804%;
+        --sidebar: 180 6.6667% 97.0588%;
+        --sidebar-foreground: 210 25% 7.8431%;
+        --sidebar-primary: 217.3 91.2% 59.8%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 211.5789 51.3514% 92.7451%;
+        --sidebar-accent-foreground: 217.3 91.2% 59.8%;
+        --sidebar-border: 205 25% 90.5882%;
+        --sidebar-ring: 217.3 91.2% 59.8%;
+        --font-sans:
+            "Figtree", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP",
+            "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew",
+            "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil",
+            "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada",
+            "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala",
+            "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer",
+            "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian",
+            "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
+        --font-serif: Georgia, serif;
+        --font-mono: Menlo, monospace;
+        --radius: 0.8rem;
+        --shadow-x: 0px;
+        --shadow-y: 2px;
+        --shadow-blur: 0px;
+        --shadow-spread: 0px;
+        --shadow-opacity: 0;
+        --shadow-color: rgba(36, 99, 235, 0.15);
+        --shadow-2xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-sm:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-md:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 2px 4px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-lg:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 4px 6px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-xl:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 8px 10px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-2xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+        --tracking-normal: 0em;
+        --spacing: 0.25rem;
+    }
 
-  .dark {
-    --background: 0 0% 0%;
-    --foreground: 200 6.6667% 91.1765%;
-    --card: 228 9.8039% 10%;
-    --card-foreground: 0 0% 85.0980%;
-    --popover: 0 0% 0%;
-    --popover-foreground: 200 6.6667% 91.1765%;
-    --primary: 217.3 91.2% 59.8%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 195.0000 15.3846% 94.9020%;
-    --secondary-foreground: 210 25% 7.8431%;
-    --muted: 0 0% 9.4118%;
-    --muted-foreground: 210 3.3898% 46.2745%;
-    --accent: 205.7143 70% 7.8431%;
-    --accent-foreground: 217.3 91.2% 59.8%;
-    --destructive: 356.3033 90.5579% 54.3137%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 210 5.2632% 14.9020%;
-    --input: 207.6923 27.6596% 18.4314%;
-    --ring: 217.3 91.2% 59.8%;
-    --chart-1: 217.3 91.2% 59.8%;
-    --chart-2: 159.7826 100% 36.0784%;
-    --chart-3: 42.0290 92.8251% 56.2745%;
-    --chart-4: 147.1429 78.5047% 41.9608%;
-    --chart-5: 341.4894 75.2000% 50.9804%;
-    --sidebar: 228 9.8039% 10%;
-    --sidebar-foreground: 0 0% 85.0980%;
-    --sidebar-primary: 217.3 91.2% 59.8%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 205.7143 70% 7.8431%;
-    --sidebar-accent-foreground: 217.3 91.2% 59.8%;
-    --sidebar-border: 205.7143 15.7895% 26.0784%;
-    --sidebar-ring: 217.3 91.2% 59.8%;
-    --font-sans: "Figtree", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian", "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
-    --font-serif: Georgia, serif;
-    --font-mono: Menlo, monospace;
-    --radius: 0.8rem;
-    --shadow-x: 0px;
-    --shadow-y: 2px;
-    --shadow-blur: 0px;
-    --shadow-spread: 0px;
-    --shadow-opacity: 0;
-    --shadow-color: rgba(36, 99, 235, 0.25);
-    --shadow-2xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-sm: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-md: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 2px 4px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-lg: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 4px 6px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00), 0px 8px 10px -1px hsl(217.3 91.2% 59.8% / 0.00);
-    --shadow-2xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0.00);
-  }
+    .dark {
+        --background: 0 0% 0%;
+        --foreground: 200 6.6667% 91.1765%;
+        --card: 228 9.8039% 10%;
+        --card-foreground: 0 0% 85.098%;
+        --popover: 0 0% 0%;
+        --popover-foreground: 200 6.6667% 91.1765%;
+        --primary: 217.3 91.2% 59.8%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 195 15.3846% 94.902%;
+        --secondary-foreground: 210 25% 7.8431%;
+        --muted: 0 0% 9.4118%;
+        --muted-foreground: 210 3.3898% 46.2745%;
+        --accent: 205.7143 70% 7.8431%;
+        --accent-foreground: 217.3 91.2% 59.8%;
+        --destructive: 356.3033 90.5579% 54.3137%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 210 5.2632% 14.902%;
+        --input: 207.6923 27.6596% 18.4314%;
+        --ring: 217.3 91.2% 59.8%;
+        --chart-1: 217.3 91.2% 59.8%;
+        --chart-2: 159.7826 100% 36.0784%;
+        --chart-3: 42.029 92.8251% 56.2745%;
+        --chart-4: 147.1429 78.5047% 41.9608%;
+        --chart-5: 341.4894 75.2% 50.9804%;
+        --sidebar: 228 9.8039% 10%;
+        --sidebar-foreground: 0 0% 85.098%;
+        --sidebar-primary: 217.3 91.2% 59.8%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 205.7143 70% 7.8431%;
+        --sidebar-accent-foreground: 217.3 91.2% 59.8%;
+        --sidebar-border: 205.7143 15.7895% 26.0784%;
+        --sidebar-ring: 217.3 91.2% 59.8%;
+        --font-sans:
+            "Figtree", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP",
+            "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew",
+            "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil",
+            "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada",
+            "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Sinhala",
+            "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer",
+            "Noto Sans Myanmar", "Noto Sans Georgian", "Noto Sans Armenian",
+            "Noto Sans Ethiopic", "Noto Serif Tibetan", sans-serif;
+        --font-serif: Georgia, serif;
+        --font-mono: Menlo, monospace;
+        --radius: 0.8rem;
+        --shadow-x: 0px;
+        --shadow-y: 2px;
+        --shadow-blur: 0px;
+        --shadow-spread: 0px;
+        --shadow-opacity: 0;
+        --shadow-color: rgba(36, 99, 235, 0.25);
+        --shadow-2xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-xs: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-sm:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 1px 2px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-md:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 2px 4px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-lg:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 4px 6px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-xl:
+            0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0),
+            0px 8px 10px -1px hsl(217.3 91.2% 59.8% / 0);
+        --shadow-2xl: 0px 2px 0px 0px hsl(217.3 91.2% 59.8% / 0);
+    }
 }
 
-
 @layer base {
-  * {
-    @apply border-border;
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
-  }
+    * {
+        @apply border-border;
+        scrollbar-width: thin;
+        scrollbar-color: hsl(var(--border)) transparent;
+    }
 
-  /* Custom Webkit Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+    /* Custom Webkit Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-  ::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
+    ::-webkit-scrollbar-thumb {
+        background-color: hsl(var(--border));
+        border-radius: 9999px;
+        border: 4px solid transparent;
+        background-clip: content-box;
+    }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--muted-foreground) / 0.5);
-  }
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: hsl(var(--muted-foreground) / 0.5);
+    }
 
-  html {
-    overscroll-behavior: none;
-  }
+    html {
+        overscroll-behavior: none;
+    }
 
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-sans);
-  }
+    body {
+        @apply bg-background text-foreground;
+        font-family: var(--font-sans);
+    }
 }
 
 /* Custom icon sizing override */
 .info-icon-custom {
-  width: 20px !important;
-  height: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
 }
 
 /* Heart Burst Animation */
 .group:hover .heart-anim {
-  animation: burst 1s ease-out forwards;
+    animation: burst 1s ease-out forwards;
 }
 
 @keyframes burst {
-  0% {
-    transform: translate(-50%, -50%) scale(0.5);
-    opacity: 0.8;
-  }
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.8;
+    }
 
-  100% {
-    transform: translate(var(--tx), var(--ty)) scale(var(--s)) rotate(var(--r));
-    opacity: 0;
-  }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(var(--s))
+            rotate(var(--r));
+        opacity: 0;
+    }
 }

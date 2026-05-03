@@ -1,5 +1,19 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Settings, Sun, Moon, Monitor, Heart, Boxes, RotateCcw, GitMerge, ChevronDown, Check } from "lucide-react";
+import {
+  Minus,
+  Square,
+  X,
+  Settings,
+  Sun,
+  Moon,
+  Monitor,
+  Heart,
+  Boxes,
+  RotateCcw,
+  GitMerge,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import type { HistoryIconHandle } from "@/components/ui/history";
 import { platform } from "@tauri-apps/plugin-os";
 import { useTranslation } from "react-i18next";
@@ -32,17 +46,21 @@ import { SubtitleHistoryPopover } from "@/components/common/subtitle-history-pop
 
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
-import { useIntegration, type Integration } from "@/contexts/IntegrationContext";
+import {
+  useIntegration,
+  type Integration,
+} from "@/contexts/IntegrationContext";
 
 function IntegrationStatus() {
   const { t } = useTranslation();
-  const { timelineInfo: resolveTimeline, refresh: refreshResolve } = useResolve();
+  const { timelineInfo: resolveTimeline, refresh: refreshResolve } =
+    useResolve();
   const {
     premiereTimeline,
     afterEffectsTimeline,
     isPremiereConnected,
     isAfterEffectsConnected,
-    refresh: refreshAdobe
+    refresh: refreshAdobe,
   } = useAdobe();
   const { selectedIntegration, setSelectedIntegration } = useIntegration();
 
@@ -84,44 +102,49 @@ function IntegrationStatus() {
         : t("titlebar.aftereffects.tooltip.openAfterEffects"),
       refresh: refreshAdobe,
     },
-  } satisfies Record<Integration, {
-    productName: string;
-    logo: string;
-    connected: boolean;
-    timelineName?: string;
-    connectedText: string;
-    disconnectedText: string;
-    helperText: string;
-    refresh: () => Promise<void>;
-  }>;
+  } satisfies Record<
+    Integration,
+    {
+      productName: string;
+      logo: string;
+      connected: boolean;
+      timelineName?: string;
+      connectedText: string;
+      disconnectedText: string;
+      helperText: string;
+      refresh: () => Promise<void>;
+    }
+  >;
 
   const activeIntegration = integrations[selectedIntegration];
   const activeLabel = activeIntegration.connected
-    ? (activeIntegration.timelineName || activeIntegration.connectedText)
+    ? activeIntegration.timelineName || activeIntegration.connectedText
     : activeIntegration.productName;
 
   return (
-    <div className="flex items-center gap-1 select-none" data-tauri-drag-region="false">
+    <div
+      className="flex items-center gap-1 select-none"
+      data-tauri-drag-region="false"
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={`flex items-center gap-2 h-7 text-xs px-2 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${activeIntegration.connected
-              ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
-              : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
-              }`}
+            className={`flex items-center gap-2 h-7 text-xs px-2 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
+              activeIntegration.connected
+                ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+                : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
+            }`}
           >
             <div
-              className={`w-2 h-2 rounded-full ${activeIntegration.connected ? 'bg-green-500' : 'bg-red-500'}`}
+              className={`w-2 h-2 rounded-full ${activeIntegration.connected ? "bg-green-500" : "bg-red-500"}`}
             />
             <img
               src={activeIntegration.logo}
               alt={activeIntegration.productName}
               className="h-4 w-4"
             />
-            <span className="max-w-[120px] truncate">
-              {activeLabel}
-            </span>
+            <span className="max-w-[120px] truncate">{activeLabel}</span>
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
@@ -134,11 +157,19 @@ function IntegrationStatus() {
                 className="h-8 w-8"
               />
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold">{activeIntegration.productName}</h4>
-                <p className={`text-sm ${activeIntegration.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                  {activeIntegration.connected ? activeIntegration.connectedText : activeIntegration.disconnectedText}
+                <h4 className="text-sm font-semibold">
+                  {activeIntegration.productName}
+                </h4>
+                <p
+                  className={`text-sm ${activeIntegration.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                >
+                  {activeIntegration.connected
+                    ? activeIntegration.connectedText
+                    : activeIntegration.disconnectedText}
                 </p>
-                <p className="text-xs text-muted-foreground">{activeIntegration.helperText}</p>
+                <p className="text-xs text-muted-foreground">
+                  {activeIntegration.helperText}
+                </p>
               </div>
             </div>
           </div>
@@ -151,15 +182,25 @@ function IntegrationStatus() {
                 onClick={() => setSelectedIntegration(integration)}
                 className="cursor-pointer"
               >
-                <div className={`w-2 h-2 rounded-full ${item.connected ? 'bg-green-500' : 'bg-red-500'}`} />
-                <img src={item.logo} alt={item.productName} className="h-4 w-4" />
+                <div
+                  className={`w-2 h-2 rounded-full ${item.connected ? "bg-green-500" : "bg-red-500"}`}
+                />
+                <img
+                  src={item.logo}
+                  alt={item.productName}
+                  className="h-4 w-4"
+                />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span>{item.productName}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {item.connected ? (item.timelineName || item.connectedText) : item.disconnectedText}
+                    {item.connected
+                      ? item.timelineName || item.connectedText
+                      : item.disconnectedText}
                   </span>
                 </div>
-                {selectedIntegration === integration ? <Check className="h-4 w-4" /> : null}
+                {selectedIntegration === integration ? (
+                  <Check className="h-4 w-4" />
+                ) : null}
               </DropdownMenuItem>
             );
           })}
@@ -179,7 +220,6 @@ function IntegrationStatus() {
   );
 }
 
-
 function SettingsDropdown() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -192,11 +232,10 @@ function SettingsDropdown() {
   // to the model manager when it's actually downloaded. This is because it's a different
   // type of model (speaker diarization vs speech transcription) and has a different
   // download/management pattern.
-  const managerModels: Model[] = downloadedModelValues.includes(diarizeModel.value)
-    ? [
-      ...modelsState,
-      { ...diarizeModel, isDownloaded: true },
-    ]
+  const managerModels: Model[] = downloadedModelValues.includes(
+    diarizeModel.value,
+  )
+    ? [...modelsState, { ...diarizeModel, isDownloaded: true }]
     : modelsState;
 
   const handleThemeChange = (themeValue: string) => {
@@ -223,11 +262,17 @@ function SettingsDropdown() {
           sideOffset={4}
         >
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => setSettingsDialogOpen(true)}
+              className="cursor-pointer"
+            >
               <Settings />
               <span>{t("settings.title", "Settings")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setManageModelsOpen(true)} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => setManageModelsOpen(true)}
+              className="cursor-pointer"
+            >
               <Boxes />
               <span>{t("models.manage.title", "Manage Models")}</span>
             </DropdownMenuItem>
@@ -251,33 +296,53 @@ function SettingsDropdown() {
               onClick={() => setSupportDialogOpen(true)}
               className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
             >
-              <div
-                className="group relative flex w-full items-center"
-              >
+              <div className="group relative flex w-full items-center">
                 <Heart className="h-4 w-4 mr-2 text-pink-500 group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500 transition-all" />
-                <span>{t("settings.support.supportAutoSubs", "Support AutoSubs")}</span>
+                <span>
+                  {t("settings.support.supportAutoSubs", "Support AutoSubs")}
+                </span>
 
                 {/* Bursting hearts animation */}
                 <div className="absolute inset-0 pointer-events-none">
                   {[
-                    { tx: '-90px', ty: '-90px', s: 1.8, r: '-20deg', d: '0s' },
-                    { tx: '80px', ty: '-100px', s: 1.5, r: '25deg', d: '0.05s' },
-                    { tx: '-30px', ty: '-120px', s: 1.7, r: '5deg', d: '0.1s' },
-                    { tx: '100px', ty: '-80px', s: 1.4, r: '-15deg', d: '0.15s' },
-                    { tx: '0px', ty: '-115px', s: 1.9, r: '0deg', d: '0.2s' },
-                    { tx: '-100px', ty: '-75px', s: 1.5, r: '15deg', d: '0.25s' },
-                    { tx: '70px', ty: '-115px', s: 1.6, r: '-5deg', d: '0.3s' },
+                    { tx: "-90px", ty: "-90px", s: 1.8, r: "-20deg", d: "0s" },
+                    {
+                      tx: "80px",
+                      ty: "-100px",
+                      s: 1.5,
+                      r: "25deg",
+                      d: "0.05s",
+                    },
+                    { tx: "-30px", ty: "-120px", s: 1.7, r: "5deg", d: "0.1s" },
+                    {
+                      tx: "100px",
+                      ty: "-80px",
+                      s: 1.4,
+                      r: "-15deg",
+                      d: "0.15s",
+                    },
+                    { tx: "0px", ty: "-115px", s: 1.9, r: "0deg", d: "0.2s" },
+                    {
+                      tx: "-100px",
+                      ty: "-75px",
+                      s: 1.5,
+                      r: "15deg",
+                      d: "0.25s",
+                    },
+                    { tx: "70px", ty: "-115px", s: 1.6, r: "-5deg", d: "0.3s" },
                   ].map((p, i) => (
                     <Heart
                       key={i}
                       className="heart-anim absolute top-1/2 left-1/2 h-5 w-5 text-pink-400 opacity-0"
-                      style={{
-                        '--tx': p.tx,
-                        '--ty': p.ty,
-                        '--s': p.s,
-                        '--r': p.r,
-                        animationDelay: p.d,
-                      } as React.CSSProperties}
+                      style={
+                        {
+                          "--tx": p.tx,
+                          "--ty": p.ty,
+                          "--s": p.s,
+                          "--r": p.r,
+                          animationDelay: p.d,
+                        } as React.CSSProperties
+                      }
                     />
                   ))}
                 </div>
@@ -326,7 +391,11 @@ function SettingsDropdown() {
   );
 }
 
-function SubtitleHistoryButton({ onSubtitleDocumentOpen }: { onSubtitleDocumentOpen?: () => void }) {
+function SubtitleHistoryButton({
+  onSubtitleDocumentOpen,
+}: {
+  onSubtitleDocumentOpen?: () => void;
+}) {
   const historyIconRef = useRef<HistoryIconHandle>(null);
 
   return (
@@ -349,7 +418,15 @@ function SubtitleHistoryButton({ onSubtitleDocumentOpen }: { onSubtitleDocumentO
   );
 }
 
-function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; percentage: number | null; version: string | null }) {
+function UpdateStatusIndicator({
+  phase,
+  percentage,
+  version,
+}: {
+  phase: string;
+  percentage: number | null;
+  version: string | null;
+}) {
   const { t } = useTranslation();
 
   const handleInstallUpdate = () => {
@@ -361,7 +438,10 @@ function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; 
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Spinner className="h-3 w-3" />
-        <span>{t("titlebar.update.downloading", "Downloading Update")} {percentage != null ? `${percentage}%` : ""}</span>
+        <span>
+          {t("titlebar.update.downloading", "Downloading Update")}{" "}
+          {percentage != null ? `${percentage}%` : ""}
+        </span>
       </div>
     );
   }
@@ -401,7 +481,8 @@ function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; 
         className="flex items-center gap-2 h-7 px-2 rounded text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300 transition-colors"
       >
         <RotateCcw className="h-3 w-3" />
-        {t("titlebar.update.newVersionAvailable", "Update Available")}{version ? ` (v${version})` : ""}
+        {t("titlebar.update.newVersionAvailable", "Update Available")}
+        {version ? ` (v${version})` : ""}
       </a>
     );
   }
@@ -409,7 +490,11 @@ function UpdateStatusIndicator({ phase, percentage, version }: { phase: string; 
   return null;
 }
 
-export function Titlebar({ onOpenCompactViewer }: { onOpenCompactViewer?: () => void }) {
+export function Titlebar({
+  onOpenCompactViewer,
+}: {
+  onOpenCompactViewer?: () => void;
+}) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
   const { phase, percentage, version } = useUpdateStatus();
@@ -424,10 +509,10 @@ export function Titlebar({ onOpenCompactViewer }: { onOpenCompactViewer?: () => 
 
   const centerContent =
     phase === "downloading" ||
-      phase === "ready" ||
-      phase === "installing" ||
-      phase === "restarting" ||
-      phase === "available-link" ? (
+    phase === "ready" ||
+    phase === "installing" ||
+    phase === "restarting" ||
+    phase === "available-link" ? (
       <UpdateStatusIndicator
         phase={phase}
         percentage={percentage}
@@ -451,7 +536,7 @@ export function Titlebar({ onOpenCompactViewer }: { onOpenCompactViewer?: () => 
 
   return (
     <header
-      className="flex items-center justify-between h-9 px-1 border-b bg-card backdrop-blur select-none z-50"
+      className="flex items-center justify-between h-9 px-1 bg-card backdrop-blur select-none z-50"
       data-tauri-drag-region
     >
       {isMacOS ? (
@@ -461,14 +546,20 @@ export function Titlebar({ onOpenCompactViewer }: { onOpenCompactViewer?: () => 
           <div className="w-20" data-tauri-drag-region />
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
+          <div
+            className="flex items-center justify-center flex-1"
+            data-tauri-drag-region
+            data-tour="connection-indicator"
+          >
             {centerContent}
           </div>
 
           {/* Right side - Subtitle history and settings buttons */}
           <div className="flex items-center w-24 justify-end">
             <div data-tauri-drag-region="false" data-tour="history-button">
-              <SubtitleHistoryButton onSubtitleDocumentOpen={onOpenCompactViewer} />
+              <SubtitleHistoryButton
+                onSubtitleDocumentOpen={onOpenCompactViewer}
+              />
             </div>
             <div data-tauri-drag-region="false">
               <SettingsDropdown />
@@ -484,12 +575,18 @@ export function Titlebar({ onOpenCompactViewer }: { onOpenCompactViewer?: () => 
               <SettingsDropdown />
             </div>
             <div data-tauri-drag-region="false" data-tour="history-button">
-              <SubtitleHistoryButton onSubtitleDocumentOpen={onOpenCompactViewer} />
+              <SubtitleHistoryButton
+                onSubtitleDocumentOpen={onOpenCompactViewer}
+              />
             </div>
           </div>
 
           {/* Center - Resolve status */}
-          <div className="flex items-center justify-center flex-1" data-tauri-drag-region data-tour="connection-indicator">
+          <div
+            className="flex items-center justify-center flex-1"
+            data-tauri-drag-region
+            data-tour="connection-indicator"
+          >
             {centerContent}
           </div>
 

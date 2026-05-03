@@ -101,11 +101,9 @@ function AppContent() {
   return (
     <EditorWorkspaceProviders>
       <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col h-screen overflow-hidden bg-card">
           {/* Use actual timeline info from Resolve context */}
-          <Titlebar
-            onOpenCompactViewer={handleOpenCompactViewer}
-          />
+          <Titlebar onOpenCompactViewer={handleOpenCompactViewer} />
 
           {showResolveRestartNotice && (
             <div className="border-b bg-card px-3 py-2">

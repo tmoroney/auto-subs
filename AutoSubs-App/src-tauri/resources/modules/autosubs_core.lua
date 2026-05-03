@@ -317,7 +317,8 @@ function GetTimelineInfo()
         timelineInfo = {
             name = timeline:GetName(),
             timelineId = timeline:GetUniqueId(),
-            timelineStart = timeline:GetStartFrame() / timeline:GetSetting("timelineFrameRate")
+            timelineStart = timeline:GetStartFrame() / timeline:GetSetting("timelineFrameRate"),
+            projectName = project:GetName(),
         }
     end)
     if not success then
@@ -759,7 +760,7 @@ function ExportAudio(outputDir, inputTracks, exportRange)
         local renderSettings = renderJobList[#renderJobList]
 
         local baseOffset = (renderSettings["MarkIn"] - timeline:GetStartFrame()) /
-        timeline:GetSetting("timelineFrameRate")
+            timeline:GetSetting("timelineFrameRate")
 
         -- Calculate relative offsets for each clip segment (relative to the exported audio start)
         local segments = {}

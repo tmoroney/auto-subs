@@ -64,7 +64,6 @@ import { useTranslation } from "react-i18next";
 import { PlusIcon, type PlusIconHandle } from "../ui/plus";
 import { cn } from "@/lib/utils";
 
-
 type SubtitleViewerVariant = "desktop" | "compact";
 
 const ESTIMATED_SUBTITLE_DOCUMENT_ROW_HEIGHT = 60;
@@ -411,7 +410,9 @@ interface SubtitleToolbarProps {
   showSpeakerEditor: boolean;
   showReformat: boolean;
   importSubtitles: ReturnType<typeof useSubtitleDocument>["importSubtitles"];
-  exportSubtitlesAs: ReturnType<typeof useSubtitleDocument>["exportSubtitlesAs"];
+  exportSubtitlesAs: ReturnType<
+    typeof useSubtitleDocument
+  >["exportSubtitlesAs"];
   subtitles: ReturnType<typeof useSubtitleDocument>["subtitles"];
   onSpeakerEditorOpenChange: (open: boolean) => void;
   onSpeakerChange: (index: number, speaker: Speaker) => void;
@@ -543,7 +544,6 @@ interface SubtitleContentProps {
   onSubtitleDocumentOpen: () => void;
 }
 
-
 interface SubtitleHistoryListProps {
   searchQuery: string;
   subtitleDocumentDateLocale?: string;
@@ -557,9 +557,9 @@ function SubtitleHistoryList({
   onSubtitleDocumentOpen,
   t,
 }: SubtitleHistoryListProps) {
-  const [subtitleDocuments, setSubtitleDocuments] = React.useState<SubtitleDocumentListItem[]>(
-    [],
-  );
+  const [subtitleDocuments, setSubtitleDocuments] = React.useState<
+    SubtitleDocumentListItem[]
+  >([]);
   const [hasLoaded, setHasLoaded] = React.useState(false);
   const [deletingFilename, setDeletingFilename] = React.useState<string | null>(
     null,
@@ -631,7 +631,12 @@ function SubtitleHistoryList({
 
       return searchableText.includes(query);
     });
-  }, [formatSubtitleDocumentDate, searchQuery, subtitleDocumentDateLocale, subtitleDocuments]);
+  }, [
+    formatSubtitleDocumentDate,
+    searchQuery,
+    subtitleDocumentDateLocale,
+    subtitleDocuments,
+  ]);
 
   const groupedItems = React.useMemo(() => {
     const items: (
@@ -684,12 +689,10 @@ function SubtitleHistoryList({
     count: groupedItems.length,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: (index: number) =>
-
       groupedItems[index]?.type === "header"
         ? 32
         : ESTIMATED_SUBTITLE_DOCUMENT_ROW_HEIGHT,
     getItemKey: (index: number) => {
-
       const item = groupedItems[index];
       if (item?.type === "header") return `header-${item.label}`;
       return item?.data.filename ?? index;
@@ -731,18 +734,20 @@ function SubtitleHistoryList({
     return (
       <div className="h-full overflow-hidden px-2 py-2">
         <div className="space-y-1">
-          {Array.from({ length: SUBTITLE_DOCUMENT_SKELETON_ROWS }).map((_, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-3 rounded-md px-3 py-2.5"
-            >
-              <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-sm" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-[72%]" />
-                <Skeleton className="h-3 w-[48%]" />
+          {Array.from({ length: SUBTITLE_DOCUMENT_SKELETON_ROWS }).map(
+            (_, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-3 rounded-md px-3 py-2.5"
+              >
+                <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-sm" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-[72%]" />
+                  <Skeleton className="h-3 w-[48%]" />
+                </div>
               </div>
-            </div>
-          ))}
+            ),
+          )}
         </div>
       </div>
     );
@@ -776,7 +781,6 @@ function SubtitleHistoryList({
           style={{ height: rowVirtualizer.getTotalSize() }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
-
             const item = groupedItems[virtualRow.index];
             if (!item) return null;
 
@@ -796,7 +800,8 @@ function SubtitleHistoryList({
             }
 
             const subtitleDocument = item.data;
-            const isActive = currentSubtitleDocumentFilename === subtitleDocument.filename;
+            const isActive =
+              currentSubtitleDocumentFilename === subtitleDocument.filename;
 
             return (
               <div
@@ -833,7 +838,9 @@ function SubtitleHistoryList({
                       <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3 opacity-70" />
-                          {formatSubtitleDocumentDate(subtitleDocument.createdAt)}
+                          {formatSubtitleDocumentDate(
+                            subtitleDocument.createdAt,
+                          )}
                         </span>
                         {subtitleDocument.timelineName && (
                           <>
@@ -852,7 +859,9 @@ function SubtitleHistoryList({
                       variant="outline"
                       size="sm"
                       className="h-8 px-3 text-xs font-medium hover:bg-background text-muted-foreground hover:text-foreground"
-                      onClick={() => void openSubtitleDocument(subtitleDocument.filename)}
+                      onClick={() =>
+                        void openSubtitleDocument(subtitleDocument.filename)
+                      }
                     >
                       {t("common.open")}
                     </Button>
@@ -916,7 +925,6 @@ function SubtitleHistoryList({
       </AlertDialog>
     </>
   );
-
 }
 
 function SubtitleContent({
@@ -980,7 +988,6 @@ interface AddToTimelineFooterProps {
   isAdding: boolean;
   selectedIntegration?: "davinci" | "premiere" | "aftereffects";
 }
-
 
 function AddToTimelineFooter({
   variant,
@@ -1088,7 +1095,8 @@ export function SubtitleViewerPanel({
 
   const { selectedIntegration } = useIntegration();
   const isAdobeActive =
-    selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
+    selectedIntegration === "premiere" ||
+    selectedIntegration === "aftereffects";
 
   const timelineInfo = isAdobeActive ? adobeTimeline : resolveTimeline;
 
@@ -1144,7 +1152,7 @@ export function SubtitleViewerPanel({
     : Boolean(resolveTimeline?.timelineId);
   const shellClassName =
     variant === "desktop"
-      ? "flex flex-col h-full border-l bg-card/50"
+      ? "m-3 flex h-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-lg border bg-background shadow-sm"
       : "flex flex-col h-full min-h-0 bg-background";
   const headerClassName =
     variant === "desktop"
@@ -1311,10 +1319,7 @@ export function SubtitleViewerPanel({
           templates={isAdobeActive ? [] : resolveTemplates}
           templatesLoading={!isAdobeActive && resolveTemplatesLoading}
           templatesLoaded={isAdobeActive || resolveTemplatesLoaded}
-          onLoadTemplates={
-            isAdobeActive ? undefined : refreshResolveTemplates
-          }
-
+          onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
           layersIconRef={layersIconRef}
           onAddToTimeline={handleAddToTimeline}
           t={t}
