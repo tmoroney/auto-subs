@@ -1,24 +1,21 @@
 import * as React from "react";
 import {
   Speech,
-  Type,
   AudioLines,
   Globe,
   X,
   PlayCircle,
   ChevronRight,
-  ChevronDown,
   ScrollText,
   Info,
   RefreshCw,
-
-  SlidersHorizontal,
   PartyPopper,
   MonitorIcon,
   Baseline,
-  PanelLeftClose,
   PanelLeft,
   TextAlignStart,
+  MapPin,
+  MapPinOff,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -35,13 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import {
   Popover,
   PopoverTrigger,
@@ -53,17 +44,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { LanguageSelector } from "@/components/settings/language-selector";
@@ -241,7 +221,6 @@ interface TranscriptionPanelViewProps {
   onRefreshAudioTracks?: () => Promise<void>;
   isProcessing?: boolean;
   selectedIntegration: "davinci" | "premiere" | "aftereffects";
-  onSelectedIntegrationChange: (integration: "davinci" | "premiere" | "aftereffects") => void;
 }
 
 
@@ -272,12 +251,10 @@ function TranscriptionPanelView({
   onRefreshAudioTracks,
   isProcessing,
   selectedIntegration,
-  onSelectedIntegrationChange,
 }: TranscriptionPanelViewProps) {
 
   const { t, i18n } = useTranslation();
   const { settings: currentSettings, updateSetting } = useSettings();
-  const isTourActive = !currentSettings.tourCompleted;
   const uploadIconRef = React.useRef<UploadIconHandle>(null);
   const dropAreaUploadIconRef = React.useRef<UploadIconHandle>(null);
   const [openLanguage, setOpenLanguage] = React.useState(false);
@@ -291,7 +268,6 @@ function TranscriptionPanelView({
     React.useState(false);
   const [sourceControlsExpanded, setSourceControlsExpanded] =
     React.useState(true);
-  const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [isRefreshingTracks, setIsRefreshingTracks] = React.useState(false);
   const [refreshSpinKey, setRefreshSpinKey] = React.useState(0);
   const [localTerms, setLocalTerms] = React.useState("");
@@ -424,10 +400,10 @@ function TranscriptionPanelView({
     [currentSettings.selectedInputTracksByApp, selectedIntegration, updateSetting],
   );
 
-  const renderFileDropArea = (className = "h-[160px]") => (
+  const renderFileDropArea = (className = "h-[132px]") => (
     <div
       key="file-drop-area"
-      className={`group flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10 py-20 px-4 transition-colors hover:bg-muted/30 hover:border-muted-foreground/40 outline-none ${className}`}
+      className={`group flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10 px-4 py-4 transition-colors hover:bg-muted/30 hover:border-muted-foreground/40 outline-none ${className}`}
       data-tour="audio-input"
       tabIndex={0}
       role="button"
@@ -466,6 +442,29 @@ function TranscriptionPanelView({
     </div>
   );
 
+  const sourceModeLabel =
+    currentSettings.audioInputMode === "timeline"
+      ? t("actionBar.mode.timeline")
+      : t("actionBar.mode.fileInput");
+
+  const selectedModelLabel = t(modelsState[selectedModelIndex].label);
+
+  const sourceLanguageLabel =
+    currentSettings.language === "auto"
+      ? t("actionBar.common.auto")
+      : languages.find((l) => l.value === currentSettings.language)?.label ??
+      currentSettings.language;
+
+  const targetLanguageLabel =
+    translateLanguages.find((l) => l.value === currentSettings.targetLanguage)
+      ?.label ?? currentSettings.targetLanguage;
+
+  const languageSummary = currentSettings.translate
+    ? `${sourceLanguageLabel} → ${targetLanguageLabel}`
+    : sourceLanguageLabel;
+
+  const runSummary = `${sourceModeLabel} · ${selectedModelLabel} · ${languageSummary}`;
+
   const sourceSummary = React.useMemo(() => {
     if (currentSettings.audioInputMode === "file") {
       return selectedFile?.split("/").pop() ?? t("actionBar.fileDrop.prompt");
@@ -495,122 +494,160 @@ function TranscriptionPanelView({
     t,
   ]);
 
-  const renderCollapsedSourceSummary = () => (
-    <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/35 pl-4 pr-3 py-2">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{sourceSummary}</div>
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-8 shrink-0 px-2"
-        onClick={() => {
-          setSourceControlsExpanded(true);
-          handleRefreshAudioTracks();
-        }}
-      >
-        {t("common.edit", "Edit")}
-      </Button>
+  const renderCollapsedRunSummary = () => (
+    <div className="min-w-0 rounded-xl border bg-muted/35 px-3.5 py-3">
+      <p className="truncate text-sm font-medium">{runSummary}</p>
     </div>
   );
 
   const renderTimelineTrackSelector = () => (
-    <div className="space-y-2.5" data-tour="audio-input">
-      <div className="flex items-center justify-between gap-2">
-        <Select
-          value={currentSettings.exportRange || "entire"}
-          onValueChange={(val) =>
-            updateSetting("exportRange", val as "entire" | "inout")
-          }
-        >
-          <SelectTrigger className="h-8 w-fit max-w-full border-transparent bg-transparent px-2 text-sm shadow-none hover:bg-muted focus:ring-0 transition-colors">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="entire">
-              {t("actionBar.tracks.exportRange.entire")}
-            </SelectItem>
-            <SelectItem value="inout">
-              {t("actionBar.tracks.exportRange.inout")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={handleRefreshAudioTracks}
-                disabled={isRefreshingTracks}
-                aria-label={t("common.refresh", "Refresh")}
-              >
-                <RefreshCw
-                  key={refreshSpinKey}
-                  className={`h-4 w-4 ${refreshSpinKey > 0 ? "[animation:spin_500ms_linear_1]" : ""}`}
-                />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{t("common.refresh", "Refresh")}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
+    <div className="flex h-[132px] flex-col gap-2.5" data-tour="audio-input">
       {inputTracks.length > 0 ? (
-        <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-lg pr-2">
-          {inputTracks.map((track, index) => {
-            const currentTracks =
-              currentSettings.selectedInputTracksByApp[selectedIntegration] ||
-              [];
-            const isChecked = currentTracks.includes(track.value);
+        <>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-lg pr-1">
+            {inputTracks.map((track, index) => {
+              const currentTracks =
+                currentSettings.selectedInputTracksByApp[selectedIntegration] ||
+                [];
+              const isChecked = currentTracks.includes(track.value);
 
-            return (
-              <div
-                key={track.value}
-                role="button"
-                tabIndex={0}
-                className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${isChecked
-                  ? "border-input bg-muted/60 shadow-sm"
-                  : "border-transparent bg-muted/35 dark:border-border dark:bg-muted/50 hover:bg-muted/55 dark:hover:bg-muted/60"
-                  }`}
-                onClick={() => toggleInputTrack(track.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleInputTrack(track.value);
-                  }
-                }}
-              >
-                <Checkbox
-                  checked={isChecked}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  className="pointer-events-none border-muted-foreground/40 data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-                />
-                <AudioLines className="h-4 w-4 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {track.label}
-                </span>
-                <span className="rounded-md border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
-                  {index + 1}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              return (
+                <div
+                  key={track.value}
+                  role="button"
+                  tabIndex={0}
+                  className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${isChecked
+                    ? "border-input bg-background shadow-sm"
+                    : "border-transparent bg-muted/35 dark:border-border dark:bg-muted/50 hover:bg-muted/55 dark:hover:bg-muted/60"
+                    }`}
+                  onClick={() => toggleInputTrack(track.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleInputTrack(track.value);
+                    }
+                  }}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="pointer-events-none border-muted-foreground/40 data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                  />
+                  <AudioLines className="h-4 w-4 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {track.label}
+                  </span>
+                  <span className="rounded-md border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
+                    {index + 1}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
       ) : (
-        <div className="flex min-h-24 items-center justify-center rounded-lg border border-dashed px-4 text-center">
+        <div className="flex h-full items-center justify-center rounded-lg border border-dashed bg-muted/10 px-4 text-center">
           <p className="text-sm text-muted-foreground">
             {t("actionBar.tracks.createTrack")}
           </p>
         </div>
       )}
     </div>
+  );
+
+  const renderSourceModeTabs = () => (
+    <Tabs
+      value={audioInputMode}
+      onValueChange={(value) => {
+        onAudioInputModeChange(value as "file" | "timeline");
+        setSourceControlsExpanded(true);
+        handleRefreshAudioTracks();
+      }}
+      data-tour="mode-switcher"
+      key={i18n.language}
+    >
+      <TabsList className="h-auto dark:bg-background">
+        <TabsTrigger
+          value="timeline"
+          onPointerDown={() => onAudioInputModeChange("timeline")}
+        >
+          <MonitorIcon className="h-4 w-4" />
+          {t("actionBar.mode.timeline")}
+        </TabsTrigger>
+        <TabsTrigger
+          value="file"
+          onMouseEnter={() => uploadIconRef.current?.startAnimation()}
+          onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
+        >
+          <UploadIcon ref={uploadIconRef} className="h-4 w-4" />
+          {t("actionBar.mode.fileInput")}
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  const renderExportRangeToggle = () => (
+    <Toggle
+      pressed={currentSettings.exportRange === "inout"}
+      onPressedChange={(pressed) =>
+        updateSetting("exportRange", pressed ? "inout" : "entire")
+      }
+      aria-label="Toggle in/out range"
+      size="default"
+      variant="default"
+      className="h-8 gap-1.5 px-2.5 text-xs"
+    >
+      {currentSettings.exportRange === "inout" ? (
+        <MapPin className="h-3.5 w-3.5" />
+      ) : (
+        <MapPinOff className="h-3.5 w-3.5" />
+      )}
+      {currentSettings.exportRange === "inout"
+        ? t("actionBar.tracks.exportRange.inout")
+        : t("actionBar.tracks.exportRange.entire")}
+    </Toggle>
+  );
+
+  const renderSection = (
+    _title: string,
+    children: React.ReactNode,
+    trailing?: React.ReactNode,
+  ) => (
+    <section className="space-y-2.5 border-b border-zinc-200/70 pb-3.5 last:border-b-0 last:pb-0 dark:border-zinc-800/70">
+      {trailing ? (
+        <div className="flex min-h-8 items-center justify-end gap-3">
+          <div className="shrink-0">{trailing}</div>
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+
+  const renderRefreshButton = () => (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={handleRefreshAudioTracks}
+            disabled={isRefreshingTracks}
+            aria-label={t("common.refresh", "Refresh")}
+          >
+            <RefreshCw
+              key={refreshSpinKey}
+              className={`${refreshSpinKey > 0 ? "[animation:spin_500ms_linear_1]" : ""}`}
+            />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{t("common.refresh", "Refresh")}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 
   const [isHoveringPanelToggle, setIsHoveringPanelToggle] = React.useState(false);
@@ -638,53 +675,7 @@ function TranscriptionPanelView({
         <IntegrationStatus />
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col p-3 pt-1">
-        <div className="sticky top-0 z-10 flex items-center justify-between pb-3 bg-transparent">
-          <div className="flex items-center gap-2">
-            <ModelPicker
-              modelsState={modelsState}
-              selectedModelIndex={selectedModelIndex}
-              selectedLanguage={selectedLanguage}
-              onSelectModel={onSelectModel}
-              downloadingModel={downloadingModel}
-              downloadProgress={downloadProgress}
-              open={openModelSelector}
-              onOpenChange={onOpenModelSelectorChange}
-              isSmallScreen={isSmallScreen}
-            />
-          </div>
-
-          <Tabs
-            value={audioInputMode}
-            onValueChange={(value) => {
-              onAudioInputModeChange(value as "file" | "timeline");
-              setSourceControlsExpanded(true);
-              handleRefreshAudioTracks();
-            }}
-            data-tour="mode-switcher"
-            key={i18n.language}
-          >
-            <TabsList className="p-1 h-auto dark:bg-background">
-              <TabsTrigger
-                value="file"
-                onMouseEnter={() => uploadIconRef.current?.startAnimation()}
-                onMouseLeave={() => uploadIconRef.current?.stopAnimation()}
-              >
-                <UploadIcon ref={uploadIconRef} className="h-4 w-4" />
-                {t("actionBar.mode.fileInput")}
-              </TabsTrigger>
-              <TabsTrigger
-                value="timeline"
-                onPointerDown={() => onAudioInputModeChange("timeline")}
-              >
-                <MonitorIcon className="h-4 w-4" />
-                {t("actionBar.mode.timeline")}
-              </TabsTrigger>
-
-            </TabsList>
-          </Tabs>
-        </div>
-
+      <div className="flex-1 min-h-0 flex flex-col p-4 pt-1">
         <div
           className="flex-1 min-h-0 overflow-y-auto"
           style={{
@@ -746,285 +737,310 @@ function TranscriptionPanelView({
         </div>
 
         <div className="flex-shrink-0">
-          <Card
-            className={`p-3 ${isTourActive ? "" : "sticky bottom-4"} m-1 z-50 shadow-lg bg-background`}
-          >
+          <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
             <div className="grid w-full gap-3" data-tour="transcription-controls">
-              {!isProcessing &&
-                (shouldShowExpandedSourceControls
-                  ? currentSettings.audioInputMode === "timeline"
-                    ? renderTimelineTrackSelector()
-                    : renderFileDropArea("h-[140px]")
-                  : renderCollapsedSourceSummary())}
-
-              <Collapsible
-                open={optionsOpen}
-                onOpenChange={setOptionsOpen}
-                className="space-y-2"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="default"
-                        role="combobox"
-                        aria-expanded={openLanguage}
-                        data-tour="transcription-controls-target"
-                      >
-                        <Globe className="h-4 w-4" />
-                        <span className="text-xs truncate flex items-center gap-1">
-                          {currentSettings.translate ? (
-                            <>
-                              {currentSettings.language === "auto"
-                                ? t("actionBar.common.auto")
-                                : languages.find(
-                                  (l) => l.value === currentSettings.language,
-                                )?.label}
-                              <ChevronRight className="h-3 w-3" />
-                              {
-                                translateLanguages.find(
-                                  (l) =>
-                                    l.value === currentSettings.targetLanguage,
-                                )?.label
-                              }
-                            </>
-                          ) : currentSettings.language === "auto" ? (
-                            t("actionBar.common.auto")
-                          ) : (
-                            languages.find(
-                              (l) => l.value === currentSettings.language,
-                            )?.label
-                          )}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="p-0 w-72" align="start" side="top">
-                      <LanguageSelector />
-                    </PopoverContent>
-                  </Popover>
-
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="default"
-                      aria-expanded={optionsOpen}
-                    >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      <span className="text-xs">
-                        {t("common.options", "Options")}
-                      </span>
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 transition-transform ${optionsOpen ? "rotate-180" : ""}`}
-                      />
-                    </Button>
-                  </CollapsibleTrigger>
-
-                </div>
-
-                <CollapsibleContent>
-                  <div className="flex items-center gap-1.5">
-                    <Popover
-                      open={openSpeakerPopover}
-                      onOpenChange={setOpenSpeakerPopover}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="default"
-                          role="combobox"
-                          aria-expanded={openSpeakerPopover}
-                        >
-                          <Speech className="h-4 w-4" />
-                          <span className="text-xs">
-                            {currentSettings.enableDiarize
-                              ? currentSettings.maxSpeakers === null
-                                ? t("actionBar.common.auto")
-                                : currentSettings.maxSpeakers
-                              : t("actionBar.common.off")}
-                          </span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-72 p-0"
-                        align="start"
-                        side="top"
-                      >
-                        <SpeakerSelector />
-                      </PopoverContent>
-                    </Popover>
-
-                    <Popover
-                      open={openTextFormattingPopover}
-                      onOpenChange={setOpenTextFormattingPopover}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="default"
-                          role="combobox"
-                          aria-expanded={openTextFormattingPopover}
-                        >
-                          <Baseline className="h-4 w-4" />
-                          <span className="text-xs">
-                            {t("actionBar.format.formatButton", "Format")}
-                          </span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-80 p-0"
-                        align="start"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <TextFormattingPanel />
-                      </PopoverContent>
-                    </Popover>
-
-                    <Popover
-                      open={openCustomPromptPopover}
-                      onOpenChange={setOpenCustomPromptPopover}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="default"
-                          role="combobox"
-                          aria-expanded={openCustomPromptPopover}
-                          aria-label={t("actionBar.format.customPromptTitle")}
-                          title={t("actionBar.format.customPromptTitle")}
-                        >
-                          <ScrollText />
-                          <span className="text-xs">
-                            {t("actionBar.format.customPromptButton", "Prompt")}
-                          </span>
-                          {currentSettings.customPrompt.trim() ? (
-                            <span className="absolute right-2.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-                          ) : null}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-80 p-0"
-                        side="top"
-                        align="center"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <div className="px-4 py-3.5 space-y-4">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm font-medium">
-                              {t("actionBar.format.customPromptTitle")}
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              {t("actionBar.format.customPromptDescription")}
-                            </p>
-                          </div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <Label className="text-xs font-medium">
-                                {t("actionBar.format.customPromptTermsTitle")}
-                              </Label>
-                              <TooltipProvider delayDuration={300}>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-[220px]">
-                                    <p className="text-xs">
-                                      {t(
-                                        "actionBar.format.customPromptTermsExample",
-                                      )}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                            <Textarea
-                              value={localTerms}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLTextAreaElement>,
-                              ) => setLocalTerms(e.target.value)}
-                              placeholder={t(
-                                "actionBar.format.customPromptTermsPlaceholder",
-                              )}
-                              className="min-h-[76px] resize-none text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <Label className="text-xs font-medium">
-                                {t("actionBar.format.customPromptContextTitle")}
-                              </Label>
-                              <TooltipProvider delayDuration={300}>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-[255px]">
-                                    <p className="text-xs">
-                                      {t(
-                                        "actionBar.format.customPromptContextExample",
-                                      )}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                            <Textarea
-                              value={localContext}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLTextAreaElement>,
-                              ) => setLocalContext(e.target.value)}
-                              placeholder={t(
-                                "actionBar.format.customPromptContextPlaceholder",
-                              )}
-                              className="min-h-[64px] resize-none text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div className="border-t bg-muted/30">
-                          <div className="px-4 py-3">
-                            <p className="text-xs text-muted-foreground">
-                              {t("actionBar.format.customPromptWhisperOnly")}
-                            </p>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
               {isProcessing ? (
-                <Button
-                  onClick={onCancel}
-                  size="default"
-                  variant="destructive"
-                  className="w-full mt-1"
-                >
-                  <X className="h-4 w-4" />
-                  {t("common.cancel")}
-                </Button>
+                renderCollapsedRunSummary()
               ) : (
-                <Button
-                  onClick={onStart}
-                  size="default"
-                  variant="default"
-                  className="w-full mt-1"
-                  disabled={
-                    isProcessing ||
-                    (currentSettings.audioInputMode === "file" &&
-                      !selectedFile) ||
-                    (currentSettings.audioInputMode === "timeline" &&
-                      selectedTrackCount === 0)
-                  }
-                >
-                  <PlayCircle className="h-4 w-4" />
-                  {currentSettings.audioInputMode === "timeline" &&
-                    selectedTrackCount > 0
-                    ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
-                    : t("common.generateSubtitles")}
-                </Button>
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="shrink-0">{renderSourceModeTabs()}</div>
+                    <div className="flex items-center gap-1">
+                      {currentSettings.audioInputMode === "timeline" && (
+                        <>
+                          {renderRefreshButton()}
+                          {renderExportRangeToggle()}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {renderSection(
+                    "Source",
+                    shouldShowExpandedSourceControls ? (
+                      currentSettings.audioInputMode === "timeline" ? (
+                        renderTimelineTrackSelector()
+                      ) : (
+                        renderFileDropArea()
+                      )
+                    ) : (
+                      <div className="flex h-[132px] items-center justify-between gap-3 rounded-lg bg-muted/35 pl-3.5 pr-2 py-2.5">
+                        <p className="min-w-0 truncate text-sm font-medium">
+                          {sourceSummary}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 shrink-0 px-2"
+                          onClick={() => {
+                            setSourceControlsExpanded(true);
+                            handleRefreshAudioTracks();
+                          }}
+                        >
+                          {t("common.edit", "Edit")}
+                        </Button>
+                      </div>
+                    ),
+                  )}
+
+                  {renderSection(
+                    "Language",
+                    <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="default"
+                          role="combobox"
+                          aria-expanded={openLanguage}
+                          className="h-10 w-full justify-between rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                          data-tour="transcription-controls-target"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 truncate text-sm font-medium">
+                              {sourceLanguageLabel}
+                            </span>
+                            {currentSettings.translate ? (
+                              <>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 truncate text-sm font-medium">
+                                  {targetLanguageLabel}
+                                </span>
+                              </>
+                            ) : null}
+                          </span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-72" align="start" side="top">
+                        <LanguageSelector />
+                      </PopoverContent>
+                    </Popover>,
+                  )}
+
+                  {renderSection(
+                    "Options",
+                    <div className="grid grid-cols-3 gap-2">
+                      <Popover
+                        open={openSpeakerPopover}
+                        onOpenChange={setOpenSpeakerPopover}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="default"
+                            role="combobox"
+                            className="h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            aria-expanded={openSpeakerPopover}
+                          >
+                            <Speech className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-xs font-medium">
+                              {currentSettings.enableDiarize
+                                ? currentSettings.maxSpeakers === null
+                                  ? t("actionBar.common.auto")
+                                  : currentSettings.maxSpeakers
+                                : t("actionBar.common.off")}
+                            </span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-72 p-0"
+                          align="start"
+                          side="top"
+                        >
+                          <SpeakerSelector />
+                        </PopoverContent>
+                      </Popover>
+
+                      <Popover
+                        open={openTextFormattingPopover}
+                        onOpenChange={setOpenTextFormattingPopover}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="default"
+                            role="combobox"
+                            className="h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            aria-expanded={openTextFormattingPopover}
+                          >
+                            <Baseline className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-xs font-medium">
+                              {t("actionBar.format.formatButton", "Format")}
+                            </span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-80 p-0"
+                          align="start"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <TextFormattingPanel />
+                        </PopoverContent>
+                      </Popover>
+
+                      <Popover
+                        open={openCustomPromptPopover}
+                        onOpenChange={setOpenCustomPromptPopover}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="default"
+                            role="combobox"
+                            className="relative h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            aria-expanded={openCustomPromptPopover}
+                            aria-label={t("actionBar.format.customPromptTitle")}
+                            title={t("actionBar.format.customPromptTitle")}
+                          >
+                            <ScrollText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-xs font-medium">
+                              {t("actionBar.format.customPromptButton", "Prompt")}
+                            </span>
+                            {currentSettings.customPrompt.trim() ? (
+                              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                            ) : null}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-80 p-0"
+                          side="top"
+                          align="center"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <div className="px-4 py-3.5 space-y-4">
+                            <div className="space-y-0.5">
+                              <Label className="text-sm font-medium">
+                                {t("actionBar.format.customPromptTitle")}
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                {t("actionBar.format.customPromptDescription")}
+                              </p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Label className="text-xs font-medium">
+                                  {t("actionBar.format.customPromptTermsTitle")}
+                                </Label>
+                                <TooltipProvider delayDuration={300}>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[220px]">
+                                      <p className="text-xs">
+                                        {t(
+                                          "actionBar.format.customPromptTermsExample",
+                                        )}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                              <Textarea
+                                value={localTerms}
+                                onChange={(
+                                  e: React.ChangeEvent<HTMLTextAreaElement>,
+                                ) => setLocalTerms(e.target.value)}
+                                placeholder={t(
+                                  "actionBar.format.customPromptTermsPlaceholder",
+                                )}
+                                className="min-h-[76px] resize-none text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Label className="text-xs font-medium">
+                                  {t("actionBar.format.customPromptContextTitle")}
+                                </Label>
+                                <TooltipProvider delayDuration={300}>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[255px]">
+                                      <p className="text-xs">
+                                        {t(
+                                          "actionBar.format.customPromptContextExample",
+                                        )}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                              <Textarea
+                                value={localContext}
+                                onChange={(
+                                  e: React.ChangeEvent<HTMLTextAreaElement>,
+                                ) => setLocalContext(e.target.value)}
+                                placeholder={t(
+                                  "actionBar.format.customPromptContextPlaceholder",
+                                )}
+                                className="min-h-[64px] resize-none text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="border-t bg-muted/30">
+                            <div className="px-4 py-3">
+                              <p className="text-xs text-muted-foreground">
+                                {t("actionBar.format.customPromptWhisperOnly")}
+                              </p>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>,
+                  )}
+                </>
               )}
+
+              <div className="flex items-center gap-2 justify-between">
+                {!isProcessing ? (
+                  <ModelPicker
+                    modelsState={modelsState}
+                    selectedModelIndex={selectedModelIndex}
+                    selectedLanguage={selectedLanguage}
+                    onSelectModel={onSelectModel}
+                    downloadingModel={downloadingModel}
+                    downloadProgress={downloadProgress}
+                    open={openModelSelector}
+                    onOpenChange={onOpenModelSelectorChange}
+                    isSmallScreen={isSmallScreen}
+                  />
+                ) : (
+                  <div />
+                )}
+                {isProcessing ? (
+                  <Button
+                    onClick={onCancel}
+                    size="default"
+                    variant="destructive"
+                  >
+                    <X className="h-4 w-4" />
+                    {t("common.cancel")}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={onStart}
+                    size="default"
+                    variant="default"
+                    disabled={
+                      isProcessing ||
+                      (currentSettings.audioInputMode === "file" &&
+                        !selectedFile) ||
+                      (currentSettings.audioInputMode === "timeline" &&
+                        (selectedTrackCount === 0 || inputTracks.length === 0))
+                    }
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    {currentSettings.audioInputMode === "timeline" &&
+                      selectedTrackCount > 0 &&
+                      inputTracks.length > 0
+                      ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
+                      : t("common.generateSubtitles")}
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         </div>
@@ -1095,7 +1111,7 @@ export function TranscriptionPanel({
     getSourceAudio: premiereGetSourceAudio,
   } = useAdobe();
 
-  const { selectedIntegration, setSelectedIntegration } = useIntegration();
+  const { selectedIntegration } = useIntegration();
 
   const isPremiereActive = selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
   const timelineInfo = isPremiereActive ? premiereTimeline : resolveTimeline;
@@ -1445,7 +1461,6 @@ export function TranscriptionPanel({
             onRefreshAudioTracks={refreshAudioTracks}
             isProcessing={isProcessing}
             selectedIntegration={selectedIntegration}
-            onSelectedIntegrationChange={setSelectedIntegration}
           />
 
         </div>

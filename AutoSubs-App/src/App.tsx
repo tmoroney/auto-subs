@@ -117,7 +117,7 @@ function AppContent() {
   return (
     <EditorWorkspaceProviders>
       <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden bg-card relative">
+        <div className="flex flex-col h-screen overflow-hidden bg-accent relative">
           {/* Use actual timeline info from Resolve context */}
           <div className="absolute top-0 left-0 right-0 h-11 z-10" data-tauri-drag-region />
           
@@ -154,7 +154,7 @@ function AppContent() {
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0">
             <div className="flex h-full min-w-0">
               <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
-                <TranscriptionPanel />
+                <TranscriptionPanel onViewSubtitles={handleOpenSubtitleViewer} />
               </div>
               {showSubtitleViewer && (
                 <div
