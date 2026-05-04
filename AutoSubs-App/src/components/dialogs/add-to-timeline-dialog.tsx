@@ -49,6 +49,7 @@ interface Selection {
     templateValue: string  // used when mode === 'regular'
     presetId: string       // used when mode === 'animated'
     outputTrack: string
+    fontOverride?: string
 }
 
 type CreateSession =
@@ -112,6 +113,7 @@ export function AddToTimelineDialog({
         templateValue: settings.selectedTemplate.value,
         presetId: settings.presetId || DEFAULT_PRESET_ID,
         outputTrack: settings.selectedOutputTrack,
+        fontOverride: undefined,
     }))
     const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>(speakers)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -158,6 +160,7 @@ export function AddToTimelineDialog({
             templateValue: s.selectedTemplate.value,
             presetId: s.presetId || DEFAULT_PRESET_ID,
             outputTrack: s.selectedOutputTrack,
+            fontOverride: undefined,
         })
         // Initialize speakers without tracks to use the global output track
         const initializedSpeakers = sp.map((speaker) => ({
@@ -269,10 +272,19 @@ export function AddToTimelineDialog({
             selection.mode === "animated"
                 ? ANIMATED_CAPTION_TEMPLATE
                 : selection.templateValue
-        const presetSettings =
+
+        // Start from preset macro settings for animated captions
+        let presetSettings =
             selection.mode === "animated"
                 ? getPreset(selection.presetId)?.macroSettings
                 : undefined
+
+        // If the user supplied a font override, inject it into the settings
+        if (selection.fontOverride && selection.fontOverride !== "") {
+            const copy = presetSettings ? { ...presetSettings } : {}
+            (copy as Record<string, unknown>).Font = selection.fontOverride
+            presetSettings = copy
+        }
 
         // Persist the user's picks so the next run starts from them.
         updateSetting("captionMode", selection.mode)
@@ -402,6 +414,8 @@ export function AddToTimelineDialog({
                             }}
                             onExportPreset={exportPreset}
                             hasAnimatedTemplate={hasAnimatedTemplate}
+                            fontOverride={selection.fontOverride}
+                            onFontChange={(val: string) => setSelection((s) => ({ ...s, fontOverride: val }))}
                         />
                     )}
 
@@ -576,6 +590,8 @@ interface TemplateStepProps {
     onImportPreset: (json: string) => Promise<import("@/types").CaptionPreset>
     onExportPreset: (id: string) => string
     hasAnimatedTemplate: boolean
+    fontOverride?: string
+    onFontChange?: (value: string) => void
 }
 
 function TemplateStep({
@@ -604,6 +620,8 @@ function TemplateStep({
     onImportPreset,
     onExportPreset,
     hasAnimatedTemplate,
+    fontOverride,
+    onFontChange,
 }: TemplateStepProps) {
     const { t } = useTranslation()
 
@@ -685,6 +703,15 @@ function TemplateStep({
                         )}
                     </div>
                 </ScrollArea>
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Font override (optional)</label>
+                    <input
+                        value={fontOverride || ''}
+                        onChange={(e) => onFontChange && onFontChange(e.target.value)}
+                        placeholder="e.g. Arial Rounded MT Bold"
+                        className="w-full rounded-md border px-2 py-1 text-sm"
+                    />
+                </div>
             </TabsContent>
 
             <TabsContent value="animated" className="space-y-3">
@@ -699,6 +726,15 @@ function TemplateStep({
                     onExportJson={onExportPreset}
                     onDuplicate={onDuplicatePreset}
                 />
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Font override (optional)</label>
+                    <input
+                        value={fontOverride || ''}
+                        onChange={(e) => onFontChange && onFontChange(e.target.value)}
+                        placeholder="e.g. Arial Rounded MT Bold"
+                        className="w-full rounded-md border px-2 py-1 text-sm"
+                    />
+                </div>
             </TabsContent>
         </Tabs>
     )
