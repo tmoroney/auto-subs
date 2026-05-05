@@ -14,8 +14,9 @@ import {
   Baseline,
   PanelLeft,
   TextAlignStart,
-  MapPin,
-  MapPinOff,
+  Lock,
+  ChevronsLeftRightEllipsis,
+  LockKeyhole,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -70,7 +71,7 @@ import {
 } from "@/types";
 import { useTranslation } from "react-i18next";
 import { diarizeModel } from "@/lib/models";
-import SubSlateCard from "@/components/SubSlateCard";
+import SubSlateCard from "@/components/ui/SubSlateCard";
 
 
 const SUPPORTED_MEDIA_EXTENSIONS = [
@@ -595,33 +596,12 @@ function TranscriptionPanelView({
       }
       aria-label="Toggle in/out range"
       size="default"
-      variant="default"
+      variant="outline"
       className="h-8 gap-1.5 px-2.5 text-xs"
     >
-      {currentSettings.exportRange === "inout" ? (
-        <MapPin className="h-3.5 w-3.5" />
-      ) : (
-        <MapPinOff className="h-3.5 w-3.5" />
-      )}
-      {currentSettings.exportRange === "inout"
-        ? t("actionBar.tracks.exportRange.inout")
-        : t("actionBar.tracks.exportRange.entire")}
+      <ChevronsLeftRightEllipsis />
+      {t("actionBar.tracks.exportRange.inout")}
     </Toggle>
-  );
-
-  const renderSection = (
-    _title: string,
-    children: React.ReactNode,
-    trailing?: React.ReactNode,
-  ) => (
-    <section className="space-y-2.5 border-b border-zinc-200/70 pb-3.5 last:border-b-0 last:pb-0 dark:border-zinc-800/70">
-      {trailing ? (
-        <div className="flex min-h-8 items-center justify-end gap-3">
-          <div className="shrink-0">{trailing}</div>
-        </div>
-      ) : null}
-      {children}
-    </section>
   );
 
   const renderRefreshButton = () => (
@@ -687,7 +667,7 @@ function TranscriptionPanelView({
           {showProcessing ? (
             <div
               ref={progressContainerRef}
-              className="w-full px-4 pb-6 relative z-10"
+              className="w-full px-1 relative z-10"
             >
               <div className="flex flex-col gap-2">
                 {processingSteps.map((step) => (
@@ -737,26 +717,26 @@ function TranscriptionPanelView({
         </div>
 
         <div className="flex-shrink-0">
-          <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
-            <div className="grid w-full gap-3" data-tour="transcription-controls">
-              {isProcessing ? (
-                renderCollapsedRunSummary()
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="shrink-0">{renderSourceModeTabs()}</div>
-                    <div className="flex items-center gap-1">
+          <div className="grid w-full gap-2.5" data-tour="transcription-controls">
+            {isProcessing ? (
+              <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
+                {renderCollapsedRunSummary()}
+              </Card>
+            ) : (
+              <>
+                {/* Input Card */}
+                <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="shrink-0">{renderSourceModeTabs()}</div>
                       {currentSettings.audioInputMode === "timeline" && (
-                        <>
+                        <div className="flex items-center gap-1">
                           {renderRefreshButton()}
                           {renderExportRangeToggle()}
-                        </>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  {renderSection(
-                    "Source",
-                    shouldShowExpandedSourceControls ? (
+                    {shouldShowExpandedSourceControls ? (
                       currentSettings.audioInputMode === "timeline" ? (
                         renderTimelineTrackSelector()
                       ) : (
@@ -780,11 +760,13 @@ function TranscriptionPanelView({
                           {t("common.edit", "Edit")}
                         </Button>
                       </div>
-                    ),
-                  )}
+                    )}
+                  </div>
+                </Card>
 
-                  {renderSection(
-                    "Language",
+                {/* Configure Card */}
+                <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
+                  <div className="space-y-3">
                     <Popover open={openLanguage} onOpenChange={setOpenLanguage}>
                       <PopoverTrigger asChild>
                         <Button
@@ -812,15 +794,11 @@ function TranscriptionPanelView({
                           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-72" align="start" side="top">
+                      <PopoverContent className="p-0 w-72" align="center" side="top">
                         <LanguageSelector />
                       </PopoverContent>
-                    </Popover>,
-                  )}
-
-                  {renderSection(
-                    "Options",
-                    <div className="grid grid-cols-3 gap-2">
+                    </Popover>
+                    <div className="grid grid-cols-3 gap-2 border-t pt-3">
                       <Popover
                         open={openSpeakerPopover}
                         onOpenChange={setOpenSpeakerPopover}
@@ -830,11 +808,11 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group h-10 justify-start gap-2 rounded-lg bg-muted/35 px-4 hover:bg-muted/55"
                             aria-expanded={openSpeakerPopover}
                           >
-                            <Speech className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-xs font-medium">
+                            <Speech className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="truncate text-xs font-medium group-hover:text-primary transition-colors">
                               {currentSettings.enableDiarize
                                 ? currentSettings.maxSpeakers === null
                                   ? t("actionBar.common.auto")
@@ -861,18 +839,18 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group h-10 justify-start gap-2 rounded-lg bg-muted/35 px-4 hover:bg-muted/55"
                             aria-expanded={openTextFormattingPopover}
                           >
-                            <Baseline className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-xs font-medium">
+                            <Baseline className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="truncate text-xs font-medium group-hover:text-primary transition-colors">
                               {t("actionBar.format.formatButton", "Format")}
                             </span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
                           className="w-80 p-0"
-                          align="start"
+                          align="center"
                           onOpenAutoFocus={(e) => e.preventDefault()}
                         >
                           <TextFormattingPanel />
@@ -888,13 +866,13 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="relative h-10 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group relative h-10 justify-start gap-2 rounded-lg bg-muted/35 px-4 hover:bg-muted/55"
                             aria-expanded={openCustomPromptPopover}
                             aria-label={t("actionBar.format.customPromptTitle")}
                             title={t("actionBar.format.customPromptTitle")}
                           >
-                            <ScrollText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-xs font-medium">
+                            <ScrollText className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="truncate text-xs font-medium group-hover:text-primary transition-colors">
                               {t("actionBar.format.customPromptButton", "Prompt")}
                             </span>
                             {currentSettings.customPrompt.trim() ? (
@@ -905,7 +883,7 @@ function TranscriptionPanelView({
                         <PopoverContent
                           className="w-80 p-0"
                           side="top"
-                          align="center"
+                          align="end"
                           onOpenAutoFocus={(e) => e.preventDefault()}
                         >
                           <div className="px-4 py-3.5 space-y-4">
@@ -989,40 +967,27 @@ function TranscriptionPanelView({
                           </div>
                         </PopoverContent>
                       </Popover>
-                    </div>,
-                  )}
-                </>
-              )}
+                    </div>
+                    <ModelPicker
+                      modelsState={modelsState}
+                      selectedModelIndex={selectedModelIndex}
+                      selectedLanguage={selectedLanguage}
+                      onSelectModel={onSelectModel}
+                      downloadingModel={downloadingModel}
+                      downloadProgress={downloadProgress}
+                      open={openModelSelector}
+                      onOpenChange={onOpenModelSelectorChange}
+                      isSmallScreen={isSmallScreen}
+                      fullWidth
+                    />
+                  </div>
+                </Card>
 
-              <div className="flex items-center gap-2 justify-between">
-                {!isProcessing ? (
-                  <ModelPicker
-                    modelsState={modelsState}
-                    selectedModelIndex={selectedModelIndex}
-                    selectedLanguage={selectedLanguage}
-                    onSelectModel={onSelectModel}
-                    downloadingModel={downloadingModel}
-                    downloadProgress={downloadProgress}
-                    open={openModelSelector}
-                    onOpenChange={onOpenModelSelectorChange}
-                    isSmallScreen={isSmallScreen}
-                  />
-                ) : (
-                  <div />
-                )}
-                {isProcessing ? (
-                  <Button
-                    onClick={onCancel}
-                    size="default"
-                    variant="destructive"
-                  >
-                    <X className="h-4 w-4" />
-                    {t("common.cancel")}
-                  </Button>
-                ) : (
+                {/* Engine Card */}
+                <div className="z-50 shadow-none">
                   <Button
                     onClick={onStart}
-                    size="default"
+                    size="lg"
                     variant="default"
                     disabled={
                       isProcessing ||
@@ -1031,6 +996,7 @@ function TranscriptionPanelView({
                       (currentSettings.audioInputMode === "timeline" &&
                         (selectedTrackCount === 0 || inputTracks.length === 0))
                     }
+                    className="w-full"
                   >
                     <PlayCircle className="h-4 w-4" />
                     {currentSettings.audioInputMode === "timeline" &&
@@ -1039,11 +1005,23 @@ function TranscriptionPanelView({
                       ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
                       : t("common.generateSubtitles")}
                   </Button>
-                )}
-              </div>
-            </div>
-          </Card>
+                </div>
+              </>
+            )}
+            {isProcessing && (
+              <Button
+                onClick={onCancel}
+                size="lg"
+                variant="destructive"
+                className="w-full"
+              >
+                <X className="h-4 w-4" />
+                {t("common.cancel")}
+              </Button>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );

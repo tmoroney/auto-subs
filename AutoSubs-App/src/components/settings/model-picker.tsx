@@ -78,6 +78,7 @@ interface ModelPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   isSmallScreen: boolean
+  fullWidth?: boolean
 }
 
 export function ModelPicker({
@@ -90,6 +91,7 @@ export function ModelPicker({
   open,
   onOpenChange,
   isSmallScreen,
+  fullWidth = false,
 }: ModelPickerProps) {
   const { t } = useTranslation()
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
@@ -161,10 +163,10 @@ export function ModelPicker({
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
-            size="default"
+            variant="ghost"
+            size="lg"
             role="combobox"
-            className="p-2 select-none"
+            className="p-3 bg-muted/30 select-none w-full justify-start"
             aria-expanded={open}
             data-tour="model-picker"
             onMouseEnter={() => {
@@ -180,14 +182,14 @@ export function ModelPicker({
                 alt={t(modelsState[selectedModelIndex].label) + " icon"}
                 className="w-6 h-6 object-contain rounded"
               />
-              <div className="flex items-center">
-                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
+              <div className="flex items-center gap-1">
+                <span className="truncate">Model: {t(modelsState[selectedModelIndex].label)}</span>
               </div>
-              <ChevronsUpDownIcon ref={chevronsIconRef} />
             </div>
+            <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-96 p-0 overflow-hidden" align="start">
+        <PopoverContent className="w-96 p-0 overflow-hidden" align="center">
           <div className="relative">
             <Command className="max-h-[350px]">
               <div className="relative">

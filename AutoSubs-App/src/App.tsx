@@ -153,12 +153,12 @@ function AppContent() {
           {/* Main Content Area with Resizable Panels */}
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
+              <div className="min-h-0 min-w-[200px] flex-1 overflow-hidden">
                 <TranscriptionPanel onViewSubtitles={handleOpenSubtitleViewer} />
               </div>
               {showSubtitleViewer && (
                 <div
-                  className="relative m-3 min-h-0 shrink-0 overflow-hidden rounded-lg border bg-background shadow-sm"
+                  className="relative my-2 mr-2 min-h-0 shrink-0 overflow-hidden rounded-lg border bg-background shadow-sm"
                   style={{ width: subtitlePanelWidth }}
                 >
                   <div
