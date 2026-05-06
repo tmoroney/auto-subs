@@ -401,28 +401,21 @@
 						local oldCount = #wordTiming
 						local newCount = #words
 
-						-- Handle added words
+						-- Handle added/removed words
+						local compEnd = comp:GetAttrs("COMPN_RenderEnd") or 1000
 						if newCount > oldCount then
-							local gap
-							if oldCount >= 2 then
-								gap = wordTiming[oldCount].startFrame - wordTiming[oldCount - 1].startFrame
-							elseif oldCount == 1 then
-								gap = wordTiming[1].endFrame - wordTiming[1].startFrame
-								if gap == 0 then gap = 20 end
-							else
-								gap = 20
-							end
-
+							local lastWord = wordTiming[oldCount]
+							local newStart = lastWord and (lastWord.startFrame + 5) or 0
+							
 							for i = oldCount + 1, newCount do
-								local prevStart = wordTiming[i - 1].startFrame
-								local newStart = prevStart + gap
-								wordTiming[i - 1].endFrame = newStart
+								if newStart >= compEnd then newStart = compEnd - 1 end
 								table.insert(wordTiming, {
 									["startIndex"] = 0,
 									["endIndex"] = 0,
 									["startFrame"] = newStart,
 									["endFrame"] = newStart,
 								})
+								newStart = newStart + 2
 							end
 						elseif newCount < oldCount then
 							for i = oldCount, newCount + 1, -1 do
@@ -449,30 +442,25 @@
 				]],
 				ShowWordMarkers = [[
 					return function(comp, tool)
-						-- Get timeline item that contains this composition
 						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
 						local item = getTimelineItem(comp)
+						if not item then return end
 
-						-- Get follower delay spline
-						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local wordTiming = tool:GetData("WordTiming")
+						if not wordTiming or #wordTiming == 0 then
+							print("[AutoSubs] No word timing data found. Please transcribe or add text first.")
+							return
+						end
 
-						-- Remove all existing word markers
+						-- Clear existing markers
 						while item:DeleteMarkerByCustomData("AutoSubs") do end
 
-						local wordTiming = spline:GetKeyFrames()
-						local keys = {}
-						for k in pairs(wordTiming) do
-							if type(k) == "number" then table.insert(keys, k) end
-						end
-						table.sort(keys)
-						local index = 1
-						for _, k in ipairs(keys) do
-							local v = wordTiming[k]
-							if type(v) == "table" and v[1] then
-								local offset = comp:GetAttrs("COMPN_RenderStart")
-								local clipFrame = v[1] + offset
-								item:AddMarker(clipFrame, "Blue", "Word "..index, "", 1, "AutoSubs")
-								index = index + 1
+						print("[AutoSubs] Generating markers for " .. #wordTiming .. " words.")
+
+						local offset = comp:GetAttrs("COMPN_RenderStart")
+						for i, word in ipairs(wordTiming) do
+							if word.startFrame then
+								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
 							end
 						end
 					end
@@ -482,6 +470,7 @@
 						-- Get timeline item that contains this composition
 						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
 						local item = getTimelineItem(comp)
+						if not item then return end
 
 						-- Get follower delay spline
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
@@ -553,10 +542,20 @@
 					end
 				]],
 				GetTimelineItem = [[
-					-- Find the timeline item that contains this Fusion composition
-					-- Note: DaVinci Resolve has no direct API to get timeline item from comp, so we search manually
 					return function(comp)
-						local resolve = bmd and bmd.scriptapp and bmd.scriptapp("Resolve")
+						-- Final attempt at getting Resolve object for Free version users
+						local resolve = _G.resolve 
+							or (fusion and fusion.GetResolve and fusion:GetResolve()) 
+							or (app and app.GetResolve and app:GetResolve()) 
+							or (bmd and bmd.scriptapp and bmd.scriptapp("Resolve"))
+							or (comp:GetApp() and comp:GetApp():GetResolve())
+
+						-- Strict check: must be a valid object (userdata or table)
+						if type(resolve) ~= "userdata" and type(resolve) ~= "table" then
+							print("[CHECK-123] This feature (Markers) requires DaVinci Resolve Studio or enabled Scripting API.")
+							return nil
+						end
+
 						local projectManager = resolve:GetProjectManager()
 						local currentProject = projectManager:GetCurrentProject()
 						local timeline = currentProject:GetCurrentTimeline()
@@ -940,6 +939,7 @@
 						},
 						PopInEnabled = {
 							LINKS_Name = "Pop In",
+
 							LINKID_DataType = "Number",
 							INPID_InputControl = "CheckboxControl",
 							INP_Integer = true,
