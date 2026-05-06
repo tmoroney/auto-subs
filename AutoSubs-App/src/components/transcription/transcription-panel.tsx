@@ -8,15 +8,11 @@ import {
   ChevronRight,
   ScrollText,
   Info,
-  RefreshCw,
-  PartyPopper,
   MonitorIcon,
   Baseline,
   PanelLeft,
   TextAlignStart,
-  Lock,
-  ChevronsLeftRightEllipsis,
-  LockKeyhole,
+  BadgeCheck,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -33,7 +29,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Toggle } from "@/components/ui/toggle";
 import {
   Popover,
   PopoverTrigger,
@@ -270,7 +265,6 @@ function TranscriptionPanelView({
   const [sourceControlsExpanded, setSourceControlsExpanded] =
     React.useState(true);
   const [isRefreshingTracks, setIsRefreshingTracks] = React.useState(false);
-  const [refreshSpinKey, setRefreshSpinKey] = React.useState(0);
   const [localTerms, setLocalTerms] = React.useState("");
   const [localContext, setLocalContext] = React.useState("");
 
@@ -372,8 +366,6 @@ function TranscriptionPanelView({
   const handleRefreshAudioTracks = React.useCallback(async () => {
     if (!onRefreshAudioTracks || isRefreshingTracks) return;
 
-    setRefreshSpinKey((key) => key + 1);
-
     try {
       setIsRefreshingTracks(true);
       await onRefreshAudioTracks();
@@ -401,7 +393,7 @@ function TranscriptionPanelView({
     [currentSettings.selectedInputTracksByApp, selectedIntegration, updateSetting],
   );
 
-  const renderFileDropArea = (className = "h-[132px]") => (
+  const renderFileDropArea = (className = "h-[160px]") => (
     <div
       key="file-drop-area"
       className={`group flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10 px-4 py-4 transition-colors hover:bg-muted/30 hover:border-muted-foreground/40 outline-none ${className}`}
@@ -502,10 +494,10 @@ function TranscriptionPanelView({
   );
 
   const renderTimelineTrackSelector = () => (
-    <div className="flex h-[132px] flex-col gap-2.5" data-tour="audio-input">
+    <div className="flex h-[160px] flex-col gap-2.5" data-tour="audio-input">
       {inputTracks.length > 0 ? (
         <>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-lg pr-1">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-lg border p-1.5 pr-2.5 bg-card">
             {inputTracks.map((track, index) => {
               const currentTracks =
                 currentSettings.selectedInputTracksByApp[selectedIntegration] ||
@@ -519,7 +511,7 @@ function TranscriptionPanelView({
                   tabIndex={0}
                   className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${isChecked
                     ? "border-input bg-background shadow-sm"
-                    : "border-transparent bg-muted/35 dark:border-border dark:bg-muted/50 hover:bg-muted/55 dark:hover:bg-muted/60"
+                    : "border-transparent dark:border-border bg-muted hover:bg-muted/80"
                     }`}
                   onClick={() => toggleInputTrack(track.value)}
                   onKeyDown={(e) => {
@@ -561,18 +553,19 @@ function TranscriptionPanelView({
     <Tabs
       value={audioInputMode}
       onValueChange={(value) => {
-        onAudioInputModeChange(value as "file" | "timeline");
+        const mode = value as "file" | "timeline";
+        onAudioInputModeChange(mode);
         setSourceControlsExpanded(true);
-        handleRefreshAudioTracks();
+        if (mode === "timeline") {
+          handleRefreshAudioTracks();
+        }
       }}
       data-tour="mode-switcher"
       key={i18n.language}
+      className="w-full"
     >
-      <TabsList className="h-auto dark:bg-background">
-        <TabsTrigger
-          value="timeline"
-          onPointerDown={() => onAudioInputModeChange("timeline")}
-        >
+      <TabsList className="w-full h-auto dark:bg-background">
+        <TabsTrigger value="timeline">
           <MonitorIcon className="h-4 w-4" />
           {t("actionBar.mode.timeline")}
         </TabsTrigger>
@@ -586,48 +579,6 @@ function TranscriptionPanelView({
         </TabsTrigger>
       </TabsList>
     </Tabs>
-  );
-
-  const renderExportRangeToggle = () => (
-    <Toggle
-      pressed={currentSettings.exportRange === "inout"}
-      onPressedChange={(pressed) =>
-        updateSetting("exportRange", pressed ? "inout" : "entire")
-      }
-      aria-label="Toggle in/out range"
-      size="default"
-      variant="outline"
-      className="h-8 gap-1.5 px-2.5 text-xs"
-    >
-      <ChevronsLeftRightEllipsis />
-      {t("actionBar.tracks.exportRange.inout")}
-    </Toggle>
-  );
-
-  const renderRefreshButton = () => (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={handleRefreshAudioTracks}
-            disabled={isRefreshingTracks}
-            aria-label={t("common.refresh", "Refresh")}
-          >
-            <RefreshCw
-              key={refreshSpinKey}
-              className={`${refreshSpinKey > 0 ? "[animation:spin_500ms_linear_1]" : ""}`}
-            />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t("common.refresh", "Refresh")}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 
   const [isHoveringPanelToggle, setIsHoveringPanelToggle] = React.useState(false);
@@ -693,25 +644,21 @@ function TranscriptionPanelView({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full space-y-2 pb-12 text-center">
-              <img
-                src="/autosubs-logo.png"
-                alt="AutoSubs"
-                className="w-16 h-16"
-              />
-              <h2 className="text-2xl font-semibold">
-                {t("workspace.empty.welcomeTitle")}
-              </h2>
-              {currentSettings.transcriptionsCompleted > 0 ? (
-                <Badge variant="secondary" className="text-sm px-3 py-1 gap-1.5">
-                  {currentSettings.transcriptionsCompleted} complete
-                  <PartyPopper className="w-3.5 h-3.5" />
-                </Badge>
-              ) : (
-                <p className="max-w-72 pb-2">
-                  {t("workspace.empty.welcomeDescription")}
-                </p>
-              )}
+            <div className="flex h-full flex-col items-center justify-center gap-3 pb-4 text-center">
+              <div className="flex items-center justify-center gap-2.5">
+                <img
+                  src="/autosubs-logo.png"
+                  alt="AutoSubs"
+                  className="h-10 w-10"
+                />
+                <h2 className="text-[28px] font-semibold leading-none">
+                  AutoSubs
+                </h2>
+              </div>
+              <Badge className="gap-1.5 py-1 text-xs border-green-500/20 bg-green-500/10 text-green-700 shadow-none hover:bg-green-500/10 dark:text-green-400">
+                <BadgeCheck data-icon="inline-start" className="h-3.5 w-3.5" />
+                Ready to generate
+              </Badge>
             </div>
           )}
         </div>
@@ -725,17 +672,9 @@ function TranscriptionPanelView({
             ) : (
               <>
                 {/* Input Card */}
-                <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="shrink-0">{renderSourceModeTabs()}</div>
-                      {currentSettings.audioInputMode === "timeline" && (
-                        <div className="flex items-center gap-1">
-                          {renderRefreshButton()}
-                          {renderExportRangeToggle()}
-                        </div>
-                      )}
-                    </div>
+                <Card className="z-50 rounded-2xl bg-background p-2 shadow-none">
+                  <div className="space-y-2">
+                    {renderSourceModeTabs()}
                     {shouldShowExpandedSourceControls ? (
                       currentSettings.audioInputMode === "timeline" ? (
                         renderTimelineTrackSelector()
@@ -978,7 +917,6 @@ function TranscriptionPanelView({
                       open={openModelSelector}
                       onOpenChange={onOpenModelSelectorChange}
                       isSmallScreen={isSmallScreen}
-                      fullWidth
                     />
                   </div>
                 </Card>
@@ -1146,6 +1084,7 @@ export function TranscriptionPanel({
   const [showSubSlate, setShowSubSlate] = React.useState(false);
   const isSmallScreen = useMediaQuery("(max-width: 640px)");
   const progressContainerRef = React.useRef<HTMLDivElement>(null);
+  const lastSubtitleLoadKeyRef = React.useRef<string | null>(null);
 
   const handleSelectedFileChange = React.useCallback((file: string | null) => {
     setFileInput(file);
@@ -1153,27 +1092,31 @@ export function TranscriptionPanel({
   }, []);
 
   React.useEffect(() => {
-    const run = async () => {
-      if (settings.audioInputMode !== "file") return;
-      if (!fileInput) return;
+    if (!fileInput) return;
 
+    const timelineId = timelineInfo?.timelineId ?? "standalone";
+    const loadKey = `${fileInputSelectionId}:${fileInput}:${timelineId}`;
+    if (lastSubtitleLoadKeyRef.current === loadKey) return;
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      if (cancelled) return;
       try {
-        await loadSubtitles(
-          "file",
-          fileInput,
-          timelineInfo?.timelineId ?? "standalone",
-        );
+        await loadSubtitles("file", fileInput, timelineId);
+        lastSubtitleLoadKeyRef.current = loadKey;
       } catch (error) {
         console.error("Failed to load subtitles for selected file:", error);
       }
-    };
+    }, 0);
 
-    run();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [
     fileInputSelectionId,
     fileInput,
     loadSubtitles,
-    settings.audioInputMode,
     timelineInfo?.timelineId,
   ]);
 

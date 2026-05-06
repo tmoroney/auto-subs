@@ -78,7 +78,6 @@ interface ModelPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   isSmallScreen: boolean
-  fullWidth?: boolean
 }
 
 export function ModelPicker({
@@ -91,7 +90,6 @@ export function ModelPicker({
   open,
   onOpenChange,
   isSmallScreen,
-  fullWidth = false,
 }: ModelPickerProps) {
   const { t } = useTranslation()
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
