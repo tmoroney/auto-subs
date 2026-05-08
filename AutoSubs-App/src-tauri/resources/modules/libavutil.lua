@@ -71,27 +71,29 @@ luaresolve =
 	},
 
 	load_library = function(name_pattern)
-		local fu = rawget(_G, "fusion") or rawget(_G, "fu")
+    local fu = rawget(_G, "fusion") or rawget(_G, "fu")
         if fu == nil and type(rawget(_G, "Fusion")) == "function" then
             fu = Fusion()
         end
-		local files = bmd.readdir(fu:MapPath("FusionLibs:"..iif(ffi.os == "Windows", "", "../"))..name_pattern)
-		assert(#files == 1 and files[1].IsDir == false, string.format("Couldn't find exact match for pattern \"%s.\"", name_pattern))
-		return ffi.load(files.Parent..files[1].Name)
-	end,
-
-	frame_from_timecode = function(self, timecode, frame_rate)
-		return libavutil:av_timecode_init_from_string(timecode, self.frame_rates:get_fraction(frame_rate)).start
-	end,
-
-	timecode_from_frame = function(self, frame, frame_rate, drop_frame)
-		return libavutil:av_timecode_make_string(0, frame, self.frame_rates:get_decimal(frame_rate),
-		{
-			AV_TIMECODE_FLAG_DROPFRAME = drop_frame == true or drop_frame == 1 or drop_frame == "1",
-			AV_TIMECODE_FLAG_24HOURSMAX = true,
-			AV_TIMECODE_FLAG_ALLOWNEGATIVE = false
-		})
-	end,
+    local files = bmd.readdir(fu:MapPath("FusionLibs:"..iif(ffi.os == "Windows", "", "../"))..name_pattern)
+    -- Fix: handle multiple matches by picking newest version instead of failing
+    if #files >= 1 then
+        local best_file = nil
+        for _, file in ipairs(files) do
+            if not file.IsDir then
+                if best_file == nil or file.Name > best_file.Name then
+                    best_file = file
+                end
+            end
+        end
+        if best_file ~= nil then
+            local ok, lib = pcall(ffi.load, files.Parent..best_file.Name)
+            if ok then return lib end
+        end
+    end
+    assert(false, string.format("Couldn't find exact match for pattern \"%s.\"", name_pattern))
+end,
+	
 
 	-- Convenience: detect common NTSC fractional rates where drop-frame is appropriate
 	is_ntsc_fractional = function(self, frame_rate)
