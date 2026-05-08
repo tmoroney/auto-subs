@@ -181,7 +181,7 @@ export function ModelPicker({
                 className="w-6 h-6 object-contain rounded"
               />
               <div className="flex items-center gap-1">
-                <span className="truncate">Model: {t(modelsState[selectedModelIndex].label)}</span>
+                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
               </div>
             </div>
             <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
