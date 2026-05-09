@@ -9,15 +9,25 @@ import {
   Info,
   MonitorIcon,
   Baseline,
-  PanelLeft,
-  TextAlignStart,
+  History,
+  Palette,
+  Settings as SettingsIcon,
+  FileText,
+  Shapes,
+  GitMerge,
+  Heart,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { downloadDir } from "@tauri-apps/api/path";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { platform } from "@tauri-apps/plugin-os";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
+import { useTheme } from "@/components/providers/theme-provider";
 import {
   UploadIcon,
   type UploadIconHandle,
@@ -32,6 +42,20 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -43,6 +67,11 @@ import { LanguageSelector } from "@/components/settings/language-selector";
 import { SpeakerSelector } from "@/components/settings/diarize-selector";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
 import { ProcessingStepItem } from "@/components/processing/processing-step-item";
+import { SettingsDialog } from "@/components/dialogs/settings-dialog";
+import { SupportDialog } from "@/components/dialogs/support-dialog";
+import { ManageModelsDialog } from "@/components/settings/model-manager";
+import { IntegrationStatus } from "@/components/layout/integration-status";
+import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
 import { useModels } from "@/contexts/ModelsContext";
 import { useProgress } from "@/contexts/ProgressContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
@@ -51,7 +80,6 @@ import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useErrorDialog } from "@/contexts/ErrorDialogContext";
-import { IntegrationStatus } from "@/components/layout/integration-status";
 import { ResolveApiError } from "@/api/resolve-api";
 import { languages, translateLanguages } from "@/lib/languages";
 import {
@@ -64,7 +92,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { diarizeModel } from "@/lib/models";
 import SubSlateCard from "@/components/ui/SubSlateCard";
-
+import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 
 const SUPPORTED_MEDIA_EXTENSIONS = [
   "wav",
@@ -204,18 +232,314 @@ interface TranscriptionPanelViewProps {
     presetSettings?: Record<string, unknown>,
   ) => Promise<void>;
   onViewSubtitles?: () => void;
+  transcriptDocuments: SubtitleDocumentListItem[];
+  isLoadingTranscriptDocuments: boolean;
+  onTranscriptDocumentsRefresh: () => Promise<void>;
   livePreviewSegments: any[];
+  isSubtitleViewerOpen?: boolean;
   settings: Settings;
   timelineInfo: TimelineInfo;
   selectedFile?: string | null;
   onSelectedFileChange?: (file: string | null) => void;
   onStart?: () => void;
   onCancel?: () => void;
+  onStartNewTranscription: () => void | Promise<void>;
   onRefreshAudioTracks?: () => Promise<void>;
   isProcessing?: boolean;
   selectedIntegration: "davinci" | "premiere" | "aftereffects";
 }
 
+interface TranscriptionHeaderProps {
+  transcriptDocuments: SubtitleDocumentListItem[];
+  isLoadingTranscriptDocuments: boolean;
+  onTranscriptDocumentsRefresh: () => Promise<void>;
+  onViewSubtitles?: () => void;
+  isSubtitleViewerOpen?: boolean;
+}
+
+function TranscriptionHeader({
+  transcriptDocuments,
+  isLoadingTranscriptDocuments,
+  onTranscriptDocumentsRefresh,
+  onViewSubtitles,
+  isSubtitleViewerOpen = false,
+}: TranscriptionHeaderProps) {
+  const { t } = useTranslation();
+  const [styleDialogOpen, setStyleDialogOpen] = React.useState(false);
+  const [isMacOs, setIsMacOs] = React.useState(true);
+
+  React.useEffect(() => {
+    try {
+      setIsMacOs(platform() === "macos");
+    } catch {
+      setIsMacOs(true);
+    }
+  }, []);
+
+  return (
+    <>
+      <div
+        className={`flex h-12 shrink-0 items-center justify-between gap-3 border-b mb-2 pr-4 ${isMacOs ? "pl-20" : "pl-4"}`}
+        data-tauri-drag-region={isMacOs ? true : undefined}
+      >
+        <div
+          className="min-w-0"
+          data-tauri-drag-region={isMacOs ? "false" : undefined}
+        >
+          <IntegrationStatus />
+        </div>
+        <div
+          className="flex shrink-0 items-center"
+          data-tauri-drag-region={isMacOs ? "false" : undefined}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-sm"
+                onClick={() => setStyleDialogOpen(true)}
+              >
+                <Palette />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("actionBar.options.subtitleStyle", "Caption Style")}
+            </TooltipContent>
+          </Tooltip>
+          <TranscriptHistoryPopover
+            subtitleDocuments={transcriptDocuments}
+            isLoading={isLoadingTranscriptDocuments}
+            onTranscriptOpen={() => onViewSubtitles?.()}
+            onRefresh={onTranscriptDocumentsRefresh}
+            tooltipLabel={t("titlebar.subtitleHistory.title", "History")}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-sm"
+                aria-label={t("titlebar.subtitleHistory.title", "History")}
+              >
+                <History />
+              </Button>
+            }
+          />
+          <SettingsDropdown />
+          {onViewSubtitles && !isSubtitleViewerOpen && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-sm"
+                  aria-label={t("completion.viewSubtitles", "View Subtitles")}
+                  onClick={onViewSubtitles}
+                >
+                  <FileText />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t("completion.viewSubtitles", "View Subtitles")}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={styleDialogOpen} onOpenChange={setStyleDialogOpen}>
+        <DialogContent className="w-[420px] max-w-[calc(100vw-2rem)] p-0">
+          <DialogHeader className="px-4 pt-4">
+            <DialogTitle>
+              {t("actionBar.options.subtitleStyle", "Caption Theme")}
+            </DialogTitle>
+          </DialogHeader>
+          <TextFormattingPanel />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function SettingsDropdown() {
+  const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const { modelsState, downloadedModelValues, handleDeleteModel } = useModels();
+  const [manageModelsOpen, setManageModelsOpen] = React.useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
+  const [supportDialogOpen, setSupportDialogOpen] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [tooltipOpen, setTooltipOpen] = React.useState(false);
+  const suppressTooltipUntilRef = React.useRef(0);
+
+  const managerModels: Model[] = downloadedModelValues.includes(
+    diarizeModel.value,
+  )
+    ? [...modelsState, { ...diarizeModel, isDownloaded: true }]
+    : modelsState;
+
+  const handleThemeChange = (themeValue: string) => {
+    setTheme(themeValue as "dark" | "light" | "system");
+  };
+
+  const suppressTooltip = React.useCallback(() => {
+    suppressTooltipUntilRef.current = Date.now() + 700;
+    setTooltipOpen(false);
+  }, []);
+
+  const handleDropdownOpenChange = (nextOpen: boolean) => {
+    setDropdownOpen(nextOpen);
+    suppressTooltip();
+  };
+
+  return (
+    <>
+      <DropdownMenu open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
+        <Tooltip
+          open={tooltipOpen}
+          onOpenChange={(nextOpen) => {
+            setTooltipOpen(
+              nextOpen &&
+                !dropdownOpen &&
+                Date.now() > suppressTooltipUntilRef.current,
+            );
+          }}
+        >
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-sm"
+                aria-label={t("settings.title", "Settings")}
+              >
+                <SettingsIcon />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {t("settings.title", "Settings")}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent
+          className="w-48 rounded-lg"
+          side="bottom"
+          align="end"
+          sideOffset={4}
+          onPointerDown={suppressTooltip}
+          onClick={suppressTooltip}
+        >
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={() => setSettingsDialogOpen(true)}
+              className="cursor-pointer"
+            >
+              <SettingsIcon />
+              <span>{t("settings.title", "Settings")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setManageModelsOpen(true)}
+              className="cursor-pointer"
+            >
+              <Shapes />
+              <span>{t("models.manage.title", "Manage Models")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a
+                href="https://github.com/tmoroney/auto-subs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group"
+              >
+                <GitMerge />
+                <span>{t("settings.support.viewSource", "View Source")}</span>
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setSupportDialogOpen(true)}
+              className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
+            >
+              <div className="group relative flex w-full items-center">
+                <Heart className="mr-2 h-4 w-4 text-pink-500 transition-all group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500" />
+                <span>
+                  {t("settings.support.supportAutoSubs", "Support AutoSubs")}
+                </span>
+                <div className="pointer-events-none absolute inset-0">
+                  {[
+                    { tx: "-90px", ty: "-90px", s: 1.8, r: "-20deg", d: "0s" },
+                    { tx: "80px", ty: "-100px", s: 1.5, r: "25deg", d: "0.05s" },
+                    { tx: "-30px", ty: "-120px", s: 1.7, r: "5deg", d: "0.1s" },
+                    { tx: "100px", ty: "-80px", s: 1.4, r: "-15deg", d: "0.15s" },
+                    { tx: "0px", ty: "-115px", s: 1.9, r: "0deg", d: "0.2s" },
+                    { tx: "-100px", ty: "-75px", s: 1.5, r: "15deg", d: "0.25s" },
+                    { tx: "70px", ty: "-115px", s: 1.6, r: "-5deg", d: "0.3s" },
+                  ].map((heart, index) => (
+                    <Heart
+                      key={index}
+                      className="heart-anim absolute left-1/2 top-1/2 h-5 w-5 text-pink-400 opacity-0"
+                      style={
+                        {
+                          "--tx": heart.tx,
+                          "--ty": heart.ty,
+                          "--s": heart.s,
+                          "--r": heart.r,
+                          animationDelay: heart.d,
+                        } as React.CSSProperties
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <div className="p-1">
+            <Tabs value={theme} onValueChange={handleThemeChange}>
+              <TabsList className="w-full">
+                <TabsTrigger value="light">
+                  <Sun />
+                </TabsTrigger>
+                <TabsTrigger value="dark">
+                  <Moon />
+                </TabsTrigger>
+                <TabsTrigger value="system">
+                  <Monitor />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ManageModelsDialog
+        open={manageModelsOpen}
+        onOpenChange={setManageModelsOpen}
+        models={managerModels}
+        onDeleteModel={(modelValue) => void handleDeleteModel(modelValue)}
+      />
+
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+      />
+
+      <SupportDialog
+        open={supportDialogOpen}
+        onOpenChange={setSupportDialogOpen}
+      />
+    </>
+  );
+}
 
 function TranscriptionPanelView({
   modelsState,
@@ -234,13 +558,18 @@ function TranscriptionPanelView({
   onExportToFile,
   onAddToTimeline,
   onViewSubtitles,
+  transcriptDocuments,
+  isLoadingTranscriptDocuments,
+  onTranscriptDocumentsRefresh,
   livePreviewSegments,
+  isSubtitleViewerOpen = false,
   settings: _settings, // Renamed to avoid clash with useSettings()
   timelineInfo,
   selectedFile: selectedFileProp,
   onSelectedFileChange,
   onStart,
   onCancel,
+  onStartNewTranscription,
   onRefreshAudioTracks,
   isProcessing,
   selectedIntegration,
@@ -260,8 +589,6 @@ function TranscriptionPanelView({
     React.useState(false);
   const [openCustomPromptPopover, setOpenCustomPromptPopover] =
     React.useState(false);
-  const [sourceControlsExpanded, setSourceControlsExpanded] =
-    React.useState(true);
   const [isRefreshingTracks, setIsRefreshingTracks] = React.useState(false);
   const [localTerms, setLocalTerms] = React.useState("");
   const [localContext, setLocalContext] = React.useState("");
@@ -285,13 +612,19 @@ function TranscriptionPanelView({
 
   // Sync to settings when popover closes
   React.useEffect(() => {
-    if (!openCustomPromptPopover) {
-      updateSetting(
-        "customPrompt",
-        composeCustomPrompt(localTerms, localContext),
-      );
-    }
-  }, [openCustomPromptPopover, localTerms, localContext, updateSetting]);
+    if (openCustomPromptPopover) return;
+
+    const nextCustomPrompt = composeCustomPrompt(localTerms, localContext);
+    if (nextCustomPrompt === currentSettings.customPrompt) return;
+
+    updateSetting("customPrompt", nextCustomPrompt);
+  }, [
+    currentSettings.customPrompt,
+    openCustomPromptPopover,
+    localTerms,
+    localContext,
+    updateSetting,
+  ]);
 
   const selectedFile = selectedFileProp ?? localSelectedFile;
 
@@ -350,16 +683,6 @@ function TranscriptionPanelView({
   const hasProcessingSteps = processingSteps.length > 0;
   const showProcessing = isProcessing || hasProcessingSteps;
   const hasCompletedRun = !isProcessing && hasProcessingSteps;
-  const shouldShowExpandedSourceControls =
-    !hasCompletedRun || sourceControlsExpanded;
-
-  React.useEffect(() => {
-    if (isProcessing) {
-      setSourceControlsExpanded(false);
-    } else if (!hasProcessingSteps) {
-      setSourceControlsExpanded(true);
-    }
-  }, [hasProcessingSteps, isProcessing]);
 
   const handleRefreshAudioTracks = React.useCallback(async () => {
     if (!onRefreshAudioTracks || isRefreshingTracks) return;
@@ -454,40 +777,70 @@ function TranscriptionPanelView({
     ? `${sourceLanguageLabel} → ${targetLanguageLabel}`
     : sourceLanguageLabel;
 
-  const runSummary = `${sourceModeLabel} · ${selectedModelLabel} · ${languageSummary}`;
+  // Additional settings labels
+  const diarizeLabel = currentSettings.enableDiarize
+    ? currentSettings.maxSpeakers === null
+      ? t("actionBar.common.auto")
+      : currentSettings.maxSpeakers
+    : t("actionBar.speakers.disabled");
 
-  const sourceSummary = React.useMemo(() => {
-    if (currentSettings.audioInputMode === "file") {
-      return selectedFile?.split("/").pop() ?? t("actionBar.fileDrop.prompt");
-    }
+  const textDensityLabel = t(
+    `actionBar.format.textDensity.${currentSettings.textDensity}`,
+  );
 
-    const rangeLabel =
-      currentSettings.exportRange === "inout"
-        ? t("actionBar.tracks.exportRange.inout")
-        : t("actionBar.tracks.exportRange.entire");
-    const selectedTracks =
-      currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
-    const tracksLabel =
-      selectedTrackCount === 1
-        ? t("actionBar.tracks.trackN", {
-          n: selectedTracks[0],
-        })
-        : t("actionBar.tracks.countSelected", { count: selectedTrackCount });
+  const textCaseLabel =
+    currentSettings.textCase !== "none"
+      ? t(`actionBar.format.textCase.${currentSettings.textCase}`)
+      : "";
 
-    return `${rangeLabel} · ${tracksLabel}`;
-  }, [
-    currentSettings.audioInputMode,
-    currentSettings.exportRange,
-    currentSettings.selectedInputTracksByApp,
-    selectedIntegration,
-    selectedFile,
-    selectedTrackCount,
-    t,
-  ]);
+  const gpuLabel = currentSettings.enableGpu
+    ? t("settings.gpu.title")
+    : "";
+
+  const dtwLabel = currentSettings.enableDTW
+    ? t("settings.dtw.title")
+    : "";
+
+  const punctuationLabel = currentSettings.removePunctuation
+    ? t("actionBar.format.removePunctuationTitle")
+    : "";
+
+  // Build summary with all information
+  const summaryParts = [
+    sourceModeLabel,
+    selectedModelLabel,
+    languageSummary,
+  ];
+
+  if (currentSettings.enableDiarize) {
+    summaryParts.push(`${t("actionBar.speakers.title")}: ${diarizeLabel}`);
+  }
+
+  if (currentSettings.textDensity !== "standard") {
+    summaryParts.push(textDensityLabel);
+  }
+
+  if (currentSettings.enableGpu) {
+    summaryParts.push(gpuLabel);
+  }
+
+  if (currentSettings.enableDTW) {
+    summaryParts.push(dtwLabel);
+  }
+
+  if (currentSettings.textCase !== "none") {
+    summaryParts.push(textCaseLabel);
+  }
+
+  if (currentSettings.removePunctuation) {
+    summaryParts.push(punctuationLabel);
+  }
+
+  const runSummary = summaryParts.join(" · ");
 
   const renderCollapsedRunSummary = () => (
     <div className="min-w-0 rounded-xl border bg-muted/35 px-3.5 py-3">
-      <p className="truncate text-sm font-medium">{runSummary}</p>
+      <p className="text-sm font-medium leading-relaxed">{runSummary}</p>
     </div>
   );
 
@@ -553,7 +906,6 @@ function TranscriptionPanelView({
       onValueChange={(value) => {
         const mode = value as "file" | "timeline";
         onAudioInputModeChange(mode);
-        setSourceControlsExpanded(true);
         if (mode === "timeline") {
           handleRefreshAudioTracks();
         }
@@ -562,7 +914,7 @@ function TranscriptionPanelView({
       key={i18n.language}
       className="w-full"
     >
-      <TabsList className="h-9 w-full p-1 dark:bg-background">
+      <TabsList className="h-9 w-full p-1">
         <TabsTrigger value="timeline" className="h-7 gap-1.5 px-3 text-sm">
           <MonitorIcon className="size-4" />
           {t("actionBar.mode.timeline")}
@@ -580,15 +932,13 @@ function TranscriptionPanelView({
     </Tabs>
   );
 
-  const [isHoveringPanelToggle, setIsHoveringPanelToggle] = React.useState(false);
-
   const renderSectionHeader = (
     number: number,
     label: string,
     action?: React.ReactNode,
   ) => (
     <div className="mb-3 flex items-center gap-2.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-sm font-semibold text-primary">
         {number}
       </span>
       <h3 className="text-base font-semibold leading-none text-foreground">
@@ -600,26 +950,13 @@ function TranscriptionPanelView({
 
   return (
     <div className="h-full flex flex-col relative">
-      {/* Draggable header area */}
-      <div
-        className="flex py-2 gap-2"
-      >
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-7 w-7 ml-24 rounded-sm hover:text-foreground hover:bg-muted opacity-90 z-20"
-          data-tauri-drag-region="false"
-          onMouseEnter={() => setIsHoveringPanelToggle(true)}
-          onMouseLeave={() => setIsHoveringPanelToggle(false)}
-          onClick={() => {
-            // TODO: Implement side panel toggle
-          }}
-        >
-          <PanelLeft className="h-4 w-4 absolute transition-all duration-100 opacity-0 scale-90" style={{ opacity: isHoveringPanelToggle ? 1 : 0, transform: isHoveringPanelToggle ? 'scale(1)' : 'scale(0.9)' }} />
-          <TextAlignStart className="h-4 w-4 transition-all duration-100 opacity-100 scale-100" style={{ opacity: isHoveringPanelToggle ? 0 : 1, transform: isHoveringPanelToggle ? 'scale(0.9)' : 'scale(1)' }} />
-        </Button>
-        <IntegrationStatus />
-      </div>
+      <TranscriptionHeader
+        transcriptDocuments={transcriptDocuments}
+        isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
+        onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
+        onViewSubtitles={onViewSubtitles}
+        isSubtitleViewerOpen={isSubtitleViewerOpen}
+      />
 
       <div className="flex-1 min-h-0 flex flex-col p-4 pt-1">
         {showProcessing && (
@@ -661,17 +998,33 @@ function TranscriptionPanelView({
           </div>
         )}
 
-        <div className={showProcessing ? "flex-shrink-0" : "min-h-0 flex-1"}>
+        {hasCompletedRun ? (
+          <div className="flex-shrink-0 pt-3">
+            <Button
+              type="button"
+              onClick={onStartNewTranscription}
+              size="lg"
+              variant="default"
+              className="w-full"
+            >
+              <PlayCircle className="h-4 w-4" />
+              {t("common.startNewTranscription", "Start new transcription")}
+            </Button>
+          </div>
+        ) : (
           <div
-            className="flex h-full w-full flex-col gap-2.5"
-            data-tour="transcription-controls"
+            className={showProcessing ? "flex-shrink-0" : "min-h-0 flex-1"}
           >
-            {isProcessing ? (
-              <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
-                {renderCollapsedRunSummary()}
-              </Card>
-            ) : (
-              <>
+            <div
+              className="flex h-full w-full flex-col gap-2.5"
+              data-tour="transcription-controls"
+            >
+              {isProcessing ? (
+                <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">
+                  {renderCollapsedRunSummary()}
+                </Card>
+              ) : (
+                <>
                 {/* Input Card */}
                 <Card className="z-50 flex min-h-0 flex-1 flex-col rounded-2xl bg-background p-3 shadow-none">
                   {renderSectionHeader(
@@ -682,30 +1035,10 @@ function TranscriptionPanelView({
                     {renderSourceModeTabs()}
                   </div>
                   <div className="flex min-h-0 flex-1 flex-col gap-2">
-                    {shouldShowExpandedSourceControls ? (
-                      currentSettings.audioInputMode === "timeline" ? (
-                        renderTimelineTrackSelector()
-                      ) : (
-                        renderFileDropArea()
-                      )
+                    {currentSettings.audioInputMode === "timeline" ? (
+                      renderTimelineTrackSelector()
                     ) : (
-                      <div className="flex min-h-[132px] flex-1 items-center justify-between gap-3 rounded-lg bg-muted/35 pl-3.5 pr-2 py-2.5">
-                        <p className="min-w-0 truncate text-sm font-medium">
-                          {sourceSummary}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 shrink-0 px-2"
-                          onClick={() => {
-                            setSourceControlsExpanded(true);
-                            handleRefreshAudioTracks();
-                          }}
-                        >
-                          {t("common.edit", "Edit")}
-                        </Button>
-                      </div>
+                      renderFileDropArea()
                     )}
                   </div>
                 </Card>
@@ -790,7 +1123,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group h-12 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group h-12 justify-start gap-2 rounded-lg bg-muted/35 dark:bg-muted px-3 hover:bg-muted/55"
                             aria-expanded={openSpeakerPopover}
                           >
                             <Speech className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -826,7 +1159,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group h-12 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group h-12 justify-start gap-2 rounded-lg bg-muted/35 dark:bg-muted px-3 hover:bg-muted/55"
                             aria-expanded={openTextFormattingPopover}
                           >
                             <Baseline className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -858,7 +1191,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group relative h-12 justify-start gap-2 rounded-lg bg-muted/35 px-3 hover:bg-muted/55"
+                            className="group relative h-12 justify-start gap-2 rounded-lg bg-muted/35 dark:bg-muted px-3 hover:bg-muted/55"
                             aria-expanded={openCustomPromptPopover}
                             aria-label={t("actionBar.format.customPromptTitle")}
                             title={t("actionBar.format.customPromptTitle")}
@@ -1021,6 +1354,7 @@ function TranscriptionPanelView({
             )}
           </div>
         </div>
+        )}
 
       </div>
     </div>
@@ -1055,7 +1389,19 @@ function describeError(
 
 export function TranscriptionPanel({
   onViewSubtitles,
-}: { onViewSubtitles?: () => void } = {}) {
+  onTranscriptCreated,
+  transcriptDocuments = [],
+  isLoadingTranscriptDocuments = false,
+  onTranscriptDocumentsRefresh = async () => {},
+  isSubtitleViewerOpen = false,
+}: {
+  onViewSubtitles?: () => void;
+  onTranscriptCreated?: () => void | Promise<void>;
+  transcriptDocuments?: SubtitleDocumentListItem[];
+  isLoadingTranscriptDocuments?: boolean;
+  onTranscriptDocumentsRefresh?: () => Promise<void>;
+  isSubtitleViewerOpen?: boolean;
+} = {}) {
   const {
     subtitles,
     speakers,
@@ -1266,12 +1612,33 @@ export function TranscriptionPanel({
     }
   };
 
+  const handleStartNewTranscription = React.useCallback(async () => {
+    clearProgressSteps();
+    setIsProcessing(false);
+    setTranscriptionProgress(0);
+    setIsExporting(false);
+    setExportProgress(0);
+    setLabeledProgress(null);
+    cancelRequestedRef.current = false;
+    if (settings.audioInputMode === "timeline") {
+      await refreshAudioTracks();
+    }
+  }, [
+    cancelRequestedRef,
+    clearProgressSteps,
+    refreshAudioTracks,
+    settings.audioInputMode,
+    setExportProgress,
+    setIsExporting,
+  ]);
+
   const handleStartTranscription = async () => {
     if (settings.audioInputMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;
     }
 
+    cancelRequestedRef.current = false;
     if (settings.audioInputMode === "file" && !fileInput) {
       console.error("No file selected");
       return;
@@ -1336,6 +1703,8 @@ export function TranscriptionPanel({
         fileInput,
         timelineInfo.timelineId,
       );
+      await onTranscriptCreated?.();
+      onViewSubtitles?.();
 
       const nextCount = (settings.transcriptionsCompleted ?? 0) + 1;
       updateSetting("transcriptionsCompleted", nextCount);
@@ -1434,6 +1803,10 @@ export function TranscriptionPanel({
             onExportToFile={handleExportToFile}
             onAddToTimeline={handleAddToTimeline}
             onViewSubtitles={onViewSubtitles}
+            transcriptDocuments={transcriptDocuments}
+            isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
+            onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
+            isSubtitleViewerOpen={isSubtitleViewerOpen}
             livePreviewSegments={livePreviewSegments}
             settings={settings}
             timelineInfo={timelineInfo}
@@ -1441,6 +1814,7 @@ export function TranscriptionPanel({
             onSelectedFileChange={handleSelectedFileChange}
             onStart={handleStartTranscription}
             onCancel={handleCancelTranscription}
+            onStartNewTranscription={handleStartNewTranscription}
             onRefreshAudioTracks={refreshAudioTracks}
             isProcessing={isProcessing}
             selectedIntegration={selectedIntegration}

@@ -198,6 +198,57 @@
     animation: burst 1s ease-out forwards;
 }
 
+@keyframes subtitle-sidebar-in {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes subtitle-sidebar-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+}
+
+.animate-subtitle-sidebar-in {
+    animation: subtitle-sidebar-in 180ms ease-out both;
+}
+
+.animate-subtitle-sidebar-out {
+    animation: subtitle-sidebar-out 180ms ease-out both;
+}
+
+.subtitle-sidebar-shell {
+    transition: width 180ms ease-out;
+}
+
+.subtitle-sidebar-shell-resizing {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-subtitle-sidebar-in,
+    .animate-subtitle-sidebar-out {
+        animation: none;
+    }
+
+    .subtitle-sidebar-shell {
+        transition: none;
+    }
+}
+
 @keyframes burst {
     0% {
         transform: translate(-50%, -50%) scale(0.5);

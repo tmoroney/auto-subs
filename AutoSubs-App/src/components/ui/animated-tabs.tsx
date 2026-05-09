@@ -80,9 +80,12 @@ const TabsList = React.forwardRef<
   }, [updateIndicatorWithoutAnimation]);
 
   useEffect(() => {
-    // Event listeners
     window.addEventListener("resize", updateIndicatorWithAnimation);
     const observer = new MutationObserver(updateIndicatorWithAnimation);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateIndicatorWithoutAnimation)
+        : null;
 
     if (tabsListRef.current) {
       observer.observe(tabsListRef.current, {
@@ -90,13 +93,15 @@ const TabsList = React.forwardRef<
         childList: true,
         subtree: true,
       });
+      resizeObserver?.observe(tabsListRef.current);
     }
 
     return () => {
       window.removeEventListener("resize", updateIndicatorWithAnimation);
       observer.disconnect();
+      resizeObserver?.disconnect();
     };
-  }, [updateIndicatorWithAnimation]);
+  }, [updateIndicatorWithAnimation, updateIndicatorWithoutAnimation]);
 
   return (
     <div className="relative" ref={tabsListRef}>

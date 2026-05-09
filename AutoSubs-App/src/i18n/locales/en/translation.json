@@ -46,6 +46,7 @@
     "delete": "Delete",
     "options": "Options",
     "generateSubtitles": "Generate",
+    "startNewTranscription": "Start new transcription",
     "open": "Open"
   },
   "update": {

@@ -15,6 +15,16 @@ import { getVersion } from "@tauri-apps/api/app"
 import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status"
 import { Server, X } from "lucide-react"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  listSubtitleDocumentIndex,
+  type SubtitleDocumentListItem,
+} from "@/utils/file-utils"
+
+const MIN_TRANSCRIPTION_PANEL_WIDTH = 400
+const MIN_SUBTITLE_PANEL_WIDTH = 280
+const PANEL_GAP = 16
+const SUBTITLE_VIEWER_EXIT_ANIMATION_MS = 180
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -34,14 +44,40 @@ export function ThemeToggle() {
 }
 
 function AppContent() {
-  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(true)
+  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(false)
+  const [isSubtitleViewerExpanded, setIsSubtitleViewerExpanded] =
+    React.useState(false)
+  const [isSubtitleViewerClosing, setIsSubtitleViewerClosing] =
+    React.useState(false)
+  const [isSubtitleViewerResizing, setIsSubtitleViewerResizing] =
+    React.useState(false)
+  const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
+    React.useState(false)
   const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(520)
+  const [transcriptDocuments, setTranscriptDocuments] = React.useState<
+    SubtitleDocumentListItem[]
+  >([])
+  const [hasLoadedTranscriptDocuments, setHasLoadedTranscriptDocuments] =
+    React.useState(false)
   const { t } = useTranslation()
   const { settings, isHydrated } = useSettings()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const [showResolveRestartNotice, setShowResolveRestartNotice] =
     React.useState(false)
+  const isMobile = useIsMobile()
   const mainContentRef = React.useRef<HTMLDivElement>(null)
+  const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
+  const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
+
+  const loadTranscriptDocuments = React.useCallback(async () => {
+    try {
+      setTranscriptDocuments(await listSubtitleDocumentIndex())
+    } catch (error) {
+      console.error("Failed to load subtitle documents:", error)
+    } finally {
+      setHasLoadedTranscriptDocuments(true)
+    }
+  }, [])
 
   React.useEffect(() => {
     let cancelled = false
@@ -56,6 +92,10 @@ function AppContent() {
       cancelled = true
     }
   }, [])
+
+  React.useEffect(() => {
+    void loadTranscriptDocuments()
+  }, [loadTranscriptDocuments])
 
   // Priority gating: only show one onboarding-style dialog at a time.
   const showGettingStarted = isHydrated && !settings.onboardingCompleted
@@ -86,42 +126,127 @@ function AppContent() {
     settings.tourCompleted === false &&
     !showWhatsNew
   const handleOpenSubtitleViewer = React.useCallback(() => {
+    if (
+      showSubtitleViewer &&
+      isSubtitleViewerExpanded &&
+      !isSubtitleViewerClosing
+    ) {
+      return
+    }
+
+    if (subtitleViewerCloseTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
+      subtitleViewerCloseTimeoutRef.current = null
+    }
+    if (subtitleViewerOpenTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      subtitleViewerOpenTimeoutRef.current = null
+    }
+
+    setIsSubtitleViewerClosing(false)
+    setIsSubtitleViewerExpanded(false)
     setShowSubtitleViewer(true)
+
+    subtitleViewerOpenTimeoutRef.current = window.setTimeout(() => {
+      setIsSubtitleViewerExpanded(true)
+      subtitleViewerOpenTimeoutRef.current = null
+    }, 20)
+  }, [isSubtitleViewerClosing, isSubtitleViewerExpanded, showSubtitleViewer])
+
+  const handleCloseSubtitleViewer = React.useCallback(() => {
+    if (!showSubtitleViewer || isSubtitleViewerClosing) return
+
+    if (subtitleViewerOpenTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      subtitleViewerOpenTimeoutRef.current = null
+    }
+
+    setIsSubtitleViewerClosing(true)
+    setIsSubtitleViewerExpanded(false)
+    subtitleViewerCloseTimeoutRef.current = window.setTimeout(() => {
+      setShowSubtitleViewer(false)
+      setIsSubtitleViewerClosing(false)
+      subtitleViewerCloseTimeoutRef.current = null
+    }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
+  }, [isSubtitleViewerClosing, showSubtitleViewer])
+
+  React.useEffect(() => {
+    return () => {
+      if (subtitleViewerCloseTimeoutRef.current !== null) {
+        window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
+      }
+      if (subtitleViewerOpenTimeoutRef.current !== null) {
+        window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      }
+    }
   }, [])
+
+  const handleTranscriptCreated = React.useCallback(async () => {
+    await loadTranscriptDocuments()
+  }, [loadTranscriptDocuments])
 
   const getMaxSubtitlePanelWidth = React.useCallback(() => {
     const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
-    return Math.max(360, containerWidth - 424)
+    return Math.max(
+      MIN_SUBTITLE_PANEL_WIDTH,
+      containerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
+    )
   }, [])
 
   const handleSubtitleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (isMobile) return
+
     event.preventDefault()
+    setIsSubtitleViewerResizing(true)
 
     const startX = event.clientX
     const startWidth = subtitlePanelWidth
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const nextWidth = startWidth + startX - moveEvent.clientX
-      setSubtitlePanelWidth(Math.min(getMaxSubtitlePanelWidth(), Math.max(360, nextWidth)))
+      setSubtitlePanelWidth(
+        Math.min(
+          getMaxSubtitlePanelWidth(),
+          Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
+        ),
+      )
     }
 
     const handlePointerUp = () => {
+      setIsSubtitleViewerResizing(false)
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
+      window.removeEventListener("pointercancel", handlePointerUp)
     }
 
     window.addEventListener("pointermove", handlePointerMove)
     window.addEventListener("pointerup", handlePointerUp)
-  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth])
+    window.addEventListener("pointercancel", handlePointerUp)
+  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth])
+
+  // Adjust subtitle panel width when window is resized
+  React.useEffect(() => {
+    if (isMobile) return
+
+    const handleResize = () => {
+      const maxWidth = getMaxSubtitlePanelWidth()
+      if (subtitlePanelWidth > maxWidth) {
+        setSubtitlePanelWidth(maxWidth)
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isMobile])
+
+  const subtitleViewerClassName = isMobile
+    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-background dark:bg-card`
+    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l bg-background shadow-[-10px_0_18px_-18px_rgba(15,23,42,0.38)] transition-colors dark:bg-card`
 
   return (
     <EditorWorkspaceProviders>
       <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden bg-accent relative">
-          {/* Use actual timeline info from Resolve context */}
-          <div className="absolute top-0 left-0 right-0 h-11 z-10" data-tauri-drag-region />
-          
-
+        <div className="flex flex-col h-screen overflow-hidden bg-accent dark:bg-card relative">
           {showResolveRestartNotice && (
             <div className="border-b bg-card px-3 py-2 z-15">
               <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
@@ -151,24 +276,48 @@ function AppContent() {
           )}
 
           {/* Main Content Area with Resizable Panels */}
-          <div ref={mainContentRef} className="flex-1 min-h-0 pb-0">
+          <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[200px] flex-1 overflow-hidden">
-                <TranscriptionPanel onViewSubtitles={handleOpenSubtitleViewer} />
+              <div className="min-h-0 min-w-[360px] flex-1 overflow-hidden">
+                <TranscriptionPanel
+                  onViewSubtitles={handleOpenSubtitleViewer}
+                  onTranscriptCreated={handleTranscriptCreated}
+                  transcriptDocuments={transcriptDocuments}
+                  isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
+                  onTranscriptDocumentsRefresh={loadTranscriptDocuments}
+                  isSubtitleViewerOpen={
+                    showSubtitleViewer &&
+                    isSubtitleViewerExpanded &&
+                    !isSubtitleViewerClosing
+                  }
+                />
               </div>
               {showSubtitleViewer && (
                 <div
-                  className="relative my-2 mr-2 min-h-0 shrink-0 overflow-hidden rounded-lg border bg-background shadow-sm"
-                  style={{ width: subtitlePanelWidth }}
+                  className={subtitleViewerClassName}
+                  style={{
+                    width: isMobile
+                      ? "100%"
+                      : isSubtitleViewerExpanded
+                        ? subtitlePanelWidth
+                        : 0,
+                  }}
                 >
-                  <div
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label="Resize subtitles panel"
-                    className="absolute inset-y-0 left-0 z-30 w-2 cursor-col-resize touch-none"
-                    onPointerDown={handleSubtitleResizeStart}
+                  {!isMobile && (
+                    <div
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label="Resize subtitles panel"
+                      className="absolute inset-y-0 -left-2 z-30 w-5 cursor-col-resize touch-none"
+                      onPointerDown={handleSubtitleResizeStart}
+                      onPointerEnter={() => setIsSubtitleViewerResizeHovered(true)}
+                      onPointerLeave={() => setIsSubtitleViewerResizeHovered(false)}
+                    />
+                  )}
+                  <SubtitleViewerPanel
+                    isFullScreen={isMobile}
+                    onClose={handleCloseSubtitleViewer}
                   />
-                  <SubtitleViewerPanel onClose={() => setShowSubtitleViewer(false)} />
                 </div>
               )}
             </div>
