@@ -337,8 +337,6 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "eyre",
- "serde",
- "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

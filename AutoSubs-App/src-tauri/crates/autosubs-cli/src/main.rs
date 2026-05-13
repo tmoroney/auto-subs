@@ -7,6 +7,35 @@ use transcription_engine::{
     TranscribeOptions,
 };
 
+fn validate_model(s: &str) -> Result<String, String> {
+    let valid_whisper = [
+        "tiny", "tiny.en", "base", "base.en", "small", "small.en",
+        "medium", "medium.en", "large-v3-turbo", "large-v3",
+    ];
+    let lower = s.to_lowercase();
+    if valid_whisper.contains(&lower.as_str()) {
+        return Ok(s.to_string());
+    }
+    if lower.starts_with("moonshine-") {
+        return Ok(s.to_string());
+    }
+    if lower == "parakeet" {
+        return Ok(s.to_string());
+    }
+    Err(format!(
+        "unknown model '{}'. Valid values: {}, parakeet, or moonshine-*",
+        s,
+        valid_whisper.join(", ")
+    ))
+}
+
+fn validate_output_type(s: &str) -> Result<String, String> {
+    match s.to_lowercase().as_str() {
+        "srt" | "mkv" => Ok(s.to_string()),
+        other => Err(format!("unknown output type '{}'. Valid values: srt, mkv", other)),
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "autosubs",
@@ -16,13 +45,17 @@ struct Cli {
     /// Input video or audio file
     input: PathBuf,
 
-    /// Output SRT file path (default: input name with .srt extension)
+    /// Output SRT file path (default: input name with .srt extension; also used to derive --output-type output path)
     #[arg(short = 'o', long)]
     output: Option<PathBuf>,
 
+    /// Output file type: srt (default) or mkv (creates MKV with embedded SRT subtitles)
+    #[arg(short = 'O', long, default_value = "srt", value_parser = validate_output_type)]
+    output_type: String,
+
     /// Whisper model name (tiny, tiny.en, base, base.en, small, small.en,
     /// medium, medium.en, large-v3-turbo, large-v3, parakeet, moonshine-tiny, moonshine-base)
-    #[arg(short = 'm', long, default_value = "base")]
+    #[arg(short = 'm', long, default_value = "base", value_parser = validate_model)]
     model: String,
 
     /// Source language code (e.g. "en", "fr", "auto" for auto-detect)
@@ -85,13 +118,21 @@ struct Cli {
     #[arg(long)]
     cache_dir: Option<PathBuf>,
 
-    /// Separate cache directory for model files (overrides --cache-dir for models)
+    /// Store normalized audio cache in the same directory as the input file
     #[arg(long)]
-    model_cache_dir: Option<PathBuf>,
+    audio_cache_same_dir: bool,
 
-    /// Separate cache directory for normalized audio (overrides --cache-dir for audio)
+    /// Preserve file timestamps (accessed, modified) from input on output files
     #[arg(long)]
-    audio_cache_dir: Option<PathBuf>,
+    preserve_metadata: bool,
+
+    /// Path to mkvmerge binary (default: "mkvmerge" on PATH)
+    #[arg(long)]
+    mkvmerge_path: Option<PathBuf>,
+
+    /// Delete input file after successfully creating MKV output
+    #[arg(long)]
+    delete_input_after_mkv_output: bool,
 }
 
 fn main() -> eyre::Result<()> {
@@ -115,6 +156,7 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         eyre::eyre!("Input file not found: {} ({})", cli.input.display(), e)
     })?;
 
+    let had_output = cli.output.is_some();
     let output = cli.output.unwrap_or_else(|| {
         let mut p = input.clone();
         p.set_extension("srt");
@@ -132,8 +174,12 @@ async fn run(cli: Cli) -> eyre::Result<()> {
             .unwrap_or_else(|| std::env::temp_dir())
             .join("autosubs")
     });
-    let audio_cache = cli.audio_cache_dir.unwrap_or_else(|| base_cache.join("audio"));
-    let model_cache = cli.model_cache_dir.unwrap_or_else(|| base_cache.join("models"));
+    let audio_cache = if cli.audio_cache_same_dir {
+        input.parent().unwrap_or(&input).to_path_buf()
+    } else {
+        base_cache.join("audio")
+    };
+    let model_cache = base_cache.join("models");
     fs::create_dir_all(&audio_cache)?;
     fs::create_dir_all(&model_cache)?;
 
@@ -155,7 +201,7 @@ async fn run(cli: Cli) -> eyre::Result<()> {
             .unwrap_or(0);
         stable_hash(&input.to_string_lossy(), len, mtime)
     };
-    let normalized = audio_cache.join(format!("normalized_{}.wav", hash));
+    let normalized = audio_cache.join(format!("autosubs-normalized-{}.wav", hash));
     tracing::info!("Normalizing audio...");
     normalize_audio(&input, &normalized).await?;
     tracing::info!("Audio normalized to: {}", normalized.display());
@@ -257,7 +303,7 @@ async fn run(cli: Cli) -> eyre::Result<()> {
 
     tracing::info!("Starting transcription...");
     let start = std::time::Instant::now();
-    let (raw_segments, formatted_segments, output_language) = engine
+    let (_raw_segments, formatted_segments, output_language) = engine
         .transcribe_audio(
             &normalized.to_string_lossy(),
             transcribe_options,
@@ -283,21 +329,44 @@ async fn run(cli: Cli) -> eyre::Result<()> {
     fs::write(&output, &srt_content)?;
     tracing::info!("SRT written to: {}", output.display());
 
-    // Also write a JSON transcript alongside the SRT for reuse/reformatting
-    let json_path = output.with_extension("json");
-    let transcript = serde_json::json!({
-        "processing_time_sec": 0,
-        "language": output_language,
-        "segments": formatted_segments,
-        "originalSegments": raw_segments,
-        "speakers": [],
-    });
-    fs::write(&json_path, serde_json::to_string_pretty(&transcript)?)?;
-    tracing::info!("Transcript JSON written to: {}", json_path.display());
+    if cli.preserve_metadata {
+        tracing::info!("Preserving file timestamps from input on SRT");
+        if let (Ok(input_md), Ok(srt_file)) = (
+            std::fs::metadata(&input),
+            std::fs::File::options().write(true).open(&output),
+        ) {
+            let mut times = std::fs::FileTimes::new();
+            if let Ok(atime) = input_md.accessed() {
+                times = times.set_accessed(atime);
+            }
+            if let Ok(mtime) = input_md.modified() {
+                times = times.set_modified(mtime);
+            }
+            let _ = srt_file.set_times(times);
+        }
+    }
 
     // Clean up normalized audio
     let _ = fs::remove_file(&normalized);
     tracing::info!("Cleaned up normalized audio");
+
+    // --- 4. Create output file with embedded subtitles (optional) ---
+    if cli.output_type == "mkv" {
+        let mkv_path = if had_output {
+            let mut p = output.clone();
+            p.set_extension("mkv");
+            p
+        } else {
+            input.with_extension("mkv")
+        };
+        create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
+        fs::remove_file(&output)?;
+        tracing::info!("Removed intermediate SRT: {}", output.display());
+        if cli.delete_input_after_mkv_output {
+            fs::remove_file(&input)?;
+            tracing::info!("Removed input file: {}", input.display());
+        }
+    }
 
     Ok(())
 }
@@ -358,6 +427,118 @@ fn format_timecode(seconds: f64) -> String {
     let m = (total_secs / 60) % 60;
     let h = total_secs / 3600;
     format!("{:02}:{:02}:{:02},{:03}", h, m, s, ms)
+}
+
+/// Mux the SRT subtitles into the input file to create an MKV.
+async fn create_mkv(
+    input: &PathBuf,
+    srt: &PathBuf,
+    mkv_output: &PathBuf,
+    mkvmerge_path: Option<&PathBuf>,
+    preserve_metadata: bool,
+) -> eyre::Result<()> {
+    if let Some(parent) = mkv_output.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+
+    tracing::info!("Creating MKV with embedded subtitles: {}", mkv_output.display());
+    tracing::info!(
+        "Running: mkvmerge -o {} {} {}",
+        mkv_output.display(),
+        input.display(),
+        srt.display()
+    );
+
+    let mkvmerge_bin = mkvmerge_path
+        .map(|p| p.as_path())
+        .unwrap_or(std::path::Path::new("mkvmerge"));
+
+    let mut child = Command::new(mkvmerge_bin)
+        .args([
+            "-o",
+            &mkv_output.to_string_lossy(),
+            &input.to_string_lossy(),
+            &srt.to_string_lossy(),
+        ])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| eyre::eyre!("Failed to run mkvmerge: {}. Is mkvtoolnix installed?", e))?;
+
+    let stdout = child.stdout.take().unwrap();
+    let stderr = child.stderr.take().unwrap();
+
+    let stdout_handle = tokio::spawn(async move {
+        let reader = tokio::io::BufReader::new(stdout);
+        let mut lines = tokio::io::AsyncBufReadExt::lines(reader);
+        let mut output = Vec::new();
+        while let Ok(Some(line)) = lines.next_line().await {
+            println!("{}", line);
+            output.push(line);
+        }
+        output
+    });
+
+    let stderr_handle = tokio::spawn(async move {
+        let reader = tokio::io::BufReader::new(stderr);
+        let mut lines = tokio::io::AsyncBufReadExt::lines(reader);
+        let mut output = Vec::new();
+        while let Ok(Some(line)) = lines.next_line().await {
+            eprintln!("{}", line);
+            output.push(line);
+        }
+        output
+    });
+
+    let status = child.wait().await.map_err(|e| {
+        eyre::eyre!("Failed to wait for mkvmerge process: {}", e)
+    })?;
+    let stdout_lines = stdout_handle.await.unwrap_or_default();
+    let stderr_lines = stderr_handle.await.unwrap_or_default();
+
+    let all_output: Vec<_> = stdout_lines.iter().chain(stderr_lines.iter()).collect();
+
+    let multiplexed = all_output.iter().any(|l| l.contains("Multiplexing took"));
+
+    if !status.success() && !multiplexed {
+        return Err(eyre::eyre!(
+            "mkvmerge failed with exit code {:?}",
+            status.code()
+        ));
+    }
+
+    if !multiplexed {
+        return Err(eyre::eyre!(
+            "mkvmerge did not indicate successful completion (expected 'Multiplexing took')"
+        ));
+    }
+
+    if !mkv_output.exists() {
+        return Err(eyre::eyre!("mkvmerge succeeded but mkv output was not created"));
+    }
+
+    // Preserve file timestamps from input
+    if preserve_metadata {
+        tracing::info!("Preserving file timestamps from input");
+        if let (Ok(input_md), Ok(output_file)) = (
+            std::fs::metadata(input),
+            std::fs::File::options().write(true).open(mkv_output),
+        ) {
+            let mut times = std::fs::FileTimes::new();
+            if let Ok(atime) = input_md.accessed() {
+                times = times.set_accessed(atime);
+            }
+            if let Ok(mtime) = input_md.modified() {
+                times = times.set_modified(mtime);
+            }
+            let _ = output_file.set_times(times);
+        }
+    }
+
+    tracing::info!("MKV created: {}", mkv_output.display());
+    Ok(())
 }
 
 /// Generate SRT content from segments, matching the frontend's format.
