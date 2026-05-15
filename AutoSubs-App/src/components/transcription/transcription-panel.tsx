@@ -845,10 +845,10 @@ function TranscriptionPanelView({
   );
 
   const renderTimelineTrackSelector = () => (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden" data-tour="audio-input">
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden bg-card" data-tour="audio-input">
       {inputTracks.length > 0 ? (
         <>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-lg border p-1.5 pr-2.5 bg-card">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-lg border p-1.5 pr-2.5">
             {inputTracks.map((track, index) => {
               const currentTracks =
                 currentSettings.selectedInputTracksByApp[selectedIntegration] ||
@@ -1026,7 +1026,7 @@ function TranscriptionPanelView({
               ) : (
                 <>
                 {/* Input Card */}
-                <Card className="z-50 flex min-h-0 flex-1 flex-col rounded-2xl bg-background p-3 shadow-none">
+                <div className="z-50 flex min-h-0 flex-1 flex-col">
                   {renderSectionHeader(
                     1,
                     t("actionBar.source", "Source"),
@@ -1041,7 +1041,7 @@ function TranscriptionPanelView({
                       renderFileDropArea()
                     )}
                   </div>
-                </Card>
+                </div>
 
                 {/* Language Card */}
                 <Card className="z-50 rounded-2xl bg-background p-3 shadow-none">

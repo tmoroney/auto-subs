@@ -159,7 +159,7 @@ export function TranscriptHistoryPopover({
             <CommandInput
               placeholder={t("titlebar.subtitleHistory.searchPlaceholder")}
             />
-            <CommandList className="max-h-[360px] p-1">
+            <CommandList className="max-h-[260px] p-1">
               {isLoading ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   {t("titlebar.subtitleHistory.loading")}

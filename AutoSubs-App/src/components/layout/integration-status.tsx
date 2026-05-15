@@ -87,31 +87,28 @@ export function IntegrationStatus() {
 
   return (
     <div
-      className="flex items-center gap-1 select-none z-20"
+      className="flex items-center select-none z-20"
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={`flex items-center gap-2 h-7 text-xs px-2 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
+            className={`flex items-center gap-2 h-7 text-xs px-1.5 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
               activeIntegration.connected
                 ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
                 : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
             }`}
           >
-            <div
-              className={`w-2 h-2 rounded-full ${activeIntegration.connected ? "bg-green-500" : "bg-red-500"}`}
-            />
             <img
               src={activeIntegration.logo}
               alt={activeIntegration.productName}
-              className="h-4 w-4"
+              className="h-5 w-5"
             />
             <span className="max-w-[120px] truncate">{activeLabel}</span>
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-80 z-50">
+        <DropdownMenuContent align="start" className="w-80 z-50">
           <div className="px-2 py-1.5">
             <div className="flex items-start gap-3">
               <img
@@ -119,12 +116,12 @@ export function IntegrationStatus() {
                 alt={activeIntegration.productName}
                 className="h-8 w-8"
               />
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">
+              <div>
+                <h3 className="text-sm font-semibold">
                   {activeIntegration.productName}
-                </h4>
+                </h3>
                 <p
-                  className={`text-sm ${activeIntegration.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                  className={`text-xs ${activeIntegration.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                 >
                   {activeIntegration.connected
                     ? activeIntegration.connectedText
@@ -151,7 +148,7 @@ export function IntegrationStatus() {
                 <img
                   src={item.logo}
                   alt={item.productName}
-                  className="h-4 w-4"
+                  className="h-10 w-10"
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span>{item.productName}</span>

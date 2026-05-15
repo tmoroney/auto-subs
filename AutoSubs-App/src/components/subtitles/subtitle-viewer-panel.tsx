@@ -1,6 +1,7 @@
 import * as React from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import {
+  History,
   Loader2,
   Repeat2,
   Type,
@@ -32,6 +33,7 @@ import { SpeakerSettings } from "@/components/common/speaker-settings";
 import { ImportExportPopover } from "@/components/common/import-export-popover";
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
+import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
@@ -40,6 +42,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Speaker, Template, Track } from "@/types";
 import { useTranslation } from "react-i18next";
 import { PlusIcon, type PlusIconHandle } from "../ui/plus";
+import { listSubtitleDocuments, type SubtitleDocumentListItem } from "@/utils/file-utils";
 
 interface SubtitleViewerPanelProps {
   isOpen?: boolean;
@@ -437,6 +440,9 @@ interface SubtitleContentProps {
   onSelectedIndexChange: (index: number | null) => void;
   onJumpToTime: (seconds: number) => Promise<void>;
   t: (key: string) => string;
+  transcriptDocuments: SubtitleDocumentListItem[];
+  isLoadingTranscriptDocuments: boolean;
+  loadTranscriptDocuments: () => Promise<void>;
 }
 
 function SubtitleContent({
@@ -448,7 +454,11 @@ function SubtitleContent({
   onSelectedIndexChange,
   onJumpToTime,
   t,
+  transcriptDocuments,
+  isLoadingTranscriptDocuments,
+  loadTranscriptDocuments,
 }: SubtitleContentProps) {
+  const hasLoadedTranscripts = React.useRef(false);
   const contentClassName =
     subtitlesLength > 0
       ? "flex-1 overflow-y-auto min-h-0 px-0 relative z-0"
@@ -464,16 +474,38 @@ function SubtitleContent({
           selectedIndex={selectedIndex}
           onSelectedIndexChange={onSelectedIndexChange}
           onJumpToTime={onJumpToTime}
-          itemClassName="hover:bg-sidebar-accent transition-colors"
+          itemClassName="hover:bg-muted dark:hover:bg-slate-900 transition-colors"
         />
       ) : (
         <div className="flex h-full min-h-0 flex-col items-center justify-center px-8 text-center">
-          <p className="text-sm font-semibold text-foreground">
+          <p className="text-sm text-foreground">
             {t("subtitles.empty.noSubtitlesAvailable")}
           </p>
-          <p className="mt-1 max-w-[280px] text-xs text-muted-foreground">
-            {t("titlebar.subtitleHistory.empty_detail")}
-          </p>
+          <TranscriptHistoryPopover
+            subtitleDocuments={transcriptDocuments}
+            isLoading={isLoadingTranscriptDocuments}
+            onTranscriptOpen={() => {}}
+            onRefresh={loadTranscriptDocuments}
+            align="center"
+            trigger={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  if (!hasLoadedTranscripts.current) {
+                    hasLoadedTranscripts.current = true;
+                    loadTranscriptDocuments();
+                  }
+                }}
+                aria-label={t("subtitles.previousSubtitles")}
+              >
+                <History className="h-4 w-4" />
+                {t("subtitles.previousSubtitles")}
+              </Button>
+            }
+          />
         </div>
       )}
     </div>
@@ -568,6 +600,8 @@ export function SubtitleViewerPanel({
   const [showReformat, setShowReformat] = React.useState(false);
   const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false);
   const [isMacOs, setIsMacOs] = React.useState(true);
+  const [transcriptDocuments, setTranscriptDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
+  const [isLoadingTranscriptDocuments, setIsLoadingTranscriptDocuments] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const layersIconRef = React.useRef<PlusIconHandle>(null);
 
@@ -642,6 +676,18 @@ export function SubtitleViewerPanel({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose]);
+
+  const loadTranscriptDocuments = React.useCallback(async () => {
+    setIsLoadingTranscriptDocuments(true);
+    try {
+      const documents = await listSubtitleDocuments();
+      setTranscriptDocuments(documents);
+    } catch (error) {
+      console.error("Failed to load transcript documents:", error);
+    } finally {
+      setIsLoadingTranscriptDocuments(false);
+    }
+  }, []);
 
   const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -789,6 +835,9 @@ export function SubtitleViewerPanel({
         onSelectedIndexChange={setSelectedIndex}
         onJumpToTime={jumpToTime}
         t={t}
+        transcriptDocuments={transcriptDocuments}
+        isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
+        loadTranscriptDocuments={loadTranscriptDocuments}
       />
 
       {isIntegrationConnected && subtitles.length > 0 && (

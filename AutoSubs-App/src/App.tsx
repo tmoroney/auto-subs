@@ -15,6 +15,7 @@ import { getVersion } from "@tauri-apps/api/app"
 import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status"
 import { Server, X } from "lucide-react"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
+import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   listSubtitleDocumentIndex,
@@ -43,7 +44,7 @@ export function ThemeToggle() {
   )
 }
 
-function AppContent() {
+function AppContentBody() {
   const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(false)
   const [isSubtitleViewerExpanded, setIsSubtitleViewerExpanded] =
     React.useState(false)
@@ -61,6 +62,7 @@ function AppContent() {
     React.useState(false)
   const { t } = useTranslation()
   const { settings, isHydrated } = useSettings()
+  const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const [showResolveRestartNotice, setShowResolveRestartNotice] =
     React.useState(false)
@@ -125,7 +127,30 @@ function AppContent() {
     settings.onboardingCompleted &&
     settings.tourCompleted === false &&
     !showWhatsNew
+
+  const handleCloseSubtitleViewer = React.useCallback(() => {
+    if (!showSubtitleViewer || isSubtitleViewerClosing) return
+
+    if (subtitleViewerOpenTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      subtitleViewerOpenTimeoutRef.current = null
+    }
+
+    setIsSubtitleViewerClosing(true)
+    setIsSubtitleViewerExpanded(false)
+    subtitleViewerCloseTimeoutRef.current = window.setTimeout(() => {
+      setShowSubtitleViewer(false)
+      setIsSubtitleViewerClosing(false)
+      subtitleViewerCloseTimeoutRef.current = null
+    }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
+  }, [isSubtitleViewerClosing, showSubtitleViewer])
+
   const handleOpenSubtitleViewer = React.useCallback(() => {
+    if (isMobile && subtitles.length === 0) {
+      handleCloseSubtitleViewer()
+      return
+    }
+
     if (
       showSubtitleViewer &&
       isSubtitleViewerExpanded &&
@@ -151,24 +176,14 @@ function AppContent() {
       setIsSubtitleViewerExpanded(true)
       subtitleViewerOpenTimeoutRef.current = null
     }, 20)
-  }, [isSubtitleViewerClosing, isSubtitleViewerExpanded, showSubtitleViewer])
-
-  const handleCloseSubtitleViewer = React.useCallback(() => {
-    if (!showSubtitleViewer || isSubtitleViewerClosing) return
-
-    if (subtitleViewerOpenTimeoutRef.current !== null) {
-      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
-      subtitleViewerOpenTimeoutRef.current = null
-    }
-
-    setIsSubtitleViewerClosing(true)
-    setIsSubtitleViewerExpanded(false)
-    subtitleViewerCloseTimeoutRef.current = window.setTimeout(() => {
-      setShowSubtitleViewer(false)
-      setIsSubtitleViewerClosing(false)
-      subtitleViewerCloseTimeoutRef.current = null
-    }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
-  }, [isSubtitleViewerClosing, showSubtitleViewer])
+  }, [
+    handleCloseSubtitleViewer,
+    isMobile,
+    isSubtitleViewerClosing,
+    isSubtitleViewerExpanded,
+    showSubtitleViewer,
+    subtitles.length,
+  ])
 
   React.useEffect(() => {
     return () => {
@@ -180,6 +195,12 @@ function AppContent() {
       }
     }
   }, [])
+
+  React.useEffect(() => {
+    if (isMobile && showSubtitleViewer && subtitles.length === 0) {
+      handleCloseSubtitleViewer()
+    }
+  }, [handleCloseSubtitleViewer, isMobile, showSubtitleViewer, subtitles.length])
 
   const handleTranscriptCreated = React.useCallback(async () => {
     await loadTranscriptDocuments()
@@ -240,13 +261,12 @@ function AppContent() {
   }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isMobile])
 
   const subtitleViewerClassName = isMobile
-    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-background dark:bg-card`
-    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l bg-background shadow-[-10px_0_18px_-18px_rgba(15,23,42,0.38)] transition-colors dark:bg-card`
+    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
+    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card`
 
   return (
-    <EditorWorkspaceProviders>
-      <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden bg-accent dark:bg-card relative">
+    <TooltipProvider>
+      <div className="flex flex-col h-screen overflow-hidden bg-background relative">
           {showResolveRestartNotice && (
             <div className="border-b bg-card px-3 py-2 z-15">
               <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
@@ -326,8 +346,15 @@ function AppContent() {
           {showGettingStarted && <GettingStartedOverlay />}
           {showWhatsNew && <WhatsNewDialog />}
           {showTour && <OnboardingTour />}
-        </div>
-      </TooltipProvider>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+function AppContent() {
+  return (
+    <EditorWorkspaceProviders>
+      <AppContentBody />
     </EditorWorkspaceProviders>
   )
 }
