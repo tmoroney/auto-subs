@@ -31,8 +31,8 @@ fn validate_model(s: &str) -> Result<String, String> {
 
 fn validate_output_type(s: &str) -> Result<String, String> {
     match s.to_lowercase().as_str() {
-        "srt" | "mkv" => Ok(s.to_string()),
-        other => Err(format!("unknown output type '{}'. Valid values: srt, mkv", other)),
+        "srt" | "mkv" | "json" => Ok(s.to_string()),
+        other => Err(format!("unknown output type '{}'. Valid values: srt, mkv, json", other)),
     }
 }
 
@@ -49,7 +49,7 @@ struct Cli {
     #[arg(short = 'o', long)]
     output: Option<PathBuf>,
 
-    /// Output file type: srt (default) or mkv (creates MKV with embedded SRT subtitles)
+    /// Output file type: srt (default), json, or mkv (creates MKV with embedded SRT subtitles)
     #[arg(short = 'O', long, default_value = "srt", value_parser = validate_output_type)]
     output_type: String,
 
@@ -159,7 +159,11 @@ async fn run(cli: Cli) -> eyre::Result<()> {
     let had_output = cli.output.is_some();
     let output = cli.output.unwrap_or_else(|| {
         let mut p = input.clone();
-        p.set_extension("srt");
+        let ext = match cli.output_type.as_str() {
+            "json" => "json",
+            _ => "srt",
+        };
+        p.set_extension(ext);
         p
     });
 
@@ -324,49 +328,60 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         elapsed.as_secs_f64()
     );
 
-    // --- 3. Write SRT output ---
-    let srt_content = generate_srt(&formatted_segments);
-    fs::write(&output, &srt_content)?;
-    tracing::info!("SRT written to: {}", output.display());
+    match cli.output_type.as_str() {
+        "json" => {
+            let transcript = generate_json(&formatted_segments, &output_language, elapsed);
+            let json_content = serde_json::to_string_pretty(&transcript)
+                .map_err(|e| eyre::eyre!("JSON serialization failed: {}", e))?;
+            fs::write(&output, &json_content)?;
+            tracing::info!("JSON transcript written to: {}", output.display());
+        }
+        _ => {
+            // --- SRT output (used directly or as intermediate for MKV) ---
+            let srt_content = generate_srt(&formatted_segments);
+            fs::write(&output, &srt_content)?;
+            tracing::info!("SRT written to: {}", output.display());
 
-    if cli.preserve_metadata {
-        tracing::info!("Preserving file timestamps from input on SRT");
-        if let (Ok(input_md), Ok(srt_file)) = (
-            std::fs::metadata(&input),
-            std::fs::File::options().write(true).open(&output),
-        ) {
-            let mut times = std::fs::FileTimes::new();
-            if let Ok(atime) = input_md.accessed() {
-                times = times.set_accessed(atime);
+            if cli.preserve_metadata {
+                tracing::info!("Preserving file timestamps from input on SRT");
+                if let (Ok(input_md), Ok(srt_file)) = (
+                    std::fs::metadata(&input),
+                    std::fs::File::options().write(true).open(&output),
+                ) {
+                    let mut times = std::fs::FileTimes::new();
+                    if let Ok(atime) = input_md.accessed() {
+                        times = times.set_accessed(atime);
+                    }
+                    if let Ok(mtime) = input_md.modified() {
+                        times = times.set_modified(mtime);
+                    }
+                    let _ = srt_file.set_times(times);
+                }
             }
-            if let Ok(mtime) = input_md.modified() {
-                times = times.set_modified(mtime);
+
+            // --- Create output file with embedded subtitles (optional) ---
+            if cli.output_type == "mkv" {
+                let mkv_path = if had_output {
+                    let mut p = output.clone();
+                    p.set_extension("mkv");
+                    p
+                } else {
+                    input.with_extension("mkv")
+                };
+                create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
+                fs::remove_file(&output)?;
+                tracing::info!("Removed intermediate SRT: {}", output.display());
+                if cli.delete_input_after_mkv_output {
+                    fs::remove_file(&input)?;
+                    tracing::info!("Removed input file: {}", input.display());
+                }
             }
-            let _ = srt_file.set_times(times);
         }
     }
 
     // Clean up normalized audio
     let _ = fs::remove_file(&normalized);
     tracing::info!("Cleaned up normalized audio");
-
-    // --- 4. Create output file with embedded subtitles (optional) ---
-    if cli.output_type == "mkv" {
-        let mkv_path = if had_output {
-            let mut p = output.clone();
-            p.set_extension("mkv");
-            p
-        } else {
-            input.with_extension("mkv")
-        };
-        create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
-        fs::remove_file(&output)?;
-        tracing::info!("Removed intermediate SRT: {}", output.display());
-        if cli.delete_input_after_mkv_output {
-            fs::remove_file(&input)?;
-            tracing::info!("Removed input file: {}", input.display());
-        }
-    }
 
     Ok(())
 }
@@ -621,4 +636,124 @@ fn generate_srt(segments: &[transcription_engine::Segment]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+// --- JSON transcript types (mirrors transcript_types.rs for standalone CLI) ---
+
+#[derive(serde::Serialize)]
+struct JsonTranscript {
+    processing_time_sec: u64,
+    language: String,
+    segments: Vec<JsonSegment>,
+    speakers: Vec<JsonSpeaker>,
+}
+
+#[derive(serde::Serialize)]
+struct JsonSegment {
+    start: f64,
+    end: f64,
+    text: String,
+    speaker_id: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct JsonSample {
+    start: f64,
+    end: f64,
+}
+
+#[derive(serde::Serialize)]
+struct JsonColorModifier {
+    enabled: bool,
+    color: String,
+}
+
+impl Default for JsonColorModifier {
+    fn default() -> Self {
+        JsonColorModifier {
+            enabled: false,
+            color: String::new(),
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+struct JsonSpeaker {
+    name: String,
+    fill: JsonColorModifier,
+    outline: JsonColorModifier,
+    border: JsonColorModifier,
+    sample: JsonSample,
+}
+
+/// Generate JSON transcript content, aggregating speakers when diarization data is present.
+fn generate_json(
+    segments: &[transcription_engine::Segment],
+    language: &str,
+    elapsed: std::time::Duration,
+) -> JsonTranscript {
+    let segs: Vec<JsonSegment> = segments
+        .iter()
+        .map(|s| JsonSegment {
+            start: s.start,
+            end: s.end,
+            text: s.text.clone(),
+            speaker_id: s.speaker_id.clone(),
+        })
+        .collect();
+
+    let speakers = aggregate_speakers_from_segments(segments);
+
+    JsonTranscript {
+        processing_time_sec: elapsed.as_secs(),
+        language: language.to_string(),
+        segments: segs,
+        speakers,
+    }
+}
+
+/// Aggregates speakers from transcript segments, matching the logic in the Tauri backend
+/// (transcription_api.rs).  Deduplicates speakers by their normalised speaker_id and assigns
+/// a sequential index.  Returns a Vec<JsonSpeaker> suitable for the JSON transcript output.
+fn aggregate_speakers_from_segments(segments: &[transcription_engine::Segment]) -> Vec<JsonSpeaker> {
+    use std::collections::HashMap;
+
+    let mut speaker_info: HashMap<String, (usize, f64, f64)> = HashMap::new();
+    let mut next_index: usize = 0;
+
+    for segment in segments.iter() {
+        if let Some(ref speaker_id) = segment.speaker_id {
+            let trimmed = speaker_id.trim();
+            if trimmed.is_empty() || trimmed == "?" {
+                continue;
+            }
+
+            let raw_id = if let Some(rest) = trimmed.strip_prefix("Speaker ") {
+                rest.trim().to_string()
+            } else {
+                trimmed.to_string()
+            };
+
+            if !speaker_info.contains_key(&raw_id) {
+                speaker_info.insert(raw_id, (next_index, segment.start, segment.end));
+                next_index += 1;
+            }
+        }
+    }
+
+    let mut speakers = Vec::new();
+    let mut speaker_list: Vec<(String, (usize, f64, f64))> = speaker_info.into_iter().collect();
+    speaker_list.sort_by_key(|(_, (index, _, _))| *index);
+
+    for (raw_id, (_, start, end)) in speaker_list {
+        speakers.push(JsonSpeaker {
+            name: format!("Speaker {}", raw_id),
+            sample: JsonSample { start, end },
+            fill: JsonColorModifier::default(),
+            outline: JsonColorModifier::default(),
+            border: JsonColorModifier::default(),
+        });
+    }
+
+    speakers
 }
