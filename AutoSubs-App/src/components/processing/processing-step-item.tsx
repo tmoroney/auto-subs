@@ -50,7 +50,7 @@ export function ProcessingStepItem({
 
     return (
         <div className="flex w-full flex-col">
-            <Item variant={isCompleted ? "muted" : "outline"}>
+            <Item variant="outline">
                 <ItemMedia>
                     {isCompleted ? (
                         <CircleCheck className="text-primary" />

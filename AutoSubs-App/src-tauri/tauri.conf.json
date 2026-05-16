@@ -15,11 +15,11 @@
         "titleBarStyle": "Overlay",
         "decorations": true,
         "trafficLightPosition": {
-          "x": 10,
-          "y": 20
+          "x": 16,
+          "y": 25
         },
         "height": 700,
-        "width": 900,
+        "width": 700,
         "acceptFirstMouse": true,
         "zoomHotkeysEnabled": true
       }

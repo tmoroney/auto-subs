@@ -29,7 +29,7 @@ export function LanguageSelector() {
     return (
         <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
             <TabsContent value="source" className="mt-0 border-b">
-                <Command className="max-h-[260px] rounded-b-none">
+                <Command className="max-h-[240px] rounded-b-none">
                     <CommandInput ref={sourceInputRef} placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                     <CommandList>
                         <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
@@ -61,7 +61,7 @@ export function LanguageSelector() {
             </TabsContent>
 
             <TabsContent value="translate" className="mt-0 border-b">
-                <Command className="max-h-[260px] rounded-b-none">
+                <Command className="max-h-[240px] rounded-b-none">
                     <div className="relative">
                         <CommandInput ref={translateInputRef} placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                         <Switch

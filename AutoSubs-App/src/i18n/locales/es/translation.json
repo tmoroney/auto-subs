@@ -45,7 +45,8 @@
     "done": "Listo",
     "delete": "Eliminar",
     "options": "Opciones",
-    "generateSubtitles": "Generar subtítulos",
+    "generateSubtitles": "Generar",
+    "startNewTranscription": "Iniciar nueva transcripción",
     "open": "Abrir"
   },
   "update": {
@@ -478,6 +479,9 @@
       "maximize": "Maximizar",
       "close": "Cerrar"
     },
+    "status": {
+      "disconnected": "Desconectado"
+    },
     "update": {
       "downloading": "Descargando actualización",
       "installing": "Instalando actualización",
@@ -486,6 +490,7 @@
     },
     "resolve": {
       "productName": "DaVinci Resolve",
+      "description": "Integración de scripts del área de trabajo",
       "status": {
         "connected": "Conectado",
         "disconnected": "Desconectado"
@@ -501,6 +506,7 @@
     },
     "premiere": {
       "productName": "Premiere Pro",
+      "description": "Integración de extensión de Adobe",
       "status": {
         "connected": "Conectado",
         "disconnected": "Desconectado"
@@ -514,6 +520,7 @@
     },
     "aftereffects": {
       "productName": "After Effects",
+      "description": "Integración de extensión de Adobe",
       "status": {
         "connected": "Conectado",
         "disconnected": "Desconectado"

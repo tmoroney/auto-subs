@@ -45,7 +45,8 @@
     "done": "Done",
     "delete": "Delete",
     "options": "Options",
-    "generateSubtitles": "Generate Subtitles",
+    "generateSubtitles": "Generate",
+    "startNewTranscription": "Start new transcription",
     "open": "Open"
   },
   "update": {
@@ -483,6 +484,9 @@
       "maximize": "Maximize",
       "close": "Close"
     },
+    "status": {
+      "disconnected": "Disconnected"
+    },
     "update": {
       "downloading": "Downloading Update",
       "installing": "Installing Update",
@@ -491,6 +495,7 @@
     },
     "resolve": {
       "productName": "DaVinci Resolve",
+      "description": "Workspace Scripts integration",
       "status": {
         "connected": "Connected",
         "disconnected": "Disconnected"
@@ -506,6 +511,7 @@
     },
     "premiere": {
       "productName": "Premiere Pro",
+      "description": "Adobe extension integration",
       "status": {
         "connected": "Connected",
         "disconnected": "Disconnected"
@@ -519,6 +525,7 @@
     },
     "aftereffects": {
       "productName": "After Effects",
+      "description": "Adobe extension integration",
       "status": {
         "connected": "Connected",
         "disconnected": "Disconnected"

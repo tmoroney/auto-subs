@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Check,
   ClipboardPaste,
@@ -46,41 +45,32 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { downloadDir } from "@tauri-apps/api/path";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface AnimatedPresetPickerProps {
   presets: CaptionPreset[];
   selectedPresetId: string;
   onSelect: (id: string) => void;
-  onRequestCreate: () => void;
   onRequestEdit: (preset: CaptionPreset) => void;
   onRequestPreview?: (preset: CaptionPreset) => void;
   onDelete: (id: string) => Promise<void> | void;
-  onImportJson: (json: string) => Promise<CaptionPreset>;
   onExportJson: (id: string) => string;
   onDuplicate: (preset: CaptionPreset) => Promise<void> | void;
   previewLoadingId?: string | null;
 }
 
-/**
- * Grid of animated caption presets with an overflow menu per user preset and
- * an `+ New preset` tile that triggers the create flow.
- */
-export function AnimatedPresetPicker({
-  presets,
-  selectedPresetId,
-  onSelect,
+interface AnimatedPresetActionsProps {
+  onRequestCreate: () => void;
+  onImportJson: (json: string) => Promise<CaptionPreset>;
+  className?: string;
+}
+
+export function AnimatedPresetActions({
   onRequestCreate,
-  onRequestEdit,
-  onRequestPreview,
-  onDelete,
   onImportJson,
-  onExportJson,
-  onDuplicate,
-  previewLoadingId,
-}: AnimatedPresetPickerProps) {
+  className,
+}: AnimatedPresetActionsProps) {
   const { t } = useTranslation();
-  const [pendingDelete, setPendingDelete] =
-    React.useState<CaptionPreset | null>(null);
   const [pasteOpen, setPasteOpen] = React.useState(false);
   const [pasteValue, setPasteValue] = React.useState("");
   const [pasteError, setPasteError] = React.useState<string | null>(null);
@@ -115,6 +105,113 @@ export function AnimatedPresetPicker({
     }
   }
 
+  return (
+    <>
+      <div
+        className={cn(
+          "grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:shrink-0 sm:items-center sm:gap-1",
+          className,
+        )}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-sm font-semibold sm:w-auto"
+            >
+              <Upload className="h-4 w-4" />
+              {t("importExport.importTab")}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setPasteOpen(true)}>
+              <ClipboardPaste />
+              {t("addToTimeline.preset.paste")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleImportFromFile}>
+              <FileUp />
+              {t("addToTimeline.preset.import")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          type="button"
+          className="w-full text-sm font-semibold sm:w-auto"
+          onClick={onRequestCreate}
+        >
+          <Plus className="h-4 w-4" />
+          {t("addToTimeline.preset.new", "New Preset")}
+        </Button>
+      </div>
+
+      <Dialog
+        open={pasteOpen}
+        onOpenChange={(o) => {
+          setPasteOpen(o);
+          if (!o) {
+            setPasteValue("");
+            setPasteError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("addToTimeline.preset.importTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("addToTimeline.preset.paste")}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={pasteValue}
+            onChange={(e) => setPasteValue(e.target.value)}
+            placeholder={t("addToTimeline.preset.importPlaceholder")}
+            rows={8}
+            className="font-mono text-xs"
+          />
+          {pasteError && (
+            <p className="text-xs text-destructive">{pasteError}</p>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPasteOpen(false)}
+            >
+              {t("addToTimeline.preset.action.cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePasteImport}
+              disabled={!pasteValue.trim()}
+            >
+              {t("addToTimeline.preset.importSubmit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * Full-width animated caption preset list with an overflow menu per preset.
+ */
+export function AnimatedPresetPicker({
+  presets,
+  selectedPresetId,
+  onSelect,
+  onRequestEdit,
+  onRequestPreview,
+  onDelete,
+  onExportJson,
+  onDuplicate,
+  previewLoadingId,
+}: AnimatedPresetPickerProps) {
+  const { t } = useTranslation();
+  const [pendingDelete, setPendingDelete] =
+    React.useState<CaptionPreset | null>(null);
+
   async function handleExport(preset: CaptionPreset) {
     try {
       const json = onExportJson(preset.id);
@@ -143,63 +240,8 @@ export function AnimatedPresetPicker({
 
   return (
     <>
-      <ScrollArea className="h-[240px] rounded-md border">
-        <div className="p-2 grid grid-cols-2 gap-2">
-          {/* Create / Import group */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onRequestCreate}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onRequestCreate();
-              }
-            }}
-            className="group relative flex min-h-[96px] cursor-pointer flex-col justify-between rounded-md border-2 border-dashed border-muted-foreground/30 bg-card/50 p-3 text-left transition-colors hover:border-primary/60 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <Plus className="h-4 w-4 group-hover:text-primary" />
-                <span className="text-sm font-medium leading-tight text-muted-foreground group-hover:text-primary">
-                  {t("addToTimeline.preset.new")}
-                </span>
-              </div>
-              <p className="line-clamp-2 pr-4 text-[11px] leading-tight text-muted-foreground/60">
-                {t("addToTimeline.preset.newDescription")}
-              </p>
-            </div>
-
-            <div className="mt-2 flex items-center justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Upload />
-                    {t("importExport.importTab")}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DropdownMenuItem onClick={() => setPasteOpen(true)}>
-                    <ClipboardPaste/>
-                    {t("addToTimeline.preset.paste")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleImportFromFile}>
-                    <FileUp />
-                    {t("addToTimeline.preset.import")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
+      <ScrollArea className="h-[296px] w-full">
+        <div className="space-y-2 pr-3">
           {presets.map((preset) => (
             <PresetCard
               key={preset.id}
@@ -250,52 +292,6 @@ export function AnimatedPresetPicker({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Paste JSON modal */}
-      <Dialog
-        open={pasteOpen}
-        onOpenChange={(o) => {
-          setPasteOpen(o);
-          if (!o) {
-            setPasteValue("");
-            setPasteError(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("addToTimeline.preset.importTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("addToTimeline.preset.paste")}
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={pasteValue}
-            onChange={(e) => setPasteValue(e.target.value)}
-            placeholder={t("addToTimeline.preset.importPlaceholder")}
-            rows={8}
-            className="font-mono text-xs"
-          />
-          {pasteError && (
-            <p className="text-xs text-destructive">{pasteError}</p>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPasteOpen(false)}
-            >
-              {t("addToTimeline.preset.action.cancel")}
-            </Button>
-            <Button
-              type="button"
-              onClick={handlePasteImport}
-              disabled={!pasteValue.trim()}
-            >
-              {t("addToTimeline.preset.importSubmit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
@@ -340,42 +336,48 @@ function PresetCard({
           onSelect();
         }
       }}
-      className={`group relative flex min-h-[96px] cursor-pointer flex-col justify-between rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={cn(
+        "group relative flex min-h-[72px] cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected
           ? "border-primary bg-primary/5"
-          : "border-border bg-card hover:bg-muted/60"
-      }`}
-    >
-      {selected && (
-        <div className="absolute right-2 top-2 rounded-full bg-primary p-0.5 text-primary-foreground">
-          <Check className="h-3 w-3" />
-        </div>
+          : "border-border bg-background hover:bg-muted/50",
       )}
-      <Badge variant="outline" className="absolute left-2 bottom-2 text-[10px]">
-        {preset.builtIn
-          ? t("addToTimeline.preset.builtIn")
-          : t("addToTimeline.preset.custom")}
-      </Badge>
-      <div className="space-y-1 pr-6">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium leading-tight">
+    >
+      <div
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+          selected
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-muted-foreground/30 bg-background",
+        )}
+      >
+        {selected && <Check className="h-3 w-3" />}
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold leading-tight text-foreground">
             {preset.name}
+          </span>
+          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {preset.builtIn
+              ? t("addToTimeline.preset.builtIn")
+              : t("addToTimeline.preset.custom")}
           </span>
         </div>
         {preset.description && (
-          <p className="text-[11px] text-muted-foreground leading-tight line-clamp-2">
+          <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
             {preset.description}
           </p>
         )}
       </div>
 
-      <div className="mt-2 flex items-center justify-end gap-1">
-        {onPreview ? (
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {onPreview && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-[11px]"
+            className="h-6 px-2 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               onPreview();
@@ -389,8 +391,6 @@ function PresetCard({
             )}
             {t("addToTimeline.preset.preview")}
           </Button>
-        ) : (
-          <span />
         )}
         {!preset.builtIn && (
           <Button
@@ -403,7 +403,7 @@ function PresetCard({
               onEdit();
             }}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3 w-3" />
           </Button>
         )}
         <DropdownMenu>

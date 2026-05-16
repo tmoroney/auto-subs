@@ -1,20 +1,12 @@
 // App.tsx
-import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
+import { ThemeProvider, useTheme } from "@/components/providers/theme-provider"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionPanel } from "@/components/transcription/transcription-panel"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { CompactSubtitleViewer } from "@/components/subtitles/compact-subtitle-viewer"
-import { DesktopSubtitleViewer } from "@/components/subtitles/desktop-subtitle-viewer"
+import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel"
 import { useTranslation } from "react-i18next"
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Titlebar } from "@/components/layout/titlebar"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
@@ -23,6 +15,17 @@ import { getVersion } from "@tauri-apps/api/app"
 import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status"
 import { Server, X } from "lucide-react"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
+import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  listSubtitleDocumentIndex,
+  type SubtitleDocumentListItem,
+} from "@/utils/file-utils"
+
+const MIN_TRANSCRIPTION_PANEL_WIDTH = 400
+const MIN_SUBTITLE_PANEL_WIDTH = 280
+const PANEL_GAP = 16
+const SUBTITLE_VIEWER_EXIT_ANIMATION_MS = 180
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -41,14 +44,51 @@ export function ThemeToggle() {
   )
 }
 
-function AppContent() {
-  const [showMobileSubtitles, setShowMobileSubtitles] = React.useState(false)
-  const isMobile = useIsMobile()
+function AppContentBody() {
+  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(() => {
+    // Open by default on desktop if there's enough screen space
+    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+    const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
+    return hasEnoughSpace
+  })
+  const [isSubtitleViewerExpanded, setIsSubtitleViewerExpanded] =
+    React.useState(() => {
+      const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+      const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
+      return hasEnoughSpace
+    })
+  const [isSubtitleViewerClosing, setIsSubtitleViewerClosing] =
+    React.useState(false)
+  const [isSubtitleViewerResizing, setIsSubtitleViewerResizing] =
+    React.useState(false)
+  const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
+    React.useState(false)
+  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(320)
+  const [transcriptDocuments, setTranscriptDocuments] = React.useState<
+    SubtitleDocumentListItem[]
+  >([])
+  const [hasLoadedTranscriptDocuments, setHasLoadedTranscriptDocuments] =
+    React.useState(false)
   const { t } = useTranslation()
   const { settings, isHydrated } = useSettings()
+  const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const [showResolveRestartNotice, setShowResolveRestartNotice] =
     React.useState(false)
+  const isMobile = useIsMobile()
+  const mainContentRef = React.useRef<HTMLDivElement>(null)
+  const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
+  const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
+
+  const loadTranscriptDocuments = React.useCallback(async () => {
+    try {
+      setTranscriptDocuments(await listSubtitleDocumentIndex())
+    } catch (error) {
+      console.error("Failed to load subtitle documents:", error)
+    } finally {
+      setHasLoadedTranscriptDocuments(true)
+    }
+  }, [])
 
   React.useEffect(() => {
     let cancelled = false
@@ -63,6 +103,10 @@ function AppContent() {
       cancelled = true
     }
   }, [])
+
+  React.useEffect(() => {
+    void loadTranscriptDocuments()
+  }, [loadTranscriptDocuments])
 
   // Priority gating: only show one onboarding-style dialog at a time.
   const showGettingStarted = isHydrated && !settings.onboardingCompleted
@@ -92,23 +136,148 @@ function AppContent() {
     settings.onboardingCompleted &&
     settings.tourCompleted === false &&
     !showWhatsNew
-  const handleOpenCompactViewer = React.useCallback(() => {
-    if (isMobile) {
-      setShowMobileSubtitles(true)
+
+  const handleCloseSubtitleViewer = React.useCallback(() => {
+    if (!showSubtitleViewer || isSubtitleViewerClosing) return
+
+    if (subtitleViewerOpenTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      subtitleViewerOpenTimeoutRef.current = null
     }
-  }, [isMobile])
+
+    setIsSubtitleViewerClosing(true)
+    setIsSubtitleViewerExpanded(false)
+    subtitleViewerCloseTimeoutRef.current = window.setTimeout(() => {
+      setShowSubtitleViewer(false)
+      setIsSubtitleViewerClosing(false)
+      subtitleViewerCloseTimeoutRef.current = null
+    }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
+  }, [isSubtitleViewerClosing, showSubtitleViewer])
+
+  const handleOpenSubtitleViewer = React.useCallback(() => {
+    if (isMobile && subtitles.length === 0) {
+      handleCloseSubtitleViewer()
+      return
+    }
+
+    if (
+      showSubtitleViewer &&
+      isSubtitleViewerExpanded &&
+      !isSubtitleViewerClosing
+    ) {
+      return
+    }
+
+    if (subtitleViewerCloseTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
+      subtitleViewerCloseTimeoutRef.current = null
+    }
+    if (subtitleViewerOpenTimeoutRef.current !== null) {
+      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      subtitleViewerOpenTimeoutRef.current = null
+    }
+
+    setIsSubtitleViewerClosing(false)
+    setIsSubtitleViewerExpanded(false)
+    setShowSubtitleViewer(true)
+
+    subtitleViewerOpenTimeoutRef.current = window.setTimeout(() => {
+      setIsSubtitleViewerExpanded(true)
+      subtitleViewerOpenTimeoutRef.current = null
+    }, 20)
+  }, [
+    handleCloseSubtitleViewer,
+    isMobile,
+    isSubtitleViewerClosing,
+    isSubtitleViewerExpanded,
+    showSubtitleViewer,
+    subtitles.length,
+  ])
+
+  React.useEffect(() => {
+    return () => {
+      if (subtitleViewerCloseTimeoutRef.current !== null) {
+        window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
+      }
+      if (subtitleViewerOpenTimeoutRef.current !== null) {
+        window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (isMobile && showSubtitleViewer && subtitles.length === 0) {
+      handleCloseSubtitleViewer()
+    }
+  }, [handleCloseSubtitleViewer, isMobile, showSubtitleViewer, subtitles.length])
+
+  const handleTranscriptCreated = React.useCallback(async () => {
+    await loadTranscriptDocuments()
+  }, [loadTranscriptDocuments])
+
+  const getMaxSubtitlePanelWidth = React.useCallback(() => {
+    const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
+    return Math.max(
+      MIN_SUBTITLE_PANEL_WIDTH,
+      containerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
+    )
+  }, [])
+
+  const handleSubtitleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (isMobile) return
+
+    event.preventDefault()
+    setIsSubtitleViewerResizing(true)
+
+    const startX = event.clientX
+    const startWidth = subtitlePanelWidth
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = startWidth + startX - moveEvent.clientX
+      setSubtitlePanelWidth(
+        Math.min(
+          getMaxSubtitlePanelWidth(),
+          Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
+        ),
+      )
+    }
+
+    const handlePointerUp = () => {
+      setIsSubtitleViewerResizing(false)
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+      window.removeEventListener("pointercancel", handlePointerUp)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp)
+    window.addEventListener("pointercancel", handlePointerUp)
+  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth])
+
+  // Adjust subtitle panel width when window is resized
+  React.useEffect(() => {
+    if (isMobile) return
+
+    const handleResize = () => {
+      const maxWidth = getMaxSubtitlePanelWidth()
+      if (subtitlePanelWidth > maxWidth) {
+        setSubtitlePanelWidth(maxWidth)
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isMobile])
+
+  const subtitleViewerClassName = isMobile
+    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
+    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card`
 
   return (
-    <EditorWorkspaceProviders>
-      <TooltipProvider>
-        <div className="flex flex-col h-screen overflow-hidden">
-          {/* Use actual timeline info from Resolve context */}
-          <Titlebar
-            onOpenCompactViewer={handleOpenCompactViewer}
-          />
-
+    <TooltipProvider>
+      <div className="flex flex-col h-screen overflow-hidden bg-background relative">
           {showResolveRestartNotice && (
-            <div className="border-b bg-card px-3 py-2">
+            <div className="border-b bg-card px-3 py-2 z-15">
               <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
                 <Server className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -136,37 +305,65 @@ function AppContent() {
           )}
 
           {/* Main Content Area with Resizable Panels */}
-          <div className="flex-1 min-h-0 pb-0">
-            {isMobile ? (
-              <div className="h-full overflow-hidden">
-                {showMobileSubtitles ? (
-                  <CompactSubtitleViewer
-                    isOpen={showMobileSubtitles}
-                    onClose={() => setShowMobileSubtitles(false)}
-                  />
-                ) : (
-                  <TranscriptionPanel onViewSubtitles={handleOpenCompactViewer} />
-                )}
+          <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
+            <div className="flex h-full min-w-0">
+              <div className="min-h-0 min-w-[325px] flex-1 overflow-hidden">
+                <TranscriptionPanel
+                  onViewSubtitles={handleOpenSubtitleViewer}
+                  onTranscriptCreated={handleTranscriptCreated}
+                  transcriptDocuments={transcriptDocuments}
+                  isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
+                  onTranscriptDocumentsRefresh={loadTranscriptDocuments}
+                  isSubtitleViewerOpen={
+                    showSubtitleViewer &&
+                    isSubtitleViewerExpanded &&
+                    !isSubtitleViewerClosing
+                  }
+                />
               </div>
-            ) : (
-              // Desktop: Resizable panels with transcription settings and subtitle viewer
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={50} className="min-w-[400px]">
-                  <TranscriptionPanel />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={50} minSize={35}>
-                  <DesktopSubtitleViewer />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            )}
+              {showSubtitleViewer && (
+                <div
+                  className={subtitleViewerClassName}
+                  style={{
+                    width: isMobile
+                      ? "100%"
+                      : isSubtitleViewerExpanded
+                        ? subtitlePanelWidth
+                        : 0,
+                  }}
+                >
+                  {!isMobile && (
+                    <div
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label="Resize subtitles panel"
+                      className="absolute inset-y-0 -left-2 z-30 w-5 cursor-col-resize touch-none"
+                      onPointerDown={handleSubtitleResizeStart}
+                      onPointerEnter={() => setIsSubtitleViewerResizeHovered(true)}
+                      onPointerLeave={() => setIsSubtitleViewerResizeHovered(false)}
+                    />
+                  )}
+                  <SubtitleViewerPanel
+                    isFullScreen={isMobile}
+                    onClose={handleCloseSubtitleViewer}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {showGettingStarted && <GettingStartedOverlay />}
           {showWhatsNew && <WhatsNewDialog />}
           {showTour && <OnboardingTour />}
-        </div>
-      </TooltipProvider>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+function AppContent() {
+  return (
+    <EditorWorkspaceProviders>
+      <AppContentBody />
     </EditorWorkspaceProviders>
   )
 }

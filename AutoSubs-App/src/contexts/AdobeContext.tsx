@@ -32,7 +32,8 @@ const emptyTimeline: TimelineInfo = {
   timelineId: "",
   templates: [],
   inputTracks: [],
-  outputTracks: []
+  outputTracks: [],
+  projectName: ""
 };
 
 /** Maps raw API data from either Adobe host into a normalised TimelineInfo shape. */
@@ -45,7 +46,8 @@ function toTimelineInfo(data: any): TimelineInfo {
       value: t.index.toString(),
       label: t.name || `Audio ${t.index}`
     })) ?? [],
-    outputTracks: []
+    outputTracks: [],
+    projectName: data.projectName || ""
   };
 }
 
