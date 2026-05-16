@@ -241,7 +241,7 @@ export function AnimatedPresetPicker({
   return (
     <>
       <ScrollArea className="h-[296px] w-full">
-        <div className="space-y-2 pr-3">
+        <div className="space-y-2 pr-3 pb-4">
           {presets.map((preset) => (
             <PresetCard
               key={preset.id}

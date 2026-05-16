@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertTriangle, Check, Loader2 } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -46,7 +46,6 @@ interface CaptionTemplateSelectionContentProps {
     templatesLoading: boolean
     templatesLoaded: boolean
     templateLoadError: string | null
-    onRetryLoadTemplates?: () => Promise<Template[]>
     presetId: string
     onPresetChange: (id: string) => void
     animatedPresets: ReturnType<typeof usePresets>["presets"]
@@ -74,7 +73,6 @@ export function CaptionTemplateSelectionContent({
     templatesLoading,
     templatesLoaded,
     templateLoadError,
-    onRetryLoadTemplates,
     presetId,
     onPresetChange,
     animatedPresets,
@@ -113,6 +111,14 @@ export function CaptionTemplateSelectionContent({
         )
     }
 
+    if (!templatesLoading && templateLoadError) {
+        return (
+            <div className="flex h-[296px] items-center justify-center text-center text-sm font-medium text-muted-foreground">
+                Connect to Davinci Resolve to customise templates
+            </div>
+        )
+    }
+
     return (
         <Tabs value={mode} onValueChange={(v) => onModeChange(v as CaptionTemplateMode)}>
             <div className="grid gap-2 sm:grid-cols-[minmax(240px,460px)_auto] sm:items-center">
@@ -144,20 +150,6 @@ export function CaptionTemplateSelectionContent({
                             <div className="h-[260px] flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span>Loading templates...</span>
-                            </div>
-                        )}
-                        {!templatesLoading && templateLoadError && (
-                            <div className="h-[260px] flex flex-col items-center justify-center gap-3 text-center text-sm">
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
-                                <div className="space-y-1">
-                                    <p className="font-medium">Could not load templates</p>
-                                    <p className="text-muted-foreground">{templateLoadError}</p>
-                                </div>
-                                {onRetryLoadTemplates && (
-                                    <Button type="button" variant="outline" size="sm" onClick={() => onRetryLoadTemplates()}>
-                                        Retry
-                                    </Button>
-                                )}
                             </div>
                         )}
                         {!templatesLoading && !templateLoadError && templatesLoaded && templates.filter(t => t.value !== ANIMATED_CAPTION_TEMPLATE).map((template) => (
@@ -332,17 +324,6 @@ export function CaptionTemplateSelectionDialog({
                     templatesLoading={templatesLoading}
                     templatesLoaded={templatesLoaded}
                     templateLoadError={templateLoadError}
-                    onRetryLoadTemplates={async () => {
-                        if (!onLoadTemplates) return []
-                        setTemplateLoadError(null)
-                        try {
-                            return await onLoadTemplates()
-                        } catch (err) {
-                            const message = err instanceof Error ? err.message : String(err)
-                            setTemplateLoadError(message)
-                            throw err
-                        }
-                    }}
                     presetId={selection.presetId}
                     onPresetChange={(id) => setSelection((s) => ({ ...s, presetId: id, mode: "animated" }))}
                     animatedPresets={presets}

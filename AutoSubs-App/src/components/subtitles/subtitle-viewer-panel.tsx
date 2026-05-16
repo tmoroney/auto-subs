@@ -1,16 +1,17 @@
 import * as React from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import {
+  Download,
   History,
   Loader2,
   Repeat2,
   Type,
-  Upload,
   Users,
   X,
+  Search,
+  CornerDownRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -124,7 +125,7 @@ function SearchSection({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
             onClick={() => onSearchQueryChange("")}
           >
             <X className="h-4 w-4" />
@@ -138,9 +139,9 @@ function SearchSection({
       button={
         <Button
           type="button"
-          variant={searchCaseSensitive ? "secondary" : "ghost"}
+          variant={searchCaseSensitive ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7 text-xs"
+          className="h-7 w-7 text-xs rounded-full"
           onClick={onToggleCaseSensitive}
         >
           Aa
@@ -154,9 +155,9 @@ function SearchSection({
       button={
         <Button
           type="button"
-          variant={searchWholeWord ? "secondary" : "ghost"}
+          variant={searchWholeWord ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7 text-xs"
+          className="h-7 w-7 text-xs rounded-full"
           onClick={onToggleWholeWord}
         >
           W
@@ -170,9 +171,9 @@ function SearchSection({
       button={
         <Button
           type="button"
-          variant={showReplace ? "secondary" : "ghost"}
+          variant={showReplace ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7"
+          className="h-7 w-7 rounded-full"
           onClick={onToggleReplace}
         >
           <Repeat2 className="h-4 w-4" />
@@ -184,43 +185,51 @@ function SearchSection({
   ].filter(Boolean);
 
   const searchInput = (
-    <InputGroup>
+    <InputGroup className="rounded-xl overflow-hidden border-slate-200 dark:border-slate-800 bg-background/50">
+      <InputGroupAddon align="inline-start" className="text-muted-foreground pr-1">
+        <Search className="h-4 w-4" />
+      </InputGroupAddon>
       <InputGroupInput
         ref={searchInputRef}
         placeholder={searchPlaceholder}
         value={searchQuery}
         onChange={(e) => onSearchQueryChange(e.target.value)}
         aria-label={searchAriaLabel}
-        className="text-sm"
+        className="text-sm px-2"
       />
       {searchActions}
     </InputGroup>
   );
 
   const replaceSection = (
-    <ButtonGroup className="w-full mt-2">
+    <div className="flex w-full items-center rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-background/50 focus-within:ring-1 focus-within:ring-ring">
+      <div className="pl-3 text-muted-foreground flex items-center justify-center">
+        <CornerDownRight className="h-4 w-4" />
+      </div>
       <Input
         placeholder={t("subtitles.search.replaceWithPlaceholder")}
         value={replaceValue}
         onChange={(e) => onReplaceValueChange(e.target.value)}
-        className="text-sm"
+        className="flex-1 text-sm pl-2 pr-3 border-0 bg-transparent shadow-none focus-visible:ring-0 rounded-none"
       />
       <Button
         type="button"
-        variant="secondary"
+        variant="default"
         disabled={!canReplace}
         onClick={onReplaceAll}
-        size="sm"
+        className="rounded-none px-4 bg-[#0a0a0b] hover:bg-[#0a0a0b]/90 text-white border-l border-slate-200 dark:border-slate-800"
       >
         {t("subtitles.search.replaceAll")}
       </Button>
-    </ButtonGroup>
+    </div>
   );
 
   return (
     <div className={headerClassName}>
-      {searchInput}
-      {showReplace && replaceSection}
+      <div className="flex flex-col gap-1.5">
+        {searchInput}
+        {showReplace && replaceSection}
+      </div>
     </div>
   );
 }
@@ -228,6 +237,7 @@ function SearchSection({
 interface SpeakersPopoverProps {
   open: boolean;
   speakers: Speaker[];
+  disabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onSpeakerChange: (index: number, speaker: Speaker) => void;
   t: (key: string) => string;
@@ -237,6 +247,7 @@ interface SpeakersPopoverProps {
 function SpeakersPopover({
   open,
   speakers,
+  disabled = false,
   onOpenChange,
   onSpeakerChange,
   t,
@@ -255,9 +266,9 @@ function SpeakersPopover({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
-              className="h-9 px-3"
+              className="shadow-none"
               title={t("subtitles.speakers")}
+              disabled={disabled}
             >
               <Users className="h-4 w-4 mr-0.5" />
               {t("subtitles.speakers")}
@@ -267,7 +278,7 @@ function SpeakersPopover({
       </Tooltip>
       <PopoverContent
         align="center"
-        className="w-[340px]"
+        className="w-[340px] pb-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="pb-3">
@@ -276,8 +287,8 @@ function SpeakersPopover({
             {t("speakerEditor.description")}
           </p>
         </div>
-        <ScrollArea className="h-[320px] pr-4 -mr-4">
-          <div className="space-y-3">
+        <ScrollArea className="max-h-[400px] pr-4 -mr-4">
+          <div className="space-y-3 pb-4">
             {speakers.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">
                 {t("subtitles.empty.noSubtitlesAvailable")}
@@ -321,8 +332,7 @@ function ReformatPopover({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
-              className="h-9 px-3"
+              className="shadow-none"
               title={t("subtitles.reformat")}
             >
               <Type className="h-4 w-4 mr-0.5" />
@@ -349,15 +359,9 @@ function ReformatPopover({
 
 interface SubtitleToolbarProps {
   subtitlesLength: number;
-  settings: ReturnType<typeof useSettings>["settings"];
   speakers: Speaker[];
   showSpeakerEditor: boolean;
   showReformat: boolean;
-  importSubtitles: ReturnType<typeof useSubtitleDocument>["importSubtitles"];
-  exportSubtitlesAs: ReturnType<
-    typeof useSubtitleDocument
-  >["exportSubtitlesAs"];
-  subtitles: ReturnType<typeof useSubtitleDocument>["subtitles"];
   onSpeakerEditorOpenChange: (open: boolean) => void;
   onSpeakerChange: (index: number, speaker: Speaker) => void;
   onReformatOpenChange: (open: boolean) => void;
@@ -368,13 +372,9 @@ interface SubtitleToolbarProps {
 
 function SubtitleToolbar({
   subtitlesLength,
-  settings,
   speakers,
   showSpeakerEditor,
   showReformat,
-  importSubtitles,
-  exportSubtitlesAs,
-  subtitles,
   onSpeakerEditorOpenChange,
   onSpeakerChange,
   onReformatOpenChange,
@@ -384,47 +384,22 @@ function SubtitleToolbar({
 }: SubtitleToolbarProps) {
   return (
     <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto">
-      <div className="flex items-center gap-2 w-full">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <ImportExportPopover
-              onImport={() => importSubtitles(settings, null, "")}
-              onExport={(format) =>
-                exportSubtitlesAs(format, subtitles, speakers)
-              }
-              hasSubtitles={subtitlesLength > 0}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3"
-                  title={t("importExport.button")}
-                >
-                  <Upload className="h-4 w-4 mr-0.5" />
-                  {t("importExport.button")}
-                </Button>
-              }
-            />
-          </TooltipTrigger>
-        </Tooltip>
-
-        {speakers.length > 0 && (
-          <SpeakersPopover
-            open={showSpeakerEditor}
-            speakers={speakers}
-            onOpenChange={onSpeakerEditorOpenChange}
-            onSpeakerChange={onSpeakerChange}
-            t={t}
-            tracks={tracks}
-          />
-        )}
-
+      <div className="grid w-full grid-cols-2 gap-2">
         <ReformatPopover
           open={showReformat}
           subtitleCount={subtitlesLength}
           onOpenChange={onReformatOpenChange}
           onApply={onApplyReformat}
           t={t}
+        />
+        <SpeakersPopover
+          open={showSpeakerEditor}
+          speakers={speakers}
+          disabled={speakers.length === 0}
+          onOpenChange={onSpeakerEditorOpenChange}
+          onSpeakerChange={onSpeakerChange}
+          t={t}
+          tracks={tracks}
         />
       </div>
     </div>
@@ -770,18 +745,34 @@ export function SubtitleViewerPanel({
         >
           Subtitles
         </h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          disabled={!onClose}
-          aria-label={t("common.close")}
-          className="z-20"
+        <div
+          className="z-20 flex items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          <X className="h-4 w-4" />
-        </Button>
+          <ImportExportPopover
+            onImport={() => importSubtitles(settings, null, "")}
+            onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
+            hasSubtitles={subtitles.length > 0}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                title={t("importExport.button")}
+              >
+                <Download/>
+              </Button>
+            }
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            disabled={!onClose}
+          >
+            <X/>
+          </Button>
+        </div>
       </div>
 
       {hasSubtitles ? (
@@ -811,13 +802,9 @@ export function SubtitleViewerPanel({
       {hasSubtitles && (
         <SubtitleToolbar
           subtitlesLength={subtitles.length}
-          settings={settings}
           speakers={speakers}
           showSpeakerEditor={showSpeakerEditor}
           showReformat={showReformat}
-          importSubtitles={importSubtitles}
-          exportSubtitlesAs={exportSubtitlesAs}
-          subtitles={subtitles}
           onSpeakerEditorOpenChange={setShowSpeakerEditor}
           onSpeakerChange={handleSpeakerChange}
           onReformatOpenChange={setShowReformat}

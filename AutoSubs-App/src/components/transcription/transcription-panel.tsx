@@ -1076,7 +1076,7 @@ function TranscriptionPanelView({
           >
             <div
               ref={progressContainerRef}
-              className="w-full px-1 relative z-10"
+              className="w-full relative z-10"
             >
               <div className="flex flex-col gap-2">
                 {processingSteps.map((step) => (
@@ -1213,7 +1213,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 hover:bg-muted/55 dark:bg-muted"
+                            className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
                             aria-expanded={openSpeakerPopover}
                             aria-label={`${t("actionBar.options.speakerLabels", "Speakers")}: ${diarizeLabel}`}
                             title={`${t("actionBar.options.speakerLabels", "Speakers")}: ${diarizeLabel}`}
@@ -1242,7 +1242,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 hover:bg-muted/55 dark:bg-muted"
+                            className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
                             aria-expanded={openTextFormattingPopover}
                             aria-label={`${t("actionBar.options.subtitleStyle", "Style")}: ${t("actionBar.options.subtitleStyleDescription", "Captions")}`}
                             title={`${t("actionBar.options.subtitleStyle", "Style")}: ${t("actionBar.options.subtitleStyleDescription", "Captions")}`}
@@ -1273,7 +1273,7 @@ function TranscriptionPanelView({
                             variant="ghost"
                             size="default"
                             role="combobox"
-                            className="group relative h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 hover:bg-muted/55 dark:bg-muted"
+                            className="group relative h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
                             aria-expanded={openCustomPromptPopover}
                             aria-label={t("actionBar.format.customPromptTitle")}
                             title={t("actionBar.format.customPromptTitle")}

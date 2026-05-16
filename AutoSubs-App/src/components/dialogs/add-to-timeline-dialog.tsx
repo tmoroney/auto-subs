@@ -355,17 +355,6 @@ export function AddToTimelineDialog({
                             templatesLoading={templatesLoading}
                             templatesLoaded={templatesLoaded}
                             templateLoadError={templateLoadError}
-                            onRetryLoadTemplates={async () => {
-                                if (!onLoadTemplates) return []
-                                setTemplateLoadError(null)
-                                try {
-                                    return await onLoadTemplates()
-                                } catch (err) {
-                                    const message = err instanceof Error ? err.message : String(err)
-                                    setTemplateLoadError(message)
-                                    throw err
-                                }
-                            }}
                             presetId={selection.presetId}
                             onPresetChange={(id) =>
                                 setSelection((s) => ({ ...s, presetId: id, mode: "animated" }))

@@ -63,7 +63,7 @@ function AppContentBody() {
     React.useState(false)
   const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
     React.useState(false)
-  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(320)
+  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(340)
   const [transcriptDocuments, setTranscriptDocuments] = React.useState<
     SubtitleDocumentListItem[]
   >([])
