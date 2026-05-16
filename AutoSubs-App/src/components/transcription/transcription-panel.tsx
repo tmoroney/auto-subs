@@ -885,7 +885,7 @@ function TranscriptionPanelView({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-tour="audio-input">
       {inputTracks.length > 0 ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-background">
-          <div className="flex items-center justify-between border-b px-3 py-2">
+          <div className="flex items-center justify-between px-3 py-2">
             <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
               {selectedTrackCount > 0
                 ? t("actionBar.tracks.countSelected", {
@@ -904,7 +904,7 @@ function TranscriptionPanelView({
               />
             </label>
           </div>
-          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2 pr-2.5">
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2 pt-0 pr-2.5">
             {inputTracks.map((track, index) => {
               const currentTracks =
                 currentSettings.selectedInputTracksByApp[selectedIntegration] ?? [];

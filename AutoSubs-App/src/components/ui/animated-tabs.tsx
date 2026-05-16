@@ -103,8 +103,10 @@ const TabsList = React.forwardRef<
     };
   }, [updateIndicatorWithAnimation, updateIndicatorWithoutAnimation]);
 
+  const wrapperShouldFill = className?.toString().includes("w-full");
+
   return (
-    <div className="relative" ref={tabsListRef}>
+    <div className={cn("relative", wrapperShouldFill && "w-full")} ref={tabsListRef}>
       <TabsPrimitive.List
         ref={ref}
         data-slot="tabs-list"

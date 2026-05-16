@@ -8,13 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/animat
 import { DEFAULT_PRESET_ID, usePresets } from "@/contexts/PresetsContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { CaptionPreset, Template } from "@/types"
-import { AnimatedPresetPicker } from "@/components/dialogs/caption-style/animated-preset-picker"
+import {
+    AnimatedPresetActions,
+    AnimatedPresetPicker,
+} from "@/components/dialogs/caption-style/animated-preset-picker"
 import {
     CreatePresetFlow,
     type CreatePresetSubmit,
 } from "@/components/dialogs/caption-style/create-preset-flow"
 import { cancelPresetEdit } from "@/api/resolve-api"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 export const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
 
@@ -111,26 +115,39 @@ export function CaptionTemplateSelectionContent({
 
     return (
         <Tabs value={mode} onValueChange={(v) => onModeChange(v as CaptionTemplateMode)}>
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="regular">
-                    {t("addToTimeline.mode.regular")}
-                </TabsTrigger>
-                <TabsTrigger value="animated" disabled={!hasAnimatedTemplate}>
-                    {t("addToTimeline.mode.animated")}
-                </TabsTrigger>
-            </TabsList>
+            <div className="grid gap-2 sm:grid-cols-[minmax(240px,460px)_auto] sm:items-center">
+                <div className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="regular">
+                            {t("addToTimeline.mode.regular")}
+                        </TabsTrigger>
+                        <TabsTrigger value="animated" disabled={!hasAnimatedTemplate}>
+                            {t("addToTimeline.mode.animated")}
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+                {(mode === "animated" || hasAnimatedTemplate) && (
+                    <AnimatedPresetActions
+                        onRequestCreate={onRequestCreate}
+                        onImportJson={onImportPreset}
+                        className={cn(
+                            mode !== "animated" && "hidden sm:flex sm:invisible sm:pointer-events-none",
+                        )}
+                    />
+                )}
+            </div>
 
-            <TabsContent value="regular" className="space-y-3">
-                <ScrollArea className="h-[240px] rounded-md border">
-                    <div className="p-2 space-y-1">
+            <TabsContent value="regular" className="mt-0 -mb-4">
+                <ScrollArea className="h-[296px] w-full">
+                    <div className="space-y-2 pr-3">
                         {templatesLoading && (
-                            <div className="h-[220px] flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <div className="h-[260px] flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span>Loading templates...</span>
                             </div>
                         )}
                         {!templatesLoading && templateLoadError && (
-                            <div className="h-[220px] flex flex-col items-center justify-center gap-3 text-center text-sm">
+                            <div className="h-[260px] flex flex-col items-center justify-center gap-3 text-center text-sm">
                                 <AlertTriangle className="h-5 w-5 text-destructive" />
                                 <div className="space-y-1">
                                     <p className="font-medium">Could not load templates</p>
@@ -148,21 +165,21 @@ export function CaptionTemplateSelectionContent({
                                 key={template.value}
                                 type="button"
                                 onClick={() => onTemplateChange(template.value)}
-                                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${templateValue === template.value
-                                    ? "bg-secondary text-secondary-foreground"
-                                    : "hover:bg-muted"
-                                    }`}
+                                className={cn(
+                                    "flex min-h-[56px] w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                    templateValue === template.value
+                                        ? "border-slate-950 bg-slate-950 text-white shadow-sm"
+                                        : "border-border bg-background text-foreground hover:bg-muted/50",
+                                )}
                             >
-                                <div className="flex items-center justify-between">
-                                    <span>{template.label}</span>
-                                    {templateValue === template.value && (
-                                        <Check className="h-4 w-4" />
-                                    )}
-                                </div>
+                                <span>{template.label}</span>
+                                {templateValue === template.value && (
+                                    <Check className="h-4 w-4 shrink-0" />
+                                )}
                             </button>
                         ))}
                         {!templatesLoading && !templateLoadError && templatesLoaded && templates.filter(t => t.value !== ANIMATED_CAPTION_TEMPLATE).length === 0 && (
-                            <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                            <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
                                 No regular templates found.
                             </div>
                         )}
@@ -170,15 +187,13 @@ export function CaptionTemplateSelectionContent({
                 </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="animated" className="space-y-3">
+            <TabsContent value="animated" className="mt-0 -mb-4">
                 <AnimatedPresetPicker
                     presets={animatedPresets}
                     selectedPresetId={presetId}
                     onSelect={onPresetChange}
-                    onRequestCreate={onRequestCreate}
                     onRequestEdit={onRequestEdit}
                     onDelete={onDeletePreset}
-                    onImportJson={onImportPreset}
                     onExportJson={onExportPreset}
                     onDuplicate={onDuplicatePreset}
                 />
