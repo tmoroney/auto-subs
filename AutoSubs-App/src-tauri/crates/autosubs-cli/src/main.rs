@@ -30,8 +30,9 @@ fn validate_model(s: &str) -> Result<String, String> {
 }
 
 fn validate_output_type(s: &str) -> Result<String, String> {
-    match s.to_lowercase().as_str() {
-        "srt" | "mkv" | "json" => Ok(s.to_string()),
+    let lower = s.to_lowercase();
+    match lower.as_str() {
+        "srt" | "mkv" | "json" => Ok(lower),
         other => Err(format!("unknown output type '{}'. Valid values: srt, mkv, json", other)),
     }
 }
@@ -366,7 +367,11 @@ async fn run(cli: Cli) -> eyre::Result<()> {
                     p.set_extension("mkv");
                     p
                 } else {
-                    input.with_extension("mkv")
+                    let mut p = input.clone();
+                    let stem = p.file_stem().unwrap_or_default().to_string_lossy().into_owned();
+                    p.set_file_name(format!("{}-subtitled", stem));
+                    p.set_extension("mkv");
+                    p
                 };
                 create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
                 fs::remove_file(&output)?;
@@ -436,8 +441,9 @@ async fn normalize_audio(input: &PathBuf, output: &PathBuf) -> eyre::Result<()> 
 /// Format seconds to SRT timecode format (HH:MM:SS,mmm)
 fn format_timecode(seconds: f64) -> String {
     let total = seconds.max(0.0);
-    let ms = ((total % 1.0) * 1000.0).round() as u32;
-    let total_secs = total as u32;
+    let total_ms = (total * 1000.0).round() as u64;
+    let ms = total_ms % 1000;
+    let total_secs = total_ms / 1000;
     let s = total_secs % 60;
     let m = (total_secs / 60) % 60;
     let h = total_secs / 3600;
