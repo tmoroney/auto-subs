@@ -479,6 +479,9 @@
       "maximize": "最大化",
       "close": "关闭"
     },
+    "status": {
+      "disconnected": "未连接"
+    },
     "update": {
       "downloading": "正在下载更新",
       "installing": "正在安装更新",
@@ -487,6 +490,7 @@
     },
     "resolve": {
       "productName": "DaVinci Resolve",
+      "description": "工作区脚本集成",
       "status": {
         "connected": "已连接",
         "disconnected": "未连接"
@@ -502,6 +506,7 @@
     },
     "premiere": {
       "productName": "Premiere Pro",
+      "description": "Adobe 扩展集成",
       "status": {
         "connected": "已连接",
         "disconnected": "已断开"
@@ -515,6 +520,7 @@
     },
     "aftereffects": {
       "productName": "After Effects",
+      "description": "Adobe 扩展集成",
       "status": {
         "connected": "已连接",
         "disconnected": "已断开"

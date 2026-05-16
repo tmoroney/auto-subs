@@ -30,7 +30,7 @@ const ResolveContext = createContext<ResolveContextType | null>(null);
 export function ResolveProvider({ children }: { children: React.ReactNode }) {
   const { selectedIntegration } = useIntegration();
   const { settings } = useSettings();
-  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] });
+  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [], projectName: "" });
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
@@ -40,7 +40,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
   const cancelRequestedRef = useRef<boolean>(false);
-  const emptyTimelineInfo: TimelineInfo = { name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [] };
+  const emptyTimelineInfo: TimelineInfo = { name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [], projectName: "" };
 
   const refresh = useCallback(async () => {
     try {

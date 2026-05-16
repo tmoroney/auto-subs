@@ -479,6 +479,9 @@
       "maximize": "Agrandir",
       "close": "Fermer"
     },
+    "status": {
+      "disconnected": "Déconnecté"
+    },
     "update": {
       "downloading": "Téléchargement de la mise à jour",
       "installing": "Installation de la mise à jour",
@@ -487,6 +490,7 @@
     },
     "resolve": {
       "productName": "DaVinci Resolve",
+      "description": "Intégration des scripts de l'espace de travail",
       "status": {
         "connected": "Connecté",
         "disconnected": "Déconnecté"
@@ -502,6 +506,7 @@
     },
     "premiere": {
       "productName": "Premiere Pro",
+      "description": "Intégration de l'extension Adobe",
       "status": {
         "connected": "Connecté",
         "disconnected": "Déconnecté"
@@ -515,6 +520,7 @@
     },
     "aftereffects": {
       "productName": "After Effects",
+      "description": "Intégration de l'extension Adobe",
       "status": {
         "connected": "Connecté",
         "disconnected": "Déconnecté"

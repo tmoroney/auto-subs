@@ -45,16 +45,25 @@ export function ThemeToggle() {
 }
 
 function AppContentBody() {
-  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(false)
+  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(() => {
+    // Open by default on desktop if there's enough screen space
+    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+    const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
+    return hasEnoughSpace
+  })
   const [isSubtitleViewerExpanded, setIsSubtitleViewerExpanded] =
-    React.useState(false)
+    React.useState(() => {
+      const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+      const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
+      return hasEnoughSpace
+    })
   const [isSubtitleViewerClosing, setIsSubtitleViewerClosing] =
     React.useState(false)
   const [isSubtitleViewerResizing, setIsSubtitleViewerResizing] =
     React.useState(false)
   const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
     React.useState(false)
-  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(520)
+  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(380)
   const [transcriptDocuments, setTranscriptDocuments] = React.useState<
     SubtitleDocumentListItem[]
   >([])

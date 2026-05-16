@@ -485,6 +485,7 @@
       },
       "premiere": {
         "productName": "Premiere Pro",
+        "description": "Adobe拡張機能統合",
         "status": {
           "connected": "接続済み",
           "disconnected": "切断済み"
@@ -499,6 +500,7 @@
     },
     "aftereffects": {
       "productName": "After Effects",
+      "description": "Adobe拡張機能統合",
       "status": {
         "connected": "接続済み",
         "disconnected": "未接続"
@@ -514,6 +516,9 @@
       "close": "閉じる",
       "maximize": "最大化",
       "minimize": "最小化"
+    },
+    "status": {
+      "disconnected": "未接続"
     },
     "update": {
       "downloading": "アップデートをダウンロード中",

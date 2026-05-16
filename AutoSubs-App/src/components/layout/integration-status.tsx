@@ -1,5 +1,6 @@
 import { ChevronDown, Check, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +36,8 @@ export function IntegrationStatus() {
       logo: "/davinci-resolve-logo.png",
       connected: isResolveConnected,
       timelineName: resolveTimeline?.name,
+      projectName: resolveTimeline?.projectName,
+      description: t("titlebar.resolve.description"),
       connectedText: t("titlebar.resolve.tooltip.connected"),
       disconnectedText: t("titlebar.resolve.tooltip.cantConnect"),
       helperText: isResolveConnected
@@ -47,6 +50,8 @@ export function IntegrationStatus() {
       logo: "/premiere-logo.png",
       connected: isPremiereConnected,
       timelineName: premiereTimeline?.name,
+      projectName: premiereTimeline?.projectName,
+      description: t("titlebar.premiere.description"),
       connectedText: t("titlebar.premiere.tooltip.connected"),
       disconnectedText: t("titlebar.premiere.tooltip.disconnected"),
       helperText: isPremiereConnected
@@ -59,6 +64,8 @@ export function IntegrationStatus() {
       logo: "/aftereffects-logo.png",
       connected: isAfterEffectsConnected,
       timelineName: afterEffectsTimeline?.name,
+      projectName: afterEffectsTimeline?.projectName,
+      description: t("titlebar.aftereffects.description"),
       connectedText: t("titlebar.aftereffects.tooltip.connected"),
       disconnectedText: t("titlebar.aftereffects.tooltip.disconnected"),
       helperText: isAfterEffectsConnected
@@ -73,6 +80,8 @@ export function IntegrationStatus() {
       logo: string;
       connected: boolean;
       timelineName?: string;
+      projectName?: string;
+      description: string;
       connectedText: string;
       disconnectedText: string;
       helperText: string;
@@ -81,19 +90,20 @@ export function IntegrationStatus() {
   >;
 
   const activeIntegration = integrations[selectedIntegration];
+
   const activeLabel = activeIntegration.connected
     ? activeIntegration.timelineName || activeIntegration.connectedText
-    : activeIntegration.productName;
+    : t("titlebar.status.disconnected");
 
   return (
     <div
-      className="flex items-center select-none z-20"
+      className="flex items-center select-none z-20 min-w-0"
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={`flex items-center gap-2 h-7 text-xs px-1.5 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
+            className={`flex items-center gap-1.5 h-7 text-xs px-1.5 min-w-0 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
               activeIntegration.connected
                 ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
                 : "hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
@@ -102,35 +112,37 @@ export function IntegrationStatus() {
             <img
               src={activeIntegration.logo}
               alt={activeIntegration.productName}
-              className="h-5 w-5"
+              className="h-5 w-5 shrink-0"
             />
-            <span className="max-w-[120px] truncate">{activeLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-50" />
+            <span className="truncate min-w-0">
+              {activeLabel}
+            </span>
+            <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-80 z-50">
-          <div className="px-2 py-1.5">
-            <div className="flex items-start gap-3">
-              <img
-                src={activeIntegration.logo}
-                alt={activeIntegration.productName}
-                className="h-8 w-8"
-              />
-              <div>
-                <h3 className="text-sm font-semibold">
+          <div className="px-2.5 py-2">
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-base font-semibold">
                   {activeIntegration.productName}
                 </h3>
-                <p
-                  className={`text-xs ${activeIntegration.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                <Badge
+                  variant="outline"
+                  className={
+                    activeIntegration.connected
+                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300"
+                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+                  }
                 >
                   {activeIntegration.connected
                     ? activeIntegration.connectedText
                     : activeIntegration.disconnectedText}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {activeIntegration.helperText}
-                </p>
+                </Badge>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {activeIntegration.helperText}
+              </p>
             </div>
           </div>
           <DropdownMenuSeparator />
@@ -140,11 +152,8 @@ export function IntegrationStatus() {
               <DropdownMenuItem
                 key={integration}
                 onClick={() => setSelectedIntegration(integration)}
-                className="cursor-pointer"
+                className="cursor-pointer pl-1.5 pr-3"
               >
-                <div
-                  className={`w-2 h-2 rounded-full ${item.connected ? "bg-green-500" : "bg-red-500"}`}
-                />
                 <img
                   src={item.logo}
                   alt={item.productName}
@@ -153,9 +162,7 @@ export function IntegrationStatus() {
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span>{item.productName}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {item.connected
-                      ? item.timelineName || item.connectedText
-                      : item.disconnectedText}
+                    {item.description}
                   </span>
                 </div>
                 {selectedIntegration === integration ? (
