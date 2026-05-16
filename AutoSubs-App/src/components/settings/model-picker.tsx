@@ -11,6 +11,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { useTranslation } from "react-i18next"
 import { Model } from "@/types"
 import { modelFilterOrders } from "@/lib/models"
+import { cn } from "@/lib/utils"
 import * as React from "react"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
 
@@ -78,6 +79,7 @@ interface ModelPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   isSmallScreen: boolean
+  triggerClassName?: string
 }
 
 export function ModelPicker({
@@ -90,6 +92,7 @@ export function ModelPicker({
   open,
   onOpenChange,
   isSmallScreen,
+  triggerClassName,
 }: ModelPickerProps) {
   const { t } = useTranslation()
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
@@ -164,7 +167,10 @@ export function ModelPicker({
             variant="ghost"
             size="lg"
             role="combobox"
-            className="p-3 bg-muted/30 dark:bg-muted select-none w-full justify-start"
+            className={cn(
+              "p-3 bg-muted/30 dark:bg-muted select-none w-full justify-start",
+              triggerClassName,
+            )}
             aria-expanded={open}
             data-tour="model-picker"
             onMouseEnter={() => {
@@ -187,7 +193,7 @@ export function ModelPicker({
             <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-96 p-0 overflow-hidden" align="center">
+        <PopoverContent className="w-80 p-0 overflow-hidden" align="center">
           <div className="relative">
             <Command className="max-h-[350px]">
               <div className="relative">

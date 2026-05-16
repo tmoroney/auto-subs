@@ -487,6 +487,7 @@ function SubtitleContent({
             onTranscriptOpen={() => {}}
             onRefresh={loadTranscriptDocuments}
             align="center"
+            side="top"
             trigger={
               <Button
                 type="button"

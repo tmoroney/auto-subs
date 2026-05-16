@@ -5,12 +5,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/animated-tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
     AlertTriangle,
@@ -19,7 +13,6 @@ import {
     ChevronRight,
     Layers,
     Layout,
-    Loader2,
     Palette,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -28,11 +21,13 @@ import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
-import { AnimatedPresetPicker } from "@/components/dialogs/add-to-timeline/animated-preset-picker"
 import {
-    CreatePresetFlow,
+    ANIMATED_CAPTION_TEMPLATE,
+    CaptionTemplateSelectionContent,
     CreatePresetSubmit,
-} from "@/components/dialogs/add-to-timeline/create-preset-flow"
+    CreatePresetSession,
+    CaptionTemplateMode,
+} from "@/components/dialogs/caption-style/template-selection"
 import {
     cancelPresetEdit,
     checkTrackConflicts,
@@ -40,21 +35,12 @@ import {
 } from "@/api/resolve-api"
 import { toast } from "sonner"
 
-const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
-
-type Mode = "regular" | "animated"
-
 interface Selection {
-    mode: Mode
+    mode: CaptionTemplateMode
     templateValue: string  // used when mode === 'regular'
     presetId: string       // used when mode === 'animated'
     outputTrack: string
 }
-
-type CreateSession =
-    | { kind: "closed" }
-    | { kind: "create" }
-    | { kind: "edit"; presetId: string }
 
 interface AddToTimelineDialogProps {
     children: React.ReactNode
@@ -116,7 +102,7 @@ export function AddToTimelineDialog({
     const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>(speakers)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null)
-    const [createSession, setCreateSession] = React.useState<CreateSession>({ kind: "closed" })
+    const [createSession, setCreateSession] = React.useState<CreatePresetSession>({ kind: "closed" })
     const [conflictInfo, setConflictInfo] = React.useState<ConflictInfo | null>(null)
 
     // Only show the speakers step when we actually have speakers to configure.
@@ -356,7 +342,7 @@ export function AddToTimelineDialog({
                         </div>
                     )}
                     {activeSteps[currentStep]?.key === "template" && (
-                        <TemplateStep
+                        <CaptionTemplateSelectionContent
                             mode={selection.mode}
                             onModeChange={(mode) =>
                                 setSelection((s) => ({ ...s, mode }))
@@ -543,164 +529,6 @@ function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
                 )
             })}
         </div>
-    )
-}
-
-// ----------------------------------------------------------------------------
-// Template step
-// ----------------------------------------------------------------------------
-
-interface TemplateStepProps {
-    mode: Mode
-    onModeChange: (mode: Mode) => void
-    templateValue: string
-    onTemplateChange: (value: string) => void
-    templates: TimelineInfo["templates"]
-    templatesLoading: boolean
-    templatesLoaded: boolean
-    templateLoadError: string | null
-    onRetryLoadTemplates?: () => Promise<Template[]>
-    presetId: string
-    onPresetChange: (id: string) => void
-    animatedPresets: ReturnType<typeof usePresets>["presets"]
-    createSession: CreateSession
-    onRequestCreate: () => void
-    onRequestEdit: (preset: import("@/types").CaptionPreset) => void
-    onCreateFlowExit: () => void
-    onSubmitPreset: CreatePresetSubmit
-    editingInitialSettings?: Record<string, unknown>
-    editingInitialName?: string
-    editingInitialDescription?: string
-    onDeletePreset: (id: string) => Promise<void>
-    onDuplicatePreset: (preset: import("@/types").CaptionPreset) => Promise<void> | void
-    onImportPreset: (json: string) => Promise<import("@/types").CaptionPreset>
-    onExportPreset: (id: string) => string
-    hasAnimatedTemplate: boolean
-}
-
-function TemplateStep({
-    mode,
-    onModeChange,
-    templateValue,
-    onTemplateChange,
-    templates,
-    templatesLoading,
-    templatesLoaded,
-    templateLoadError,
-    onRetryLoadTemplates,
-    presetId,
-    onPresetChange,
-    animatedPresets,
-    createSession,
-    onRequestCreate,
-    onRequestEdit,
-    onCreateFlowExit,
-    onSubmitPreset,
-    editingInitialSettings,
-    editingInitialName,
-    editingInitialDescription,
-    onDeletePreset,
-    onDuplicatePreset,
-    onImportPreset,
-    onExportPreset,
-    hasAnimatedTemplate,
-}: TemplateStepProps) {
-    const { t } = useTranslation()
-
-    // If animated mode is selected but the template is not available, switch to regular mode
-    React.useEffect(() => {
-        if (templatesLoaded && mode === "animated" && !hasAnimatedTemplate) {
-            onModeChange("regular")
-        }
-    }, [templatesLoaded, mode, hasAnimatedTemplate, onModeChange])
-    if (createSession.kind !== "closed") {
-        return (
-            <CreatePresetFlow
-                key={createSession.kind === "edit" ? createSession.presetId : "create"}
-                initialSettings={editingInitialSettings}
-                initialName={editingInitialName}
-                initialDescription={editingInitialDescription}
-                onSubmit={onSubmitPreset}
-                onExit={onCreateFlowExit}
-            />
-        )
-    }
-
-    return (
-        <Tabs value={mode} onValueChange={(v) => onModeChange(v as Mode)}>
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="regular">
-                    {t("addToTimeline.mode.regular")}
-                </TabsTrigger>
-                <TabsTrigger value="animated" disabled={!hasAnimatedTemplate}>
-                    {t("addToTimeline.mode.animated")}
-                </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="regular" className="space-y-3">
-                <ScrollArea className="h-[240px] rounded-md border">
-                    <div className="p-2 space-y-1">
-                        {templatesLoading && (
-                            <div className="h-[220px] flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>Loading templates...</span>
-                            </div>
-                        )}
-                        {!templatesLoading && templateLoadError && (
-                            <div className="h-[220px] flex flex-col items-center justify-center gap-3 text-center text-sm">
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
-                                <div className="space-y-1">
-                                    <p className="font-medium">Could not load templates</p>
-                                    <p className="text-muted-foreground">{templateLoadError}</p>
-                                </div>
-                                {onRetryLoadTemplates && (
-                                    <Button type="button" variant="outline" size="sm" onClick={() => onRetryLoadTemplates()}>
-                                        Retry
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                        {!templatesLoading && !templateLoadError && templatesLoaded && templates.filter(t => t.value !== ANIMATED_CAPTION_TEMPLATE).map((template) => (
-                            <button
-                                key={template.value}
-                                type="button"
-                                onClick={() => onTemplateChange(template.value)}
-                                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${templateValue === template.value
-                                    ? "bg-secondary text-secondary-foreground"
-                                    : "hover:bg-muted"
-                                    }`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span>{template.label}</span>
-                                    {templateValue === template.value && (
-                                        <Check className="h-4 w-4" />
-                                    )}
-                                </div>
-                            </button>
-                        ))}
-                        {!templatesLoading && !templateLoadError && templatesLoaded && templates.filter(t => t.value !== ANIMATED_CAPTION_TEMPLATE).length === 0 && (
-                            <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
-                                No regular templates found.
-                            </div>
-                        )}
-                    </div>
-                </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="animated" className="space-y-3">
-                <AnimatedPresetPicker
-                    presets={animatedPresets}
-                    selectedPresetId={presetId}
-                    onSelect={onPresetChange}
-                    onRequestCreate={onRequestCreate}
-                    onRequestEdit={onRequestEdit}
-                    onDelete={onDeletePreset}
-                    onImportJson={onImportPreset}
-                    onExportJson={onExportPreset}
-                    onDuplicate={onDuplicatePreset}
-                />
-            </TabsContent>
-        </Tabs>
     )
 }
 

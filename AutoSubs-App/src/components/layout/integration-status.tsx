@@ -114,7 +114,7 @@ export function IntegrationStatus() {
               alt={activeIntegration.productName}
               className="h-5 w-5 shrink-0"
             />
-            <span className="truncate min-w-0">
+            <span className={`truncate min-w-0 ${!activeIntegration.connected ? "text-red-600 dark:text-red-400" : ""}`}>
               {activeLabel}
             </span>
             <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
@@ -131,8 +131,8 @@ export function IntegrationStatus() {
                   variant="outline"
                   className={
                     activeIntegration.connected
-                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300"
-                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+                      ? "font-normal border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300"
+                      : "font-normal border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
                   }
                 >
                   {activeIntegration.connected

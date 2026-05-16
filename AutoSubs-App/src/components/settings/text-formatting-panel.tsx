@@ -98,6 +98,28 @@ export function TextFormattingPanel({
                     />
                 </div>
 
+                {/* Text Case */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
+                    </div>
+                    <Select
+                        value={settings.textCase}
+                        onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
+                    >
+                        <SelectTrigger className="w-32">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                            <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
+                            <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
+                            <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
+                            <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 {/* Remove Punctuation */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -206,29 +228,6 @@ export function TextFormattingPanel({
                         />
                     </div>
                 </div>
-
-                {/* Text Case */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
-                    </div>
-                    <Select
-                        value={settings.textCase}
-                        onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
-                    >
-                        <SelectTrigger className="w-32">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                            <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
-                            <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
-                            <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
-                            <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
             </div>
 
             {/* Cancel / Apply actions */}

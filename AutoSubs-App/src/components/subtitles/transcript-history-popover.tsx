@@ -45,6 +45,7 @@ interface TranscriptHistoryPopoverProps {
   onTranscriptOpen: () => void;
   onRefresh: () => Promise<void>;
   align?: "start" | "center" | "end";
+  side?: "top" | "right" | "bottom" | "left";
   tooltipLabel?: string;
 }
 
@@ -55,6 +56,7 @@ export function TranscriptHistoryPopover({
   onTranscriptOpen,
   onRefresh,
   align = "end",
+  side = "bottom",
   tooltipLabel,
 }: TranscriptHistoryPopoverProps) {
   const { t, i18n } = useTranslation();
@@ -149,6 +151,7 @@ export function TranscriptHistoryPopover({
         )}
         <PopoverContent
           align={align}
+          side={side}
           sideOffset={6}
           className="w-80 rounded-xl p-0 shadow-xl"
           onOpenAutoFocus={(event) => event.preventDefault()}
@@ -159,7 +162,7 @@ export function TranscriptHistoryPopover({
             <CommandInput
               placeholder={t("titlebar.subtitleHistory.searchPlaceholder")}
             />
-            <CommandList className="max-h-[260px] p-1">
+            <CommandList className="max-h-[260px]">
               {isLoading ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   {t("titlebar.subtitleHistory.loading")}
@@ -209,31 +212,24 @@ export function TranscriptHistoryPopover({
                           <span className="shrink-0 text-[11px] text-muted-foreground group-hover:hidden group-focus-within:hidden">
                             {dateTime}
                           </span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="hidden h-6 w-6 shrink-0 text-muted-foreground hover:bg-background hover:text-destructive group-hover:inline-flex group-focus-within:inline-flex"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  setDeletingFilename(
-                                    subtitleDocument.filename,
-                                  );
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span className="sr-only">
-                                  {t("common.delete")}
-                                </span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="hidden h-6 w-6 shrink-0 text-muted-foreground hover:bg-background hover:text-destructive group-hover:inline-flex group-focus-within:inline-flex"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setDeletingFilename(
+                                subtitleDocument.filename,
+                              );
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="sr-only">
                               {t("common.delete")}
-                            </TooltipContent>
-                          </Tooltip>
+                            </span>
+                          </Button>
                         </CommandItem>
                       );
                     })}
