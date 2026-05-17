@@ -734,10 +734,13 @@ function ExportAudio(outputDir, inputTracks, exportRange)
 
     project:LoadRenderPreset('Audio Only')
 
+    local exportName = "autosubs-exported-audio-" ..
+        os.date("!%Y%m%d-%H%M%S") .. "-" .. tostring(math.random(100000, 999999))
+
     -- Build render settings
     local renderSettings = {
         TargetDir = outputDir,
-        CustomName = "autosubs-exported-audio",
+        CustomName = exportName,
         RenderMode = "Single clip",
         IsExportVideo = false,
         IsExportAudio = true,
@@ -774,8 +777,10 @@ function ExportAudio(outputDir, inputTracks, exportRange)
             })
         end
 
+        local outputFilename = renderSettings["OutputFilename"] or (exportName .. ".wav")
+
         audioInfo = {
-            path = join_path(renderSettings["TargetDir"], renderSettings["OutputFilename"]),
+            path = join_path(renderSettings["TargetDir"], outputFilename),
             markIn = renderSettings["MarkIn"],
             markOut = renderSettings["MarkOut"],
             offset = baseOffset,
