@@ -1,11 +1,19 @@
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use tokio::process::Command;
+use serde::{Deserialize, Serialize};
 use transcription_engine::{
     Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, TextCase, TextDensity,
     TranscribeOptions,
 };
+
+#[derive(Serialize, Deserialize)]
+struct SpeedCache {
+    avg_speed_kbps: f64,
+    run_count: u32,
+}
 
 fn validate_model(s: &str) -> Result<String, String> {
     let valid_whisper = [
@@ -188,6 +196,14 @@ async fn run(cli: Cli) -> eyre::Result<()> {
     fs::create_dir_all(&audio_cache)?;
     fs::create_dir_all(&model_cache)?;
 
+    let model_slug = cli.model.replace('.', "_");
+    let speed_cache_path = base_cache.join(format!("speed_cache_{}.json", model_slug));
+    let mut speed_cache: SpeedCache = fs::read_to_string(&speed_cache_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(SpeedCache { avg_speed_kbps: 0.0, run_count: 0 });
+    let avg_speed = Arc::new(Mutex::new(speed_cache.avg_speed_kbps));
+
     let hash = {
         fn stable_hash(s: &str, len: u64, mtime: u64) -> String {
             let mut h: u64 = 14695981039346656037;
@@ -210,6 +226,9 @@ async fn run(cli: Cli) -> eyre::Result<()> {
     tracing::info!("Normalizing audio...");
     normalize_audio(&input, &normalized).await?;
     tracing::info!("Audio normalized to: {}", normalized.display());
+    let normalized_len = std::fs::metadata(&normalized).map(|m| m.len()).unwrap_or(0);
+
+    let cb_avg_speed = Arc::clone(&avg_speed);
 
     // --- 2. Create engine and transcribe ---
     let engine_config = EngineConfig {
@@ -287,14 +306,77 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         censored_words,
     };
 
-    let progress_callback = |percent: i32, progress_type: ProgressType, _label: &str| {
+    const FIB_CHECKPOINTS: [i32; 10] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+    let fib_saved = Arc::new(Mutex::new(0u64));
+    let cb_fib_saved = Arc::clone(&fib_saved);
+    let cb_speed_cache_path = speed_cache_path.clone();
+
+    let transcribe_start = Arc::new(Mutex::new(None::<std::time::Instant>));
+    let cb_transcribe_start = Arc::clone(&transcribe_start);
+    let progress_callback = move |percent: i32, progress_type: ProgressType, _label: &str| {
         let stage = match progress_type {
-            ProgressType::Download => "downloading",
-            ProgressType::Diarize => "diarizing",
-            ProgressType::Transcribe => "transcribing",
-            ProgressType::Translate => "translating",
+            ProgressType::Download => "Downloading",
+            ProgressType::Diarize => "Diarizing",
+            ProgressType::Transcribe => "Transcribing",
+            ProgressType::Translate => "Translating",
         };
-        eprint!("\r\x1b[K{}: {}%", stage, percent);
+        let eta = if percent < 100 {
+            let mut start_guard = cb_transcribe_start.lock().expect("lock transcribe_start");
+            if start_guard.is_none() {
+                *start_guard = Some(std::time::Instant::now());
+            }
+            let elapsed = start_guard.as_ref().unwrap().elapsed().as_secs_f64();
+            {
+                let mut speed_guard = cb_avg_speed.lock().expect("lock avg_speed");
+                if *speed_guard == 0.0 && percent > 0 && normalized_len > 0 {
+                    let mut saved = cb_fib_saved.lock().expect("lock fib_saved");
+                    for (i, &checkpoint) in FIB_CHECKPOINTS.iter().enumerate() {
+                        if percent >= checkpoint && (*saved & (1u64 << i)) == 0 {
+                            *saved |= 1u64 << i;
+                            *speed_guard = normalized_len as f64 / 1024.0
+                                / (elapsed * 100.0 / percent as f64);
+                            let checkpoint_cache = SpeedCache {
+                                avg_speed_kbps: *speed_guard,
+                                run_count: 1,
+                            };
+                            if let Ok(json) = serde_json::to_string(&checkpoint_cache) {
+                                let _ = std::fs::write(&cb_speed_cache_path, &json);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            let speed = *cb_avg_speed.lock().expect("lock avg_speed");
+            let cached_remaining_secs = if speed > 0.0 && normalized_len > 0 {
+                (normalized_len as f64 / 1024.0 / speed) * (100.0 - percent as f64) / 100.0
+            } else {
+                0.0
+            };
+            let remaining = if percent > 0 {
+                let real_remaining = elapsed * (100.0 - percent as f64) / percent as f64;
+                if percent < 5 && cached_remaining_secs > 0.0 {
+                    cached_remaining_secs
+                } else {
+                    real_remaining
+                }
+            } else {
+                cached_remaining_secs
+            };
+            if remaining > 0.0 {
+                let total_secs = remaining as u64;
+                if total_secs >= 60 {
+                    format!(", ETA {}m {:02}s", total_secs / 60, total_secs % 60)
+                } else {
+                    format!(", ETA {}s", total_secs)
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+        eprint!("\r\x1b[K{}: {}%{}", stage, percent, eta);
         if percent == 100 {
             eprintln!();
         }
@@ -321,6 +403,10 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         .await
         .map_err(|e| eyre::eyre!("Transcription failed: {}", e))?;
     let elapsed = start.elapsed();
+    let elapsed_secs = elapsed.as_secs_f64();
+
+    let _ = fs::remove_file(&normalized);
+    tracing::info!("Cleaned up normalized audio");
 
     tracing::info!(
         "Transcription complete: {} segments, language: {} ({:.1}s)",
@@ -329,18 +415,23 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         elapsed.as_secs_f64()
     );
 
+    #[allow(unused_assignments)]
+    let mut subtitle_len = 0u64;
+
     match cli.output_type.as_str() {
         "json" => {
             let transcript = generate_json(&formatted_segments, &output_language, elapsed);
             let json_content = serde_json::to_string_pretty(&transcript)
                 .map_err(|e| eyre::eyre!("JSON serialization failed: {}", e))?;
             fs::write(&output, &json_content)?;
+            subtitle_len = json_content.len() as u64;
             tracing::info!("JSON transcript written to: {}", output.display());
         }
         _ => {
             // --- SRT output (used directly or as intermediate for MKV) ---
             let srt_content = generate_srt(&formatted_segments);
             fs::write(&output, &srt_content)?;
+            subtitle_len = srt_content.len() as u64;
             tracing::info!("SRT written to: {}", output.display());
 
             if cli.preserve_metadata {
@@ -374,6 +465,7 @@ async fn run(cli: Cli) -> eyre::Result<()> {
                     p
                 };
                 create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
+                subtitle_len = std::fs::metadata(&mkv_path).map(|m| m.len()).unwrap_or(0);
                 fs::remove_file(&output)?;
                 tracing::info!("Removed intermediate SRT: {}", output.display());
                 if cli.delete_input_after_mkv_output {
@@ -384,9 +476,26 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         }
     }
 
-    // Clean up normalized audio
-    let _ = fs::remove_file(&normalized);
-    tracing::info!("Cleaned up normalized audio");
+    if elapsed_secs > 0.0 && normalized_len > 0 {
+        let audio_speed = normalized_len as f64 / 1024.0 / elapsed_secs;
+        let subtitle_speed = subtitle_len as f64 / 1024.0 / elapsed_secs;
+        tracing::info!(
+            "Speed: {:.2} KB/s (audio), {:.2} KB/s (subtitle)",
+            audio_speed,
+            subtitle_speed,
+        );
+
+        speed_cache.avg_speed_kbps = if speed_cache.avg_speed_kbps > 0.0 {
+            speed_cache.avg_speed_kbps * 0.7 + audio_speed * 0.3
+        } else {
+            audio_speed
+        };
+        speed_cache.run_count += 1;
+        *avg_speed.lock().expect("lock avg_speed") = speed_cache.avg_speed_kbps;
+        if let Ok(json) = serde_json::to_string(&speed_cache) {
+            let _ = fs::write(&speed_cache_path, &json);
+        }
+    }
 
     Ok(())
 }
