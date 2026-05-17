@@ -15,6 +15,14 @@ const DIARIZE_MODEL_ID: &str = "speaker-diarize";
 const DIARIZE_REPO_ID: &str = "altunenes/speaker-diarization-community-1-onnx";
 const DIARIZE_REQUIRED_FILES: [&str; 2] = ["segmentation-community-1.onnx", "embedding_model.onnx"];
 
+// Recognized binary magic headers for Whisper model files.
+// Newer models use the GGUF format; older models (pre-2024) in the ggerganov/whisper.cpp
+// repository use the legacy GGML-family formats (ggml, ggmf, ggjt).
+const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF" (current standard)
+const GGML_MAGIC: [u8; 4] = [0x6c, 0x6d, 0x67, 0x67]; // "ggml" (legacy)
+const GGMF_MAGIC: [u8; 4] = [0x66, 0x6d, 0x67, 0x67]; // "ggmf" (legacy)
+const GGJT_MAGIC: [u8; 4] = [0x6a, 0x6d, 0x67, 0x67]; // "ggjt" (legacy)
+
 // Global download state to ensure only one download runs at a time
 static ACTIVE_DOWNLOAD: Lazy<Mutex<Option<Arc<CancellationToken>>>> = Lazy::new(|| Mutex::new(None));
 
@@ -1105,6 +1113,16 @@ impl ModelManager {
 }
 
 // ---- Helpers to validate and clean cached model files ----
+
+/// Returns `true` if `magic` matches any of the recognized 4-byte binary headers
+/// for Whisper model files (GGUF and legacy GGML-family).
+///
+/// Taking `&[u8; 4]` instead of `&[u8]` makes the size contract explicit at
+/// compile time — the caller cannot accidentally pass a shorter slice.
+fn is_known_whisper_magic(magic: &[u8; 4]) -> bool {
+    *magic == GGUF_MAGIC || *magic == GGML_MAGIC || *magic == GGMF_MAGIC || *magic == GGJT_MAGIC
+}
+
 fn resolve_symlink_target(path: &Path) -> Result<PathBuf> {
     let metadata = fs::symlink_metadata(path).context("symlink_metadata failed")?;
     if metadata.file_type().is_symlink() {
@@ -1144,19 +1162,22 @@ fn validate_model_file(path: &Path) -> Result<()> {
         bail!("Model blob seems too small ({} bytes): {}", md.len(), blob_path.display());
     }
     let mut f = fs::File::open(&blob_path).context("open failed")?;
-    let mut buf = [0u8; 16];
-    let _ = f.read(&mut buf).context("read failed")?;
+    let mut header = [0u8; 4];
+    // read_exact guarantees all 4 bytes are read or returns Err — unlike read(),
+    // which may return fewer bytes on unusual I/O conditions and produce a silent
+    // false-negative in the magic check below.
+    f.read_exact(&mut header).context("Failed to read model header bytes")?;
 
-    // Whisper models from ggerganov/whisper.cpp are GGUF format and must start with the
-    // "GGUF" magic. A partial or corrupted download that passes the size check would otherwise
-    // cause whisper.cpp to segfault — a native crash that catch_unwind cannot intercept —
-    // crashing the whole app. The VAD model uses a different binary format, so we skip it.
+    // Whisper models from ggerganov/whisper.cpp are typically in the GGUF format, but some
+    // official models (including large-v3) still use legacy GGML-family formats (magic
+    // "ggml", "ggmf", or "ggjt"). A partial or corrupted download that passes the size check
+    // would otherwise cause whisper.cpp to segfault — a native crash that catch_unwind cannot
+    // intercept — crashing the whole app. The VAD model uses a different binary format; skip it.
     if is_whisper_bin {
-        const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF"
-        if buf[..4] != GGUF_MAGIC {
+        if !is_known_whisper_magic(&header) {
             bail!(
-                "Model file does not start with GGUF magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
-                buf[0], buf[1], buf[2], buf[3],
+                "Model file does not start with any recognized Whisper magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
+                header[0], header[1], header[2], header[3],
                 blob_path.display()
             );
         }
