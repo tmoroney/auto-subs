@@ -176,8 +176,47 @@ async fn run(cli: Cli) -> eyre::Result<()> {
         p
     });
 
+    let final_output = if cli.output_type == "mkv" {
+        if had_output {
+            let mut p = output.clone();
+            p.set_extension("mkv");
+            p
+        } else {
+            let mut p = input.clone();
+            let is_input_mkv = p.extension().map(|e| e == "mkv").unwrap_or(false);
+            let stem = p.file_stem().unwrap_or_default().to_string_lossy().into_owned();
+            if is_input_mkv {
+                p.set_file_name(format!("{}-subtitled", stem));
+            }
+            p.set_extension("mkv");
+            p
+        }
+    } else {
+        output.clone()
+    };
+
+    let final_canonical = final_output.canonicalize().ok().or_else(|| {
+        final_output.parent().and_then(|p| {
+            p.canonicalize().ok().map(|parent| {
+                parent.join(final_output.file_name().unwrap_or_default())
+            })
+        })
+    });
+
+    let output_canonical = output.canonicalize().ok().or_else(|| {
+        output.parent().and_then(|p| {
+            p.canonicalize().ok().map(|parent| {
+                parent.join(output.file_name().unwrap_or_default())
+            })
+        })
+    });
+
+    if Some(&input) == output_canonical.as_ref() || Some(&input) == final_canonical.as_ref() {
+        return Err(eyre::eyre!("Input and output files are the same: {}", input.display()));
+    }
+
     tracing::info!("Input: {}", input.display());
-    tracing::info!("Output: {}", output.display());
+    tracing::info!("Output: {}", final_output.display());
     tracing::info!("Model: {}", cli.model);
     tracing::info!("Language: {}", cli.language);
 
@@ -453,19 +492,9 @@ async fn run(cli: Cli) -> eyre::Result<()> {
 
             // --- Create output file with embedded subtitles (optional) ---
             if cli.output_type == "mkv" {
-                let mkv_path = if had_output {
-                    let mut p = output.clone();
-                    p.set_extension("mkv");
-                    p
-                } else {
-                    let mut p = input.clone();
-                    let stem = p.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-                    p.set_file_name(format!("{}-subtitled", stem));
-                    p.set_extension("mkv");
-                    p
-                };
-                create_mkv(&input, &output, &mkv_path, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
-                subtitle_len = std::fs::metadata(&mkv_path).map(|m| m.len()).unwrap_or(0);
+                create_mkv(&input, &output, &final_output, cli.mkvmerge_path.as_ref(), cli.preserve_metadata).await?;
+                subtitle_len = std::fs::metadata(&final_output).map(|m| m.len()).unwrap_or(0);
+                tracing::info!("MKV written to: {}", final_output.display());
                 fs::remove_file(&output)?;
                 tracing::info!("Removed intermediate SRT: {}", output.display());
                 if cli.delete_input_after_mkv_output {
