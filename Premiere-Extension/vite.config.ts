@@ -7,8 +7,6 @@ import cepConfig from "./cep.config";
 import path from "path";
 import { extendscriptConfig } from "./vite.es.config";
 
-import obfuscator from "vite-plugin-javascript-obfuscator";
-
 const extensions = [".js", ".ts", ".tsx"];
 
 const devDist = "dist";
@@ -51,24 +49,6 @@ export default defineConfig({
   plugins: [
     react(),
     cep(config),
-    // Apenas ativa a obfuscação em produção para não lentificar o dev local
-    ...(isProduction
-      ? [
-          obfuscator({
-            options: {
-              compact: true,
-              controlFlowFlattening: true,
-              controlFlowFlatteningThreshold: 0.75,
-              numbersToExpressions: true,
-              simplify: true,
-              stringArrayThreshold: 0.75,
-              splitStrings: true,
-              splitStringsChunkLength: 10,
-              unicodeArrayEscapeSequence: true,
-            },
-          }),
-        ]
-      : []),
   ],
   resolve: {
     alias: [{ find: "@esTypes", replacement: path.resolve(__dirname, "src") }],

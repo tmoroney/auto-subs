@@ -42,7 +42,7 @@ const config: CEP_Config = {
     },
   ],
   build: {
-    jsxBin: "replace",
+    jsxBin: "off",
     sourceMap: false,
   },
   zxp: {
