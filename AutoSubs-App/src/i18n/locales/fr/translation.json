@@ -47,7 +47,8 @@
     "options": "Options",
     "generateSubtitles": "Générer",
     "startNewTranscription": "Démarrer une nouvelle transcription",
-    "open": "Ouvrir"
+    "open": "Ouvrir",
+    "refresh": "Actualiser la connexion"
   },
   "update": {
     "restartResolveServer": {
@@ -82,6 +83,11 @@
     }
   },
   "actionBar": {
+    "source": "Source",
+    "options": "Options",
+    "subtitleStyle": "Style des sous-titres",
+    "subtitleStyleDescription": "Sous-titres",
+    "model": "Modèle",
     "common": {
       "auto": "Auto",
       "on": "Activé",
@@ -170,6 +176,7 @@
       "mediaFiles": "Fichiers multimédias (pris en charge par ffmpeg)"
     },
     "language": {
+      "title": "Langue",
       "source": "Source",
       "translate": "Traduire",
       "searchSourcePlaceholder": "Rechercher des langues...",
@@ -380,6 +387,8 @@
     "diarize": "Identification des intervenants",
     "transcribe": "Voix en texte",
     "translate": "Traduction vers {{language}}",
+    "normaliseAudio": "Normalisation de l'audio",
+    "preparingAudio": "Préparation de l'audio...",
     "processing": "Traitement",
     "export": "Export"
   },
@@ -402,6 +411,7 @@
     "loading": "Chargement des sous-titres...",
     "jumpToTimeline": "Aller à ce point sur la timeline",
     "unknownSpeaker": "Intervenant inconnu",
+    "previousSubtitles": "Historique des sous-titres",
     "empty": {
       "noSubtitlesFound": "Aucun sous-titre trouvé",
       "tryDifferentSearch": "Essayez un autre terme de recherche",
@@ -460,6 +470,9 @@
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "Historique des sous-titres",
+      "searchPlaceholder": "Rechercher dans l’historique des sous-titres...",
+      "loading": "Chargement...",
       "empty": "Aucune transcription trouvée.",
       "empty_title": "Aucune transcription trouvée",
       "empty_detail": "Votre historique de transcriptions apparaîtra ici une fois que vous aurez généré des sous-titres.",

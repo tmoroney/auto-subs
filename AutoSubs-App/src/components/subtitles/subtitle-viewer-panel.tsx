@@ -384,7 +384,7 @@ function SubtitleToolbar({
 }: SubtitleToolbarProps) {
   return (
     <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto">
-      <div className="grid w-full grid-cols-2 gap-2">
+      <div className="grid w-full grid-cols-2 gap-1">
         <ReformatPopover
           open={showReformat}
           subtitleCount={subtitlesLength}
@@ -743,7 +743,7 @@ export function SubtitleViewerPanel({
           className={`font-semibold select-none ${isFullScreen && isMacOs ? "pl-20" : "pl-1"}`}
           data-tauri-drag-region={isMacOs ? true : undefined}
         >
-          Subtitles
+          {t("subtitles.title")}
         </h2>
         <div
           className="z-20 flex items-center"

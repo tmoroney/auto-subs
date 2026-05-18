@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface SectionHeaderProps {
-  number: number;
+  number: React.ReactNode;
   label: string;
   action?: React.ReactNode;
 }
@@ -22,7 +22,7 @@ export function SectionHeader({ number, label, action }: SectionHeaderProps) {
 }
 
 interface CompactSectionLabelProps {
-  number: number;
+  number: React.ReactNode;
   label: string;
 }
 
@@ -40,7 +40,7 @@ function CompactSectionLabel({ number, label }: CompactSectionLabelProps) {
 }
 
 interface CompactSettingsRowProps {
-  number: number;
+  number: React.ReactNode;
   label: string;
   children: React.ReactNode;
   className?: string;

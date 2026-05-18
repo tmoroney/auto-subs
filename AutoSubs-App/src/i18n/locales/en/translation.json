@@ -47,7 +47,8 @@
     "options": "Options",
     "generateSubtitles": "Generate",
     "startNewTranscription": "Start new transcription",
-    "open": "Open"
+    "open": "Open",
+    "refresh": "Refresh connection"
   },
   "update": {
     "restartResolveServer": {
@@ -82,6 +83,11 @@
     }
   },
   "actionBar": {
+    "source": "Source",
+    "options": "Options",
+    "subtitleStyle": "Caption Style",
+    "subtitleStyleDescription": "Captions",
+    "model": "Model",
     "common": {
       "auto": "Auto",
       "on": "On",
@@ -170,6 +176,7 @@
       "mediaFiles": "Media Files (ffmpeg-supported)"
     },
     "language": {
+      "title": "Language",
       "source": "Source",
       "translate": "Translate",
       "searchSourcePlaceholder": "Search languages...",
@@ -382,6 +389,8 @@
     "diarize": "Identifying speakers",
     "transcribe": "Speech to text",
     "translate": "Translating to {{language}}",
+    "normaliseAudio": "Normalising audio",
+    "preparingAudio": "Preparing audio...",
     "processing": "Processing",
     "export": "Export"
   },
@@ -463,6 +472,7 @@
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "Subtitle History",
       "searchPlaceholder": "Search subtitle history...",
       "loading": "Loading...",
       "empty": "No subtitle documents found.",
@@ -504,7 +514,7 @@
         "connected": "Connected",
         "currentlyViewing": "Currently viewing: {{name}}",
         "ready": "Ready to access timeline",
-        "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "cantConnect": "Can't connect to timeline",
         "openResolve": "Open DaVinci Resolve and go to Workspace → Scripts → AutoSubs"
       }
@@ -518,7 +528,7 @@
       },
       "tooltip": {
         "connected": "Connected",
-        "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "disconnected": "Extension disconnected",
         "openPremiere": "Open Premiere Pro to connect automatically."
       }
@@ -532,7 +542,7 @@
       },
       "tooltip": {
         "connected": "Connected",
-        "canGetAudio": "You can get audio from the composition and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "disconnected": "Extension disconnected",
         "openAfterEffects": "Open After Effects to connect automatically."
       }

@@ -1,5 +1,10 @@
 {
   "actionBar": {
+    "source": "ソース",
+    "options": "オプション",
+    "subtitleStyle": "字幕スタイル",
+    "subtitleStyleDescription": "字幕",
+    "model": "モデル",
     "censor": {
       "dialogDescription": "字幕で検閲する単語を追加してください。",
       "dialogTitle": "不適切な言葉を検閲",
@@ -58,6 +63,7 @@
       "customPromptWhisperOnly": "Whisperモデルでのみサポートされています。"
     },
     "language": {
+      "title": "言語",
       "noLanguageFound": "言語が見つかりません。",
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
@@ -108,7 +114,8 @@
     "next": "次へ",
     "options": "オプション",
     "saveChanges": "変更を保存",
-    "open": "開く"
+    "open": "開く",
+    "refresh": "接続を更新"
   },
   "update": {
     "restartResolveServer": {
@@ -361,6 +368,8 @@
     "processing": "処理中",
     "transcribe": "音声をテキストに変換中",
     "translate": "{{language}} に翻訳中",
+    "normaliseAudio": "音声を正規化中",
+    "preparingAudio": "音声を準備中...",
     "export": "エクスポート"
   },
   "settings": {
@@ -448,13 +457,17 @@
     "searchPlaceholder": "字幕を検索...",
     "speakers": "話者",
     "title": "字幕",
-    "unknownSpeaker": "不明な話者"
+    "unknownSpeaker": "不明な話者",
+    "previousSubtitles": "字幕履歴"
   },
   "theme": {
     "toggle": "テーマを切り替え"
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "字幕履歴",
+      "searchPlaceholder": "字幕履歴を検索...",
+      "loading": "読み込み中...",
       "empty": "文字起こしが見つかりません。",
       "empty_title": "文字起こしが見つかりません",
       "empty_detail": "字幕を生成すると、ここに文字起こしの履歴が表示されます。",
@@ -471,6 +484,7 @@
     },
     "resolve": {
       "productName": "DaVinci Resolve",
+      "description": "ワークスペーススクリプト連携",
       "status": {
         "connected": "接続済み",
         "disconnected": "未接続"
@@ -482,20 +496,20 @@
         "currentlyViewing": "現在表示中：{{name}}",
         "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください",
         "ready": "タイムラインへのアクセスの準備が完了"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "description": "Adobe拡張機能連携",
+      "status": {
+        "connected": "接続済み",
+        "disconnected": "切断済み"
       },
-      "premiere": {
-        "productName": "Premiere Pro",
-        "description": "Adobe拡張機能統合",
-        "status": {
-          "connected": "接続済み",
-          "disconnected": "切断済み"
-        },
-        "tooltip": {
-          "connected": "接続済み",
-          "canGetAudio": "タイムラインから音声を抽出し、字幕を追加できます。",
-          "disconnected": "拡張機能が切断されました",
-          "openPremiere": "Premiere Proを開くと自動的に接続されます。"
-        }
+      "tooltip": {
+        "connected": "接続済み",
+        "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
+        "disconnected": "拡張機能が切断されました",
+        "openPremiere": "Premiere Proを開くと自動的に接続されます。"
       }
     },
     "aftereffects": {

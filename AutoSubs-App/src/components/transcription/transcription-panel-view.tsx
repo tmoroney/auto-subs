@@ -21,6 +21,7 @@ import {
   FileDropArea,
   SourceModeTabs,
   TimelineTrackSelector,
+  formatLocalizedTrackNumber,
 } from "./source-section";
 import { LanguageButton } from "./language-button";
 import { OptionsRow } from "./options-row";
@@ -104,7 +105,7 @@ export function TranscriptionPanelView({
   isProcessing,
   selectedIntegration,
 }: TranscriptionPanelViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { settings: currentSettings } = useSettings();
 
   const [localSelectedFile, setLocalSelectedFile] = React.useState<
@@ -172,6 +173,11 @@ export function TranscriptionPanelView({
     (currentSettings.audioInputMode === "timeline" &&
       (selectedTrackCount === 0 || inputTracks.length === 0));
 
+  const formatSectionNumber = React.useCallback(
+    (value: number) => formatLocalizedTrackNumber(value, i18n.language),
+    [i18n.language],
+  );
+
   const startButtonLabel =
     currentSettings.audioInputMode === "timeline" &&
     selectedTrackCount > 0 &&
@@ -193,10 +199,11 @@ export function TranscriptionPanelView({
         onLoadTemplates={onLoadTemplates}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col p-4 pt-1">
+      <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
         {showProcessing && (
           <ProcessingStepsList
             steps={processingSteps}
+            isProcessing={isProcessing}
             containerRef={progressContainerRef}
             livePreviewSegments={livePreviewSegments}
             timelineInfo={timelineInfo}
@@ -204,6 +211,7 @@ export function TranscriptionPanelView({
             onExportToFile={onExportToFile}
             onAddToTimeline={onAddToTimeline}
             onViewSubtitles={onViewSubtitles}
+            isSubtitleViewerOpen={isSubtitleViewerOpen}
           />
         )}
 
@@ -235,7 +243,7 @@ export function TranscriptionPanelView({
                 <>
                   <div className="z-50 flex min-h-0 flex-1 flex-col">
                     <SectionHeader
-                      number={1}
+                      number={formatSectionNumber(1)}
                       label={t("actionBar.source", "Source")}
                     />
                     <div className="mb-2.5 w-full">
@@ -262,7 +270,7 @@ export function TranscriptionPanelView({
 
                   <Card className="z-50 overflow-hidden rounded-2xl bg-background p-0 shadow-none">
                     <CompactSettingsRow
-                      number={2}
+                      number={formatSectionNumber(2)}
                       label={t("actionBar.language.title", "Language")}
                       className="border-b"
                     >
@@ -270,7 +278,7 @@ export function TranscriptionPanelView({
                     </CompactSettingsRow>
 
                     <CompactSettingsRow
-                      number={3}
+                      number={formatSectionNumber(3)}
                       label={t("actionBar.options", "Options")}
                       className="border-b"
                     >
@@ -278,7 +286,7 @@ export function TranscriptionPanelView({
                     </CompactSettingsRow>
 
                     <CompactSettingsRow
-                      number={4}
+                      number={formatSectionNumber(4)}
                       label={t("actionBar.model", "Model")}
                     >
                       <ModelPicker

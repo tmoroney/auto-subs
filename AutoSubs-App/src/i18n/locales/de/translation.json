@@ -47,7 +47,8 @@
     "options": "Optionen",
     "generateSubtitles": "Generieren",
     "startNewTranscription": "Neue Transkription starten",
-    "open": "Öffnen"
+    "open": "Öffnen",
+    "refresh": "Verbindung aktualisieren"
   },
   "update": {
     "restartResolveServer": {
@@ -82,6 +83,11 @@
     }
   },
   "actionBar": {
+    "source": "Quelle",
+    "options": "Optionen",
+    "subtitleStyle": "Untertitelstil",
+    "subtitleStyleDescription": "Untertitel",
+    "model": "Modell",
     "common": {
       "auto": "Auto",
       "on": "An",
@@ -170,6 +176,7 @@
       "mediaFiles": "Mediendateien (ffmpeg-unterstützt)"
     },
     "language": {
+      "title": "Sprache",
       "source": "Quelle",
       "translate": "Übersetzen",
       "searchSourcePlaceholder": "Sprachen suchen...",
@@ -380,6 +387,8 @@
     "diarize": "Sprecher werden identifiziert",
     "transcribe": "Sprache zu Text",
     "translate": "Übersetze nach {{language}}",
+    "normaliseAudio": "Audio wird normalisiert",
+    "preparingAudio": "Audio wird vorbereitet...",
     "processing": "Verarbeite",
     "export": "Export"
   },
@@ -402,6 +411,7 @@
     "loading": "Untertitel werden geladen...",
     "jumpToTimeline": "Zu diesem Punkt in der Timeline springen",
     "unknownSpeaker": "Unbekannter Sprecher",
+    "previousSubtitles": "Untertitelverlauf",
     "empty": {
       "noSubtitlesFound": "Keine Untertitel gefunden",
       "tryDifferentSearch": "Versuche einen anderen Suchbegriff",
@@ -460,7 +470,8 @@
   },
   "titlebar": {
     "subtitleHistory": {
-      "searchPlaceholder": "Transkripte durchsuchen...",
+      "title": "Untertitelverlauf",
+      "searchPlaceholder": "Untertitelverlauf durchsuchen...",
       "loading": "Lädt...",
       "empty": "Keine Transkripte gefunden.",
       "empty_title": "Keine Transkripte gefunden",

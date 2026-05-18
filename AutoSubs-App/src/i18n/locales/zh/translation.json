@@ -47,7 +47,8 @@
     "options": "选项",
     "generateSubtitles": "生成",
     "startNewTranscription": "开始新转录",
-    "open": "打开"
+    "open": "打开",
+    "refresh": "刷新连接"
   },
   "update": {
     "restartResolveServer": {
@@ -82,6 +83,11 @@
     }
   },
   "actionBar": {
+    "source": "来源",
+    "options": "选项",
+    "subtitleStyle": "字幕样式",
+    "subtitleStyleDescription": "字幕",
+    "model": "模型",
     "common": {
       "auto": "自动",
       "on": "开启",
@@ -170,6 +176,7 @@
       "mediaFiles": "媒体文件（ffmpeg 支持）"
     },
     "language": {
+      "title": "语言",
       "source": "源语言",
       "translate": "翻译",
       "searchSourcePlaceholder": "搜索语言...",
@@ -380,6 +387,8 @@
     "diarize": "正在识别说话人",
     "transcribe": "语音转文本",
     "translate": "正在翻译为 {{language}}",
+    "normaliseAudio": "正在标准化音频",
+    "preparingAudio": "正在准备音频...",
     "processing": "正在处理",
     "export": "导出"
   },
@@ -402,6 +411,7 @@
     "waitingForSubtitles": "正在等待字幕...",
     "jumpToTimeline": "跳转到时间线上的点",
     "unknownSpeaker": "未知说话人",
+    "previousSubtitles": "字幕历史",
     "empty": {
       "noSubtitlesFound": "未找到字幕",
       "tryDifferentSearch": "尝试不同的搜索词",
@@ -460,6 +470,9 @@
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "字幕历史",
+      "searchPlaceholder": "搜索字幕历史...",
+      "loading": "正在加载...",
       "empty": "未找到记录。",
       "empty_title": "未找到记录",
       "empty_detail": "生成字幕后，您的转录历史记录将显示在这里。",

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ProcessingStepItem } from "@/components/processing/processing-step-item";
 import { useSettings } from "@/contexts/SettingsContext";
 import type { TimelineInfo } from "@/types";
@@ -6,6 +7,7 @@ import type { ProcessingStep } from "./utils";
 
 interface ProcessingStepsListProps {
   steps: ProcessingStep[];
+  isProcessing?: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
   livePreviewSegments: any[];
   timelineInfo: TimelineInfo;
@@ -17,10 +19,12 @@ interface ProcessingStepsListProps {
     presetSettings?: Record<string, unknown>,
   ) => Promise<void>;
   onViewSubtitles?: () => void;
+  isSubtitleViewerOpen?: boolean;
 }
 
 export function ProcessingStepsList({
   steps,
+  isProcessing = false,
   containerRef,
   livePreviewSegments,
   timelineInfo,
@@ -28,8 +32,26 @@ export function ProcessingStepsList({
   onExportToFile,
   onAddToTimeline,
   onViewSubtitles,
+  isSubtitleViewerOpen = false,
 }: ProcessingStepsListProps) {
   const { settings: currentSettings } = useSettings();
+  const { t } = useTranslation();
+  const visibleSteps =
+    isProcessing && steps.length === 0
+      ? [
+          {
+            id: "Normalise",
+            title: t("progressSteps.normaliseAudio", "Normalising audio"),
+            description: t(
+              "progressSteps.preparingAudio",
+              "Preparing audio...",
+            ),
+            progress: 0,
+            isActive: true,
+            isCompleted: false,
+          },
+        ]
+      : steps;
 
   return (
     <div
@@ -42,7 +64,7 @@ export function ProcessingStepsList({
     >
       <div ref={containerRef} className="w-full relative z-10">
         <div className="flex flex-col gap-2">
-          {steps.map((step) => (
+          {visibleSteps.map((step) => (
             <div key={step.id} className="w-full">
               <ProcessingStepItem
                 id={step.id}
@@ -55,6 +77,7 @@ export function ProcessingStepsList({
                 onExportToFile={onExportToFile}
                 onAddToTimeline={onAddToTimeline}
                 onViewSubtitles={onViewSubtitles}
+                isSubtitleViewerOpen={isSubtitleViewerOpen}
                 livePreviewSegments={livePreviewSegments}
                 settings={currentSettings}
                 timelineInfo={timelineInfo}

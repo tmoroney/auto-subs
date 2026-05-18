@@ -79,7 +79,7 @@ export function TranscriptionHeader({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {t("actionBar.options.subtitleStyle", "Caption Style")}
+              {t("actionBar.subtitleStyle", "Caption Style")}
             </TooltipContent>
           </Tooltip>
           <TranscriptHistoryPopover

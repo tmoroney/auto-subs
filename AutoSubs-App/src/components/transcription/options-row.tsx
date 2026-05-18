@@ -106,10 +106,15 @@ export function OptionsRow() {
             role="combobox"
             className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
             aria-expanded={openTextFormattingPopover}
-            aria-label={`${t("actionBar.options.subtitleStyle", "Style")}: ${t("actionBar.options.subtitleStyleDescription", "Captions")}`}
-            title={`${t("actionBar.options.subtitleStyle", "Style")}: ${t("actionBar.options.subtitleStyleDescription", "Captions")}`}
+            aria-label={`${t("actionBar.subtitleStyle", "Style")}: ${t("actionBar.subtitleStyleDescription", "Captions")}`}
+            title={`${t("actionBar.subtitleStyle", "Style")}: ${t("actionBar.subtitleStyleDescription", "Captions")}`}
           >
-            <Type className="shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+            <Type
+              className={cn(
+                "shrink-0 group-hover:text-primary transition-colors",
+                showFormatOptionLabel ? "text-muted-foreground" : "text-foreground",
+              )}
+            />
             {showFormatOptionLabel ? (
               <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
                 {t("actionBar.options.format", "Format")}
@@ -191,7 +196,12 @@ function CustomPromptPopover({
           aria-label={t("actionBar.format.customPromptTitle")}
           title={t("actionBar.format.customPromptTitle")}
         >
-          <ScrollText className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+          <ScrollText
+            className={cn(
+              "h-4 w-4 shrink-0 group-hover:text-primary transition-colors",
+              showLabel ? "text-muted-foreground" : "text-foreground",
+            )}
+          />
           {showLabel ? (
             <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
               {t("actionBar.format.customPromptButton", "Prompt")}

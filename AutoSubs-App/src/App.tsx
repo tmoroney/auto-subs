@@ -315,9 +315,7 @@ function AppContentBody() {
                   isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
                   onTranscriptDocumentsRefresh={loadTranscriptDocuments}
                   isSubtitleViewerOpen={
-                    showSubtitleViewer &&
-                    isSubtitleViewerExpanded &&
-                    !isSubtitleViewerClosing
+                    showSubtitleViewer && !isSubtitleViewerClosing
                   }
                 />
               </div>
