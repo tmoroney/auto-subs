@@ -4,8 +4,6 @@
     "description": "配置您的 AutoSubs 偏好和选项。",
     "sections": {
       "transcription": "转录",
-      "support": "支持",
-      "appearance": "外观",
       "language": "语言"
     },
     "gpu": {
@@ -18,8 +16,7 @@
     },
     "uiLanguage": {
       "title": "应用语言",
-      "description": "更新菜单和按钮",
-      "showPickerAgain": "再次显示语言选择器"
+      "description": "更新菜单和按钮"
     },
     "restartOnboarding": "重新开始入门",
     "openLogsFolder": "打开日志文件夹",
@@ -30,7 +27,6 @@
     },
     "support": {
       "supportAutoSubs": "支持 AutoSubs",
-      "helpSupportDevelopment": "帮助支持开发",
       "viewSource": "查看源代码"
     }
   },
@@ -39,15 +35,12 @@
     "cancel": "取消",
     "back": "返回",
     "next": "下一步",
-    "saveChanges": "保存更改",
     "apply": "应用",
     "add": "添加",
     "done": "完成",
     "delete": "删除",
-    "options": "选项",
     "generateSubtitles": "生成",
     "startNewTranscription": "开始新转录",
-    "open": "打开",
     "refresh": "刷新连接"
   },
   "update": {
@@ -64,9 +57,7 @@
     "supportsSrt": "支持 .srt 文件",
     "selected": "已选择：",
     "importFile": "导入文件",
-    "includeSpeakerLabels": "包含说话人标签",
     "exportAsSrt": "导出为 SRT",
-    "exportAsJson": "导出为 JSON",
     "downloadFormat": "下载 {{format}}",
     "fileDialog": {
       "subtitleFiles": "字幕文件"
@@ -90,7 +81,6 @@
     "model": "模型",
     "common": {
       "auto": "自动",
-      "on": "开启",
       "off": "关闭"
     },
     "mode": {
@@ -98,7 +88,6 @@
       "timeline": "时间线"
     },
     "format": {
-      "button": "格式",
       "removePunctuationTitle": "移除标点符号",
       "removePunctuationDescription": "移除逗号、句号等。",
       "textCaseTitle": "文本大小写",
@@ -109,8 +98,6 @@
         "uppercase": "大写",
         "titleCase": "标题大小写"
       },
-      "characterLimitTitle": "字符限制",
-      "characterLimitDescription": "每行（0 = 自动）",
       "lineCountTitle": "行数",
       "lineCountDescription": "每个字幕的最大行数",
       "textDensityTitle": "文本密度",
@@ -124,7 +111,6 @@
       },
       "customCharsTitle": "最大字符数",
       "customCharsDescription": "每行字符数",
-      "formatButton": "格式",
       "customPromptButton": "提示",
       "customPromptTitle": "词汇和上下文",
       "customPromptDescription": "帮助 Whisper 识别名称、品牌、术语、缩写和首选拼写。",
@@ -155,17 +141,14 @@
         "entire": "整个时间线",
         "inout": "入点/出点"
       },
-      "selectTracks": "选择轨道...",
       "trackN": "轨道 {{n}}",
       "countSelected": "已选择 {{count}} 个轨道",
       "selectedLabel": "已选择 {{label}}",
       "noneSelected": "未选择轨道",
-      "clickToSelect": "点击选择音频轨道",
       "selectAll": "全选",
       "clearAll": "清除全部",
       "noneFound": "未找到音频轨道。",
-      "createTrack": "未找到时间线",
-      "selectMultiple": "点击选择多个轨道"
+      "createTrack": "未找到时间线"
     },
     "fileDrop": {
       "aria": "将音频文件拖放到此处或点击选择",
@@ -187,34 +170,16 @@
   "speakerEditor": {
     "title": "编辑说话人",
     "description": "这些是在音频中检测到的说话人。",
-    "jumpToSample": "跳转到时间线中的样本",
     "name": "姓名",
     "namePlaceholder": "输入说话人姓名",
     "outputTrack": "输出轨道",
-    "selectTrack": "选择轨道",
-    "appearance": "外观",
     "colors": {
       "fill": "填充",
-      "outline": "轮廓",
-      "border": "边框"
-    },
-    "generatingPreview": "正在生成预览...",
-    "generatePreview": "生成预览",
-    "subtitlePreview": "字幕预览",
-    "continueEditing": "继续编辑",
-    "saveAndAddToTimeline": "保存并添加到时间线"
-  },
-  "workspace": {
-    "empty": {
-      "loadingModel": "正在将模型加载到内存...",
-      "welcomeTitle": "欢迎使用 AutoSubs",
-      "welcomeDescription": "选择音频源以开始生成字幕。",
-      "support": "支持 AutoSubs"
+      "outline": "轮廓"
     }
   },
   "modelStatus": {
     "cached": "已缓存",
-    "available": "可用",
     "storage": "存储：",
     "ram": "内存：",
     "accuracy": "准确性",
@@ -395,11 +360,9 @@
   "subtitles": {
     "title": "字幕",
     "speakers": "说话人",
-    "editSpeakers": "编辑说话人",
     "reformat": "重新格式化",
     "searchPlaceholder": "搜索字幕...",
     "searchAria": "搜索字幕",
-    "clearSearch": "清除搜索",
     "search": {
       "caseMatch": "区分大小写",
       "wholeWord": "整词匹配",
@@ -413,17 +376,8 @@
     "unknownSpeaker": "未知说话人",
     "previousSubtitles": "字幕历史",
     "empty": {
-      "noSubtitlesFound": "未找到字幕",
-      "tryDifferentSearch": "尝试不同的搜索词",
       "noSubtitlesAvailable": "转录完成后，字幕将显示在这里"
     }
-  },
-  "subtitleEditor": {
-    "title": "编辑字幕",
-    "description": "通过修改下面的词汇来编辑字幕文本",
-    "mergeLeft": "向左合并",
-    "mergeRight": "向右合并",
-    "deleteWord": "删除词汇"
   },
   "gettingStarted": {
     "title": "欢迎使用 AutoSubs",
@@ -474,44 +428,18 @@
       "searchPlaceholder": "搜索字幕历史...",
       "loading": "正在加载...",
       "empty": "未找到记录。",
-      "empty_title": "未找到记录",
-      "empty_detail": "生成字幕后，您的转录历史记录将显示在这里。",
       "no_results": "未找到结果",
-      "no_results_detail": "请尝试调整您的搜索条件。",
       "delete_title": "删除记录？",
-      "delete_description": "这将永久删除历史记录中的转录内容。此操作无法撤消。",
-      "sections": {
-        "today": "今天",
-        "yesterday": "昨天",
-        "last_week": "过去7天",
-        "older": "更早"
-      }
-    },
-    "windowControls": {
-      "minimize": "最小化",
-      "maximize": "最大化",
-      "close": "关闭"
+      "delete_description": "这将永久删除历史记录中的转录内容。此操作无法撤消。"
     },
     "status": {
       "disconnected": "未连接"
     },
-    "update": {
-      "downloading": "正在下载更新",
-      "installing": "正在安装更新",
-      "restarting": "正在重启 AutoSubs",
-      "installUpdateNow": "安装并重启"
-    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "工作区脚本集成",
-      "status": {
-        "connected": "已连接",
-        "disconnected": "未连接"
-      },
       "tooltip": {
         "connected": "已连接",
-        "currentlyViewing": "当前查看：{{name}}",
-        "ready": "已准备好访问时间线",
         "canGetAudio": "您可以从时间线获取音频，并将字幕添加回时间线。",
         "cantConnect": "无法连接到时间线",
         "openResolve": "打开 DaVinci Resolve，然后前往 Workspace → Scripts → AutoSubs"
@@ -520,10 +448,6 @@
     "premiere": {
       "productName": "Premiere Pro",
       "description": "Adobe 扩展集成",
-      "status": {
-        "connected": "已连接",
-        "disconnected": "已断开"
-      },
       "tooltip": {
         "connected": "已连接",
         "canGetAudio": "你可以从时间线获取音频并添加字幕。",
@@ -534,10 +458,6 @@
     "aftereffects": {
       "productName": "After Effects",
       "description": "Adobe 扩展集成",
-      "status": {
-        "connected": "已连接",
-        "disconnected": "已断开"
-      },
       "tooltip": {
         "connected": "已连接",
         "canGetAudio": "您可以从合成中获取音频并将字幕添加回去。",
@@ -551,7 +471,6 @@
   },
   "addToTimeline": {
     "conflict": {
-      "checking": "正在检查冲突...",
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
     },
     "title": "添加到时间线",
@@ -559,47 +478,24 @@
       "title": "字幕已就绪",
       "description": "您的字幕已生成，可以添加到时间线中。"
     },
-    "templateTheme": "模板主题",
-    "selectTemplate": "选择模板",
-    "outputTrack": "输出轨道",
-    "selectOutputTrack": "选择输出轨道",
     "adding": "正在添加...",
     "success": "已添加到时间线",
-    "steps": {
-      "template": {
-        "title": "模板",
-        "description": "选择样式模板"
-      },
-      "speakers": {
-        "title": "说话人",
-        "description": "配置说话人轨道和颜色"
-      },
-      "outputTrack": {
-        "title": "输出轨道",
-        "description": "选择字幕轨道"
-      }
-    },
     "mode": {
       "regular": "常规",
       "animated": "动画"
     },
     "preset": {
       "new": "新建预设",
-      "newDescription": "在 Resolve 中设计字幕",
       "builtIn": "内置",
       "custom": "自定义",
       "preview": "在 Resolve 中预览",
-      "edit": "编辑",
       "duplicate": "复制",
       "delete": "删除",
-      "rename": "重命名",
       "export": "导出 JSON",
       "copyJson": "复制 JSON",
       "copied": "已复制到剪贴板",
       "import": "导入文件",
       "paste": "粘贴 JSON",
-      "emptyTitle": "还没有自定义预设",
-      "emptyHint": "点击新建预设来设计您自己的预设，或从文件导入。",
       "phase": {
         "launchingTitle": "正在 Resolve 中打开字幕…",
         "launchingHint": "我们将在临时轨道上放置一个预览字幕。",
@@ -613,7 +509,6 @@
         "cancel": "取消",
         "save": "保存预设",
         "back": "返回",
-        "startEditing": "在 Resolve 中开始编辑",
         "captureSettings": "捕获设置"
       },
       "nameLabel": "预设名称",
@@ -628,7 +523,6 @@
       "importSubmit": "导入预设",
       "errors": {
         "invalidJson": "这看起来不像是一个有效的预设文件。",
-        "startFailed": "无法在 Resolve 中打开预设编辑器。",
         "captureFailed": "无法从 Resolve 读取字幕设置。",
         "nameRequired": "请输入名称。"
       }

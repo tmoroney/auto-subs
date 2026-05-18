@@ -15,8 +15,7 @@
     },
     "common": {
       "auto": "自動",
-      "off": "オフ",
-      "on": "オン"
+      "off": "オフ"
     },
     "fileDrop": {
       "aria": "音声ファイルをここにドロップするかクリックして選択",
@@ -24,9 +23,6 @@
       "supports": "ほとんどの形式に対応"
     },
     "format": {
-      "button": "書式",
-      "characterLimitDescription": "1行あたり（0 = 自動）",
-      "characterLimitTitle": "文字数制限",
       "lineCountDescription": "字幕ごとの最大行数",
       "lineCountTitle": "行数",
       "removePunctuationDescription": "読点・句点などを削除",
@@ -50,7 +46,6 @@
       },
       "customCharsTitle": "最大文字数",
       "customCharsDescription": "1行あたりの文字数",
-      "formatButton": "書式",
       "customPromptButton": "プロンプト",
       "customPromptTitle": "語彙とコンテキスト",
       "customPromptDescription": "Whisperが名前、ブランド、専門用語、略語、優先表記を認識しやすくします。",
@@ -89,14 +84,11 @@
         "inout": "イン/アウトポイント"
       },
       "clearAll": "すべてクリア",
-      "clickToSelect": "クリックして音声トラックを選択",
       "countSelected": "{{count}} トラック選択済み",
       "createTrack": "タイムラインが見つかりません",
       "noneFound": "音声トラックが見つかりません。",
       "noneSelected": "トラックが選択されていません",
       "selectAll": "すべて選択",
-      "selectMultiple": "クリックで複数のトラックを選択",
-      "selectTracks": "トラックを選択...",
       "selectedLabel": "{{label}} が選択されました",
       "trackN": "トラック {{n}}"
     }
@@ -112,9 +104,6 @@
     "generateSubtitles": "生成",
     "startNewTranscription": "新しい文字起こしを開始",
     "next": "次へ",
-    "options": "オプション",
-    "saveChanges": "変更を保存",
-    "open": "開く",
     "refresh": "接続を更新"
   },
   "update": {
@@ -134,11 +123,9 @@
     "button": "エクスポート / インポート",
     "downloadFormat": "{{format}} をダウンロード",
     "dropHere": "ファイルをここにドロップするかクリックして選択",
-    "exportAsJson": "JSON としてエクスポート",
     "exportAsSrt": "SRT としてエクスポート",
     "importFile": "ファイルをインポート",
     "importTab": "インポート",
-    "includeSpeakerLabels": "話者ラベルを含める",
     "exportTab": "エクスポート",
     "selected": "選択済み：",
     "supportsSrt": ".srt ファイルに対応",
@@ -200,7 +187,6 @@
     "finish": "始める"
   },
   "modelStatus": {
-    "available": "ダウンロード可能",
     "cached": "ダウンロード済み",
     "ram": "RAM：",
     "storage": "ストレージ：",
@@ -390,59 +376,35 @@
       "confirmTitle": "設定をリセット"
     },
     "sections": {
-      "appearance": "外観",
       "language": "言語",
-      "support": "サポート",
       "transcription": "文字起こし"
     },
     "support": {
-      "helpSupportDevelopment": "開発を支援",
       "supportAutoSubs": "AutoSubs をサポート",
       "viewSource": "コントリビュート"
     },
     "title": "設定",
     "uiLanguage": {
       "description": "メニューとボタンを更新",
-      "showPickerAgain": "言語選択を再度表示",
       "title": "アプリの言語"
     }
   },
   "speakerEditor": {
-    "appearance": "外観",
     "colors": {
-      "border": "ボーダー",
       "fill": "塗りつぶし",
       "outline": "アウトライン"
     },
-    "continueEditing": "編集を続ける",
     "description": "音声で検出された話者の一覧です。",
-    "generatePreview": "プレビューを生成",
-    "generatingPreview": "プレビューを生成中...",
-    "jumpToSample": "タイムラインのサンプルにジャンプ",
     "name": "名前",
     "namePlaceholder": "話者名を入力",
     "outputTrack": "出力トラック",
-    "saveAndAddToTimeline": "保存してタイムラインに追加",
-    "selectTrack": "トラックを選択",
-    "subtitlePreview": "字幕プレビュー",
     "title": "話者を編集"
-  },
-  "subtitleEditor": {
-    "deleteWord": "単語を削除",
-    "description": "下の単語を変更して字幕テキストを編集",
-    "mergeLeft": "左に結合",
-    "mergeRight": "右に結合",
-    "title": "字幕を編集"
   },
   "subtitles": {
     "addToTimeline": "タイムラインに追加",
-    "clearSearch": "検索をクリア",
-    "editSpeakers": "話者を編集",
     "reformat": "再フォーマット",
     "empty": {
-      "noSubtitlesAvailable": "文字起こしが完了すると、ここに字幕が表示されます",
-      "noSubtitlesFound": "字幕が見つかりません",
-      "tryDifferentSearch": "別の検索語を試してください"
+      "noSubtitlesAvailable": "文字起こしが完了すると、ここに字幕が表示されます"
     },
     "jumpToTimeline": "タイムライン上の地点にジャンプ",
     "loading": "字幕を読み込み中...",
@@ -469,42 +431,23 @@
       "searchPlaceholder": "字幕履歴を検索...",
       "loading": "読み込み中...",
       "empty": "文字起こしが見つかりません。",
-      "empty_title": "文字起こしが見つかりません",
-      "empty_detail": "字幕を生成すると、ここに文字起こしの履歴が表示されます。",
       "no_results": "結果が見つかりません",
-      "no_results_detail": "検索条件を調整してみてください。",
       "delete_title": "文字起こしを削除しますか？",
-      "delete_description": "履歴から文字起こしが完全に削除されます。この操作は取り消せません。",
-      "sections": {
-        "today": "今日",
-        "yesterday": "昨日",
-        "last_week": "過去7日間",
-        "older": "以前"
-      }
+      "delete_description": "履歴から文字起こしが完全に削除されます。この操作は取り消せません。"
     },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "ワークスペーススクリプト連携",
-      "status": {
-        "connected": "接続済み",
-        "disconnected": "未接続"
-      },
       "tooltip": {
         "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
         "cantConnect": "タイムラインに接続できません",
         "connected": "接続済み",
-        "currentlyViewing": "現在表示中：{{name}}",
-        "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください",
-        "ready": "タイムラインへのアクセスの準備が完了"
+        "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください"
       }
     },
     "premiere": {
       "productName": "Premiere Pro",
       "description": "Adobe拡張機能連携",
-      "status": {
-        "connected": "接続済み",
-        "disconnected": "切断済み"
-      },
       "tooltip": {
         "connected": "接続済み",
         "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
@@ -515,10 +458,6 @@
     "aftereffects": {
       "productName": "After Effects",
       "description": "Adobe拡張機能統合",
-      "status": {
-        "connected": "接続済み",
-        "disconnected": "未接続"
-      },
       "tooltip": {
         "connected": "接続済み",
         "canGetAudio": "コンポジションから音声を取得し、字幕を追加できます。",
@@ -526,32 +465,12 @@
         "openAfterEffects": "After Effectsを開いて自動的に接続します。"
       }
     },
-    "windowControls": {
-      "close": "閉じる",
-      "maximize": "最大化",
-      "minimize": "最小化"
-    },
     "status": {
       "disconnected": "未接続"
-    },
-    "update": {
-      "downloading": "アップデートをダウンロード中",
-      "installing": "アップデートをインストール中",
-      "restarting": "AutoSubs を再起動中",
-      "installUpdateNow": "インストールして再起動"
-    }
-  },
-  "workspace": {
-    "empty": {
-      "loadingModel": "モデルをメモリに読み込み中...",
-      "support": "AutoSubs をサポート",
-      "welcomeDescription": "字幕の生成を開始するには音声ソースを選択してください。",
-      "welcomeTitle": "AutoSubs へようこそ"
     }
   },
   "addToTimeline": {
     "conflict": {
-      "checking": "競合を確認中...",
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
     },
     "title": "タイムラインに追加",
@@ -559,47 +478,24 @@
       "title": "字幕の準備完了",
       "description": "字幕が生成されました。タイムラインに追加する準備ができています。"
     },
-    "templateTheme": "テンプレートテーマ",
-    "selectTemplate": "テンプレートを選択",
-    "outputTrack": "出力トラック",
-    "selectOutputTrack": "出力トラックを選択",
     "adding": "追加中...",
     "success": "タイムラインに追加されました",
-    "steps": {
-      "template": {
-        "title": "テンプレート",
-        "description": "スタイルテンプレートを選択"
-      },
-      "speakers": {
-        "title": "話者",
-        "description": "話者トラックと色を設定"
-      },
-      "outputTrack": {
-        "title": "出力トラック",
-        "description": "字幕トラックを選択"
-      }
-    },
     "mode": {
       "regular": "通常",
       "animated": "アニメーション"
     },
     "preset": {
       "new": "新規プリセット",
-      "newDescription": "Resolveで字幕をデザイン",
       "builtIn": "組み込み",
       "custom": "カスタム",
       "preview": "Resolveでプレビュー",
-      "edit": "編集",
       "duplicate": "複製",
       "delete": "削除",
-      "rename": "名前を変更",
       "export": "JSONをエクスポート",
       "copyJson": "JSONをコピー",
       "copied": "クリップボードにコピーしました",
       "import": "ファイルをインポート",
       "paste": "JSONを貼り付け",
-      "emptyTitle": "カスタムプリセットがまだありません",
-      "emptyHint": "新規プリセットをクリックして自分でデザインするか、ファイルからインポートしてください。",
       "phase": {
         "launchingTitle": "Resolveで字幕を開いています…",
         "launchingHint": "一時トラックにプレビュー字幕を配置します。",
@@ -613,7 +509,6 @@
         "cancel": "キャンセル",
         "save": "プリセットを保存",
         "back": "戻る",
-        "startEditing": "Resolveで編集を開始",
         "captureSettings": "設定をキャプチャ"
       },
       "nameLabel": "プリセット名",
@@ -628,7 +523,6 @@
       "importSubmit": "プリセットをインポート",
       "errors": {
         "invalidJson": "有効なプリセットファイルのように見えません。",
-        "startFailed": "Resolveでプリセットエディターを開けませんでした。",
         "captureFailed": "Resolveから字幕設定を読み取れませんでした。",
         "nameRequired": "名前を入力してください。"
       }
