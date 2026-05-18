@@ -1,590 +1,236 @@
-<img src="src/js/assets/bolt-cep.svg" alt="Bolt CEP" title="Bolt CEP" width="400" />
-
-A lightning-fast boilerplate for building Adobe CEP Extensions in Svelte, React, or Vue built on Vite + TypeScript + Sass
-
-![npm](https://img.shields.io/npm/v/bolt-cep)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/hyperbrew/bolt-cep/blob/master/LICENSE)
-[![Chat](https://img.shields.io/badge/chat-discord-7289da.svg)](https://discord.gg/PC3EvvuRbc)
-
-## Features
-
-- Lightning Fast Hot Module Replacement (HMR)
-- Write Modern ES6 in both the JavaScript and ExtendScript layers
-- Choose Svelte, React, or Vue for your frontend framework
-- Type-safe ExtendScript with Types-for-Adobe
-- End-to-End Type Safety with evalTS()
-- Easily configure in cep.config.ts
-- Setup for single or multi-panel extensions
-- Comes with multi-host-app configuration
-- Optimized Build Size
-- Easy Publish to ZXP for Distribution
-- Easy Package to ZIP archive with sidecar assets
-- GitHub Actions ready-to-go for ZXP Releases
-
-_Full Blog Post:_ https://hyperbrew.co/blog/bolt-cep-build-extensions-faster/
-
-### Compatibility
-
-- [Adobe CC Apps](https://www.adobe.com/creativecloud/desktop-app.html) version 2024 or later
-- Windows & Mac Intel
-- Mac Arm64 (M1-M4) require special setup ([more details](#misc-troubleshooting))
-
----
-
-## Backers
-
-Huge thanks to our backers who have helped make this project even better!
-
-<a href="https://battleaxe.co/" target="_blank">
-<img src="https://battleaxe.dev/servile/logotype_lightgrey.png" alt="Battle Axe" title="Battle Axe" width="200" /></a>
-
-If you're interested in supporting this open-source project, please [see our sponsor page](https://github.com/sponsors/hyperbrew).
-
----
-
-## Tools Built with Bolt CEP
-
-Tools like Rubberhose 3, Klutz GPT, Brevity, and more are powered by Bolt CEP! Check out the full library of tools built with Bolt CEP:
-
-[Built with Bolt CEP](https://hyperbrew.co/resources/bolt-cep/)
-
-<img src="src/js/assets/built-with-bolt-cep.png" alt="Battle Axe" title="Battle Axe" style="border-radius:5px" width="900" />
-
----
-
-## Support
-
-### Free Support 🙌
-
-If you have questions with getting started using Bolt CEP, feel free to ask and discuss in our free Discord community [Discord Community](https://discord.gg/PC3EvvuRbc).
-
-### Paid Priority Support 🥇
-
-If your team is interested in paid consulting or development with Bolt CEP, please [contact the Hyper Brew team](https://hyperbrew.co/contact/). More info on our [Adobe Plugin Development & Consulting Services](https://hyperbrew.co/landings/boost-development)
-
----
-
-## Can I use Bolt CEP in my free or commercial project?
-
-Yes! Bolt CEP is **100% free and open source**, being released under the MIT license with no attribution required. This means you are free to use it in your free or commercial projects.
-
-We would greatly appreciate it if you could provide a link back to this tool's info page in your product's site or about page:
-
-Bolt CEP Info Page Link: https://hyperbrew.co/resources/bolt-cep
-
-**Built with Bolt CEP** button graphics:
-
-**PNG Files**
-
-<div style="display:flex;gap:1rem;">
-<a href="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_White_V01.png" target="_blank">
-<img src="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_White_V01.png" width="200" /></a>
-
-<a href="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Grey_V01.png" target="_blank">
-<img src="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Grey_V01.png" width="200" /></a>
-
-<a href="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Black_V01.png" target="_blank">
-<img src="./src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Black_V01.png" width="200" /></a>
-
-</div>
-
-**SVG Files**
-
-<div style="display:flex;gap:1rem;">
-<a href="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_White_V01.svg" target="_blank">
-<img src="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_White_V01.svg" width="200" /></a>
-
-<a href="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Grey_V01.svg" target="_blank">
-<img src="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Grey_V01.svg" width="200" /></a>
-
-<a href="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Black_V01.svg" target="_blank">
-<img src="src/js/assets/built-with-bolt-cep/Built_With_BOLT_CEP_Logo_Black_V01.svg" width="200" /></a>
-</div>
-
-## Prerequisites
-
-- [Node.js 18](https://nodejs.org/en/) or later
-- Package manager either
-  - NPM (comes with Node.js)
-  - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/) ( ensure by running `yarn set version classic` )
-  - [PNPM](https://pnpm.io/installation) ( ensure by running `pnpm --version` )
-
-## Quick Start
-
-<img src="src/js/assets/bolt-cep-cli.gif" alt="Bolt CEP">
-
-Create your new Bolt CEP project (follow CLI prompts)
-
-- yarn - `yarn create bolt-cep`
-- npm - `npx create-bolt-cep`
-- pnpm - `pnpm create-bolt-cep`
-
-Change directory to the new project
-
-- `cd project`
-
-Install Dependencies (if not already done by create command)
-
-- yarn - `yarn`
-- npm - `npm i`
-- pnpm - `pnpm i`
-
-**⚠️ Enable PlayerDebugMode**
-
-- Adobe CEP's PlayerDebugMode must be enabled on your machine to test `yarn build` or `yarn dev` builds. Only an installed ZXP with `yarn zxp` will work without PlayerDebugMode enabled.
-  - Enable this easily with the [aescripts ZXP Installer](https://aescripts.com/learn/zxp-installer/) > Settings > Debug > Enable Debugging
-  - Or enable manually per OS by following the CEP Cookbook Instructions: [Adobe CEP 12 Cookbook](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_12.x/Documentation/CEP%2012%20HTML%20Extension%20Cookbook.md#debugging-unsigned-extensions)
-
-Build the extension (must run before `dev`, can also run after for panel to work statically without the process) Symlink is created to extensions folder.
-
-- yarn `yarn build`
-- npm `npm run build`
-- pnpm `pnpm build`
-
-Run the extension in HMR Hot-reload mode for rapid development. Both JS and ExtendScript folders re-build on changes.
-Viewable in browser via localhost:3000/panel/ (see [Panel Structure](#cep-panel-structure) to set up multiple panels)
-
-- yarn `yarn dev`
-- npm `npm run dev`
-- pnpm `pnpm dev`
-
-Build & Package the extension as a ZXP for delivery to the `dist/zxp` folder (install with [aescripts ZXP Installer](https://aescripts.com/learn/zxp-installer/) or another ZXP installer)
-
-- yarn `yarn zxp`
-- npm `npm run zxp`
-- pnpm `pnpm zxp`
-
-Bundles your packaged zxp file and specified assets from `copyZipAssets` to a zip archive in the `./zip` folder
-
-- yarn `yarn zip`
-- npm `npm run zip`
-- pnpm `pnpm zip`
-
----
-
-## Config
-
-Update your CEP build and package settings in `cep.config.ts` safely typed
-
-Start building your app per framework in:
-
-- `src/js/main/main.tsx`
-- `src/js/main/main.vue`
-- `src/js/main/main.svelte`
-
-Write ExtendScript code in `src/jsx/main.ts`
-
----
-
-## CEP Panel Structure
-
-Each panel is treated as it's own page, with shared code for efficiency. The Boilerplate currently comes with 2 panels, `main` and `settings`. These are configured in the `cep.config.ts`.
-
-Each panel can be edited in their respective folders:
-
-```
-src
- └─ js
-    ├─ main
-    │   ├─ index.html
-    |   └─ index.tsx
-    └─ settings
-        ├─ index.html
-        └─ index.tsx
+# AutoSubs Premiere Extension
+
+This package contains the Adobe CEP extension that lets AutoSubs communicate with Adobe Premiere Pro and After Effects. It provides a small React-based panel inside Adobe apps and a compiled ExtendScript layer that performs host-specific operations such as reading sequence metadata, exporting timeline audio, and importing generated subtitle files.
+
+## High-level architecture
+
+```mermaid
+flowchart TD
+    desktop["AutoSubs Desktop App<br/>Tauri + Rust"]
+    server["Adobe Bridge<br/>WebSocket server<br/>127.0.0.1:8185"]
+    panel["CEP React Panel<br/>useWebSocket.ts"]
+    bridge["ExtendScript Bridge<br/>bolt.ts / evalTS()"]
+    host{"Adobe Host"}
+    premiere["Premiere Pro APIs<br/>ppro.ts"]
+    aftereffects["After Effects APIs<br/>aeft.ts"]
+
+    desktop --> server
+    server <-->|Requests and responses| panel
+    panel --> bridge
+    bridge --> host
+    host --> premiere
+    host --> aftereffects
+
+    premiere --> sequence["Read sequence info"]
+    premiere --> export["Export timeline audio"]
+    premiere --> import["Import SRT as caption track"]
+    aftereffects --> aeimport["Import SRT as text layers"]
 ```
 
-To add panels, add an item to the panels object in `cep.config.ts`, and duplicate the folder structure and adjust as needed.
+This separation keeps the desktop app independent from Adobe's scripting runtime while still allowing AutoSubs to control timeline export and subtitle import through the installed CEP extension.
 
----
+## How it fits into AutoSubs
 
-## ExtendScript
+The extension acts as a bridge between three environments:
 
-ExtendScript can be written in ES6 and will be compiled down to a single ES3 file for compatibility.
+- **AutoSubs desktop app**  
+  Runs the main Tauri application and starts a local WebSocket server on `127.0.0.1:8185`.
 
-JSON 2 is included by default, and any external JS libraries added with the include directive will be bundled as well:
+- **CEP panel**  
+  Runs inside Adobe as a browser-based React UI. It connects to the AutoSubs desktop app over WebSocket.
 
-```js
-// @include './lib/library.js'
+- **ExtendScript host layer**  
+  Runs inside Premiere Pro or After Effects through Adobe's scripting bridge. This layer calls Adobe APIs that are not directly available to the React panel.
+
+In practice, the desktop app sends requests to the CEP panel, the panel forwards those requests to ExtendScript, and ExtendScript performs the operation inside Premiere Pro or After Effects.
+
+## Startup flow
+
+The extension starts from `src/js/main/index-react.tsx`.
+
+On launch:
+
+1. The React app mounts.
+2. `initBolt()` loads the compiled ExtendScript bundle.
+3. The ExtendScript entry point detects the current Adobe host.
+4. Premiere functions are attached to the shared AutoSubs namespace when the host is Premiere Pro.
+5. The React panel opens a WebSocket connection to the AutoSubs desktop app.
+
+Key files:
+
+- `src/js/main/index-react.tsx`  
+  React entry point.
+
+- `src/js/lib/utils/bolt.ts`  
+  Loads the compiled ExtendScript file and provides the `evalTS()` bridge used to call ExtendScript functions.
+
+- `src/jsx/index.ts`  
+  Detects the host app and maps Premiere or After Effects functions into the shared namespace.
+
+- `src/js/main/useWebSocket.ts`  
+  Owns the connection to the AutoSubs desktop app and routes incoming requests.
+
+## WebSocket connection
+
+The AutoSubs desktop app starts a WebSocket server from `AutoSubs-App/src-tauri/src/adobe_bridge.rs`.
+
+The server listens on:
+
+```text
+127.0.0.1:8185
 ```
 
-App-specific code is split into modules for type-safe development by the application's name as seen in the `index.ts`.
+The CEP panel connects to that port from `useWebSocket.ts`. Once connected, it sends a handshake identifying itself as either:
 
-```
-aftereffects >> aeft/aeft.ts
-illustrator >> ilst/ilst.ts
-animate >> anim/anim.ts
-```
+- `premiere`
+- `aftereffects`
 
-Write your app-specific functions in each of these separate modules, and they will be required per each application.
+The desktop app stores that connection so it can route future integration requests to the correct Adobe host.
 
-To add support for additional host apps:
+After the handshake, the extension immediately refreshes the active sequence information so the desktop app can display the current Premiere timeline state.
 
-- Add additional app module files (aeft.ts, anim.ts, etc).
-- Extend the main `switch()` in `scr/jsx/index.ts` with your additional.
-- Add the host to your `cep.config.ts` file.
+## Calling Premiere from the CEP panel
 
----
+The CEP panel cannot directly use most Premiere scripting APIs. Instead, it calls ExtendScript through `evalTS()`.
 
-## Calling ExtendScript from CEP JavaScript
+The general flow is:
 
-All ExtendScript function are appended to your panel's namespace in the background to avoid namespace clashes when using `evalTS()` and `evalES()`.
-
-We have now introduced a new and improved end-to-end type-safe way to interact with ExtendScript from CEP using `evalTS()`. This function dynamically infers types from
-ExtendScript functions and handles both stringifying and parsing of the results so your developer interaction can be as simple as possible.
-
-As demonstrated in `main.tsx`, your ExtendScript functions can be called with `evalTS()` by passing the name of the function, followed by the arguments.
-
-CEP
-
-```js
-evalTS("myFunc", "test").then((res) => {
-  console.log(res);
-});
-
-evalTS("myFuncObj", { height: 90, width: 100 }).then((res) => {
-  console.log(res.x);
-  console.log(res.y);
-});
+```text
+AutoSubs desktop app
+  -> WebSocket request
+  -> CEP panel message handler
+  -> evalTS("functionName", args)
+  -> ExtendScript function
+  -> Premiere Pro API
+  -> JSON result
+  -> WebSocket response
+  -> AutoSubs desktop app
 ```
 
-ExtendScript
+`evalTS()` is implemented in `src/js/lib/utils/bolt.ts`. It serializes arguments, evaluates the requested function inside the Adobe scripting context, and returns the result to the React layer.
 
-```js
-export const myFunc = (str: string) => {
-  return str;
-};
+## Sequence info flow
 
-export const myFuncObj = (obj: { height: number, width: number }) => {
-  return {
-    y: obj.height,
-    x: obj.width,
-  };
-};
+When the extension connects, it requests active sequence metadata from Premiere.
+
+The relevant function is:
+
+```text
+getActiveSequenceInfo()
 ```
 
-For any existing Bolt CEP projects, rest assured that the legacy `evalES()` function remains in place as usual as demonstrated in `main.tsx`.
+Flow:
 
-```js
-evalES(`helloWorld("${csi.getApplicationID()}")`);
+1. `useWebSocket.ts` calls `evalTS("getActiveSequenceInfo")`.
+2. `bolt.ts` forwards the call into ExtendScript.
+3. `src/jsx/ppro/ppro.ts` reads `app.project.activeSequence`.
+4. Premiere sequence metadata is collected, including name, duration, resolution, timebase, and track information.
+5. The result is returned as JSON and stored in React state.
+
+This is used by AutoSubs to understand which sequence is active and which audio tracks are available for export.
+
+## Audio export flow
+
+When AutoSubs needs timeline audio for transcription, the desktop app sends an audio export request to the extension.
+
+The relevant function is:
+
+```text
+exportSequenceAudio(...)
 ```
 
-You will also want to use this function for calling ExtendScript functions in the global scope directly, by passing `true` to the second parameter:
+Flow:
 
-```js
-evalES(
-  `alert("Hello from ExtendScript :: " + app.appName + " " + app.version)`,
-  true,
-);
+1. `useWebSocket.ts` receives an export request over WebSocket.
+2. It calls `evalTS("exportSequenceAudio", ...)`.
+3. `ppro.ts` resolves the bundled WAV export preset.
+4. Premiere's QE DOM is enabled for track-level mute and solo control.
+5. The selected audio tracks are soloed or unmuted.
+6. If a clip range was requested, temporary sequence in/out points are set.
+7. Premiere exports audio using `sequence.exportAsMediaDirect(...)`.
+8. A `finally` block restores the original sequence in/out points and track states.
+9. The CEP panel sends the export result back to the AutoSubs desktop app.
+
+The exported file is a WAV file that AutoSubs can then process for transcription.
+
+## SRT import flow
+
+After AutoSubs generates subtitles, the desktop app can send an SRT import request to the extension.
+
+The relevant Premiere function is:
+
+```text
+importSRTFile(filePath)
 ```
 
----
+Flow:
 
-## Calling CEP JavaScript from ExtendScript
+1. `useWebSocket.ts` receives a `request_import_srt` message.
+2. It calls `evalTS("importSRTFile", filePath)`.
+3. `ppro.ts` imports the SRT file into the Premiere project bin with `app.project.importFiles(...)`.
+4. The imported project item is located.
+5. `sequence.createCaptionTrack(...)` creates a caption track from the SRT file.
+6. The result is sent back to the desktop app over WebSocket.
 
-For certain situations such as hooking into event listeners or sending updates during long functions, it makes sense to trigger events from the ExtendScript environment to the JavaScript environment. This can be done with `listenTS()` and `dispatchTS()`.
+For After Effects, the SRT import path is different. The extension reads and parses the SRT file manually, then creates individual text layers inside the active composition.
 
-Using this method accounts for:
+## Build and deployment
 
-- Setting up a scoped listener on the JS side for the CSEvent
-- Setting up PlugPlug CSEvent event on ExtendScript side
-- Ensuring End-to-End Type-Safety for the event
+The extension build has two main outputs:
 
-### 1. Declare the Event Type in EventTS in shared/universals.ts
+- **CEP panel UI**  
+  Built with Vite from the React/TypeScript source.
 
-```js
-export type EventTS = {
-  myCustomEvent: {
-    oneValue: string,
-    anotherValue: number,
-  },
-  // [... other events]
-};
+- **ExtendScript bundle**  
+  Built with Rollup and transpiled for Adobe's ExtendScript environment.
+
+Build command:
+
+```bash
+npm run build
 ```
 
-### 2. Listen in CEP JavaScript
+The build process:
 
-```js
-import { listenTS } from "../lib/utils/bolt";
+1. Clears the previous `dist` output.
+2. Compiles TypeScript.
+3. Builds the React CEP panel with Vite.
+4. Builds the ExtendScript bundle with Rollup.
+5. Copies the built extension into the Tauri app resources folder.
 
-listenTS("myCustomEvent", (data) => {
-  console.log("oneValue is", data.oneValue);
-  console.log("anotherValue is", data.anotherValue);
-});
+The copy step is handled by:
+
+```text
+scripts/copy-to-resources.js
 ```
 
-### 3. Dispatch in ExtendScript
+The extension is copied into:
 
-```js
-import { dispatchTS } from "../utils/utils";
-
-dispatchTS("myCustomEvent", { oneValue: "name", anotherValue: 20 });
+```text
+AutoSubs-App/src-tauri/resources/com.autosubs.premiere/
 ```
 
-Alternatively, `dispatchTS()` can also be used in the same way from the CEP side to trigger events within or between CEP panels, just ensure you're importing the dispatchTS() function from the correct file within the `js` folder.
+During the Tauri app build, the `resources/` folder is bundled into the desktop app.
 
-```js
-import { dispatchTS } from "../lib/utils/bolt";
+On Windows, the installer copies the bundled CEP extension into Adobe's CEP extensions directory and enables `PlayerDebugMode` registry keys so the unsigned extension can run.
 
-dispatchTS("myCustomEvent", { oneValue: "name", anotherValue: 20 });
-```
+## Important files
 
----
+- `src/js/main/useWebSocket.ts`  
+  Connects to AutoSubs, handles requests, calls ExtendScript, and sends responses.
 
-## GitHub Actions ZXP Releases
+- `src/js/lib/utils/bolt.ts`  
+  Provides the bridge between the CEP JavaScript environment and ExtendScript.
 
-This repo comes with a configured GitHub Action workflow to build a ZXP and add to the releases each time a git tag is added.
+- `src/jsx/index.ts`  
+  Detects the Adobe host and maps host-specific functions.
 
-```
-git tag 1.0.0
-git push origin --tags
-```
+- `src/jsx/ppro/ppro.ts`  
+  Premiere Pro implementation for sequence info, audio export, and SRT import.
 
-Then your new build will be available under GitHub Releases. For more info, see the [YML config](.github\workflows\main.yml)
+- `src/jsx/aeft/aeft.ts`  
+  After Effects implementation, including SRT-to-text-layer import.
 
----
+- `scripts/copy-to-resources.js`  
+  Copies the built extension into the Tauri resources directory.
 
----
-
-## Copy Assets
-
-If you have assets that you would like copied without being affected by the bundler, you can add the optional `copyAssets:[]` array inside your cep.config.ts to include files or entire folders.
-
-```js
-  copyAssets: ["public", "custom/my.jsx"],
-```
-
-**Example:**
-
-Files placed in `src/public` will be copied to `dist/public` with config set to `copyAssets: ["public"]`.
-
----
-
----
-
-## Copy Zip Assets
-
-If you have assets that you would like copied with your zxp into a zip archive for delivery, you can add the optional `copyZipAssets:[]` array inside your cep.config.ts to include files or entire folders. A folder ending in "/\*" will copy the contents without the folder structure into the zip destination.
-
-```js
-  copyZipAssets: ["instructions/*", "icons"],
-```
-
----
-
-## Custom Ponyfills
-
-Unlike Polyfills which modify the global prototype, Ponyfills replace functionality with custom methods. Built-in Ponyfills include:
-
-- Object.freeze()
-- Array.isArray()
-
-You can add your own Ponyfils by passing them into the `jsxPonyfill()` function in `vite.es.config.ts`:
-
-```js
-jsxPonyfill([
-  {
-    find: "Array.isArray",
-    replace: "__isArray",
-    inject: `function __isArray(arr) { try { return arr instanceof Array; } catch (e) { return false; } };`,
-  },
-]);
-```
-
-If you have a common Ponyfill you feel should be built-in, create a ticket and we'll look into it.
-
----
-
-## ExtendScript Scope
-
-This boilerplate is flavored for a single JSX object attached to helper object `$` for all your panels to prevent pollution in the global namespace. If you prefer to include your own raw JSX, include it in the Copy Assets object (above), and add the optional scriptPath object to your cep.config.ts file.
-
-```js
-  panels: [
-    {
-      name: "main",
-      scriptPath: "custom/index.jsx",
-      [...]
-    },
-    {
-      name: "settings",
-      scriptPath: "custom/settings.jsx",
-      [...]
-    },
-  ],
-  copyAssets: ["custom"],
-```
-
----
-
-## Invisible Panels
-
-To make one or more of your panels an invisible panel, aka hidden from the Extensions menu, make sure to leave the panelDisplayName as an empty string in `cep.config.ts`
-
-```js
-  panels: [
-    {
-      mainPath: "./main/index.html",
-      name: "Invisible Bolt CEP",
-      panelDisplayName: "",
-      ...
-    }
-  ]
-```
-
-If you want the extension to be completely headless without any UI, make sure to set the `type` to Custom as well:
-
-```js
-  panels: [
-    {
-      mainPath: "./main/index.html",
-      name: "Invisible Bolt CEP",
-      panelDisplayName: "",
-      type: "Custom",
-      ...
-    }
-  ]
-```
-
-You'll want to ensure your panel can be launched from another panel with `csi.requestOpenExtension()` or with an auto-start event in `startOnEvents` in `cep.config.ts` event depending on the app:
-
-```js
-  panels: [
-    {
-      mainPath: "./main/index.html",
-      name: "Invisible Bolt CEP",
-      panelDisplayName: "",
-      type: "Custom",
-      startOnEvents: [
-        "com.adobe.csxs.events.ApplicationActivate",
-        "com.adobe.csxs.events.ApplicationInitialized",
-        "applicationActivate",
-      ],
-      ...
-    }
-  ]
-```
-
-Reference the [Adobe CEP Cookbook](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_11.x/Documentation/CEP%2011.1%20HTML%20Extension%20Cookbook.md) for more info on [invisible panels](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_11.x/Documentation/CEP%2011.1%20HTML%20Extension%20Cookbook.md#invisible-html-extensions) and [CEP events](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_11.x/Documentation/CEP%2011.1%20HTML%20Extension%20Cookbook.md#invisible-html-extensions)
-
----
-
-## Troubleshooting Modules
-
-Node.js Built-in modules can be imported from the `src/js/lib/node.ts` file.
-
-```js
-import { os, path, fs } from "../lib/node";
-```
-
-To use 3rd party libraries, first attempt to use with the standard import syntax.
-
-```js
-import { FaBolt } from "react-icons/fa";
-```
-
-If the import syntax fails (typically with modules that use the Node.js runtime) you can resort to the Node.js `require()` syntax,
-
-```js
-const unzipper = require("unzipper");
-```
-
-The build system will detect any non-built-in Node.js modules using `require()` and copy them to the output `node_modules` folder, but if a package is missed, you can add it explicitly to the `installModules:[]` array inside your `cep.config.ts` file.
-
-```js
-  installModules: ["unzipper"],
-```
-
-Also if they're Node.js-specific modules, it's best to place the requires inside functions so they are only required at runtime and don't break your panel when previewing in the browser.
-
----
-
-## A Note on Routers
-
-If you would like to set up a routing system like react-router, be aware that you'll have to make adjustments for CEP. React Router for instance bases the router path off of `window.location.pathname` which in the browser resolves to the page:
-
-`/main/index.html`
-
-yet in CEP context resolves to the full system path:
-
-`file:///C:/Users/Username/AppData/Roaming/Adobe/CEP/extensions/com.bolt.cep/main/index.html`
-
-To solve this, you'll need to adjust the router basename for each context, here is one way of accomplishing that with the panel named `main`:
-
-```js
-const posix = (str: string) => str.replace(/\\/g, "/");
-
-const cepBasename = window.cep_node
-  ? `${posix(window.cep_node.global.__dirname)}/`
-  : "/main/";
-
-ReactDOM.render(
-  <React.StrictMode>
-    <Router basename={cepBasename}>[...]</Router>
-  </React.StrictMode>,
-  document.getElementById("app")
-);
-```
-
-## Misc Troubleshooting
-
-**Can't build JSXBIN on MacOS with PNPM**
-
-There is a known bug with pnpm not running postinstall scripts [more info](https://github.com/pnpm/pnpm/issues/4649) [and here](https://github.com/pnpm/pnpm/issues/4649)
-
-Since the [jsxbin](https://github.com/runegan/jsxbin) package requires the `postinstall` script, to fix this for now, cd into `node_modules/jsxbin` and run `pnpm run postinstall` to create the needed binaries. Now building JSXBIN will work successfully.
-
-**React Spectrum won't allow certain UI items to be clicked on MacOS**:
-
-There is an ongoing bug with React Spectrum and other UI libraries on MacOS with clicking elements. To resolve this issue, run the helper function `enableSpectrum()` to resolve this issue on Mac.
-
-`main.ts`
-
-```js
-import { initBolt, enableSpectrum } from "../lib/utils/bolt";
-
-enableSpectrum();
-initBolt();
-```
-
-Additionally, some users have reported that adding the following CEF Flag will resolve the issue as well:
-
-`cep.config.ts`
-
-```js
-...
-parameters: [
-  ...
-  '--disable-site-isolation-trials'
-  ],
-...
-```
-
-**ZXPSignCmd Fails on Mac or Windows**:
-
-4/18/2025 ZXPSignCmd broke on Windows across the board and on MacOS for most TSA services. ( [more info](https://community.adobe.com/t5/premiere-pro-bugs/zxpsigncmd-sign-process-is-broken-segmentation-fault/idc-p/15276912#M49107) )
-
-4/30/2025 Adobe fixed the issues for Windows and MacOS, and we have included the updated ZXPSignCmd for both OS's in the latest release of `vite-cep-plugin@1.2.9`.
-
-To use the latest in your existing Bolt CEP project, run `yarn add vite-cep-plugin`, and make sure your `zxp.tsa` settings in `cep.config.ts` match the [latest format](./cep.config.ts).
-
-**Build Issues on Mac Arm64 Apple Silicon Machines (M1/M2/M3)**
-
-5/13/2025 - jsxbin is now natively supported on Apple Silicon machines. More info here: [Setup ExtendScript Dev for Apple Silicon Macs](https://hyperbrew.co/blog/adobe-extendscript-support-for-apple-silicon/)
-
-**Update a Bolt CEP Project** To update an existing Bolt CEP project to the the latest version, create a new Bolt CEP project with the same framework (React, Vue, Svelte), then compare and update the following files:
-
-1. `package.json` - Update all dependencies and scripts ( `vite-cep-plugin` - usually contains the most frequent updates ). Make sure to re-install dependencies after updating.
-2. `vite.config.ts` - Unless you've modified the vite config yourself, you can just copy the contents of the latest into yours.
-3. `vite.es.config.ts` - Like the previous config, unless you've modified it yourself, you can just copy the contents of the latest into yours.
-4. `cep.config.ts` - Check if any new properties have been added that don't exist in your config.
-5. `src/js/lib` - Update this entire folder.
-6. `src/js/main/index.html` - Update the index HTML file
-7. `src/js/main/index-[framework].[ext]` - Update the index file for your framework (React, Vue, Svelte)
-8. `src/jsx/index.ts` - Check if any new properties have been added that don't exist in your config.
-9. `src/shared/universals.d.ts` - Check if any new properties have been added that don't exist in your config.
-
-**ZXPSignCmd Permissions issues on Mac**:
-
-Previously, you would need to fix the permissions of ZXPSignCmd by running the following command in the terminal, however this is now automated since `vite-cep-plugin@1.1.15`. If you still experience problems other reasons you can manually fix the executable as follows:
-
-If you're getting permissions errors running ZXPSignCmd on the latest Mac releases, try a fresh clone. If that does't work, reset permissions for ZXPSignCmd by opening the directory `node_modules/vite-cep-plugin/lib/bin` and running `chmod 700 ./ZXPSignCmd`.
