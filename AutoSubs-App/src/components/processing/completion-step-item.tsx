@@ -77,7 +77,7 @@ export function CompletionStepItem({
                               {t("completion.viewSubtitles")}
                             </Button>
                         )}
-                        {!isMobile && ((isResolveConnected && onViewSubtitles) || !onViewSubtitles) && (
+                        {(!isResolveConnected || !isMobile) && (
                             <ImportExportPopover
                                 onImport={() => importSubtitles(settings, null, "")}
                                 onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
