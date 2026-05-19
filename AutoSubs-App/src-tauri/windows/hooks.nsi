@@ -14,9 +14,9 @@
   CreateDirectory "$PROGRAMDATA\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins"
   CopyFiles "$INSTDIR\resources\AutoSubs.lua" "$PROGRAMDATA\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins"
 
-  ; Premiere Pro Extension Installation
+  ; Adobe Extension Installation
   CreateDirectory "$APPDATA\Adobe\CEP\extensions"
-  CopyFiles "$INSTDIR\resources\com.autosubs.premiere" "$APPDATA\Adobe\CEP\extensions"
+  CopyFiles "$INSTDIR\resources\com.autosubs.adobe" "$APPDATA\Adobe\CEP\extensions"
 
   ; Enable PlayerDebugMode for Adobe CEP extensions (CSXS 6-12)
   WriteRegStr HKCU "Software\Adobe\CSXS.6" "PlayerDebugMode" "1"

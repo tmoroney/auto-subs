@@ -1,4 +1,4 @@
-# AutoSubs Premiere Extension
+# AutoSubs Adobe Extension
 
 This package contains the Adobe CEP extension that lets AutoSubs communicate with Adobe Premiere Pro and After Effects. It provides a small React-based panel inside Adobe apps and a compiled ExtendScript layer that performs host-specific operations such as reading sequence metadata, exporting timeline audio, and importing generated subtitle files.
 
@@ -207,7 +207,7 @@ scripts/copy-to-resources.js
 The extension is copied into:
 
 ```text
-AutoSubs-App/src-tauri/resources/com.autosubs.premiere/
+AutoSubs-App/src-tauri/resources/com.autosubs.adobe/
 ```
 
 During the Tauri app build, the `resources/` folder is bundled into the desktop app.
@@ -233,4 +233,3 @@ On Windows, the installer copies the bundled CEP extension into Adobe's CEP exte
 
 - `scripts/copy-to-resources.js`  
   Copies the built extension into the Tauri resources directory.
-

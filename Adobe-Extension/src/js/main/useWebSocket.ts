@@ -31,6 +31,20 @@ const HEARTBEAT_INTERVAL = 30000;
 const RECONNECT_BASE_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
+const allowedRanges = new Set(["entire", "inout", "selected", "selection"]);
+
+const isRecord = (value: unknown): value is Record<string, any> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+const isNumberArray = (value: unknown): value is number[] =>
+  Array.isArray(value) && value.every((item) => Number.isInteger(item) && item > 0);
+
+const isValidRange = (value: unknown): value is string =>
+  typeof value === "string" && allowedRanges.has(value.toLowerCase());
+
 export const useWebSocket = (port: number) => {
   const [status, setStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
   const [logs, setLogs] = useState<{ message: string; type: string; timestamp: string }[]>([]);
@@ -154,12 +168,6 @@ export const useWebSocket = (port: number) => {
       case "refresh":
         refreshSequenceInfo();
         break;
-      case "execute_script":
-        if (message.scriptName) {
-          const { data } = await executeWithRetry(() => evalTS(message.scriptName, message.args));
-          sendMessage({ type: "script_result", id: opId, payload: data });
-        }
-        break;
       case "handshake_ack":
         addLog("Handshake acknowledged", "success");
         processQueue();
@@ -174,7 +182,19 @@ export const useWebSocket = (port: number) => {
         }
         break;
       case "request_audio_export": {
+        if (!isRecord(message.payload)) {
+          addLog("Invalid audio export payload", "error");
+          sendMessage({ type: "audio_export_response", payload: JSON.stringify({ success: false, error: "Invalid audio export payload" }), sessionId: message.sessionId });
+          break;
+        }
+
         const { exportFolder, selectedTracks, selectedRange, presetPath } = message.payload;
+        if (!isNonEmptyString(exportFolder) || !isNumberArray(selectedTracks) || !isValidRange(selectedRange) || (presetPath !== undefined && typeof presetPath !== "string")) {
+          addLog("Rejected malformed audio export request", "error");
+          sendMessage({ type: "audio_export_response", payload: JSON.stringify({ success: false, error: "Malformed audio export request" }), sessionId: message.sessionId });
+          break;
+        }
+
         addLog(`Exporting audio: ${selectedTracks.length} tracks`, "info");
         startProgress(opId, "audio_export", 100);
         const { data: audioData } = await executeWithRetry(() => evalTS("exportSequenceAudio", exportFolder, JSON.stringify(selectedTracks), selectedRange, presetPath || ""));
@@ -184,6 +204,12 @@ export const useWebSocket = (port: number) => {
         break;
       }
       case "request_import_srt": {
+        if (!isRecord(message.payload) || !isNonEmptyString(message.payload.filePath)) {
+          addLog("Rejected malformed SRT import request", "error");
+          sendMessage({ type: "import_srt_response", payload: JSON.stringify({ success: false, error: "Malformed SRT import request" }), sessionId: message.sessionId, operationId: opId });
+          break;
+        }
+
         const { filePath } = message.payload;
         addLog(`Importing SRT: ${filePath}`, "info");
         const { data: importData } = await executeWithRetry(() => evalTS("importSRTFile", filePath));
@@ -191,6 +217,11 @@ export const useWebSocket = (port: number) => {
         break;
       }
       case "request_jump_to_time": {
+        if (!isRecord(message.payload) || typeof message.payload.time !== "number" || !Number.isFinite(message.payload.time) || message.payload.time < 0) {
+          addLog("Rejected malformed jump request", "error");
+          break;
+        }
+
         const { time } = message.payload;
         await executeWithRetry(() => evalTS("jumpToTime", time));
         // We don't necessarily need to send a response back

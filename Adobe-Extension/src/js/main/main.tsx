@@ -49,7 +49,7 @@ const AppContent = () => {
     <div className="app" style={{ backgroundColor: bgColor }}>
       <header className="header">
         <h1 className="title">AutoSubs</h1>
-        <p className="subtitle">Premiere Pro Extension</p>
+        <p className="subtitle">Adobe Extension</p>
       </header>
 
       {progress && progress.status !== 'completed' && (

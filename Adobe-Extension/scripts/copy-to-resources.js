@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 
 const src = path.resolve('dist/cep');
-const dest = path.resolve('../AutoSubs-App/src-tauri/resources/com.autosubs.premiere');
+const dest = path.resolve('../AutoSubs-App/src-tauri/resources/com.autosubs.adobe');
 
 async function main() {
   try {

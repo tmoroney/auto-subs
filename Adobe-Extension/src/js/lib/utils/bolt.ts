@@ -45,6 +45,13 @@ type ReturnType<F extends Function> = F extends (...args: infer A) => infer B
   ? B
   : never;
 
+const allowedScriptFunctions = new Set<string>([
+  "getActiveSequenceInfo",
+  "exportSequenceAudio",
+  "importSRTFile",
+  "jumpToTime",
+]);
+
 /**
  * @description End-to-end type-safe ExtendScript evaluation with error handling
  * Call ExtendScript functions from CEP with type-safe parameters and return types.
@@ -76,6 +83,13 @@ export const evalTS = <
   ...args: ArgTypes<Func>
 ): Promise<ReturnType<Func>> => {
   return new Promise(function (resolve, reject) {
+    if (!allowedScriptFunctions.has(functionName)) {
+      reject(new Error(`Unsupported ExtendScript function: ${functionName}`));
+      return;
+    }
+
+    const namespaceLiteral = JSON.stringify(ns);
+    const functionNameLiteral = JSON.stringify(functionName);
     const formattedArgs = args
       .map((arg) => {
         console.log(JSON.stringify(arg));
@@ -85,7 +99,12 @@ export const evalTS = <
     csi.evalScript(
       `try{
           var host = typeof $ !== 'undefined' ? $ : window;
-          var res = host["${ns}"].${functionName}(${formattedArgs});
+          var scriptNamespace = host[${namespaceLiteral}];
+          var scriptFunction = scriptNamespace && scriptNamespace[${functionNameLiteral}];
+          if (typeof scriptFunction !== "function") {
+            throw new Error("Unsupported ExtendScript function: " + ${functionNameLiteral});
+          }
+          var res = scriptFunction.apply(scriptNamespace, [${formattedArgs}]);
           JSON.stringify(res);
         }catch(e){
           e.fileName = new File(e.fileName).fsName;
