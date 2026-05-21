@@ -1148,14 +1148,17 @@ fn validate_model_file(path: &Path) -> Result<()> {
     let _ = f.read(&mut buf).context("read failed")?;
 
     // Whisper models from ggerganov/whisper.cpp are GGUF format and must start with the
-    // "GGUF" magic. A partial or corrupted download that passes the size check would otherwise
+    // "GGUF" magic. Some models (e.g. large-v3) are still in the older GGML format which
+    // whisper.cpp can also load — accept both magic byte sequences.
+    // A partial or corrupted download that passes the size check would otherwise
     // cause whisper.cpp to segfault — a native crash that catch_unwind cannot intercept —
     // crashing the whole app. The VAD model uses a different binary format, so we skip it.
     if is_whisper_bin {
         const GGUF_MAGIC: [u8; 4] = [0x47, 0x47, 0x55, 0x46]; // "GGUF"
-        if buf[..4] != GGUF_MAGIC {
+        const GGML_MAGIC: [u8; 4] = [0x6c, 0x6d, 0x67, 0x67]; // "ggml" as LE u32
+        if buf[..4] != GGUF_MAGIC && buf[..4] != GGML_MAGIC {
             bail!(
-                "Model file does not start with GGUF magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
+                "Model file does not start with GGUF/GGML magic bytes (got {:02x} {:02x} {:02x} {:02x}): {}",
                 buf[0], buf[1], buf[2], buf[3],
                 blob_path.display()
             );

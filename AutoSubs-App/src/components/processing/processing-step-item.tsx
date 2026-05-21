@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react"
 import {
     Item,
     ItemContent,
@@ -45,6 +46,44 @@ export function ProcessingStepItem({
     timelineInfo,
     selectedIntegration
 }: ProcessingStepProps) {
+    const startTimeRef = useRef<number | null>(null);
+    const [eta, setEta] = useState<string>("");
+
+    useEffect(() => {
+        if (isActive && progress > 0 && progress < 100) {
+            if (startTimeRef.current === null) {
+                startTimeRef.current = Date.now();
+            }
+            const elapsed = (Date.now() - startTimeRef.current) / 1000;
+            const remaining = Math.max(0, elapsed * (100 - progress) / progress);
+            const totalSecs = Math.floor(remaining);
+            setEta(totalSecs >= 60
+                ? `${Math.floor(totalSecs / 60)}m ${totalSecs % 60}s`
+                : `${totalSecs}s`
+            );
+        } else if (!isActive) {
+            startTimeRef.current = null;
+            setEta("");
+        }
+    }, [isActive, progress]);
+
+    // Refresh ETA every second while active
+    useEffect(() => {
+        if (!(isActive && progress > 0 && progress < 100)) return;
+        const interval = setInterval(() => {
+            if (startTimeRef.current !== null) {
+                const elapsed = (Date.now() - startTimeRef.current) / 1000;
+                const remaining = Math.max(0, elapsed * (100 - progress) / progress);
+                const totalSecs = Math.floor(remaining);
+                setEta(totalSecs >= 60
+                    ? `${Math.floor(totalSecs / 60)}m ${totalSecs % 60}s`
+                    : `${totalSecs}s`
+                );
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isActive, progress]);
+
     // If this is the completion step, render the special completion component
     if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
         return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} settings={settings} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
@@ -67,7 +106,10 @@ export function ProcessingStepItem({
                         {title}
                     </ItemTitle>
                 </ItemContent>
-                <ItemContent className="flex-none justify-end">
+                <ItemContent className="flex-none justify-end gap-2">
+                    {eta && isActive && progress > 0 && progress < 100 && (
+                        <span className="text-xs text-muted-foreground tabular-nums">{eta}</span>
+                    )}
                     <span className="text-sm tabular-nums">{Math.round(progress)}%</span>
                 </ItemContent>
                 {/* Show live preview for Transcribe step */}
