@@ -4,8 +4,6 @@
     "description": "Konfiguriere deine AutoSubs-Einstellungen und Optionen.",
     "sections": {
       "transcription": "Transkription",
-      "support": "Support",
-      "appearance": "Darstellung",
       "language": "Sprache"
     },
     "gpu": {
@@ -18,8 +16,7 @@
     },
     "uiLanguage": {
       "title": "App-Sprache",
-      "description": "Aktualisiert Menüs und Buttons",
-      "showPickerAgain": "Sprachauswahl erneut anzeigen"
+      "description": "Aktualisiert Menüs und Buttons"
     },
     "restartOnboarding": "Onboarding neu starten",
     "openLogsFolder": "Logs-Ordner öffnen",
@@ -30,7 +27,6 @@
     },
     "support": {
       "supportAutoSubs": "AutoSubs unterstützen",
-      "helpSupportDevelopment": "Unterstütze die Entwicklung",
       "viewSource": "Quellcode ansehen"
     }
   },
@@ -39,15 +35,13 @@
     "cancel": "Abbrechen",
     "back": "Zurück",
     "next": "Weiter",
-    "saveChanges": "Änderungen speichern",
     "apply": "Anwenden",
     "add": "Hinzufügen",
     "done": "Fertig",
     "delete": "Löschen",
-    "options": "Optionen",
     "generateSubtitles": "Generieren",
     "startNewTranscription": "Neue Transkription starten",
-    "open": "Öffnen"
+    "refresh": "Verbindung aktualisieren"
   },
   "update": {
     "restartResolveServer": {
@@ -63,9 +57,7 @@
     "supportsSrt": "Unterstützt .srt-Dateien",
     "selected": "Ausgewählt:",
     "importFile": "Datei importieren",
-    "includeSpeakerLabels": "Sprecher-Labels einbeziehen",
     "exportAsSrt": "Als SRT exportieren",
-    "exportAsJson": "Als JSON exportieren",
     "downloadFormat": "{{format}} herunterladen",
     "fileDialog": {
       "subtitleFiles": "Untertiteldateien"
@@ -82,9 +74,13 @@
     }
   },
   "actionBar": {
+    "source": "Quelle",
+    "options": "Optionen",
+    "subtitleStyle": "Untertitelstil",
+    "subtitleStyleDescription": "Untertitel",
+    "model": "Modell",
     "common": {
       "auto": "Auto",
-      "on": "An",
       "off": "Aus"
     },
     "mode": {
@@ -92,7 +88,6 @@
       "timeline": "Timeline"
     },
     "format": {
-      "button": "Format",
       "removePunctuationTitle": "Interpunktion entfernen",
       "removePunctuationDescription": "Entfernt Kommas, Punkte usw.",
       "textCaseTitle": "Groß-/Kleinschreibung",
@@ -103,8 +98,6 @@
         "uppercase": "GROSSBUCHSTABEN",
         "titleCase": "Titel-Schreibweise"
       },
-      "characterLimitTitle": "Zeichenlimit",
-      "characterLimitDescription": "Pro Zeile (0 = auto)",
       "lineCountTitle": "Zeilenanzahl",
       "lineCountDescription": "Max. Zeilen pro Untertitel",
       "textDensityTitle": "Textdichte",
@@ -118,7 +111,6 @@
       },
       "customCharsTitle": "Max. Zeichen",
       "customCharsDescription": "Zeichen pro Zeile",
-      "formatButton": "Format",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vokabular & Kontext",
       "customPromptDescription": "Hilft Whisper, Namen, Marken, Fachsprache, Akronyme und bevorzugte Schreibweisen zu erkennen.",
@@ -149,17 +141,14 @@
         "entire": "Ganze Timeline",
         "inout": "In/Out Punkte"
       },
-      "selectTracks": "Spuren auswählen...",
       "trackN": "Spur {{n}}",
       "countSelected": "{{count}} Spuren ausgewählt",
       "selectedLabel": "{{label}} ausgewählt",
       "noneSelected": "Keine Spuren ausgewählt",
-      "clickToSelect": "Klicken, um Audiospuren auszuwählen",
       "selectAll": "Alle auswählen",
       "clearAll": "Alle entfernen",
       "noneFound": "Keine Audiospuren gefunden.",
-      "createTrack": "Keine Timeline gefunden",
-      "selectMultiple": "Klicken, um mehrere Spuren auszuwählen"
+      "createTrack": "Keine Timeline gefunden"
     },
     "fileDrop": {
       "aria": "Audio-Datei hier ablegen oder klicken zum Auswählen",
@@ -170,6 +159,7 @@
       "mediaFiles": "Mediendateien (ffmpeg-unterstützt)"
     },
     "language": {
+      "title": "Sprache",
       "source": "Quelle",
       "translate": "Übersetzen",
       "searchSourcePlaceholder": "Sprachen suchen...",
@@ -180,34 +170,16 @@
   "speakerEditor": {
     "title": "Sprecher bearbeiten",
     "description": "Dies sind die im Audio erkannten Sprecher.",
-    "jumpToSample": "Zum Beispiel in der Timeline springen",
     "name": "Name",
     "namePlaceholder": "Sprechernamen eingeben",
     "outputTrack": "Ausgabespur",
-    "selectTrack": "Spur auswählen",
-    "appearance": "Darstellung",
     "colors": {
       "fill": "Füllung",
-      "outline": "Kontur",
-      "border": "Rahmen"
-    },
-    "generatingPreview": "Vorschau wird erstellt...",
-    "generatePreview": "Vorschau erstellen",
-    "subtitlePreview": "Untertitel-Vorschau",
-    "continueEditing": "Weiter bearbeiten",
-    "saveAndAddToTimeline": "Speichern & zur Timeline hinzufügen"
-  },
-  "workspace": {
-    "empty": {
-      "loadingModel": "Modell wird in den Speicher geladen...",
-      "welcomeTitle": "Willkommen bei AutoSubs",
-      "welcomeDescription": "Wähle eine Audioquelle aus, um Untertitel zu generieren.",
-      "support": "AutoSubs unterstützen"
+      "outline": "Kontur"
     }
   },
   "modelStatus": {
     "cached": "Im Cache",
-    "available": "Verfügbar",
     "storage": "Speicher:",
     "ram": "RAM:",
     "accuracy": "Genauigkeit",
@@ -380,18 +352,18 @@
     "diarize": "Sprecher werden identifiziert",
     "transcribe": "Sprache zu Text",
     "translate": "Übersetze nach {{language}}",
+    "normaliseAudio": "Audio wird normalisiert",
+    "preparingAudio": "Audio wird vorbereitet...",
     "processing": "Verarbeite",
     "export": "Export"
   },
   "subtitles": {
     "title": "Untertitel",
     "speakers": "Sprecher",
-    "editSpeakers": "Sprecher bearbeiten",
     "reformat": "Neu formatieren",
     "waitingForSubtitles": "Warte auf Untertitel...",
     "searchPlaceholder": "Untertitel durchsuchen...",
     "searchAria": "Untertitel durchsuchen",
-    "clearSearch": "Suche löschen",
     "search": {
       "caseMatch": "Groß-/Kleinschreibung beachten",
       "wholeWord": "Ganzes Wort",
@@ -402,18 +374,10 @@
     "loading": "Untertitel werden geladen...",
     "jumpToTimeline": "Zu diesem Punkt in der Timeline springen",
     "unknownSpeaker": "Unbekannter Sprecher",
+    "previousSubtitles": "Untertitelverlauf",
     "empty": {
-      "noSubtitlesFound": "Keine Untertitel gefunden",
-      "tryDifferentSearch": "Versuche einen anderen Suchbegriff",
       "noSubtitlesAvailable": "Deine Untertitel werden hier angezeigt, sobald die Transkription abgeschlossen ist"
     }
-  },
-  "subtitleEditor": {
-    "title": "Untertitel bearbeiten",
-    "description": "Bearbeite den Untertiteltext, indem du die Wörter unten änderst",
-    "mergeLeft": "Nach links zusammenführen",
-    "mergeRight": "Nach rechts zusammenführen",
-    "deleteWord": "Wort löschen"
   },
   "gettingStarted": {
     "title": "Willkommen bei AutoSubs",
@@ -460,47 +424,22 @@
   },
   "titlebar": {
     "subtitleHistory": {
-      "searchPlaceholder": "Transkripte durchsuchen...",
+      "title": "Untertitelverlauf",
+      "searchPlaceholder": "Untertitelverlauf durchsuchen...",
       "loading": "Lädt...",
       "empty": "Keine Transkripte gefunden.",
-      "empty_title": "Keine Transkripte gefunden",
-      "empty_detail": "Deine Transkriptionshistorie wird hier erscheinen, sobald du Untertitel generiert hast.",
       "no_results": "Keine Ergebnisse gefunden",
-      "no_results_detail": "Versuche deine Suche anzupassen.",
       "delete_title": "Transkript löschen?",
-      "delete_description": "Dies wird das Transkript dauerhaft aus deiner Historie entfernen. Diese Aktion kann nicht rückgängig gemacht werden.",
-      "sections": {
-        "today": "Heute",
-        "yesterday": "Gestern",
-        "last_week": "Letzte 7 Tage",
-        "older": "Früher"
-      }
-    },
-    "windowControls": {
-      "minimize": "Minimieren",
-      "maximize": "Maximieren",
-      "close": "Schließen"
+      "delete_description": "Dies wird das Transkript dauerhaft aus deiner Historie entfernen. Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "status": {
       "disconnected": "Getrennt"
     },
-    "update": {
-      "downloading": "Update wird heruntergeladen",
-      "installing": "Update wird installiert",
-      "restarting": "AutoSubs wird neu gestartet",
-      "installUpdateNow": "Installieren und neu starten"
-    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "Workspace-Skripte-Integration",
-      "status": {
-        "connected": "Verbunden",
-        "disconnected": "Getrennt"
-      },
       "tooltip": {
         "connected": "Verbunden",
-        "currentlyViewing": "Aktuell angezeigt: {{name}}",
-        "ready": "Bereit für Zugriff auf die Timeline",
         "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
         "cantConnect": "Keine Verbindung zur Timeline möglich",
         "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
@@ -509,10 +448,6 @@
     "premiere": {
       "productName": "Premiere Pro",
       "description": "Adobe-Erweiterungs-Integration",
-      "status": {
-        "connected": "Verbunden",
-        "disconnected": "Getrennt"
-      },
       "tooltip": {
         "connected": "Verbunden",
         "canGetAudio": "Sie können Audio von der Timeline abrufen und Untertitel hinzufügen.",
@@ -523,10 +458,6 @@
     "aftereffects": {
       "productName": "After Effects",
       "description": "Adobe-Erweiterungs-Integration",
-      "status": {
-        "connected": "Verbunden",
-        "disconnected": "Getrennt"
-      },
       "tooltip": {
         "connected": "Verbunden",
         "canGetAudio": "Sie können Audio aus der Komposition abrufen und Untertitel hinzufügen.",
@@ -544,51 +475,27 @@
       "title": "Untertitel bereit",
       "description": "Deine Untertitel wurden generiert und können nun zur Timeline hinzugefügt werden."
     },
-    "templateTheme": "Vorlagenstil",
-    "selectTemplate": "Vorlage auswählen",
-    "outputTrack": "Ausgabespur",
-    "selectOutputTrack": "Ausgabespur auswählen",
     "adding": "Wird hinzugefügt...",
     "success": "Zur Timeline hinzugefügt",
-    "steps": {
-      "template": {
-        "title": "Vorlage",
-        "description": "Wähle eine Stilvorlage"
-      },
-      "speakers": {
-        "title": "Sprecher",
-        "description": "Sprecherspuren und Farben konfigurieren"
-      },
-      "outputTrack": {
-        "title": "Ausgabespur",
-        "description": "Wähle die Untertitelspur"
-      }
-    },
     "mode": {
       "regular": "Normal",
       "animated": "Animiert"
     },
     "conflict": {
-      "checking": "Konflikte werden überprüft...",
       "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
     },
     "preset": {
       "new": "Neue Voreinstellung",
-      "newDescription": "Untertitel in Resolve entwerfen",
       "builtIn": "Integriert",
       "custom": "Benutzerdefiniert",
       "preview": "Vorschau in Resolve",
-      "edit": "Bearbeiten",
       "duplicate": "Duplizieren",
       "delete": "Löschen",
-      "rename": "Umbenennen",
       "export": "JSON exportieren",
       "copyJson": "JSON kopieren",
       "copied": "In die Zwischenablage kopiert",
       "import": "Datei importieren",
       "paste": "JSON einfügen",
-      "emptyTitle": "Noch keine benutzerdefinierten Voreinstellungen",
-      "emptyHint": "Klicke auf Neue Voreinstellung, um deine eigene zu entwerfen, oder importiere eine aus einer Datei.",
       "phase": {
         "launchingTitle": "Untertitel in Resolve öffnen…",
         "launchingHint": "Wir platzieren einen Vorschau-Untertitel auf einer temporären Spur.",
@@ -602,7 +509,6 @@
         "cancel": "Abbrechen",
         "save": "Voreinstellung speichern",
         "back": "Zurück",
-        "startEditing": "Bearbeitung in Resolve starten",
         "captureSettings": "Einstellungen erfassen"
       },
       "nameLabel": "Name der Voreinstellung",
@@ -617,7 +523,6 @@
       "importSubmit": "Voreinstellung importieren",
       "errors": {
         "invalidJson": "Das sieht nicht nach einer gültigen Voreinstellungsdatei aus.",
-        "startFailed": "Voreinstellungs-Editor konnte nicht in Resolve geöffnet werden.",
         "captureFailed": "Untertitel-Einstellungen konnten nicht aus Resolve gelesen werden.",
         "nameRequired": "Bitte gib einen Namen ein."
       }

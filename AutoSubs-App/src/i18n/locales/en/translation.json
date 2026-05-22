@@ -4,8 +4,6 @@
     "description": "Configure your AutoSubs preferences and options.",
     "sections": {
       "transcription": "Transcription",
-      "support": "Support",
-      "appearance": "Appearance",
       "language": "Language"
     },
     "gpu": {
@@ -18,8 +16,7 @@
     },
     "uiLanguage": {
       "title": "App Language",
-      "description": "Updates menus and buttons",
-      "showPickerAgain": "Show language picker again"
+      "description": "Updates menus and buttons"
     },
     "restartOnboarding": "Restart Onboarding",
     "openLogsFolder": "Open Logs Folder",
@@ -30,7 +27,6 @@
     },
     "support": {
       "supportAutoSubs": "Support AutoSubs",
-      "helpSupportDevelopment": "Help support development",
       "viewSource": "Contribute"
     }
   },
@@ -39,15 +35,13 @@
     "cancel": "Cancel",
     "back": "Back",
     "next": "Next",
-    "saveChanges": "Save Changes",
     "apply": "Apply",
     "add": "Add",
     "done": "Done",
     "delete": "Delete",
-    "options": "Options",
     "generateSubtitles": "Generate",
     "startNewTranscription": "Start new transcription",
-    "open": "Open"
+    "refresh": "Refresh connection"
   },
   "update": {
     "restartResolveServer": {
@@ -63,9 +57,7 @@
     "supportsSrt": "Supports .srt files",
     "selected": "Selected:",
     "importFile": "Import File",
-    "includeSpeakerLabels": "Include speaker labels",
     "exportAsSrt": "Export as SRT",
-    "exportAsJson": "Export as JSON",
     "downloadFormat": "Download {{format}}",
     "fileDialog": {
       "subtitleFiles": "Subtitle Files"
@@ -82,9 +74,13 @@
     }
   },
   "actionBar": {
+    "source": "Source",
+    "options": "Options",
+    "subtitleStyle": "Caption Style",
+    "subtitleStyleDescription": "Captions",
+    "model": "Model",
     "common": {
       "auto": "Auto",
-      "on": "On",
       "off": "Off"
     },
     "mode": {
@@ -92,7 +88,6 @@
       "timeline": "Timeline"
     },
     "format": {
-      "button": "Format",
       "removePunctuationTitle": "Remove Punctuation",
       "removePunctuationDescription": "Removes commas, periods, etc.",
       "textCaseTitle": "Text Case",
@@ -103,8 +98,6 @@
         "uppercase": "UPPERCASE",
         "titleCase": "Title Case"
       },
-      "characterLimitTitle": "Character Limit",
-      "characterLimitDescription": "Per line (0 = auto)",
       "lineCountTitle": "Line Count",
       "lineCountDescription": "Max lines per subtitle",
       "textDensityTitle": "Text Density",
@@ -118,7 +111,6 @@
       },
       "customCharsTitle": "Max Characters",
       "customCharsDescription": "Characters per line",
-      "formatButton": "Format",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vocabulary & Context",
       "customPromptDescription": "Helps Whisper recognize names, brands, jargon, acronyms, and preferred spellings.",
@@ -149,17 +141,14 @@
         "entire": "Entire Timeline",
         "inout": "In/Out Points"
       },
-      "selectTracks": "Select tracks...",
       "trackN": "Track {{n}}",
       "countSelected": "{{count}} tracks selected",
       "selectedLabel": "{{label}} selected",
       "noneSelected": "No tracks selected",
-      "clickToSelect": "Click to select audio tracks",
       "selectAll": "Select All",
       "clearAll": "Clear All",
       "noneFound": "No audio tracks found.",
-      "createTrack": "No timeline found",
-      "selectMultiple": "Click to select multiple tracks"
+      "createTrack": "No timeline found"
     },
     "fileDrop": {
       "aria": "Drop audio file here or click to select",
@@ -170,6 +159,7 @@
       "mediaFiles": "Media Files (ffmpeg-supported)"
     },
     "language": {
+      "title": "Language",
       "source": "Source",
       "translate": "Translate",
       "searchSourcePlaceholder": "Search languages...",
@@ -180,36 +170,18 @@
   "speakerEditor": {
     "title": "Edit Speakers",
     "description": "These are the speakers detected in the audio.",
-    "jumpToSample": "Jump to sample in timeline",
     "name": "Speaker Name",
     "namePlaceholder": "Enter speaker name",
     "outputTrack": "Output Track",
-    "selectTrack": "Select a track",
-    "appearance": "Appearance",
     "style": "Individual Style",
     "colors": {
       "none": "None",
       "fill": "Fill",
-      "outline": "Outline",
-      "border": "Border"
-    },
-    "generatingPreview": "Generating Preview...",
-    "generatePreview": "Generate Preview",
-    "subtitlePreview": "Subtitle Preview",
-    "continueEditing": "Continue Editing",
-    "saveAndAddToTimeline": "Save & Add to Timeline"
-  },
-  "workspace": {
-    "empty": {
-      "loadingModel": "Loading model into memory...",
-      "welcomeTitle": "Welcome to AutoSubs",
-      "welcomeDescription": "Select an audio source to start generating subtitles.",
-      "support": "Support AutoSubs"
+      "outline": "Outline"
     }
   },
   "modelStatus": {
     "cached": "Downloaded",
-    "available": "Not downloaded",
     "storage": "Storage:",
     "ram": "RAM:",
     "accuracy": "Accuracy",
@@ -382,18 +354,18 @@
     "diarize": "Identifying speakers",
     "transcribe": "Speech to text",
     "translate": "Translating to {{language}}",
+    "normaliseAudio": "Normalising audio",
+    "preparingAudio": "Preparing audio...",
     "processing": "Processing",
     "export": "Export"
   },
   "subtitles": {
     "title": "Subtitles",
     "speakers": "Speakers",
-    "editSpeakers": "Edit Speakers",
     "reformat": "Reformat",
     "waitingForSubtitles": "Waiting for subtitles...",
     "searchPlaceholder": "Search subtitles...",
     "searchAria": "Search subtitles",
-    "clearSearch": "Clear search",
     "search": {
       "caseMatch": "Case match",
       "wholeWord": "Whole word",
@@ -406,17 +378,8 @@
     "unknownSpeaker": "Unknown Speaker",
     "previousSubtitles": "Subtitle History",
     "empty": {
-      "noSubtitlesFound": "No subtitles found",
-      "tryDifferentSearch": "Try a different search term",
       "noSubtitlesAvailable": "Your subtitles will appear here when finished transcribing"
     }
-  },
-  "subtitleEditor": {
-    "title": "Edit Subtitle",
-    "description": "Edit the subtitle text by modifying the words below",
-    "mergeLeft": "Merge Left",
-    "mergeRight": "Merge Right",
-    "deleteWord": "Delete word"
   },
   "gettingStarted": {
     "title": "Welcome to AutoSubs",
@@ -463,48 +426,23 @@
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "Subtitle History",
       "searchPlaceholder": "Search subtitle history...",
       "loading": "Loading...",
       "empty": "No subtitle documents found.",
-      "empty_title": "No subtitle documents found",
-      "empty_detail": "Your subtitle history will appear here once you generate subtitles.",
       "no_results": "No results found",
-      "no_results_detail": "Try adjusting your search query.",
       "delete_title": "Delete subtitle document?",
-      "delete_description": "This will permanently remove the subtitle document from your history. This action cannot be undone.",
-      "sections": {
-        "today": "Today",
-        "yesterday": "Yesterday",
-        "last_week": "Last 7 Days",
-        "older": "Earlier"
-      }
-    },
-    "windowControls": {
-      "minimize": "Minimize",
-      "maximize": "Maximize",
-      "close": "Close"
+      "delete_description": "This will permanently remove the subtitle document from your history. This action cannot be undone."
     },
     "status": {
       "disconnected": "Disconnected"
     },
-    "update": {
-      "downloading": "Downloading Update",
-      "installing": "Installing Update",
-      "restarting": "Restarting AutoSubs",
-      "installUpdateNow": "Install and Restart"
-    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "Workspace Scripts integration",
-      "status": {
-        "connected": "Connected",
-        "disconnected": "Disconnected"
-      },
       "tooltip": {
         "connected": "Connected",
-        "currentlyViewing": "Currently viewing: {{name}}",
-        "ready": "Ready to access timeline",
-        "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "cantConnect": "Can't connect to timeline",
         "openResolve": "Open DaVinci Resolve and go to Workspace → Scripts → AutoSubs"
       }
@@ -512,13 +450,9 @@
     "premiere": {
       "productName": "Premiere Pro",
       "description": "Adobe extension integration",
-      "status": {
-        "connected": "Connected",
-        "disconnected": "Disconnected"
-      },
       "tooltip": {
         "connected": "Connected",
-        "canGetAudio": "You can get audio from the timeline and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "disconnected": "Extension disconnected",
         "openPremiere": "Open Premiere Pro to connect automatically."
       }
@@ -526,13 +460,9 @@
     "aftereffects": {
       "productName": "After Effects",
       "description": "Adobe extension integration",
-      "status": {
-        "connected": "Connected",
-        "disconnected": "Disconnected"
-      },
       "tooltip": {
         "connected": "Connected",
-        "canGetAudio": "You can get audio from the composition and add subtitles back to it.",
+        "canGetAudio": "Ready to add subtitles.",
         "disconnected": "Extension disconnected",
         "openAfterEffects": "Open After Effects to connect automatically."
       }
@@ -547,51 +477,27 @@
       "title": "Subtitles Ready",
       "description": "Your subtitles have been generated and are ready to be added to the timeline."
     },
-    "templateTheme": "Template Theme",
-    "selectTemplate": "Select template",
-    "outputTrack": "Output Track",
-    "selectOutputTrack": "Select output track",
     "adding": "Adding...",
     "success": "Added to timeline",
-    "steps": {
-      "template": {
-        "title": "Template",
-        "description": "Choose a style template"
-      },
-      "speakers": {
-        "title": "Speakers",
-        "description": "Configure speaker tracks and colors"
-      },
-      "outputTrack": {
-        "title": "Output Track",
-        "description": "Select the subtitle track"
-      }
-    },
     "mode": {
       "regular": "Regular",
       "animated": "Animated"
     },
     "conflict": {
-      "checking": "Checking for conflicts...",
       "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."
     },
     "preset": {
       "new": "New preset",
-      "newDescription": "Design a caption in Resolve",
       "builtIn": "Built-in",
       "custom": "Custom",
       "preview": "Preview in Resolve",
-      "edit": "Edit",
       "duplicate": "Duplicate",
       "delete": "Delete",
-      "rename": "Rename",
       "export": "Export JSON",
       "copyJson": "Copy JSON",
       "copied": "Copied to clipboard",
       "import": "Import file",
       "paste": "Paste JSON",
-      "emptyTitle": "No custom presets yet",
-      "emptyHint": "Click New preset to design your own, or import one from a file.",
       "phase": {
         "launchingTitle": "Opening caption in Resolve…",
         "launchingHint": "We’ll drop a preview caption on a temporary track.",
@@ -605,7 +511,6 @@
         "cancel": "Cancel",
         "save": "Save preset",
         "back": "Back",
-        "startEditing": "Start editing in Resolve",
         "captureSettings": "Capture settings"
       },
       "nameLabel": "Preset name",
@@ -620,7 +525,6 @@
       "importSubmit": "Import preset",
       "errors": {
         "invalidJson": "That doesn’t look like a valid preset file.",
-        "startFailed": "Couldn’t open the preset editor in Resolve.",
         "captureFailed": "Couldn’t read the caption settings from Resolve.",
         "nameRequired": "Please enter a name."
       }
@@ -638,18 +542,5 @@
     "noOccurrencesFound": "No occurrences found",
     "replaceCurrent": "Replace Current",
     "replaceAll": "Replace All ({{count}})"
-  },
-  "errorDialog": {
-    "transcriptionFailed": "Transcription failed",
-    "addToTimelineFailed": "Couldn't add subtitles to timeline",
-    "exportFailed": "Audio export failed",
-    "previewFailed": "Couldn't generate preview",
-    "showDetails": "Show details",
-    "hideDetails": "Hide details",
-    "logFileLabel": "Log file",
-    "copyPath": "Copy path",
-    "copied": "Copied",
-    "openLogFolder": "Open log folder",
-    "reportOnGithub": "Report on GitHub"
   }
 }

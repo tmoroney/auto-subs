@@ -179,7 +179,7 @@ export function IntegrationStatus() {
             className="cursor-pointer"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>{t("common.refresh", "Refresh")}</span>
+            <span>{t("common.refresh", "Refresh connection")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

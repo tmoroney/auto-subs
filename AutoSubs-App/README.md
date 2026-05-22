@@ -1,6 +1,6 @@
 # AutoSubs App
 
-A cross-platform desktop app for generating subtitles with speaker diarization, translation, and DaVinci Resolve integration — powered by AI transcription models running locally on your machine.
+A cross-platform desktop app for generating subtitles with speaker diarization, translation, DaVinci Resolve integration, and Adobe Premiere Pro / After Effects integration via the bundled CEP extension — powered by AI transcription models running locally on your machine.
 
 ## Tech Stack
 
@@ -18,7 +18,7 @@ A cross-platform desktop app for generating subtitles with speaker diarization, 
 graph TB
     subgraph Frontend ["Frontend (React + TypeScript)"]
         UI[UI Components]
-        CTX[State Contexts<br><i>Transcript, Models, Progress,<br>Settings, Resolve</i>]
+        CTX[State Contexts<br><i>Transcript, Models, Progress,<br>Settings, Integrations</i>]
         UI <--> CTX
     end
 
@@ -48,8 +48,16 @@ graph TB
         HF[HuggingFace Hub<br><i>model downloads</i>]
     end
 
-    subgraph Resolve ["DaVinci Resolve (Optional)"]
+    subgraph Resolve ["DaVinci Resolve Integration (Optional)"]
         LUA[AutoSubs.lua Script]
+    end
+
+    subgraph Adobe ["Adobe Integration (Optional)"]
+        WS[Adobe Bridge + Extension<br><i>WebSocket :8185</i>]
+        PR[Premiere Pro]
+        AE[After Effects]
+        WS --> PR
+        WS --> AE
     end
 
     Frontend <--> Tauri
@@ -58,6 +66,7 @@ graph TB
     AP --> FF
     Engine --> HF
     LUA <-.-> Tauri
+    Backend <--> WS
 ```
 
 **How a transcription works end-to-end:**
@@ -76,11 +85,11 @@ graph TB
 |---|---|
 | `src/` | React frontend — components, contexts, hooks, utilities |
 | `src/components/` | UI organized by feature (transcription, subtitles, settings, processing) |
-| `src/contexts/` | Global state management (transcript, progress, models, settings, Resolve) |
+| `src/contexts/` | Global state management (transcript, progress, models, settings, editor integrations) |
 | `src-tauri/src/` | Rust backend — Tauri commands, audio preprocessing, logging |
 | `src-tauri/crates/transcription-engine/` | Core engine — transcription, diarization, formatting, translation |
 | `src-tauri/crates/transcription-engine/src/engines/` | Model-specific implementations (Whisper, Parakeet, Moonshine) |
-| `src-tauri/resources/` | DaVinci Resolve Lua script + subtitle templates |
+| `src-tauri/resources/` | DaVinci Resolve Lua script, Adobe CEP extension resources, and subtitle templates |
 
 ## Model Cache Location
 

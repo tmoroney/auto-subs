@@ -113,7 +113,11 @@ pub async fn normalize<R: Runtime>(
         // Check file size
         let out_meta = fs::metadata(&output)?;
         if out_meta.len() <= 44 {
-            tracing::warn!("Output WAV file is suspiciously small (header-only): {:?}", output);
+            bail!(
+                "ffmpeg produced an empty WAV file ({} bytes): {}",
+                out_meta.len(),
+                output.display()
+            );
         }
 
         tracing::info!("audio normalization: success -> {}", output.display());

@@ -111,6 +111,9 @@ impl Engine {
         };
 
         let original_samples = crate::audio::read_wav(&audio_path)?;
+        if original_samples.is_empty() {
+            eyre::bail!("audio file contains no samples")
+        }
 
         let speech_segments: Vec<SpeechSegment>;
 

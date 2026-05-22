@@ -313,7 +313,7 @@ export function CaptionTemplateSelectionDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>{t("actionBar.options.subtitleStyle", "Caption Style")}</DialogTitle>
+                    <DialogTitle>{t("actionBar.subtitleStyle", "Caption Style")}</DialogTitle>
                 </DialogHeader>
                 <CaptionTemplateSelectionContent
                     mode={selection.mode}

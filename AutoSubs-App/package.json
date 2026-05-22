@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run build:web",
+    "build:web": "tsc && vite build",
+    "build:adobe-extension": "npm --prefix ../Adobe-Extension run build",
+    "build:tauri-prep": "npm run build:adobe-extension && npm run build:web",
     "preview": "vite preview",
     "tauri": "tauri",
     "dev:win": "tauri dev --features windows -- --no-default-features",

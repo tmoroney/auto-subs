@@ -4,6 +4,7 @@ import { Template, TimelineInfo } from '@/types';
 import { getTimelineInfo, getTemplates, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
 import { useIntegration } from '@/contexts/IntegrationContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { validateExportedAudioFile } from '@/utils/file-utils';
 
 interface ResolveContextType {
   timelineInfo: TimelineInfo;
@@ -265,6 +266,8 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         }
 
         let audioPath = audioInfo["path"];
+        await validateExportedAudioFile(audioPath);
+
         let audioOffset = audioInfo["offset"];
         return { path: audioPath, offset: audioOffset };
 

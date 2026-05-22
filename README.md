@@ -4,8 +4,8 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 
 - Transcribes speech in many languages, with optional translation
 - Identifies and labels multiple speakers automatically
-- Exports to SRT, plain text, or directly into DaVinci Resolve
-- Works standalone or as a DaVinci Resolve plugin
+- Exports to SRT, plain text, DaVinci Resolve, Premiere Pro, or After Effects
+- Works standalone, with DaVinci Resolve, or with Adobe apps through the bundled CEP extension
 
 [![Downloads](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Weekly App Opens](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-users.json&style=flat)](https://tom-moroney.com/release-tracker/)
@@ -17,6 +17,28 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 Generate Subtitles with Speaker Labels |  Animated Captions
 :-------------------------:|:-------------------------:
 <img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/fbdba848-46d5-451c-b671-06bf3237b08c"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/3a707940-7f2d-4052-990c-58cd913c185c">
+
+---
+
+## Integrations
+
+```mermaid
+flowchart TD
+    app["AutoSubs Desktop App<br/>Local AI transcription"]
+    file["Standalone Files<br/>Audio / video input"]
+    resolve["DaVinci Resolve<br/>Lua script integration"]
+    adobe["Adobe Bridge + Extension<br/>WebSocket :8185"]
+    premiere["Premiere Pro<br/>Sequence audio + SRT captions"]
+    aftereffects["After Effects<br/>SRT to text layers"]
+
+    file --> app
+    app <--> resolve
+    app <--> adobe
+    adobe --> premiere
+    adobe --> aftereffects
+```
+
+AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
 
 ---
 
@@ -64,6 +86,12 @@ Download [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/relea
 2. Select your timeline/audio source and settings.
 3. Click **Transcribe**. Edit speakers and subtitles as needed.
 4. Send styled subtitles back to Resolve.
+
+#### Adobe Premiere Pro / After Effects Mode
+1. Launch AutoSubs and open the bundled AutoSubs CEP extension in Premiere Pro or After Effects.
+2. Select the Adobe integration from AutoSubs.
+3. Export timeline audio for transcription or import generated subtitles back into the host app.
+4. In Premiere Pro, subtitles are imported as caption tracks; in After Effects, SRT entries are created as text layers.
 
 > [!WARNING]
 > AutoSubs will not work with the Mac App Store version of DaVinci Resolve. Re-install from the [official website](https://www.blackmagicdesign.com/products/davinciresolve/) if needed.

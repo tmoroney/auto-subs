@@ -23,10 +23,10 @@ sign.sh
 AutoSubs-App/package-lock.json
 /Mac-Package/Payload
 /AutoSubs-App/src-tauri/binaries
+/AutoSubs-App/src-tauri/resources/com.autosubs.adobe/
 /AutoSubs-App/.windsurf
 /AutoSubs-App/src-tauri/src/pyannote-rs
 /AutoSubs-App/src-tauri/crates/transcription-engine/cache
 node_modules/
-/Premiere-Extension/dist
-/Premiere-Extension/archive
-
+/Adobe-Extension/dist
+/Adobe-Extension/archive
