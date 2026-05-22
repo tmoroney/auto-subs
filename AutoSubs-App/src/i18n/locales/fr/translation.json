@@ -470,6 +470,17 @@
     "toggle": "Basculer le thème"
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "Piste"
+      },
+      "template": {
+        "title": "Style"
+      },
+      "speakers": {
+        "title": "Intervenants"
+      }
+    },
     "title": "Ajouter à la timeline",
     "ready": {
       "title": "Sous-titres prêts",

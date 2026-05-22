@@ -470,6 +470,17 @@
     "toggle": "切换主题"
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "轨道"
+      },
+      "template": {
+        "title": "样式"
+      },
+      "speakers": {
+        "title": "说话人"
+      }
+    },
     "conflict": {
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
     },

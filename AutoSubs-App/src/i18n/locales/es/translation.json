@@ -470,6 +470,17 @@
     "toggle": "Cambiar tema"
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "Pista"
+      },
+      "template": {
+        "title": "Estilo"
+      },
+      "speakers": {
+        "title": "Hablantes"
+      }
+    },
     "title": "Añadir a la línea de tiempo",
     "ready": {
       "title": "Subtítulos listos",

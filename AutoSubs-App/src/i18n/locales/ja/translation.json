@@ -470,6 +470,17 @@
     }
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "トラック"
+      },
+      "template": {
+        "title": "スタイル"
+      },
+      "speakers": {
+        "title": "話者"
+      }
+    },
     "conflict": {
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
     },

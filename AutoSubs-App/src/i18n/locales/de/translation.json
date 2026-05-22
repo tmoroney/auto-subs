@@ -470,6 +470,17 @@
     "toggle": "Theme umschalten"
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "Spur"
+      },
+      "template": {
+        "title": "Stil"
+      },
+      "speakers": {
+        "title": "Sprecher"
+      }
+    },
     "title": "Zur Timeline hinzufügen",
     "ready": {
       "title": "Untertitel bereit",

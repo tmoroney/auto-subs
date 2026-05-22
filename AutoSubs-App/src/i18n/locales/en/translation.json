@@ -472,6 +472,17 @@
     "toggle": "Toggle theme"
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "Track"
+      },
+      "template": {
+        "title": "Style"
+      },
+      "speakers": {
+        "title": "Speakers"
+      }
+    },
     "title": "Add to Timeline",
     "ready": {
       "title": "Subtitles Ready",
