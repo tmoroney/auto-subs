@@ -556,7 +556,7 @@
 					-- Find the timeline item that contains this Fusion composition
 					-- Note: DaVinci Resolve has no direct API to get timeline item from comp, so we search manually
 					return function(comp)
-						local resolve = bmd and bmd.scriptapp and bmd.scriptapp("Resolve")
+						local resolve = app:GetResolve()
 						local projectManager = resolve:GetProjectManager()
 						local currentProject = projectManager:GetCurrentProject()
 						local timeline = currentProject:GetCurrentTimeline()
