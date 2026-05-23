@@ -76,8 +76,20 @@ luaresolve =
             fu = Fusion()
         end
 		local files = bmd.readdir(fu:MapPath("FusionLibs:"..iif(ffi.os == "Windows", "", "../"))..name_pattern)
-		assert(#files == 1 and files[1].IsDir == false, string.format("Couldn't find exact match for pattern \"%s.\"", name_pattern))
-		return ffi.load(files.Parent..files[1].Name)
+		local candidates = {}
+		for _, file in ipairs(files) do
+			if file.IsDir == false then
+				table.insert(candidates, file)
+			end
+		end
+		table.sort(candidates, function(a, b) return a.Name > b.Name end)
+		for _, file in ipairs(candidates) do
+			local ok, library = pcall(ffi.load, files.Parent..file.Name)
+			if ok then
+				return library
+			end
+		end
+		assert(false, string.format("Couldn't load library matching pattern \"%s.\"", name_pattern))
 	end,
 
 	frame_from_timecode = function(self, timecode, frame_rate)

@@ -21,6 +21,7 @@ export interface ProcessingStepProps {
     onExportToFile?: () => void;
     onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
+    isSubtitleViewerOpen?: boolean;
     livePreviewSegments?: any[];
     settings?: Settings;
     timelineInfo?: TimelineInfo;
@@ -38,6 +39,7 @@ export function ProcessingStepItem({
     onExportToFile,
     onAddToTimeline,
     onViewSubtitles,
+    isSubtitleViewerOpen = false,
     livePreviewSegments = [],
     settings,
     timelineInfo,
@@ -45,12 +47,12 @@ export function ProcessingStepItem({
 }: ProcessingStepProps) {
     // If this is the completion step, render the special completion component
     if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} settings={settings} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
+        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} settings={settings} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
     }
 
     return (
         <div className="flex w-full flex-col">
-            <Item variant={isCompleted ? "muted" : "outline"}>
+            <Item variant="outline">
                 <ItemMedia>
                     {isCompleted ? (
                         <CircleCheck className="text-primary" />

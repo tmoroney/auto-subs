@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:tauri-prep",
     "frontendDist": "../dist"
   },
   "app": {
@@ -15,11 +15,11 @@
         "titleBarStyle": "Overlay",
         "decorations": true,
         "trafficLightPosition": {
-          "x": 10,
-          "y": 20
+          "x": 16,
+          "y": 25
         },
         "height": 700,
-        "width": 900,
+        "width": 750,
         "acceptFirstMouse": true,
         "zoomHotkeysEnabled": true
       }

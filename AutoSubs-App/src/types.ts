@@ -30,6 +30,7 @@ export interface TimelineInfo {
     templates: Template[];
     inputTracks: Track[];
     outputTracks: Track[];
+    projectName: string;
 }
 
 // Subtitle Interfaces

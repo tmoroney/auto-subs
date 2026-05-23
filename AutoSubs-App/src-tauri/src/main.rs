@@ -94,14 +94,6 @@ fn main() {
                 }
             }
 
-            // Hide native titlebar on Windows and Linux so the custom HTML titlebar is used exclusively
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.set_decorations(false);
-                }
-            }
-
             // Set traffic light position programmatically on macOS.
             // `trafficLightPosition` in tauri.conf.json is only applied at window
             // creation and AppKit resets the button layout on various lifecycle

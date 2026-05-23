@@ -1,5 +1,10 @@
 {
   "actionBar": {
+    "source": "소스",
+    "options": "옵션",
+    "subtitleStyle": "자막 스타일",
+    "subtitleStyleDescription": "자막",
+    "model": "모델",
     "censor": {
       "dialogDescription": "자막에서 검열할 단어를 추가하세요.",
       "dialogTitle": "민감한 단어 검열",
@@ -10,8 +15,7 @@
     },
     "common": {
       "auto": "자동",
-      "off": "끄기",
-      "on": "켜기"
+      "off": "끄기"
     },
     "fileDrop": {
       "aria": "오디오 파일을 여기에 놓거나 클릭하여 선택",
@@ -22,9 +26,6 @@
       "mediaFiles": "미디어 파일 (ffmpeg 지원)"
     },
     "format": {
-      "button": "서식",
-      "characterLimitDescription": "줄당 (0 = 자동)",
-      "characterLimitTitle": "문자 제한",
       "lineCountDescription": "자막당 최대 줄 수",
       "lineCountTitle": "줄 수",
       "removePunctuationDescription": "쉼표, 마침표 등을 제거",
@@ -48,7 +49,6 @@
       },
       "customCharsTitle": "최대 문자 수",
       "customCharsDescription": "줄당 문자 수",
-      "formatButton": "서식",
       "customPromptButton": "프롬프트",
       "customPromptTitle": "어휘 및 맥락",
       "customPromptDescription": "Whisper가 이름, 브랜드, 전문 용어, 약어, 선호 표기를 더 잘 인식하도록 돕습니다.",
@@ -61,6 +61,7 @@
       "customPromptWhisperOnly": "Whisper 모델에서만 지원됩니다."
     },
     "language": {
+      "title": "언어",
       "noLanguageFound": "언어를 찾을 수 없습니다.",
       "searchSourcePlaceholder": "언어 검색...",
       "searchTargetPlaceholder": "대상 언어 검색...",
@@ -83,14 +84,11 @@
         "inout": "인/아웃 포인트"
       },
       "clearAll": "모두 지우기",
-      "clickToSelect": "클릭하여 오디오 트랙 선택",
       "countSelected": "{{count}}개 트랙 선택됨",
       "createTrack": "타임라인을 찾을 수 없습니다",
       "noneFound": "오디오 트랙을 찾을 수 없습니다.",
       "noneSelected": "선택된 트랙 없음",
       "selectAll": "모두 선택",
-      "selectMultiple": "클릭하여 여러 트랙 선택",
-      "selectTracks": "트랙 선택...",
       "selectedLabel": "{{label}} 선택됨",
       "trackN": "트랙 {{n}}"
     }
@@ -103,11 +101,10 @@
     "close": "닫기",
     "delete": "삭제",
     "done": "완료",
-    "generateSubtitles": "자막 생성",
+    "generateSubtitles": "생성",
+    "startNewTranscription": "새 트랜스크립션 시작",
     "next": "다음",
-    "options": "옵션",
-    "saveChanges": "변경사항 저장",
-    "open": "열기"
+    "refresh": "연결 새로고침"
   },
   "update": {
     "restartResolveServer": {
@@ -126,7 +123,6 @@
     "button": "내보내기 / 가져오기",
     "downloadFormat": "{{format}} 다운로드",
     "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
-    "exportAsJson": "JSON으로 내보내기",
     "exportAsSrt": "SRT로 내보내기",
     "exportFormats": {
       "srt": {
@@ -144,7 +140,6 @@
     },
     "importFile": "파일 가져오기",
     "importTab": "가져오기",
-    "includeSpeakerLabels": "화자 레이블 포함",
     "selected": "선택됨:",
     "supportsSrt": ".srt 파일 지원"
   },
@@ -192,7 +187,6 @@
     "finish": "시작하기"
   },
   "modelStatus": {
-    "available": "다운로드 안 됨",
     "cached": "다운로드됨",
     "ram": "RAM:",
     "storage": "저장 공간:",
@@ -360,6 +354,8 @@
     "processing": "처리 중",
     "transcribe": "음성을 텍스트로 변환 중",
     "translate": "{{language}}(으)로 번역 중",
+    "normaliseAudio": "오디오 정규화 중",
+    "preparingAudio": "오디오 준비 중...",
     "export": "내보내기"
   },
   "settings": {
@@ -380,58 +376,34 @@
       "confirmTitle": "설정 초기화"
     },
     "sections": {
-      "appearance": "외관",
       "language": "언어",
-      "support": "지원",
       "transcription": "자막 생성"
     },
     "support": {
-      "helpSupportDevelopment": "개발 지원하기",
       "supportAutoSubs": "AutoSubs 지원",
       "viewSource": "기여하기"
     },
     "title": "설정",
     "uiLanguage": {
       "description": "메뉴 및 버튼 업데이트",
-      "showPickerAgain": "언어 선택창 다시 표시",
       "title": "앱 언어"
     }
   },
   "speakerEditor": {
-    "appearance": "외관",
     "colors": {
-      "border": "테두리",
       "fill": "채우기",
       "outline": "윤곽선"
     },
-    "continueEditing": "계속 편집",
     "description": "오디오에서 감지된 화자입니다.",
-    "generatePreview": "미리보기 생성",
-    "generatingPreview": "미리보기 생성 중...",
-    "jumpToSample": "타임라인의 샘플로 이동",
     "name": "이름",
     "namePlaceholder": "화자 이름 입력",
     "outputTrack": "출력 트랙",
-    "saveAndAddToTimeline": "저장 후 타임라인에 추가",
-    "selectTrack": "트랙 선택",
-    "subtitlePreview": "자막 미리보기",
     "title": "화자 편집"
-  },
-  "subtitleEditor": {
-    "deleteWord": "단어 삭제",
-    "description": "아래 단어를 수정하여 자막 텍스트를 편집하세요",
-    "mergeLeft": "왼쪽으로 병합",
-    "mergeRight": "오른쪽으로 병합",
-    "title": "자막 편집"
   },
   "subtitles": {
     "addToTimeline": "타임라인에 추가",
-    "clearSearch": "검색 지우기",
-    "editSpeakers": "화자 편집",
     "empty": {
-      "noSubtitlesAvailable": "전사가 완료되면 여기에 자막이 표시됩니다",
-      "noSubtitlesFound": "자막을 찾을 수 없습니다",
-      "tryDifferentSearch": "다른 검색어를 시도해보세요"
+      "noSubtitlesAvailable": "전사가 완료되면 여기에 자막이 표시됩니다"
     },
     "jumpToTimeline": "타임라인의 해당 지점으로 이동",
     "loading": "자막 불러오는 중...",
@@ -447,6 +419,7 @@
     "speakers": "화자",
     "title": "자막",
     "unknownSpeaker": "알 수 없는 화자",
+    "previousSubtitles": "자막 기록",
     "waitingForSubtitles": "자막을 기다리는 중..."
   },
   "theme": {
@@ -454,54 +427,37 @@
   },
   "titlebar": {
     "subtitleHistory": {
+      "title": "자막 기록",
+      "searchPlaceholder": "자막 기록 검색...",
+      "loading": "불러오는 중...",
       "empty": "전사된 내용이 없습니다.",
-      "empty_title": "전사된 내용이 없습니다",
-      "empty_detail": "자막을 생성하면 여기에 전사 기록이 표시됩니다.",
       "no_results": "결과 없음",
-      "no_results_detail": "검색어를 조정해 보세요.",
       "delete_title": "전사 내용을 삭제할까요?",
-      "delete_description": "기록에서 전사 내용이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
-      "sections": {
-        "today": "오늘",
-        "yesterday": "어제",
-        "last_week": "지난 7일",
-        "older": "이전"
-      }
+      "delete_description": "기록에서 전사 내용이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
     },
     "resolve": {
       "productName": "DaVinci Resolve",
-      "status": {
-        "connected": "연결됨",
-        "disconnected": "연결 끊김"
-      },
+      "description": "워크스페이스 스크립트 통합",
       "tooltip": {
         "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
         "cantConnect": "타임라인에 연결할 수 없습니다",
         "connected": "연결됨",
-        "currentlyViewing": "현재 보기: {{name}}",
-        "openResolve": "DaVinci Resolve를 열고 작업 공간 → 스크립트 → AutoSubs로 이동하세요",
-        "ready": "타임라인 접근 준비 완료"
-      },
-      "premiere": {
-        "productName": "Premiere Pro",
-        "status": {
-          "connected": "연결됨",
-          "disconnected": "연결 끊김"
-        },
-        "tooltip": {
-          "connected": "연결됨",
-          "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
-          "disconnected": "확장 프로그램 연결 끊김",
-          "openPremiere": "자동으로 연결하려면 Premiere Pro를 여십시오."
-        }
+        "openResolve": "DaVinci Resolve를 열고 작업 공간 → 스크립트 → AutoSubs로 이동하세요"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "description": "Adobe 확장 프로그램 통합",
+      "tooltip": {
+        "connected": "연결됨",
+        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
+        "disconnected": "확장 프로그램 연결 끊김",
+        "openPremiere": "자동으로 연결하려면 Premiere Pro를 여십시오."
       }
     },
     "aftereffects": {
       "productName": "After Effects",
-      "status": {
-        "connected": "연결됨",
-        "disconnected": "연결 끊김"
-      },
+      "description": "Adobe 확장 프로그램 통합",
       "tooltip": {
         "connected": "연결됨",
         "canGetAudio": "컴포지션에서 오디오를 가져오고 자막을 다시 추가할 수 있습니다.",
@@ -509,77 +465,48 @@
         "openAfterEffects": "자동으로 연결하려면 After Effects를 엽니다."
       }
     },
-    "windowControls": {
-      "close": "닫기",
-      "maximize": "최대화",
-      "minimize": "최소화"
-    },
-    "update": {
-      "downloading": "업데이트 다운로드 중",
-      "installing": "업데이트 설치 중",
-      "restarting": "AutoSubs 다시 시작 중",
-      "installUpdateNow": "설치 후 다시 시작"
-    }
-  },
-  "workspace": {
-    "empty": {
-      "loadingModel": "모델을 메모리에 불러오는 중...",
-      "support": "AutoSubs 지원",
-      "welcomeDescription": "자막 생성을 시작하려면 오디오 소스를 선택하세요.",
-      "welcomeTitle": "AutoSubs에 오신 것을 환영합니다"
+    "status": {
+      "disconnected": "연결 끊김"
     }
   },
   "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "트랙"
+      },
+      "template": {
+        "title": "스타일"
+      },
+      "speakers": {
+        "title": "화자"
+      }
+    },
     "conflict": {
-      "checking": "충돌 확인 중...",
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
     },
     "adding": "추가하는 중...",
     "success": "타임라인에 추가됨",
-    "outputTrack": "출력 트랙",
-    "selectOutputTrack": "출력 트랙 선택",
-    "selectTemplate": "템플릿 선택",
-    "steps": {
-      "outputTrack": {
-        "description": "자막 트랙을 선택하세요",
-        "title": "출력 트랙"
-      },
-      "speakers": {
-        "description": "화자 트랙과 색상을 설정하세요",
-        "title": "화자"
-      },
-      "template": {
-        "description": "스타일 템플릿을 선택하세요",
-        "title": "템플릿"
-      }
-    },
     "title": "타임라인에 추가",
     "ready": {
       "title": "자막 준비 완료",
       "description": "자막이 생성되어 타임라인에 추가할 준비가 되었습니다."
     },
-    "templateTheme": "템플릿 테마",
     "mode": {
       "regular": "일반",
       "animated": "애니메이션"
     },
     "preset": {
       "new": "새 프리셋",
-      "newDescription": "Resolve에서 자막 디자인",
       "builtIn": "내장됨",
       "custom": "사용자 정의",
       "preview": "Resolve에서 미리보기",
-      "edit": "편집",
       "duplicate": "복제",
       "delete": "삭제",
-      "rename": "이름 변경",
       "export": "JSON 내보내기",
       "copyJson": "JSON 복사",
       "copied": "클립보드에 복사됨",
       "import": "파일 가져오기",
       "paste": "JSON 붙여넣기",
-      "emptyTitle": "사용자 정의 프리셋이 없습니다",
-      "emptyHint": "새 프리셋을 클릭하여 직접 디자인하거나 파일에서 가져오세요.",
       "phase": {
         "launchingTitle": "Resolve에서 자막 열기 중…",
         "launchingHint": "임시 트랙에 미리보기 자막을 배치합니다.",
@@ -593,7 +520,6 @@
         "cancel": "취소",
         "save": "프리셋 저장",
         "back": "뒤로",
-        "startEditing": "Resolve에서 편집 시작",
         "captureSettings": "설정 캡처"
       },
       "nameLabel": "프리셋 이름",
@@ -608,7 +534,6 @@
       "importSubmit": "프리셋 가져오기",
       "errors": {
         "invalidJson": "유효한 프리셋 파일처럼 보이지 않습니다.",
-        "startFailed": "Resolve에서 프리셋 편집기를 열 수 없습니다.",
         "captureFailed": "Resolve에서 자막 설정을 읽을 수 없습니다.",
         "nameRequired": "이름을 입력하세요."
       }
