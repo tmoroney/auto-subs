@@ -980,7 +980,6 @@
 						},
 						PopInEnabled = {
 							LINKS_Name = "Pop In",
-
 							LINKID_DataType = "Number",
 							INPID_InputControl = "CheckboxControl",
 							INP_Integer = true,
