@@ -12,7 +12,7 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 [![New Downloads / Week](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tmoroney/auto-subs)
 
-<img width="862" height="812" alt="Screenshot 2026-05-24 at 14 15 53" src="https://github.com/user-attachments/assets/64fa831a-683d-4a2a-bc38-553030b9bb39" />
+<img width="600" alt="AutoSubs UI" src="https://github.com/user-attachments/assets/768c7a30-930d-4fe1-a039-df3b615942fb" />
 
 ---
 
