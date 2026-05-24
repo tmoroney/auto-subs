@@ -21,6 +21,27 @@ function AK_indexOf(arr: any[], item: any): number {
   return -1;
 }
 
+// Premiere Pro's internal tick rate — all Time values from the API are in this unit.
+const TICKS_PER_SECOND = 254016000000;
+
+/**
+ * Safely extracts seconds from a Premiere Pro Time or TickTime object, or raw ticks/seconds string/number.
+ */
+function getTimeSeconds(timeObj: any): number {
+  if (!timeObj) return 0;
+  if (typeof timeObj.seconds !== "undefined") {
+    return parseFloat(timeObj.seconds) || 0;
+  }
+  var val = parseFloat(String(timeObj)) || 0;
+  // If the parsed value is a huge number (ticks), convert to seconds.
+  // sequence.getInPoint() often returns ticks as a string or object.
+  // 100,000 seconds is ~27.7 hours. If greater, it's virtually guaranteed to be ticks.
+  if (val > 100000) {
+    return val / TICKS_PER_SECOND;
+  }
+  return val;
+}
+
 // ==============================================================================
 // PRESET MANAGEMENT
 // ==============================================================================
@@ -95,17 +116,9 @@ export function getActiveSequenceInfo(): string {
       }
     }
 
-    // Prefer the Time object's .seconds accessor when available; fall back to
-    // dividing raw ticks by the well-known Premiere tick rate (254 016 000 000).
     let durationSeconds = 0;
     try {
-      const endObj = sequence.end as any;
-      if (endObj && typeof endObj.seconds !== "undefined") {
-        durationSeconds = parseFloat(endObj.seconds);
-      } else {
-        const TICKS_PER_SECOND = 254016000000;
-        durationSeconds = parseFloat(String(endObj)) / TICKS_PER_SECOND;
-      }
+      durationSeconds = getTimeSeconds(sequence.end);
     } catch (e) {
       log("Error reading sequence duration: " + e);
     }
@@ -222,8 +235,8 @@ export function getSelectedClipsTimeRange(sequence: any) {
       var clip = selectedItems[i];
       if (clip) {
         try {
-          var startTime = parseFloat(clip.start.seconds);
-          var endTime = parseFloat(clip.end.seconds);
+          var startTime = getTimeSeconds(clip.start);
+          var endTime = getTimeSeconds(clip.end);
 
           // Deduplicate linked clips (same start+end appear on both video and audio track)
           var key = startTime + "_" + endTime;
@@ -399,7 +412,7 @@ export function exportSequenceAudio(
       if (rangeType === "inout") {
         workAreaType = 1;
         log("Using In/Out range for export");
-        var inPointSeconds = parseFloat(sequence.getInPoint()) || 0;
+        var inPointSeconds = getTimeSeconds(sequence.getInPoint());
         timeOffsetSeconds = inPointSeconds;
       } else if (rangeType === "selected" || rangeType === "selection") {
         log("Getting selected clips range...");
@@ -413,7 +426,6 @@ export function exportSequenceAudio(
             typeof selectionRange.startTime === "number" &&
             typeof selectionRange.endTime === "number"
           ) {
-            var TICKS_PER_SECOND = 254016000000;
             sequence.setInPoint(
               Math.round(selectionRange.startTime * TICKS_PER_SECOND).toString()
             );
@@ -562,7 +574,6 @@ export function jumpToTime(seconds: number): string {
       return JSON.stringify({ success: false, error: "No active sequence" });
 
     var sequence = app.project.activeSequence;
-    var TICKS_PER_SECOND = 254016000000;
     var ticks = Math.round(seconds * TICKS_PER_SECOND).toString();
     sequence.setPlayerPosition(ticks);
 
