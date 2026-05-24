@@ -258,7 +258,7 @@ fn main() {
                                 }
 
                                 let _ = handle_for_dl.emit("update-restarting", json!({}));
-                                handle_for_dl.request_restart();
+                                handle_for_dl.restart();
                               }
                             }
                           });
@@ -302,7 +302,11 @@ fn main() {
                         }
                     });
                 }
-                RunEvent::ExitRequested { api, .. } => {
+                RunEvent::ExitRequested { api, code, .. } => {
+                    if code == Some(tauri::RESTART_EXIT_CODE) {
+                        return;
+                    }
+
                     // If we're already exiting, don't intercept again; allow exit to proceed
                     if EXITING.swap(true, AtomicOrdering::SeqCst) {
                         return;

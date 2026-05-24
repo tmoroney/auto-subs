@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ExternalLink, Loader2, AlertCircle, Server } from "lucide-react";
+import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status";
 
 const RELEASE_API_URL =
   "https://api.github.com/repos/tmoroney/auto-subs/releases/latest";
@@ -40,6 +41,7 @@ export function WhatsNewDialog() {
   const [release, setRelease] = React.useState<ReleaseInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [showResolveRestartNotice, setShowResolveRestartNotice] = React.useState(false);
 
   // Determine whether the popup should be visible.
   // - Skip on true first run (no onboarding done yet) so GettingStartedOverlay shows first.
@@ -50,6 +52,16 @@ export function WhatsNewDialog() {
     settings.onboardingCompleted &&
     !!currentVersion &&
     settings.lastSeenVersion !== currentVersion;
+
+  React.useEffect(() => {
+    if (shouldShow) {
+      const hasRestartNotice = localStorage.getItem(UPDATE_RESTART_NOTICE_KEY) === "1";
+      if (hasRestartNotice) {
+        localStorage.removeItem(UPDATE_RESTART_NOTICE_KEY);
+        setShowResolveRestartNotice(true);
+      }
+    }
+  }, [shouldShow]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -137,7 +149,7 @@ export function WhatsNewDialog() {
           )}
         </DialogHeader>
 
-        {!!settings.lastSeenVersion && (
+        {(!!settings.lastSeenVersion || showResolveRestartNotice) && (
           <Alert className="border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
             <Server className="h-4 w-4" />
             <AlertTitle>
@@ -152,7 +164,7 @@ export function WhatsNewDialog() {
           </Alert>
         )}
 
-        <ScrollArea className="h-[55vh] max-h-[480px] px-2">
+        <ScrollArea className="h-[40vh] max-h-[350px] px-2">
           {loading && (
             <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

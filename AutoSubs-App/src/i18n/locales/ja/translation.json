@@ -435,6 +435,13 @@
       "delete_title": "文字起こしを削除しますか？",
       "delete_description": "履歴から文字起こしが完全に削除されます。この操作は取り消せません。"
     },
+    "update": {
+      "downloading": "アップデートをダウンロード中",
+      "installing": "アップデートをインストール中",
+      "restarting": "AutoSubs を再起動中",
+      "installUpdateNow": "インストールして再起動",
+      "newVersionAvailable": "アップデートがあります"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "ワークスペーススクリプト連携",

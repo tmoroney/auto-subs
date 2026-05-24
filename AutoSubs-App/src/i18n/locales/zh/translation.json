@@ -435,6 +435,13 @@
     "status": {
       "disconnected": "未连接"
     },
+    "update": {
+      "downloading": "正在下载更新",
+      "installing": "正在安装更新",
+      "restarting": "正在重启 AutoSubs",
+      "installUpdateNow": "安装并重启",
+      "newVersionAvailable": "有可用更新"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "工作区脚本集成",

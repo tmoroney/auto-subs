@@ -437,6 +437,13 @@
     "status": {
       "disconnected": "Disconnected"
     },
+    "update": {
+      "downloading": "Downloading Update",
+      "installing": "Installing Update",
+      "restarting": "Restarting AutoSubs",
+      "installUpdateNow": "Install and Restart",
+      "newVersionAvailable": "Update Available"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "Workspace Scripts integration",

@@ -435,6 +435,13 @@
       "delete_title": "전사 내용을 삭제할까요?",
       "delete_description": "기록에서 전사 내용이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
     },
+    "update": {
+      "downloading": "업데이트 다운로드 중",
+      "installing": "업데이트 설치 중",
+      "restarting": "AutoSubs 다시 시작 중",
+      "installUpdateNow": "설치 후 다시 시작",
+      "newVersionAvailable": "업데이트 사용 가능"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "워크스페이스 스크립트 통합",

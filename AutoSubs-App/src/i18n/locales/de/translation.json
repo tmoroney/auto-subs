@@ -435,6 +435,13 @@
     "status": {
       "disconnected": "Getrennt"
     },
+    "update": {
+      "downloading": "Update wird heruntergeladen",
+      "installing": "Update wird installiert",
+      "restarting": "AutoSubs wird neu gestartet",
+      "installUpdateNow": "Installieren und neu starten",
+      "newVersionAvailable": "Update verfügbar"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "Workspace-Skripte-Integration",

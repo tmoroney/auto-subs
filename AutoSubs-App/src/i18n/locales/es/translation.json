@@ -435,6 +435,13 @@
     "status": {
       "disconnected": "Desconectado"
     },
+    "update": {
+      "downloading": "Descargando actualización",
+      "installing": "Instalando actualización",
+      "restarting": "Reiniciando AutoSubs",
+      "installUpdateNow": "Instalar y reiniciar",
+      "newVersionAvailable": "Actualización disponible"
+    },
     "resolve": {
       "productName": "DaVinci Resolve",
       "description": "Integración de scripts del área de trabajo",
