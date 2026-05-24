@@ -398,42 +398,65 @@
 						local wordTiming = tool:GetData("WordTiming")
 						if not wordTiming then return end
 
-						local oldCount = #wordTiming
-						local newCount = #words
+						-- New words do not have real timing data, so estimate their word gap from the existing timings.
+						-- Default to half a second (calculated using the composition framerate).
+						local defaultWordGapFrames = (tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30) / 2
+						local estimatedWordGap = defaultWordGapFrames
+						local oldWordCount = #wordTiming
+						local newWordCount = #words
+						local hasExistingWords = oldWordCount > 0
 
-						-- Handle added/removed words
-						local compEnd = comp:GetAttrs("COMPN_RenderEnd") or 1000
-						if newCount > oldCount then
-							local lastWord = wordTiming[oldCount]
-							local newStart = lastWord and (lastWord.startFrame + 5) or 0
+						-- If we have existing words, use the duration of the last word as our estimated word gap.
+						if hasExistingWords then
+							local lastWord = wordTiming[oldWordCount]
+							local lastWordDuration = lastWord.endFrame - lastWord.startFrame
+							if lastWordDuration > 0 then
+								estimatedWordGap = lastWordDuration
+							end
+						end
+
+						-- Handle added or removed words.
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						if newWordCount > oldWordCount then
+							-- Start adding new words right where the last existing word ended (or at 0 if starting empty).
+							local currentFrame = hasExistingWords and wordTiming[oldWordCount].endFrame or 0
 							
-							for i = oldCount + 1, newCount do
-								if newStart >= compEnd then newStart = compEnd - 1 end
+							-- Add new words with estimated timing
+							for i = oldWordCount + 1, newWordCount do
+								local startFrame = currentFrame
+								local endFrame = startFrame + estimatedWordGap
+
 								table.insert(wordTiming, {
 									["startIndex"] = 0,
 									["endIndex"] = 0,
-									["startFrame"] = newStart,
-									["endFrame"] = newStart,
+									["startFrame"] = math.min(startFrame, compositionEndFrame - 1),
+									["endFrame"] = math.min(endFrame, compositionEndFrame - 1),
 								})
-								newStart = newStart + 2
+								
+								currentFrame = endFrame
 							end
-						elseif newCount < oldCount then
-							for i = oldCount, newCount + 1, -1 do
+						elseif newWordCount < oldWordCount then
+							-- If words were removed, delete their corresponding timing data from the end of the list.
+							for i = oldWordCount, newWordCount + 1, -1 do
 								table.remove(wordTiming, i)
 							end
 						end
 
-						-- Recompute character indices
+						-- Recompute absolute character indices to map each word to its position in the combined text string.
 						local charIndex = 0
-						for i = 1, newCount do
+						for i = 1, newWordCount do
 							local wordText = words[i]
+							-- Reconstruct spaces between words to match the combined subtitle text structure.
 							if i > 1 then
 								wordText = " " .. wordText
 							end
 
+							-- Use UTF-8 safe length to accurately handle multi-byte characters and map index boundaries.
 							local length = utf8len(wordText)
 							wordTiming[i].startIndex = charIndex
 							wordTiming[i].endIndex = charIndex + length - 1
+							
+							-- Advance the character playhead for the next word.
 							charIndex = charIndex + length
 						end
 
