@@ -16,7 +16,7 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 
 Generate Subtitles with Speaker Labels |  Animated Captions
 :-------------------------:|:-------------------------:
-<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/fbdba848-46d5-451c-b671-06bf3237b08c"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/3a707940-7f2d-4052-990c-58cd913c185c">
+<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/cf03a837-f51b-42a3-83bb-8d2426b7cdc0"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/f5338833-cdbb-4aae-9480-0aa8cbffda60">
 
 ---
 
