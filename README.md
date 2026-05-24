@@ -12,11 +12,7 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 [![New Downloads / Week](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tmoroney/auto-subs)
 
----
-
-Generate Subtitles with Speaker Labels |  Animated Captions
-:-------------------------:|:-------------------------:
-<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/cf03a837-f51b-42a3-83bb-8d2426b7cdc0"> | <img width="800" alt="Advanced Settings" src="https://github.com/user-attachments/assets/f5338833-cdbb-4aae-9480-0aa8cbffda60">
+<img width="862" height="812" alt="Screenshot 2026-05-24 at 14 15 53" src="https://github.com/user-attachments/assets/64fa831a-683d-4a2a-bc38-553030b9bb39" />
 
 ---
 
@@ -95,6 +91,10 @@ flowchart TD
 ```
 
 AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
+
+Select a Preset Style |  Or create your own
+:-------------------------:|:-------------------------:
+<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/f5338833-cdbb-4aae-9480-0aa8cbffda60"> | <img width="500" alt="Advanced Settings" src="https://github.com/user-attachments/assets/9d2680ce-e80a-408f-a36f-54387a16f53c">
 
 ---
 
