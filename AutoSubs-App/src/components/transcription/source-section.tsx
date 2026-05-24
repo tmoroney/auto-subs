@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Clock3, FileAudio, HardDrive, MonitorIcon } from "lucide-react";
+import { AudioLines, Clock3, FileAudio, HardDrive, MonitorIcon, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -297,14 +297,19 @@ export function FileDropArea({
 interface TimelineTrackSelectorProps {
   inputTracks: Track[];
   selectedIntegration: "davinci" | "premiere" | "aftereffects";
+  onRefreshTracks?: () => void;
+  isRefreshingTracks?: boolean;
 }
 
 export function TimelineTrackSelector({
   inputTracks,
   selectedIntegration,
+  onRefreshTracks,
+  isRefreshingTracks = false,
 }: TimelineTrackSelectorProps) {
   const { t, i18n } = useTranslation();
   const { settings: currentSettings, updateSetting } = useSettings();
+  const [isSpinning, setIsSpinning] = React.useState(false);
 
   const selectedTracks =
     currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
@@ -337,6 +342,14 @@ export function TimelineTrackSelector({
     ],
   );
 
+  const handleRefreshClick = React.useCallback(() => {
+    if (onRefreshTracks && !isRefreshingTracks) {
+      setIsSpinning(true);
+      onRefreshTracks();
+      setTimeout(() => setIsSpinning(false), 500);
+    }
+  }, [onRefreshTracks, isRefreshingTracks]);
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -345,13 +358,29 @@ export function TimelineTrackSelector({
       {inputTracks.length > 0 ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-background">
           <div className="flex items-center justify-between px-3 py-2">
-            <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
-              {selectedTrackCount > 0
-                ? t("actionBar.tracks.countSelected", {
-                    count: selectedTrackCount,
-                  })
-                : t("actionBar.tracks.noneSelected")}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
+                {selectedTrackCount > 0
+                  ? t("actionBar.tracks.countSelected", {
+                      count: selectedTrackCount,
+                    })
+                  : t("actionBar.tracks.noneSelected")}
+              </span>
+              {onRefreshTracks && (
+                <button
+                  onClick={handleRefreshClick}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label={t("actionBar.tracks.refresh")}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "size-3.5",
+                      isSpinning && "animate-spin"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
               <span>{t("actionBar.tracks.exportRange.inout")}</span>
               <Switch

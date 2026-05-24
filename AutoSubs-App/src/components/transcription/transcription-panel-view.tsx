@@ -106,7 +106,7 @@ export function TranscriptionPanelView({
   selectedIntegration,
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation();
-  const { settings: currentSettings } = useSettings();
+  const { settings: currentSettings, updateSetting } = useSettings();
 
   const [localSelectedFile, setLocalSelectedFile] = React.useState<
     string | null
@@ -159,6 +159,24 @@ export function TranscriptionPanelView({
       setIsRefreshingTracks(false);
     }
   }, [isRefreshingTracks, onRefreshAudioTracks]);
+
+  // Clean up selected tracks that no longer exist (runs on both manual and auto refresh)
+  React.useEffect(() => {
+    const currentSelectedTracks =
+      currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
+    const validTrackIds = inputTracks.map((track) => track.value);
+    const cleanedSelectedTracks = currentSelectedTracks.filter((trackId: string) =>
+      validTrackIds.includes(trackId)
+    );
+
+    if (cleanedSelectedTracks.length !== currentSelectedTracks.length) {
+      const nextMap = {
+        ...currentSettings.selectedInputTracksByApp,
+        [selectedIntegration]: cleanedSelectedTracks,
+      };
+      updateSetting("selectedInputTracksByApp", nextMap);
+    }
+  }, [inputTracks, currentSettings.selectedInputTracksByApp, selectedIntegration, updateSetting]);
 
   const selectedTracks =
     currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
@@ -258,6 +276,8 @@ export function TranscriptionPanelView({
                         <TimelineTrackSelector
                           inputTracks={inputTracks}
                           selectedIntegration={selectedIntegration}
+                          onRefreshTracks={handleRefreshAudioTracks}
+                          isRefreshingTracks={isRefreshingTracks}
                         />
                       ) : (
                         <FileDropArea

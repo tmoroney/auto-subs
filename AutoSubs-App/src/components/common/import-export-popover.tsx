@@ -15,10 +15,11 @@ interface ImportExportPopoverProps {
     onExport: (format: ExportFormat) => Promise<void>
     hasSubtitles: boolean
     trigger?: React.ReactNode
+    defaultTab?: 'import' | 'export'
 }
 
 export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExportPopoverProps>(
-    ({ onImport, onExport, hasSubtitles, trigger }, ref) => {
+    ({ onImport, onExport, hasSubtitles, trigger, defaultTab = 'export' }, ref) => {
         const { t } = useTranslation()
         const [selectedFile, setSelectedFile] = React.useState<string | null>(null)
         const [exportFormat, setExportFormat] = React.useState<ExportFormat>('srt')
@@ -90,7 +91,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                     )}
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-3">
-                    <Tabs defaultValue="export" className="w-full">
+                    <Tabs defaultValue={defaultTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="export">{t("importExport.exportTab")}</TabsTrigger>
                             <TabsTrigger value="import">{t("importExport.importTab")}</TabsTrigger>

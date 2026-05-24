@@ -753,6 +753,7 @@ export function SubtitleViewerPanel({
             onImport={() => importSubtitles(settings, null, "")}
             onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
             hasSubtitles={subtitles.length > 0}
+            defaultTab={subtitles.length > 0 ? "export" : "import"}
             trigger={
               <Button
                 variant="ghost"
