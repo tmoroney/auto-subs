@@ -20,28 +20,6 @@ Generate Subtitles with Speaker Labels |  Animated Captions
 
 ---
 
-## Integrations
-
-```mermaid
-flowchart TD
-    app["AutoSubs Desktop App<br/>Local AI transcription"]
-    file["Standalone Files<br/>Audio / video input"]
-    resolve["DaVinci Resolve<br/>Lua script integration"]
-    adobe["Adobe Bridge + Extension<br/>WebSocket :8185"]
-    premiere["Premiere Pro<br/>Sequence audio + SRT captions"]
-    aftereffects["After Effects<br/>SRT to text layers"]
-
-    file --> app
-    app <--> resolve
-    app <--> adobe
-    adobe --> premiere
-    adobe --> aftereffects
-```
-
-AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
-
----
-
 ## Download
 
 | Platform | Installer |
@@ -95,6 +73,28 @@ Download [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/relea
 
 > [!WARNING]
 > AutoSubs will not work with the Mac App Store version of DaVinci Resolve. Re-install from the [official website](https://www.blackmagicdesign.com/products/davinciresolve/) if needed.
+
+---
+
+## Integrations
+
+```mermaid
+flowchart TD
+    app["AutoSubs Desktop App<br/>Local AI transcription"]
+    file["Standalone Files<br/>Audio / video input"]
+    resolve["DaVinci Resolve<br/>Lua script integration"]
+    adobe["Adobe Bridge + Extension<br/>WebSocket :8185"]
+    premiere["Premiere Pro<br/>Sequence audio + SRT captions"]
+    aftereffects["After Effects<br/>SRT to text layers"]
+
+    file --> app
+    app <--> resolve
+    app <--> adobe
+    adobe --> premiere
+    adobe --> aftereffects
+```
+
+AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
 
 ---
 
