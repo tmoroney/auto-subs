@@ -105,8 +105,8 @@ jobs:
       
     - name: Install Dependencies
       run: |
-        cd AutoSubs-App
-        npm install
+        npm ci --prefix Adobe-Extension
+        npm ci --prefix AutoSubs-App
 
     - name: Download ffmpeg binary
       env:
@@ -324,8 +324,8 @@ jobs:
 
       - name: Install NPM deps
         run: |
-          cd AutoSubs-App
-          npm install
+          npm ci --prefix Adobe-Extension
+          npm ci --prefix AutoSubs-App
 
       - name: Build Tauri (Linux x86_64)
         run: |
