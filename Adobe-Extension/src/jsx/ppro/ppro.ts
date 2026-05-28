@@ -24,22 +24,17 @@ function AK_indexOf(arr: any[], item: any): number {
 // Premiere Pro's internal tick rate — all Time values from the API are in this unit.
 const TICKS_PER_SECOND = 254016000000;
 
-/**
- * Safely extracts seconds from a Premiere Pro Time or TickTime object, or raw ticks/seconds string/number.
- */
+/** Extracts seconds from a Premiere Pro Time object (clip.start, clip.end, getInPointAsTime(), …). */
 function getTimeSeconds(timeObj: any): number {
   if (!timeObj) return 0;
-  if (typeof timeObj.seconds !== "undefined") {
-    return parseFloat(timeObj.seconds) || 0;
-  }
-  var val = parseFloat(String(timeObj)) || 0;
-  // If the parsed value is a huge number (ticks), convert to seconds.
-  // sequence.getInPoint() often returns ticks as a string or object.
-  // 100,000 seconds is ~27.7 hours. If greater, it's virtually guaranteed to be ticks.
-  if (val > 100000) {
-    return val / TICKS_PER_SECOND;
-  }
-  return val;
+  if (typeof timeObj.seconds !== "undefined") return parseFloat(timeObj.seconds) || 0;
+  return parseFloat(String(timeObj)) / TICKS_PER_SECOND || 0;
+}
+
+/** Returns the sequence In point in seconds, preferring the typed Time API over the legacy string one. */
+function getSequenceInPointSeconds(sequence: any): number {
+  if (typeof sequence.getInPointAsTime === "function") return getTimeSeconds(sequence.getInPointAsTime());
+  return parseFloat(sequence.getInPoint()) || 0;
 }
 
 // ==============================================================================
@@ -412,8 +407,7 @@ export function exportSequenceAudio(
       if (rangeType === "inout") {
         workAreaType = 1;
         log("Using In/Out range for export");
-        var inPointSeconds = getTimeSeconds(sequence.getInPoint());
-        timeOffsetSeconds = inPointSeconds;
+        timeOffsetSeconds = getSequenceInPointSeconds(sequence);
       } else if (rangeType === "selected" || rangeType === "selection") {
         log("Getting selected clips range...");
         originalInPoint = sequence.getInPoint();
