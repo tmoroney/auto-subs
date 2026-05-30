@@ -6,6 +6,7 @@ use serde_json::json;
 use std::time::Duration;
 use tauri::{Manager, RunEvent};
 use tauri::Emitter; // for app.emit
+use tauri_plugin_store::StoreExt; // for app.store (read persisted theme at startup)
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use tokio::sync::Notify;
@@ -109,10 +110,43 @@ fn main() {
                     crate::traffic_lights::install(&window);
                 }
             }
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
+            // The window is created hidden (see `tauri.conf.json`). Set its
+            // background color to match the user's saved theme BEFORE showing it,
+            // so it appears instantly in the correct color instead of flashing the
+            // webview's default white backing while the frontend loads/paints
+            // (especially noticeable in dev where the first paint can take a
+            // moment). The theme preference is persisted by the frontend (see
+            // `theme-provider.tsx`); "system" or no saved value falls back to the
+            // current OS appearance via `window.theme()`.
+            {
+                let saved_theme = app
+                    .store("window-theme.json")
+                    .ok()
+                    .and_then(|store| store.get("theme"))
+                    .and_then(|value| value.as_str().map(str::to_string));
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let is_dark = match saved_theme.as_deref() {
+                        Some("dark") => true,
+                        Some("light") => false,
+                        _ => window
+                            .theme()
+                            .map(|theme| theme == tauri::Theme::Dark)
+                            .unwrap_or(false),
+                    };
+                    // Keep these in sync with the colors in `index.html`.
+                    let color = if is_dark {
+                        tauri::window::Color(11, 11, 12, 255) // #0b0b0c
+                    } else {
+                        tauri::window::Color(255, 255, 255, 255) // #ffffff
+                    };
+                    let _ = window.set_background_color(Some(color));
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                    #[cfg(target_os = "macos")]
+                    crate::traffic_lights::position_on_main_thread(&window);
+                }
             }
 
             // Startup sidecar health check: ffmpeg availability & version

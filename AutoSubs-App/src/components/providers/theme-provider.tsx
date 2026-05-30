@@ -50,6 +50,22 @@ export function ThemeProvider({
 
     root.classList.add(resolved);
     setResolvedTheme(resolved);
+
+    // Persist the theme preference so the Rust side can create/show the native
+    // window with the matching background color on the next launch. This avoids
+    // a flash of the webview's default (white) backing before the frontend
+    // paints. "system" is resolved natively from the OS appearance in Rust.
+    // See src-tauri/src/main.rs.
+    void (async () => {
+      try {
+        const { load } = await import("@tauri-apps/plugin-store")
+        const store = await load("window-theme.json", { autoSave: false })
+        await store.set("theme", theme)
+        await store.save()
+      } catch {
+        // Not running inside Tauri or store unavailable – ignore.
+      }
+    })()
   }, [theme])
 
   const value = {

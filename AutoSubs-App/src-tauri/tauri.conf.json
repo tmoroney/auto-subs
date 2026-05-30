@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "titleBarStyle": "Overlay",
         "decorations": true,
         "trafficLightPosition": {
@@ -21,7 +22,8 @@
         "height": 700,
         "width": 750,
         "acceptFirstMouse": true,
-        "zoomHotkeysEnabled": true
+        "zoomHotkeysEnabled": true,
+        "visible": false
       }
     ],
     "security": {
