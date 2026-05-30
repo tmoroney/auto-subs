@@ -1133,7 +1133,8 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             local subtitle = subtitles[i]
             local subtitleText = subtitle["text"]
 
-            if timelineItem:GetFusionCompCount() > 0 then
+            local fusionCompCount = timelineItem:GetFusionCompCount()
+            if fusionCompCount and fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
