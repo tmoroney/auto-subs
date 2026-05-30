@@ -105,6 +105,34 @@ end
 local modules_path = join_path(resources_folder, "modules")
 package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
 
+-- Verify the AutoSubs resources actually exist before attempting to load them.
+-- This guards against stale/duplicate installs (e.g. an old app left in a
+-- different location) which otherwise produce a cryptic LuaJIT
+-- "module 'autosubs_core' not found" stack trace listing many paths.
+local function file_exists(path)
+    local f = io.open(path, "r")
+    if f then
+        f:close()
+        return true
+    end
+    return false
+end
+
+local core_module_path = join_path(modules_path, "autosubs_core.lua")
+if os_name ~= "Windows" and not file_exists(core_module_path) then
+    print("[AutoSubs] ERROR: Could not find the AutoSubs app resources.")
+    print("[AutoSubs] Expected to find: " .. core_module_path)
+    print("[AutoSubs] The AutoSubs app does not appear to be installed at the expected location.")
+    if os_name == "OSX" then
+        print("[AutoSubs] Looked for the app at: " .. app_executable)
+        print("[AutoSubs] If you have an older copy of AutoSubs installed elsewhere (e.g. /Applications/AutoSubs/AutoSubs.app),")
+        print("[AutoSubs] delete it, then re-run the AutoSubs installer so the app lives at /Applications/AutoSubs.app.")
+    else
+        print("[AutoSubs] Please re-run the AutoSubs installer, then restart DaVinci Resolve.")
+    end
+    error("AutoSubs resources not found - please reinstall AutoSubs (see messages above).")
+end
+
 -- Launch AutoSubs
 local AutoSubs = require("autosubs_core")
 AutoSubs:Init(app_executable, resources_folder, DEV_MODE)
