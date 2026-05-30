@@ -112,12 +112,12 @@ export function IntegrationStatus() {
             <img
               src={activeIntegration.logo}
               alt={activeIntegration.productName}
-              className="h-5 w-5 shrink-0"
+              className="size-5 shrink-0"
             />
             <span className={`truncate min-w-0 ${!activeIntegration.connected ? "text-gray-600 dark:text-gray-400" : ""}`}>
               {activeLabel}
             </span>
-            <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+            <ChevronDown className="size-3 opacity-50 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-80 z-50">
@@ -157,7 +157,7 @@ export function IntegrationStatus() {
                 <img
                   src={item.logo}
                   alt={item.productName}
-                  className="h-10 w-10"
+                  className="size-10"
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span>{item.productName}</span>
@@ -166,7 +166,7 @@ export function IntegrationStatus() {
                   </span>
                 </div>
                 {selectedIntegration === integration ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="size-4" />
                 ) : null}
               </DropdownMenuItem>
             );
@@ -178,7 +178,7 @@ export function IntegrationStatus() {
             }}
             className="cursor-pointer"
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="size-4" />
             <span>{t("common.refresh", "Refresh connection")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>

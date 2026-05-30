@@ -32,7 +32,7 @@ pub struct ResolveBridgeArgs {
     /// Optional override of the default request timeout (seconds). Defaults
     /// to 180 seconds because `ExportAudio` etc. can stall Resolve's
     /// scripting API for many seconds before returning, especially on Windows.
-    #[serde(default)]
+    #[serde(default, rename = "timeoutSecs")]
     pub timeout_secs: Option<u64>,
 }
 

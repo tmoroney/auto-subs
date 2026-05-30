@@ -146,18 +146,19 @@ export function FileDropArea({
     [selectedFile],
   );
 
+  const [prevFile, setPrevFile] = React.useState(selectedFile);
+  if (selectedFile !== prevFile) {
+    setPrevFile(selectedFile);
+    setDuration(null);
+    setPreviewError(false);
+    setFileSize(null);
+  }
+
   React.useEffect(() => {
     let cancelled = false;
 
-    setDuration(null);
-    setPreviewError(false);
+    if (!selectedFile) return;
 
-    if (!selectedFile) {
-      setFileSize(null);
-      return;
-    }
-
-    setFileSize(null);
     stat(selectedFile)
       .then((metadata) => {
         if (!cancelled) {
@@ -424,7 +425,7 @@ export function TimelineTrackSelector({
                     />
                     <AudioLines
                       className={cn(
-                        "h-4 w-4 transition-colors",
+                        "size-4 transition-colors",
                         isChecked ? "text-foreground" : "text-muted-foreground",
                       )}
                     />

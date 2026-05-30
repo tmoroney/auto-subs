@@ -58,7 +58,7 @@ function BalanceMeter({ accuracy, weight }: { accuracy: number; weight: number }
       <Feather size={11} className="text-sky-500 flex-shrink-0" aria-hidden />
       <div className="relative flex-1 h-1 rounded-full bg-gradient-to-r from-sky-500/30 via-muted to-amber-500/30">
         <div
-          className="absolute top-1/2 h-2.5 w-2.5 rounded-full border-2 border-background bg-foreground shadow-sm"
+          className="absolute top-1/2 size-2.5 rounded-full border-2 border-background bg-foreground shadow-sm"
           style={{ left: `${pct}%`, transform: "translate(-50%, -50%)" }}
         />
       </div>
@@ -166,7 +166,7 @@ export function ModelPicker({
           <Button
             variant="ghost"
             size="lg"
-            role="combobox"
+            aria-haspopup="listbox"
             className={cn(
               "p-3 bg-muted/30 dark:bg-muted select-none w-full justify-start",
               triggerClassName,
@@ -184,7 +184,7 @@ export function ModelPicker({
               <img
                 src={modelsState[selectedModelIndex].image}
                 alt={t(modelsState[selectedModelIndex].label) + " icon"}
-                className="w-6 h-6 object-contain rounded"
+                className="size-6 object-contain rounded"
               />
               <div className="flex items-center gap-1">
                 <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
@@ -208,7 +208,7 @@ export function ModelPicker({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 absolute right-1 top-1"
+                      className="size-8 absolute right-1 top-1"
                     >
                       <ListFilter size={14} />
                     </Button>
@@ -280,7 +280,7 @@ export function ModelPicker({
                         className="flex items-center justify-between p-2 cursor-pointer"
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <img src={model.image} alt={t(model.label) + " icon"} className="w-8 h-8 object-contain rounded flex-shrink-0" />
+                          <img src={model.image} alt={t(model.label) + " icon"} className="size-8 object-contain rounded flex-shrink-0" />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium text-xs">{t(model.label)}</span>

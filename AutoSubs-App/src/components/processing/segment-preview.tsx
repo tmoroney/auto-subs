@@ -91,9 +91,16 @@ export function SegmentPreview({ segments, isActive, placeholder }: SegmentPrevi
         scrollToBottom()
     }, [streamedText, scrollToBottom]);
     
+    // Reset streaming state when fullText becomes empty
+    if (!fullText && (streamedText !== "" || isStreaming)) {
+        setStreamedText("")
+        setIsStreaming(false)
+    }
+
     // Optimized streaming with better diff algorithm
     useEffect(() => {
         if (fullText && fullText !== streamedText && !streamingRef.current) {
+            // eslint-disable-next-line react-doctor/no-adjust-state-on-prop-change
             setIsStreaming(true)
             streamingRef.current = true
             
@@ -128,11 +135,6 @@ export function SegmentPreview({ segments, isActive, placeholder }: SegmentPrevi
             }
             
             requestAnimationFrame(streamFrame)
-            
-        } else if (!fullText) {
-            setStreamedText("")
-            setIsStreaming(false)
-            streamingRef.current = false
         }
         
         return () => {

@@ -126,9 +126,15 @@
       "title": "Censor Words",
       "wordCount": "{{count}} words",
       "dialogTitle": "Censor Sensitive Words",
-      "dialogDescription": "Add words to be censored in the subtitles.",
+      "dialogDescription": "Toggle word lists or add custom words to censor in the subtitles.",
       "inputPlaceholder": "Add word to censor",
-      "empty": "No censored words yet."
+      "empty": "No censored words yet.",
+      "lists": "Word Lists",
+      "listBuiltIn": "Built-in",
+      "noLists": "No word lists available.",
+      "customSection": "Custom Words",
+      "customSectionDescription": "Enter individual words to censor.",
+      "listWordCount": "{{count}} words"
     },
     "speakers": {
       "title": "Speaker Labels",
@@ -484,7 +490,8 @@
         "title": "Track"
       },
       "template": {
-        "title": "Style"
+        "title": "Style",
+        "connectTo": "Connect to {{integration}} to customise templates"
       },
       "speakers": {
         "title": "Speakers"

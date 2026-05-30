@@ -216,7 +216,7 @@ export function TranscriptHistoryPopover({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="hidden h-6 w-6 shrink-0 text-muted-foreground hover:bg-background hover:text-destructive group-hover:inline-flex group-focus-within:inline-flex"
+                            className="hidden size-6 shrink-0 text-muted-foreground hover:bg-background hover:text-destructive group-hover:inline-flex group-focus-within:inline-flex"
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -225,7 +225,7 @@ export function TranscriptHistoryPopover({
                               );
                             }}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="size-3.5" />
                             <span className="sr-only">
                               {t("common.delete")}
                             </span>

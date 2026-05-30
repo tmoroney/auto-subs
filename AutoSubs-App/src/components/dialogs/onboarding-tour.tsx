@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 
 function TourBeacon() {
   return (
-    <span className="relative flex h-5 w-5 pt-3">
+    <span className="relative flex size-5 pt-3">
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-90" />
-      <span className="relative inline-flex rounded-full h-5 w-5 bg-primary" />
+      <span className="relative inline-flex rounded-full size-5 bg-primary" />
     </span>
   );
 }

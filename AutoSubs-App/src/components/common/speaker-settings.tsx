@@ -70,7 +70,7 @@ export function SpeakerSettings({ speaker, onSpeakerChange, tracks }: SpeakerSet
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" className="flex-1 justify-start gap-2 px-3">
-                                    <span className="w-4 h-4 rounded-sm border" style={{ backgroundColor: speakerColor, borderColor: speakerColor }} />
+                                    <span className="size-4 rounded-sm border" style={{ backgroundColor: speakerColor, borderColor: speakerColor }} />
                                     <span className="text-xs">{speakerColor}</span>
                                 </Button>
                             </PopoverTrigger>
@@ -80,7 +80,7 @@ export function SpeakerSettings({ speaker, onSpeakerChange, tracks }: SpeakerSet
                                         type="color"
                                         value={speakerColor}
                                         onChange={(e) => onSpeakerChange({ ...speaker, color: e.target.value })}
-                                        className="w-10 h-10 border-input bg-background"
+                                        className="size-10 border-input bg-background"
                                     />
                                     <Input
                                         value={speakerColor}
@@ -95,12 +95,12 @@ export function SpeakerSettings({ speaker, onSpeakerChange, tracks }: SpeakerSet
                                         <button
                                             key={preset}
                                             type="button"
-                                            className={`w-7 h-7 rounded border-2 flex items-center justify-center transition-colors ${speakerColor === preset ? "border-black dark:border-white" : "border-transparent"}`}
+                                            className={`size-7 rounded border-2 flex items-center justify-center transition-colors ${speakerColor === preset ? "border-black dark:border-white" : "border-transparent"}`}
                                             style={{ backgroundColor: preset }}
                                             onClick={() => onSpeakerChange({ ...speaker, color: preset })}
                                         >
                                             {speakerColor === preset && (
-                                                <Check className="w-4 h-4 text-white drop-shadow dark:text-black" />
+                                                <Check className="size-4 text-white drop-shadow dark:text-black" />
                                             )}
                                         </button>
                                     ))}

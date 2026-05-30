@@ -31,26 +31,15 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("light")
+  const resolvedTheme: "dark" | "light" = theme === "system"
+    ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : theme;
 
   useEffect(() => {
     const root = window.document.documentElement
-
     root.classList.remove("light", "dark")
-
-    let resolved: "dark" | "light"
-    if (theme === "system") {
-      resolved = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
-    } else {
-      resolved = theme
-    }
-
-    root.classList.add(resolved);
-    setResolvedTheme(resolved);
-  }, [theme])
+    root.classList.add(resolvedTheme)
+  }, [resolvedTheme])
 
   const value = {
     theme,

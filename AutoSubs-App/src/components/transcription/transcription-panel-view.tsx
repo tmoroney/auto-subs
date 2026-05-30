@@ -242,7 +242,7 @@ export function TranscriptionPanelView({
               variant="default"
               className="w-full"
             >
-              <PlayCircle className="h-4 w-4" />
+              <PlayCircle className="size-4" />
               {t("common.startNewTranscription", "Start new transcription")}
             </Button>
           </div>
@@ -333,7 +333,7 @@ export function TranscriptionPanelView({
                       disabled={startDisabled}
                       className="w-full"
                     >
-                      <PlayCircle className="h-4 w-4" />
+                      <PlayCircle className="size-4" />
                       {startButtonLabel}
                     </Button>
                   </div>
@@ -346,7 +346,7 @@ export function TranscriptionPanelView({
                   variant="destructive"
                   className="w-full"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="size-4" />
                   {t("common.cancel")}
                 </Button>
               )}

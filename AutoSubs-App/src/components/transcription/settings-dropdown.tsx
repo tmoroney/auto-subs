@@ -137,7 +137,7 @@ export function SettingsDropdown() {
               className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
             >
               <div className="group relative flex w-full items-center">
-                <Heart className="mr-2 h-4 w-4 text-pink-500 transition-all group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500" />
+                <Heart className="mr-2 size-4 text-pink-500 transition-all group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500" />
                 <span>
                   {t("settings.support.supportAutoSubs", "Support AutoSubs")}
                 </span>
@@ -153,7 +153,7 @@ export function SettingsDropdown() {
                   ].map((heart, index) => (
                     <Heart
                       key={index}
-                      className="heart-anim absolute left-1/2 top-1/2 h-5 w-5 text-pink-400 opacity-0"
+                      className="heart-anim absolute left-1/2 top-1/2 size-5 text-pink-400 opacity-0"
                       style={
                         {
                           "--tx": heart.tx,

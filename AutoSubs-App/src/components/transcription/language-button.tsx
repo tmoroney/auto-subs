@@ -37,7 +37,7 @@ export function LanguageButton() {
         <Button
           variant="ghost"
           size="lg"
-          role="combobox"
+          aria-haspopup="listbox"
           aria-expanded={open}
           className="group w-full min-w-0 select-none justify-start rounded-lg bg-muted/30 pl-4 pr-3 dark:bg-muted"
           data-tour="transcription-controls-target"
@@ -50,7 +50,7 @@ export function LanguageButton() {
             </span>
             {settings.translate ? (
               <>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
                   {targetLanguageLabel}
                 </span>

@@ -376,13 +376,13 @@ const SubtitleList = ({
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="absolute right-2 top-2 h-6 w-6"
+                                                                className="absolute right-2 top-2 size-6"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setEditingSubtitleId(null);
                                                                 }}
                                                             >
-                                                                <X className="h-4 w-4" />
+                                                                <X className="size-4" />
                                                             </Button>
                                                         </div>
                                                     </PopoverContent>

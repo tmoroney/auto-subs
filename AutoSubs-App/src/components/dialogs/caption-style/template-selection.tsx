@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/animated-tabs"
+import { useIntegration } from "@/contexts/IntegrationContext"
 import { DEFAULT_PRESET_ID, usePresets } from "@/contexts/PresetsContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { CaptionPreset, Template } from "@/types"
@@ -91,6 +92,7 @@ export function CaptionTemplateSelectionContent({
     hasAnimatedTemplate,
 }: CaptionTemplateSelectionContentProps) {
     const { t } = useTranslation()
+    const { selectedIntegration } = useIntegration()
 
     React.useEffect(() => {
         if (templatesLoaded && mode === "animated" && !hasAnimatedTemplate) {
@@ -112,9 +114,18 @@ export function CaptionTemplateSelectionContent({
     }
 
     if (!templatesLoading && templateLoadError) {
+        const integrationLabel =
+            selectedIntegration === "davinci"
+                ? "DaVinci Resolve"
+                : selectedIntegration === "premiere"
+                  ? "Adobe Premiere Pro"
+                  : "Adobe After Effects"
         return (
             <div className="flex h-[296px] items-center justify-center text-center text-sm font-medium text-muted-foreground">
-                Connect to Davinci Resolve to customise templates
+                {t("addToTimeline.template.connectTo", {
+                    integration: integrationLabel,
+                    defaultValue: "Connect to {{integration}} to customise templates",
+                })}
             </div>
         )
     }
@@ -148,7 +159,7 @@ export function CaptionTemplateSelectionContent({
                     <div className="space-y-2 pr-3">
                         {templatesLoading && (
                             <div className="h-[260px] flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="size-4 animate-spin" />
                                 <span>Loading templates...</span>
                             </div>
                         )}
@@ -166,7 +177,7 @@ export function CaptionTemplateSelectionContent({
                             >
                                 <span>{template.label}</span>
                                 {templateValue === template.value && (
-                                    <Check className="h-4 w-4 shrink-0" />
+                                    <Check className="size-4 shrink-0" />
                                 )}
                             </button>
                         ))}
@@ -228,30 +239,63 @@ export function CaptionTemplateSelectionDialog({
         presetId: settings.presetId || DEFAULT_PRESET_ID,
     }))
     const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null)
+    const [loadingTimedOut, setLoadingTimedOut] = React.useState(false)
     const [createSession, setCreateSession] = React.useState<CreatePresetSession>({ kind: "closed" })
 
-    React.useEffect(() => {
-        if (!open) return
-        setSelection({
-            mode: settings.captionMode,
-            templateValue: settings.selectedTemplate.value,
-            presetId: settings.presetId || DEFAULT_PRESET_ID,
-        })
-        setTemplateLoadError(null)
-        setCreateSession({ kind: "closed" })
-    }, [open, settings.captionMode, settings.presetId, settings.selectedTemplate.value])
+    const [prevHydrateKey, setPrevHydrateKey] = React.useState(0)
+    const hydrateKey = open ? 1 : 0
+    if (hydrateKey !== prevHydrateKey) {
+        setPrevHydrateKey(hydrateKey)
+        if (open) {
+            setSelection({
+                mode: settings.captionMode,
+                templateValue: settings.selectedTemplate.value,
+                presetId: settings.presetId || DEFAULT_PRESET_ID,
+            })
+            setTemplateLoadError(null)
+            setLoadingTimedOut(false)
+            setCreateSession({ kind: "closed" })
+        }
+    }
+
+    const effectiveTemplatesLoading = templatesLoading && !loadingTimedOut
+
+    const shouldLoadTemplates = open && !templatesLoaded && !templatesLoading && !!onLoadTemplates
+    const [prevShouldLoad, setPrevShouldLoad] = React.useState(false)
+    if (shouldLoadTemplates !== prevShouldLoad) {
+        setPrevShouldLoad(shouldLoadTemplates)
+        if (shouldLoadTemplates) {
+            setTemplateLoadError(null)
+            setLoadingTimedOut(false)
+        }
+    }
 
     React.useEffect(() => {
-        if (!open || templatesLoaded || templatesLoading || !onLoadTemplates) return
+        if (!shouldLoadTemplates) return
         let cancelled = false
-        setTemplateLoadError(null)
-        onLoadTemplates().catch((err) => {
+
+        const timeoutId = setTimeout(() => {
             if (cancelled) return
-            const message = err instanceof Error ? err.message : String(err)
-            setTemplateLoadError(message)
-        })
-        return () => { cancelled = true }
-    }, [open, templatesLoaded, templatesLoading, onLoadTemplates])
+            cancelled = true
+            setLoadingTimedOut(true)
+            setTemplateLoadError(
+                "Connection timed out. Ensure your editing software is running and try again.",
+            )
+        }, 15000)
+
+        onLoadTemplates()
+            .catch((err) => {
+                if (cancelled) return
+                clearTimeout(timeoutId)
+                const message = err instanceof Error ? err.message : String(err)
+                setTemplateLoadError(message)
+                setLoadingTimedOut(true)
+            })
+        return () => {
+            cancelled = true
+            clearTimeout(timeoutId)
+        }
+    }, [shouldLoadTemplates, onLoadTemplates])
 
     function handleOpenChange(next: boolean) {
         if (!next && createSession.kind !== "closed") {
@@ -321,7 +365,7 @@ export function CaptionTemplateSelectionDialog({
                     templateValue={selection.templateValue}
                     onTemplateChange={(value) => setSelection((s) => ({ ...s, templateValue: value }))}
                     templates={templates}
-                    templatesLoading={templatesLoading}
+                    templatesLoading={effectiveTemplatesLoading}
                     templatesLoaded={templatesLoaded}
                     templateLoadError={templateLoadError}
                     presetId={selection.presetId}

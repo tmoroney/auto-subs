@@ -10,8 +10,11 @@
       "dialogTitle": "不適切な言葉を検閲",
       "empty": "検閲する単語がありません。",
       "inputPlaceholder": "検閲する単語を追加",
-      "title": "単語を検閲",
-      "wordCount": "{{count}} 語"
+      "empty": "検閲する単語がありません。",
+      "lists": "単語リスト",
+      "customSection": "カスタム単語",
+      "customSectionDescription": "検閲する個別の単語を入力してください。",
+      "listWordCount": "{{count}} 語"
     },
     "common": {
       "auto": "自動",

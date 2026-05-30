@@ -128,7 +128,11 @@
       "dialogTitle": "Censurer des mots sensibles",
       "dialogDescription": "Ajoutez des mots à censurer dans les sous-titres.",
       "inputPlaceholder": "Ajouter un mot à censurer",
-      "empty": "Aucun mot censuré pour l’instant."
+      "empty": "Aucun mot censuré pour l’instant.",
+      "lists": "Listes de mots",
+      "customSection": "Mots personnalisés",
+      "customSectionDescription": "Saisissez des mots individuels à censurer.",
+      "listWordCount": "{{count}} mots"
     },
     "speakers": {
       "title": "Labels de speaker",

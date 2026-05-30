@@ -122,6 +122,7 @@ export interface Settings {
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
+    activeCensorLists: Array<string>,  // IDs of CensorWordLists toggled on
     exportRange?: "entire" | "inout",
     customPrompt: string,
     customMaxCharsPerLine: number,
@@ -153,6 +154,16 @@ export interface CaptionPreset {
     createdAt: string;
     updatedAt: string;
     macroSettings: Record<string, unknown>;
+}
+
+// A named list of censored words that can be toggled on/off as a group.
+// Built-in lists are shipped with the app; user lists are persisted to settings.
+export interface CensorWordList {
+    id: string;            // "builtin:<slug>" for shipped lists, uuid for user-created
+    name: string;
+    description?: string;
+    builtIn: boolean;
+    words: string[];
 }
 
 export interface TranscriptionOptions {
