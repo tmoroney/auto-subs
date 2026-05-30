@@ -158,20 +158,37 @@ impl Engine {
                 cb.is_cancelled.as_deref(),
             )?;
         } else if let Some(true) = options.enable_vad {
-            // Use provided VAD model path if present; otherwise download via ModelManager
+            // Use provided VAD model path if present; otherwise download via ModelManager.
+            // These stages reuse ProgressType::Download, so the app-level progress logger
+            // (which logs once per ProgressType) stays silent here — hence the explicit
+            // info! markers below, so a stall in the VAD fetch or inference is visible.
             let vad_model_path: PathBuf = if let Some(ref p) = self.cfg.vad_model_path {
                 PathBuf::from(p)
             } else {
-                self
+                tracing::info!("VAD: ensuring Silero VAD model is available");
+                let p = self
                     .models
                     .ensure_vad_model(cb.progress, cb.is_cancelled.as_deref())
-                    .await?
+                    .await?;
+                tracing::info!("VAD: model ready at {}", p.display());
+                p
             };
 
             // `vad::get_segments` expects a &str path; convert from PathBuf
             let vad_model_path_str = vad_model_path.to_string_lossy().to_string();
+            tracing::info!(
+                "VAD: running speech detection on {} samples ({:.2}s of audio)",
+                original_samples.len(),
+                original_samples.len() as f64 / 16000.0
+            );
+            let vad_start = std::time::Instant::now();
             speech_segments = crate::vad::get_segments(&vad_model_path_str, &original_samples)
                 .map_err(|e| eyre!("{:?}", e))?;
+            tracing::info!(
+                "VAD: detected {} speech segment(s) in {:.2}s",
+                speech_segments.len(),
+                vad_start.elapsed().as_secs_f64()
+            );
         }
         else {
             speech_segments = vec![SpeechSegment {
@@ -229,7 +246,14 @@ impl Engine {
             )
             .await?
         } else {
-            // Use Whisper engine
+            // Use Whisper engine. Context creation loads the model into the (GPU) backend
+            // and can stall on some drivers — log around it so a hang here is visible.
+            tracing::info!(
+                "Whisper: loading model context (model={}, use_gpu={:?})",
+                options.model,
+                self.cfg.use_gpu
+            );
+            let ctx_start = std::time::Instant::now();
             let ctx = crate::engines::whisper::create_context(
                 _model_path.as_path(),
                 &options.model,
@@ -240,6 +264,10 @@ impl Engine {
                 Some(num_samples),
             )
             .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
+            tracing::info!(
+                "Whisper: model context ready in {:.2}s",
+                ctx_start.elapsed().as_secs_f64()
+            );
 
             crate::engines::whisper::run_transcription_pipeline(
                 ctx,
