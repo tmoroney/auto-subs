@@ -101,8 +101,12 @@ fn main() {
             #[cfg(target_os = "macos")]
             {
                 if let Some(window) = app.get_webview_window("main") {
-                    crate::traffic_lights::install(&window);
+                    // Clearing the title triggers an AppKit titlebar relayout that
+                    // resets the traffic lights (tauri-apps/tauri#13044), so do it
+                    // BEFORE installing our positioner — otherwise the immediate
+                    // apply inside `install` is undone right after it runs.
                     let _ = window.set_title("");
+                    crate::traffic_lights::install(&window);
                 }
             }
             if let Some(window) = app.get_webview_window("main") {
@@ -298,6 +302,13 @@ fn main() {
                                 let _ = window.show();
                                 let _ = window.unminimize();
                                 let _ = window.set_focus();
+                                // These late show()/set_focus() calls trigger an AppKit
+                                // titlebar relayout that resets the traffic lights, and
+                                // set_focus() on an already-focused window emits no
+                                // Focused event — so the install()-registered listener
+                                // won't fire. Re-apply explicitly to keep them aligned.
+                                #[cfg(target_os = "macos")]
+                                crate::traffic_lights::position_on_main_thread(&window);
                             }
                         }
                     });

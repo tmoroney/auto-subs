@@ -94,7 +94,7 @@ pub fn position<R: Runtime>(window: &WebviewWindow<R>) {
     }
 }
 
-fn position_on_main_thread<R: Runtime + 'static>(window: &WebviewWindow<R>) {
+pub fn position_on_main_thread<R: Runtime + 'static>(window: &WebviewWindow<R>) {
     let w = window.clone();
     let _ = window.run_on_main_thread(move || position(&w));
 }
