@@ -1,5 +1,11 @@
 import * as React from "react";
-import { AudioLines, Clock3, FileAudio, HardDrive, MonitorIcon, RefreshCw } from "lucide-react";
+import {
+  AudioLines,
+  Clock3,
+  HardDrive,
+  MonitorIcon,
+  RefreshCw,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -15,7 +21,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 import type { Track } from "@/types";
-import { SUPPORTED_MEDIA_EXTENSIONS } from "./utils";
+import { SUPPORTED_MEDIA_EXTENSIONS, isVideoExtension } from "./utils";
+import { MediaPlayer } from "@/components/media/media-player";
+import { FileIcon } from "@untitledui/file-icons";
 
 interface SourceModeTabsProps {
   audioInputMode: "file" | "timeline";
@@ -77,7 +85,9 @@ function getFileName(filePath: string): string {
 function getFileExtension(filePath: string): string {
   const fileName = getFileName(filePath);
   const extension = fileName.split(".").pop();
-  return extension && extension !== fileName ? extension.toUpperCase() : "Media";
+  return extension && extension !== fileName
+    ? extension.toUpperCase()
+    : "Media";
 }
 
 function formatBytes(bytes: number | null): string {
@@ -119,7 +129,10 @@ const localizedDigits: Record<string, string[]> = {
   zh: ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
 };
 
-export function formatLocalizedTrackNumber(value: number, language: string): string {
+export function formatLocalizedTrackNumber(
+  value: number,
+  language: string,
+): string {
   const baseLanguage = language.split("-")[0]?.toLowerCase();
   const digits = baseLanguage ? localizedDigits[baseLanguage] : undefined;
 
@@ -139,7 +152,8 @@ export function FileDropArea({
   const iconRef = React.useRef<UploadIconHandle>(null);
   const [fileSize, setFileSize] = React.useState<number | null>(null);
   const [duration, setDuration] = React.useState<number | null>(null);
-  const [previewError, setPreviewError] = React.useState(false);
+
+  const isVideo = selectedFile ? isVideoExtension(selectedFile) : false;
 
   const audioSrc = React.useMemo(
     () => (selectedFile ? convertFileSrc(selectedFile) : null),
@@ -150,7 +164,6 @@ export function FileDropArea({
   if (selectedFile !== prevFile) {
     setPrevFile(selectedFile);
     setDuration(null);
-    setPreviewError(false);
     setFileSize(null);
   }
 
@@ -215,8 +228,11 @@ export function FileDropArea({
       {selectedFile ? (
         <div className="flex w-full max-w-xl flex-col gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-500">
-              <FileAudio className="size-5" />
+            <div className="flex shrink-0 items-center justify-center">
+              <FileIcon
+                type={getFileExtension(selectedFile).toLowerCase()}
+                size={40}
+              />
             </div>
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-foreground">
@@ -225,9 +241,6 @@ export function FileDropArea({
               <span className="block truncate text-xs text-muted-foreground">
                 {selectedFile}
               </span>
-            </div>
-            <div className="hidden shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:block">
-              {getFileExtension(selectedFile)}
             </div>
           </div>
 
@@ -241,7 +254,7 @@ export function FileDropArea({
             <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2">
               <Clock3 className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate text-xs font-medium text-foreground">
-                {duration === null && !previewError
+                {duration === null
                   ? "Loading duration"
                   : formatDuration(duration)}
               </span>
@@ -254,25 +267,12 @@ export function FileDropArea({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              <audio
-                className="block h-10 w-full"
-                controls
-                preload="metadata"
+              <MediaPlayer
                 src={audioSrc}
-                onLoadedMetadata={(event) => {
-                  setDuration(event.currentTarget.duration);
-                  setPreviewError(false);
-                }}
-                onError={() => {
-                  setDuration(null);
-                  setPreviewError(true);
-                }}
+                filePath={selectedFile}
+                type={isVideo ? "video" : "audio"}
+                onDurationChange={(d) => setDuration(d)}
               />
-              {previewError ? (
-                <p className="px-1 pt-2 text-xs text-muted-foreground">
-                  Preview is unavailable for this format, but it can still be used for transcription.
-                </p>
-              ) : null}
             </div>
           ) : null}
         </div>
@@ -374,10 +374,7 @@ export function TimelineTrackSelector({
                   aria-label={t("actionBar.tracks.refresh")}
                 >
                   <RefreshCw
-                    className={cn(
-                      "size-3.5",
-                      isSpinning && "animate-spin"
-                    )}
+                    className={cn("size-3.5", isSpinning && "animate-spin")}
                   />
                 </button>
               )}

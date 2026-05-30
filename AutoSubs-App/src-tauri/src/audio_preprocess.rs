@@ -46,7 +46,7 @@ fn build_equal_mix_pan_filter(channels: u32) -> String {
     expr
 }
 
-fn build_args(
+pub fn build_args(
     input_lossy: &str,
     output_lossy: &str,
     downmix_filter: Option<&str>,
@@ -86,7 +86,7 @@ fn build_args(
     args
 }
 
-async fn run_ffmpeg<R: Runtime>(
+pub async fn run_ffmpeg<R: Runtime>(
     app: &AppHandle<R>,
     args: &[String],
 ) -> Result<(bool, Option<i32>, Vec<u8>, Vec<u8>)> {

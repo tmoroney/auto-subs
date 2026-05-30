@@ -22,6 +22,24 @@ export const SUPPORTED_MEDIA_EXTENSIONS = [
   "alac",
 ];
 
+const VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "mov",
+  "mkv",
+  "webm",
+  "avi",
+  "wmv",
+  "mpeg",
+  "mpg",
+  "m4v",
+  "3gp",
+]);
+
+export function isVideoExtension(filePath: string): boolean {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  return ext ? VIDEO_EXTENSIONS.has(ext) : false;
+}
+
 export function isSupportedMediaFile(filePath: string): boolean {
   const extension = filePath.split(".").pop()?.toLowerCase();
   return extension ? SUPPORTED_MEDIA_EXTENSIONS.includes(extension) : false;
