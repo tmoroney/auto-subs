@@ -70,11 +70,3 @@ body:
       description: Leave blank if running in standalone mode. e.g. 19.1.2
     validations:
       required: false
-
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: Additional context
-      description: Screenshots, videos, or anything else that helps.
-    validations:
-      required: false
