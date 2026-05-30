@@ -401,7 +401,6 @@ impl ModelManager {
             "moonshine-tiny-uk" => "tiny-uk",
             "moonshine-tiny-vi" => "tiny-vi",
             "moonshine-base" => "base",
-            "moonshine-base-es" => "base-es",
             _ => bail!("Unknown Moonshine model: {}", model),
         };
 
