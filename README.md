@@ -36,6 +36,12 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 
 Download the installer for your platform above and follow the prompts.
 
+> [!TIP]
+> macOS users can also install AutoSubs with Homebrew:
+> ```bash
+> brew install --cask auto-subs
+> ```
+
 ### Linux install
 
 **Debian/Ubuntu (.deb):**
