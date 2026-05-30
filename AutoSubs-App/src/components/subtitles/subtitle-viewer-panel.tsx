@@ -585,6 +585,7 @@ export function SubtitleViewerPanel({
     subtitles,
     currentSubtitleDocumentFilename,
     updateSubtitles,
+    flushPendingSubtitleSave,
     exportSubtitlesAs,
     importSubtitles,
     reformatSubtitles,
@@ -700,6 +701,7 @@ export function SubtitleViewerPanel({
   };
 
   const handleApplyReformat = async () => {
+    await flushPendingSubtitleSave();
     const timelineId = timelineInfo?.timelineId || "";
     await reformatSubtitles(settings, null, timelineId);
     setShowReformat(false);
@@ -715,6 +717,10 @@ export function SubtitleViewerPanel({
         console.error("No active subtitle document to add to timeline");
         return;
       }
+
+      // Flush any debounced subtitle edits to disk before the Lua server reads
+      // the file.
+      await flushPendingSubtitleSave();
 
       setIsAddingToTimeline(true);
       await pushToTimeline(
