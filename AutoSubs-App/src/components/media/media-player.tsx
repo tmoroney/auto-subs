@@ -50,6 +50,7 @@ export function MediaPlayer({
   const rAFRef = React.useRef<number>(0);
   const isDragging = React.useRef(false);
   const wasPlayingBeforeSeek = React.useRef(false);
+  const seekSurfaceRef = React.useRef<HTMLElement | null>(null);
   const prevVolume = React.useRef(1);
   const waveformOuterRef = React.useRef<HTMLDivElement>(null);
 
@@ -260,8 +261,10 @@ export function MediaPlayer({
       wasPlayingBeforeSeek.current = !mediaRef.current?.paused;
       mediaRef.current?.pause();
       seekRef.current?.classList.add("dragging");
+      const el = e.currentTarget as HTMLElement;
+      seekSurfaceRef.current = el;
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      handleSeek(clientX, e.currentTarget as HTMLElement);
+      handleSeek(clientX, el);
     },
     [handleSeek],
   );
@@ -269,7 +272,7 @@ export function MediaPlayer({
   const onSeekMove = React.useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (!isDragging.current) return;
-      const el = waveformOuterRef.current ?? seekRef.current;
+      const el = seekSurfaceRef.current ?? waveformOuterRef.current ?? seekRef.current;
       if (!el) return;
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       handleSeek(clientX, el);
