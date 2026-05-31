@@ -24,6 +24,7 @@ use std::process::Command;
 
 use crate::transcript_types::{Segment, Transcript};
 use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
+use transcription_engine::TextDensity;
 
 /// True when the app was launched with CLI arguments, meaning "run headless,
 /// don't open a window". Checked against raw `argv` *before* the Tauri app is
@@ -101,8 +102,21 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         None
     };
 
-    let density = arg_str(&m, "density")
-        .and_then(|s| serde_json::from_value(serde_json::Value::String(s)).ok());
+    // Validate --density up front: an unknown value is a usage error rather than
+    // a silent fall back to the default density (which would produce wrapping the
+    // user didn't ask for). The accepted values match `TextDensity`'s serde repr.
+    let density = match arg_str(&m, "density") {
+        Some(s) => match parse_density(&s) {
+            Some(d) => Some(d),
+            None => {
+                eprintln!(
+                    "autosubs: unknown density '{s}' (expected less, standard, more, single, or custom)"
+                );
+                flush_and_exit(2);
+            }
+        },
+        None => None,
+    };
 
     let options = FrontendTranscribeOptions {
         audio_path: input,
@@ -440,6 +454,13 @@ fn arg_flag(m: &Matches, name: &str) -> bool {
 
 fn arg_num<T: std::str::FromStr>(m: &Matches, name: &str) -> Option<T> {
     arg_str(m, name).and_then(|s| s.parse().ok())
+}
+
+/// Parse a `--density` value into `TextDensity`, case-insensitively. Returns
+/// `None` for unrecognized values so the caller can report a usage error.
+fn parse_density(s: &str) -> Option<TextDensity> {
+    let lower = s.trim().to_ascii_lowercase();
+    serde_json::from_value(serde_json::Value::String(lower)).ok()
 }
 
 /// If clap captured `--help`, return the rendered help text it wants printed.

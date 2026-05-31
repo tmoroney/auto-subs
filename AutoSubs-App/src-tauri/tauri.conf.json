@@ -148,7 +148,7 @@
         },
         {
           "name": "density",
-          "description": "Subtitle text density (e.g. high, balanced, low, custom).",
+          "description": "Subtitle text density: less, standard, more, single, or custom.",
           "takesValue": true
         },
         {
