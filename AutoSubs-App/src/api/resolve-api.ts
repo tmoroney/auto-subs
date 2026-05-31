@@ -66,9 +66,23 @@ async function callResolve(
   payload: Record<string, unknown>,
   timeoutSecs?: number,
 ): Promise<any> {
-  const text = await invoke<string>('resolve_bridge', {
+  const invokePromise = invoke<string>('resolve_bridge', {
     args: { payload, timeoutSecs },
   });
+
+  let text: string;
+  if (timeoutSecs && timeoutSecs > 0) {
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Resolve did not respond within ${timeoutSecs} seconds`)),
+        timeoutSecs * 1000,
+      ),
+    );
+    text = await Promise.race([invokePromise, timeoutPromise]);
+  } else {
+    text = await invokePromise;
+  }
+
   if (!text) return {};
   try {
     return JSON.parse(text);
@@ -121,7 +135,7 @@ export async function getTimelineInfo() {
 }
 
 export async function getTemplates(): Promise<Template[]> {
-  const data = await callResolve({ func: 'GetTemplates' });
+  const data = await callResolve({ func: 'GetTemplates' }, 15);
   throwIfError(data, 'GetTemplates');
   return Array.isArray(data) ? data : [];
 }

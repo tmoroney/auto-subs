@@ -128,7 +128,11 @@
       "dialogTitle": "审查敏感词汇",
       "dialogDescription": "添加要在字幕中审查的词汇。",
       "inputPlaceholder": "添加要审查的词汇",
-      "empty": "暂无审查词汇。"
+      "empty": "暂无审查词汇。",
+      "lists": "词汇列表",
+      "customSection": "自定义词汇",
+      "customSectionDescription": "输入要审查的个别词汇。",
+      "listWordCount": "{{count}} 个词"
     },
     "speakers": {
       "title": "说话人标签",
@@ -343,6 +347,7 @@
   "completion": {
     "processingComplete": "处理完成",
     "subtitlesReady": "您的字幕已准备就绪！",
+    "noSpeechDetected": "未检测到语音。音频文件可能为静音或不包含可识别的语音。",
     "viewSubtitles": "查看字幕",
     "exportToFile": "导出到文件",
     "addToTimeline": "添加到时间线"

@@ -46,7 +46,7 @@ export function LanguageSelector() {
                                     >
                                         <Check
                                             className={cn(
-                                                "mr-2 h-4 w-4",
+                                                "mr-2 size-4",
                                                 language.value === settings.language
                                                     ? "opacity-100"
                                                     : "opacity-0"
@@ -86,7 +86,7 @@ export function LanguageSelector() {
                                 >
                                     <Check
                                         className={cn(
-                                            "mr-2 h-4 w-4",
+                                            "mr-2 size-4",
                                             language.value === settings.targetLanguage
                                                 ? "opacity-100"
                                                 : "opacity-0"
@@ -108,7 +108,7 @@ export function LanguageSelector() {
                     <Languages className="size-3.5" />
                     {t("actionBar.language.translate")}
                     {settings.translate && (
-                        <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                        <span className="ml-0.5 size-1.5 rounded-full bg-primary" />
                     )}
                 </TabsTrigger>
             </TabsList>

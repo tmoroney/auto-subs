@@ -4,6 +4,7 @@ use crate::transcript_types::{ColorModifier, Sample, Segment, Speaker, Transcrip
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use dirs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
@@ -491,11 +492,30 @@ fn should_normalize(_source: PathBuf) -> bool {
 
 
 // This function must now be `async` because it calls the async `normalize` function.
+/// Expand a leading `~` in a file path to the user's home directory.
+/// Windows CMD and PowerShell expand `~` as a path alias only in specific contexts;
+/// Rust's `PathBuf` does not expand it at all, so we must do it explicitly.
+fn expand_tilde(path: PathBuf) -> PathBuf {
+    let s = path.to_string_lossy();
+    if !s.starts_with('~') {
+        return path;
+    }
+    match dirs::home_dir() {
+        Some(home) => {
+            let rest = s[1..].trim_start_matches('/').trim_start_matches('\\');
+            home.join(rest)
+        }
+        None => path,
+    }
+}
+
 pub async fn create_normalized_audio<R: Runtime>(
     app: AppHandle<R>,
     source: PathBuf,
     additional_ffmpeg_args: Option<Vec<String>>,
 ) -> Result<PathBuf> {
+    // Expand ~ to home directory (Windows doesn't expand tilde natively)
+    let source = expand_tilde(source);
     tracing::info!("audio normalization: start input={}", source.display());
 
     let path_resolver = app.path();

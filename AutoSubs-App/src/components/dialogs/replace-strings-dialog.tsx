@@ -66,21 +66,23 @@ export function ReplaceStringsPanel({
     }, [subtitles, findText, matchCase])
 
     //Reset current occurrence when find text changes or occurrences change significantly
-    useEffect(() => {
+    const [prevFindKey, setPrevFindKey] = useState({ findText, occLen: occurrences.length })
+    if (findText !== prevFindKey.findText || occurrences.length !== prevFindKey.occLen) {
+        setPrevFindKey({ findText, occLen: occurrences.length })
         if (occurrences.length > 0) {
-            // If current index is out of bounds, reset to 0
             if (currentOccurrenceIndex >= occurrences.length || currentOccurrenceIndex < 0) {
                 setCurrentOccurrenceIndex(0)
             }
         } else {
             setCurrentOccurrenceIndex(-1)
         }
+    }
 
-        //Update highlight text when find text changes
+    useEffect(() => {
         if (onHighlightChange) {
             onHighlightChange(findText)
         }
-    }, [findText, occurrences.length, onHighlightChange])
+    }, [findText, onHighlightChange])
 
     //After replacement, navigate to current occurrence when index changes
     useEffect(() => {
@@ -247,7 +249,7 @@ export function ReplaceStringsPanel({
     return (
         <div className="border-t bg-sidebar p-3 space-y-3">
             <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-muted-foreground" />
+                <Search className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">{t("replaceStrings.title")}</span>
             </div>
 
@@ -255,7 +257,7 @@ export function ReplaceStringsPanel({
                 <div className="space-y-1.5">
                     <Label htmlFor="find-text" className="text-xs">{t("replaceStrings.find")}</Label>
                     <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                         <Input
                             id="find-text"
                             placeholder={t("replaceStrings.findPlaceholder")}
@@ -268,7 +270,7 @@ export function ReplaceStringsPanel({
                             variant={matchCase ? "default" : "ghost"}
                             size="icon"
                             onClick={() => handleMatchCaseToggle(!matchCase)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-xs"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 size-6 text-xs"
                             title={t("replaceStrings.matchCase")}
                         >
                             <span className="text-[10px] font-semibold leading-none">Aa</span>
@@ -279,7 +281,7 @@ export function ReplaceStringsPanel({
                 <div className="space-y-1.5">
                     <Label htmlFor="replace-text" className="text-xs">{t("replaceStrings.replaceWith")}</Label>
                     <div className="relative">
-                        <Replace className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Replace className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                         <Input
                             id="replace-text"
                             placeholder={t("replaceStrings.replacePlaceholder")}
@@ -307,18 +309,18 @@ export function ReplaceStringsPanel({
                             size="icon"
                             onClick={handlePrevious}
                             disabled={occurrences.length === 0}
-                            className="h-7 w-7"
+                            className="size-7"
                         >
-                            <ArrowLeft className="h-3.5 w-3.5" />
+                            <ArrowLeft className="size-3.5" />
                         </Button>
                         <Button
                             variant="outline"
                             size="icon"
                             onClick={handleNext}
                             disabled={occurrences.length === 0}
-                            className="h-7 w-7"
+                            className="size-7"
                         >
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            <ArrowRight className="size-3.5" />
                         </Button>
                     </div>
                 </div>

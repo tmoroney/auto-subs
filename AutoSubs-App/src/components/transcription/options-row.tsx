@@ -78,13 +78,13 @@ export function OptionsRow() {
           <Button
             variant="ghost"
             size="default"
-            role="combobox"
+            aria-haspopup="listbox"
             className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
             aria-expanded={openSpeakerPopover}
             aria-label={`${t("actionBar.options.speakerLabels", "Speakers")}: ${diarizeLabel}`}
             title={`${t("actionBar.options.speakerLabels", "Speakers")}: ${diarizeLabel}`}
           >
-            <Speech className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+            <Speech className="size-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
             <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
               {diarizeLabel}
             </span>
@@ -103,7 +103,7 @@ export function OptionsRow() {
           <Button
             variant="ghost"
             size="default"
-            role="combobox"
+            aria-haspopup="listbox"
             className="group h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
             aria-expanded={openTextFormattingPopover}
             aria-label={`${t("actionBar.subtitleStyle", "Style")}: ${t("actionBar.subtitleStyleDescription", "Captions")}`}
@@ -190,7 +190,7 @@ function CustomPromptPopover({
         <Button
           variant="ghost"
           size="default"
-          role="combobox"
+          aria-haspopup="listbox"
           className="group relative h-10 min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
           aria-expanded={open}
           aria-label={t("actionBar.format.customPromptTitle")}
@@ -198,7 +198,7 @@ function CustomPromptPopover({
         >
           <ScrollText
             className={cn(
-              "h-4 w-4 shrink-0 group-hover:text-primary transition-colors",
+              "size-4 shrink-0 group-hover:text-primary transition-colors",
               showLabel ? "text-muted-foreground" : "text-foreground",
             )}
           />
@@ -208,7 +208,7 @@ function CustomPromptPopover({
             </span>
           ) : null}
           {customPrompt.trim() ? (
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
+            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
           ) : null}
         </Button>
       </PopoverTrigger>
@@ -235,7 +235,7 @@ function CustomPromptPopover({
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <Info className="size-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[220px]">
                     <p className="text-xs">
@@ -262,7 +262,7 @@ function CustomPromptPopover({
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <Info className="size-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[255px]">
                     <p className="text-xs">

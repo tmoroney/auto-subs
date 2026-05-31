@@ -67,7 +67,7 @@ export function ManageModelsDialog({
                   <img
                     src={model.image}
                     alt={t(model.label)}
-                    className="w-9 h-9 object-contain rounded"
+                    className="size-9 object-contain rounded"
                   />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -83,7 +83,7 @@ export function ManageModelsDialog({
                   title={t("models.manage.deleteModel")}
                   onClick={() => handleDeleteModel(model.value)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="size-4" />
                 </Button>
               </div>
             ))

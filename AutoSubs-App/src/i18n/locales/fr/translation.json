@@ -128,7 +128,11 @@
       "dialogTitle": "Censurer des mots sensibles",
       "dialogDescription": "Ajoutez des mots à censurer dans les sous-titres.",
       "inputPlaceholder": "Ajouter un mot à censurer",
-      "empty": "Aucun mot censuré pour l’instant."
+      "empty": "Aucun mot censuré pour l’instant.",
+      "lists": "Listes de mots",
+      "customSection": "Mots personnalisés",
+      "customSectionDescription": "Saisissez des mots individuels à censurer.",
+      "listWordCount": "{{count}} mots"
     },
     "speakers": {
       "title": "Labels de speaker",
@@ -343,6 +347,7 @@
   "completion": {
     "processingComplete": "Traitement terminé",
     "subtitlesReady": "Vos sous-titres sont prêts !",
+    "noSpeechDetected": "Aucune parole détectée. Le fichier audio peut être silencieux ou ne contenir aucune parole reconnaissable.",
     "viewSubtitles": "Voir les sous-titres",
     "exportToFile": "Exporter vers un fichier",
     "addToTimeline": "Ajouter à la timeline"

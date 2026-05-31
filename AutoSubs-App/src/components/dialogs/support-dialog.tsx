@@ -34,8 +34,8 @@ export function SupportDialog({ open, onOpenChange }: SupportDialogProps) {
           <Card className="relative overflow-hidden group border-2 border-yellow-200/60 dark:border-yellow-900/60 bg-gradient-to-b from-yellow-50/50 to-white dark:from-yellow-950/10 dark:to-zinc-900 shadow-sm flex flex-col h-full">
             <CardContent className="p-6 flex flex-col h-full justify-between items-center text-center space-y-4">
               <div className="space-y-3 flex-1 flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center mb-1 shadow-sm group-hover:scale-110 transition-transform duration-300 border border-yellow-50 dark:border-yellow-900/30">
-                  <Coffee className="h-6 w-6 text-yellow-600 fill-yellow-600" />
+                <div className="size-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center mb-1 shadow-sm group-hover:scale-110 transition-transform duration-300 border border-yellow-50 dark:border-yellow-900/30">
+                  <Coffee className="size-6 text-yellow-600 fill-yellow-600" />
                 </div>
                 <h3 className="text-2xl font-bold tracking-tight text-yellow-950 dark:text-yellow-50">Buy me a coffee?</h3>
                 <p className="text-sm text-yellow-900/70 dark:text-yellow-200/60 leading-relaxed px-4 font-medium">
@@ -53,7 +53,7 @@ export function SupportDialog({ open, onOpenChange }: SupportDialogProps) {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2"
                 >
-                  <Coffee className="h-4 w-4" />
+                  <Coffee className="size-4" />
                   Donate
                 </a>
               </Button>
@@ -181,12 +181,12 @@ function SubSlatePromoCard() {
               required
             />
             <button className="ss-button" type="submit" disabled={status === "loading"}>
-              {status === "loading" ? <Loader2 className="animate-spin w-4 h-4" /> : "Notify Me"}
+              {status === "loading" ? <Loader2 className="animate-spin size-4" /> : "Notify Me"}
             </button>
           </form>
 
           <a className="ss-link" href="https://subslate.app" target="_blank" rel="noopener noreferrer">
-            subslate.app <ExternalLink className="h-2 w-2 inline" />
+            subslate.app <ExternalLink className="size-2 inline" />
           </a>
         </div>
       </div>

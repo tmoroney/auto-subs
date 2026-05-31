@@ -74,6 +74,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-table": "^8.20.5",
     "@tanstack/react-virtual": "^3.13.24",
+    "@untitledui/file-icons": "^0.0.9",
     "axios": "^1.7.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

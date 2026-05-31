@@ -132,7 +132,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   className="flex-1"
                   onClick={handleOpenLogsFolder}
                 >
-                  <Terminal className="h-4 w-4" />
+                  <Terminal className="size-4" />
                   {t("settings.openLogsFolder")}
                 </Button>
               </div>
@@ -148,7 +148,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Field>
                   <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
-                      <Gauge className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <Gauge className="size-4 text-yellow-600 dark:text-yellow-400" />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle>{t("settings.gpu.title")}</ItemTitle>
@@ -168,7 +168,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Field>
                   <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-blue-100 dark:bg-blue-900/30">
-                      <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <Clock className="size-4 text-blue-600 dark:text-blue-400" />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle>{t("settings.dtw.title")}</ItemTitle>

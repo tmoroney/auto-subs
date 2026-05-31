@@ -85,7 +85,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                 <PopoverTrigger asChild>
                     {trigger ?? (
                         <Button ref={ref} variant="outline" className="w-full flex items-center justify-center gap-2">
-                            <Upload className="h-4 w-4" />
+                            <Upload className="size-4" />
                             {t("importExport.button")}
                         </Button>
                     )}
@@ -105,7 +105,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                                 type="button"
                             >
                                 <div className="flex w-full items-start gap-3 text-left">
-                                    <Captions className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <Captions className="mt-0.5 size-4 shrink-0" />
                                     <div className="min-w-0 flex-1 space-y-1">
                                         <div className="text-sm font-medium">{t("importExport.exportFormats.srt.title")}</div>
                                         <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
@@ -121,7 +121,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                                 type="button"
                             >
                                 <div className="flex w-full items-start gap-3 text-left">
-                                    <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <FileText className="mt-0.5 size-4 shrink-0" />
                                     <div className="min-w-0 flex-1 space-y-1">
                                         <div className="text-sm font-medium">{t("importExport.exportFormats.txt.title")}</div>
                                         <div className="whitespace-normal break-words text-xs font-normal leading-4 text-muted-foreground">
@@ -135,7 +135,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                                 className="w-full"
                                 disabled={!hasSubtitles}
                             >
-                                <Download className="h-4 w-4 mr-2" />
+                                <Download className="size-4 mr-2" />
                                 {t("importExport.downloadFormat", { format: exportFormat.toUpperCase() })}
                             </Button>
                         </TabsContent>
@@ -144,7 +144,7 @@ export const ImportExportPopover = React.forwardRef<HTMLButtonElement, ImportExp
                                 className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors flex flex-col items-center justify-center h-36"
                                 onClick={handleFileSelect}
                             >
-                                <FileUp className="h-8 w-8 mb-2 text-muted-foreground" />
+                                <FileUp className="size-8 mb-2 text-muted-foreground" />
                                 <span className="text-sm font-medium text-muted-foreground">{t("importExport.dropHere")}</span>
                                 <span className="text-xs text-muted-foreground mt-1">{t("importExport.supportsSrt")}</span>
                             </div>

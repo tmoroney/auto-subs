@@ -63,6 +63,11 @@ export function ErrorReportDialog({
   const [appVersion, setAppVersion] = React.useState<string>("")
   const [osName, setOsName] = React.useState<string>("")
   const [copied, setCopied] = React.useState(false)
+  const [prevOpen, setPrevOpen] = React.useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) setCopied(false)
+  }
 
   // Load diagnostics lazily the first time the dialog opens
   const loadedRef = React.useRef(false)
@@ -85,13 +90,6 @@ export function ErrorReportDialog({
       })()
     return () => {
       cancelled = true
-    }
-  }, [open])
-
-  // Reset copied state when dialog closes
-  React.useEffect(() => {
-    if (!open) {
-      setCopied(false)
     }
   }, [open])
 
@@ -145,7 +143,7 @@ export function ErrorReportDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertCircle className="h-6 w-6 text-red-500" />
+            <AlertCircle className="size-6 text-red-500" />
             {title}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-lg">
@@ -158,7 +156,7 @@ export function ErrorReportDialog({
             variant="outline"
             onClick={handleOpenLogsFolder}
           >
-            <Terminal className="h-4 w-4" />
+            <Terminal className="size-4" />
             logs/
           </Button>
           <div className="flex-1" />
@@ -170,7 +168,7 @@ export function ErrorReportDialog({
               "Copied to Clipboard!"
             ) : (
               <>
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="size-4" />
                 Copy Logs & Report
               </>
             )}

@@ -157,14 +157,14 @@ export function CreatePresetFlow({
         <div className="space-y-4">
             {error && (
                 <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="size-4" />
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
 
             {phase.kind === "launching" && (
                 <PhaseCard
-                    icon={<Sparkles className="h-6 w-6 text-primary animate-pulse" />}
+                    icon={<Sparkles className="size-6 text-primary animate-pulse" />}
                     title={t("addToTimeline.preset.phase.launchingTitle")}
                     body={t("addToTimeline.preset.phase.launchingHint")}
                 />
@@ -172,7 +172,7 @@ export function CreatePresetFlow({
 
             {phase.kind === "capturing" && (
                 <PhaseCard
-                    icon={<Sparkles className="h-6 w-6 text-primary animate-pulse" />}
+                    icon={<Sparkles className="size-6 text-primary animate-pulse" />}
                     title={t("addToTimeline.preset.phase.capturingTitle")}
                     body={t("addToTimeline.preset.phase.launchingHint")}
                 />
@@ -180,7 +180,7 @@ export function CreatePresetFlow({
 
             {phase.kind === "editing" && (
                 <PhaseCard
-                    icon={<MonitorPlay className="h-6 w-6 text-primary" />}
+                    icon={<MonitorPlay className="size-6 text-primary" />}
                     title={t("addToTimeline.preset.phase.editingTitle")}
                     body={t("addToTimeline.preset.phase.editingBody")}
                 />
@@ -235,7 +235,7 @@ export function CreatePresetFlow({
                         onClick={handleBackToEditing}
                         disabled={isSaving}
                     >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="size-4" />
                         {t("addToTimeline.preset.action.back")}
                     </Button>
                 ) : (
@@ -253,14 +253,14 @@ export function CreatePresetFlow({
                 {phase.kind === "editing" && (
                     <Button type="button" onClick={handleCapture}>
                         {t("addToTimeline.preset.action.captureSettings")}
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="size-4" />
                     </Button>
                 )}
 
                 {phase.kind === "naming" && (
                     <Button type="button" onClick={handleSave} disabled={isSaving}>
                         {isSaving && (
-                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            <div className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         )}
                         {submitLabel ?? t("addToTimeline.preset.action.save")}
                     </Button>

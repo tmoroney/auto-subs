@@ -106,12 +106,12 @@ export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorPr
                                         }
                                     }}
                                 >
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
+                                    <div className={`size-8 rounded-full flex items-center justify-center transition-colors
                                     ${isChecked
                                             ? 'bg-primary/10'
                                             : 'bg-zinc-100 dark:bg-zinc-800'}`}
                                     >
-                                        <AudioLines className={`h-4 w-4 ${isChecked ? 'text-primary' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                                        <AudioLines className={`size-4 ${isChecked ? 'text-primary' : 'text-zinc-500 dark:text-zinc-400'}`} />
                                     </div>
                                     <span className={`text-sm font-medium flex-1 text-left ${isChecked ? 'text-primary' : ''}`}>
                                         {track.label}

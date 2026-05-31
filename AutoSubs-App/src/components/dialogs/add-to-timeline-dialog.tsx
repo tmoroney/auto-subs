@@ -160,7 +160,6 @@ export function AddToTimelineDialog({
     React.useEffect(() => {
         if (!open || isAdobe || templatesLoaded || templatesLoading || !onLoadTemplates) return
         let cancelled = false
-        setTemplateLoadError(null)
         onLoadTemplates().catch((err) => {
             if (cancelled) return
             const message = err instanceof Error ? err.message : String(err)
@@ -171,9 +170,16 @@ export function AddToTimelineDialog({
 
 
     // Check for track conflicts whenever the selected output track changes.
-    React.useEffect(() => {
+    const [prevConflictKey, setPrevConflictKey] = React.useState({ open, file: currentSubtitleDocumentFilename, track: selection.outputTrack })
+    if (prevConflictKey.open !== open || prevConflictKey.file !== currentSubtitleDocumentFilename || prevConflictKey.track !== selection.outputTrack) {
+        setPrevConflictKey({ open, file: currentSubtitleDocumentFilename, track: selection.outputTrack })
         if (!open || !currentSubtitleDocumentFilename || !selection.outputTrack) {
             setConflictInfo(null)
+        }
+    }
+
+    React.useEffect(() => {
+        if (!open || !currentSubtitleDocumentFilename || !selection.outputTrack) {
             return
         }
         let cancelled = false
@@ -333,7 +339,7 @@ export function AddToTimelineDialog({
                     {activeSteps.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-[280px] text-center space-y-4">
                             <div className="bg-primary/10 p-4 rounded-full">
-                                <Check className="h-8 w-8 text-primary" />
+                                <Check className="size-8 text-primary" />
                             </div>
                             <div className="space-y-1">
                                 <p className="text-lg font-medium">{t("addToTimeline.ready.title")}</p>
@@ -384,9 +390,8 @@ export function AddToTimelineDialog({
                         <ScrollArea>
                             <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
-                                    <div className="rounded-sm border p-3 bg-card">
+                                    <div key={index} className="rounded-sm border p-3 bg-card">
                                         <SpeakerSettings
-                                            key={index}
                                             speaker={speaker}
                                             onSpeakerChange={(updated) => {
                                                 const next = [...localSpeakers]
@@ -430,7 +435,7 @@ export function AddToTimelineDialog({
                                 t("common.cancel")
                             ) : (
                                 <>
-                                    <ChevronLeft className="w-4 h-4" />
+                                    <ChevronLeft className="size-4" />
                                     {t("common.back")}
                                 </>
                             )}
@@ -442,7 +447,7 @@ export function AddToTimelineDialog({
                                 disabled={!canProceed()}
                             >
                                 {t("common.next")}
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight className="size-4" />
                             </Button>
                         ) : (
                             <Button
@@ -452,7 +457,7 @@ export function AddToTimelineDialog({
                             >
                                 {isSubmitting || isAdding ? (
                                     <>
-                                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                        <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                                         {t("addToTimeline.adding")}
                                     </>
                                 ) : (
@@ -502,9 +507,9 @@ function Stepper({ steps, currentStep, onJump, canAdvanceTo }: StepperProps) {
                                 }`}
                         >
                             {isCompleted ? (
-                                <Check className="w-3.5 h-3.5" />
+                                <Check className="size-3.5" />
                             ) : (
-                                <Icon className="w-3.5 h-3.5" />
+                                <Icon className="size-3.5" />
                             )}
                             <span className="hidden sm:inline">{step.label}</span>
                         </button>
@@ -553,7 +558,7 @@ function OutputTrackStep({
                         >
                             <div className="flex items-center justify-between">
                                 <span>{track.label}</span>
-                                {selected === track.value && <Check className="h-4 w-4" />}
+                                {selected === track.value && <Check className="size-4" />}
                             </div>
                         </button>
                     ))}
@@ -561,7 +566,7 @@ function OutputTrackStep({
             </ScrollArea>
             {conflictInfo?.hasConflicts && (
                 <div className="flex items-start gap-1.5 text-red-500 text-sm">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                     <span>{t("addToTimeline.conflict.hasConflicts")}</span>
                 </div>
             )}

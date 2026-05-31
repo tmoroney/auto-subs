@@ -120,7 +120,7 @@ export function AnimatedPresetActions({
               variant="outline"
               className="w-full text-sm font-semibold sm:w-auto"
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="size-4" />
               {t("importExport.importTab")}
             </Button>
           </DropdownMenuTrigger>
@@ -140,7 +140,7 @@ export function AnimatedPresetActions({
           className="w-full text-sm font-semibold sm:w-auto"
           onClick={onRequestCreate}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="size-4" />
           {t("addToTimeline.preset.new", "New Preset")}
         </Button>
       </div>
@@ -345,13 +345,13 @@ function PresetCard({
     >
       <div
         className={cn(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+          "flex size-4 shrink-0 items-center justify-center rounded-full border",
           selected
             ? "border-primary bg-primary text-primary-foreground"
             : "border-muted-foreground/30 bg-background",
         )}
       >
-        {selected && <Check className="h-3 w-3" />}
+        {selected && <Check className="size-3" />}
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex min-w-0 items-center gap-2">
@@ -385,9 +385,9 @@ function PresetCard({
             disabled={isPreviewLoading}
           >
             {isPreviewLoading ? (
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <div className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
-              <Play className="h-3 w-3" />
+              <Play className="size-3" />
             )}
             {t("addToTimeline.preset.preview")}
           </Button>
@@ -397,13 +397,13 @@ function PresetCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="size-6"
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="size-3" />
           </Button>
         )}
         <DropdownMenu>
@@ -412,7 +412,7 @@ function PresetCard({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="size-6"
               onClick={(e) => e.stopPropagation()}
             >
               <Ellipsis />
@@ -420,15 +420,15 @@ function PresetCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={onDuplicate}>
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="size-3.5" />
               {t("addToTimeline.preset.duplicate")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onExport}>
-              <Download className="h-3.5 w-3.5" />
+              <Download className="size-3.5" />
               {t("addToTimeline.preset.export")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onCopyJson}>
-              <ClipboardPaste className="h-3.5 w-3.5" />
+              <ClipboardPaste className="size-3.5" />
               {t("addToTimeline.preset.copyJson")}
             </DropdownMenuItem>
             {!preset.builtIn && (
@@ -438,7 +438,7 @@ function PresetCard({
                   onClick={onRequestDelete}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="size-3.5" />
                   {t("addToTimeline.preset.delete")}
                 </DropdownMenuItem>
               </>

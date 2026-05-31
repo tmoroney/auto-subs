@@ -6,12 +6,16 @@
     "subtitleStyleDescription": "字幕",
     "model": "モデル",
     "censor": {
+      "title": "不適切な言葉を検閲",
+      "wordCount": "{{count}} 語",
       "dialogDescription": "字幕で検閲する単語を追加してください。",
       "dialogTitle": "不適切な言葉を検閲",
       "empty": "検閲する単語がありません。",
       "inputPlaceholder": "検閲する単語を追加",
-      "title": "単語を検閲",
-      "wordCount": "{{count}} 語"
+      "lists": "単語リスト",
+      "customSection": "カスタム単語",
+      "customSectionDescription": "検閲する個別の単語を入力してください。",
+      "listWordCount": "{{count}} 語"
     },
     "common": {
       "auto": "自動",
@@ -115,6 +119,7 @@
   "completion": {
     "processingComplete": "処理完了",
     "subtitlesReady": "字幕の準備ができました！",
+    "noSpeechDetected": "音声が検出されませんでした。オーディオファイルが無音か、認識可能な音声が含まれていない可能性があります。",
     "viewSubtitles": "字幕を表示",
     "exportToFile": "ファイルに書き出し",
     "addToTimeline": "タイムラインに追加"

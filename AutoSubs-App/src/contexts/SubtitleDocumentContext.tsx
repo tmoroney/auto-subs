@@ -3,6 +3,7 @@ import { Subtitle, Speaker, Settings } from '@/types';
 import { useResolve } from '@/contexts/ResolveContext';
 import { useAdobe } from '@/contexts/AdobeContext';
 import { useIntegration } from '@/contexts/IntegrationContext';
+import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir } from '@tauri-apps/api/path';
@@ -222,7 +223,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       language: transcript.language,
       textCase: settings.textCase,
       removePunctuation: settings.removePunctuation,
-      censoredWords: settings.enableCensor ? settings.censoredWords : [],
+      censoredWords: settings.enableCensor ? getActiveCensorWords(settings) : [],
     });
 
     // Save reformatted segments and update state.

@@ -20,6 +20,12 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
 }
 
+function applyThemeClass(resolved: "dark" | "light") {
+  const root = window.document.documentElement
+  root.classList.remove("light", "dark")
+  root.classList.add(resolved)
+}
+
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
@@ -31,33 +37,33 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("light")
+  const resolvedTheme: "dark" | "light" = theme === "system"
+    ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : theme;
 
   useEffect(() => {
-    const root = window.document.documentElement
-
-    root.classList.remove("light", "dark")
-
-    let resolved: "dark" | "light"
-    if (theme === "system") {
-      resolved = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
-    } else {
-      resolved = theme
-    }
-
-    root.classList.add(resolved);
-    setResolvedTheme(resolved);
-  }, [theme])
+    applyThemeClass(resolvedTheme)
+  }, [resolvedTheme])
 
   const value = {
     theme,
     resolvedTheme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    setTheme: (next: Theme) => {
+      localStorage.setItem(storageKey, next)
+
+      const nextResolved: "dark" | "light" = next === "system"
+        ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+        : next
+
+      if (!document.startViewTransition) {
+        setTheme(next)
+        return
+      }
+
+      document.startViewTransition(() => {
+        applyThemeClass(nextResolved)
+      })
+      setTheme(next)
     },
   }
 

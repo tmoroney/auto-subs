@@ -40,7 +40,7 @@ export function TrackConflictDialog({
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTriangle className="size-5 text-amber-500" />
             Existing Content Detected
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
@@ -70,7 +70,7 @@ export function TrackConflictDialog({
               onOpenChange(false);
             }}
           >
-            <Replace className="h-4 w-4" />
+            <Replace className="size-4" />
             <div className="text-left">
               <div>Replace All</div>
               <div className="text-xs font-normal opacity-80">Delete existing clips and add new subtitles</div>
@@ -85,7 +85,7 @@ export function TrackConflictDialog({
               onOpenChange(false);
             }}
           >
-            <SkipForward className="h-4 w-4" />
+            <SkipForward className="size-4" />
             <div className="text-left">
               <div>Skip Conflicts</div>
               <div className="text-xs font-normal opacity-70">Only add subtitles where there's no existing content</div>
@@ -100,7 +100,7 @@ export function TrackConflictDialog({
               onOpenChange(false);
             }}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="size-4" />
             <div className="text-left">
               <div>Use New Track</div>
               <div className="text-xs font-normal opacity-70">Create a new track for these subtitles</div>

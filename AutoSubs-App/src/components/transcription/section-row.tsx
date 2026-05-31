@@ -10,7 +10,7 @@ interface SectionHeaderProps {
 export function SectionHeader({ number, label, action }: SectionHeaderProps) {
   return (
     <div className="mb-3 flex items-center gap-2.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-sm font-semibold text-primary">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-sm font-semibold text-primary">
         {number}
       </span>
       <h3 className="text-base font-semibold leading-none text-foreground">
@@ -29,7 +29,7 @@ interface CompactSectionLabelProps {
 function CompactSectionLabel({ number, label }: CompactSectionLabelProps) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary dark:bg-primary/20">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary dark:bg-primary/20">
         {number}
       </span>
       <h3 className="min-w-0 truncate text-sm font-semibold leading-none text-foreground">

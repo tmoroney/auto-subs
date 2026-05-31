@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { useSettings } from "@/contexts/SettingsContext";
+import { cn } from "@/lib/utils";
 import type {
   Model,
   Settings,
@@ -215,6 +216,7 @@ export function TranscriptionPanelView({
         templatesLoading={templatesLoading}
         templatesLoaded={templatesLoaded}
         onLoadTemplates={onLoadTemplates}
+        timelineInfo={timelineInfo}
       />
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
@@ -242,7 +244,7 @@ export function TranscriptionPanelView({
               variant="default"
               className="w-full"
             >
-              <PlayCircle className="h-4 w-4" />
+              <PlayCircle className="size-4" />
               {t("common.startNewTranscription", "Start new transcription")}
             </Button>
           </div>
@@ -271,20 +273,25 @@ export function TranscriptionPanelView({
                         onSwitchToTimeline={handleRefreshAudioTracks}
                       />
                     </div>
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      {currentSettings.audioInputMode === "timeline" ? (
-                        <TimelineTrackSelector
-                          inputTracks={inputTracks}
-                          selectedIntegration={selectedIntegration}
-                          onRefreshTracks={handleRefreshAudioTracks}
-                          isRefreshingTracks={isRefreshingTracks}
-                        />
-                      ) : (
-                        <FileDropArea
-                          selectedFile={selectedFile}
-                          onSelectedFileChange={setSelectedFile}
-                        />
-                      )}
+                    <div className="grid min-h-0 flex-1 grid-rows-1">
+                      <TimelineTrackSelector
+                        inputTracks={inputTracks}
+                        selectedIntegration={selectedIntegration}
+                        onRefreshTracks={handleRefreshAudioTracks}
+                        isRefreshingTracks={isRefreshingTracks}
+                        className={cn(
+                          "row-start-1 col-start-1 transition-opacity duration-0",
+                          currentSettings.audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
+                        )}
+                      />
+                      <FileDropArea
+                        selectedFile={selectedFile}
+                        onSelectedFileChange={setSelectedFile}
+                        className={cn(
+                          "row-start-1 col-start-1 transition-opacity duration-0",
+                          currentSettings.audioInputMode !== "file" && "opacity-0 pointer-events-none"
+                        )}
+                      />
                     </div>
                   </div>
 
@@ -333,7 +340,7 @@ export function TranscriptionPanelView({
                       disabled={startDisabled}
                       className="w-full"
                     >
-                      <PlayCircle className="h-4 w-4" />
+                      <PlayCircle className="size-4" />
                       {startButtonLabel}
                     </Button>
                   </div>
@@ -346,7 +353,7 @@ export function TranscriptionPanelView({
                   variant="destructive"
                   className="w-full"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="size-4" />
                   {t("common.cancel")}
                 </Button>
               )}

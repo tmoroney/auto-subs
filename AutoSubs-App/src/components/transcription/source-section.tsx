@@ -1,10 +1,13 @@
 import * as React from "react";
-import { AudioLines, Clock3, FileAudio, HardDrive, MonitorIcon, RefreshCw } from "lucide-react";
+import {
+  AudioLines,
+  MonitorIcon,
+  RefreshCw,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { downloadDir } from "@tauri-apps/api/path";
-import { stat } from "@tauri-apps/plugin-fs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -15,7 +18,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 import type { Track } from "@/types";
-import { SUPPORTED_MEDIA_EXTENSIONS } from "./utils";
+import { SUPPORTED_MEDIA_EXTENSIONS, isVideoExtension } from "./utils";
+import { MediaPlayer } from "@/components/media/media-player";
+import { FileIcon } from "@untitledui/file-icons";
 
 interface SourceModeTabsProps {
   audioInputMode: "file" | "timeline";
@@ -77,40 +82,9 @@ function getFileName(filePath: string): string {
 function getFileExtension(filePath: string): string {
   const fileName = getFileName(filePath);
   const extension = fileName.split(".").pop();
-  return extension && extension !== fileName ? extension.toUpperCase() : "Media";
-}
-
-function formatBytes(bytes: number | null): string {
-  if (bytes === null) return "Size unavailable";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-
-  const precision = size >= 10 || unitIndex === 0 ? 0 : 1;
-  return `${size.toFixed(precision)} ${units[unitIndex]}`;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return "Duration unavailable";
-  if (!Number.isFinite(seconds) || seconds < 0) return "Duration unavailable";
-
-  const totalSeconds = Math.round(seconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const remainingSeconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds
-      .toString()
-      .padStart(2, "0")}`;
-  }
-
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  return extension && extension !== fileName
+    ? extension.toUpperCase()
+    : "Media";
 }
 
 const localizedDigits: Record<string, string[]> = {
@@ -119,7 +93,10 @@ const localizedDigits: Record<string, string[]> = {
   zh: ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
 };
 
-export function formatLocalizedTrackNumber(value: number, language: string): string {
+export function formatLocalizedTrackNumber(
+  value: number,
+  language: string,
+): string {
   const baseLanguage = language.split("-")[0]?.toLowerCase();
   const digits = baseLanguage ? localizedDigits[baseLanguage] : undefined;
 
@@ -137,43 +114,13 @@ export function FileDropArea({
 }: FileDropAreaProps) {
   const { t } = useTranslation();
   const iconRef = React.useRef<UploadIconHandle>(null);
-  const [fileSize, setFileSize] = React.useState<number | null>(null);
-  const [duration, setDuration] = React.useState<number | null>(null);
-  const [previewError, setPreviewError] = React.useState(false);
+
+  const isVideo = selectedFile ? isVideoExtension(selectedFile) : false;
 
   const audioSrc = React.useMemo(
     () => (selectedFile ? convertFileSrc(selectedFile) : null),
     [selectedFile],
   );
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    setDuration(null);
-    setPreviewError(false);
-
-    if (!selectedFile) {
-      setFileSize(null);
-      return;
-    }
-
-    setFileSize(null);
-    stat(selectedFile)
-      .then((metadata) => {
-        if (!cancelled) {
-          setFileSize(typeof metadata.size === "number" ? metadata.size : null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFileSize(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedFile]);
 
   const handleFileSelect = React.useCallback(async () => {
     const file = await open({
@@ -192,7 +139,6 @@ export function FileDropArea({
 
   return (
     <div
-      key="file-drop-area"
       className={cn(
         "group flex w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-muted-foreground/25 bg-muted/10 px-4 py-4 outline-none",
         selectedFile
@@ -214,8 +160,11 @@ export function FileDropArea({
       {selectedFile ? (
         <div className="flex w-full max-w-xl flex-col gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-500">
-              <FileAudio className="size-5" />
+            <div className="flex shrink-0 items-center justify-center">
+              <FileIcon
+                type={getFileExtension(selectedFile).toLowerCase()}
+                size={40}
+              />
             </div>
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-foreground">
@@ -223,26 +172,6 @@ export function FileDropArea({
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 {selectedFile}
-              </span>
-            </div>
-            <div className="hidden shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:block">
-              {getFileExtension(selectedFile)}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2">
-              <HardDrive className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-xs font-medium text-foreground">
-                {formatBytes(fileSize)}
-              </span>
-            </div>
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2">
-              <Clock3 className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-xs font-medium text-foreground">
-                {duration === null && !previewError
-                  ? "Loading duration"
-                  : formatDuration(duration)}
               </span>
             </div>
           </div>
@@ -253,25 +182,11 @@ export function FileDropArea({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              <audio
-                className="block h-10 w-full"
-                controls
-                preload="metadata"
+              <MediaPlayer
                 src={audioSrc}
-                onLoadedMetadata={(event) => {
-                  setDuration(event.currentTarget.duration);
-                  setPreviewError(false);
-                }}
-                onError={() => {
-                  setDuration(null);
-                  setPreviewError(true);
-                }}
+                filePath={selectedFile || undefined}
+                type={isVideo ? "video" : "audio"}
               />
-              {previewError ? (
-                <p className="px-1 pt-2 text-xs text-muted-foreground">
-                  Preview is unavailable for this format, but it can still be used for transcription.
-                </p>
-              ) : null}
             </div>
           ) : null}
         </div>
@@ -299,6 +214,7 @@ interface TimelineTrackSelectorProps {
   selectedIntegration: "davinci" | "premiere" | "aftereffects";
   onRefreshTracks?: () => void;
   isRefreshingTracks?: boolean;
+  className?: string;
 }
 
 export function TimelineTrackSelector({
@@ -306,6 +222,7 @@ export function TimelineTrackSelector({
   selectedIntegration,
   onRefreshTracks,
   isRefreshingTracks = false,
+  className,
 }: TimelineTrackSelectorProps) {
   const { t, i18n } = useTranslation();
   const { settings: currentSettings, updateSetting } = useSettings();
@@ -352,7 +269,7 @@ export function TimelineTrackSelector({
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
       data-tour="audio-input"
     >
       {inputTracks.length > 0 ? (
@@ -373,10 +290,7 @@ export function TimelineTrackSelector({
                   aria-label={t("actionBar.tracks.refresh")}
                 >
                   <RefreshCw
-                    className={cn(
-                      "size-3.5",
-                      isSpinning && "animate-spin"
-                    )}
+                    className={cn("size-3.5", isSpinning && "animate-spin")}
                   />
                 </button>
               )}
@@ -424,7 +338,7 @@ export function TimelineTrackSelector({
                     />
                     <AudioLines
                       className={cn(
-                        "h-4 w-4 transition-colors",
+                        "size-4 transition-colors",
                         isChecked ? "text-foreground" : "text-muted-foreground",
                       )}
                     />

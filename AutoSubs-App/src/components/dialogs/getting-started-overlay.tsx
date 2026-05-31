@@ -107,8 +107,8 @@ export function GettingStartedOverlay() {
         )}
       >
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
-            <Globe className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+          <div className="flex size-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
+            <Globe className="size-8 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-semibold tracking-tight">
@@ -126,9 +126,9 @@ export function GettingStartedOverlay() {
               <div>{t("gettingStarted.resolveNote.openResolve")}</div>
               <div className="flex items-center justify-center gap-2">
                 <b>{t("gettingStarted.resolveNote.workspace")}</b>
-                <MoveRight className="h-3 w-3" />
+                <MoveRight className="size-3" />
                 <b>{t("gettingStarted.resolveNote.scripts")}</b>
-                <MoveRight className="h-3 w-3" />
+                <MoveRight className="size-3" />
                 <b>{t("gettingStarted.resolveNote.autosubs")}</b>
               </div>
             </p>
@@ -141,14 +141,14 @@ export function GettingStartedOverlay() {
               <Button
                 variant="outline"
                 size="lg"
-                role="combobox"
+                aria-haspopup="listbox"
                 aria-expanded={open}
                 className="w-full justify-between px-4"
               >
                 {selection
                   ? languages.find((opt) => opt.value === selection)?.label
                   : t("gettingStarted.selectLanguage")}
-                <Globe className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                <Globe className="ml-2 size-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -165,7 +165,7 @@ export function GettingStartedOverlay() {
                       >
                         <Check
                           className={cn(
-                            "mr-2 h-4 w-4",
+                            "mr-2 size-4",
                             selection === opt.value ? "opacity-100" : "opacity-0"
                           )}
                         />

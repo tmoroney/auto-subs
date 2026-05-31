@@ -5,6 +5,115 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 use tokio::process::Command as TokioCommand;
 
+/// Extract audio peaks efficiently using ffmpeg without full decoding.
+/// Uses ffmpeg to decode audio at a very low sample rate and streams raw PCM to stdout,
+/// then computes peak values for waveform visualization. No temporary files needed.
+/// Returns normalized peaks (0.0-1.0) for the requested number of bars.
+#[tauri::command]
+pub async fn extract_audio_peaks(
+    app: AppHandle,
+    input: String,
+    count: usize,
+) -> Result<Vec<f32>, String> {
+    let count = count.clamp(10, 2000);
+    let input_path = expand_tilde(&input);
+    
+    let args = build_ffmpeg_args(&input_path);
+    let (success, _code, stdout, stderr) = run_ffmpeg(&app, &args).await
+        .map_err(|e| format!("ffmpeg execution failed: {}", e))?;
+    
+    if !success {
+        let stderr_str = String::from_utf8_lossy(&stderr);
+        return Err(format!("ffmpeg failed: {}", stderr_str));
+    }
+    
+    let samples = convert_pcm_to_f32(&stdout);
+    if samples.is_empty() {
+        return Ok(vec![0.0; count]);
+    }
+    
+    let peaks = compute_peaks(&samples, count);
+    Ok(normalize_peaks(peaks))
+}
+
+fn build_ffmpeg_args(input_path: &str) -> Vec<String> {
+    vec![
+        "-nostdin".to_string(),
+        "-hide_banner".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
+        "-i".to_string(),
+        input_path.to_string(),
+        "-vn".to_string(),
+        "-sn".to_string(),
+        "-dn".to_string(),
+        "-ar".to_string(),
+        "4000".to_string(),
+        "-ac".to_string(),
+        "1".to_string(),
+        "-c:a".to_string(),
+        "pcm_s16le".to_string(),
+        "-f".to_string(),
+        "s16le".to_string(),
+        "-".to_string(),
+    ]
+}
+
+fn convert_pcm_to_f32(pcm_data: &[u8]) -> Vec<f32> {
+    pcm_data
+        .chunks_exact(2)
+        .map(|chunk| {
+            let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+            sample as f32 / i16::MAX as f32
+        })
+        .collect()
+}
+
+fn compute_peaks(samples: &[f32], count: usize) -> Vec<f32> {
+    let bin_size = (samples.len() / count).max(1);
+    let mut peaks = Vec::with_capacity(count);
+
+    for i in 0..count {
+        let start = i * bin_size;
+        if start >= samples.len() {
+            peaks.push(0.0);
+            continue;
+        }
+        let end = ((i + 1) * bin_size).min(samples.len());
+        let bin = &samples[start..end];
+        if bin.is_empty() {
+            peaks.push(0.0);
+        } else {
+            let rms = (bin.iter().map(|&v| v * v).sum::<f32>() / bin.len() as f32).sqrt();
+            peaks.push(rms);
+        }
+    }
+
+    peaks
+}
+
+fn normalize_peaks(mut peaks: Vec<f32>) -> Vec<f32> {
+    let global_max = peaks.iter().cloned().fold(0.0_f32, f32::max);
+    if global_max > 0.0 {
+        for peak in peaks.iter_mut() {
+            *peak /= global_max;
+        }
+    }
+    peaks
+}
+
+/// Expand a leading `~` in a file path to the user's home directory.
+/// Windows does not expand `~` natively; Rust's PathBuf does not either.
+fn expand_tilde(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix('~') {
+        if let Some(home) = dirs::home_dir() {
+            let rest = rest.trim_start_matches('/').trim_start_matches('\\');
+            return home.join(rest).to_string_lossy().into_owned();
+        }
+    }
+    path.to_string()
+}
+
 /// Parse the source channel count out of FFmpeg's
 /// "Rematrix is needed between N channels and mono ..." error.
 ///
@@ -46,7 +155,7 @@ fn build_equal_mix_pan_filter(channels: u32) -> String {
     expr
 }
 
-fn build_args(
+pub fn build_args(
     input_lossy: &str,
     output_lossy: &str,
     downmix_filter: Option<&str>,
@@ -86,14 +195,23 @@ fn build_args(
     args
 }
 
-async fn run_ffmpeg<R: Runtime>(
+pub async fn run_ffmpeg<R: Runtime>(
     app: &AppHandle<R>,
     args: &[String],
 ) -> Result<(bool, Option<i32>, Vec<u8>, Vec<u8>)> {
     let sidecar_command = app.shell().sidecar("ffmpeg");
     let result = match sidecar_command {
         Ok(cmd) => match cmd.args(args.to_vec()).output().await {
-            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Ok(o) => {
+                let stderr_str = String::from_utf8_lossy(&o.stderr);
+                if !o.status.success() && stderr_str.contains("shim file") {
+                    tracing::warn!("ffmpeg sidecar shim error, falling back to system ffmpeg");
+                    let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
+                    (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+                } else {
+                    (o.status.success(), o.status.code(), o.stdout, o.stderr)
+                }
+            }
             Err(_) => {
                 tracing::warn!("ffmpeg sidecar unavailable, falling back to system ffmpeg");
                 let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
@@ -141,6 +259,10 @@ pub async fn normalize<R: Runtime>(
 
         let input_lossy = input.to_string_lossy().into_owned();
         let output_lossy = output.to_string_lossy().into_owned();
+
+        // Expand ~ to home directory (Windows doesn't expand tilde natively)
+        let input_lossy = expand_tilde(&input_lossy);
+        let output_lossy = expand_tilde(&output_lossy);
 
         // First attempt: let FFmpeg auto-downmix. This handles mono, stereo,
         // 5.1, 7.1, and any other input whose channel_layout is known.

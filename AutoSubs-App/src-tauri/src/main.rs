@@ -287,7 +287,8 @@ fn main() {
             logging::open_log_dir,
             resolve_bridge::resolve_bridge,
             adobe_bridge::send_to_adobe,
-            trigger_install_update
+            trigger_install_update,
+            audio_preprocess::extract_audio_peaks
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")

@@ -125,10 +125,10 @@ function SearchSection({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+            className="size-7 rounded-full text-muted-foreground hover:text-foreground"
             onClick={() => onSearchQueryChange("")}
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </Button>
         }
         tooltip={searchAriaLabel}
@@ -141,7 +141,7 @@ function SearchSection({
           type="button"
           variant={searchCaseSensitive ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7 text-xs rounded-full"
+          className="size-7 text-xs rounded-full"
           onClick={onToggleCaseSensitive}
         >
           Aa
@@ -157,7 +157,7 @@ function SearchSection({
           type="button"
           variant={searchWholeWord ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7 text-xs rounded-full"
+          className="size-7 text-xs rounded-full"
           onClick={onToggleWholeWord}
         >
           W
@@ -173,10 +173,10 @@ function SearchSection({
           type="button"
           variant={showReplace ? "default" : "ghost"}
           size="icon"
-          className="h-7 w-7 rounded-full"
+          className="size-7 rounded-full"
           onClick={onToggleReplace}
         >
-          <Repeat2 className="h-4 w-4" />
+          <Repeat2 className="size-4" />
         </Button>
       }
       tooltip={t("subtitles.search.replaceAll")}
@@ -187,7 +187,7 @@ function SearchSection({
   const searchInput = (
     <InputGroup className="rounded-xl overflow-hidden border-slate-200 dark:border-slate-800 bg-background/50">
       <InputGroupAddon align="inline-start" className="text-muted-foreground pr-1">
-        <Search className="h-4 w-4" />
+        <Search className="size-4" />
       </InputGroupAddon>
       <InputGroupInput
         ref={searchInputRef}
@@ -204,7 +204,7 @@ function SearchSection({
   const replaceSection = (
     <div className="flex w-full items-center rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-background/50 focus-within:ring-1 focus-within:ring-ring">
       <div className="pl-3 text-muted-foreground flex items-center justify-center">
-        <CornerDownRight className="h-4 w-4" />
+        <CornerDownRight className="size-4" />
       </div>
       <Input
         placeholder={t("subtitles.search.replaceWithPlaceholder")}
@@ -270,7 +270,7 @@ function SpeakersPopover({
               title={t("subtitles.speakers")}
               disabled={disabled}
             >
-              <Users className="h-4 w-4 mr-0.5" />
+              <Users className="size-4 mr-0.5" />
               {t("subtitles.speakers")}
             </Button>
           </PopoverTrigger>
@@ -335,7 +335,7 @@ function ReformatPopover({
               className="shadow-none"
               title={t("subtitles.reformat")}
             >
-              <Type className="h-4 w-4 mr-0.5" />
+              <Type className="size-4 mr-0.5" />
               {t("subtitles.reformat")}
             </Button>
           </PopoverTrigger>
@@ -477,7 +477,7 @@ function SubtitleContent({
                 }}
                 aria-label={t("subtitles.previousSubtitles")}
               >
-                <History className="h-4 w-4" />
+                <History className="size-4" />
                 {t("subtitles.previousSubtitles")}
               </Button>
             }
@@ -546,12 +546,12 @@ function AddToTimelineFooter({
         >
           {isAdding ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               {t("addToTimeline.adding")}
             </>
           ) : (
             <>
-              <PlusIcon ref={layersIconRef} className="w-4 h-4" />
+              <PlusIcon ref={layersIconRef} className="size-4" />
               {t("subtitles.addToTimeline")}
             </>
           )}

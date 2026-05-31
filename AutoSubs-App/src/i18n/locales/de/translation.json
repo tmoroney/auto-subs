@@ -128,7 +128,11 @@
       "dialogTitle": "Sensible Wörter zensieren",
       "dialogDescription": "Füge Wörter hinzu, die in Untertiteln zensiert werden sollen.",
       "inputPlaceholder": "Wort zum Zensieren hinzufügen",
-      "empty": "Noch keine zensierten Wörter."
+      "empty": "Noch keine zensierten Wörter.",
+      "lists": "Wortlisten",
+      "customSection": "Benutzerdefinierte Wörter",
+      "customSectionDescription": "Einzelne Wörter zur Zensur eingeben.",
+      "listWordCount": "{{count}} Wörter"
     },
     "speakers": {
       "title": "Sprecher-Labels",
@@ -343,6 +347,7 @@
   "completion": {
     "processingComplete": "Verarbeitung abgeschlossen",
     "subtitlesReady": "Deine Untertitel sind bereit!",
+    "noSpeechDetected": "Keine Sprache erkannt. Die Audiodatei enthält möglicherweise keine erkennbare Sprache.",
     "viewSubtitles": "Untertitel anzeigen",
     "exportToFile": "In Datei exportieren",
     "addToTimeline": "Zur Timeline hinzufügen"

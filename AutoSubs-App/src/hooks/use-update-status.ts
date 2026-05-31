@@ -25,6 +25,7 @@ export function useUpdateStatus(): UpdateStatus {
 
   useEffect(() => {
     const unlisten: Array<() => void> = [];
+    let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const setup = async () => {
       unlisten.push(
@@ -71,7 +72,8 @@ export function useUpdateStatus(): UpdateStatus {
           localStorage.removeItem(UPDATE_RESTART_NOTICE_KEY);
           setPhase("error");
           setPercentage(null);
-          setTimeout(() => setPhase("idle"), 5000);
+          if (errorTimeout) clearTimeout(errorTimeout);
+          errorTimeout = setTimeout(() => setPhase("idle"), 5000);
         })
       );
     };
@@ -80,6 +82,7 @@ export function useUpdateStatus(): UpdateStatus {
 
     return () => {
       unlisten.forEach((fn) => fn());
+      if (errorTimeout) clearTimeout(errorTimeout);
     };
   }, []);
 

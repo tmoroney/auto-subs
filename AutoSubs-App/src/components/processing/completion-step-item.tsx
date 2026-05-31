@@ -6,7 +6,7 @@ import {
     ItemFooter,
     ItemTitle,
 } from "@/components/ui/item"
-import { Download, FileText, Plus } from "lucide-react"
+import { Download, FileText, Plus, VolumeX } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { ImportExportPopover } from "@/components/common/import-export-popover"
 import { Settings, TimelineInfo } from "@/types"
@@ -51,6 +51,7 @@ export function CompletionStepItem({
     const isResolveConnected = Boolean(timelineInfo?.timelineId) && selectedIntegration === "davinci"
     const isAdobeConnected = Boolean(timelineInfo?.timelineId) && (selectedIntegration === "premiere" || selectedIntegration === "aftereffects")
     const isAdobe = selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
+    const hasSubtitles = subtitles.length > 0
 
 
     return (
@@ -61,63 +62,72 @@ export function CompletionStepItem({
                         {t("completion.processingComplete")}
                     </ItemTitle>
                     <ItemDescription>
-                        {t("completion.subtitlesReady")}
+                        {hasSubtitles ? (
+                            t("completion.subtitlesReady")
+                        ) : (
+                            <span className="flex items-center gap-2">
+                                <VolumeX className="size-4 shrink-0 text-muted-foreground" />
+                                {t("completion.noSpeechDetected")}
+                            </span>
+                        )}
                     </ItemDescription>
                 </ItemContent>
-                <ItemFooter>
-                    <div className="flex gap-2">
-                        {onViewSubtitles && !isSubtitleViewerOpen && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={onViewSubtitles}
-                              className="flex items-center gap-2"
-                            >
-                              <FileText />
-                              {t("completion.viewSubtitles")}
-                            </Button>
-                        )}
-                        {(!isResolveConnected || !isMobile) && (
-                            <ImportExportPopover
-                                onImport={() => importSubtitles(settings, null, "")}
-                                onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
-                                hasSubtitles={subtitles.length > 0}
-                                trigger={
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex items-center gap-2"
-                                    >
-                                        <Download />
-                                        {t("completion.exportToFile")}
-                                    </Button>
-                                }
-                            />
-                        )}
-                        {(isResolveConnected || isAdobeConnected) && (
-                            <AddToTimelineDialog
-                                settings={settings}
-                                timelineInfo={timelineInfo}
-                                templates={isAdobe ? [] : resolveTemplates}
-                                templatesLoading={!isAdobe && resolveTemplatesLoading}
-                                templatesLoaded={isAdobe || resolveTemplatesLoaded}
-                                onLoadTemplates={isAdobe ? undefined : refreshResolveTemplates}
-                                onAddToTimeline={onAddToTimeline}
-                                selectedIntegration={selectedIntegration}
-
-                            >
+                {hasSubtitles && (
+                    <ItemFooter>
+                        <div className="flex gap-2">
+                            {onViewSubtitles && !isSubtitleViewerOpen && (
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={onViewSubtitles}
+                                  className="flex items-center gap-2"
                                 >
-                                    <Plus />
-                                    {t("completion.addToTimeline")}
+                                  <FileText />
+                                  {t("completion.viewSubtitles")}
                                 </Button>
-                            </AddToTimelineDialog>
-                        )}
-                    </div>
-                </ItemFooter>
+                            )}
+                            {(!isResolveConnected || !isMobile) && (
+                                <ImportExportPopover
+                                    onImport={() => importSubtitles(settings, null, "")}
+                                    onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
+                                    hasSubtitles={hasSubtitles}
+                                    trigger={
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="flex items-center gap-2"
+                                        >
+                                            <Download />
+                                            {t("completion.exportToFile")}
+                                        </Button>
+                                    }
+                                />
+                            )}
+                            {(isResolveConnected || isAdobeConnected) && (
+                                <AddToTimelineDialog
+                                    settings={settings}
+                                    timelineInfo={timelineInfo}
+                                    templates={isAdobe ? [] : resolveTemplates}
+                                    templatesLoading={!isAdobe && resolveTemplatesLoading}
+                                    templatesLoaded={isAdobe || resolveTemplatesLoaded}
+                                    onLoadTemplates={isAdobe ? undefined : refreshResolveTemplates}
+                                    onAddToTimeline={onAddToTimeline}
+                                    selectedIntegration={selectedIntegration}
+
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Plus />
+                                        {t("completion.addToTimeline")}
+                                    </Button>
+                                </AddToTimelineDialog>
+                            )}
+                        </div>
+                    </ItemFooter>
+                )}
             </Item>
         </div>
     )
