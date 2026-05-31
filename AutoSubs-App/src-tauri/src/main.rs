@@ -31,6 +31,7 @@ mod transcript_types;
 mod logging;
 mod resolve_bridge;
 mod adobe_bridge;
+mod cli;
 #[cfg(target_os = "macos")]
 mod traffic_lights;
 
@@ -60,12 +61,57 @@ fn trigger_install_update(state: tauri::State<InstallSignal>) {
     state.0.notify_one();
 }
 
+/// Build the main GUI window programmatically.
+///
+/// The window is intentionally NOT declared in `tauri.conf.json`: a config-defined
+/// window is created automatically at startup, which spins up a webview even for a
+/// headless CLI run (adding startup cost, a dock/taskbar flash, and a needless
+/// WebView/WebKitGTK dependency). Creating it here means it only exists in GUI mode.
+///
+/// Mirrors the previous `tauri.conf.json` window config. It starts hidden and is
+/// shown later (after the macOS traffic-light positioner is installed), matching the
+/// existing startup flow.
+fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWindow> {
+    #[allow(unused_mut)]
+    let mut builder =
+        tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+            .title("AutoSubs")
+            .inner_size(750.0, 700.0)
+            .decorations(true)
+            .accept_first_mouse(true)
+            .visible(false);
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .traffic_light_position(tauri::LogicalPosition::new(16.0_f64, 25.0_f64));
+    }
+
+    // `zoom_hotkeys_enabled` is only available off macOS without the
+    // `macos-private-api` feature; matches the old config's `zoomHotkeysEnabled`.
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder = builder.zoom_hotkeys_enabled(true);
+    }
+
+    builder.build()
+}
+
 fn main() {
     // Route whisper.cpp C-side logs through Rust's tracing system so they can be
     // filtered rather than being dumped raw to stderr.
     transcription_engine::install_logging_hooks();
 
-    tauri::Builder::default()
+    // Decide GUI vs headless from raw argv *before* building, so we can hide the
+    // window and skip GUI-only plugins (single-instance would forward our args to
+    // a running GUI and exit, breaking a CLI run while the app is open).
+    let headless = cli::is_headless_invocation();
+    if headless {
+        cli::attach_console();
+    }
+
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
@@ -77,13 +123,38 @@ fn main() {
         .plugin(shell_plugin())
         .plugin(clipboard_plugin())
         .plugin(opener_plugin())
-        .plugin(single_instance_plugin(|app, _args, _cwd| {
+        .plugin(tauri_plugin_cli::init());
+
+    if !headless {
+        builder = builder.plugin(single_instance_plugin(|app, _args, _cwd| {
             // Focus the existing window when a second instance is launched
             let _ = app.get_webview_window("main").map(|w| w.set_focus());
-        }))
-        .setup(|app| {
-            // Initialize backend logging (file + in-memory ring buffer)
+        }));
+    }
+
+    builder
+        .setup(move |app| {
+            // Initialize backend logging (file + in-memory ring buffer). Logs go to
+            // the log file only, never stdout/stderr, so CLI output stays clean.
             crate::logging::init_logging(&app.handle());
+
+            if headless {
+                // Headless/CLI: never create a window. Hide the macOS dock icon so a
+                // CLI run is fully invisible, then run the subcommand and exit.
+                #[cfg(target_os = "macos")]
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    cli::run(handle).await;
+                });
+                return Ok(());
+            }
+
+            // GUI mode: create the main window programmatically (see create_main_window
+            // for why it isn't declared in tauri.conf.json).
+            create_main_window(app.handle())?;
+
             crate::adobe_bridge::init_adobe_server(app.handle().clone());
 
             // Set window title to "AutoSubs" on Windows and Linux for taskbar display
@@ -288,13 +359,21 @@ fn main() {
             resolve_bridge::resolve_bridge,
             adobe_bridge::send_to_adobe,
             trigger_install_update,
-            audio_preprocess::extract_audio_peaks
+            audio_preprocess::extract_audio_peaks,
+            cli::cli_command_status,
+            cli::install_cli_command,
+            cli::uninstall_cli_command
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
-        .run(|app, event| {
+        .run(move |app, event| {
             match event {
                 RunEvent::Ready => {
+                    // Headless runs keep the window hidden; cli::run drives the work
+                    // and exits the process itself.
+                    if headless {
+                        return;
+                    }
                     let app_handle = app.clone();
                     tauri::async_runtime::spawn(async move {
                         for delay_ms in [100_u64, 500, 1200] {

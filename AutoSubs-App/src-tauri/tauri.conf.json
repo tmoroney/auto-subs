@@ -10,20 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "titleBarStyle": "Overlay",
-        "decorations": true,
-        "trafficLightPosition": {
-          "x": 16,
-          "y": 25
-        },
-        "height": 700,
-        "width": 750,
-        "acceptFirstMouse": true,
-        "zoomHotkeysEnabled": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null,
       "assetProtocol": {
@@ -98,6 +85,98 @@
     "createUpdaterArtifacts": true
   },
   "plugins": {
+    "cli": {
+      "description": "AutoSubs — transcribe and diarize an audio or video file to JSON. Run with no arguments to open the desktop app.",
+      "longDescription": "Transcribe a local audio or video file and print the transcript as JSON. Runs headlessly (no window) and exits when given arguments; with no arguments it launches the AutoSubs desktop interface.",
+      "args": [
+        {
+          "name": "input",
+          "description": "Path to the audio or video file to transcribe.",
+          "index": 1,
+          "takesValue": true,
+          "required": true
+        },
+        {
+          "name": "model",
+          "short": "m",
+          "description": "Whisper model to use (e.g. tiny, base, small, medium, large). Downloaded automatically if missing.",
+          "takesValue": true
+        },
+        {
+          "name": "output",
+          "short": "o",
+          "description": "Write to this file instead of stdout (format inferred from extension if --format is omitted).",
+          "takesValue": true
+        },
+        {
+          "name": "format",
+          "short": "f",
+          "description": "Output format: text (default), json, srt, or vtt.",
+          "takesValue": true
+        },
+        {
+          "name": "lang",
+          "short": "l",
+          "description": "Source language code (e.g. en). Auto-detected if omitted.",
+          "takesValue": true
+        },
+        {
+          "name": "translate",
+          "description": "Translate the transcript to English."
+        },
+        {
+          "name": "target-language",
+          "description": "Target language code for translation.",
+          "takesValue": true
+        },
+        {
+          "name": "diarize",
+          "description": "Enable speaker diarization."
+        },
+        {
+          "name": "max-speakers",
+          "description": "Maximum number of speakers when diarizing.",
+          "takesValue": true
+        },
+        {
+          "name": "gpu",
+          "description": "Force GPU acceleration on."
+        },
+        {
+          "name": "no-gpu",
+          "description": "Disable GPU acceleration (CPU only)."
+        },
+        {
+          "name": "density",
+          "description": "Subtitle text density (e.g. high, balanced, low, custom).",
+          "takesValue": true
+        },
+        {
+          "name": "max-lines",
+          "description": "Maximum lines per subtitle.",
+          "takesValue": true
+        },
+        {
+          "name": "max-chars-per-line",
+          "description": "Custom maximum characters per line (used with --density custom).",
+          "takesValue": true
+        },
+        {
+          "name": "text-case",
+          "description": "Text case: none, lowercase, uppercase, or titlecase.",
+          "takesValue": true
+        },
+        {
+          "name": "remove-punctuation",
+          "description": "Strip punctuation from the transcript."
+        },
+        {
+          "name": "prompt",
+          "description": "Custom prompt to guide transcription.",
+          "takesValue": true
+        }
+      ]
+    },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFENjNBQjZFRkVCQTQxQTkKUldTcFFiciticXRqcmZtTlRWRzdnSHhBMFVNZkxvOGFRZThXdXFNQjFzakxqNDF0bUFyWkhwckUK",
       "endpoints": [
