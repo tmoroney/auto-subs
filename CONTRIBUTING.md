@@ -12,8 +12,15 @@ I welcome contributions from everyone. I will try to review any pull requests as
    ```bash
    cd AutoSubs-App
    npm install
-   npm run tauri dev
+   npm run dev
    ```
+   This automatically detects your platform and architecture (macOS ARM/Intel, Windows, Linux) and passes the correct Cargo feature flags to Tauri.
+
+   If you only want to run the React frontend without the Rust backend:
+   ```bash
+   npm run dev:frontend
+   ```
+
 4. For Resolve integration during development, copy `AutoSubs-App/src-tauri/resources/Testing-AutoSubs.lua` into your Resolve scripts folder:
    - **Windows:** `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
    - **macOS:** `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`

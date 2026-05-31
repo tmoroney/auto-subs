@@ -502,6 +502,45 @@ export async function getAudioExportDir(): Promise<string> {
   return dir;
 }
 
+export async function validateExportedAudioFile(filePath: string): Promise<void> {
+  if (!filePath) {
+    throw new Error("Resolve did not report an exported audio file path.");
+  }
+
+  const retryDelayMs = 1000;
+  const maxAttempts = 6;
+  let lastSize: number | null = null;
+  let lastFailure = `Resolve reported an audio export path, but the file does not exist: ${filePath}`;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (await exists(filePath)) {
+      const fileStats = await stat(filePath);
+      if (!fileStats.isFile) {
+        throw new Error(`Resolve reported an audio export path that is not a file: ${filePath}`);
+      }
+
+      // A PCM WAV with no samples is usually header-only. Give Resolve/the
+      // filesystem a few seconds to finish flushing before treating it as bad.
+      if (fileStats.size > 44) {
+        if (lastSize === fileStats.size) {
+          return;
+        }
+        lastFailure = `Resolve audio export is still being written: ${filePath}`;
+        lastSize = fileStats.size;
+      } else {
+        lastFailure =
+          "Resolve exported an empty audio file. Check the selected audio tracks and export range.";
+      }
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
+
+  throw new Error(lastFailure);
+}
+
 export async function getSubtitleDocumentPath(filename: string): Promise<string> {
   const dir = await getSubtitleDocumentsDir();
   return await join(dir, filename);

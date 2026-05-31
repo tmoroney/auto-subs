@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { Subtitle, Speaker, Settings } from '@/types';
 import { useResolve } from '@/contexts/ResolveContext';
 import { useAdobe } from '@/contexts/AdobeContext';
@@ -28,6 +28,7 @@ interface SubtitleDocumentContextType {
   setCurrentSubtitleDocumentFilename: (filename: string | null) => void;
   updateSpeakers: (newSpeakers: Speaker[]) => Promise<void>;
   updateSubtitles: (newSubtitles: Subtitle[], filename?: string) => Promise<void>;
+  flushPendingSubtitleSave: () => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   exportSubtitlesAs: (format: 'srt' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
@@ -42,6 +43,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [markIn, setMarkIn] = useState(0);
   const [currentSubtitleDocumentFilename, setCurrentSubtitleDocumentFilename] = useState<string | null>(null);
+
+  // Debounce subtitle file writes to prevent concurrent read-parse-stringify-write
+  // cycles from accumulating in the V8 heap when the user types quickly.
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<{ subtitles: Subtitle[]; filename: string } | null>(null);
   const { timelineInfo: resolveTimeline } = useResolve();
   const { timelineInfo: adobeTimeline } = useAdobe();
   const { selectedIntegration } = useIntegration();
@@ -91,24 +97,55 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     }
   }
 
+  // Flush any pending debounced subtitle save immediately. Call before any
+  // operation that requires the on-disk file to be current (add to timeline,
+  // reformat, export).
+  const flushPendingSubtitleSave = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = null;
+    try {
+      await updateSubtitleDocument(pending.filename, { subtitles: pending.subtitles });
+    } catch (error) {
+      console.error('Failed to flush pending subtitle save:', error);
+    }
+  }, []);
+
   // Function to update a specific subtitle
-  const updateSubtitles = async (newSubtitles: Subtitle[], filename?: string) => {
-    // Update the local subtitles state
+  const updateSubtitles = useCallback(async (newSubtitles: Subtitle[], filename?: string) => {
+    // Update the local subtitles state immediately for responsive UI.
     setSubtitles(newSubtitles);
 
-    // Save to JSON file if we have the necessary context
-    try {
-      const targetFilename = filename ?? currentSubtitleDocumentFilename;
-      if (targetFilename) {
-        await updateSubtitleDocument(targetFilename, {
-          subtitles: newSubtitles
-        });
-        console.log('Subtitle updated in both UI and file');
-      }
-    } catch (error) {
-      console.error('Failed to update subtitle in file:', error);
+    const targetFilename = filename ?? currentSubtitleDocumentFilename;
+    if (!targetFilename) return;
+
+    // Debounce the file write. Each updateSubtitleDocument call reads the full
+    // document (including originalSegments + word timing data), parses it, and
+    // re-serialises it. On a large transcript this can be several MB of JSON.
+    // Calling it on every keystroke without debouncing causes many concurrent
+    // read-parse-write cycles to pile up in the V8 heap, which can trigger an
+    // Out of Memory crash in WebView2.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
     }
-  };
+    pendingSaveRef.current = { subtitles: newSubtitles, filename: targetFilename };
+    saveTimerRef.current = setTimeout(async () => {
+      saveTimerRef.current = null;
+      const pending = pendingSaveRef.current;
+      if (!pending) return;
+      pendingSaveRef.current = null;
+      try {
+        await updateSubtitleDocument(pending.filename, { subtitles: pending.subtitles });
+        console.log('Subtitle saved to file (debounced)');
+      } catch (error) {
+        console.error('Failed to update subtitle in file:', error);
+      }
+    }, 500);
+  }, [currentSubtitleDocumentFilename]);
 
   /**
    * Processes transcription results
@@ -161,6 +198,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   }
 
   const reformatSubtitles = async (settings: Settings, fileInput: string | null, timelineId: string) => {
+    await flushPendingSubtitleSave();
     const filename = currentSubtitleDocumentFilename
       ?? generateSubtitleDocumentFilename(settings.audioInputMode === "file", fileInput, timelineId);
     const transcript = await readSubtitleDocument(filename);
@@ -331,6 +369,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       setCurrentSubtitleDocumentFilename,
       updateSpeakers,
       updateSubtitles,
+      flushPendingSubtitleSave,
       processTranscriptionResults,
       reformatSubtitles,
       exportSubtitlesAs,

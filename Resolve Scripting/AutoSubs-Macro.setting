@@ -398,49 +398,83 @@
 						local wordTiming = tool:GetData("WordTiming")
 						if not wordTiming then return end
 
-						local oldCount = #wordTiming
-						local newCount = #words
+						local oldWordCount = #wordTiming
+						local newWordCount = #words
+						local hasExistingWords = oldWordCount > 0
 
-						-- Handle added words
-						if newCount > oldCount then
-							local gap
-							if oldCount >= 2 then
-								gap = wordTiming[oldCount].startFrame - wordTiming[oldCount - 1].startFrame
-							elseif oldCount == 1 then
-								gap = wordTiming[1].endFrame - wordTiming[1].startFrame
-								if gap == 0 then gap = 20 end
-							else
-								gap = 20
-							end
+						-- Determine a frames-per-character rate to dynamically estimate new word durations.
+						local defaultFrameRate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						-- Default speaking speed: ~15 characters per second
+						local defaultFramesPerChar = defaultFrameRate / 15
+						local framesPerChar = defaultFramesPerChar
 
-							for i = oldCount + 1, newCount do
-								local prevStart = wordTiming[i - 1].startFrame
-								local newStart = prevStart + gap
-								wordTiming[i - 1].endFrame = newStart
-								table.insert(wordTiming, {
-									["startIndex"] = 0,
-									["endIndex"] = 0,
-									["startFrame"] = newStart,
-									["endFrame"] = newStart,
-								})
+						-- Calculate pacing from existing words if available
+						if hasExistingWords then
+							local totalFrames = 0
+							local totalChars = 0
+							-- Sum up the durations and lengths of existing words to analyze the speaker's true pacing.
+							for j = 1, oldWordCount do
+								local duration = wordTiming[j].endFrame - wordTiming[j].startFrame
+								local length = wordTiming[j].endIndex - wordTiming[j].startIndex + 1
+								-- Only average words with valid timings and non-zero character counts.
+								if duration > 0 and length > 0 then
+									totalFrames = totalFrames + duration
+									totalChars = totalChars + length
+								end
 							end
-						elseif newCount < oldCount then
-							for i = oldCount, newCount + 1, -1 do
+							
+							-- If we have valid historical pacing data, use it.
+							if totalChars > 0 then
+								framesPerChar = totalFrames / totalChars
+							end
+						end
+
+						-- If words were removed, delete their corresponding timing data from the end of the list first.
+						if newWordCount < oldWordCount then
+							for i = oldWordCount, newWordCount + 1, -1 do
 								table.remove(wordTiming, i)
 							end
 						end
 
-						-- Recompute character indices
+						-- Traverse all words to add new timings and recompute absolute character indices.
+						local currentFrame = hasExistingWords and wordTiming[oldWordCount].endFrame or 0
 						local charIndex = 0
-						for i = 1, newCount do
+
+						-- Used for clamping words to be within clip range
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+
+						for i = 1, newWordCount do
 							local wordText = words[i]
+							-- Reconstruct spaces between words to match the combined subtitle text structure.
 							if i > 1 then
 								wordText = " " .. wordText
 							end
 
+							-- Use UTF-8 safe length to accurately handle multi-byte characters and map index boundaries.
 							local length = utf8len(wordText)
-							wordTiming[i].startIndex = charIndex
-							wordTiming[i].endIndex = charIndex + length - 1
+
+							if i > oldWordCount then
+								-- Estimate timing for newly added words scaled by their character length.
+								local startFrame = currentFrame
+								local wordLength = utf8len(words[i])
+								local duration = math.max(1, math.floor(wordLength * framesPerChar))
+								local endFrame = startFrame + duration
+
+								table.insert(wordTiming, {
+									["startIndex"] = charIndex,
+									["endIndex"] = charIndex + length - 1,
+									["startFrame"] = math.min(startFrame, compositionEndFrame - 1),
+									["endFrame"] = math.min(endFrame, compositionEndFrame - 1),
+								})
+								
+								currentFrame = endFrame
+							else
+								-- Update character boundaries for existing words.
+								wordTiming[i].startIndex = charIndex
+								wordTiming[i].endIndex = charIndex + length - 1
+							end
+
+							-- Advance the character playhead for the next word.
 							charIndex = charIndex + length
 						end
 
@@ -449,30 +483,25 @@
 				]],
 				ShowWordMarkers = [[
 					return function(comp, tool)
-						-- Get timeline item that contains this composition
 						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
 						local item = getTimelineItem(comp)
+						if not item then return end
 
-						-- Get follower delay spline
-						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local wordTiming = tool:GetData("WordTiming")
+						if not wordTiming or #wordTiming == 0 then
+							print("[AutoSubs] No word timing data found. Please transcribe or add text first.")
+							return
+						end
 
-						-- Remove all existing word markers
+						-- Clear existing markers
 						while item:DeleteMarkerByCustomData("AutoSubs") do end
 
-						local wordTiming = spline:GetKeyFrames()
-						local keys = {}
-						for k in pairs(wordTiming) do
-							if type(k) == "number" then table.insert(keys, k) end
-						end
-						table.sort(keys)
-						local index = 1
-						for _, k in ipairs(keys) do
-							local v = wordTiming[k]
-							if type(v) == "table" and v[1] then
-								local offset = comp:GetAttrs("COMPN_RenderStart")
-								local clipFrame = v[1] + offset
-								item:AddMarker(clipFrame, "Blue", "Word "..index, "", 1, "AutoSubs")
-								index = index + 1
+						print("[AutoSubs] Generating markers for " .. #wordTiming .. " words.")
+
+						local offset = comp:GetAttrs("COMPN_RenderStart")
+						for i, word in ipairs(wordTiming) do
+							if word.startFrame then
+								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
 							end
 						end
 					end
@@ -482,6 +511,7 @@
 						-- Get timeline item that contains this composition
 						local getTimelineItem = loadstring(tool:GetData("GetTimelineItem"))()
 						local item = getTimelineItem(comp)
+						if not item then return end
 
 						-- Get follower delay spline
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
@@ -553,10 +583,20 @@
 					end
 				]],
 				GetTimelineItem = [[
-					-- Find the timeline item that contains this Fusion composition
-					-- Note: DaVinci Resolve has no direct API to get timeline item from comp, so we search manually
 					return function(comp)
-						local resolve = bmd and bmd.scriptapp and bmd.scriptapp("Resolve")
+						-- Final attempt at getting Resolve object for Free version users
+						local resolve = _G.resolve 
+							or (fusion and fusion.GetResolve and fusion:GetResolve()) 
+							or (app and app.GetResolve and app:GetResolve()) 
+							or (bmd and bmd.scriptapp and bmd.scriptapp("Resolve"))
+							or (comp:GetApp() and comp:GetApp():GetResolve())
+
+						-- Strict check: must be a valid object (userdata or table)
+						if type(resolve) ~= "userdata" and type(resolve) ~= "table" then
+							print("[CHECK-123] This feature (Markers) requires DaVinci Resolve Studio or enabled Scripting API.")
+							return nil
+						end
+
 						local projectManager = resolve:GetProjectManager()
 						local currentProject = projectManager:GetCurrentProject()
 						local timeline = currentProject:GetCurrentTimeline()

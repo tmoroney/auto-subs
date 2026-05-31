@@ -94,14 +94,6 @@ fn main() {
                 }
             }
 
-            // Hide native titlebar on Windows and Linux so the custom HTML titlebar is used exclusively
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.set_decorations(false);
-                }
-            }
-
             // Set traffic light position programmatically on macOS.
             // `trafficLightPosition` in tauri.conf.json is only applied at window
             // creation and AppKit resets the button layout on various lifecycle
@@ -109,8 +101,12 @@ fn main() {
             #[cfg(target_os = "macos")]
             {
                 if let Some(window) = app.get_webview_window("main") {
-                    crate::traffic_lights::install(&window);
+                    // Clearing the title triggers an AppKit titlebar relayout that
+                    // resets the traffic lights (tauri-apps/tauri#13044), so do it
+                    // BEFORE installing our positioner — otherwise the immediate
+                    // apply inside `install` is undone right after it runs.
                     let _ = window.set_title("");
+                    crate::traffic_lights::install(&window);
                 }
             }
             if let Some(window) = app.get_webview_window("main") {
@@ -266,7 +262,7 @@ fn main() {
                                 }
 
                                 let _ = handle_for_dl.emit("update-restarting", json!({}));
-                                handle_for_dl.request_restart();
+                                handle_for_dl.restart();
                               }
                             }
                           });
@@ -306,11 +302,22 @@ fn main() {
                                 let _ = window.show();
                                 let _ = window.unminimize();
                                 let _ = window.set_focus();
+                                // These late show()/set_focus() calls trigger an AppKit
+                                // titlebar relayout that resets the traffic lights, and
+                                // set_focus() on an already-focused window emits no
+                                // Focused event — so the install()-registered listener
+                                // won't fire. Re-apply explicitly to keep them aligned.
+                                #[cfg(target_os = "macos")]
+                                crate::traffic_lights::position_on_main_thread(&window);
                             }
                         }
                     });
                 }
-                RunEvent::ExitRequested { api, .. } => {
+                RunEvent::ExitRequested { api, code, .. } => {
+                    if code == Some(tauri::RESTART_EXIT_CODE) {
+                        return;
+                    }
+
                     // If we're already exiting, don't intercept again; allow exit to proceed
                     if EXITING.swap(true, AtomicOrdering::SeqCst) {
                         return;

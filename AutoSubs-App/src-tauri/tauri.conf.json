@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "AutoSubs",
-  "version": "3.5.3",
+  "version": "3.6.0",
   "identifier": "com.autosubs",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:frontend",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:tauri-prep",
     "frontendDist": "../dist"
   },
   "app": {
@@ -15,11 +15,11 @@
         "titleBarStyle": "Overlay",
         "decorations": true,
         "trafficLightPosition": {
-          "x": 10,
-          "y": 20
+          "x": 16,
+          "y": 25
         },
         "height": 700,
-        "width": 900,
+        "width": 750,
         "acceptFirstMouse": true,
         "zoomHotkeysEnabled": true
       }

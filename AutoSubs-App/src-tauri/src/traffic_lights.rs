@@ -21,8 +21,8 @@ use tauri::{Runtime, WebviewWindow, WindowEvent};
 /// Desired offset of the leftmost (close) traffic-light button from the
 /// **top-left** of the window's title-bar area, in points. This matches the
 /// coordinate semantics of Tauri's `trafficLightPosition` config field.
-pub const TRAFFIC_LIGHT_X: f64 = 10.0;
-pub const TRAFFIC_LIGHT_Y: f64 = 20.0;
+pub const TRAFFIC_LIGHT_X: f64 = 16.0;
+pub const TRAFFIC_LIGHT_Y: f64 = 25.0;
 
 /// Reposition the three standard window buttons (close / minimize / zoom).
 ///
@@ -94,7 +94,7 @@ pub fn position<R: Runtime>(window: &WebviewWindow<R>) {
     }
 }
 
-fn position_on_main_thread<R: Runtime + 'static>(window: &WebviewWindow<R>) {
+pub fn position_on_main_thread<R: Runtime + 'static>(window: &WebviewWindow<R>) {
     let w = window.clone();
     let _ = window.run_on_main_thread(move || position(&w));
 }
