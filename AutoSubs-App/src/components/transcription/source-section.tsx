@@ -1,8 +1,6 @@
 import * as React from "react";
 import {
   AudioLines,
-  Clock3,
-  HardDrive,
   MonitorIcon,
   RefreshCw,
 } from "lucide-react";
@@ -10,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { downloadDir } from "@tauri-apps/api/path";
-import { stat } from "@tauri-apps/plugin-fs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -90,39 +87,6 @@ function getFileExtension(filePath: string): string {
     : "Media";
 }
 
-function formatBytes(bytes: number | null): string {
-  if (bytes === null) return "Size unavailable";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-
-  const precision = size >= 10 || unitIndex === 0 ? 0 : 1;
-  return `${size.toFixed(precision)} ${units[unitIndex]}`;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return "Duration unavailable";
-  if (!Number.isFinite(seconds) || seconds < 0) return "Duration unavailable";
-
-  const totalSeconds = Math.round(seconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const remainingSeconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds
-      .toString()
-      .padStart(2, "0")}`;
-  }
-
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
 const localizedDigits: Record<string, string[]> = {
   ja: ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
   ko: ["영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"],
@@ -150,8 +114,6 @@ export function FileDropArea({
 }: FileDropAreaProps) {
   const { t } = useTranslation();
   const iconRef = React.useRef<UploadIconHandle>(null);
-  const [fileSize, setFileSize] = React.useState<number | null>(null);
-  const [duration, setDuration] = React.useState<number | null>(null);
 
   const isVideo = selectedFile ? isVideoExtension(selectedFile) : false;
 
@@ -159,35 +121,6 @@ export function FileDropArea({
     () => (selectedFile ? convertFileSrc(selectedFile) : null),
     [selectedFile],
   );
-
-  const [prevFile, setPrevFile] = React.useState(selectedFile);
-  if (selectedFile !== prevFile) {
-    setPrevFile(selectedFile);
-    setDuration(null);
-    setFileSize(null);
-  }
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    if (!selectedFile) return;
-
-    stat(selectedFile)
-      .then((metadata) => {
-        if (!cancelled) {
-          setFileSize(typeof metadata.size === "number" ? metadata.size : null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFileSize(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedFile]);
 
   const handleFileSelect = React.useCallback(async () => {
     const file = await open({
@@ -206,7 +139,6 @@ export function FileDropArea({
 
   return (
     <div
-      key="file-drop-area"
       className={cn(
         "group flex w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-muted-foreground/25 bg-muted/10 px-4 py-4 outline-none",
         selectedFile
@@ -244,23 +176,6 @@ export function FileDropArea({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2">
-              <HardDrive className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-xs font-medium text-foreground">
-                {formatBytes(fileSize)}
-              </span>
-            </div>
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2">
-              <Clock3 className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-xs font-medium text-foreground">
-                {duration === null
-                  ? "Loading duration"
-                  : formatDuration(duration)}
-              </span>
-            </div>
-          </div>
-
           {audioSrc ? (
             <div
               className="min-w-0"
@@ -270,7 +185,6 @@ export function FileDropArea({
               <MediaPlayer
                 src={audioSrc}
                 type={isVideo ? "video" : "audio"}
-                onDurationChange={(d) => setDuration(d)}
               />
             </div>
           ) : null}
@@ -299,6 +213,7 @@ interface TimelineTrackSelectorProps {
   selectedIntegration: "davinci" | "premiere" | "aftereffects";
   onRefreshTracks?: () => void;
   isRefreshingTracks?: boolean;
+  className?: string;
 }
 
 export function TimelineTrackSelector({
@@ -306,6 +221,7 @@ export function TimelineTrackSelector({
   selectedIntegration,
   onRefreshTracks,
   isRefreshingTracks = false,
+  className,
 }: TimelineTrackSelectorProps) {
   const { t, i18n } = useTranslation();
   const { settings: currentSettings, updateSetting } = useSettings();
@@ -352,7 +268,7 @@ export function TimelineTrackSelector({
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
       data-tour="audio-input"
     >
       {inputTracks.length > 0 ? (

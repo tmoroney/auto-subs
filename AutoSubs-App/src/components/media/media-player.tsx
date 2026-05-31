@@ -4,12 +4,18 @@ import {
   Pause,
   Volume2,
   VolumeX,
-  Maximize,
-  Minimize,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAudioPeaks } from "@/utils/audio-peaks";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MediaPlayerProps {
   src: string;
@@ -24,14 +30,16 @@ interface MediaPlayerProps {
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-  const s = Math.floor(seconds);
-  const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  const sec = s % 60;
-  const min = m % 60;
-  if (h > 0)
-    return `${h}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${min}:${String(sec).padStart(2, "0")}`;
+
+  const totalSeconds = Math.floor(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
 export function MediaPlayer({
@@ -54,7 +62,6 @@ export function MediaPlayer({
   const prevVolume = React.useRef(1);
   const waveformOuterRef = React.useRef<HTMLDivElement>(null);
 
-  // Direct DOM refs for progress — bypasses React state for smooth updates
   const progressBarRef = React.useRef<HTMLDivElement>(null);
   const progressThumbRef = React.useRef<HTMLDivElement>(null);
   const timeDisplayRef = React.useRef<HTMLSpanElement>(null);
@@ -81,23 +88,48 @@ export function MediaPlayer({
   }, [type]);
 
   const [peaks, setPeaks] = React.useState<number[] | null>(null);
-  // Keep a ref to peaks for the rAF loop (avoids stale closure)
   const peaksRef = React.useRef<number[] | null>(null);
   peaksRef.current = peaks;
+  const cachedPeaksRef = React.useRef<{ src: string; peaks: number[] } | null>(null);
+
+  const generateFakeWaveform = React.useCallback((count: number): number[] => {
+    return Array.from(
+      { length: count },
+      (_, i) => Math.sin((i / count) * Math.PI * 6) * 0.45 + 0.55,
+    );
+  }, []);
+
+  // Function to resample peaks to a different count
+  const resamplePeaks = React.useCallback((sourcePeaks: number[], targetCount: number): number[] => {
+    if (sourcePeaks.length === targetCount) return sourcePeaks;
+    const result = new Array(targetCount);
+    const ratio = sourcePeaks.length / targetCount;
+    for (let i = 0; i < targetCount; i++) {
+      const sourceIndex = Math.floor(i * ratio);
+      result[i] = sourcePeaks[sourceIndex];
+    }
+    return result;
+  }, []);
 
   React.useEffect(() => {
     if (!src || type !== "audio") {
       setPeaks(null);
+      cachedPeaksRef.current = null;
       return;
     }
+
+    // Check if we have cached peaks for this src
+    if (cachedPeaksRef.current && cachedPeaksRef.current.src === src) {
+      // Resample cached peaks to current barCount
+      const resampled = resamplePeaks(cachedPeaksRef.current.peaks, barCount);
+      setPeaks(resampled);
+      return;
+    }
+
     let cancelled = false;
     const timeoutId = setTimeout(() => {
       if (!cancelled) {
-        const fake = Array.from(
-          { length: barCount },
-          (_, i) => Math.sin((i / barCount) * Math.PI * 6) * 0.45 + 0.55,
-        );
-        setPeaks(fake);
+        setPeaks(generateFakeWaveform(barCount));
       }
     }, 2000);
 
@@ -105,6 +137,8 @@ export function MediaPlayer({
       .then((result) => {
         if (!cancelled) {
           clearTimeout(timeoutId);
+          // Cache the results
+          cachedPeaksRef.current = { src, peaks: result };
           setPeaks(result);
         }
       })
@@ -112,18 +146,14 @@ export function MediaPlayer({
         if (!cancelled) {
           clearTimeout(timeoutId);
           console.error("Failed to get audio peaks:", err);
-          const fake = Array.from(
-            { length: barCount },
-            (_, i) => Math.sin((i / barCount) * Math.PI * 6) * 0.45 + 0.55,
-          );
-          setPeaks(fake);
+          setPeaks(generateFakeWaveform(barCount));
         }
       });
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [src, barCount, type]);
+  }, [src, barCount, type, generateFakeWaveform, resamplePeaks]);
 
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -132,21 +162,28 @@ export function MediaPlayer({
   const [volume, setVolume] = React.useState(1);
   const [isMuted, setIsMuted] = React.useState(false);
   const [buffered, setBuffered] = React.useState(0);
-  const [showVolumePopover, setShowVolumePopover] = React.useState(false);
-  const volumeRef = React.useRef<HTMLDivElement>(null);
+  const [playbackRate, setPlaybackRate] = React.useState(1);
+
+  const hasCalledOnReadyRef = React.useRef(false);
+  const hasClearedLoadingRef = React.useRef(false);
+  React.useEffect(() => {
+    hasCalledOnReadyRef.current = false;
+    hasClearedLoadingRef.current = false;
+    setIsLoading(true);
+  }, [src]);
 
   const isVideo = type === "video";
 
-  // Waveform bar elements ref — update colours directly without re-rendering
   const waveformBarsRef = React.useRef<HTMLDivElement[]>([]);
 
   const applyProgress = React.useCallback((pct: number) => {
-    // Progress bar fill
-    if (progressBarRef.current) progressBarRef.current.style.width = `${pct}%`;
-    // Thumb position
-    if (progressThumbRef.current)
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${pct}%`;
+    }
+    if (progressThumbRef.current) {
       progressThumbRef.current.style.left = `${pct}%`;
-    // Waveform bar colours
+    }
+
     const bars = waveformBarsRef.current;
     for (let i = 0; i < bars.length; i++) {
       const bar = bars[i];
@@ -167,7 +204,6 @@ export function MediaPlayer({
           ? (media.currentTime / durationRef.current) * 100
           : 0;
       applyProgress(pct);
-      // Update time display text directly
       if (timeDisplayRef.current) {
         timeDisplayRef.current.textContent = `${formatTime(media.currentTime)} / ${formatTime(durationRef.current)}`;
       }
@@ -186,12 +222,29 @@ export function MediaPlayer({
     const media = mediaRef.current;
     if (!media) return;
 
-    const onLoadStart = () => setIsLoading(true);
-    const onCanPlay = () => {
+    const onLoadStart = () => {
+      if (!hasClearedLoadingRef.current) {
+        setIsLoading(true);
+      }
+    };
+
+    const onReadyEnough = () => {
       setIsLoading(false);
       setError(null);
-      onReady?.();
+      hasClearedLoadingRef.current = true;
+      if (!hasCalledOnReadyRef.current) {
+        hasCalledOnReadyRef.current = true;
+        onReady?.();
+      }
     };
+
+    const onLoadedMetadata = () => {
+      if (isVideo) {
+        media.currentTime = 0;
+      }
+      onReadyEnough();
+    };
+
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onEndedEvt = () => {
@@ -210,7 +263,8 @@ export function MediaPlayer({
     const onProgress = () => updateBuffered();
 
     media.addEventListener("loadstart", onLoadStart);
-    media.addEventListener("canplay", onCanPlay);
+    media.addEventListener("loadedmetadata", onLoadedMetadata);
+    media.addEventListener("canplay", onReadyEnough);
     media.addEventListener("play", onPlay);
     media.addEventListener("pause", onPause);
     media.addEventListener("ended", onEndedEvt);
@@ -218,11 +272,19 @@ export function MediaPlayer({
     media.addEventListener("durationchange", onDuration);
     media.addEventListener("progress", onProgress);
 
+    if (media.readyState >= media.HAVE_METADATA && !media.error) {
+      onReadyEnough();
+    } else if (media.error) {
+      setIsLoading(false);
+      setError("Failed to load media");
+    }
+
     rAFRef.current = requestAnimationFrame(updateProgress);
 
     return () => {
       media.removeEventListener("loadstart", onLoadStart);
-      media.removeEventListener("canplay", onCanPlay);
+      media.removeEventListener("loadedmetadata", onLoadedMetadata);
+      media.removeEventListener("canplay", onReadyEnough);
       media.removeEventListener("play", onPlay);
       media.removeEventListener("pause", onPause);
       media.removeEventListener("ended", onEndedEvt);
@@ -231,13 +293,17 @@ export function MediaPlayer({
       media.removeEventListener("progress", onProgress);
       cancelAnimationFrame(rAFRef.current);
     };
-  }, [src, updateProgress, updateBuffered, onReady, onEnded, onDurationChange]);
+  }, [src, updateProgress, updateBuffered, onReady, onEnded, onDurationChange, isVideo]);
 
   const togglePlay = React.useCallback(() => {
     const media = mediaRef.current;
     if (!media) return;
-    if (media.paused) media.play().catch(() => {});
-    else media.pause();
+
+    if (media.paused) {
+      media.play().catch(() => {});
+    } else {
+      media.pause();
+    }
   }, []);
 
   const handleSeek = React.useCallback(
@@ -261,10 +327,12 @@ export function MediaPlayer({
       wasPlayingBeforeSeek.current = !mediaRef.current?.paused;
       mediaRef.current?.pause();
       seekRef.current?.classList.add("dragging");
-      const el = e.currentTarget as HTMLElement;
-      seekSurfaceRef.current = el;
+
+      const element = e.currentTarget as HTMLElement;
+      seekSurfaceRef.current = element;
+
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      handleSeek(clientX, el);
+      handleSeek(clientX, element);
     },
     [handleSeek],
   );
@@ -272,10 +340,12 @@ export function MediaPlayer({
   const onSeekMove = React.useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (!isDragging.current) return;
-      const el = seekSurfaceRef.current ?? waveformOuterRef.current ?? seekRef.current;
-      if (!el) return;
+
+      const element = seekSurfaceRef.current ?? waveformOuterRef.current ?? seekRef.current;
+      if (!element) return;
+
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      handleSeek(clientX, el);
+      handleSeek(clientX, element);
     },
     [handleSeek],
   );
@@ -302,24 +372,16 @@ export function MediaPlayer({
     };
   }, [onSeekMove, onSeekEnd]);
 
-  React.useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (volumeRef.current && !volumeRef.current.contains(e.target as Node)) {
-        setShowVolumePopover(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   const toggleMute = React.useCallback(() => {
     const media = mediaRef.current;
     if (!media) return;
+
     if (media.volume === 0 || media.muted) {
-      media.volume = prevVolume.current;
+      const previousVolume = prevVolume.current;
+      media.volume = previousVolume;
       media.muted = false;
       setIsMuted(false);
-      setVolume(prevVolume.current);
+      setVolume(previousVolume);
     } else {
       prevVolume.current = media.volume;
       media.volume = 0;
@@ -331,36 +393,31 @@ export function MediaPlayer({
 
   const handleVolumeChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = parseFloat(e.target.value);
+      const newVolume = parseFloat(e.target.value);
       const media = mediaRef.current;
       if (!media) return;
-      media.volume = val;
-      media.muted = val === 0;
-      setIsMuted(val === 0);
-      setVolume(val);
-      if (val > 0) prevVolume.current = val;
+
+      media.volume = newVolume;
+      media.muted = newVolume === 0;
+      setIsMuted(newVolume === 0);
+      setVolume(newVolume);
+
+      if (newVolume > 0) {
+        prevVolume.current = newVolume;
+      }
     },
     [],
   );
 
   const handleSpeedChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
+    (speed: number) => {
       const media = mediaRef.current;
       if (!media) return;
-      media.playbackRate = parseFloat(e.target.value);
+      media.playbackRate = speed;
+      setPlaybackRate(speed);
     },
     [],
   );
-
-  const toggleFullscreen = React.useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      container.requestFullscreen().catch(() => {});
-    }
-  }, []);
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent) => {
@@ -386,35 +443,32 @@ export function MediaPlayer({
         case "ArrowUp":
           e.preventDefault();
           {
-            const v = Math.min(1, media.volume + 0.1);
-            media.volume = v;
+            const newVolume = Math.min(1, media.volume + 0.1);
+            media.volume = newVolume;
             media.muted = false;
-            setVolume(v);
+            setVolume(newVolume);
             setIsMuted(false);
-            prevVolume.current = v;
+            prevVolume.current = newVolume;
           }
           break;
         case "ArrowDown":
           e.preventDefault();
           {
-            const v = Math.max(0, media.volume - 0.1);
-            media.volume = v;
-            media.muted = v === 0;
-            setVolume(v);
-            setIsMuted(v === 0);
-            if (v > 0) prevVolume.current = v;
+            const newVolume = Math.max(0, media.volume - 0.1);
+            media.volume = newVolume;
+            media.muted = newVolume === 0;
+            setVolume(newVolume);
+            setIsMuted(newVolume === 0);
+            if (newVolume > 0) prevVolume.current = newVolume;
           }
           break;
         case "m":
           e.preventDefault();
           toggleMute();
           break;
-        case "f":
-          if (isVideo) toggleFullscreen();
-          break;
       }
     },
-    [togglePlay, toggleMute, toggleFullscreen, isVideo],
+    [togglePlay, toggleMute],
   );
 
   const bufferedPct = duration > 0 ? (buffered / duration) * 100 : 0;
@@ -476,16 +530,18 @@ export function MediaPlayer({
 
       {type === "audio" && (
         <div ref={waveformOuterRef} className="relative h-20 bg-muted/20">
-          {isLoading ? (
+          {isLoading && (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="size-5 animate-spin text-muted-foreground/60" />
             </div>
-          ) : error ? (
+          )}
+          {error && (
             <div className="flex h-full flex-col items-center justify-center gap-1">
               <VolumeX className="size-4 text-destructive/70" />
               <span className="text-xs text-muted-foreground">{error}</span>
             </div>
-          ) : (
+          )}
+          {!isLoading && !error && (
             <div
               className="flex h-full w-full cursor-pointer items-end gap-px py-2.5"
               onMouseDown={onSeekStart}
@@ -514,7 +570,6 @@ export function MediaPlayer({
         </div>
       )}
 
-      {/* Controls bar */}
       <div
         className={cn(
           "flex items-center gap-1 px-2 py-1.5",
@@ -522,13 +577,14 @@ export function MediaPlayer({
             "absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8",
         )}
       >
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={togglePlay}
           className={cn(
-            "flex size-8 items-center justify-center rounded-md transition-colors",
+            "size-8 focus-visible:ring-0",
             isVideo
-              ? "text-white hover:bg-white/20"
+              ? "text-white hover:bg-white/20 hover:text-white"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
           aria-label={isPlaying ? "Pause" : "Play"}
@@ -540,7 +596,7 @@ export function MediaPlayer({
           ) : (
             <Play className="size-4 ml-0.5" />
           )}
-        </button>
+        </Button>
 
         {!isVideo && !isLoading && !error && (
           <>
@@ -551,7 +607,6 @@ export function MediaPlayer({
               onMouseMove={onSeekHover}
               onMouseLeave={onSeekLeave}
             >
-              {/* Hover time tooltip */}
               {isHoveringSeek && hoverTime !== null && (
                 <div
                   className="absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-medium text-background shadow-md whitespace-nowrap pointer-events-none z-10"
@@ -565,7 +620,6 @@ export function MediaPlayer({
                   className="absolute inset-y-0 left-0 rounded-full bg-muted-foreground/15"
                   style={{ width: `${bufferedPct}%` }}
                 />
-                {/* Progress fill — width driven by DOM ref, not state */}
                 <div
                   ref={progressBarRef}
                   className="absolute inset-y-0 left-0 rounded-full bg-primary"
@@ -583,7 +637,6 @@ export function MediaPlayer({
               </div>
             </div>
 
-            {/* Time display — textContent driven by DOM ref, not state */}
             <span
               ref={timeDisplayRef}
               className="min-w-[70px] text-center tabular-nums text-[11px] text-muted-foreground select-none"
@@ -594,93 +647,52 @@ export function MediaPlayer({
         )}
 
         <div className="flex items-center gap-0.5 ml-auto">
-          {/* Speed */}
-          <div className="relative">
-            <select
-              onChange={handleSpeedChange}
-              defaultValue="1"
-              className={cn(
-                "flex h-7 items-center rounded-md border-0 bg-transparent pl-1.5 pr-4 text-[11px] cursor-pointer outline-none transition-colors appearance-none",
-                isVideo
-                  ? "text-white/90 hover:bg-white/20"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-              aria-label="Playback speed"
-            >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "h-7 px-1.5 text-[11px] gap-1 focus-visible:ring-0",
+                  isVideo
+                    ? "text-white/90 hover:bg-white/20 hover:text-white"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {playbackRate}x
+                <ChevronDown className="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
-                <option key={s} value={s}>
+                <DropdownMenuItem
+                  key={s}
+                  onClick={() => handleSpeedChange(s)}
+                  className="text-xs"
+                >
                   {s}x
-                </option>
+                </DropdownMenuItem>
               ))}
-            </select>
-            <svg
-              className={cn(
-                "pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 size-2.5",
-                isVideo ? "text/60" : "text-muted-foreground",
-              )}
-              viewBox="0 0 10 6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M1 1l4 4 4-4" />
-            </svg>
-          </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          {/* Volume */}
-          <div className="relative" ref={volumeRef}>
-            <button
-              type="button"
-              onClick={() => setShowVolumePopover((v) => !v)}
-              className={cn(
-                "flex size-7 items-center justify-center rounded-md transition-colors",
-                isVideo
-                  ? "text-white/80 hover:bg-white/20"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-              aria-label={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="size-3.5" />
-              ) : (
-                <Volume2 className="size-3.5" />
-              )}
-            </button>
-            {showVolumePopover && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 flex items-center justify-center w-8 h-24 rounded-lg border bg-background shadow-md z-20">
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  className="h-16 w-1.5 [writing-mode:vertical-lr] [direction:rtl] cursor-pointer accent-primary appearance-none [&::-webkit-slider-runnable-track]:bg-muted [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
-                  aria-label="Volume"
-                />
-              </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className={cn(
+              "size-7 focus-visible:ring-0",
+              isVideo
+                ? "text-white/80 hover:bg-white/20 hover:text-white"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
-          </div>
-
-          {/* Fullscreen (video only) */}
-          {isVideo && (
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="flex size-7 items-center justify-center rounded-md text-white/80 hover:bg-white/20 hover:text-white transition-colors"
-              aria-label={
-                document.fullscreenElement ? "Exit fullscreen" : "Fullscreen"
-              }
-            >
-              {document.fullscreenElement ? (
-                <Minimize className="size-3.5" />
-              ) : (
-                <Maximize className="size-3.5" />
-              )}
-            </button>
-          )}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="size-3.5" />
+            ) : (
+              <Volume2 className="size-3.5" />
+            )}
+          </Button>
         </div>
       </div>
     </div>
