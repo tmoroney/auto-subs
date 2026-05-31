@@ -6,11 +6,12 @@
     "subtitleStyleDescription": "자막",
     "model": "모델",
     "censor": {
+      "title": "민감한 단어 검열",
+      "wordCount": "{{count}}개 단어",
       "dialogDescription": "자막에서 검열할 단어를 추가하세요.",
       "dialogTitle": "민감한 단어 검열",
       "empty": "검열된 단어가 없습니다.",
       "inputPlaceholder": "검열할 단어 추가",
-      "empty": "검열된 단어가 없습니다.",
       "lists": "단어 목록",
       "customSection": "사용자 정의 단어",
       "customSectionDescription": "검열할 개별 단어를 입력하세요.",
