@@ -2,7 +2,7 @@ import * as React from "react";
 import { Gauge, Clock, GraduationCap, Terminal } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettings } from "@/contexts/SettingsContext";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask, message } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -63,6 +63,49 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       console.error("[SettingsDialog] failed to open logs folder:", err);
     }
   }, []);
+
+  // Command-line tool ("autosubs" on PATH). Status is queried when the dialog
+  // opens; install/uninstall are handled by the backend per-platform.
+  type CliStatus = {
+    installed: boolean;
+    manageable: boolean;
+    location: string | null;
+    note: string | null;
+  };
+  const [cliStatus, setCliStatus] = React.useState<CliStatus | null>(null);
+  const [cliBusy, setCliBusy] = React.useState(false);
+
+  const refreshCliStatus = React.useCallback(async () => {
+    try {
+      setCliStatus(await invoke<CliStatus>("cli_command_status"));
+    } catch (err) {
+      console.error("[SettingsDialog] failed to read CLI status:", err);
+      setCliStatus(null);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (open) refreshCliStatus();
+  }, [open, refreshCliStatus]);
+
+  const handleCliToggle = React.useCallback(async () => {
+    if (!cliStatus?.manageable) return;
+    const command = cliStatus.installed ? "uninstall_cli_command" : "install_cli_command";
+    setCliBusy(true);
+    try {
+      setCliStatus(await invoke<CliStatus>(command));
+    } catch (err) {
+      const msg = String(err);
+      // User dismissing the macOS admin prompt is a normal, silent outcome.
+      if (msg !== "Cancelled.") {
+        console.error("[SettingsDialog] CLI install/uninstall failed:", err);
+        await message(msg, { title: t("settings.cli.errorTitle", "Command-line tool"), kind: "error" });
+      }
+      await refreshCliStatus();
+    } finally {
+      setCliBusy(false);
+    }
+  }, [cliStatus, refreshCliStatus, t]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,6 +229,56 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </Field>
               </FieldGroup>
             </div>
+
+            {/* Command-line tool */}
+            {cliStatus && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("settings.sections.cli", "Command line")}
+                </h4>
+
+                <FieldGroup className="gap-3">
+                  <Field>
+                    <Item variant="outline" size="sm">
+                      <ItemMedia variant="icon" className="bg-green-100 dark:bg-green-900/30">
+                        <Terminal className="size-4 text-green-600 dark:text-green-400" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>{t("settings.cli.title", "Command-line tool")}</ItemTitle>
+                        <ItemDescription className="text-xs leading-tight line-clamp-2">
+                          {cliStatus.manageable
+                            ? t(
+                                "settings.cli.description",
+                                "Install the `autosubs` command so you can transcribe files from any terminal."
+                              )
+                            : cliStatus.note ?? ""}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        {cliStatus.manageable ? (
+                          <Button
+                            variant={cliStatus.installed ? "outline" : "secondary"}
+                            size="sm"
+                            disabled={cliBusy}
+                            onClick={handleCliToggle}
+                          >
+                            {cliStatus.installed
+                              ? t("settings.cli.remove", "Remove")
+                              : t("settings.cli.install", "Install")}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {cliStatus.installed
+                              ? t("settings.cli.available", "Available")
+                              : t("settings.cli.notFound", "Not found")}
+                          </span>
+                        )}
+                      </ItemActions>
+                    </Item>
+                  </Field>
+                </FieldGroup>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
