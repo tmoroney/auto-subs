@@ -78,49 +78,32 @@ Download [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/relea
 
 ### Command Line Interface
 
-AutoSubs can run from the terminal without opening a window, so AI agents and terminal-heavy users can transcribe files directly. Given a file argument the app runs headlessly, prints the result, and exits with a status code (`0` success, `1` on a runtime error, `2` on a usage error). With **no** arguments it launches the normal desktop interface.
+Transcribe files straight from the terminal — handy for scripting and AI agents. Pass a file and AutoSubs runs without a window, prints the result, and exits; run it with no arguments to open the desktop app as usual.
+
+**1. Add `autosubs` to your PATH** (one-time setup):
+
+- **Linux** — already done; the `.deb`/`.rpm` installs `/usr/bin/autosubs`.
+- **macOS / Windows** — in the app, go to **Settings → Command line** and click **Install** (**Remove** reverses it).
+
+**2. Run it:**
 
 ```bash
-# Readable transcript to the console (default format)
-autosubs interview.mp4 --model small
-
-# Speaker diarization (adds "Speaker N:" labels)
-autosubs interview.mp4 --diarize --max-speakers 2 --lang en
-
-# Pick a format explicitly…
-autosubs interview.mp4 -f srt
-autosubs interview.mp4 -f json
-
-# …or let the output file extension decide
-autosubs interview.mp4 -o subs.srt
-autosubs interview.mp4 -o transcript.json
-
-# Full option list / version
-autosubs --help
-autosubs --version
+autosubs interview.mp4                              # transcript to the console
+autosubs interview.mp4 --diarize --max-speakers 2  # label speakers
+autosubs interview.mp4 -o subs.srt                 # write a file (format from extension)
+autosubs interview.mp4 -f json                     # or set the format explicitly
+autosubs --help                                    # all options
 ```
 
-**Output formats** (`-f` / `--format`):
+**Output formats** (`-f` / `--format`, or inferred from the `-o` extension; defaults to `text`):
 
 | Format | Contents |
 |---|---|
-| `text` *(default)* | Readable transcript — `[HH:MM:SS] Speaker N: …`, one paragraph per speaker turn (no word-level timings) |
-| `srt` | SubRip subtitles (one short cue per segment) |
-| `vtt` | WebVTT subtitles (one short cue per segment) |
-| `json` | Full structured transcript including word-level timestamps |
+| `text` *(default)* | Readable transcript — `[HH:MM:SS] Speaker N: …`, one paragraph per speaker turn |
+| `srt` / `vtt` | Subtitle cues (SubRip / WebVTT) |
+| `json` | Full structured transcript with word-level timestamps |
 
-If `--format` is omitted, the format is inferred from the `-o` file extension (`.srt`, `.vtt`, `.json`, `.txt`), otherwise it defaults to `text`.
-
-**stdout** carries only the rendered output, so `autosubs file.mp4 -f srt > out.srt` is clean and pipe-safe. Progress and errors go to **stderr**: in an interactive terminal you get a live progress bar with the current stage (downloading model / transcribing / diarizing / translating); when stderr is piped or captured, it falls back to one line per stage. On failure a `{ "error": "..." }` object is printed to stderr and the exit code is non-zero. Models are downloaded automatically on first use to the app's cache directory.
-
-> On Windows, release builds attach to the parent console at startup so output is visible. As with any Tauri CLI app, the shell prompt may return before output finishes printing.
-
-#### Getting the `autosubs` command on your PATH
-
-The CLI is the same binary as the desktop app, so it needs to be reachable from your shell:
-
-- **Linux** — already done. The `.deb`/`.rpm` installs `/usr/bin/autosubs`, which is on `PATH`. Just run `autosubs <file> ...`.
-- **macOS / Windows** — open **Settings → Command line** in the app and click **Install**. This symlinks the command into `/usr/local/bin` (macOS, prompts for your password) or adds the install folder to your user `PATH` (Windows). **Remove** reverses it. The button reports the current state on each platform.
+Only the result goes to stdout (so `> out.srt` is clean); progress and errors go to stderr. Exit code is `0` on success, `1` on a runtime error, `2` on a usage error. Models download automatically on first use.
 
 ---
 
