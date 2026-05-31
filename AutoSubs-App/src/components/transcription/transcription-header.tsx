@@ -31,6 +31,7 @@ interface TranscriptionHeaderProps {
   templatesLoading: boolean;
   templatesLoaded: boolean;
   onLoadTemplates?: () => Promise<TimelineInfo["templates"]>;
+  timelineInfo?: TimelineInfo;
 }
 
 function UpdateStatusIndicator({
@@ -120,6 +121,7 @@ export function TranscriptionHeader({
   templatesLoading,
   templatesLoaded,
   onLoadTemplates,
+  timelineInfo,
 }: TranscriptionHeaderProps) {
   const { t } = useTranslation();
   const [styleDialogOpen, setStyleDialogOpen] = React.useState(false);
@@ -229,6 +231,7 @@ export function TranscriptionHeader({
         templatesLoading={templatesLoading}
         templatesLoaded={templatesLoaded}
         onLoadTemplates={onLoadTemplates}
+        timelineInfo={timelineInfo}
       />
     </>
   );

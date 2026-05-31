@@ -5,6 +5,18 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 use tokio::process::Command as TokioCommand;
 
+/// Expand a leading `~` in a file path to the user's home directory.
+/// Windows does not expand `~` natively; Rust's PathBuf does not either.
+fn expand_tilde(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix('~') {
+        if let Some(home) = dirs::home_dir() {
+            let rest = rest.trim_start_matches('/').trim_start_matches('\\');
+            return home.join(rest).to_string_lossy().into_owned();
+        }
+    }
+    path.to_string()
+}
+
 /// Parse the source channel count out of FFmpeg's
 /// "Rematrix is needed between N channels and mono ..." error.
 ///
@@ -93,7 +105,16 @@ pub async fn run_ffmpeg<R: Runtime>(
     let sidecar_command = app.shell().sidecar("ffmpeg");
     let result = match sidecar_command {
         Ok(cmd) => match cmd.args(args.to_vec()).output().await {
-            Ok(o) => (o.status.success(), o.status.code(), o.stdout, o.stderr),
+            Ok(o) => {
+                let stderr_str = String::from_utf8_lossy(&o.stderr);
+                if !o.status.success() && stderr_str.contains("shim file") {
+                    tracing::warn!("ffmpeg sidecar shim error, falling back to system ffmpeg");
+                    let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
+                    (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+                } else {
+                    (o.status.success(), o.status.code(), o.stdout, o.stderr)
+                }
+            }
             Err(_) => {
                 tracing::warn!("ffmpeg sidecar unavailable, falling back to system ffmpeg");
                 let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
@@ -141,6 +162,10 @@ pub async fn normalize<R: Runtime>(
 
         let input_lossy = input.to_string_lossy().into_owned();
         let output_lossy = output.to_string_lossy().into_owned();
+
+        // Expand ~ to home directory (Windows doesn't expand tilde natively)
+        let input_lossy = expand_tilde(&input_lossy);
+        let output_lossy = expand_tilde(&output_lossy);
 
         // First attempt: let FFmpeg auto-downmix. This handles mono, stereo,
         // 5.1, 7.1, and any other input whose channel_layout is known.

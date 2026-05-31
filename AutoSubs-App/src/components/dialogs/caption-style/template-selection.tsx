@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/animat
 import { useIntegration } from "@/contexts/IntegrationContext"
 import { DEFAULT_PRESET_ID, usePresets } from "@/contexts/PresetsContext"
 import { useSettings } from "@/contexts/SettingsContext"
-import { CaptionPreset, Template } from "@/types"
+import { CaptionPreset, Template, TimelineInfo } from "@/types"
 import {
     AnimatedPresetActions,
     AnimatedPresetPicker,
@@ -212,6 +212,7 @@ interface CaptionTemplateSelectionDialogProps {
     templatesLoading: boolean
     templatesLoaded: boolean
     onLoadTemplates?: () => Promise<Template[]>
+    timelineInfo?: TimelineInfo
 }
 
 export function CaptionTemplateSelectionDialog({
@@ -221,6 +222,7 @@ export function CaptionTemplateSelectionDialog({
     templatesLoading,
     templatesLoaded,
     onLoadTemplates,
+    timelineInfo,
 }: CaptionTemplateSelectionDialogProps) {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
@@ -274,6 +276,13 @@ export function CaptionTemplateSelectionDialog({
         if (!shouldLoadTemplates) return
         let cancelled = false
 
+        // If no editor is connected (no timelineId), skip loading and show message immediately
+        if (!timelineInfo?.timelineId) {
+            setTemplateLoadError("No editor connected. Connect to DaVinci Resolve, Adobe Premiere Pro, or After Effects to customise templates.")
+            setLoadingTimedOut(true)
+            return
+        }
+
         const timeoutId = setTimeout(() => {
             if (cancelled) return
             cancelled = true
@@ -295,7 +304,7 @@ export function CaptionTemplateSelectionDialog({
             cancelled = true
             clearTimeout(timeoutId)
         }
-    }, [shouldLoadTemplates, onLoadTemplates])
+    }, [shouldLoadTemplates, onLoadTemplates, timelineInfo?.timelineId])
 
     function handleOpenChange(next: boolean) {
         if (!next && createSession.kind !== "closed") {
@@ -389,7 +398,7 @@ export function CaptionTemplateSelectionDialog({
                     onExportPreset={exportPreset}
                     hasAnimatedTemplate={hasAnimatedTemplate}
                 />
-                {createSession.kind === "closed" && (
+                {createSession.kind === "closed" && !templateLoadError && (
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             {t("common.cancel")}

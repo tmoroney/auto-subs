@@ -347,6 +347,7 @@
   "completion": {
     "processingComplete": "Traitement terminé",
     "subtitlesReady": "Vos sous-titres sont prêts !",
+    "noSpeechDetected": "Aucune parole détectée. Le fichier audio peut être silencieux ou ne contenir aucune parole reconnaissable.",
     "viewSubtitles": "Voir les sous-titres",
     "exportToFile": "Exporter vers un fichier",
     "addToTimeline": "Ajouter à la timeline"

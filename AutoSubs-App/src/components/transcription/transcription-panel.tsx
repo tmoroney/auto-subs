@@ -257,6 +257,7 @@ export function TranscriptionPanel({
     setExportProgress(0);
     setLabeledProgress(null);
     cancelRequestedRef.current = false;
+    setFileInput(null);
     if (settings.audioInputMode === "timeline") {
       await refreshAudioTracks();
     }
@@ -267,6 +268,7 @@ export function TranscriptionPanel({
     settings.audioInputMode,
     setExportProgress,
     setIsExporting,
+    setFileInput,
   ]);
 
   const handleStartTranscription = async () => {

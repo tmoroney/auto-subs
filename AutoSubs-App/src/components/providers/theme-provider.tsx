@@ -20,6 +20,12 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
 }
 
+function applyThemeClass(resolved: "dark" | "light") {
+  const root = window.document.documentElement
+  root.classList.remove("light", "dark")
+  root.classList.add(resolved)
+}
+
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
@@ -36,17 +42,28 @@ export function ThemeProvider({
     : theme;
 
   useEffect(() => {
-    const root = window.document.documentElement
-    root.classList.remove("light", "dark")
-    root.classList.add(resolvedTheme)
+    applyThemeClass(resolvedTheme)
   }, [resolvedTheme])
 
   const value = {
     theme,
     resolvedTheme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    setTheme: (next: Theme) => {
+      localStorage.setItem(storageKey, next)
+
+      const nextResolved: "dark" | "light" = next === "system"
+        ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+        : next
+
+      if (!document.startViewTransition) {
+        setTheme(next)
+        return
+      }
+
+      document.startViewTransition(() => {
+        applyThemeClass(nextResolved)
+      })
+      setTheme(next)
     },
   }
 

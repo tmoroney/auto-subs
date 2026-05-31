@@ -347,6 +347,7 @@
   "completion": {
     "processingComplete": "处理完成",
     "subtitlesReady": "您的字幕已准备就绪！",
+    "noSpeechDetected": "未检测到语音。音频文件可能为静音或不包含可识别的语音。",
     "viewSubtitles": "查看字幕",
     "exportToFile": "导出到文件",
     "addToTimeline": "添加到时间线"

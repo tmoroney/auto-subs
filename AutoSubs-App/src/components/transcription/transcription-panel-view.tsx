@@ -215,6 +215,7 @@ export function TranscriptionPanelView({
         templatesLoading={templatesLoading}
         templatesLoaded={templatesLoaded}
         onLoadTemplates={onLoadTemplates}
+        timelineInfo={timelineInfo}
       />
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">

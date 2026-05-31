@@ -351,6 +351,7 @@
   "completion": {
     "processingComplete": "Processing Complete",
     "subtitlesReady": "Your subtitles are ready to use!",
+    "noSpeechDetected": "No speech detected. The audio file may be silent or contain no recognizable speech.",
     "viewSubtitles": "View Subtitles",
     "exportToFile": "Export to File",
     "addToTimeline": "Add to Timeline"

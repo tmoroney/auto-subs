@@ -347,6 +347,7 @@
   "completion": {
     "processingComplete": "Verarbeitung abgeschlossen",
     "subtitlesReady": "Deine Untertitel sind bereit!",
+    "noSpeechDetected": "Keine Sprache erkannt. Die Audiodatei enthält möglicherweise keine erkennbare Sprache.",
     "viewSubtitles": "Untertitel anzeigen",
     "exportToFile": "In Datei exportieren",
     "addToTimeline": "Zur Timeline hinzufügen"

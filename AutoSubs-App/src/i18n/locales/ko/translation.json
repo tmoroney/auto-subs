@@ -118,6 +118,7 @@
   "completion": {
     "processingComplete": "처리 완료",
     "subtitlesReady": "자막이 준비되었습니다!",
+    "noSpeechDetected": "음성이 감지되지 않았습니다. 오디오 파일이 무음이거나 인식 가능한 음성이 포함되어 있지 않을 수 있습니다.",
     "viewSubtitles": "자막 보기",
     "exportToFile": "파일로 내보내기",
     "addToTimeline": "타임라인에 추가"

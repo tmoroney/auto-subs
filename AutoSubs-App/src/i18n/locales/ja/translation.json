@@ -118,6 +118,7 @@
   "completion": {
     "processingComplete": "処理完了",
     "subtitlesReady": "字幕の準備ができました！",
+    "noSpeechDetected": "音声が検出されませんでした。オーディオファイルが無音か、認識可能な音声が含まれていない可能性があります。",
     "viewSubtitles": "字幕を表示",
     "exportToFile": "ファイルに書き出し",
     "addToTimeline": "タイムラインに追加"
