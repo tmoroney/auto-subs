@@ -11,6 +11,24 @@ export function SpeakerSelector() {
   // 0 = Auto, then 2-10 speakers (skips 1)
   const speakerValues = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
+  // Find the slider index for a given speaker count, clamping legacy values
+  // (e.g. maxSpeakers: 1 persisted before 1 was removed from the list).
+  function sliderIndexFor(value: number): number {
+    const idx = speakerValues.indexOf(value);
+    if (idx !== -1) return idx;
+    // Clamp to nearest valid value
+    let closest = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < speakerValues.length; i++) {
+      const dist = Math.abs(speakerValues[i] - value);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = i;
+      }
+    }
+    return closest;
+  }
+
   return (
     <>
       <div className="px-4 py-5">
@@ -35,7 +53,7 @@ export function SpeakerSelector() {
 
           <Slider
             value={[
-              speakerValues.indexOf(
+              sliderIndexFor(
                 settings.enableDiarize ? (settings.maxSpeakers ?? 0) : 0,
               ),
             ]}

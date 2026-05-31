@@ -3,6 +3,8 @@
  * the Web Audio API. No Rust/ffmpeg needed — decodeAudioData handles any
  * format the browser supports (mp3, aac, wav, ogg, flac, m4a…).
  *
+ * Skips files over MAX_BYTES to avoid OOM in the WebView.
+ *
  * @param src   The asset URL from convertFileSrc() — what the browser can fetch
  * @param count Number of bars / peaks to return
  */
@@ -11,6 +13,17 @@ export async function getAudioPeaks(
   count: number,
 ): Promise<number[]> {
   count = Math.max(10, Math.min(2000, count));
+
+  // Check Content-Length before fetching the full file
+  const headResp = await fetch(src, { method: "HEAD" });
+  const contentLength = headResp.headers.get("Content-Length");
+  if (contentLength) {
+    const bytes = parseInt(contentLength, 10);
+    const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
+    if (bytes > MAX_BYTES) {
+      return [];
+    }
+  }
 
   const response = await fetch(src);
   const arrayBuffer = await response.arrayBuffer();
