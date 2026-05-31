@@ -285,6 +285,9 @@
   }
 }
 
+/* ── Splash screen: JS-driven SVG animation in splash-screen.tsx ── */
+/* All keyframes and animation classes removed — animation is rAF-based */
+
 @keyframes burst {
     0% {
         transform: translate(-50%, -50%) scale(0.5);
@@ -297,3 +300,4 @@
         opacity: 0;
     }
 }
+

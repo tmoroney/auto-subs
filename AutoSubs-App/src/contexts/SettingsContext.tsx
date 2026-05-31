@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { SplashScreen } from "@/components/common/splash-screen";
 import { load, Store } from "@tauri-apps/plugin-store";
 import { platform } from "@tauri-apps/plugin-os";
 import { Settings } from "@/types";
@@ -87,6 +88,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<Store | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [shouldShowChildren, setShouldShowChildren] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const splashStartRef = React.useRef(Date.now());
+  const SPLASH_MIN_MS = 1800;
 
   async function initializeStore() {
     try {
@@ -142,8 +146,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isHydrated) return;
-    const id = requestAnimationFrame(() => setShouldShowChildren(true));
-    return () => cancelAnimationFrame(id);
+    const elapsed = Date.now() - splashStartRef.current;
+    const remaining = Math.max(0, SPLASH_MIN_MS - elapsed);
+    const id = setTimeout(() => {
+      setShowSplash(false);
+      requestAnimationFrame(() => setShouldShowChildren(true));
+    }, remaining);
+    return () => clearTimeout(id);
   }, [isHydrated]);
 
   useEffect(() => {
@@ -238,8 +247,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         isHydrated,
       }}
     >
-      {!isHydrated ? (
-        <div className="h-screen w-screen bg-background" />
+      {showSplash ? (
+        <SplashScreen />
       ) : (
         <div
           className="h-screen w-screen bg-background transition-opacity duration-200"
