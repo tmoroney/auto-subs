@@ -100,7 +100,6 @@ export function SegmentPreview({ segments, isActive, placeholder }: SegmentPrevi
     // Optimized streaming with better diff algorithm
     useEffect(() => {
         if (fullText && fullText !== streamedText && !streamingRef.current) {
-            // eslint-disable-next-line react-doctor/no-adjust-state-on-prop-change
             setIsStreaming(true)
             streamingRef.current = true
             

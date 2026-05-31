@@ -123,7 +123,6 @@
     "autoprefixer": "^10.4.20",
     "dotenv-cli": "^11.0.0",
     "postcss": "^8.4.47",
-    "react-doctor": "^0.2.14",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.2.2",
     "vite": "^6.3.5"
