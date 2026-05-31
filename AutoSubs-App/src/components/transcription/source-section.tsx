@@ -269,7 +269,6 @@ export function FileDropArea({
             >
               <MediaPlayer
                 src={audioSrc}
-                filePath={selectedFile}
                 type={isVideo ? "video" : "audio"}
                 onDurationChange={(d) => setDuration(d)}
               />

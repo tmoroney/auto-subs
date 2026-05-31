@@ -13,7 +13,6 @@ import { getAudioPeaks } from "@/utils/audio-peaks";
 
 interface MediaPlayerProps {
   src: string;
-  filePath?: string;
   type?: "audio" | "video";
   className?: string;
   preload?: "none" | "metadata" | "auto";
@@ -37,7 +36,6 @@ function formatTime(seconds: number): string {
 
 export function MediaPlayer({
   src,
-  filePath,
   type = "audio",
   className,
   preload = "metadata",
@@ -136,9 +134,6 @@ export function MediaPlayer({
   const [showVolumePopover, setShowVolumePopover] = React.useState(false);
   const volumeRef = React.useRef<HTMLDivElement>(null);
 
-  // currentTime is only needed for the seek hover tooltip — progress is DOM-driven
-  const [currentTime, setCurrentTime] = React.useState(0);
-
   const isVideo = type === "video";
 
   // Waveform bar elements ref — update colours directly without re-rendering
@@ -176,7 +171,6 @@ export function MediaPlayer({
         timeDisplayRef.current.textContent = `${formatTime(media.currentTime)} / ${formatTime(durationRef.current)}`;
       }
       onTimeUpdate?.(media.currentTime);
-      setCurrentTime(media.currentTime); // keep state in sync for hover tooltip
     }
     rAFRef.current = requestAnimationFrame(updateProgress);
   }, [onTimeUpdate, applyProgress]);
@@ -256,7 +250,6 @@ export function MediaPlayer({
       );
       media.currentTime = ratio * durationRef.current;
       applyProgress(ratio * 100);
-      setCurrentTime(media.currentTime);
     },
     [applyProgress],
   );
