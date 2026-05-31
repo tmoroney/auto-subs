@@ -1,0 +1,16 @@
+[package]
+name = "autosubs-cli"
+version = "0.1.0"
+edition = "2024"
+description = "CLI for AutoSubs - generate subtitles from video/audio files"
+
+[dependencies]
+transcription-engine = { path = "../transcription-engine", default-features = false }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process"] }
+eyre = "0.6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "5.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

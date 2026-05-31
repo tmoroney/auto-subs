@@ -3,6 +3,7 @@ members = [
   ".",
   "crates/diarize",
   "crates/transcription-engine",
+  "crates/autosubs-cli",
 ]
 resolver = "2"
 
