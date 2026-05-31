@@ -75,10 +75,18 @@ fn compute_peaks(samples: &[f32], count: usize) -> Vec<f32> {
 
     for i in 0..count {
         let start = i * bin_size;
+        if start >= samples.len() {
+            peaks.push(0.0);
+            continue;
+        }
         let end = ((i + 1) * bin_size).min(samples.len());
         let bin = &samples[start..end];
-        let rms = (bin.iter().map(|&v| v * v).sum::<f32>() / bin.len() as f32).sqrt();
-        peaks.push(rms);
+        if bin.is_empty() {
+            peaks.push(0.0);
+        } else {
+            let rms = (bin.iter().map(|&v| v * v).sum::<f32>() / bin.len() as f32).sqrt();
+            peaks.push(rms);
+        }
     }
 
     peaks
