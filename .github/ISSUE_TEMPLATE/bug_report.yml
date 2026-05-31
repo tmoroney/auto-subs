@@ -23,8 +23,10 @@ body:
     attributes:
       label: Log file contents
       description: >-
-        If you used the "Copy Logs & Report" button, they are already in your clipboard — just paste them here.
-        Otherwise, click "Open Log Folder" in the error dialog and paste the contents of `autosubs.log`.
+        **Logs are already copied to your clipboard!** Just paste them here (Cmd+V or Ctrl+V).
+
+
+        If you didn't use the "Copy Logs & Report" button, click "Open Log Folder" in the error dialog and paste the contents of `autosubs.log`.
       render: shell
       placeholder: Paste the contents of autosubs.log here...
     validations:
@@ -66,13 +68,5 @@ body:
     attributes:
       label: DaVinci Resolve version
       description: Leave blank if running in standalone mode. e.g. 19.1.2
-    validations:
-      required: false
-
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: Additional context
-      description: Screenshots, videos, or anything else that helps.
     validations:
       required: false

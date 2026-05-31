@@ -4,7 +4,7 @@
   "version": "3.6.0",
   "identifier": "com.autosubs",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:frontend",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build:tauri-prep",
     "frontendDist": "../dist"
