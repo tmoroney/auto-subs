@@ -8,7 +8,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAudioPeaks } from "@/utils/audio-peaks";
+import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import {
 
 interface MediaPlayerProps {
   src: string;
+  filePath?: string; // Original file path for peak extraction (not asset URL)
   type?: "audio" | "video";
   className?: string;
   preload?: "none" | "metadata" | "auto";
@@ -44,6 +45,7 @@ function formatTime(seconds: number): string {
 
 export function MediaPlayer({
   src,
+  filePath,
   type = "audio",
   className,
   preload = "metadata",
@@ -88,26 +90,31 @@ export function MediaPlayer({
   }, [type]);
 
   const [peaks, setPeaks] = React.useState<number[] | null>(null);
-  const peaksRef = React.useRef<number[] | null>(null);
-  peaksRef.current = peaks;
   const cachedPeaksRef = React.useRef<{ src: string; peaks: number[] } | null>(null);
 
   const generateFakeWaveform = React.useCallback((count: number): number[] => {
-    return Array.from(
-      { length: count },
-      (_, i) => Math.sin((i / count) * Math.PI * 6) * 0.45 + 0.55,
-    );
+    const waveform = [];
+    for (let i = 0; i < count; i++) {
+      const normalizedPosition = i / count;
+      const sineWave = Math.sin(normalizedPosition * Math.PI * 6);
+      waveform.push(sineWave * 0.45 + 0.55);
+    }
+    return waveform;
   }, []);
 
-  // Function to resample peaks to a different count
   const resamplePeaks = React.useCallback((sourcePeaks: number[], targetCount: number): number[] => {
-    if (sourcePeaks.length === targetCount) return sourcePeaks;
-    const result = new Array(targetCount);
+    if (sourcePeaks.length === targetCount) {
+      return sourcePeaks;
+    }
+    
+    const result = [];
     const ratio = sourcePeaks.length / targetCount;
+    
     for (let i = 0; i < targetCount; i++) {
       const sourceIndex = Math.floor(i * ratio);
-      result[i] = sourcePeaks[sourceIndex];
+      result.push(sourcePeaks[sourceIndex]);
     }
+    
     return result;
   }, []);
 
@@ -118,11 +125,9 @@ export function MediaPlayer({
       return;
     }
 
-    // Check if we have cached peaks for this src
-    if (cachedPeaksRef.current && cachedPeaksRef.current.src === src) {
-      // Resample cached peaks to current barCount
-      const resampled = resamplePeaks(cachedPeaksRef.current.peaks, barCount);
-      setPeaks(resampled);
+    const cached = cachedPeaksRef.current;
+    if (cached && cached.src === src) {
+      setPeaks(resamplePeaks(cached.peaks, barCount));
       return;
     }
 
@@ -133,11 +138,14 @@ export function MediaPlayer({
       }
     }, 2000);
 
-    getAudioPeaks(src, barCount)
+    const pathForPeaks = filePath || src;
+    invoke<number[]>("extract_audio_peaks", { 
+      input: pathForPeaks, 
+      count: barCount 
+    })
       .then((result) => {
         if (!cancelled) {
           clearTimeout(timeoutId);
-          // Cache the results
           cachedPeaksRef.current = { src, peaks: result };
           setPeaks(result);
         }
@@ -153,7 +161,7 @@ export function MediaPlayer({
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [src, barCount, type, generateFakeWaveform, resamplePeaks]);
+  }, [src, barCount, type, filePath, generateFakeWaveform, resamplePeaks]);
 
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -390,24 +398,6 @@ export function MediaPlayer({
       setVolume(0);
     }
   }, []);
-
-  const handleVolumeChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newVolume = parseFloat(e.target.value);
-      const media = mediaRef.current;
-      if (!media) return;
-
-      media.volume = newVolume;
-      media.muted = newVolume === 0;
-      setIsMuted(newVolume === 0);
-      setVolume(newVolume);
-
-      if (newVolume > 0) {
-        prevVolume.current = newVolume;
-      }
-    },
-    [],
-  );
 
   const handleSpeedChange = React.useCallback(
     (speed: number) => {

@@ -5,6 +5,95 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 use tokio::process::Command as TokioCommand;
 
+/// Extract audio peaks efficiently using ffmpeg without full decoding.
+/// Uses ffmpeg to decode audio at a very low sample rate and streams raw PCM to stdout,
+/// then computes peak values for waveform visualization. No temporary files needed.
+/// Returns normalized peaks (0.0-1.0) for the requested number of bars.
+#[tauri::command]
+pub async fn extract_audio_peaks(
+    app: AppHandle,
+    input: String,
+    count: usize,
+) -> Result<Vec<f32>, String> {
+    let count = count.clamp(10, 2000);
+    let input_path = expand_tilde(&input);
+    
+    let args = build_ffmpeg_args(&input_path);
+    let (success, _code, stdout, stderr) = run_ffmpeg(&app, &args).await
+        .map_err(|e| format!("ffmpeg execution failed: {}", e))?;
+    
+    if !success {
+        let stderr_str = String::from_utf8_lossy(&stderr);
+        return Err(format!("ffmpeg failed: {}", stderr_str));
+    }
+    
+    let samples = convert_pcm_to_f32(&stdout);
+    if samples.is_empty() {
+        return Ok(vec![0.0; count]);
+    }
+    
+    let peaks = compute_peaks(&samples, count);
+    Ok(normalize_peaks(peaks))
+}
+
+fn build_ffmpeg_args(input_path: &str) -> Vec<String> {
+    vec![
+        "-nostdin".to_string(),
+        "-hide_banner".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
+        "-i".to_string(),
+        input_path.to_string(),
+        "-vn".to_string(),
+        "-sn".to_string(),
+        "-dn".to_string(),
+        "-ar".to_string(),
+        "4000".to_string(),
+        "-ac".to_string(),
+        "1".to_string(),
+        "-c:a".to_string(),
+        "pcm_s16le".to_string(),
+        "-f".to_string(),
+        "s16le".to_string(),
+        "-".to_string(),
+    ]
+}
+
+fn convert_pcm_to_f32(pcm_data: &[u8]) -> Vec<f32> {
+    pcm_data
+        .chunks_exact(2)
+        .map(|chunk| {
+            let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+            sample as f32 / i16::MAX as f32
+        })
+        .collect()
+}
+
+fn compute_peaks(samples: &[f32], count: usize) -> Vec<f32> {
+    let bin_size = (samples.len() / count).max(1);
+    let mut peaks = Vec::with_capacity(count);
+
+    for i in 0..count {
+        let start = i * bin_size;
+        let end = ((i + 1) * bin_size).min(samples.len());
+        let bin = &samples[start..end];
+        let rms = (bin.iter().map(|&v| v * v).sum::<f32>() / bin.len() as f32).sqrt();
+        peaks.push(rms);
+    }
+
+    peaks
+}
+
+fn normalize_peaks(mut peaks: Vec<f32>) -> Vec<f32> {
+    let global_max = peaks.iter().cloned().fold(0.0_f32, f32::max);
+    if global_max > 0.0 {
+        for peak in peaks.iter_mut() {
+            *peak /= global_max;
+        }
+    }
+    peaks
+}
+
 /// Expand a leading `~` in a file path to the user's home directory.
 /// Windows does not expand `~` natively; Rust's PathBuf does not either.
 fn expand_tilde(path: &str) -> String {

@@ -184,6 +184,7 @@ export function FileDropArea({
             >
               <MediaPlayer
                 src={audioSrc}
+                filePath={selectedFile || undefined}
                 type={isVideo ? "video" : "audio"}
               />
             </div>
