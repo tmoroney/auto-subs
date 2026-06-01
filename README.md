@@ -88,12 +88,14 @@ Transcribe files straight from the terminal — handy for scripting and AI agent
 **2. Run it:**
 
 ```bash
-autosubs interview.mp4                              # transcript to the console
-autosubs interview.mp4 --diarize --max-speakers 2  # label speakers
-autosubs interview.mp4 -o subs.srt                 # write a file (format from extension)
-autosubs interview.mp4 -f json                     # or set the format explicitly
-autosubs --help                                    # all options
+autosubs interview.mp4 --model small                             # transcript to the console
+autosubs interview.mp4 --model small --diarize --max-speakers 2  # label speakers
+autosubs interview.mp4 --model small -o subs.srt                 # write a file (format from extension)
+autosubs interview.mp4 --model small -f json                     # or set the format explicitly
+autosubs --help                                                  # all options
 ```
+
+`--model` accepts any AutoSubs model — Whisper sizes (`tiny`…`large-v3`), `parakeet`, or a `moonshine-*` variant. Run `autosubs --list-models` for the full list.
 
 **Output formats** (`-f` / `--format`, or inferred from the `-o` extension; defaults to `text`):
 

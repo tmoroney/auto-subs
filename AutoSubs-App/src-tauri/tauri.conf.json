@@ -93,14 +93,17 @@
           "name": "input",
           "description": "Path to the audio or video file to transcribe.",
           "index": 1,
-          "takesValue": true,
-          "required": true
+          "takesValue": true
         },
         {
           "name": "model",
           "short": "m",
-          "description": "Whisper model to use (e.g. tiny, base, small, medium, large). Downloaded automatically if missing.",
+          "description": "Transcription model: a Whisper size (tiny, base, small, medium, large-v3, large-v3-turbo, plus .en variants), parakeet, or a moonshine variant (moonshine-tiny, moonshine-base, ...). Downloaded automatically if missing. Default: small. See --list-models.",
           "takesValue": true
+        },
+        {
+          "name": "list-models",
+          "description": "List the available transcription models and exit."
         },
         {
           "name": "output",

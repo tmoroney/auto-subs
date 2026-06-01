@@ -26,6 +26,35 @@ use crate::transcript_types::{Segment, Transcript};
 use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
 use transcription_engine::TextDensity;
 
+/// Transcription model identifiers accepted by `--model`, grouped by family and
+/// ordered best-first within each group. Hardcoded here because the model catalog
+/// currently lives only in the frontend (`AutoSubs-App/src/lib/models.ts`); when
+/// that catalog moves to the backend this should be sourced from it instead.
+const MODELS: &[&str] = &[
+    // Whisper
+    "tiny",
+    "tiny.en",
+    "base",
+    "base.en",
+    "small",
+    "small.en",
+    "medium",
+    "medium.en",
+    "large-v3-turbo",
+    "large-v3",
+    // Parakeet
+    "parakeet",
+    // Moonshine
+    "moonshine-tiny",
+    "moonshine-base",
+    "moonshine-tiny-ar",
+    "moonshine-tiny-zh",
+    "moonshine-tiny-ja",
+    "moonshine-tiny-ko",
+    "moonshine-tiny-uk",
+    "moonshine-tiny-vi",
+];
+
 /// True when the app was launched with CLI arguments, meaning "run headless,
 /// don't open a window". Checked against raw `argv` *before* the Tauri app is
 /// built so we can skip window creation and GUI-only plugins (single-instance,
@@ -84,13 +113,26 @@ pub async fn run<R: Runtime>(app: AppHandle<R>) -> ! {
         flush_and_exit(0);
     }
 
+    // `--list-models`: print the known model identifiers (one per line) and exit.
+    if arg_flag(&matches, "list-models") {
+        for model in MODELS {
+            println!("{model}");
+        }
+        flush_and_exit(0);
+    }
+
     run_transcribe(app, matches).await
 }
 
 async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
+    // `input` is optional in the CLI schema so flags like `--list-models` can run
+    // without a file; enforce it here as a usage error (exit 2) when transcribing.
     let input = match arg_str(&m, "input") {
         Some(p) => p,
-        None => fail("missing required <input> file path"),
+        None => {
+            eprintln!("autosubs: missing required <input> file path");
+            flush_and_exit(2);
+        }
     };
 
     // GPU: default on (mirrors transcribe_audio's `.or(Some(true))`); --no-gpu wins.
