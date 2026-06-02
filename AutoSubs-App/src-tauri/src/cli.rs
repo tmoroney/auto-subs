@@ -73,7 +73,7 @@ pub fn is_headless_invocation() -> bool {
 #[cfg(windows)]
 pub fn attach_console() {
     #[link(name = "kernel32")]
-    extern "system" {
+    unsafe extern "system" {
         fn AttachConsole(dwProcessId: u32) -> i32;
     }
     const ATTACH_PARENT_PROCESS: u32 = 0xFFFF_FFFF;
