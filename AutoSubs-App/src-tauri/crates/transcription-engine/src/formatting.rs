@@ -1572,6 +1572,48 @@ mod tests {
     }
 
     #[test]
+    fn translated_english_words_have_spaces() {
+        // Regression test for the Japanese→English translation spacing bug.
+        // When the output language is English the Latin profile must be used so that
+        // inter-word spaces are inserted, even if the source was a CJK language.
+        // The word tokens produced by translate.rs (regenerate_words_uniform) and
+        // utils.rs (interpolate_word_timestamps) both prefix non-first words with a
+        // leading space, which the formatter must re-insert.
+        let cfg = PostProcessConfig::for_language("en"); // output language, not source
+        assert!(cfg.insert_interword_space, "Latin profile must have insert_interword_space=true");
+
+        let seg = Segment {
+            start: 99.0,
+            end: 103.0,
+            text: "I heard it went viral as soon as it opened.".to_string(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "I".into(),      start: 99.0, end: 99.4, probability: None },
+                WordTimestamp { text: " heard".into(), start: 99.4, end: 99.9, probability: None },
+                WordTimestamp { text: " it".into(),    start: 99.9, end: 100.2, probability: None },
+                WordTimestamp { text: " went".into(),  start: 100.2, end: 100.6, probability: None },
+                WordTimestamp { text: " viral".into(), start: 100.6, end: 101.2, probability: None },
+                WordTimestamp { text: " as".into(),    start: 101.2, end: 101.5, probability: None },
+                WordTimestamp { text: " soon".into(),  start: 101.5, end: 101.9, probability: None },
+                WordTimestamp { text: " as".into(),    start: 101.9, end: 102.2, probability: None },
+                WordTimestamp { text: " it".into(),    start: 102.2, end: 102.5, probability: None },
+                WordTimestamp { text: " opened".into(),start: 102.5, end: 103.0, probability: None },
+                WordTimestamp { text: ".".into(),      start: 103.0, end: 103.0, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        assert!(!cues.is_empty(), "expected at least one cue");
+
+        // No two adjacent alphabetic characters that should be separated by a space
+        let all_text: String = cues.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join(" ");
+        assert!(all_text.contains("I heard"), "missing space between 'I' and 'heard': {:?}", all_text);
+        assert!(all_text.contains("viral as"), "missing space between 'viral' and 'as': {:?}", all_text);
+        assert!(!all_text.contains("Iheard"), "'Iheard' found — spaces are missing: {:?}", all_text);
+        assert!(!all_text.contains("viralas"), "'viralas' found — spaces are missing: {:?}", all_text);
+    }
+
+    #[test]
     fn lang_field_set_correctly() {
         let cfg = PostProcessConfig::for_language("fr");
         assert_eq!(cfg.lang, "fr");
