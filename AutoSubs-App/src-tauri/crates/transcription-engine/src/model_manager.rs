@@ -456,14 +456,20 @@ impl ModelManager {
                 cb(offset as i32, ProgressType::Download, "progressSteps.download");
             }
 
+            let hf_endpoint = std::env::var("HF_ENDPOINT")
+                .unwrap_or_else(|_| "https://huggingface.co".to_string());
+            let hf_endpoint = hf_endpoint.trim_end_matches('/');
             let url = if *filename == "tokenizer.json" {
                 // The HF repo currently does not provide tokenizer.json under tiny/* variants.
                 // Tokenizer assets live under base/float and appear to be shared.
-                "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/base/float/tokenizer.json".to_string()
+                format!(
+                    "{}/UsefulSensors/moonshine/resolve/main/onnx/merged/base/float/tokenizer.json",
+                    hf_endpoint
+                )
             } else {
                 format!(
-                    "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}/{}",
-                    folder, onnx_subdir, filename
+                    "{}/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}/{}",
+                    hf_endpoint, folder, onnx_subdir, filename
                 )
             };
             download_to(&dest, &url).await?;
@@ -496,9 +502,15 @@ impl ModelManager {
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<PathBuf> {
-        const VAD_URL: &str =
-            "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin";
         const VAD_TIMEOUT_SECS: u64 = 120;
+
+        let hf_endpoint = std::env::var("HF_ENDPOINT")
+            .unwrap_or_else(|_| "https://huggingface.co".to_string());
+        let hf_endpoint = hf_endpoint.trim_end_matches('/');
+        let vad_url = format!(
+            "{}/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
+            hf_endpoint
+        );
 
         if let Some(is_cancelled) = is_cancelled {
             if is_cancelled() { bail!("Cancelled"); }
@@ -525,7 +537,7 @@ impl ModelManager {
 
         match tokio::time::timeout(
             std::time::Duration::from_secs(VAD_TIMEOUT_SECS),
-            download_to(&dest, VAD_URL),
+            download_to(&dest, &vad_url),
         )
         .await
         {
@@ -995,7 +1007,9 @@ impl ModelManager {
             }
         }
 
-        let api = ApiBuilder::new()
+        // from_env() reads HF_ENDPOINT (custom HuggingFace mirror) and HF_HOME from the
+        // environment. with_cache_dir() overrides HF_HOME so our own cache location is used.
+        let api = ApiBuilder::from_env()
             .with_cache_dir(cache_dir)
             .build()
             .with_context(|| format!("Failed to build hf-hub API for repo '{}'", repo_id))?;
