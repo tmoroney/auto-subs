@@ -45,83 +45,22 @@ export function isSupportedMediaFile(filePath: string): boolean {
   return extension ? SUPPORTED_MEDIA_EXTENSIONS.includes(extension) : false;
 }
 
-const CUSTOM_PROMPT_TERMS_HEADER = "Key terms and preferred spellings:";
-const CUSTOM_PROMPT_CONTEXT_HEADER = "Context / style note:";
-const CUSTOM_PROMPT_EXAMPLE_TERMS = "OpenAI, DaVinci Resolve, SubSlate, FFmpeg";
-const CUSTOM_PROMPT_EXAMPLE_CONTEXT =
-  "This is a tutorial about editing subtitles in DaVinci Resolve. Prefer “AutoSubs”, not “Auto Subs”.";
+const LEGACY_TERMS_HEADER = "Key terms and preferred spellings:";
+const LEGACY_CONTEXT_HEADER = "Context / style note:";
 
-function normalizeExampleText(value: string): string {
-  return value.replace(/"/g, "“");
-}
-
-function scrubExampleValue(value: string, example: string): string {
-  return normalizeExampleText(value) === normalizeExampleText(example)
-    ? ""
-    : value;
-}
-
-export function parseCustomPrompt(value: string): {
-  terms: string;
-  context: string;
-} {
-  const prompt = value;
-  if (!prompt.trim()) return { terms: "", context: "" };
-
-  const termsIndex = prompt.indexOf(CUSTOM_PROMPT_TERMS_HEADER);
-  const contextIndex = prompt.indexOf(CUSTOM_PROMPT_CONTEXT_HEADER);
-
-  if (termsIndex === -1 && contextIndex === -1) {
-    return { terms: prompt, context: "" };
+// Strips old two-section headers from prompts saved before the UI was simplified.
+// Only migrates values that start with a legacy header — the old composeCustomPrompt
+// always emitted one first — so newly authored prompts that happen to contain the
+// header phrases are left untouched.
+export function migrateCustomPrompt(value: string): string {
+  if (!value.startsWith(LEGACY_TERMS_HEADER) && !value.startsWith(LEGACY_CONTEXT_HEADER)) {
+    return value;
   }
-
-  let terms = "";
-  let context = "";
-
-  if (termsIndex !== -1) {
-    const termsStart = termsIndex + CUSTOM_PROMPT_TERMS_HEADER.length;
-    let termsEnd = contextIndex === -1 ? prompt.length : contextIndex;
-    if (contextIndex !== -1) {
-      const doubleNewlineBeforeContext = prompt.lastIndexOf(
-        "\n\n",
-        contextIndex,
-      );
-      if (doubleNewlineBeforeContext > termsStart) {
-        termsEnd = doubleNewlineBeforeContext;
-      }
-    }
-    terms = prompt.slice(termsStart, termsEnd);
-    if (terms.startsWith("\n")) {
-      terms = terms.slice(1);
-    }
-  }
-
-  if (contextIndex !== -1) {
-    const contextStart = contextIndex + CUSTOM_PROMPT_CONTEXT_HEADER.length;
-    context = prompt.slice(contextStart);
-    if (context.startsWith("\n")) {
-      context = context.slice(1);
-    }
-  }
-
-  return {
-    terms: scrubExampleValue(terms, CUSTOM_PROMPT_EXAMPLE_TERMS),
-    context: scrubExampleValue(context, CUSTOM_PROMPT_EXAMPLE_CONTEXT),
-  };
-}
-
-export function composeCustomPrompt(terms: string, context: string): string {
-  const sections: string[] = [];
-
-  if (terms.length > 0) {
-    sections.push(`${CUSTOM_PROMPT_TERMS_HEADER}\n${terms}`);
-  }
-
-  if (context.length > 0) {
-    sections.push(`${CUSTOM_PROMPT_CONTEXT_HEADER}\n${context}`);
-  }
-
-  return sections.join("\n\n");
+  return value
+    .replace(new RegExp(`${LEGACY_TERMS_HEADER}\\n?`, "g"), "")
+    .replace(new RegExp(`${LEGACY_CONTEXT_HEADER}\\n?`, "g"), "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export interface ProcessingStep {
