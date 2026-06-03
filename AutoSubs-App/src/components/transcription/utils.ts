@@ -49,7 +49,13 @@ const LEGACY_TERMS_HEADER = "Key terms and preferred spellings:";
 const LEGACY_CONTEXT_HEADER = "Context / style note:";
 
 // Strips old two-section headers from prompts saved before the UI was simplified.
+// Only migrates values that start with a legacy header — the old composeCustomPrompt
+// always emitted one first — so newly authored prompts that happen to contain the
+// header phrases are left untouched.
 export function migrateCustomPrompt(value: string): string {
+  if (!value.startsWith(LEGACY_TERMS_HEADER) && !value.startsWith(LEGACY_CONTEXT_HEADER)) {
+    return value;
+  }
   return value
     .replace(new RegExp(`${LEGACY_TERMS_HEADER}\\n?`, "g"), "")
     .replace(new RegExp(`${LEGACY_CONTEXT_HEADER}\\n?`, "g"), "")
