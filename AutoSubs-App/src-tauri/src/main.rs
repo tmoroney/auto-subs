@@ -42,6 +42,126 @@ mod tests;
 // Global guard to avoid re-entrant exit handling
 static EXITING: AtomicBool = AtomicBool::new(false);
 
+/// Read the Windows system proxy from the Internet Settings registry key and inject it
+/// into the process environment as HTTP_PROXY / HTTPS_PROXY so that HTTP clients that
+/// read proxy settings from env vars (ureq used by hf-hub, reqwest) can use the proxy
+/// that VPN and proxy software configures via Windows Settings.
+///
+/// Only runs when the env vars are not already set, so explicit overrides (e.g. from a
+/// launch script) are always preserved.
+#[cfg(target_os = "windows")]
+fn setup_proxy_env() {
+    let already_set = std::env::var_os("HTTP_PROXY").is_some()
+        || std::env::var_os("HTTPS_PROXY").is_some()
+        || std::env::var_os("http_proxy").is_some()
+        || std::env::var_os("https_proxy").is_some()
+        || std::env::var_os("ALL_PROXY").is_some();
+    if already_set {
+        return;
+    }
+
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let Ok(ie) = hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings") else {
+        return;
+    };
+
+    let enabled: u32 = ie.get_value("ProxyEnable").unwrap_or(0u32);
+    if enabled == 0 {
+        return;
+    }
+
+    let server: String = match ie.get_value("ProxyServer") {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    if server.is_empty() {
+        return;
+    }
+
+    // ProxyServer is either a bare "host:port" or a semicolon-separated
+    // "proto=host:port" list (e.g. "http=127.0.0.1:8080;https=127.0.0.1:8080;socks=127.0.0.1:1080").
+    let make_url = |addr: &str| -> String {
+        if addr.starts_with("http://") || addr.starts_with("https://") || addr.starts_with("socks") {
+            addr.to_string()
+        } else {
+            format!("http://{}", addr)
+        }
+    };
+
+    // Parse HTTP_PROXY / HTTPS_PROXY from the ProxyServer value.
+    // ProxyServer is either a bare "host:port" (applies to all protocols, use as HTTP proxy)
+    // or a semicolon-separated "proto=host:port" list. Only map http/https entries —
+    // never fall back to socks entries, because reqwest has no SOCKS support in this build
+    // and speaking HTTP proxy protocol to a SOCKS listener causes immediate failures.
+    let (http_url, https_url) = if server.contains('=') {
+        let find = |proto: &str| -> Option<String> {
+            server
+                .split(';')
+                .find(|s| s.to_ascii_lowercase().starts_with(&format!("{}=", proto)))
+                .and_then(|s| s.splitn(2, '=').nth(1))
+                .map(|addr| make_url(addr))
+        };
+        // Only use explicitly named http/https entries; skip socks-only configurations.
+        let http = find("http");
+        let https = find("https").or_else(|| find("http"));
+        (http, https)
+    } else {
+        // Bare "host:port" means use for all protocols including HTTP — this is correct.
+        let url = make_url(&server);
+        (Some(url.clone()), Some(url))
+    };
+
+    if let Some(ref url) = http_url {
+        unsafe {
+            std::env::set_var("HTTP_PROXY", url);
+            std::env::set_var("http_proxy", url);
+        }
+    }
+    if let Some(ref url) = https_url {
+        unsafe {
+            std::env::set_var("HTTPS_PROXY", url);
+            std::env::set_var("https_proxy", url);
+        }
+    }
+
+    // Build NO_PROXY from the WinINet ProxyOverride list so that local
+    // connections (Resolve bridge on 127.0.0.1:56002, etc.) are never
+    // routed through the proxy. Always include loopback addresses even if
+    // ProxyOverride is absent; WinINet's "<local>" sentinel is replaced
+    // with the canonical addresses that ureq/reqwest understand.
+    let existing_no_proxy = std::env::var_os("NO_PROXY")
+        .or_else(|| std::env::var_os("no_proxy"))
+        .is_some();
+    if !existing_no_proxy {
+        let mut no_proxy_entries: Vec<String> =
+            vec!["127.0.0.1".into(), "localhost".into(), "::1".into()];
+
+        if let Ok(override_val) = ie.get_value::<String, _>("ProxyOverride") {
+            for entry in override_val.split(';') {
+                let entry = entry.trim();
+                if entry.is_empty() || entry.eq_ignore_ascii_case("<local>") {
+                    // <local> is already covered by the loopback entries above.
+                    continue;
+                }
+                no_proxy_entries.push(entry.to_string());
+            }
+        }
+
+        let no_proxy = no_proxy_entries.join(",");
+        unsafe {
+            std::env::set_var("NO_PROXY", &no_proxy);
+            std::env::set_var("no_proxy", &no_proxy);
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn setup_proxy_env() {}
+
+
 #[cfg(target_os = "linux")]
 fn is_newer_version(latest: &str, current: &str) -> bool {
     let parse = |s: &str| -> Option<(u32, u32, u32)> {
@@ -99,6 +219,11 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
 }
 
 fn main() {
+    // Inject system proxy env vars before any thread or HTTP client is created so
+    // that both ureq (hf-hub) and reqwest pick up the Windows system proxy set by
+    // VPN software via WinINet.
+    setup_proxy_env();
+
     // Route whisper.cpp C-side logs through Rust's tracing system so they can be
     // filtered rather than being dumped raw to stderr.
     transcription_engine::install_logging_hooks();
