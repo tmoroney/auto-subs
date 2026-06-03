@@ -113,13 +113,9 @@
       "customCharsDescription": "Caracteres por línea",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vocabulario y contexto",
-      "customPromptDescription": "Ayuda a Whisper a reconocer nombres, marcas, jerga, acrónimos y grafías preferidas.",
-      "customPromptTermsTitle": "Términos clave",
-      "customPromptTermsPlaceholder": "Añade nombres, marcas, acrónimos o jerga...",
-      "customPromptTermsExample": "Ejemplo: OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
-      "customPromptContextTitle": "Contexto / nota de estilo",
-      "customPromptContextPlaceholder": "Añade un tema breve o una preferencia de escritura...",
-      "customPromptContextExample": "Ejemplo: Tutorial de DaVinci Resolve. Prefiere “AutoSubs”, no “Auto Subs”.",
+      "customPromptDescription": "Agrega términos, nombres o contexto para guiar a Whisper.",
+      "customPromptPlaceholder": "Ej.: OpenAI, DaVinci Resolve — tutorial de edición de subtítulos en Resolve.",
+      "customPromptLanguageWarning": "Escribe en el mismo idioma que tu audio — un prompt en otro idioma puede causar una transcripción incorrecta.",
       "customPromptWhisperOnly": "Solo es compatible con modelos Whisper."
     },
     "censor": {

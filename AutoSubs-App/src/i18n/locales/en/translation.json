@@ -113,13 +113,9 @@
       "customCharsDescription": "Characters per line",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vocabulary & Context",
-      "customPromptDescription": "Helps Whisper recognize names, brands, jargon, acronyms, and preferred spellings.",
-      "customPromptTermsTitle": "Key Terms",
-      "customPromptTermsPlaceholder": "Add names, brands, acronyms, or jargon...",
-      "customPromptTermsExample": "Example: OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
-      "customPromptContextTitle": "Context / Style Note",
-      "customPromptContextPlaceholder": "Add a short topic or spelling preference...",
-      "customPromptContextExample": "Example: This is a DaVinci Resolve tutorial. Prefer “AutoSubs”, not “Auto Subs”.",
+      "customPromptDescription": "Add terms, names, or context to guide Whisper.",
+      "customPromptPlaceholder": "E.g. OpenAI, DaVinci Resolve — tutorial about subtitle editing.",
+      "customPromptLanguageWarning": "Write in the same language as your audio — a prompt in a different language can cause incorrect transcription.",
       "customPromptWhisperOnly": "Only supported by Whisper models."
     },
     "censor": {

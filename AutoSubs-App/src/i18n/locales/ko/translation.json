@@ -55,13 +55,9 @@
       "customCharsDescription": "줄당 문자 수",
       "customPromptButton": "프롬프트",
       "customPromptTitle": "어휘 및 맥락",
-      "customPromptDescription": "Whisper가 이름, 브랜드, 전문 용어, 약어, 선호 표기를 더 잘 인식하도록 돕습니다.",
-      "customPromptTermsTitle": "주요 용어",
-      "customPromptTermsPlaceholder": "이름, 브랜드, 약어 또는 전문 용어 입력...",
-      "customPromptTermsExample": "예: OpenAI, DaVinci Resolve, SubSlate, FFmpeg",
-      "customPromptContextTitle": "맥락 / 스타일 메모",
-      "customPromptContextPlaceholder": "짧은 주제나 선호 표기 입력...",
-      "customPromptContextExample": "예: DaVinci Resolve 튜토리얼입니다. “Auto Subs”보다 “AutoSubs” 표기를 선호합니다.",
+      "customPromptDescription": "Whisper를 안내하기 위한 용어, 이름 또는 맥락을 추가하세요.",
+      "customPromptPlaceholder": "예: OpenAI, DaVinci Resolve — Resolve의 자막 편집 튜토리얼.",
+      "customPromptLanguageWarning": "오디오와 같은 언어로 작성하세요 — 다른 언어의 프롬프트는 잘못된 전사를 유발할 수 있습니다.",
       "customPromptWhisperOnly": "Whisper 모델에서만 지원됩니다."
     },
     "language": {

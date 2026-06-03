@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Info, ScrollText, Speech, Type } from "lucide-react";
+import { ScrollText, Speech, Type } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,18 +8,12 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { SpeakerSelector } from "@/components/settings/diarize-selector";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
 import { useSettings } from "@/contexts/SettingsContext";
 import { cn } from "@/lib/utils";
-import { composeCustomPrompt, parseCustomPrompt } from "./utils";
+import { migrateCustomPrompt } from "./utils";
 
 export function OptionsRow() {
   const { t } = useTranslation();
@@ -158,31 +152,21 @@ function CustomPromptPopover({
   onCustomPromptChange,
 }: CustomPromptPopoverProps) {
   const { t } = useTranslation();
-  const [localTerms, setLocalTerms] = React.useState("");
-  const [localContext, setLocalContext] = React.useState("");
+  const [localPrompt, setLocalPrompt] = React.useState("");
 
-  const customPromptParts = React.useMemo(
-    () => parseCustomPrompt(customPrompt),
-    [customPrompt],
-  );
-
-  // Sync local state when popover opens
+  // Sync local state when popover opens, migrating any legacy two-section format
   React.useEffect(() => {
     if (open) {
-      setLocalTerms(customPromptParts.terms);
-      setLocalContext(customPromptParts.context);
+      setLocalPrompt(migrateCustomPrompt(customPrompt));
     }
-  }, [open, customPromptParts.terms, customPromptParts.context]);
+  }, [open, customPrompt]);
 
   // Sync to settings when popover closes
   React.useEffect(() => {
     if (open) return;
-
-    const nextCustomPrompt = composeCustomPrompt(localTerms, localContext);
-    if (nextCustomPrompt === customPrompt) return;
-
-    onCustomPromptChange(nextCustomPrompt);
-  }, [open, localTerms, localContext, customPrompt, onCustomPromptChange]);
+    if (localPrompt === customPrompt) return;
+    onCustomPromptChange(localPrompt);
+  }, [open, localPrompt, customPrompt, onCustomPromptChange]);
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -218,7 +202,7 @@ function CustomPromptPopover({
         align="center"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="px-4 py-3.5 space-y-4">
+        <div className="px-4 py-3.5 space-y-3">
           <div className="space-y-0.5">
             <Label className="text-sm font-medium">
               {t("actionBar.format.customPromptTitle")}
@@ -227,60 +211,17 @@ function CustomPromptPopover({
               {t("actionBar.format.customPromptDescription")}
             </p>
           </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs font-medium">
-                {t("actionBar.format.customPromptTermsTitle")}
-              </Label>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="size-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[220px]">
-                    <p className="text-xs">
-                      {t("actionBar.format.customPromptTermsExample")}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Textarea
-              value={localTerms}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setLocalTerms(e.target.value)
-              }
-              placeholder={t("actionBar.format.customPromptTermsPlaceholder")}
-              className="min-h-[76px] resize-none text-sm"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs font-medium">
-                {t("actionBar.format.customPromptContextTitle")}
-              </Label>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="size-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[255px]">
-                    <p className="text-xs">
-                      {t("actionBar.format.customPromptContextExample")}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Textarea
-              value={localContext}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setLocalContext(e.target.value)
-              }
-              placeholder={t("actionBar.format.customPromptContextPlaceholder")}
-              className="min-h-[64px] resize-none text-sm"
-            />
-          </div>
+          <Textarea
+            value={localPrompt}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setLocalPrompt(e.target.value)
+            }
+            placeholder={t("actionBar.format.customPromptPlaceholder")}
+            className="min-h-[100px] resize-none text-sm"
+          />
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            {t("actionBar.format.customPromptLanguageWarning")}
+          </p>
         </div>
         <div className="border-t bg-muted/30">
           <div className="px-4 py-3">
