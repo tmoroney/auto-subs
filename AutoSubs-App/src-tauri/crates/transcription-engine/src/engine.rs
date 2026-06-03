@@ -295,8 +295,23 @@ impl Engine {
             }
         }
 
-        // Build a config from the chosen preset; apply density, max_lines, and content formatting.
-        let mut pp_cfg = PostProcessConfig::for_language(effective_lang);
+        // Determine the final output language of the transcript.
+        // - Whisper built-in translate-to-English => "en"
+        // - Post-translation to a target => that target
+        // - Otherwise => effective (detected or user-specified) language
+        let output_lang: String = if suppress_post_translation {
+            "en".to_string()
+        } else if let Some(ref to_lang) = translate_to {
+            to_lang.clone()
+        } else {
+            effective_lang.to_string()
+        };
+
+        // Build a config from the output language, not the source language.
+        // Using the source language here was the cause of the spacing bug: when translating
+        // from a CJK language (e.g. Japanese) to English, the CJK profile (insert_interword_space=false)
+        // was applied to English output, stripping all inter-word spaces.
+        let mut pp_cfg = PostProcessConfig::for_language(&output_lang);
         if let Some(d) = density {
             pp_cfg.apply_density(d);
             // If custom density, set max_chars_per_line directly from the provided value
@@ -312,18 +327,6 @@ impl Engine {
             pp_cfg.remove_punctuation = cf.remove_punctuation;
             pp_cfg.censored_words = cf.censored_words;
         }
-
-        // Determine the final output language of the transcript.
-        // - Whisper built-in translate-to-English => "en"
-        // - Post-translation to a target => that target
-        // - Otherwise => effective (detected or user-specified) language
-        let output_lang: String = if suppress_post_translation {
-            "en".to_string()
-        } else if let Some(ref to_lang) = translate_to {
-            to_lang.clone()
-        } else {
-            effective_lang.to_string()
-        };
 
         // Run structural + content formatting to produce the display-ready segments,
         // while preserving the raw post-translation `segments` as `original_segments`

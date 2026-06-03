@@ -133,8 +133,12 @@ pub async fn translate_segments(
             Ok(tr) => {
                 out[k] = Some(tr);
             }
-            Err(_e) => {
-                // Leave as None to keep original text on error
+            Err(e) => {
+                // Propagate the error rather than silently keeping the original text.
+                // Partial translation would leave some segments in the source language
+                // while the formatter uses the target-language profile, which corrupts
+                // spacing for any untranslated segments (e.g. Latin text with a CJK profile).
+                return Err(e);
             }
         }
         completed += 1;
