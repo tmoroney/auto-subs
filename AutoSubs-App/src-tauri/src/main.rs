@@ -91,6 +91,11 @@ fn setup_proxy_env() {
         }
     };
 
+    // Parse HTTP_PROXY / HTTPS_PROXY from the ProxyServer value.
+    // ProxyServer is either a bare "host:port" (applies to all protocols, use as HTTP proxy)
+    // or a semicolon-separated "proto=host:port" list. Only map http/https entries —
+    // never fall back to socks entries, because reqwest has no SOCKS support in this build
+    // and speaking HTTP proxy protocol to a SOCKS listener causes immediate failures.
     let (http_url, https_url) = if server.contains('=') {
         let find = |proto: &str| -> Option<String> {
             server
@@ -99,10 +104,12 @@ fn setup_proxy_env() {
                 .and_then(|s| s.splitn(2, '=').nth(1))
                 .map(|addr| make_url(addr))
         };
-        let http = find("http").or_else(|| find("socks"));
-        let https = find("https").or_else(|| find("http")).or_else(|| find("socks"));
+        // Only use explicitly named http/https entries; skip socks-only configurations.
+        let http = find("http");
+        let https = find("https").or_else(|| find("http"));
         (http, https)
     } else {
+        // Bare "host:port" means use for all protocols including HTTP — this is correct.
         let url = make_url(&server);
         (Some(url.clone()), Some(url))
     };
