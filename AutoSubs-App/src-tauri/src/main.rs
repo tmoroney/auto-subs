@@ -119,6 +119,36 @@ fn setup_proxy_env() {
             std::env::set_var("https_proxy", url);
         }
     }
+
+    // Build NO_PROXY from the WinINet ProxyOverride list so that local
+    // connections (Resolve bridge on 127.0.0.1:56002, etc.) are never
+    // routed through the proxy. Always include loopback addresses even if
+    // ProxyOverride is absent; WinINet's "<local>" sentinel is replaced
+    // with the canonical addresses that ureq/reqwest understand.
+    let existing_no_proxy = std::env::var_os("NO_PROXY")
+        .or_else(|| std::env::var_os("no_proxy"))
+        .is_some();
+    if !existing_no_proxy {
+        let mut no_proxy_entries: Vec<String> =
+            vec!["127.0.0.1".into(), "localhost".into(), "::1".into()];
+
+        if let Ok(override_val) = ie.get_value::<String, _>("ProxyOverride") {
+            for entry in override_val.split(';') {
+                let entry = entry.trim();
+                if entry.is_empty() || entry.eq_ignore_ascii_case("<local>") {
+                    // <local> is already covered by the loopback entries above.
+                    continue;
+                }
+                no_proxy_entries.push(entry.to_string());
+            }
+        }
+
+        let no_proxy = no_proxy_entries.join(",");
+        unsafe {
+            std::env::set_var("NO_PROXY", &no_proxy);
+            std::env::set_var("no_proxy", &no_proxy);
+        }
+    }
 }
 
 #[cfg(not(target_os = "windows"))]

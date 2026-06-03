@@ -329,6 +329,7 @@ dependencies = [
  "tracing-subscriber",
  "transcription-engine",
  "which 6.0.3",
+ "winreg 0.55.0",
 ]
 
 [[package]]
