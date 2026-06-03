@@ -692,6 +692,9 @@ function ExportAudio(outputDir, inputTracks, exportRange)
         timeline:SetTrackEnable("audio", i, isEnabled)
     end
 
+    local exportName = "autosubs-exported-audio-" ..
+        os.date("!%Y%m%d-%H%M%S") .. "-" .. tostring(math.random(100000, 999999))
+
     -- Build render settings
     local renderSettings = {
         TargetDir = outputDir,
@@ -729,9 +732,6 @@ function ExportAudio(outputDir, inputTracks, exportRange)
     -- Must switch to Deliver page to start render and customise settings (wierd quirk of Resolve API)
     resolve:OpenPage("deliver")
     project:LoadRenderPreset('Audio Only')
-
-    local exportName = "autosubs-exported-audio-" ..
-        os.date("!%Y%m%d-%H%M%S") .. "-" .. tostring(math.random(100000, 999999))
 
     project:SetRenderSettings(renderSettings)
 
