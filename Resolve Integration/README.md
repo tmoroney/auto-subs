@@ -103,6 +103,18 @@ Lua functions embedded in the macro's `CustomData` field handle preset get/set (
 
 Drag `AutoSubs-Macro.setting` into the Fusion page — it appears as a node and is ready to edit.
 
+### Updating the Macro Bin for PRs
+
+When making a PR that changes the macro, you must update the caption bin in the repository:
+
+1. In Resolve, drag the Fusion Text with the updated macro loaded into your media pool
+2. **Important:** Name the new clip exactly "AutoSubs Caption" — this name is hardcoded in `autosubs_core.lua`
+3. Replace the current animated caption in the "AutoSubs" bin
+4. Export the "AutoSubs" bin
+5. Replace `AutoSubs-App/src-tauri/resources/AutoSubs/caption-bin.drb` with the exported bin file
+
+This ensures that users who install the app will receive the updated macro with their caption bin.
+
 ## Development Workflow
 
 ### Setup
