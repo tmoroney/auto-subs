@@ -7,11 +7,37 @@ I welcome contributions from everyone. I will try to review any pull requests as
 ## Dev Setup
 
 1. Clone the repo.
-2. Install prerequisites: Node.js + Rust toolchain — see [tauri.app](https://tauri.app).
-3. Start the app in dev mode:
+2. Navigate to the app directory and install dependencies:
    ```bash
    cd AutoSubs-App
    npm install
+   ```
+
+3. (Optional) For **DaVinci Resolve** integration during development, run:
+   ```bash
+   npm run setup-resolve
+   ```
+   This generates a self-contained `AutoSubs (Dev).lua` launcher in your Resolve scripts folder, with the path to your local checkout baked in:
+   - **Windows:** `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
+   - **macOS:** `~/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
+   - **Linux:** `/opt/resolve/Fusion/Scripts/Utility` (or `~/resolve/Fusion/Scripts/Utility` depending on installation)
+
+   You do **not** need to have AutoSubs installed normally first — the dev launcher points Resolve straight at your repo and starts the local server in dev mode. Open it from Resolve via **Workspace → Scripts → AutoSubs (Dev)**.
+
+   Edits to the Lua under `src-tauri/resources/` (e.g. `modules/autosubs_core.lua`, the Resolve integration) take effect the next time you run the script in Resolve — no rebuild needed. Re-run `npm run setup-resolve` only if you move the repository.
+
+4. (Optional) For **Premiere Pro / After Effects** integration during development, build the CEP extension and symlink it into Adobe's extensions folder:
+   ```bash
+   cd ../Adobe-Extension
+   npm install
+   npm run symlink   # links the extension into the Adobe CEP extensions folder
+   npm run dev       # live-reload dev server for the panel
+   ```
+   The Bolt-CEP tooling also enables `PlayerDebugMode` so the unsigned dev extension loads. Run `npm run delsymlink` to remove it.
+
+5. Start the app in dev mode:
+   ```bash
+   cd ../AutoSubs-App
    npm run dev
    ```
    This automatically detects your platform and architecture (macOS ARM/Intel, Windows, Linux) and passes the correct Cargo feature flags to Tauri.
@@ -20,12 +46,6 @@ I welcome contributions from everyone. I will try to review any pull requests as
    ```bash
    npm run dev:frontend
    ```
-
-4. For Resolve integration during development, copy `AutoSubs-App/src-tauri/resources/Testing-AutoSubs.lua` into your Resolve scripts folder:
-   - **Windows:** `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
-   - **macOS:** `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-
-   Then change the path in `Testing-AutoSubs.lua` to point to your local AutoSubs installation and open it from Resolve via **Workspace → Scripts → Testing-AutoSubs**.
 
 Backend code lives under `AutoSubs-App/src-tauri/`. For a full breakdown of the codebase before diving in, see the **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 

@@ -3,8 +3,6 @@
 ---@diagnostic disable: undefined-global
 local ffi = ffi
 
-local DEV_MODE = rawget(_G, "AUTOSUBS_DEV_MODE") == true
-
 local function join_path(dir, filename)
     local sep = package.config:sub(1,1) -- returns '\\' on Windows, '/' elsewhere
     -- Remove trailing separator from dir, if any
@@ -117,10 +115,9 @@ else
     resources_folder = "/usr/lib/autosubs/resources"
 end
 
--- temporarily redefine path for dev_mode (replace with correct path to resources folder in repo)
-if DEV_MODE then
-    resources_folder = os.getenv("HOME") .. "/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources"
-end
+-- For local development, use the "AutoSubs (Dev)" script instead of this file. Running
+-- `npm run setup-resolve` generates a self-contained dev launcher that points
+-- Resolve directly at your repo checkout and starts the server in dev mode.
 
 -- Set package path for module loading
 local modules_path = join_path(resources_folder, "modules")
@@ -156,6 +153,4 @@ end
 
 -- Launch AutoSubs
 local AutoSubs = require("autosubs_core")
-AutoSubs:Init(app_executable, resources_folder, DEV_MODE)
-
-_G.AUTOSUBS_DEV_MODE = nil
+AutoSubs:Init(app_executable, resources_folder, false)

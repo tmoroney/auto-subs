@@ -1,0 +1,48 @@
+---These are global variables given to us by the Resolve embedded LuaJIT environment
+---I disable the undefined global warnings for them to stop my editor from complaining
+---@diagnostic disable: undefined-global
+
+-- AUTO-GENERATED LAUNCHER FOR LOCAL DEVELOPMENT.
+--
+-- The copy of this file that lives in your DaVinci Resolve scripts folder is
+-- generated from the template in the repo (src-tauri/resources/AutoSubs (Dev).lua)
+-- by running, from the AutoSubs-App directory:
+--
+--     npm run setup-resolve
+--
+-- That command bakes the absolute path to your local checkout into the line
+-- below, so this launcher is fully self-contained: it points Resolve directly
+-- at the AutoSubs source tree and starts the core server in development mode.
+-- It does NOT require AutoSubs to be installed normally first, and it never
+-- loads AutoSubs.lua. Edits to the Lua modules are picked up the next time you
+-- run this script from Resolve (no rebuild needed).
+
+-- `npm run setup-resolve` replaces the placeholder below with the absolute path
+-- to the repo's `src-tauri/resources` folder.
+local resources_folder = [[__AUTOSUBS_RESOURCES_FOLDER__]]
+
+if resources_folder == "__AUTOSUBS_RESOURCES_FOLDER__" then
+    error(
+        "'AutoSubs (Dev).lua' has not been generated yet. Run `npm run setup-resolve` " ..
+        "from the AutoSubs-App directory to create a configured copy in your " ..
+        "DaVinci Resolve scripts folder."
+    )
+end
+
+local sep = package.config:sub(1, 1) -- '\\' on Windows, '/' elsewhere
+local function join_path(dir, filename)
+    if dir:sub(-1) == sep then
+        return dir .. filename
+    end
+    return dir .. sep .. filename
+end
+
+-- Make the AutoSubs Lua modules importable, then launch the core server.
+local modules_path = join_path(resources_folder, "modules")
+package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
+
+local AutoSubs = require("autosubs_core")
+-- No executable path is needed in dev mode: the core server never launches the
+-- desktop app while dev mode is enabled (the final argument below).
+return AutoSubs:Init("", resources_folder, true)
+

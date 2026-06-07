@@ -1127,6 +1127,7 @@ end
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     local failed = 0
+    local noFusionComp = 0
     local firstError = nil
     for i, timelineItem in ipairs(timelineItems) do
         local success, err = pcall(function()
@@ -1134,7 +1135,11 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             local subtitleText = subtitle["text"]
 
             local fusionCompCount = timelineItem:GetFusionCompCount()
-            if fusionCompCount and fusionCompCount > 0 then
+            if not fusionCompCount then
+                noFusionComp = noFusionComp + 1
+                error("template clip has no Fusion composition (GetFusionCompCount returned nil) — your DaVinci Resolve version may be incompatible")
+            end
+            if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
@@ -1181,12 +1186,16 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
         end
     end
 
+    if noFusionComp > 0 then
+        print(string.format("[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). This usually means your DaVinci Resolve version is incompatible with the AutoSubs Caption template.",
+            noFusionComp, #timelineItems))
+    end
     if failed > 0 then
         print(string.format("[AutoSubs] Failed to place %d of %d subtitles. First error: %s",
             failed, #timelineItems, tostring(firstError)))
     end
 
-    return { failed = failed, total = #timelineItems, firstError = firstError }
+    return { failed = failed, total = #timelineItems, firstError = firstError, noFusionComp = noFusionComp }
 end
 
 -- Forces timeline view to update and show new subtitle clips
@@ -1280,17 +1289,22 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     -- If some (but not all) clips failed to receive text/styling, still report
     -- success but include a warning summary so the UI can mention it.
     if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
+        local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
+        if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
+            warning = warning .. string.format(" (%d had no Fusion composition — your Resolve version may be incompatible)", applyStats.noFusionComp)
+        end
         return {
             ok = true,
             fontSwap = fontSwap,
-            warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total),
+            warning = warning,
             detail = applyStats.firstError
         }
     elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
-        return make_error(
-            string.format("Failed to place all %d subtitles", applyStats.total),
-            applyStats.firstError
-        )
+        local short = string.format("Failed to place all %d subtitles", applyStats.total)
+        if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
+            short = short .. " — template clips had no Fusion composition. Check that your DaVinci Resolve version supports the AutoSubs Caption template."
+        end
+        return make_error(short, applyStats.firstError)
     end
 
     return { ok = true, fontSwap = fontSwap }
