@@ -51,7 +51,30 @@ The frontend `throwIfError` helper in `resolve-api.ts` checks for this and throw
 
 ### Exposed Functions
 
-All functions are called via POST with a `func` parameter.
+**Every function must be defined in two places:**
+
+1. **`src/api/resolve-api.ts`** — TypeScript wrapper that calls `callResolve({ func: 'FunctionName', ...params })` and handles errors
+2. **`modules/autosubs_core.lua`** — Lua handler that runs inside Resolve and does the actual work
+
+Adding a function in only one place will silently do nothing (the call reaches the Lua server but finds no matching handler, or the frontend has no way to invoke it).
+
+A typical pair looks like:
+
+```ts
+// resolve-api.ts
+export async function jumpToTime(seconds: number) {
+  return callResolve({ func: 'JumpToTime', seconds });
+}
+```
+
+```lua
+-- autosubs_core.lua
+handlers["JumpToTime"] = function(data)
+  local timeline = getCurrentTimeline()
+  timeline:SetCurrentTimecode(secondsToTimecode(data.seconds))
+  return { ok = true }
+end
+```
 
 | Function | Description |
 |---|---|
@@ -65,9 +88,10 @@ All functions are called via POST with a `func` parameter.
 | `GeneratePreview` | Renders a single preview frame of a subtitle clip. |
 | `StartPresetEdit` | Drops a test clip in Fusion for interactive preset editing. |
 | `CapturePresetSettings` | Reads macro input values and cleans up the preset edit session. |
+| `CancelPresetEdit` | Tears down the preset-edit clip/track without capturing. |
 | `JumpToTime` | Moves the playhead to a given time in seconds. |
 
-The Lua source in `autosubs_core.lua` is the authoritative reference for parameters and return shapes.
+For parameters and return shapes, the Lua handlers in `autosubs_core.lua` are the authoritative reference.
 
 ## Fusion Macro (`AutoSubs-Macro.setting`)
 
