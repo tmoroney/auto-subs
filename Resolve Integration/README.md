@@ -20,7 +20,7 @@ flowchart TD
     resolve_bridge <-->|HTTP| LuaServer[Lua Server on Port 56002]
     LuaServer <-->|Resolve API| Resolve[DaVinci Resolve]
     LuaServer <-->|Fusion API| Fusion[Fusion Page]
-    Fusion <-->|Macro| Macro[AutoSubs-Macro.setting]
+    Fusion <-->|Macro| Macro[autosubs-macro.setting]
 ```
 
 - **React Frontend**: UI for timeline selection, export settings, subtitle preview
@@ -113,7 +113,7 @@ end
 
 For parameters and return shapes, the Lua handlers in `autosubs_core.lua` are the authoritative reference.
 
-## Fusion Macro (`AutoSubs-Macro.setting`)
+## Fusion Macro (`autosubs-macro.setting`)
 
 The macro is a Fusion template stored as a `.setting` file. It renders animated captions with per-word highlighting using Text+, StyledTextFollower, KeyStretcherMod, BezierSpline, and XYPath tools.
 
@@ -196,7 +196,7 @@ npm run dev             # starts the app in dev mode
 | Symptom | Fix |
 |---|---|
 | Server not responding | Confirm Resolve is running and the dev script was launched; check port 56002 isn't in use |
-| Macro not found | Verify `AutoSubs-Macro.setting` is in the correct location and re-import if needed |
+| Macro not found | Verify `autosubs-macro.setting` is in the correct location and re-import if needed |
 | Animation not working | Check KeyStretcherMod connection, verify animation length > 0 and the animation is enabled |
 
 ## Platform-Specific Notes
