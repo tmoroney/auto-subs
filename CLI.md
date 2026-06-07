@@ -28,6 +28,25 @@ autosubs --version
 
 `--model` accepts any AutoSubs model — Whisper sizes (`tiny`…`large-v3`), `parakeet`, or a `moonshine-*` variant. Run `autosubs --list-models` for the full list.
 
+## Additional Options
+
+**Subtitle formatting:**
+- `--density` - Text density: `less`, `standard`, `more`, `single`, or `custom`
+- `--max-lines` - Maximum lines per subtitle
+- `--max-chars-per-line` - Custom max characters per line (use with `--density custom`)
+- `--text-case` - Text case: `none`, `lowercase`, `uppercase`, or `titlecase`
+- `--remove-punctuation` - Strip punctuation from transcript
+
+**Translation:**
+- `--translate` - Translate transcript to English
+- `--target-language` - Target language code for translation
+
+**Performance:**
+- `--gpu` / `--no-gpu` - Force GPU on/off (default: auto-detect)
+
+**Advanced:**
+- `--prompt` - Custom prompt to guide transcription
+
 ## Output Formats
 
 | Format | Contents |

@@ -78,10 +78,9 @@ Download [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/relea
 4. Send styled subtitles back to Resolve.
 
 #### Adobe Premiere Pro / After Effects Mode
-1. Launch AutoSubs and open the bundled AutoSubs CEP extension in Premiere Pro or After Effects.
-2. Select the Adobe integration from AutoSubs.
-3. Export timeline audio for transcription or import generated subtitles back into the host app.
-4. In Premiere Pro, subtitles are imported as caption tracks; in After Effects, SRT entries are created as text layers.
+1. Launch AutoSubs and open Premiere Pro or After Effects (the CEP extension loads automatically).
+2. Select the Adobe integration from AutoSubs to export timeline audio for transcription, or import generated subtitles into your project.
+3. In Premiere Pro, subtitles are imported as caption tracks; in After Effects, SRT entries are created as text layers.
 
 > [!WARNING]
 > AutoSubs will not work with the Mac App Store version of DaVinci Resolve. Re-install from the [official website](https://www.blackmagicdesign.com/products/davinciresolve/) if needed.
