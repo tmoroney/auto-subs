@@ -17,14 +17,13 @@ I welcome contributions from everyone. I will try to review any pull requests as
    ```bash
    npm run setup-resolve
    ```
-   This generates a self-contained `AutoSubs (Dev).lua` launcher in your Resolve scripts folder, with the path to your local checkout baked in:
-   - **Windows:** `%appdata%/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility`
-   - **macOS:** `~/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility`
-   - **Linux:** `/opt/resolve/Fusion/Scripts/Utility` (or `~/resolve/Fusion/Scripts/Utility` depending on installation)
+   This generates a self-contained `AutoSubs (Dev).lua` launcher in your Resolve scripts folder, automatically detecting the correct path for your platform.
 
-   You do **not** need to have AutoSubs installed normally first — the dev launcher points Resolve straight at your repo and starts the local server in dev mode. Open it from Resolve via **Workspace → Scripts → AutoSubs (Dev)**.
+   The dev launcher points Resolve at your repo and starts the local server in dev mode (without opening the app window). Open it from Resolve via **Workspace → Scripts → AutoSubs (Dev)**.
 
-   Edits to the Lua under `src-tauri/resources/` (e.g. `modules/autosubs_core.lua`, the Resolve integration) take effect the next time you run the script in Resolve — no rebuild needed. Re-run `npm run setup-resolve` only if you move the repository.
+   If you close the app window, the server stops — relaunch the script to restart it.
+
+   Edits to the Lua under `src-tauri/resources/` (e.g. `modules/autosubs_core.lua`, the Resolve integration) take effect the next time you run the "AutoSubs (Dev)" script in Resolve — no rebuild or restart needed. Re-run `npm run setup-resolve` only if you move the repository.
 
 4. (Optional) For **Premiere Pro / After Effects** integration during development, build the CEP extension and symlink it into Adobe's extensions folder:
    ```bash
