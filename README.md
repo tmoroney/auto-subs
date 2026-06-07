@@ -120,3 +120,13 @@ Select a Preset Style |  Or create your own
 PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started, including the dev setup and a full codebase walkthrough via **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 
 For detailed information about the DaVinci Resolve integration architecture, Lua server, Fusion macro system, and development workflow, see [Resolve Integration/README.md](Resolve%20Integration/README.md).
+
+---
+
+## Acknowledgments
+
+AutoSubs is built on top of excellent open-source projects:
+
+- [whisper-rs](https://codeberg.org/tazz4843/whisper-rs) - Rust bindings for Whisper C++ library
+- [transcribe-rs](https://github.com/cjpais/transcribe-rs) - ONNX Runtime transcription with Moonshine and Parakeet models
+- [pyannote-rs](https://github.com/thewh1teagle/pyannote-rs) - Rust implementation of Pyannote for speaker diarization (integrated into app code for improvements)
