@@ -4,6 +4,14 @@
 Thank you for considering contributing to AutoSubs! <br>
 I welcome contributions from everyone. I will try to review any pull requests as soon possible 😊
 
+## Documentation
+
+- **[CLI Guide](Docs/cli.md)** - Command-line interface reference
+- **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
+- **[Resolve Integration](Docs/resolve_integration.md)** - DaVinci Resolve integration architecture and development
+- **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
+- **[AGENTS.md](AGENTS.md)** - AI agent context with architecture gotchas and bridge details
+
 ## Dev Setup
 
 1. Clone the repo.
@@ -45,6 +53,47 @@ I welcome contributions from everyone. I will try to review any pull requests as
    ```bash
    npm run dev:frontend
    ```
+
+### Platform-Specific Build Commands
+
+The app uses platform-specific Cargo features for AI acceleration:
+
+- **macOS (Apple Silicon)**: `--features mac-aarch` (Metal + CoreML)
+- **Windows**: `--features windows` (Vulkan + DirectML)
+- **Linux**: `--features linux` (Vulkan)
+
+These are passed automatically by the npm scripts:
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Auto-detect platform and run dev mode |
+| `npm run dev:mac:arm64` | macOS Apple Silicon dev mode |
+| `npm run dev:mac:x86_64` | macOS Intel dev mode |
+| `npm run dev:win` | Windows dev mode |
+| `npm run dev:linux` | Linux dev mode |
+| `npm run build:mac:arm64` | Build for macOS Apple Silicon |
+| `npm run build:mac:x86_64` | Build for macOS Intel |
+| `npm run build:win` | Build for Windows |
+| `npm run build:linux` | Build for Linux |
+
+### Windows Prerequisites
+
+In addition to the standard Tauri prerequisites, Windows builds require:
+
+1. **LLVM** — needed by `bindgen` to generate FFI bindings:
+   ```powershell
+   winget install LLVM.LLVM
+   ```
+   Then set the environment variable: `LIBCLANG_PATH=C:\Program Files\LLVM\bin`
+
+2. **Vulkan SDK** — needed for GPU-accelerated transcription via Whisper:
+   Download from [vulkan.lunarg.com](https://vulkan.lunarg.com/sdk/home#windows) and install. The installer sets `VULKAN_SDK` automatically.
+
+3. **Short Cargo target directory** — the Vulkan shader build generates deeply nested paths that exceed Windows' 260-character limit. Set a short output directory once as a user environment variable (no admin required):
+   ```powershell
+   [System.Environment]::SetEnvironmentVariable("CARGO_TARGET_DIR", "C:\cargo-target", "User")
+   ```
+   Open a new terminal after running this for it to take effect.
 
 Backend code lives under `AutoSubs-App/src-tauri/`. For a full breakdown of the codebase before diving in, see the **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 

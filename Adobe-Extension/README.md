@@ -2,6 +2,13 @@
 
 This package contains the Adobe CEP extension that lets AutoSubs communicate with Adobe Premiere Pro and After Effects. It provides a small React-based panel inside Adobe apps and a compiled ExtendScript layer that performs host-specific operations such as reading sequence metadata, exporting timeline audio, and importing generated subtitle files.
 
+## Documentation
+
+- **[Main README](../README.md)** - Installation and general usage
+- **[Contributing Guide](../CONTRIBUTING.md)** - Development setup and contribution workflow
+- **[AutoSubs-App README](../AutoSubs-App/README.md)** - Technical architecture and code organization
+- **[Resolve Integration](../Docs/resolve_integration.md)** - DaVinci Resolve integration architecture and development
+
 ## High-level architecture
 
 ```mermaid
