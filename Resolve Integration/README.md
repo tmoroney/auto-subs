@@ -110,6 +110,22 @@ The macro is a Fusion template stored as a `.setting` file. It renders animated 
 
 Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), and word-timing highlight updates (`UpdateHighlight`).
 
+### Recommended Development Extension
+
+For editing `.setting` files, the **[Fusion Setting Highlighter](https://github.com/tmoroney/fusion-setting-highlighter)** extension is highly recommended. It provides syntax highlighting for Fusion `.setting` files with full embedded Lua support inside script blocks.
+
+**Installation:**
+
+macOS / Linux:
+```bash
+curl -fsSL https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master/scripts/install.sh | sh
+```
+
+Windows (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master/scripts/install.ps1 | iex
+```
+
 ### Editing the Macro
 
 You need a Fusion text clip on the timeline to open in the Fusion page. The easiest starting point is the "AutoSubs Caption" clip in the **AutoSubs** bin in your media pool:
@@ -179,7 +195,9 @@ npm run dev             # starts the app in dev mode
 ### Windows
 
 - Uses LuaJIT FFI (`MultiByteToWideChar`, `_wfopen`) for UTF-16 path handling — standard `io.open` fails on paths with special characters
-- Installation path stored in `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs\install_path.txt`
+- App: `%LOCALAPPDATA%\AutoSubs\AutoSubs.exe`
+- Resources: `%LOCALAPPDATA%\AutoSubs\resources`
+- Scripts: `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\`
 
 ### macOS
 
