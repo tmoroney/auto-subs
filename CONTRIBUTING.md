@@ -48,6 +48,8 @@ I welcome contributions from everyone. I will try to review any pull requests as
 
 Backend code lives under `AutoSubs-App/src-tauri/`. For a full breakdown of the codebase before diving in, see the **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 
+For detailed information about the DaVinci Resolve integration (architecture, Lua server, Fusion macro system, and development workflow), see [Docs/resolve_integration.md](Docs/resolve_integration.md).
+
 ---
 
 ## Getting Started

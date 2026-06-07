@@ -150,3 +150,5 @@ Select a Preset Style |  Or create your own
 ## Contributing
 
 PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started, including the dev setup and a full codebase walkthrough via **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
+
+For detailed information about the DaVinci Resolve integration architecture, Lua server, Fusion macro system, and development workflow, see [Docs/resolve_integration.md](Docs/resolve_integration.md).

@@ -24,6 +24,7 @@ flowchart TD
 * **The Server**: Runs directly inside Resolve's LuaJIT environment, powered by [ljsocket.lua](file:///Users/moroneyt/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources/modules/ljsocket.lua).
 * **The Gotcha**: The frontend does *not* talk to the Lua server directly. Tauri's webview HTTP plugin hangs when processing Resolve's short, unbuffered `Connection: close` responses.
 * **The Solution**: All HTTP traffic is proxied through the Rust backend command `resolve_bridge` ([resolve_bridge.rs](file:///Users/moroneyt/Documents/AutoSubsV3/AutoSubs-App/src-tauri/src/resolve_bridge.rs)) using `reqwest`.
+* **Documentation**: Comprehensive documentation of the Resolve integration architecture, Lua server API, Fusion macro system, and development workflow is available in [Docs/resolve_integration.md](file:///Users/moroneyt/Documents/AutoSubsV3/Docs/resolve_integration.md).
 
 ### 2. Local AI Execution & Cargo Features
 * **Engines**: Transcription is handled by `whisper-rs` (C++ bindings) and `transcribe-rs` (ONNX via `ort` for Moonshine/Parakeet). Diarization is a custom Pyannote port in Rust ([diarize](file:///Users/moroneyt/Documents/AutoSubsV3/AutoSubs-App/src-tauri/crates/diarize)).
@@ -41,10 +42,12 @@ flowchart TD
 ### 3. DaVinci Resolve Sandboxing & Wide Characters (Windows)
 * Resolve's Lua engine is sandboxed. On Windows, file access fails on paths containing special or non-ASCII characters if standard Lua `io.open` is used.
 * **Solution**: [AutoSubs.lua](file:///Users/moroneyt/Documents/AutoSubsV3/AutoSubs-App/src-tauri/resources/AutoSubs.lua) uses LuaJIT FFI to declare and invoke native Windows APIs (`MultiByteToWideChar` and `_wfopen`) to safely handle file encodings.
+* **Fusion Macro**: The animated caption macro is stored at [Resolve Scripting/AutoSubs-Macro.setting](file:///Users/moroneyt/Documents/AutoSubsV3/Resolve%20Scripting/AutoSubs-Macro.setting). See [Docs/resolve_integration.md](file:///Users/moroneyt/Documents/AutoSubsV3/Docs/resolve_integration.md) for editing instructions and workflow.
 
 ### 4. Adobe CEP WebSocket Bridge (Port `8185`)
 * Communicates with Adobe Premiere Pro and After Effects through the bundled CEP extension ([Adobe-Extension](file:///Users/moroneyt/Documents/AutoSubsV3/Adobe-Extension)).
 * **Tricky Detail**: The extension launches a WebSocket client connecting to the Tauri app's built-in server ([adobe_bridge.rs](file:///Users/moroneyt/Documents/AutoSubsV3/AutoSubs-App/src-tauri/src/adobe_bridge.rs)) to coordinate timeline audio exports and subtitle imports.
+* **Documentation**: The Adobe extension has excellent documentation at [Adobe-Extension/README.md](file:///Users/moroneyt/Documents/AutoSubsV3/Adobe-Extension/README.md).
 
 ### 5. Error Propagation Across the Boundary
 * **The Gotcha**: Because transcription and diarization run fully locally across multiple sub-crates, native C/C++ exceptions and ONNX load errors can easily crash the backend.
