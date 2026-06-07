@@ -1,11 +1,13 @@
 # AutoSubs
 
-AutoSubs generates accurate, timestamped subtitles from any audio or video file. AI transcription runs locally — no cloud, no subscription.
+Local-first AI subtitles. No cloud, no subscription, no data leaving your machine.
 
-- Transcribes speech in many languages, with optional translation
-- Identifies and labels multiple speakers automatically
-- Exports to SRT, plain text, DaVinci Resolve, Premiere Pro, or After Effects
-- Works standalone, with DaVinci Resolve, or with Adobe apps through the bundled CEP extension
+Works standalone or as a plugin for **DaVinci Resolve**, **Adobe Premiere Pro**, and **After Effects**.
+
+- 🎙️ **Transcription:** Whisper, Moonshine, and Parakeet models via whisper-rs and ONNX Runtime
+- 👥 **Speaker Diarization:** Identifies and labels different speakers in the transcript, allowing for per-speaker styling
+- 🌍 **100+ Languages:** Transcription and translation across a wide range of languages
+- 💻 **Cross-Platform:** macOS (Apple Silicon/Intel), Windows (Vulkan/DirectML), Linux
 
 [![Downloads](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Weekly App Opens](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-users.json&style=flat)](https://tom-moroney.com/release-tracker/)
@@ -26,31 +28,12 @@ AutoSubs generates accurate, timestamped subtitles from any audio or video file.
 | 🐧 Linux (Debian/Ubuntu) | [AutoSubs-linux-x86_64.deb](#linux-install) |
 | 🐧 Linux (Fedora/openSUSE) | [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.rpm) |
 
-<a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 48px !important;width: 173px !important;" ></a>
+### macOS Homebrew
 
----
-
-## Documentation
-
-- **[CLI Guide](CLI.md)** - Command-line interface reference
-- **[Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution workflow
-- **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
-- **[Resolve Integration](Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
-- **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
-
----
-
-## Quick Start
-
-### Windows & macOS
-
-Download the installer for your platform above and follow the prompts.
-
-> [!TIP]
-> macOS users can also install AutoSubs with Homebrew:
-> ```bash
-> brew install --cask auto-subs
-> ```
+macOS users can also install AutoSubs with Homebrew:
+```bash
+brew install --cask auto-subs
+```
 
 ### Linux install
 
@@ -63,31 +46,50 @@ sudo apt install ./AutoSubs-linux-x86_64.deb
 **Fedora/openSUSE (.rpm):**
 Download [AutoSubs-linux-x86_64.rpm](https://github.com/tmoroney/auto-subs/releases/latest/download/AutoSubs-linux-x86_64.rpm) and open it with your package manager.
 
-### Workflows
+<a href="https://www.buymeacoffee.com/tmoroney" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 48px !important;width: 173px !important;" ></a>
 
-#### Standalone Mode
+---
+
+## Quick Start
+
+### Standalone Mode
 1. Launch AutoSubs and select an audio or video file.
 2. Pick your model and language/translation options.
 3. Click **Transcribe**. Edit speakers and subtitles as needed.
 4. Export as SRT, text, or copy to clipboard.
 
-#### DaVinci Resolve Mode
+### DaVinci Resolve Mode
 1. Open DaVinci Resolve → **Workspace → Scripts → AutoSubs**.
 2. Select your timeline/audio source and settings.
 3. Click **Transcribe**. Edit speakers and subtitles as needed.
 4. Send styled subtitles back to Resolve.
 
-#### Adobe Premiere Pro / After Effects Mode
+> [!WARNING]
+> Mac App Store version not supported - download DaVinci Resolve from [blackmagicdesign.com](https://www.blackmagicdesign.com/products/davinciresolve/) instead.
+
+### Adobe Premiere Pro / After Effects Mode
 1. Launch AutoSubs and open Premiere Pro or After Effects (the CEP extension loads automatically).
 2. Select the Adobe integration from AutoSubs to export timeline audio for transcription, or import generated subtitles into your project.
 3. In Premiere Pro, subtitles are imported as caption tracks; in After Effects, SRT entries are created as text layers.
 
-> [!WARNING]
-> AutoSubs will not work with the Mac App Store version of DaVinci Resolve. Re-install from the [official website](https://www.blackmagicdesign.com/products/davinciresolve/) if needed.
-
 ### Command Line Interface
 
 For command-line usage, see the **[CLI Guide](CLI.md)** with complete reference, examples, and troubleshooting.
+
+---
+
+## Documentation
+
+- **[CLI Guide](CLI.md)** - Command-line interface reference
+- **[Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution workflow
+- **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
+- **[Resolve Integration](Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
+
+> [!NOTE]
+> Check out the **[DeepWiki](https://deepwiki.com/tmoroney/auto-subs)** for asking questions and understanding the codebase.
+>
+> [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tmoroney/auto-subs)
 
 ---
 
@@ -103,29 +105,13 @@ Select a Preset Style |  Or create your own
 
 ## What's New in v3.5
 
-### Transcription
-- **Voice Activity Detection** — strips non-speech audio before transcription for cleaner, faster results
-- **More models** — Whisper, Parakeet, and Moonshine supported, with easy download, switch, and delete
-- **Better speaker labels** — upgraded diarization model for more accurate identification
-- **Translation** — translate subtitles to other languages directly from the app
+**Transcription:** Voice Activity Detection, multiple models (Whisper/Parakeet/Moonshine), improved speaker diarization, and built-in translation.
 
-### Editing & UI
-- **Free-text subtitle editing** — edit subtitles naturally; word timing adjusts automatically
-- **Transcript history** — browse and reload past transcripts without re-running the pipeline
-- **Localisation** — UI available in Korean, Spanish, German, French, Japanese, and Chinese
-- **Custom titlebar** — sleeker look with better use of app space
+**Editing & UI:** Free-text subtitle editing with auto-timing, transcript history, 6 new UI languages, and custom titlebar.
 
-### DaVinci Resolve
-- **Animated caption macro** — create animated captions with per-word highlighting
-- **Preset system** — build, share, and preview caption presets before applying
-- **Marker-based word timing** — fine-tune timing directly on the Resolve timeline
-- **Conflict detection** — track conflicts flagged the moment a track is selected
+**DaVinci Resolve:** Animated caption macro with per-word highlighting, preset system, marker-based word timing, and instant conflict detection.
 
-### Bug Fixes (v3.5.1)
-- Custom max characters per line, Korean inter-word spacing, and Cyrillic formatting fixes
-- Resolve export: corrected marker range calculation and cancellation handling
-- Model Manager: graceful recovery from broken HuggingFace cache; fixed delete button
-- Linux: install path fixes, double titlebar fix, and KDE crash fix
+**Bug Fixes (v3.5.1):** Formatting improvements, Resolve export corrections, Model Manager recovery, and Linux stability fixes.
 
 ---
 
