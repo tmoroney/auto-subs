@@ -5,7 +5,7 @@ Local-first AI subtitles. No cloud, no subscription, no data leaving your machin
 Works standalone or as a plugin for **DaVinci Resolve**, **Adobe Premiere Pro**, and **After Effects**.
 
 - 🎙️ **Transcription:** Whisper, Moonshine, and Parakeet models via whisper-rs and ONNX Runtime
-- 👥 **Speaker Diarization:** Identifies and labels different speakers in the transcript, allowing for per-speaker styling
+- 👥 **Speaker Diarization:** Identifies and labels different speakers in the transcript, enabling per-speaker styling
 - 🌍 **100+ Languages:** Transcription and translation across a wide range of languages
 - 💻 **Cross-Platform:** macOS (Apple Silicon/Intel), Windows (Vulkan/DirectML), Linux
 
