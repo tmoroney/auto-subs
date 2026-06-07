@@ -166,7 +166,7 @@ npm run dev             # starts the app in dev mode
 
 ## API Reference
 
-- `Docs/resolve_api_reference.txt` — Resolve scripting API
-- `Docs/fusion_manual.md` — Fusion scripting and macro documentation
+- `resolve_api_reference.txt` — Resolve scripting API
+- `fusion_manual.md` — Fusion scripting and macro documentation
 
 Blackmagic's documentation is limited and sometimes outdated. `autosubs_core.lua` is the most reliable reference for working Resolve API usage.

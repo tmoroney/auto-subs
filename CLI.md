@@ -41,7 +41,7 @@ If `--format` is omitted, the format is inferred from the `-o` file extension (`
 
 ## Output Behavior
 
-**stdout** carries only the rendered output, so `autosubs file.mp4 -f srt > out.srt` is clean and pipe-safe. Progress and errors go to **stderr**: in an interactive terminal you get a live progress bar with the current stage (downloading model / transcribing / diarizing / translating); when stderr is piped or captured, it falls back to one line per stage. On failure a `{ "error": "..." }` object is printed to stderr and the exit code is non-zero. Models are downloaded automatically on first use to the [model cache](../AutoSubs-App/README.md#model-cache-location).
+**stdout** carries only the rendered output, so `autosubs file.mp4 -f srt > out.srt` is clean and pipe-safe. Progress and errors go to **stderr**: in an interactive terminal you get a live progress bar with the current stage (downloading model / transcribing / diarizing / translating); when stderr is piped or captured, it falls back to one line per stage. On failure a `{ "error": "..." }` object is printed to stderr and the exit code is non-zero. Models are downloaded automatically on first use to the [model cache](AutoSubs-App/README.md#model-cache-location).
 
 > On Windows, release builds attach to the parent console at startup so output is visible. As with any Tauri CLI app, the shell prompt may return before output finishes printing.
 
@@ -62,7 +62,7 @@ During development the headless binary is at `src-tauri/target/debug/autosubs` (
 
 ## Related Documentation
 
-- [Main README](../README.md) - Installation and general usage
-- [Contributing Guide](../CONTRIBUTING.md) - Development setup
-- [AutoSubs-App README](../AutoSubs-App/README.md) - Technical architecture
-- [Resolve Integration](resolve_integration.md) - DaVinci Resolve integration details
+- [Main README](README.md) - Installation and general usage
+- [Contributing Guide](CONTRIBUTING.md) - Development setup
+- [AutoSubs-App README](AutoSubs-App/README.md) - Technical architecture
+- [Resolve Integration](Resolve%20Integration/README.md) - DaVinci Resolve integration details
