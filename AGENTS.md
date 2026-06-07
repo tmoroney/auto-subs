@@ -44,7 +44,7 @@ flowchart TD
 ### 3. DaVinci Resolve Sandboxing & Wide Characters (Windows)
 * Resolve's Lua engine is sandboxed. On Windows, file access fails on paths containing special or non-ASCII characters if standard Lua `io.open` is used.
 * **Solution**: [AutoSubs.lua](AutoSubs-App/src-tauri/resources/AutoSubs.lua) uses LuaJIT FFI to declare and invoke native Windows APIs (`MultiByteToWideChar` and `_wfopen`) to safely handle file encodings.
-* **Fusion Macro**: The animated caption macro is stored at [Resolve Integration/AutoSubs-Macro.setting](Resolve%20Integration/AutoSubs-Macro.setting). See [Resolve Integration/README.md](Resolve%20Integration/README.md) for editing instructions and workflow.
+* **Fusion Macro**: The animated caption macro is stored at [Resolve Integration/autosubs-macro.setting](Resolve%20Integration/autosubs-macro.setting). See [Resolve Integration/README.md](Resolve%20Integration/README.md) for editing instructions and workflow.
 
 ### 4. Adobe CEP WebSocket Bridge (Port `8185`)
 * Communicates with Adobe Premiere Pro and After Effects through the bundled CEP extension ([Adobe-Extension](Adobe-Extension)).
