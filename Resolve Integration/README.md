@@ -2,6 +2,15 @@
 
 This document describes how AutoSubs integrates with DaVinci Resolve: architecture, communication protocol, Lua server, Fusion macro, and development workflow.
 
+## Quick Navigation
+
+**What do you want to do?**
+
+- **Modify the animated caption** → [Fusion Macro](#fusion-macro-autosubs-macrosetting)
+- **Change Resolve integration logic** → [Lua Server](#lua-server-autosubs_corelua)
+- **Set up development environment** → [Development Workflow](#development-workflow)
+- **Understand the architecture** → [Architecture](#architecture)
+
 ## Architecture
 
 ```mermaid
@@ -17,7 +26,7 @@ flowchart TD
 - **React Frontend**: UI for timeline selection, export settings, subtitle preview
 - **Rust Backend (`resolve_bridge.rs`)**: HTTP client that posts requests to the Lua server
 - **Lua Server (`autosubs_core.lua`)**: HTTP server running inside Resolve on port 56002
-- **Fusion Macro (`AutoSubs-Macro.setting`)**: Fusion template for animated captions with per-word highlighting
+- **Fusion Macro (`autoSubs-macro.setting`)**: Fusion template for animated captions with per-word highlighting
 
 ### Why the HTTP Bridge?
 
