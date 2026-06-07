@@ -8,57 +8,128 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
 
-const filesToUpdate = [
-  {
-    path: path.join(rootDir, 'package.json'),
-    pattern: /"version":\s*"[\d.]+"/,
-    replacement: (version) => `"version": "${version}"`
-  },
-  {
-    path: path.join(rootDir, 'package-lock.json'),
-    pattern: /  "name": "autosubs",\n  "version": "[\d.]+",/,
-    replacement: (version) => `  "name": "autosubs",\n  "version": "${version}",`
-  },
-  {
-    path: path.join(rootDir, 'package-lock.json'),
-    pattern: /      "name": "autosubs",\n      "version": "[\d.]+",/,
-    replacement: (version) => `      "name": "autosubs",\n      "version": "${version}",`
-  },
-  {
-    path: path.join(rootDir, 'src-tauri', 'Cargo.toml'),
-    pattern: /^version = "[\d.]+"/m,
-    replacement: (version) => `version = "${version}"`
-  },
-  {
-    path: path.join(rootDir, 'src-tauri', 'tauri.conf.json'),
-    pattern: /"version":\s*"[\d.]+"/,
-    replacement: (version) => `"version": "${version}"`
-  },
-  {
-    path: path.join(rootDir, 'src-tauri', 'Cargo.lock'),
-    pattern: /^name = "autosubs"\nversion = "[\d.]+"/m,
-    replacement: (version) => `name = "autosubs"\nversion = "${version}"`
-  }
-];
-
 function getVersionFromPackageJson() {
   const packageJsonPath = path.join(rootDir, 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
   return packageJson.version;
 }
 
-function updateFile(filePath, pattern, replacement, version) {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const newContent = content.replace(pattern, replacement(version));
-  
-  if (content === newContent) {
-    console.log(`⚠️  No changes made to ${filePath}`);
+function updateJsonFile(filePath, version) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
     return false;
   }
-  
-  fs.writeFileSync(filePath, newContent, 'utf-8');
-  console.log(`✓ Updated ${filePath}`);
-  return true;
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const json = JSON.parse(content);
+    
+    let updated = false;
+    
+    // Update root version
+    if (json.version && json.version !== version) {
+      json.version = version;
+      updated = true;
+    }
+    
+    // Update packages[""] version (for package-lock.json)
+    if (json.packages && json.packages[""] && json.packages[""].version !== version) {
+      json.packages[""].version = version;
+      updated = true;
+    }
+    
+    if (updated) {
+      fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + '\n', 'utf-8');
+      console.log(`✓ Updated ${filePath}`);
+      return true;
+    } else {
+      console.log(`⚠️  No changes needed for ${filePath} (already at version ${version})`);
+      return false;
+    }
+  } catch (error) {
+    console.log(`❌ Error updating ${filePath}: ${error.message}`);
+    return false;
+  }
+}
+
+function updateCargoFile(filePath, version) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
+    return false;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // More flexible pattern for Cargo.toml - matches version = "x.x.x" with any whitespace
+    const pattern = /^version\s*=\s*"[\d.]+"/m;
+    const newContent = content.replace(pattern, `version = "${version}"`);
+    
+    if (content === newContent) {
+      console.log(`⚠️  No changes needed for ${filePath} (already at version ${version} or pattern not found)`);
+      return false;
+    }
+    
+    fs.writeFileSync(filePath, newContent, 'utf-8');
+    console.log(`✓ Updated ${filePath}`);
+    return true;
+  } catch (error) {
+    console.log(`❌ Error updating ${filePath}: ${error.message}`);
+    return false;
+  }
+}
+
+function updateCargoLockFile(filePath, version) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
+    return false;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // More flexible pattern for Cargo.lock - matches the autosubs package section
+    // This pattern looks for the autosubs package and updates its version
+    const pattern = /(\[\[package\]\]\nname\s*=\s*"autosubs"\n)version\s*=\s*"[\d.]+"/;
+    const newContent = content.replace(pattern, `$1version = "${version}"`);
+    
+    if (content === newContent) {
+      console.log(`⚠️  No changes needed for ${filePath} (already at version ${version} or pattern not found)`);
+      return false;
+    }
+    
+    fs.writeFileSync(filePath, newContent, 'utf-8');
+    console.log(`✓ Updated ${filePath}`);
+    return true;
+  } catch (error) {
+    console.log(`❌ Error updating ${filePath}: ${error.message}`);
+    return false;
+  }
+}
+
+function updateTauriConfFile(filePath, version) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
+    return false;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const json = JSON.parse(content);
+    
+    if (json.version && json.version !== version) {
+      json.version = version;
+      fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + '\n', 'utf-8');
+      console.log(`✓ Updated ${filePath}`);
+      return true;
+    } else {
+      console.log(`⚠️  No changes needed for ${filePath} (already at version ${version})`);
+      return false;
+    }
+  } catch (error) {
+    console.log(`❌ Error updating ${filePath}: ${error.message}`);
+    return false;
+  }
 }
 
 function main() {
@@ -91,10 +162,30 @@ function main() {
   console.log('\nUpdating version to ' + version + '...\n');
   
   let updatedCount = 0;
-  for (const file of filesToUpdate) {
-    if (updateFile(file.path, file.pattern, file.replacement, version)) {
-      updatedCount++;
-    }
+  
+  // Update package.json
+  if (updateJsonFile(path.join(rootDir, 'package.json'), version)) {
+    updatedCount++;
+  }
+  
+  // Update package-lock.json
+  if (updateJsonFile(path.join(rootDir, 'package-lock.json'), version)) {
+    updatedCount++;
+  }
+  
+  // Update Cargo.toml
+  if (updateCargoFile(path.join(rootDir, 'src-tauri', 'Cargo.toml'), version)) {
+    updatedCount++;
+  }
+  
+  // Update tauri.conf.json
+  if (updateTauriConfFile(path.join(rootDir, 'src-tauri', 'tauri.conf.json'), version)) {
+    updatedCount++;
+  }
+  
+  // Update Cargo.lock
+  if (updateCargoLockFile(path.join(rootDir, 'src-tauri', 'Cargo.lock'), version)) {
+    updatedCount++;
   }
 
   console.log(`\n✅ Updated ${updatedCount} file(s) to version ${version}`);

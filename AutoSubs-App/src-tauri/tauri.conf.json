@@ -15,13 +15,23 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$DESKTOP/**", "$DOCUMENT/**", "$DOWNLOAD/**", "$RESOURCE/**"]
+        "scope": [
+          "$DESKTOP/**",
+          "$DOCUMENT/**",
+          "$DOWNLOAD/**",
+          "$RESOURCE/**"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app", "deb", "rpm"],
+    "targets": [
+      "nsis",
+      "app",
+      "deb",
+      "rpm"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -29,14 +39,18 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["resources/"],
+    "resources": [
+      "resources/"
+    ],
     "macOS": {
       "minimumSystemVersion": "13.3"
     },
     "linux": {
       "deb": {
         "desktopTemplate": "./linux/autosubs.desktop",
-        "depends": ["ffmpeg"],
+        "depends": [
+          "ffmpeg"
+        ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "resources/AutoSubs.lua",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
