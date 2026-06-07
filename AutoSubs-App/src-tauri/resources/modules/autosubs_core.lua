@@ -1198,11 +1198,6 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
     return { failed = failed, total = #timelineItems, firstError = firstError, noFusionComp = noFusionComp }
 end
 
--- Forces timeline view to update and show new subtitle clips
-local function refresh_timeline(timeline)
-    timeline:SetCurrentTimecode(timeline:GetCurrentTimecode())
-end
-
 -- Add subtitles to the timeline using the specified template
 -- conflictMode: "replace" (delete existing), "skip" (write around conflicts), "new_track" (use new track), nil (default/old behavior)
 -- presetSettings: optional opaque table of AutoSubs Caption macro input values
@@ -1284,7 +1279,11 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
 
     local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
         presetSettings)
-    refresh_timeline(timeline)
+
+    -- Force timeline refresh by jumping to the first subtitle
+    if subtitles and #subtitles > 0 then
+        JumpToTime(subtitles[1].start)
+    end
 
     -- If some (but not all) clips failed to receive text/styling, still report
     -- success but include a warning summary so the UI can mention it.

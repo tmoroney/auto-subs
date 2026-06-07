@@ -26,7 +26,7 @@ const args = ['tauri', 'dev', '--features', feature, '--', '--no-default-feature
 console.log(`[AutoSubs Dev] Platform: ${platform} (${arch})`);
 console.log(`[AutoSubs Dev] Command: npx ${args.join(' ')}`);
 
-const child = spawn('npx', args, { stdio: 'inherit', shell: true });
+const child = spawn('npx', args, { stdio: 'inherit' });
 
 child.on('close', (code) => {
   process.exit(code || 0);
