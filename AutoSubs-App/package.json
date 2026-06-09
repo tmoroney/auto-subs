@@ -1,7 +1,7 @@
 {
   "name": "autosubs",
   "private": true,
-  "version": "3.6.1",
+  "version": "3.6.2",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.js",
