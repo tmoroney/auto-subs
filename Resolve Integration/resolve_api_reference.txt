@@ -1,4 +1,4 @@
-Last Updated: 7 Oct 2025
+Last Updated: 8 May 2026
 -------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
@@ -105,6 +105,7 @@ Resolve
   GetKeyframeMode()                               --> keyframeMode       # Returns the currently set keyframe mode (int). Refer to section 'Keyframe Mode information' below for details.
   SetKeyframeMode(keyframeMode)                   --> Bool               # Returns True when 'keyframeMode'(enum) is successfully set. Refer to section 'Keyframe Mode information' below for details.
   GetFairlightPresets()                           --> [presetNames...].  # Returns a list of Fairlight presets by name
+  DisableBackgroundTasksForCurrentResolveSession()--> None               # Disables all background tasks for current Resolve session.
 
 ProjectManager
   ArchiveProject(projectName,
@@ -173,13 +174,13 @@ Project
   SaveAsNewRenderPreset(presetName)               --> Bool               # Creates new render preset by given name if presetName(string) is unique.
   DeleteRenderPreset(presetName)                  --> Bool               # Delete render preset by provided name.
   SetRenderSettings({settings})                   --> Bool               # Sets given settings for rendering. Settings is a dict, with support for the keys:
-                                                                         # Refer to "Looking up render settings" section for information for supported settings
+                                                                         # Refer to section "Looking up render settings" for information on supported settings
   GetRenderJobStatus(jobId)                       --> {status info}      # Returns a dict with job status and completion percentage of the job by given jobId (string).
   GetQuickExportRenderPresets()                   --> [preset_name..]    # Returns a list of Quick Export render presets by name
   RenderWithQuickExport(preset_name, {param_dict})--> {status info}      # Starts a quick export render for the current active timeline. preset_name from GetQuickExportRenderPresets list. param_dict supports render settings keys "TargetDir", "CustomName", "VideoQuality", and "EnableUpload".
                                                                          # "EnableUpload" key enables direct upload for supported web presets.
                                                                          # Returns a dict with job status and time taken to render, or an error string if render has failed or not attempted
-                                                                         # Refer to "Looking up Render Settings" section for information on the above supported settings
+                                                                         # Refer to section "Looking up Render Settings" for information on the above supported settings
   GetSetting(settingName)                         --> string             # Returns value of project setting (indicated by settingName, string). Check the section below for more information.
   SetSetting(settingName, settingValue)           --> Bool               # Sets the project setting (indicated by settingName, string) to the value (settingValue, string). Check the section below for more information.
   GetRenderFormats()                              --> {render formats..} # Returns a dict (format -> file extension) of available render formats.
@@ -199,6 +200,11 @@ Project
   AddColorGroup(groupName)                        --> ColorGroup         # Creates a new ColorGroup. groupName must be a unique string.
   DeleteColorGroup(colorGroup)                    --> Bool               # Deletes the given color group and sets clips to ungrouped.
   ApplyFairlightPresetToCurrentTimeline(name)     --> Bool               # Apply Fairlight Preset of given name to the current timeline, returns True if successful, False otherwise.
+  ResetIntellisearchAnalysis()                    --> Bool               # Clears Intellisearch analysis data. Returns True if successful.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  GenerateSpeech({speechGenerationSettings}, timecode) --> MediaPoolItem # Generates an audio MediaPoolItem based on the given speechGenerationSettings and adds it to the timeline at the stated timecode if "AddToTimeline" is True. Returns the newly generated MediaPoolItem.
+                                                                         # Refer to section "Speech Generation Settings" for information on supported settings
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
 
 MediaStorage
   GetMountedVolumeList()                          --> [paths...]         # Returns list of folder paths corresponding to mounted volumes displayed in Resolve’s Media Storage.
@@ -251,6 +257,7 @@ MediaPool
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool
   CreateStereoClip(LeftMediaPoolItem,
                    RightMediaPoolItem)            --> MediaPoolItem      # Takes in two existing media pool items and creates a new 3D stereoscopic media pool entry replacing the input media in the media pool.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   AutoSyncAudio([MediaPoolItems], {audioSyncSettings}) --> Bool          # Syncs audio for specified [MediaPoolItems] (list). The list must contain a minimum of two MediaPoolItems - at least one video and one audio clip.
                                                                          # Returns True if successful. Refer to 'Audio Sync Settings' section for details.
   GetSelectedClips()                              --> [MediaPoolItems]   # Returns the current selected MediaPoolItems
@@ -263,8 +270,23 @@ Folder
   GetIsFolderStale()                              --> bool               # Returns true if folder is stale in collaboration mode, false otherwise
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool folder
   Export(filePath)                                --> bool               # Returns true if export of DRB folder to filePath is successful, false otherwise
-  TranscribeAudio()                               --> Bool               # Transcribes audio of the MediaPoolItems within the folder and nested folders. Returns True if successful; False otherwise
+  TranscribeAudio(useSpeakerDetection=None)       --> Bool               # Transcribes audio of the MediaPoolItems within the folder and nested folders. Returns True if successful; False otherwise
+                                                                         # Accepts an optional boolean argument to use speaker detection when transcribing. If no argument is specified, use the project's setting.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   ClearTranscription()                            --> Bool               # Clears audio transcription of the MediaPoolItems within the folder and nested folders. Returns True if successful; False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  PerformAudioClassification()                    --> Bool               # Analyzes and classifies the audio of the MediaPoolItems within the folder and nested folders into categories and subcategories.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  ClearAudioClassification()                      --> Bool               # Clears audio classification of the MediaPoolItems within the folder and nested folders.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  RemoveMotionBlur({deblurOption})                --> [[MediaPoolItem, MediaPoolItem]...]   # Applies motion deblur on MediaPoolItems in the folder. Returns a list of pairs mapping original to newly created MediaPoolItems.
+                                                                         # Refer to section "Motion Deblur Settings" for information on supported settings
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  AnalyzeForIntellisearch(identifyFaces, isBetterMode) --> Bool          # Performs Intellisearch analysis on all MediaPoolItems in the folder. identifyFaces specifies whether to identify faces; isBetterMode specifies whether to use Better mode. Returns True if required packages are installed and analysis is successful.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  AnalyzeForSlate(markerColor)                    --> Bool               # Performs Slate analysis on all MediaPoolItems in the folder using the current settings and specified markerColor. Returns True if required packages are installed and analysis is successful.
+                                                                         # Refer to section "Analyze Slate Settings" for information on markerColor
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
 
 MediaPoolItem
   GetName()                                       --> string             # Returns the clip name.
@@ -304,14 +326,29 @@ MediaPoolItem
   ReplaceClip(filePath)                           --> Bool               # Replaces the underlying asset and metadata of MediaPoolItem with the specified absolute clip path.
   ReplaceClipPreserveSubClip(filePath)            --> Bool               # Replaces the underlying asset and metadata of a video or audio clip with the specified absolute clip path, preserving original sub clip extents.
   GetUniqueId()                                   --> string             # Returns a unique ID for the media pool item
-  TranscribeAudio()                               --> Bool               # Transcribes audio of the MediaPoolItem. Returns True if successful; False otherwise
+  TranscribeAudio(useSpeakerDetection=None)       --> Bool               # Transcribes audio of the MediaPoolItem. Returns True if successful; False otherwise
+                                                                         # Accepts an optional boolean argument to use speaker detection when transcribing. If no argument is specified, use the project's setting.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   ClearTranscription()                            --> Bool               # Clears audio transcription of the MediaPoolItem. Returns True if successful; False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  PerformAudioClassification()                    --> Bool               # Analyzes and classifies the audio of a MediaPoolItem into categories and subcategories.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  ClearAudioClassification()                      --> Bool               # Clears audio classification of the MediaPoolItem.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetAudioMapping()                               --> json formatted string # Returns a string with MediaPoolItem's audio mapping information. Check 'Audio Mapping' section below for more information.
   GetMarkInOut()                                  --> {mark}             # Returns dict of in/out marks set (keys omitted if not set), example:
                                                                          # {'video': {'in': 0, 'out': 134}, 'audio': {'in': 0, 'out': 134}}
   SetMarkInOut(in, out, type="all")               --> Bool               # Sets mark in/out of type "video", "audio" or "all" (default).
   ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
   MonitorGrowingFile()                            --> Bool               # Monitor a file as long as it keeps growing (stops if the file does not grow for some time).
+  RemoveMotionBlur({deblurOption})                --> MediaPoolItem      # Applies motion deblur on the MediaPoolItem. Returns the newly created MediaPoolItem.
+                                                                         # Refer to section "Motion Deblur Settings" for information on supported settings.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  AnalyzeForIntellisearch(identifyFaces, isBetterMode) --> Bool          # Performs Intellisearch analysis on the MediaPoolItem. identifyFaces specifies whether to identify faces; isBetterMode specifies whether to use Better mode. Returns True if required packages are installed and analysis is successful.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
+  AnalyzeForSlate(markerColor)                    --> Bool               # Performs Slate analysis on the MediaPoolItem using the current settings and specified markerColor. Returns True if required packages are installed and analysis is successful.
+                                                                         # Refer to section "Analyze Slate Settings" for information on markerColor
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
 
 Timeline
   GetName()                                       --> string             # Returns the timeline name.
@@ -395,12 +432,15 @@ Timeline
   CreateSubtitlesFromAudio({autoCaptionSettings}) --> Bool               # Creates subtitles from audio for the timeline.
                                                                          # Takes in optional dictionary {autoCaptionSettings}. Check 'Auto Caption Settings' subsection below for more information.
                                                                          # Returns True on success, False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   DetectSceneCuts()                               --> Bool               # Detects and makes scene cuts along the timeline. Returns True if successful, False otherwise.
   ConvertTimelineToStereo()                       --> Bool               # Converts timeline to stereo. Returns True if successful; False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetNodeGraph()                                  --> Graph              # Returns the timeline's node graph object.
   AnalyzeDolbyVision([timelineItems]=[],          --> Bool               # Analyzes Dolby Vision on clips present on the timeline. Returns True if analysis start is successful; False otherwise.
                      analysisType=NONE)                                  # if [timelineItems] is empty, analysis performed on all items. Else, analysis performed on [timelineItems] only.
                                                                          # set analysisType to resolve.DLB_BLEND_SHOTS for blend setting
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetMediaPoolItem()                              --> MediaPoolItem      # Returns the media pool item corresponding to the timeline
   GetMarkInOut()                                  --> {mark}             # Returns dict of in/out marks set (keys omitted if not set), example:
                                                                          # {'video': {'in': 0, 'out': 134}, 'audio': {'in': 0, 'out': 134}}
@@ -408,6 +448,7 @@ Timeline
   ClearMarkInOut(type="all")                      --> Bool               # Clears mark in/out of type "video", "audio" or "all" (default).
   GetVoiceIsolationState(trackIndex)              --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the given track index
   SetVoiceIsolationState(trackIndex, {VoiceIsolationState}) --> Bool     # Sets Voice Isolation state of audio track with given trackIndex (int) to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100] and 1 <= trackIndex <= GetTrackCount("audio"). Returns True if successful.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
@@ -426,7 +467,7 @@ TimelineItem
   GetSourceStartFrame()                           --> int                # Returns the start frame position of the media pool clip in the timeline clip.
   GetSourceStartTime()                            --> float              # Returns the start time position of the media pool clip in the timeline clip.
   SetProperty(propertyKey, propertyValue)         --> Bool               # Sets the value of property "propertyKey" to value "propertyValue"
-                                                                         # Refer to "Looking up Timeline item properties" for more information
+                                                                         # Refer to section "Looking up Timeline item properties" for more information
   GetProperty(propertyKey)                        --> int/[key:value]    # returns the value of the specified key
                                                                          # if no key is specified, the method returns a dictionary(python) or table(lua) for all supported keys
   AddMarker(frameId, color, name, note, duration, --> Bool               # Creates a new marker at given frameId position and with given marker information. 'customData' is optional and helps to attach user specific data to the marker.
@@ -459,8 +500,11 @@ TimelineItem
   GetVersionNameList(versionType)                 --> [names...]         # Returns a list of all color versions for the given versionType (0 - local, 1 - remote).
   GetMediaPoolItem()                              --> MediaPoolItem      # Returns the media pool item corresponding to the timeline item if one exists.
   GetStereoConvergenceValues()                    --> {keyframes...}     # Returns a dict (offset -> value) of keyframe offsets and respective convergence values.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetStereoLeftFloatingWindowParams()             --> {keyframes...}     # For the LEFT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetStereoRightFloatingWindowParams()            --> {keyframes...}     # For the RIGHT eye -> returns a dict (offset -> dict) of keyframe offsets and respective floating window params. Value at particular offset includes the left, right, top and bottom floating window values.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   SetCDL([CDL map])                               --> Bool               # Keys of map are: "NodeIndex", "Slope", "Offset", "Power", "Saturation", where 1 <= NodeIndex <= total number of nodes.
                                                                          # Example python code - SetCDL({"NodeIndex" : "1", "Slope" : "0.5 0.4 0.2", "Offset" : "0.4 0.3 0.2", "Power" : "0.6 0.7 0.8", "Saturation" : "0.65"})
   AddTake(mediaPoolItem, startFrame, endFrame)    --> Bool               # Adds mediaPoolItem as a new take. Initializes a take selector for the timeline item if needed. By default, the full clip extents is added. startFrame (int) and endFrame (int) are optional arguments used to specify the extents.
@@ -477,9 +521,12 @@ TimelineItem
   GetUniqueId()                                   --> string             # Returns a unique ID for the timeline item
   LoadBurnInPreset(presetName)                    --> Bool               # Loads user defined data burn in preset for clip when supplied presetName (string). Returns true if successful.
   CreateMagicMask(mode)                           --> Bool               # Returns True if magic mask was created successfully, False otherwise. mode can "F" (forward), "B" (backward), or "BI" (bidirection)
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   RegenerateMagicMask()                           --> Bool               # Returns True if magic mask was regenerated successfully, False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   Stabilize()                                     --> Bool               # Returns True if stabilization was successful, False otherwise
   SmartReframe()                                  --> Bool               # Performs Smart Reframe. Returns True if successful, False otherwise.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   GetNodeGraph(layerIdx)                          --> Graph              # Returns the clip's node graph object at layerIdx (int, optional). Returns the first layer if layerIdx is skipped. 1 <= layerIdx <= project.GetSetting("nodeStackLayers").
   GetColorGroup()                                 --> ColorGroup         # Returns the clip's color group if one exists.
   AssignToColorGroup(ColorGroup)                  --> Bool               # Returns True if TiItem to successfully assigned to given ColorGroup. ColorGroup must be an existing group in the current project.
@@ -498,6 +545,7 @@ TimelineItem
   SetFusionOutputCache(cache_value)               --> Bool               # Sets caching to auto, enabled or disabled. Equivalent to clip context menu action 'Render Cache Fusion Output'.
   GetVoiceIsolationState()                        --> {VoiceIsolationState} # Returns the Voice Isolation State as a dict {isEnabled, amount}, of the timelineItem
   SetVoiceIsolationState({VoiceIsolationState})   --> Bool               # Sets Voice Isolation state of the timelineItem to the given VoiceIsolationState of {isEnabled (bool), amount (int)}. amount is in range of [0, 100]. Returns True if successful.
+                                                                         # Refer to section "Studio and AI Scripting APIs" for prerequisites.
   ResetAllNodeColors()                            --> Bool               # Reset node color for all nodes in the active version of the clip. Returns True if successful.
 
 Gallery
@@ -526,7 +574,7 @@ Graph
                                                                          # The lutPath can be an absolute path, or a relative path (based off custom LUT paths or the master LUT path).
                                                                          # The operation is successful for valid lut paths that Resolve has already discovered (see Project.RefreshLUTList).
   GetLUT(nodeIndex)                               --> String             # Gets relative LUT path based on the node index provided, 1 <= nodeIndex <= total number of nodes.
-  SetNodeCacheMode(nodeIndex, cache_value)        --> Bool               # Sets the cache mode type on the node mapping the node index provided. Refer to "Cache Mode" section below to find the possible values of cache_value.
+  SetNodeCacheMode(nodeIndex, cache_value)        --> Bool               # Sets the cache mode type on the node mapping the node index provided. Refer to section "Cache Mode" below to find the possible values of cache_value.
   GetNodeCacheMode(nodeIndex)                     --> cache_value        # Returns the cache mode type on the node mapping the node index provided.
   GetNodeLabel(nodeIndex)                         --> string             # Returns the label of the node at nodeIndex.
   GetToolsInNode(nodeIndex)                       --> [toolsList]        # Returns toolsList (list of strings) of the tools used in the node indicated by given nodeIndex (int).
@@ -948,6 +996,38 @@ as a single argument.
 
 Getting the values for the keys that uses constants will return the number which is in the constant
 
+Studio and AI Scripting APIs
+----------------------------
+The DaVinci Resolve scripting APIs cover a common superset of functions for both the Free and Studio versions of the application.
+
+API calls can return with a False status (or an appropriate error status) when:
+* the function references a Studio function from the free DaVinci Resolve version.
+* the minimum system requirements of the function are not satisfied. To check if your system is capable, invoke the function from the GUI and check for error dialogs.
+* the requisite Extras have not been downloaded.
+
+The following functions require one or more Extras downloads:
+* AnalyzeForIntellisearch(identifyFaces, isBetterMode=False) requires AI IntelliSearch - Faster.
+* AnalyzeForIntellisearch(identifyFaces, isBetterMode=True) requires AI IntelliSearch - Better.
+* AnalyzeForSlate(markerColor) requires AI Slate ID.
+* Transcription workflows with extended language models. Languages from built in models will be used as a fallback if unavailable.
+* GenerateSpeech({speechGenerationSettings}, timecode) requires AI Speech Generator.
+
+For a successful API call, the required package will need to be installed before script invocation. Go to the DaVinci Resolve Studio application menu, open the Extras Download Manager and install the required package.
+
+Motion Deblur Settings
+-----------------------------------
+This section covers the supported settings for the method RemoveMotionBlur({deblurOption})
+
+The deblurOption setting is a dictionary containing the following keys:
+    - "FileName": string
+    - "Format": string (example: "mov", "mp4").
+    - "Codec": string (example: "H264", "ProRes422")
+    - "EncodingProfile": string (example: "Main10"). Can only be set for H.264 and H.265.
+    - "UseExtremeMode": bool
+    - "UseMarkInMarkOut": bool
+    - "RenderAtSourceRes": bool
+    - "UseMoreGpuMemory": bool
+
 ExportLUT notes
 ---------------
 The following section covers additional notes for TimelineItem.ExportLUT(exportType, path).
@@ -957,6 +1037,43 @@ Supported values for 'exportType' (enum) are:
     - resolve.EXPORT_LUT_33PTCUBE
     - resolve.EXPORT_LUT_65PTCUBE
     - resolve.EXPORT_LUT_PANASONICVLUT
+
+Analyze Slate Settings
+-----------------------------------
+This section covers the supported settings for the method AnalyzeForSlate(markerColor)
+  markerColor can be one of the following constants:
+    - resolve.MARKER_BLUE
+    - resolve.MARKER_CYAN
+    - resolve.MARKER_GREEN
+    - resolve.MARKER_YELLOW
+    - resolve.MARKER_RED
+    - resolve.MARKER_PINK
+    - resolve.MARKER_PURPLE
+    - resolve.MARKER_FUCHSIA
+    - resolve.MARKER_ROSE
+    - resolve.MARKER_LAVENDER
+    - resolve.MARKER_SKY
+    - resolve.MARKER_MINT
+    - resolve.MARKER_LEMON
+    - resolve.MARKER_SAND
+    - resolve.MARKER_COCOA
+    - resolve.MARKER_CREAM
+
+Speech Generation Settings
+-----------------------------------
+This section covers the supported settings for the method GenerateSpeech({speechGenerationSettings}, timecode)
+
+The speechGenerationSettings is a dictionary containing the following keys:
+    - "TextInput": string
+    - "VoiceModel": string (example: "Female 1", "Male 1", "Custom Voice").
+    - "CustomVoiceFile": string "Full Path of Voice File"
+    - "Speed": int
+    - "Variation": int
+    - "Pitch": int
+    - "GenerationID": int
+    - "Filename" : string
+    - "AddToTimeline" : bool
+    - "AudioTrack": int
 
 Deprecated Resolve API Functions
 --------------------------------
