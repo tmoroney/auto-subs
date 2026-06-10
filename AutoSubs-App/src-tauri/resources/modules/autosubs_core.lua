@@ -93,6 +93,22 @@ local mediaPool = project:GetMediaPool()
 
 local ANIMATED_CAPTION = "AutoSubs Caption"
 local defaultTemplateImportAttempted = false
+local lastProjectId = project:GetUniqueId()
+
+-- Refresh the cached project / mediaPool references and detect project
+-- switches. When the user opens a different Resolve project the old
+-- mediaPool no longer contains the AutoSubs Caption template, so we
+-- must reset the one-shot import guard so get_templates() will try
+-- the import again.
+local function refresh_project()
+    project = projectManager:GetCurrentProject()
+    mediaPool = project:GetMediaPool()
+    local currentId = project:GetUniqueId()
+    if currentId ~= lastProjectId then
+        defaultTemplateImportAttempted = false
+        lastProjectId = currentId
+    end
+end
 
 local STYLE_INDEX = {
     Fill = 1,
@@ -306,9 +322,8 @@ get_template_item = function(folder, templateName)
 end
 
 function GetTimelineInfo()
-    -- Get project and media pool
-    project = projectManager:GetCurrentProject()
-    mediaPool = project:GetMediaPool()
+    -- Get project and media pool (resets template-import flag on project switch)
+    refresh_project()
 
     -- Get timeline info
     local timelineInfo = {}
@@ -335,8 +350,7 @@ function GetTimelineInfo()
 end
 
 function GetTemplates()
-    project = projectManager:GetCurrentProject()
-    mediaPool = project:GetMediaPool()
+    refresh_project()
     return get_templates()
 end
 
@@ -947,6 +961,13 @@ local function get_template(rootFolder, templateName)
     if templateName ~= nil and templateName ~= "" then
         templateItem = get_template_item(rootFolder, templateName)
     end
+    -- If the template wasn't found, trigger get_templates() which will
+    -- auto-import the default caption-bin.drb if it hasn't been tried for
+    -- this project yet, then retry the lookup.
+    if not templateItem and templateName ~= nil and templateName ~= "" then
+        get_templates()
+        templateItem = get_template_item(rootFolder, templateName)
+    end
     if not templateItem then
         templateItem = get_template_item(rootFolder, "Default Template")
     end
@@ -1203,6 +1224,7 @@ end
 -- presetSettings: optional opaque table of AutoSubs Caption macro input values
 -- (captured via StartPresetEdit/CapturePresetSettings). Ignored for non-animated templates.
 function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSettings)
+    refresh_project()
     resolve:OpenPage("edit")
 
     local data, loadErr = load_subtitle_data(filePath)
@@ -1365,6 +1387,7 @@ end
 -- `language` (optional): ISO code of the transcript this preview represents,
 -- used for language-aware font fallback on the AutoSubs Caption macro.
 function GeneratePreview(speaker, templateName, presetSettings, exportDir, language)
+    refresh_project()
     local timeline = project:GetCurrentTimeline()
     if not timeline then
         return make_error("Failed to generate preview", "No active timeline in Resolve")
@@ -1373,6 +1396,11 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
 
     -- Resolve the template item
     local templateItem = get_template_item(rootFolder, templateName)
+    if not templateItem then
+        -- Template missing — trigger auto-import and retry
+        get_templates()
+        templateItem = get_template_item(rootFolder, templateName)
+    end
     if not templateItem then
         return make_error("Failed to generate preview",
             "Could not find subtitle template '" .. tostring(templateName) .. "' in media pool")
@@ -1480,6 +1508,7 @@ function StartPresetEdit(initialSettings)
         return { error = "A preset edit is already in progress" }
     end
 
+    refresh_project()
     local timeline = project:GetCurrentTimeline()
     if not timeline then
         return { error = "No active timeline" }
@@ -1487,6 +1516,11 @@ function StartPresetEdit(initialSettings)
 
     local rootFolder = mediaPool:GetRootFolder()
     local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
+    if not templateItem then
+        -- Template missing — trigger auto-import and retry
+        get_templates()
+        templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
+    end
     if not templateItem then
         return { error = "Could not find '" .. ANIMATED_CAPTION .. "' template in media pool" }
     end
