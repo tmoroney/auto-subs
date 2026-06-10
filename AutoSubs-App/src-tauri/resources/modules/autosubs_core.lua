@@ -148,6 +148,9 @@ local function read_json_file(file_path)
     end
 
     -- Parse the JSON content
+    if not json or not json.decode then
+        return nil, "JSON library not available"
+    end
     local data, _, err = json.decode(content, 1, nil)
     if err then
         return nil, tostring(err)
@@ -602,7 +605,10 @@ local function get_marker_range(timeline)
     local startFrame = timeline:GetStartFrame()
     local endFrame = timeline:GetEndFrame()
 
-    local marks = timeline:GetMarkInOut() or {}
+    local marks = {}
+    if timeline.GetMarkInOut then
+        marks = timeline:GetMarkInOut() or {}
+    end
     -- Prefer audio markers; fall back to video if audio not present
     local m = marks["audio"] or marks["video"] or {}
 
@@ -905,9 +911,14 @@ local function get_mark_in_out(timeline, data)
 
     if not markIn or not markOut then
         local success, err = pcall(function()
-            local markInOut = timeline:GetMarkInOut()
-            markIn = (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
-            markOut = (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
+            if timeline.GetMarkInOut then
+                local markInOut = timeline:GetMarkInOut()
+                markIn = (markInOut.audio["in"] and markInOut.audio["in"] + timelineStart) or timelineStart
+                markOut = (markInOut.audio["out"] and markInOut.audio["out"] + timelineStart) or timelineEnd
+            else
+                markIn = timelineStart
+                markOut = timelineEnd
+            end
         end)
 
         if not success then
@@ -1747,38 +1758,38 @@ function StartServer()
                             if data.func == "GetTimelineInfo" then
                                 print("[AutoSubs Server] Retrieving Timeline Info...")
                                 local timelineInfo = GetTimelineInfo()
-                                body = json.encode(timelineInfo)
+                                body = safe_json(timelineInfo)
                             elseif data.func == "GetTemplates" then
                                 print("[AutoSubs Server] Retrieving Templates...")
                                 local templates = GetTemplates()
-                                body = json.encode(templates)
+                                body = safe_json(templates)
                             elseif data.func == "JumpToTime" then
                                 print("[AutoSubs Server] Jumping to time...")
                                 JumpToTime(data.seconds)
-                                body = json.encode({
+                                body = safe_json({
                                     message = "Jumped to time"
                                 })
                             elseif data.func == "ExportAudio" then
                                 print("[AutoSubs Server] Exporting audio...")
                                 local audioInfo = ExportAudio(data.outputDir, data.inputTracks, data.exportRange)
-                                body = json.encode(audioInfo)
+                                body = safe_json(audioInfo)
                             elseif data.func == "GetExportProgress" then
                                 print("[AutoSubs Server] Getting export progress...")
                                 local progressInfo = GetExportProgress()
-                                body = json.encode(progressInfo)
+                                body = safe_json(progressInfo)
                             elseif data.func == "CancelExport" then
                                 print("[AutoSubs Server] Cancelling export...")
                                 local cancelResult = CancelExport()
-                                body = json.encode(cancelResult)
+                                body = safe_json(cancelResult)
                             elseif data.func == "CheckTrackConflicts" then
                                 print("[AutoSubs Server] Checking track conflicts...")
                                 local conflictInfo = CheckTrackConflicts(data.filePath, data.trackIndex)
-                                body = json.encode(conflictInfo)
+                                body = safe_json(conflictInfo)
                             elseif data.func == "AddSubtitles" then
                                 print("[AutoSubs Server] Adding subtitles to timeline...")
                                 local result = AddSubtitles(data.filePath, data.trackIndex, data.templateName,
                                     data.conflictMode, data.presetSettings)
-                                body = json.encode({
+                                body = safe_json({
                                     message = "Job completed",
                                     result = result
                                 })
@@ -1786,19 +1797,19 @@ function StartServer()
                                 print("[AutoSubs Server] Generating preview...")
                                 local previewResult = GeneratePreview(data.speaker, data.templateName,
                                     data.presetSettings, data.exportPath, data.language)
-                                body = json.encode(previewResult)
+                                body = safe_json(previewResult)
                             elseif data.func == "StartPresetEdit" then
                                 print("[AutoSubs Server] Starting caption preset edit...")
                                 local result = StartPresetEdit(data.initialSettings)
-                                body = json.encode(result)
+                                body = safe_json(result)
                             elseif data.func == "CapturePresetSettings" then
                                 print("[AutoSubs Server] Capturing caption preset settings...")
                                 local result = CapturePresetSettings()
-                                body = json.encode(result)
+                                body = safe_json(result)
                             elseif data.func == "CancelPresetEdit" then
                                 print("[AutoSubs Server] Cancelling caption preset edit...")
                                 local result = CancelPresetEdit()
-                                body = json.encode(result)
+                                body = safe_json(result)
                             elseif data.func == "Exit" then
                                 body = safe_json({ message = "Server shutting down" })
                                 quitServer = true
