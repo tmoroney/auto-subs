@@ -83,7 +83,7 @@ For command-line usage, see the **[CLI Guide](CLI.md)** with complete reference,
 - **[CLI Guide](CLI.md)** - Command-line interface reference
 - **[Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution workflow
 - **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
-- **[Resolve Integration](Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Resolve Integration](Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 - **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
 
 > [!TIP]
@@ -119,7 +119,7 @@ Select a Preset Style |  Or create your own
 
 PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started, including the dev setup and a full codebase walkthrough via **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 
-For detailed information about the DaVinci Resolve integration architecture, Lua server, Fusion macro system, and development workflow, see [Resolve Integration/README.md](Resolve%20Integration/README.md).
+For detailed information about the DaVinci Resolve integration architecture, Lua server, Fusion macro system, and development workflow, see [Resolve-Integration/README.md](Resolve-Integration/README.md).
 
 ---
 

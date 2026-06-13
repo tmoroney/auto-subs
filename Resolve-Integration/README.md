@@ -1,4 +1,4 @@
-# AutoSubs DaVinci Resolve Integration
+# AutoSubs DaVinci Resolve-Integration
 
 This document describes how AutoSubs integrates with DaVinci Resolve: architecture, communication protocol, Lua server, Fusion macro, and development workflow.
 

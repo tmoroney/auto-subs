@@ -84,4 +84,4 @@ During development the headless binary is at `src-tauri/target/debug/autosubs` (
 - [Main README](README.md) - Installation and general usage
 - [Contributing Guide](CONTRIBUTING.md) - Development setup
 - [AutoSubs-App README](AutoSubs-App/README.md) - Technical architecture
-- [Resolve Integration](Resolve%20Integration/README.md) - DaVinci Resolve integration details
+- [Resolve Integration](Resolve-Integration/README.md) - DaVinci Resolve integration details

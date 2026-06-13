@@ -7,7 +7,7 @@ A cross-platform desktop app for generating subtitles with speaker diarization, 
 - **[CLI Guide](../CLI.md)** - Command-line interface reference
 - **[Contributing Guide](../CONTRIBUTING.md)** - Development setup and contribution workflow
 - **[AGENTS.md](../AGENTS.md)** - AI agent context with architecture gotchas and bridge details
-- **[Resolve Integration](../Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Resolve Integration](../Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 - **[Adobe Extension](../Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
 
 ## Tech Stack
@@ -56,7 +56,7 @@ graph TB
         HF[HuggingFace Hub<br><i>model downloads</i>]
     end
 
-    subgraph Resolve ["DaVinci Resolve Integration (Optional)"]
+    subgraph Resolve ["DaVinci Resolve-Integration (Optional)"]
         LUA[AutoSubs.lua Script]
     end
 

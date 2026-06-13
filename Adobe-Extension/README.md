@@ -7,7 +7,7 @@ This package contains the Adobe CEP extension that lets AutoSubs communicate wit
 - **[Main README](../README.md)** - Installation and general usage
 - **[Contributing Guide](../CONTRIBUTING.md)** - Development setup and contribution workflow
 - **[AutoSubs-App README](../AutoSubs-App/README.md)** - Technical architecture and code organization
-- **[Resolve Integration](../Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Resolve Integration](../Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 
 ## High-level architecture
 

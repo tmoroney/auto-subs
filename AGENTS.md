@@ -26,7 +26,7 @@ flowchart TD
 * **The Server**: Runs directly inside Resolve's LuaJIT environment, powered by [ljsocket.lua](AutoSubs-App/src-tauri/resources/modules/ljsocket.lua).
 * **The Gotcha**: The frontend does *not* talk to the Lua server directly. Tauri's webview HTTP plugin hangs when processing Resolve's short, unbuffered `Connection: close` responses.
 * **The Solution**: All HTTP traffic is proxied through the Rust backend command `resolve_bridge` ([resolve_bridge.rs](AutoSubs-App/src-tauri/src/resolve_bridge.rs)) using `reqwest`.
-* **Documentation**: Comprehensive documentation of the Resolve integration architecture, Lua server API, Fusion macro system, and development workflow is available in [Resolve Integration/README.md](Resolve%20Integration/README.md).
+* **Documentation**: Comprehensive documentation of the Resolve integration architecture, Lua server API, Fusion macro system, and development workflow is available in [Resolve-Integration/README.md](Resolve-Integration/README.md).
 
 ### 2. Local AI Execution & Cargo Features
 * **Engines**: Transcription is handled by `whisper-rs` (C++ bindings) and `transcribe-rs` (ONNX via `ort` for Moonshine/Parakeet). Diarization is a custom Pyannote port in Rust ([diarize](AutoSubs-App/src-tauri/crates/diarize)).
@@ -44,7 +44,7 @@ flowchart TD
 ### 3. DaVinci Resolve Sandboxing & Wide Characters (Windows)
 * Resolve's Lua engine is sandboxed. On Windows, file access fails on paths containing special or non-ASCII characters if standard Lua `io.open` is used.
 * **Solution**: [AutoSubs.lua](AutoSubs-App/src-tauri/resources/AutoSubs.lua) uses LuaJIT FFI to declare and invoke native Windows APIs (`MultiByteToWideChar` and `_wfopen`) to safely handle file encodings.
-* **Fusion Macro**: The animated caption macro is stored at [Resolve Integration/autosubs-macro.setting](Resolve%20Integration/autosubs-macro.setting). See [Resolve Integration/README.md](Resolve%20Integration/README.md) for editing instructions and workflow.
+* **Fusion Macro**: The animated caption macro is stored at [Resolve-Integration/autosubs-macro.setting](Resolve-Integration/autosubs-macro.setting). See [Resolve-Integration/README.md](Resolve-Integration/README.md) for editing instructions and workflow.
 
 ### 4. Adobe CEP WebSocket Bridge (Port `8185`)
 * Communicates with Adobe Premiere Pro and After Effects through the bundled CEP extension ([Adobe-Extension](Adobe-Extension)).
@@ -76,5 +76,5 @@ Always install dependencies inside `AutoSubs-App/` and compile using these targe
 - **[Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution workflow
 - **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
 - **[CLI Guide](CLI.md)** - Command-line interface reference
-- **[Resolve Integration](Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Resolve Integration](Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 - **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details

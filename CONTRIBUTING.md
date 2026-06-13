@@ -8,7 +8,7 @@ I welcome contributions from everyone. I will try to review any pull requests as
 
 - **[CLI Guide](CLI.md)** - Command-line interface reference
 - **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
-- **[Resolve Integration](Resolve%20Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Resolve Integration](Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 - **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
 - **[AGENTS.md](AGENTS.md)** - AI agent context with architecture gotchas and bridge details
 
@@ -97,7 +97,7 @@ In addition to the standard Tauri prerequisites, Windows builds require:
 
 Backend code lives under `AutoSubs-App/src-tauri/`. For a full breakdown of the codebase before diving in, see the **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
 
-For detailed information about the DaVinci Resolve integration (architecture, Lua server, Fusion macro system, and development workflow), see [Resolve Integration/README.md](Resolve%20Integration/README.md).
+For detailed information about the DaVinci Resolve integration (architecture, Lua server, Fusion macro system, and development workflow), see [Resolve-Integration/README.md](Resolve-Integration/README.md).
 
 ---
 
