@@ -148,7 +148,7 @@ local function read_json_file(file_path)
     end
 
     -- Parse the JSON content
-    if not json or not json.decode then
+    if json == nil or json.decode == nil then
         return nil, "JSON library not available"
     end
     local data, _, err = json.decode(content, 1, nil)
