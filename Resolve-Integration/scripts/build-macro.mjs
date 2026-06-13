@@ -6,13 +6,20 @@
 //
 //   1. AutoSubs-App/src-tauri/resources/modules/macro_logic.lua
 //      A Lua module ({ version, blocks, data }) shipped as a Tauri resource and
-//      injected into the live macro at runtime by autosubs_core.lua. This is how
-//      logic changes reach users WITHOUT re-exporting caption-bin.drb.
+//      injected into the live macro at runtime by autosubs_core.lua. This is a
+//      dev-iteration convenience that patches a running macro instance so logic
+//      edits take effect in-session. It does NOT replace re-exporting the bin.
 //
 //   2. Resolve-Integration/autosubs-macro.setting
 //      The same blocks are written back between `-- @macro-src:begin/end`
 //      sentinel markers in CustomData, so the standalone .setting stays runnable
-//      for in-Fusion editing. (The binary caption-bin.drb is NOT touched.)
+//      for in-Fusion editing.
+//
+// NOTE: this script does NOT touch the binary caption-bin.drb. The .drb is the
+// canonical macro shipped to users — it carries the node graph and the controls
+// exposed on the timeline clip's Inspector — so it must be re-exported by hand
+// as part of any PR that changes the macro. See Resolve-Integration/README.md
+// "Updating the Macro Bin for PRs".
 //
 // The script is idempotent: running it twice produces no git diff.
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdtempSync, rmSync } from "node:fs";

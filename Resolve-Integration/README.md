@@ -134,14 +134,25 @@ macro-src/*.lua
 ```
 
 Because the macro runs its helpers via `loadstring(tool:GetData("Name"))()`, the
-app injects the bundled logic at runtime — so **changing an animation or other
-logic ships through the app without re-exporting `caption-bin.drb`.** Only graph
-/ `UserControl` changes require a `.drb` re-export.
+app injects the bundled logic into a live macro at runtime. This is a
+**dev-iteration convenience**: it lets logic edits take effect in-session
+without re-importing the bin.
+
+> **The `.drb` is still the canonical macro and must be re-exported for every
+> macro PR.** `caption-bin.drb` is what users receive — it carries the node graph
+> and the controls exposed on the **timeline clip's Inspector**. Runtime
+> injection only patches logic on a live instance during an AutoSubs session; it
+> never changes the bin users install. Re-export `caption-bin.drb` whenever you
+> change the macro (logic *or* graph) — see
+> ["Updating the Macro Bin for PRs"](#updating-the-macro-bin-for-prs).
 
 - To change **logic** (animations, highlight, word timing): edit `macro-src/`,
-  run `npm run build:macro`, test, PR. See
+  run `npm run build:macro`, test, then re-export the bin and PR. See
   [`macro-src/README.md`](macro-src/README.md) and the "add a new animation"
   flow there.
+- To change the **graph / controls** (new `UserControl`, node, color/slider):
+  author it in Fusion, then re-export the bin. New input controls must also be
+  added to `macro-src/data/input_keys.lua`.
 - The `CustomData` region between `-- @macro-src:begin` and `-- @macro-src:end`
   in `autosubs-macro.setting` is generated — do not hand-edit it.
 
@@ -168,7 +179,9 @@ irm https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master
 - **Logic only** (animations, highlight, word timing, preset get/set) — edit the
   `.lua` files in [`macro-src/`](macro-src/), run `npm run build:macro`, and test
   with `scripts/test-macro-logic.lua` (offline) or `scripts/test-macro.lua`
-  (live render in Resolve). **No Fusion round-trip, no `.drb` re-export.** See
+  (live render in Resolve). **No Fusion *authoring*** (no new nodes/controls),
+  but you still **re-export `caption-bin.drb`** before opening the PR so the
+  shipped template carries the change. See
   [`macro-src/README.md`](macro-src/README.md).
 - **Graph / controls** (new `UserControl`, new node, new color/slider) — edit in
   Fusion as below, then re-export `caption-bin.drb` (see "Updating the Macro Bin
@@ -198,13 +211,22 @@ For a **logic-only** change (the common case — animations, highlight, word tim
 4. Test: `luajit Resolve-Integration/scripts/test-macro-logic.lua` (offline) and,
    ideally, `fuscript Resolve-Integration/scripts/test-macro.lua <animationId>`
    in a live Resolve session.
+5. **Re-export `caption-bin.drb`** so the shipped template carries the change,
+   then commit it — see
+   ["Updating the Macro Bin for PRs"](#updating-the-macro-bin-for-prs) below.
 
-You do **not** need to re-export `caption-bin.drb` for a logic change — the app
-injects the bundled logic at runtime.
+> **The `.drb` re-export in step 5 is mandatory for every macro PR**, including
+> logic-only changes. Runtime injection only patches a live macro during an
+> AutoSubs session; the bin is what users actually install, and it is also what
+> determines the controls exposed on the timeline clip's Inspector. Skipping the
+> re-export ships stale logic to users.
 
-### Updating the Macro Bin for PRs (graph / control changes)
+### Updating the Macro Bin for PRs
 
-When your PR changes the **node graph or UserControls**, update the caption bin:
+Re-export the caption bin for **any** PR that changes the macro — both logic
+changes and graph / `UserControl` changes. The `.drb` is the canonical macro
+shipped to users and determines the controls exposed on the timeline clip's
+Inspector, so it must always reflect the current `macro-src/` logic and graph:
 
 1. In Resolve, drag the Fusion Text with the updated macro loaded into your media pool
 2. **Important:** Name the new clip exactly "AutoSubs Caption" — this name is hardcoded in `autosubs_core.lua`
@@ -217,12 +239,12 @@ When your PR changes the **node graph or UserControls**, update the caption bin:
    `-- @macro-src:end` line inside `CustomData` and run the build again).
 
 This ensures that users who install the app receive the updated macro, and that
-the `.drb`'s baked logic stays in sync with `macro-src/` (important because the
-baked logic is the fallback used outside an AutoSubs session).
+the `.drb`'s baked logic and graph stay in sync with `macro-src/`.
 
 > **Re-sync rule:** the runtime-injected logic (`macro_logic.lua`) and the baked
-> `.drb` logic can drift. Keep them aligned by re-exporting the `.drb` from the
-> build-updated `.setting` whenever you cut a release that changed macro logic.
+> `.drb` logic can otherwise drift. Re-export the `.drb` from the build-updated
+> `.setting` on every PR that changes the macro — not just at release time — so
+> the bin never lags behind `macro-src/`.
 
 ## Development Workflow
 

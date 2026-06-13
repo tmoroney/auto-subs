@@ -45,14 +45,22 @@ the live "AutoSubs" macro instance on the timeline runs the fresh logic
 ```
 
 The macro's helpers all run via `loadstring(tool:GetData("Name"))()`, so
-injecting fresh strings under those keys overrides whatever is baked into
-`caption-bin.drb`. **This means a logic change ships via the app without
-re-exporting the `.drb`.** The `.drb`'s embedded logic is only a bootstrap /
-fallback (used when a user pokes the macro outside an AutoSubs session).
+injecting fresh strings under those keys patches a running macro instance with
+this build's logic. **This is a dev-iteration convenience** — it lets logic
+edits take effect in-session without re-importing the bin.
+
+> **It is NOT a substitute for re-exporting the bin.** `caption-bin.drb` is the
+> canonical macro shipped to users: it carries the node graph and the controls
+> exposed on the **timeline clip's Inspector** (not just the Fusion page). Any
+> PR that changes the macro must re-export `caption-bin.drb` — see the PR
+> checklist in [Resolve-Integration/README.md](../README.md). Runtime injection
+> only patches logic on a live instance during an AutoSubs session; it cannot
+> change what controls a freshly imported template exposes.
 
 `build-macro.mjs` also writes the same blocks back into
 `autosubs-macro.setting` between `-- @macro-src:begin` / `-- @macro-src:end`
 markers, so the standalone `.setting` stays runnable for in-Fusion editing.
+`build-macro.mjs` does **not** touch the binary `.drb`.
 
 ## Build
 
@@ -102,21 +110,23 @@ by the build: `fade_helper` (from `fade_helper.lua`) and `helpers` (from
 
 ## Add a new animation
 
-If your animation reuses existing controls (opacity / size / offset) you never
-need to touch Fusion or re-export the `.drb`:
+If your animation reuses existing controls (opacity / size / offset) you don't
+need to author anything in Fusion (no new nodes or `UserControl`s):
 
 1. `cp animations/pop_in.lua animations/bounce.lua`
 2. Edit `bounce.lua`: set `id`, `label`, `controlKey`, `usesFade`, and the
    `apply` / `reset` keyframe logic.
 3. Add `"bounce"` to `animations/_registry.lua` (order = apply order).
 4. If it needs a **new** toggle, add a `UserControl` + an `input_keys.lua` entry
-   and re-export `caption-bin.drb` (the only step that requires Fusion — see
-   [Resolve-Integration/README.md](../README.md)). If it reuses an existing
-   control, skip this.
+   in Fusion (the only step that requires Fusion *authoring*). If it reuses an
+   existing control, skip this.
 5. `npm run build:macro`
 6. Sanity-check offline: `luajit scripts/test-macro-logic.lua`
 7. Render it live in Resolve: `fuscript scripts/test-macro.lua bounce`
-8. Open a PR. (At release time the maintainer re-syncs `caption-bin.drb` from
-   the updated `.setting` — see the PR checklist in the integration README.)
+8. **Re-export `caption-bin.drb`** so the shipped template carries the updated
+   macro, then open a PR. This is required for every macro PR — the runtime
+   injection only patches a live instance in-session and does not update the bin
+   users receive. See the PR checklist in
+   [Resolve-Integration/README.md](../README.md).
 
 No edits to the orchestrator. No hunting through a 2,000-line file.

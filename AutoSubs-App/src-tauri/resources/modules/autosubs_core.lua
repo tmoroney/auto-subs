@@ -79,9 +79,11 @@ local socket = nil
 local json = nil
 local luaresolve = nil
 local font_fallback = nil
--- Freshly shipped caption-macro logic (generated from Resolve-Integration/macro-src
--- by build-macro.mjs). Injected into live macro instances so logic changes reach
--- users without re-exporting caption-bin.drb. nil = fall back to the macro's baked logic.
+-- Bundled caption-macro logic (generated from Resolve-Integration/macro-src by
+-- build-macro.mjs). Injected into live macro instances as a dev-iteration
+-- convenience so logic edits take effect in-session; this does NOT replace
+-- re-exporting caption-bin.drb (the canonical macro shipped to users), which is
+-- required for every macro PR. nil = run the macro's baked-in (.drb) logic.
 local macro_logic = nil
 
 -- OS SPECIFIC CONFIGURATION
@@ -1156,14 +1158,20 @@ local function to_word_timing(transcript_words, frameRate, segmentStart)
     return result
 end
 
--- Inject the freshly shipped macro logic into a live AutoSubs macro instance via
+-- Inject the bundled macro logic into a live AutoSubs macro instance via
 -- tool:SetData. The macro's helpers (SetInputValues, SetAnimations, the animation
 -- registry, highlight/word-timing logic, InputKeys) all run from GetData, so this
--- makes the bundled macro-src logic take effect at runtime — no caption-bin.drb
--- re-export needed for logic changes.
+-- patches the running instance with the macro-src logic from this app build.
+--
+-- This is a DEV-ITERATION CONVENIENCE so logic edits take effect in-session
+-- without re-importing the bin. It is NOT a substitute for re-exporting
+-- caption-bin.drb: the bin is the canonical macro shipped to users (it carries
+-- the node graph and the controls exposed on the timeline clip's Inspector), and
+-- it must be re-exported as part of any PR that changes the macro. See
+-- Resolve-Integration/README.md "Updating the Macro Bin for PRs".
 --
 -- Best-effort and guarded: if the bundle is missing or any SetData fails, the
--- macro's baked-in (.drb) logic is used instead. Returns true if injected.
+-- macro's baked-in (.drb) logic runs unchanged. Returns true if injected.
 local function inject_macro_logic(tool)
     if not tool or not macro_logic then return false end
     local ok = pcall(function()
