@@ -119,6 +119,32 @@ The macro is a Fusion template stored as a `.setting` file. It renders animated 
 
 Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), and word-timing highlight updates (`UpdateHighlight`).
 
+### Where the macro logic lives (`macro-src/`)
+
+The embedded `CustomData` Lua is **generated** — the source of truth is
+[`macro-src/`](macro-src/), a tree of real `.lua` files (one per logic block,
+one per animation). A build step bundles them and injects them into the macro:
+
+```
+macro-src/*.lua
+   │  npm run build:macro  (Resolve-Integration/scripts/build-macro.mjs)
+   ├─► AutoSubs-App/src-tauri/resources/modules/macro_logic.lua   (shipped bundle)
+   │      └─ injected into the live macro at runtime by autosubs_core.lua (tool:SetData)
+   └─► autosubs-macro.setting  (blocks written back between @macro-src markers)
+```
+
+Because the macro runs its helpers via `loadstring(tool:GetData("Name"))()`, the
+app injects the bundled logic at runtime — so **changing an animation or other
+logic ships through the app without re-exporting `caption-bin.drb`.** Only graph
+/ `UserControl` changes require a `.drb` re-export.
+
+- To change **logic** (animations, highlight, word timing): edit `macro-src/`,
+  run `npm run build:macro`, test, PR. See
+  [`macro-src/README.md`](macro-src/README.md) and the "add a new animation"
+  flow there.
+- The `CustomData` region between `-- @macro-src:begin` and `-- @macro-src:end`
+  in `autosubs-macro.setting` is generated — do not hand-edit it.
+
 ### Recommended Development Extension
 
 For editing `.setting` files, the **[Fusion Setting Highlighter](https://github.com/tmoroney/fusion-setting-highlighter)** extension is highly recommended. It provides syntax highlighting for Fusion `.setting` files with full embedded Lua support inside script blocks.
@@ -137,7 +163,19 @@ irm https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master
 
 ### Editing the Macro
 
-You need a Fusion text clip on the timeline to open in the Fusion page. The easiest starting point is the "AutoSubs Caption" clip in the **AutoSubs** bin in your media pool:
+**First decide what you're changing:**
+
+- **Logic only** (animations, highlight, word timing, preset get/set) — edit the
+  `.lua` files in [`macro-src/`](macro-src/), run `npm run build:macro`, and test
+  with `scripts/test-macro-logic.lua` (offline) or `scripts/test-macro.lua`
+  (live render in Resolve). **No Fusion round-trip, no `.drb` re-export.** See
+  [`macro-src/README.md`](macro-src/README.md).
+- **Graph / controls** (new `UserControl`, new node, new color/slider) — edit in
+  Fusion as below, then re-export `caption-bin.drb` (see "Updating the Macro Bin
+  for PRs"). New input controls must also be added to
+  `macro-src/data/input_keys.lua` so presets capture them.
+
+The rest of this section is for **graph** edits. You need a Fusion text clip on the timeline to open in the Fusion page. The easiest starting point is the "AutoSubs Caption" clip in the **AutoSubs** bin in your media pool:
 
 1. If the bin isn't in your media pool, drag `AutoSubs-App/src-tauri/resources/AutoSubs/caption-bin.drb` into the media pool to import it.
 2. Drag the **AutoSubs Caption** clip from the bin onto the timeline.
@@ -145,17 +183,46 @@ You need a Fusion text clip on the timeline to open in the Fusion page. The easi
 4. Delete the existing macro node.
 5. Drag `autosubs-macro.setting` into the Fusion page — it appears as a node and is ready to edit.
 
-### Updating the Macro Bin for PRs
+### PR checklist: logic changes
 
-When making a PR that changes the macro, you must update the caption bin in the repository:
+For a **logic-only** change (the common case — animations, highlight, word timing):
+
+1. Edit the relevant files under `macro-src/`.
+2. Run `npm run build:macro`. This regenerates
+   `AutoSubs-App/src-tauri/resources/modules/macro_logic.lua` and re-injects the
+   blocks into `autosubs-macro.setting`.
+3. **Commit both** the generated `macro_logic.lua` and the updated
+   `autosubs-macro.setting` along with your `macro-src/` edits. (`macro_logic.lua`
+   is committed so the app builds without running the macro build; the build is
+   idempotent so this never causes spurious diffs.)
+4. Test: `luajit Resolve-Integration/scripts/test-macro-logic.lua` (offline) and,
+   ideally, `fuscript Resolve-Integration/scripts/test-macro.lua <animationId>`
+   in a live Resolve session.
+
+You do **not** need to re-export `caption-bin.drb` for a logic change — the app
+injects the bundled logic at runtime.
+
+### Updating the Macro Bin for PRs (graph / control changes)
+
+When your PR changes the **node graph or UserControls**, update the caption bin:
 
 1. In Resolve, drag the Fusion Text with the updated macro loaded into your media pool
 2. **Important:** Name the new clip exactly "AutoSubs Caption" — this name is hardcoded in `autosubs_core.lua`
 3. Replace the current animated caption in the "AutoSubs" bin
 4. Export the "AutoSubs" bin
 5. Replace `AutoSubs-App/src-tauri/resources/AutoSubs/caption-bin.drb` with the exported bin file
+6. Re-run `npm run build:macro` to re-inject the canonical `macro-src/` logic into
+   the freshly exported `autosubs-macro.setting` (Fusion's export drops the
+   `@macro-src` markers; if they're missing, re-add a `-- @macro-src:begin` and
+   `-- @macro-src:end` line inside `CustomData` and run the build again).
 
-This ensures that users who install the app will receive the updated macro with their caption bin.
+This ensures that users who install the app receive the updated macro, and that
+the `.drb`'s baked logic stays in sync with `macro-src/` (important because the
+baked logic is the fallback used outside an AutoSubs session).
+
+> **Re-sync rule:** the runtime-injected logic (`macro_logic.lua`) and the baked
+> `.drb` logic can drift. Keep them aligned by re-exporting the `.drb` from the
+> build-updated `.setting` whenever you cut a release that changed macro logic.
 
 ## Development Workflow
 

@@ -79,6 +79,10 @@ local socket = nil
 local json = nil
 local luaresolve = nil
 local font_fallback = nil
+-- Freshly shipped caption-macro logic (generated from Resolve-Integration/macro-src
+-- by build-macro.mjs). Injected into live macro instances so logic changes reach
+-- users without re-exporting caption-bin.drb. nil = fall back to the macro's baked logic.
+local macro_logic = nil
 
 -- OS SPECIFIC CONFIGURATION
 local assets_path
@@ -1152,6 +1156,27 @@ local function to_word_timing(transcript_words, frameRate, segmentStart)
     return result
 end
 
+-- Inject the freshly shipped macro logic into a live AutoSubs macro instance via
+-- tool:SetData. The macro's helpers (SetInputValues, SetAnimations, the animation
+-- registry, highlight/word-timing logic, InputKeys) all run from GetData, so this
+-- makes the bundled macro-src logic take effect at runtime — no caption-bin.drb
+-- re-export needed for logic changes.
+--
+-- Best-effort and guarded: if the bundle is missing or any SetData fails, the
+-- macro's baked-in (.drb) logic is used instead. Returns true if injected.
+local function inject_macro_logic(tool)
+    if not tool or not macro_logic then return false end
+    local ok = pcall(function()
+        for key, src in pairs(macro_logic.blocks or {}) do
+            tool:SetData(key, src)
+        end
+        for key, value in pairs(macro_logic.data or {}) do
+            tool:SetData(key, value)
+        end
+    end)
+    return ok
+end
+
 -- Applies subtitle text + styling to each appended timeline item. Instead of
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
@@ -1178,6 +1203,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
                     local autosubsTool = comp:FindTool("AutoSubs")
+                    inject_macro_logic(autosubsTool) -- use the latest shipped macro logic
                     autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
                     template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
 
@@ -1558,6 +1584,11 @@ function StartPresetEdit(initialSettings)
         timeline:SetCurrentTimecode(timeline:GetStartTimecode())
         local comp = timelineItem:GetFusionCompByIndex(1)
         local tool = comp:FindTool("AutoSubs")
+
+        -- Inject the latest shipped macro logic before seeding/editing so the
+        -- in-Fusion inspector buttons the user clicks during this edit session
+        -- also run the fresh logic (not just what's baked into the .drb).
+        inject_macro_logic(tool)
 
         -- Apply any existing settings so editing an existing preset starts
         -- from its current look rather than macro defaults.
@@ -1956,6 +1987,14 @@ local AutoSubs = {
         json = require("dkjson")
         luaresolve = require("libavutil")
         font_fallback = require("font_fallback")
+        -- Optional: the generated macro logic bundle. If it's missing or fails to
+        -- parse, we keep macro_logic = nil and fall back to the macro's baked logic.
+        local ok_macro_logic, ml = pcall(require, "macro_logic")
+        if ok_macro_logic and type(ml) == "table" then
+            macro_logic = ml
+        else
+            print("[AutoSubs] macro_logic bundle unavailable; using macro's baked-in logic")
+        end
 
         assets_path = join_path(resources_path, "AutoSubs")
         StartServer()
