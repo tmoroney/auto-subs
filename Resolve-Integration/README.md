@@ -119,6 +119,62 @@ The macro is a Fusion template stored as a `.setting` file. It renders animated 
 
 Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), and word-timing highlight updates (`UpdateHighlight`).
 
+### Animation Architecture
+
+All animation logic lives in `CustomData` inside `autosubs-macro.setting` as Lua long-bracket strings (`[[ ... ]]`) that are executed at runtime via `loadstring`. There are three parts:
+
+**`Animations` table** — named strings, one `ApplyX` and one `ResetX` per animation. Each function receives a single `ctx` table:
+
+```lua
+ctx = {
+    follower      -- StyledTextFollower tool
+    animStretcher -- AnimationKeyframeStretcher tool
+    animSpline    -- BezierSpline connected to the stretcher
+    animInEnd     -- frame where the in-animation ends (0–100 range)
+    animOutStart  -- frame where the out-animation starts (0–100 range)
+    mode          -- 0 = in only, 1 = out only, 2 = both
+    level         -- 0 = line, 1 = word
+}
+```
+
+**`AnimationRegistry`** — an ordered list of descriptors. `SetAnimations` loops over this; it never hardcodes individual animation names.
+
+```lua
+{ controlKey = "PopInEnabled", usesFade = true, applyKey = "ApplyPopIn", resetKey = "ResetPopIn" }
+```
+
+- `controlKey` — the `UserControl` checkbox that enables this animation
+- `usesFade` — if `true`, fade is automatically applied as a base layer when this animation is enabled (even if `FadeEnabled` is off)
+- `applyKey` / `resetKey` — keys into the `Animations` table
+
+**`SetAnimations`** — the orchestrator. On each call it: resets all registered animations, checks which are enabled and whether fade is needed, applies fade once (or flat opacity), then applies each enabled animation. It does not need to change when new animations are added.
+
+### Adding a New Animation
+
+Every animation needs its own enable/disable toggle, so adding one always involves both the logic and the Fusion node graph:
+
+1. Add `ApplyX` and `ResetX` strings to the `Animations` table in `CustomData`.
+2. Add a descriptor entry to `AnimationRegistry`.
+3. Add the control key to `InputKeys` in `CustomData` (so presets capture its value).
+4. Add a `UserControl` checkbox entry in the `UserControls = ordered()` block (around line 986), following the same pattern as `SlideUpEnabled`:
+
+```lua
+BounceEnabled = {
+    LINKS_Name = "Bounce",
+    LINKID_DataType = "Number",
+    INPID_InputControl = "CheckboxControl",
+    INP_Integer = true,
+    INP_Default = 0,
+    INP_Passive = true,
+    INP_External = false,
+    CBC_TriState = false,
+},
+```
+
+5. Re-export `caption-bin.drb` following the steps in [Updating the Macro Bin for PRs](#updating-the-macro-bin-for-prs).
+
+Steps 1–2 are pure text edits in `autosubs-macro.setting`. Steps 3–5 require opening the macro in the Fusion page.
+
 ### Recommended Development Extension
 
 For editing `.setting` files, the **[Fusion Setting Highlighter](https://github.com/tmoroney/fusion-setting-highlighter)** extension is highly recommended. It provides syntax highlighting for Fusion `.setting` files with full embedded Lua support inside script blocks.
