@@ -33,7 +33,6 @@ mod resolve_bridge;
 mod adobe_bridge;
 mod cli;
 #[cfg(target_os = "macos")]
-mod traffic_lights;
 
 // Include integration-like tests that need crate visibility
 #[cfg(test)]
@@ -203,7 +202,12 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
 
     #[cfg(target_os = "macos")]
     {
+        // Empty native title for the overlay title bar (no centered text), set
+        // at creation so we don't need a post-creation set_title that would
+        // trigger an AppKit relayout. Traffic-light position is left to Tauri's
+        // built-in `traffic_light_position`.
         builder = builder
+            .title("")
             .title_bar_style(tauri::TitleBarStyle::Overlay)
             .traffic_light_position(tauri::LogicalPosition::new(16.0_f64, 25.0_f64));
     }
@@ -290,21 +294,6 @@ fn main() {
                 }
             }
 
-            // Set traffic light position programmatically on macOS.
-            // `trafficLightPosition` in tauri.conf.json is only applied at window
-            // creation and AppKit resets the button layout on various lifecycle
-            // events in packaged builds, so re-apply it here and on window events.
-            #[cfg(target_os = "macos")]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    // Clearing the title triggers an AppKit titlebar relayout that
-                    // resets the traffic lights (tauri-apps/tauri#13044), so do it
-                    // BEFORE installing our positioner — otherwise the immediate
-                    // apply inside `install` is undone right after it runs.
-                    let _ = window.set_title("");
-                    crate::traffic_lights::install(&window);
-                }
-            }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
@@ -507,13 +496,6 @@ fn main() {
                                 let _ = window.show();
                                 let _ = window.unminimize();
                                 let _ = window.set_focus();
-                                // These late show()/set_focus() calls trigger an AppKit
-                                // titlebar relayout that resets the traffic lights, and
-                                // set_focus() on an already-focused window emits no
-                                // Focused event — so the install()-registered listener
-                                // won't fire. Re-apply explicitly to keep them aligned.
-                                #[cfg(target_os = "macos")]
-                                crate::traffic_lights::position_on_main_thread(&window);
                             }
                         }
                     });
