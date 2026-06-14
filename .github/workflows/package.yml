@@ -20,12 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-15
+          - platform: macos-26
             arch: arm64
             target: aarch64-apple-darwin
             features: mac-aarch
             pkg_suffix: ARM
-          - platform: macos-15-intel
+          - platform: macos-26-intel
             arch: x86_64
             target: x86_64-apple-darwin
             features: mac-x86_64
@@ -44,16 +44,25 @@ jobs:
           exit 1
         fi
         
-    - name: Use Xcode 16.4 (ARM only)
-      if: matrix.arch == 'arm64'
+    - name: Configure Xcode toolchain
       run: |
-        sudo xcode-select -s /Applications/Xcode_16.4.app
-        echo "DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer" >> $GITHUB_ENV
+        # Link against the macOS 26 (Tahoe) SDK so the packaged app gets the
+        # same titlebar / traffic-light layout we see in local dev. AppKit
+        # chooses the new Tahoe titlebar metrics based on the SDK the binary is
+        # linked against, NOT the deployment target — building against an older
+        # SDK (the previous Xcode 16.4 / macOS 15 SDK pin) made the traffic
+        # lights sit too low when the app runs on Tahoe. Both the macos-26 (ARM)
+        # and macos-26-intel runners' default Xcode (26.x) provides the Tahoe
+        # SDK. Deployment target stays 13.3 so we keep supporting macOS 13.3+ at
+        # runtime.
         echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
         echo "MACOSX_DEPLOYMENT_TARGET=13.3" >> $GITHUB_ENV
         echo "CC=$(xcrun -f clang)" >> $GITHUB_ENV
         echo "CXX=$(xcrun -f clang++)" >> $GITHUB_ENV
-    
+
+        # Print the resolved toolchain so the SDK version is visible in CI logs
+        # (expect macOS 26.x). If it ever regresses to 15.x the lights will drift
+        # again, so this is the first thing to check.
         xcodebuild -version
         xcrun --sdk macosx --show-sdk-version
         xcrun --sdk macosx --show-sdk-path
