@@ -7,24 +7,13 @@
 				IsEditing = false,
 				DelaySpline = "Follower1DelaybyCharacterPosition",
 				WordTiming = {
-					{
-						["startIndex"] = 0,
-						["endIndex"] = 7,
-						["startFrame"] = 0,
-						["endFrame"] = 40,
-					},
-					{
-						["startIndex"] = 8,
-						["endIndex"] = 15,
-						["startFrame"] = 40,
-						["endFrame"] = 60,
-					},
-					{
-						["startIndex"] = 16,
-						["endIndex"] = 20,
-						["startFrame"] = 60,
-						["endFrame"] = 80,
-					}
+					-- Written by Lua server. Each entry: { startIndex, endIndex, startFrame, endFrame }
+					-- Indices are 0-based character positions; frames are relative to the subtitle's own start (frame 0), not the timeline.
+					-- endFrame is unused but kept for structural symmetry with startFrame.
+					-- Example — "Subtitle Example Text":
+					{ ["startIndex"] = 0,  ["endIndex"] = 7,  ["startFrame"] = 0,  ["endFrame"] = 10 },
+					{ ["startIndex"] = 8,  ["endIndex"] = 15, ["startFrame"] = 10, ["endFrame"] = 20 },
+					{ ["startIndex"] = 16, ["endIndex"] = 20, ["startFrame"] = 20, ["endFrame"] = 30 },
 				},
 				InputKeys = {
 					"Font",
@@ -258,7 +247,7 @@
 				-- Ordered list of animation descriptors. To add a new animation:
 				--   1. Add ApplyX and ResetX strings to the Animations table above.
 				--   2. Add a descriptor entry here with controlKey, usesFade, applyKey, resetKey.
-				--   3. If a new UserControl toggle is needed, add it in Fusion and re-export caption-bin.drb.
+				--   3. Add a new UserControl toggle and add to Inputs section below.
 				AnimationRegistry = [[
 					return {
 						{ controlKey = "PopInEnabled",   usesFade = true,  applyKey = "ApplyPopIn",   resetKey = "ResetPopIn" },
@@ -934,7 +923,7 @@
 							LINKS_Name = "Animation",
 							INP_Integer = false,
 							LBLC_DropDownButton = true,
-							LBLC_NumInputs = 6,
+							LBLC_NumInputs = 7,
 							INP_SplineType = "Default",
 							INP_Default = 1,
 							LINKID_DataType = "Number",
@@ -1035,7 +1024,7 @@
 							INP_MaxScale = 1,
 							INP_Passive = true,
 							INP_External = false,
-							INP_Default = 0.35,
+							INP_Default = 0.2,
 							INP_MinScale = 0,
 							INP_MinAllowed = 0,
 							LINKID_DataType = "Number",
@@ -1057,7 +1046,7 @@
 							LINKS_Name = "Highlighter",
 							INP_Integer = false,
 							LBLC_DropDownButton = true,
-							LBLC_NumInputs = 8,
+							LBLC_NumInputs = 9,
 							INP_SplineType = "Default",
 							INP_Default = 1,
 							LINKID_DataType = "Number",
@@ -1590,88 +1579,88 @@
 					SplineColor = { Red = 240, Green = 105, Blue = 156 },
 					CtrlWZoom = false,
 					KeyFrames = {
-						[0] = { 0, RH = { 5, 0.333333333333333 }, Flags = { LockedY = true }, Value = StyledText {
+						[0] = { 0, RH = { 3, 0.333333333333333 }, Flags = { LockedY = true }, Value = StyledText {
 								Array = {
-									{ 2401, 0, 7, Index = 1, Value = 1 },
-									{ 2402, 0, 7, Index = 1 },
 									{ 2403, 0, 7, Index = 1 },
 									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1 },
-									{ 2402, 8, 15, Index = 1, Value = 0.35 },
-									{ 2403, 8, 15, Index = 1, Value = 1 },
-									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 }
-								},
-								Value = ""
-							} },
-						[15] = { 1, LH = { 10, 0.666666666666667 }, RH = { 15.3333333333333, 1.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
 									{ 2401, 0, 7, Index = 1, Value = 1 },
 									{ 2402, 0, 7, Index = 1 },
+									{ 2403, 8, 15, Index = 1, Value = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1 },
+									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 }
+								},
+								Value = ""
+							} },
+						[9] = { 1, LH = { 6, 0.666666666666667 }, RH = { 9.33333333333333, 1.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
 									{ 2403, 0, 7, Index = 1 },
 									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1 },
-									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2401, 0, 7, Index = 1, Value = 1 },
+									{ 2402, 0, 7, Index = 1 },
 									{ 2403, 8, 15, Index = 1, Value = 1 },
 									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 }
-								},
-								Value = ""
-							} },
-						[16] = { 2, LH = { 15.6666666666667, 1.66666666666667 }, RH = { 20.6666666666667, 2.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2401, 0, 7, Index = 1 },
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1, Value = 1 },
-									{ 2402, 8, 15, Index = 1 },
-									{ 2403, 8, 15, Index = 1 },
-									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 }
-								},
-								Value = ""
-							} },
-						[30] = { 3, LH = { 25.3333333333333, 2.66666666666667 }, RH = { 30.3333333333333, 3.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2401, 0, 7, Index = 1 },
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
-									{ 2401, 8, 15, Index = 1, Value = 1 },
-									{ 2402, 8, 15, Index = 1 },
-									{ 2403, 8, 15, Index = 1 },
-									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1 },
-									{ 2402, 16, 20, Index = 1, Value = 0.35 },
-									{ 2403, 16, 20, Index = 1, Value = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 }
-								},
-								Value = ""
-							} },
-						[31] = { 4, LH = { 30.6666666666667, 3.66666666666667 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
-								Array = {
-									{ 2401, 0, 7, Index = 1 },
-									{ 2402, 0, 7, Index = 1, Value = 0.35 },
-									{ 2403, 0, 7, Index = 1, Value = 1 },
-									{ 2000, 0, 7, Index = 1, Value = 1 },
 									{ 2401, 8, 15, Index = 1 },
 									{ 2402, 8, 15, Index = 1, Value = 0.35 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 }
+								},
+								Value = ""
+							} },
+						[10] = { 2, LH = { 9.66666666666667, 1.66666666666667 }, RH = { 13, 2.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 }
+								},
+								Value = ""
+							} },
+						[19] = { 3, LH = { 16, 2.66666666666667 }, RH = { 19.3333333333333, 3.33333333333333 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
+									{ 2403, 8, 15, Index = 1 },
+									{ 2000, 8, 15, Index = 1, Value = 1 },
+									{ 2401, 8, 15, Index = 1, Value = 1 },
+									{ 2402, 8, 15, Index = 1 },
+									{ 2403, 16, 20, Index = 1, Value = 1 },
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1 },
+									{ 2402, 16, 20, Index = 1, Value = 0.35 }
+								},
+								Value = ""
+							} },
+						[20] = { 4, LH = { 19.6666666666667, 3.66666666666667 }, Flags = { Linear = true, LockedY = true }, Value = StyledText {
+								Array = {
+									{ 2403, 0, 7, Index = 1, Value = 1 },
+									{ 2000, 0, 7, Index = 1, Value = 1 },
+									{ 2401, 0, 7, Index = 1 },
+									{ 2402, 0, 7, Index = 1, Value = 0.35 },
 									{ 2403, 8, 15, Index = 1, Value = 1 },
 									{ 2000, 8, 15, Index = 1, Value = 1 },
-									{ 2401, 16, 20, Index = 1, Value = 1 },
-									{ 2402, 16, 20, Index = 1 },
+									{ 2401, 8, 15, Index = 1 },
+									{ 2402, 8, 15, Index = 1, Value = 0.35 },
 									{ 2403, 16, 20, Index = 1 },
-									{ 2000, 16, 20, Index = 1, Value = 1 }
+									{ 2000, 16, 20, Index = 1, Value = 1 },
+									{ 2401, 16, 20, Index = 1, Value = 1 },
+									{ 2402, 16, 20, Index = 1 }
 								},
 								Value = ""
 							} }
@@ -2003,9 +1992,9 @@
 		Follower1DelaybyCharacterPosition = BezierSpline {
 			SplineColor = { Red = 33, Green = 7, Blue = 252 },
 			KeyFrames = {
-				[0] = { 0, RH = { 2.66666666666667, 5.33333333333333 }, Flags = { StepIn = true } },
-				[8] = { 16, LH = { 5.33333333333333, 10.6666666666667 }, RH = { 10.6666666666667, 21 }, Flags = { StepIn = true } },
-				[16] = { 31, LH = { 13.3333333333333, 26 }, Flags = { StepIn = true } }
+				[0] = { 0, RH = { 2.66666666666667, 3.33333333333333 }, Flags = { StepIn = true } },
+				[8] = { 10, LH = { 5.33333333333333, 6.66666666666667 }, RH = { 10.6666666666667, 13.3333333333333 }, Flags = { StepIn = true } },
+				[16] = { 20, LH = { 13.3333333333333, 16.6666666666667 }, Flags = { StepIn = true } }
 			}
 		},
 	}
