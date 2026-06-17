@@ -192,10 +192,8 @@ function M.get_installed_fonts()
         end
     end
     
-    -- Only cache if we actually found fonts (prevents caching an empty list if Resolve wasn't ready)
-    if next(set) ~= nil then
-        cached_fonts = set
-    end
+    -- Always cache the result, even if empty, to prevent infinite headless fuscript loops
+    cached_fonts = set
     
     return set
 end
@@ -282,7 +280,7 @@ local function find_substitute(font_name, installed)
 end
 
 function M.maybe_override(presetSettings, language)
-    local lang = normalise_lang(language) or "en"
+    if normalise_lang(language) == nil then return presetSettings, nil end
     local current = presetSettings and presetSettings.Font
     local installed = M.get_installed_fonts()
 
@@ -291,7 +289,10 @@ function M.maybe_override(presetSettings, language)
     -- This fixes built-in presets whose fonts only exist on macOS (Futura,
     -- Chalkboard, Menlo, …) when AutoSubs runs on Windows or Linux.
     if current ~= nil and current ~= M.DEFAULT_FONT then
-        local is_installed = installed[current:lower()] ~= nil
+        local is_installed = false
+        if type(current) == "string" then
+            is_installed = installed[current:lower()] ~= nil
+        end
         if not is_installed then
             local sub_entry = find_substitute(current, installed)
             if sub_entry then
