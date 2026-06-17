@@ -18,6 +18,51 @@ local M = {}
 -- default should also update this value.
 M.DEFAULT_FONT = "Arial Rounded MT Bold"
 
+-- Substitutes for fonts that ship on macOS / Linux but NOT on Windows.
+-- Used when a preset references one of these and it isn't installed.
+-- Each entry is an ordered list; the first installed candidate wins.
+M.FONT_SUBSTITUTES = {
+    -- Futura (macOS geometric sans) → Century Gothic is the closest Windows match
+    ["futura"]                 = { "Century Gothic", "Trebuchet MS", "Segoe UI", "Arial" },
+    ["futura pt"]              = { "Century Gothic", "Trebuchet MS", "Segoe UI", "Arial" },
+    ["futura condensed"]       = { "Century Gothic", "Trebuchet MS", "Arial Narrow", "Arial" },
+    -- Chalkboard (macOS chalk/handwritten) → Comic Sans is the standard Windows alt
+    ["chalkboard"]             = { "Comic Sans MS", "Segoe Print", "Segoe Script", "Arial" },
+    ["chalkboard se"]          = { "Comic Sans MS", "Segoe Print", "Segoe Script", "Arial" },
+    -- Menlo (macOS monospace) → Consolas is the standard Windows monospace
+    ["menlo"]                  = { "Consolas", "Courier New", "Lucida Console", "Arial" },
+    -- Monaco (macOS monospace fallback)
+    ["monaco"]                 = { "Consolas", "Courier New", "Lucida Console", "Arial" },
+    -- Optima (macOS humanist serif)
+    ["optima"]                 = { "Segoe UI", "Calibri", "Arial", "Tahoma" },
+    -- Helvetica Neue (macOS system sans) → Arial is the Windows default
+    ["helvetica neue"]         = { "Arial", "Calibri", "Segoe UI" },
+    ["helvetica"]              = { "Arial", "Calibri", "Segoe UI" },
+    -- Gill Sans (macOS humanist)
+    ["gill sans"]              = { "Trebuchet MS", "Segoe UI", "Calibri", "Arial" },
+    ["gill sans mt"]           = { "Trebuchet MS", "Segoe UI", "Calibri", "Arial" },
+    -- SF Pro (Apple system font)
+    ["sf pro display"]         = { "Segoe UI", "Calibri", "Arial" },
+    ["sf pro text"]            = { "Segoe UI", "Calibri", "Arial" },
+    ["sf pro"]                 = { "Segoe UI", "Calibri", "Arial" },
+    -- Avenir (macOS geometric)
+    ["avenir"]                 = { "Century Gothic", "Trebuchet MS", "Segoe UI", "Arial" },
+    ["avenir next"]            = { "Century Gothic", "Trebuchet MS", "Segoe UI", "Arial" },
+    -- Rockwell (present on some but not all Windows installs)
+    ["rockwell"]               = { "Rockwell", "Courier New", "Georgia", "Arial" },
+    -- Didot (macOS serif)
+    ["didot"]                  = { "Bodoni MT", "Georgia", "Times New Roman", "Arial" },
+    -- American Typewriter
+    ["american typewriter"]    = { "Courier New", "Consolas", "Lucida Console", "Arial" },
+    -- Marker Felt (macOS marker)
+    ["marker felt"]            = { "Comic Sans MS", "Segoe Print", "Arial" },
+    -- Zapf Dingbats / Symbol (special glyph fonts)
+    ["zapf dingbats"]          = { "Wingdings", "Symbol", "Arial" },
+    -- Apple Chancery / Zapfino (calligraphic)
+    ["apple chancery"]         = { "Segoe Script", "Comic Sans MS", "Arial" },
+    ["zapfino"]                = { "Segoe Script", "Comic Sans MS", "Arial" },
+}
+
 -- Per-script ordered candidate lists. First installed match wins. Lists
 -- combine fonts that ship pre-installed on macOS, Windows and common Linux
 -- distributions (Noto families). Add/extend conservatively; every entry here
@@ -89,6 +134,8 @@ local function normalise_lang(language)
     return language:lower()
 end
 
+local cached_fonts = nil
+
 -- Build a case-insensitive map of installed fonts. Queries Fusion's
 -- FontManager, which returns a table keyed by font family (e.g.
 -- "Noto Sans JP") whose values are per-weight subtables (Regular, Bold, W3,
@@ -100,18 +147,37 @@ end
 --   { ["noto sans jp"] = { canonical = "Noto Sans JP",
 --                          styles = { ["Regular"] = true, ["Bold"] = true } } }
 function M.get_installed_fonts()
+    if cached_fonts then return cached_fonts end
+
     local list = nil
     local ok = pcall(function()
         local fu = rawget(_G, "fusion") or rawget(_G, "fu")
+        
+        -- If missing from _G, try to get it from the resolve object
+        if not fu then
+            local r = rawget(_G, "resolve")
+            if not r and type(rawget(_G, "Resolve")) == "function" then
+                r = Resolve()
+            end
+            if r and type(r.Fusion) == "function" then
+                fu = r:Fusion()
+            end
+        end
+
+        -- Only as an absolute last resort, call Fusion() but be careful as this can spawn headless instances
         if fu == nil and type(rawget(_G, "Fusion")) == "function" then
             fu = Fusion()
         end
+        
         if fu and fu.FontManager and fu.FontManager.GetFontList then
             list = fu.FontManager:GetFontList()
         end
     end)
     local set = {}
-    if not ok or type(list) ~= "table" then return set end
+    if not ok or type(list) ~= "table" then 
+        cached_fonts = set -- Cache empty to prevent infinite re-tries that hang Resolve
+        return set 
+    end
     for name, weights in pairs(list) do
         if type(name) == "string" and name ~= "" then
             local styles = {}
@@ -125,6 +191,12 @@ function M.get_installed_fonts()
             set[name:lower()] = { canonical = name, styles = styles }
         end
     end
+    
+    -- Only cache if we actually found fonts (prevents caching an empty list if Resolve wasn't ready)
+    if next(set) ~= nil then
+        cached_fonts = set
+    end
+    
     return set
 end
 
@@ -184,28 +256,107 @@ end
 --     script = <string>, missing = <boolean> }
 --   `to` is nil and `missing` is true when the script is known but no
 --   candidate font is installed on the host.
+-- Attempt to find a substitute for `font_name` from FONT_SUBSTITUTES.
+-- Returns a font_entry (from installed set) or nil.
+local function find_substitute(font_name, installed)
+    if type(font_name) ~= "string" then return nil end
+    local key = font_name:lower()
+    -- Try exact key first, then strip trailing style words (Bold, Italic, etc.)
+    local candidates = M.FONT_SUBSTITUTES[key]
+    if not candidates then
+        -- Strip common style suffixes to find the base font family
+        local base = key:gsub("%s*bold$", ""):gsub("%s*italic$", "")
+                        :gsub("%s*oblique$", ""):gsub("%s*light$", "")
+                        :gsub("%s*medium$", ""):gsub("%s*regular$", "")
+                        :gsub("%s*condensed$", "")
+        if base ~= key then
+            candidates = M.FONT_SUBSTITUTES[base]
+        end
+    end
+    if not candidates then return nil end
+    for _, name in ipairs(candidates) do
+        local hit = installed[name:lower()]
+        if hit then return hit end
+    end
+    return nil
+end
+
 function M.maybe_override(presetSettings, language)
-    if normalise_lang(language) == nil then return presetSettings, nil end
+    local lang = normalise_lang(language) or "en"
     local current = presetSettings and presetSettings.Font
-    -- Only override when the user is on the default (missing or equal).
-    if current ~= nil and current ~= M.DEFAULT_FONT then
-        return presetSettings, nil
-    end
     local installed = M.get_installed_fonts()
-    local font_entry, script = M.pick_fallback(language, installed)
-    if script == nil then
-        -- Language doesn't need an override (Latin/Cyrillic/Greek/etc.).
+
+    -- ── NEW: if the preset specifies a font that is NOT on this system, swap it
+    -- for the best available substitute BEFORE doing the language check.
+    -- This fixes built-in presets whose fonts only exist on macOS (Futura,
+    -- Chalkboard, Menlo, …) when AutoSubs runs on Windows or Linux.
+    if current ~= nil and current ~= M.DEFAULT_FONT then
+        local is_installed = installed[current:lower()] ~= nil
+        if not is_installed then
+            local sub_entry = find_substitute(current, installed)
+            if sub_entry then
+                local next_settings = {}
+                if presetSettings then
+                    for k, v in pairs(presetSettings) do next_settings[k] = v end
+                end
+                next_settings.Font = sub_entry.canonical
+                local desired_style = next_settings.Style
+                local picked_style = pick_style(sub_entry, desired_style)
+                if picked_style then next_settings.Style = picked_style end
+                return next_settings, {
+                    from    = current,
+                    to      = sub_entry.canonical,
+                    language = language,
+                    script  = "font_substitute",
+                    missing = false,
+                }
+            end
+            -- No substitute found – fall through and let the font stay as-is
+            -- (Resolve will render with its own missing-font fallback).
+            return presetSettings, {
+                from    = current,
+                to      = nil,
+                language = language,
+                script  = "font_substitute",
+                missing = true,
+            }
+        end
+        -- Font is installed and is not the default: nothing to do.
         return presetSettings, nil
     end
-    if not font_entry then
-        return presetSettings, {
-            from = current or M.DEFAULT_FONT,
-            to = nil,
-            language = language,
-            script = script,
-            missing = true,
-        }
+
+    -- ── Original logic: preset is on the default font (or has no font set) ──
+    local has_default = installed[M.DEFAULT_FONT:lower()] ~= nil
+
+    local font_entry, script = M.pick_fallback(lang, installed)
+
+    -- If no language fallback is found, but the default font is missing on the system:
+    if not font_entry and not has_default then
+        local latin_candidates = { "Arial", "Segoe UI", "Calibri", "Trebuchet MS" }
+        for _, name in ipairs(latin_candidates) do
+            local hit = installed[name:lower()]
+            if hit then
+                font_entry = hit
+                script = "latin_fallback"
+                break
+            end
+        end
     end
+
+    if not font_entry then
+        if script == nil then
+            return presetSettings, nil
+        else
+            return presetSettings, {
+                from = current or M.DEFAULT_FONT,
+                to = nil,
+                language = language,
+                script = script,
+                missing = true,
+            }
+        end
+    end
+
     local next_settings = {}
     if presetSettings then
         for k, v in pairs(presetSettings) do next_settings[k] = v end
