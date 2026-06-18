@@ -335,7 +335,7 @@
 						if tool:GetInput("AnimationLevel") == 1 then
 							-- Restore word timing keyframes
 							local wordTiming = tool:GetData("WordTiming")
-							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(wordTiming)
+							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(comp, tool, wordTiming)
 
 							settings.Tools[spline.Name].KeyFrames = keyframes
 							spline:LoadSettings(settings)
@@ -358,10 +358,14 @@
 					end
 				]],
 				ConvertToDelayKeyframes = [[
-					return function(wordTiming)
+					return function(comp, tool, wordTiming)
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local animationLength = tool:GetInput("AnimationLength") or 0
+						local animationMode = tool:GetInput("AnimationMode") or 2
+						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 						local keyframes = {}
 						for _, word in ipairs(wordTiming) do
-							keyframes[word.startIndex] = { word.startFrame, Flags = { StepIn = true } }
+							keyframes[word.startIndex] = { math.max(0, word.startFrame - leadInFrames), Flags = { StepIn = true } }
 						end
 						return keyframes
 					end
@@ -370,9 +374,10 @@
 					return function(comp, tool, wordTiming)
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 
+						-- Get current spline data so we can modify the keyframes
 						local settings = spline:SaveSettings()
 						if tool:GetInput("AnimationLevel") == 1 then
-							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(wordTiming)
+							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(comp, tool, wordTiming)
 							settings.Tools[spline.Name].KeyFrames = keyframes
 						else
 							local text = tool:GetInput("Text")
@@ -380,6 +385,7 @@
 								[#text] = { 0, Flags = { StepIn = true } },
 							}
 						end
+						-- Apply the modified settings back to the spline
 						spline:LoadSettings(settings)
 
 						tool:SetData("WordTiming", wordTiming)
