@@ -1,3 +1,16 @@
+# ============================================================================
+# DaVinci Resolve Scripting API Reference  —  SOURCE OF TRUTH
+#
+# This is Blackmagic's official scripting README.txt, kept as plain text on
+# purpose: it is monospace column-aligned and is unreadable when rendered as
+# Markdown. View it in a monospace/plain-text viewer.
+#
+# It is a copy of the file shipped inside Resolve at:
+#   <RESOLVE_SCRIPT_API>/README.txt
+# Re-sync after a Resolve update with: scripts/update-resolve-api.sh (or .bat)
+# The live file in your install is always the very latest and supersedes this.
+# ============================================================================
+
 Last Updated: 8 May 2026
 -------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import

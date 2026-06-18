@@ -220,6 +220,8 @@ ctx = {
 
 </details>
 
+> Full detail on the `ctx` table, the `AnimationRegistry`/`SetAnimations` pattern, the per-animation recipes (Fade, PopIn, SlideUp), and the order/timing spline is in [`docs/animation-system.md`](docs/animation-system.md).
+
 ### Adding a New Animation
 
 Every animation needs its own enable/disable toggle, so adding one always involves both the logic and the Fusion node graph:
@@ -280,7 +282,13 @@ To regenerate the bin:
 
 ## API Reference
 
-- `resolve_api_reference.txt` — Resolve scripting API
-- `fusion_manual.md` — Fusion scripting and macro documentation
+App-specific docs live here; all general Resolve/Fusion reference lives in the skill (single source of truth):
+
+- `docs/animation-system.md` — how the AutoSubs macro implements its animations (app-specific)
+- `davinci-resolve-fusion/` — the general Resolve/Fusion skill (distributed separately; also the reference for this project):
+    - `references/resolve-api.txt` — Resolve scripting API (re-sync with `davinci-resolve-fusion/scripts/update-resolve-api.sh`)
+    - `references/fusion-manual/00-index.md` — Fusion manual, split one-file-per-class for easy searching
+    - `references/animation.md`, `references/macro-authoring.md`, `references/fusion-templates.md` — general guides
+    - `examples/` — runnable Resolve API examples
 
 Blackmagic's documentation is limited and sometimes outdated. `autosubs_core.lua` is the most reliable reference for working Resolve API usage.

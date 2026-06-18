@@ -1,3 +1,11 @@
+# Fusion Templates: Transitions, Generators, Titles & Effects
+
+> **Source:** Blackmagic's Fusion template/macro authoring notes (snapshot, may be
+> outdated). Covers building reusable Edit/Cut-page templates as macros. For the scripting
+> API see `resolve-api.txt` (source of truth) and `fusion-manual/00-index.md`.
+
+---
+
 Fusion Transitions
 ------------------
 
