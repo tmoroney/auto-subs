@@ -36,6 +36,8 @@ SOFTWARE.
 
 ]]
 
+local resolve_env = require("resolve_env")
+
 local luaresolve, libavutil
 
 luaresolve = 
@@ -71,10 +73,7 @@ luaresolve =
 	},
 
 	load_library = function(name_pattern)
-		local fu = rawget(_G, "fusion") or rawget(_G, "fu")
-        if fu == nil and type(rawget(_G, "Fusion")) == "function" then
-            fu = Fusion()
-        end
+		local fu = resolve_env.get_fusion()
 		local files = bmd.readdir(fu:MapPath("FusionLibs:"..iif(ffi.os == "Windows", "", "../"))..name_pattern)
 		local candidates = {}
 		for _, file in ipairs(files) do

@@ -12,6 +12,8 @@
 -- installed font list. Callers decide whether to apply the suggestion.
 
 ---@diagnostic disable: undefined-global
+local resolve_env = require("resolve_env")
+
 local M = {}
 
 -- Keep this in sync with the macro's Font default. Changing the macro
@@ -102,10 +104,7 @@ end
 function M.get_installed_fonts()
     local list = nil
     local ok = pcall(function()
-        local fu = rawget(_G, "fusion") or rawget(_G, "fu")
-        if fu == nil and type(rawget(_G, "Fusion")) == "function" then
-            fu = Fusion()
-        end
+        local fu = resolve_env.get_fusion()
         if fu and fu.FontManager and fu.FontManager.GetFontList then
             list = fu.FontManager:GetFontList()
         end
