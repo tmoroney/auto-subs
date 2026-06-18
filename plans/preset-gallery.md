@@ -5,8 +5,6 @@
 > **Status:** Spec / handoff. No code written yet.
 >
 > **Approach (decided):** GitHub-repo-backed gallery. Presets are JSON files + preview images in a public repo; an `index.json` is generated and served via CDN; the app fetches it, shows a browsable gallery, and installs with one click. Contributions happen via pull request (moderation = PR review).
->
-> **Sequencing:** Can run **in parallel with W3** after W1 lands. The only W1 dependency is the **preview render** used by the "Submit preset" flow (it relies on `GeneratePreview`, which already exists, but nicer previews benefit from the W1 registry). Much of the gallery UI is self-contained and subagent-friendly once the data shape (§3) is fixed.
 
 ---
 
