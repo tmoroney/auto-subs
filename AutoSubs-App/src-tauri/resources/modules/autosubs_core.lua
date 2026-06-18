@@ -3,11 +3,12 @@
 ---@diagnostic disable: undefined-global, deprecated
 local ffi = ffi
 
+-- Shared access to the Resolve / Fusion scripting environment (see resolve_env.lua).
+-- The entry scripts add the modules dir to package.path before requiring us.
+local resolve_env = require("resolve_env")
+
 -- resolve is provided implicitly by the Resolve environment - no need to call Resolve() unless running in terminal
-local resolve = rawget(_G, "resolve")
-if resolve == nil and type(rawget(_G, "Resolve")) == "function" then
-    resolve = Resolve()
-end
+local resolve = resolve_env.get_resolve()
 
 local DEV_MODE = false
 
