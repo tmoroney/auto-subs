@@ -342,6 +342,24 @@
       "description": "Fast & Accurate",
       "details": "Fast on-device Spanish transcription with good accuracy.",
       "badge": "Spanish"
+    },
+    "sense_voice": {
+      "label": "SenseVoice",
+      "description": "Multilingual (Asian)",
+      "details": "Strong accuracy for Chinese, English, Japanese, Korean and Cantonese.",
+      "badge": "Multilingual"
+    },
+    "canary": {
+      "label": "Canary",
+      "description": "Multilingual (European)",
+      "details": "High accuracy across 25 European languages (NVIDIA NeMo Canary).",
+      "badge": "European"
+    },
+    "cohere": {
+      "label": "Cohere",
+      "description": "Multilingual (Large)",
+      "details": "Large multilingual transcription model from Cohere.",
+      "badge": "Multilingual"
     }
   },
   "completion": {

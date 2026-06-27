@@ -154,8 +154,3 @@ pub async fn transcribe_parakeet(
 
     Ok((segments, None))
 }
-
-/// Check if a model name refers to a Parakeet model.
-pub fn is_parakeet_model(model_name: &str) -> bool {
-    model_name.to_lowercase().starts_with("parakeet")
-}

@@ -11,9 +11,8 @@ pub struct ContentFormatting {
     pub censored_words: Vec<String>,
 }
 
-use crate::engines::moonshine::{is_moonshine_model, moonshine_variant_from_model_name};
-
-use crate::engines::parakeet::is_parakeet_model;
+use crate::engines::moonshine::moonshine_variant_from_model_name;
+use crate::manifest::{self, Engine as ModelEngine};
 // callback type aliases are defined in crate::types
 
 #[derive(Clone, Debug)]
@@ -88,26 +87,24 @@ impl Engine {
             eyre::bail!("audio file doesn't exist")
         }
 
-        // Route to appropriate engine based on model name
-        let is_moonshine = is_moonshine_model(&options.model);
-        let is_parakeet = is_parakeet_model(&options.model);
+        // Route to the appropriate engine based on the manifest. Models not in
+        // the manifest fall back to Whisper (legacy behavior).
+        let model_entry = manifest::get(&options.model);
+        let engine_kind = model_entry.map(|e| e.engine).unwrap_or(ModelEngine::Whisper);
+        let is_whisper = matches!(engine_kind, ModelEngine::Whisper);
 
-        // Ensure/download the appropriate model
-        let _model_path = if is_moonshine {
-            self
-                .models
-                .ensure_moonshine_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
-                .await?
-        } else if is_parakeet {
-            self
-                .models
-                .ensure_parakeet_v3_model(cb.progress, cb.is_cancelled.as_deref())
-                .await?
-        } else {
-            self
-                .models
-                .ensure_whisper_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
-                .await?
+        // Ensure/download the appropriate model.
+        let _model_path = match model_entry {
+            Some(entry) => {
+                self.models
+                    .ensure_model(entry, cb.progress, cb.is_cancelled.as_deref())
+                    .await?
+            }
+            None => {
+                self.models
+                    .ensure_whisper_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
+                    .await?
+            }
         };
 
         let original_samples = crate::audio::read_wav(&audio_path)?;
@@ -118,15 +115,13 @@ impl Engine {
         let speech_segments: Vec<SpeechSegment>;
 
         if let Some(true) = options.enable_diarize {
-            let seg_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/segmentation-community-1.onnx";
-            let emb_url = "https://huggingface.co/altunenes/speaker-diarization-community-1-onnx/blob/main/embedding_model.onnx";
-
-            // Ensure/download diarization models if not provided
+            // Ensure/download diarization models from the manifest, unless the
+            // caller provided explicit paths in the config.
             let (seg_path, emb_path) = match (&self.cfg.diarize_segment_model_path, &self.cfg.diarize_embedding_model_path) {
                 (Some(seg), Some(emb)) => (PathBuf::from(seg), PathBuf::from(emb)),
                 _ => self
                     .models
-                    .ensure_diarize_models(seg_url, emb_url, cb.progress, cb.is_cancelled.as_deref())
+                    .ensure_diarize_models(cb.progress, cb.is_cancelled.as_deref())
                     .await?,
             };
 
@@ -220,64 +215,108 @@ impl Engine {
         let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
         let whisper_to_en = options.whisper_to_english.unwrap_or(false);
 
-        let (mut segments, detected_lang) = if is_parakeet {
-            // Use Parakeet engine
-            crate::engines::parakeet::transcribe_parakeet(
-                _model_path.as_path(),
-                speech_segments,
-                &options,
-                cb.progress,
-                cb.new_segment_callback,
-                cb.is_cancelled,
-            )
-            .await?
-        } else if is_moonshine {
-            let (variant, _lang) = moonshine_variant_from_model_name(&options.model)
-                .ok_or_else(|| eyre!("Unknown Moonshine model: {}", options.model))?;
+        let (mut segments, detected_lang) = match engine_kind {
+            ModelEngine::Parakeet => {
+                crate::engines::parakeet::transcribe_parakeet(
+                    _model_path.as_path(),
+                    speech_segments,
+                    &options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            ModelEngine::Moonshine => {
+                let (variant, _lang) = moonshine_variant_from_model_name(&options.model)
+                    .ok_or_else(|| eyre!("Unknown Moonshine model: {}", options.model))?;
 
-            crate::engines::moonshine::transcribe_moonshine(
-                _model_path.as_path(),
-                variant,
-                speech_segments,
-                &options,
-                cb.progress,
-                cb.new_segment_callback,
-                cb.is_cancelled,
-            )
-            .await?
-        } else {
-            // Use Whisper engine. Context creation loads the model into the (GPU) backend
-            // and can stall on some drivers — log around it so a hang here is visible.
-            tracing::info!(
-                "Whisper: loading model context (model={}, use_gpu={:?})",
-                options.model,
-                self.cfg.use_gpu
-            );
-            let ctx_start = std::time::Instant::now();
-            let ctx = crate::engines::whisper::create_context(
-                _model_path.as_path(),
-                &options.model,
-                self.cfg.gpu_device,
-                self.cfg.use_gpu,
-                self.cfg.enable_dtw,
-                self.cfg.enable_flash_attn,
-                Some(num_samples),
-            )
-            .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
-            tracing::info!(
-                "Whisper: model context ready in {:.2}s",
-                ctx_start.elapsed().as_secs_f64()
-            );
+                crate::engines::moonshine::transcribe_moonshine(
+                    _model_path.as_path(),
+                    variant,
+                    speech_segments,
+                    &options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            ModelEngine::Whisper => {
+                // Whisper context creation loads the model into the (GPU) backend
+                // and can stall on some drivers — log around it so a hang is visible.
+                tracing::info!(
+                    "Whisper: loading model context (model={}, use_gpu={:?})",
+                    options.model,
+                    self.cfg.use_gpu
+                );
+                let ctx_start = std::time::Instant::now();
+                let ctx = crate::engines::whisper::create_context(
+                    _model_path.as_path(),
+                    &options.model,
+                    self.cfg.gpu_device,
+                    self.cfg.use_gpu,
+                    self.cfg.enable_dtw,
+                    self.cfg.enable_flash_attn,
+                    Some(num_samples),
+                )
+                .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
+                tracing::info!(
+                    "Whisper: model context ready in {:.2}s",
+                    ctx_start.elapsed().as_secs_f64()
+                );
 
-            crate::engines::whisper::run_transcription_pipeline(
-                ctx,
-                speech_segments,
-                options,
-                cb.progress,
-                cb.new_segment_callback,
-                cb.is_cancelled,
-            )
-            .await?
+                crate::engines::whisper::run_transcription_pipeline(
+                    ctx,
+                    speech_segments,
+                    options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            ModelEngine::SenseVoice => {
+                crate::engines::sense_voice::transcribe_sense_voice(
+                    _model_path.as_path(),
+                    speech_segments,
+                    &options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            ModelEngine::Canary => {
+                crate::engines::canary::transcribe_canary(
+                    _model_path.as_path(),
+                    speech_segments,
+                    &options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            ModelEngine::Cohere => {
+                crate::engines::cohere::transcribe_cohere(
+                    _model_path.as_path(),
+                    speech_segments,
+                    &options,
+                    cb.progress,
+                    cb.new_segment_callback,
+                    cb.is_cancelled,
+                )
+                .await?
+            }
+            // Engines whose wrappers land in a later step.
+            other => {
+                return Err(eyre!(
+                    "Transcription engine {:?} (model '{}') is not yet supported",
+                    other,
+                    options.model
+                ));
+            }
         };
 
         // Choose effective language: detected if present, otherwise the user-provided from_lang
@@ -285,7 +324,7 @@ impl Engine {
 
         // `whisper_to_english` only applies to Whisper models (they can do built-in translate-to-English).
         // If a non-Whisper model is used, we should not suppress the normal post-translation step.
-        let suppress_post_translation = !is_parakeet && !is_moonshine && whisper_to_en;
+        let suppress_post_translation = is_whisper && whisper_to_en;
 
         if !suppress_post_translation {
             if let Some(to_lang) = translate_to.as_deref() {

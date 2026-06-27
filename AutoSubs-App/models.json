@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed). The new transcribe-rs engines (canary/cohere/gigaam/sense_voice) are added in a later step alongside their engine wrappers.",
+  "models": [
+    {
+      "id": "parakeet",
+      "engine": "parakeet",
+      "quantization": "int8",
+      "source": {
+        "type": "hf",
+        "repo": "istupakov/parakeet-tdt-0.6b-v3-onnx",
+        "files": [
+          "encoder-model.int8.onnx",
+          "decoder_joint-model.int8.onnx",
+          "nemo128.onnx",
+          "vocab.txt",
+          "config.json"
+        ]
+      },
+      "ui": {
+        "size": "700MB",
+        "ram": "2GB",
+        "image": "parakeet.png",
+        "accuracy": 3,
+        "weight": 3,
+        "languageSupport": {
+          "kind": "restricted",
+          "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]
+        }
+      }
+    },
+    {
+      "id": "tiny",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "tiny" },
+      "ui": { "size": "80MB", "ram": "1GB", "image": "hummingbird.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "tiny.en",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "tiny.en" },
+      "ui": { "size": "80MB", "ram": "1GB", "image": "hummingbird.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "base",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "base" },
+      "ui": { "size": "150MB", "ram": "1GB", "image": "otter.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "base.en",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "base.en" },
+      "ui": { "size": "150MB", "ram": "1GB", "image": "otter.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "small",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "small" },
+      "ui": { "size": "480MB", "ram": "2GB", "image": "fox.png", "accuracy": 2, "weight": 3, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "small.en",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "small.en" },
+      "ui": { "size": "480MB", "ram": "2GB", "image": "fox.png", "accuracy": 2, "weight": 3, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "medium",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "medium" },
+      "ui": { "size": "1.5GB", "ram": "5GB", "image": "bear.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "medium.en",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "medium.en" },
+      "ui": { "size": "1.5GB", "ram": "5GB", "image": "bear.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "large-v3-turbo",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "large-v3-turbo" },
+      "ui": { "size": "1.6GB", "ram": "6GB", "image": "phoenix.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "large-v3",
+      "engine": "whisper",
+      "source": { "type": "whisper-ggml", "model": "large-v3" },
+      "ui": { "size": "3.1GB", "ram": "10GB", "image": "elephant.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "moonshine-tiny",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny/quantized/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny/quantized/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "60MB", "ram": "1GB", "image": "bat.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "moonshine-tiny-ar",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-ar",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-ar/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-ar/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ar" } }
+    },
+    {
+      "id": "moonshine-tiny-zh",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-zh",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-zh/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-zh/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "zh" } }
+    },
+    {
+      "id": "moonshine-tiny-ja",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-ja",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-ja/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-ja/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ja" } }
+    },
+    {
+      "id": "moonshine-tiny-ko",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-ko",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-ko/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-ko/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ko" } }
+    },
+    {
+      "id": "moonshine-tiny-uk",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-uk",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-uk/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-uk/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "uk" } }
+    },
+    {
+      "id": "moonshine-tiny-vi",
+      "engine": "moonshine",
+      "moonshineVariant": "tiny-vi",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/tiny-vi/float/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/tiny-vi/float/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "vi" } }
+    },
+    {
+      "id": "moonshine-base",
+      "engine": "moonshine",
+      "moonshineVariant": "base",
+      "source": {
+        "type": "hf",
+        "repo": "UsefulSensors/moonshine",
+        "files": [
+          { "path": "onnx/merged/base/quantized/encoder_model.onnx", "dest": "encoder_model.onnx" },
+          { "path": "onnx/merged/base/quantized/decoder_model_merged.onnx", "dest": "decoder_model_merged.onnx" },
+          { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
+        ]
+      },
+      "ui": { "size": "200MB", "ram": "1GB", "image": "owl.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+    },
+    {
+      "id": "sense-voice",
+      "engine": "sense_voice",
+      "quantization": "int8",
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
+        "files": ["model.int8.onnx", "tokens.txt"]
+      },
+      "ui": { "size": "230MB", "ram": "1GB", "image": "panda.png", "accuracy": 3, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["zh", "en", "ja", "ko", "yue"] } }
+    },
+    {
+      "id": "canary",
+      "engine": "canary",
+      "quantization": "int8",
+      "_files_comment": "encoder/decoder/vocab come from the Canary repo; nemo128.onnx (the shared NeMo preprocessor) is only published in the Parakeet repo, so it is pulled from there.",
+      "source": {
+        "type": "hf",
+        "repo": "istupakov/canary-1b-v2-onnx",
+        "files": [
+          "encoder-model.int8.onnx",
+          "decoder-model.int8.onnx",
+          "vocab.txt",
+          { "path": "nemo128.onnx", "repo": "istupakov/parakeet-tdt-0.6b-v3-onnx" }
+        ]
+      },
+      "ui": { "size": "1GB", "ram": "3GB", "image": "lynx.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"] } }
+    },
+    {
+      "id": "cohere",
+      "engine": "cohere",
+      "quantization": "int4",
+      "_files_comment": "The encoder/decoder are split-weight ONNX models; each .onnx needs its sibling .onnx.data file alongside it.",
+      "source": {
+        "type": "hf",
+        "repo": "cstr/cohere-transcribe-onnx-int4",
+        "files": [
+          "cohere-encoder.int4.onnx",
+          "cohere-encoder.int4.onnx.data",
+          "cohere-decoder.int4.onnx",
+          "cohere-decoder.int4.onnx.data",
+          "tokens.txt"
+        ]
+      },
+      "ui": { "size": "2GB", "ram": "4GB", "image": "whale.png", "accuracy": 3, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
+    }
+  ],
+  "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
+  "vad": {
+    "repo": "ggml-org/whisper-vad",
+    "file": "ggml-silero-v5.1.2.bin"
+  },
+  "_diarize_comment": "Speaker diarization model — user-downloadable, has its own UI card.",
+  "diarize": {
+    "id": "speaker-diarize",
+    "repo": "altunenes/speaker-diarization-community-1-onnx",
+    "files": ["segmentation-community-1.onnx", "embedding_model.onnx"],
+    "ui": { "size": "40MB", "ram": "", "image": "diarize.png", "accuracy": 3, "weight": 3, "languageSupport": { "kind": "multilingual" } }
+  }
+}

@@ -1,3 +1,4 @@
+use crate::manifest::{self, Engine as MEngine, FileSpec, ModelEntry, Source};
 use crate::types::{LabeledProgressFn, ProgressType};
 use eyre::{bail, eyre, Context, Result};
 use hf_hub::api::sync::ApiBuilder;
@@ -10,9 +11,8 @@ use std::time::SystemTime;
 use tokio_util::sync::CancellationToken;
 use once_cell::sync::Lazy;
 
-const DIARIZE_MODEL_ID: &str = "speaker-diarize";
-const DIARIZE_REPO_ID: &str = "altunenes/speaker-diarization-community-1-onnx";
-const DIARIZE_REQUIRED_FILES: [&str; 2] = ["segmentation-community-1.onnx", "embedding_model.onnx"];
+const WHISPER_REPO_ID: &str = "ggerganov/whisper.cpp";
+// Diarization repo/files/id now come from the manifest (`manifest::diarize()`).
 
 // Global download state to ensure only one download runs at a time
 static ACTIVE_DOWNLOAD: Lazy<Mutex<Option<Arc<CancellationToken>>>> = Lazy::new(|| Mutex::new(None));
@@ -303,8 +303,73 @@ impl ModelManager {
     }
 
 
-    pub async fn ensure_parakeet_v3_model(
+    /// Generic entry point: ensure the model described by a manifest entry is
+    /// present in the cache, downloading if needed, and return the directory (or
+    /// model dir) to hand to the engine loader.
+    ///
+    /// Dispatches on the manifest `source` to one of three strategies:
+    /// whisper-ggml (single `.bin` + optional CoreML); an hf-hub snapshot of
+    /// repo-relative files kept in place (Parakeet, Cohere, and other engines
+    /// whose loader reads one repo's flat layout); or a flattened per-model
+    /// directory that downloads each file to a chosen name and (optionally) from
+    /// a different repo (Moonshine, Canary's cross-repo `nemo128.onnx`).
+    pub async fn ensure_model(
         &self,
+        entry: &ModelEntry,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        match &entry.source {
+            Source::WhisperGgml { model } => {
+                self.ensure_whisper_model(model, progress, is_cancelled).await
+            }
+            Source::Hf { repo, files } => {
+                if let Some((subdir, key)) = Self::flat_layout(entry) {
+                    self.ensure_hf_flat(subdir, &key, repo, files, progress, is_cancelled).await
+                } else {
+                    let paths: Vec<&str> = files.iter().map(|f| f.path()).collect();
+                    self.ensure_hf_snapshot(repo, &paths, progress, is_cancelled).await
+                }
+            }
+        }
+    }
+
+    /// Decide whether a model uses the flattened per-model directory layout, and
+    /// if so where it lives: `Some((subdir, key))` → `<cache>/<subdir>/<key>`.
+    ///
+    /// A model needs flattening when any file is renamed/nested or comes from a
+    /// different repo. Moonshine keeps its historical `moonshine/<variant>` path;
+    /// everything else is keyed by `<engine>/<id>`.
+    fn flat_layout(entry: &ModelEntry) -> Option<(&'static str, String)> {
+        let Source::Hf { files, .. } = &entry.source else {
+            return None;
+        };
+        let needs_flatten = files.iter().any(|f| f.is_renamed() || f.repo().is_some());
+        if !needs_flatten {
+            return None;
+        }
+        match entry.engine {
+            MEngine::Moonshine => {
+                let variant = entry.moonshine_variant.clone().unwrap_or_else(|| entry.id.clone());
+                Some(("moonshine", variant))
+            }
+            MEngine::Canary => Some(("canary", entry.id.clone())),
+            MEngine::Gigaam => Some(("gigaam", entry.id.clone())),
+            MEngine::Cohere => Some(("cohere", entry.id.clone())),
+            MEngine::SenseVoice => Some(("sense_voice", entry.id.clone())),
+            MEngine::Parakeet => Some(("parakeet", entry.id.clone())),
+            MEngine::Whisper => Some(("whisper", entry.id.clone())),
+        }
+    }
+
+    /// Download a set of repo-relative files from a HF repo into the hf-hub
+    /// snapshot cache and return the snapshot directory containing all of them.
+    /// Files keep their repo names. Used by Parakeet and the other NeMo/ONNX
+    /// engines whose loaders read a flat directory of known filenames.
+    async fn ensure_hf_snapshot(
+        &self,
+        repo_id: &str,
+        required_files: &[&str],
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<PathBuf> {
@@ -316,37 +381,20 @@ impl ModelManager {
             }
         }
 
-        let repo_id = "istupakov/parakeet-tdt-0.6b-v3-onnx";
-        // Minimal set required by transcribe-rs Parakeet loader in int8 mode.
-        let required_files = [
-            "encoder-model.int8.onnx",
-            "decoder_joint-model.int8.onnx",
-            "nemo128.onnx",
-            "vocab.txt",
-            "config.json",
-        ];
-
         // Fast path: find a snapshot dir that already contains all required files.
-        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, &required_files)? {
-            let mut ok = true;
-            for f in required_files {
-                let p = snapshot_dir.join(f);
-                if !p.exists() || validate_model_file(&p).is_err() {
-                    ok = false;
-                    break;
-                }
-            }
-            if ok {
+        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, required_files)? {
+            if required_files
+                .iter()
+                .all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok())
+            {
                 return Ok(snapshot_dir);
             }
         }
 
-        // Download required files. We do this sequentially so we can show progress.
-        // Note: ensure_hub_model handles caching and will no-op if everything is already cached.
+        // Download required files sequentially so we can show progress.
+        // ensure_hub_model handles caching and no-ops if everything is cached.
         let total = required_files.len() as f32;
         for (idx, filename) in required_files.iter().enumerate() {
-            // Start progress at 0 only if a download occurs; ensure_hub_model itself avoids emitting
-            // progress if it returns from cache.
             let offset = (idx as f32 / total) * 100.0;
             let scale = (1.0 / total) * 100.0;
             let _ = self
@@ -363,8 +411,7 @@ impl ModelManager {
         }
 
         // After downloading, locate a snapshot that contains everything.
-        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, &required_files)? {
-            // Validate again to be safe.
+        if let Some(snapshot_dir) = self.find_cached_snapshot_with_files(repo_id, required_files)? {
             for f in required_files {
                 let p = snapshot_dir.join(f);
                 validate_model_file(&p)
@@ -376,105 +423,72 @@ impl ModelManager {
             return Ok(snapshot_dir);
         }
 
-        bail!("Failed to locate Parakeet model snapshot after download");
+        bail!("Failed to locate model snapshot for '{}' after download", repo_id);
     }
 
-    pub async fn ensure_moonshine_model(
+    /// Download a set of files into a flat per-model directory
+    /// (`<cache>/<subdir>/<key>`), honoring per-file rename/flatten and per-file
+    /// repo overrides. Files default to `default_repo` unless a `FileSpec`
+    /// specifies its own. Used by Moonshine (nested layout + shared tokenizer)
+    /// and Canary (cross-repo `nemo128.onnx` preprocessor).
+    async fn ensure_hf_flat(
         &self,
-        model: &str,
+        subdir: &str,
+        key: &str,
+        default_repo: &str,
+        files: &[FileSpec],
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<PathBuf> {
-        // Early cancellation
         if let Some(is_cancelled) = is_cancelled {
             if is_cancelled() {
                 bail!("Model download cancelled");
             }
         }
 
-        let folder = match model.to_lowercase().as_str() {
-            "moonshine-tiny" => "tiny",
-            "moonshine-tiny-ar" => "tiny-ar",
-            "moonshine-tiny-zh" => "tiny-zh",
-            "moonshine-tiny-ja" => "tiny-ja",
-            "moonshine-tiny-ko" => "tiny-ko",
-            "moonshine-tiny-uk" => "tiny-uk",
-            "moonshine-tiny-vi" => "tiny-vi",
-            "moonshine-base" => "base",
-            _ => bail!("Unknown Moonshine model: {}", model),
-        };
-
         let cache_root = self.model_cache_dir()?;
-        let model_dir = cache_root.join("moonshine").join(folder);
+        let model_dir = cache_root.join(subdir).join(key);
         if !model_dir.exists() {
-            fs::create_dir_all(&model_dir).context("Failed to create Moonshine model directory")?;
+            fs::create_dir_all(&model_dir).context("Failed to create model directory")?;
         }
 
-        let required_files = [
-            "encoder_model.onnx",
-            "decoder_model_merged.onnx",
-            "tokenizer.json",
-        ];
-
-        let onnx_subdir = if folder == "tiny" || folder == "base" {
-            "quantized"
-        } else {
-            "float"
-        };
-
-        // Fast path: if all required files exist and validate, return immediately.
-        let mut ok = true;
-        for f in required_files {
-            let p = model_dir.join(f);
-            if !p.exists() || validate_model_file(&p).is_err() {
-                ok = false;
-                break;
-            }
-        }
-        if ok {
+        // Fast path: all destination files present and valid.
+        if files.iter().all(|f| {
+            let p = model_dir.join(f.dest());
+            p.exists() && validate_model_file(&p).is_ok()
+        }) {
             return Ok(model_dir);
         }
 
-        // Download missing/invalid files.
-        let total = required_files.len() as f32;
-        for (idx, filename) in required_files.iter().enumerate() {
+        let hf_endpoint =
+            std::env::var("HF_ENDPOINT").unwrap_or_else(|_| "https://huggingface.co".to_string());
+        let hf_endpoint = hf_endpoint.trim_end_matches('/');
+
+        let total = files.len() as f32;
+        for (idx, file) in files.iter().enumerate() {
             if let Some(is_cancelled) = is_cancelled {
                 if is_cancelled() {
                     bail!("Model download cancelled");
                 }
             }
 
-            let dest = model_dir.join(filename);
+            let dest = model_dir.join(file.dest());
             if dest.exists() && validate_model_file(&dest).is_ok() {
                 continue;
             }
 
             let offset = (idx as f32 / total) * 100.0;
             let scale = (1.0 / total) * 100.0;
-
             if let Some(cb) = progress {
                 cb(offset as i32, ProgressType::Download, "progressSteps.download");
             }
 
-            let hf_endpoint = std::env::var("HF_ENDPOINT")
-                .unwrap_or_else(|_| "https://huggingface.co".to_string());
-            let hf_endpoint = hf_endpoint.trim_end_matches('/');
-            let url = if *filename == "tokenizer.json" {
-                // The HF repo currently does not provide tokenizer.json under tiny/* variants.
-                // Tokenizer assets live under base/float and appear to be shared.
-                format!(
-                    "{}/UsefulSensors/moonshine/resolve/main/onnx/merged/base/float/tokenizer.json",
-                    hf_endpoint
-                )
-            } else {
-                format!(
-                    "{}/UsefulSensors/moonshine/resolve/main/onnx/merged/{}/{}/{}",
-                    hf_endpoint, folder, onnx_subdir, filename
-                )
-            };
+            let repo = file.repo().unwrap_or(default_repo);
+            let url = format!("{}/{}/resolve/main/{}", hf_endpoint, repo, file.path());
             download_to(&dest, &url).await?;
-            validate_model_file(&dest)
-                .with_context(|| format!("Model validation failed for '{}' from Moonshine {}", filename, folder))?;
+            validate_model_file(&dest).with_context(|| {
+                format!("Model validation failed for '{}' from '{}'", file.dest(), repo)
+            })?;
 
             if let Some(cb) = progress {
                 cb((offset + scale) as i32, ProgressType::Download, "progressSteps.download");
@@ -486,6 +500,31 @@ impl ModelManager {
         }
 
         Ok(model_dir)
+    }
+
+    /// Ensure the Parakeet model is available. Thin shim over the manifest +
+    /// generic [`ensure_model`](Self::ensure_model); kept for current callers.
+    pub async fn ensure_parakeet_v3_model(
+        &self,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        let entry = manifest::get("parakeet")
+            .ok_or_else(|| eyre!("'parakeet' is missing from the model manifest"))?;
+        self.ensure_model(entry, progress, is_cancelled).await
+    }
+
+    /// Ensure a Moonshine model is available. Thin shim over the manifest +
+    /// generic [`ensure_model`](Self::ensure_model); kept for current callers.
+    pub async fn ensure_moonshine_model(
+        &self,
+        model: &str,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        let entry =
+            manifest::get(model).ok_or_else(|| eyre!("Unknown Moonshine model: {}", model))?;
+        self.ensure_model(entry, progress, is_cancelled).await
     }
 
     /// Ensure the Silero VAD model exists locally. If not, download via hf-hub.
@@ -507,9 +546,10 @@ impl ModelManager {
         let hf_endpoint = std::env::var("HF_ENDPOINT")
             .unwrap_or_else(|_| "https://huggingface.co".to_string());
         let hf_endpoint = hf_endpoint.trim_end_matches('/');
+        let vad = manifest::vad();
         let vad_url = format!(
-            "{}/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
-            hf_endpoint
+            "{}/{}/resolve/main/{}",
+            hf_endpoint, vad.repo, vad.file
         );
 
         if let Some(is_cancelled) = is_cancelled {
@@ -519,7 +559,7 @@ impl ModelManager {
         let dest = self
             .model_cache_dir()?
             .join("vad")
-            .join("ggml-silero-v5.1.2.bin");
+            .join(&vad.file);
 
         // Fast path: already downloaded and valid — don't touch the network.
         if dest.exists() && validate_model_file(&dest).is_ok() {
@@ -565,67 +605,43 @@ impl ModelManager {
         Ok(dest)
     }
 
+    /// Ensure the speaker-diarization bundle (segmentation + embedding models)
+    /// is cached, returning `(segmentation_path, embedding_path)`. Repo and
+    /// filenames come from the manifest (`manifest::diarize()`).
     pub async fn ensure_diarize_models(
-        &mut self,
-        seg_url: &str,
-        emb_url: &str,
+        &self,
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<(PathBuf, PathBuf)> {
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
-        let had_cached_diarize_bundle = self.find_cached_snapshot_with_files(
-            DIARIZE_REPO_ID,
-            &DIARIZE_REQUIRED_FILES,
-        ).unwrap_or(None).is_some();
+        let d = manifest::diarize();
+        let seg_file = d
+            .files
+            .first()
+            .ok_or_else(|| eyre!("diarize manifest is missing the segmentation file"))?;
+        let emb_file = d
+            .files
+            .get(1)
+            .ok_or_else(|| eyre!("diarize manifest is missing the embedding file"))?;
 
-        let seg_path = if let Some((repo_id, filename)) = parse_hf_blob_url(seg_url) {
-            self
-                .ensure_hub_model(
-                    &repo_id,
-                    &filename,
-                    progress,
-                    is_cancelled,
-                    0.0,
-                    50.0,
-                    "progressSteps.download",
-                )
-                .await?
-        } else {
-            let model_dir = self.model_cache_dir()?;
-            let seg_name = url_filename(seg_url).ok_or_else(|| eyre!("Invalid seg_url"))?;
-            let seg_path = model_dir.join(&seg_name);
-            if !seg_path.exists() {
-                if let Some(cb) = progress { cb(5, ProgressType::Download, "progressSteps.download"); }
-                download_to(&seg_path, seg_url).await?;
-            }
-            seg_path
-        };
+        let files: Vec<&str> = d.files.iter().map(|s| s.as_str()).collect();
+        let had_cached_diarize_bundle = self
+            .find_cached_snapshot_with_files(&d.repo, &files)
+            .unwrap_or(None)
+            .is_some();
+
+        // Segmentation model: 0..50% of the diarize download progress.
+        let seg_path = self
+            .ensure_hub_model(&d.repo, seg_file, progress, is_cancelled, 0.0, 50.0, "progressSteps.download")
+            .await?;
 
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
-        let emb_path = if let Some((repo_id, filename)) = parse_hf_blob_url(emb_url) {
-            self
-                .ensure_hub_model(
-                    &repo_id,
-                    &filename,
-                    progress,
-                    is_cancelled,
-                    50.0,
-                    50.0,
-                    "progressSteps.download",
-                )
-                .await?
-        } else {
-            let model_dir = self.model_cache_dir()?;
-            let emb_name = url_filename(emb_url).ok_or_else(|| eyre!("Invalid emb_url"))?;
-            let emb_path = model_dir.join(&emb_name);
-            if !emb_path.exists() {
-                if let Some(cb) = progress { cb(55, ProgressType::Download, "progressSteps.download"); }
-                download_to(&emb_path, emb_url).await?;
-            }
-            emb_path
-        };
+        // Embedding model: 50..100%.
+        let emb_path = self
+            .ensure_hub_model(&d.repo, emb_file, progress, is_cancelled, 50.0, 50.0, "progressSteps.download")
+            .await?;
 
         if !had_cached_diarize_bundle {
             if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
@@ -673,51 +689,40 @@ impl ModelManager {
         Ok(())
     }
 
-    /// Delete a cached Moonshine model by name (e.g. "moonshine-tiny", "moonshine-base-es").
-    /// Removes the entire model folder from the moonshine cache directory.
-    pub fn delete_moonshine_model(&self, model_name: &str) -> Result<()> {
-        let folder = model_name
-            .strip_prefix("moonshine-")
-            .ok_or_else(|| eyre!("Invalid Moonshine model name: {}", model_name))?;
-
+    /// Delete a flat per-model directory (`<cache>/<subdir>/<key>`).
+    fn delete_flat_dir(&self, subdir: &str, key: &str) -> Result<()> {
         let cache_dir = self.model_cache_dir()?;
-        let model_dir = cache_dir.join("moonshine").join(folder);
+        let model_dir = cache_dir.join(subdir).join(key);
         if !model_dir.exists() {
-            bail!("Moonshine model '{}' not found in cache", model_name);
+            bail!("Model '{}/{}' not found in cache", subdir, key);
         }
 
         fs::remove_dir_all(&model_dir)
-            .with_context(|| format!("Failed to delete Moonshine model directory: {}", model_dir.display()))?;
-        tracing::info!("Deleted Moonshine model: {}", model_dir.display());
+            .with_context(|| format!("Failed to delete model directory: {}", model_dir.display()))?;
+        tracing::info!("Deleted model: {}", model_dir.display());
         Ok(())
     }
 
-    /// Delete the cached Parakeet model.
-    /// Removes the hf-hub snapshot files for the Parakeet model.
-    pub fn delete_parakeet_model(&self) -> Result<()> {
+    /// Delete the entire hf-hub cache directory (`models--{owner}--{repo}`) for a
+    /// Hugging Face repo. Used for Parakeet and the other snapshot-cached engines.
+    fn delete_hf_repo(&self, repo_id: &str) -> Result<()> {
         let cache_dir = self.model_cache_dir()?;
-        let parakeet_repo_dir = cache_dir.join("models--istupakov--parakeet-tdt-0.6b-v3-onnx");
-        if !parakeet_repo_dir.exists() {
-            bail!("Parakeet model not found in cache");
+        let mut parts = repo_id.splitn(2, '/');
+        let owner = parts.next().unwrap_or("");
+        let repo = parts.next().unwrap_or("");
+        let repo_dir = cache_dir.join(format!("models--{}--{}", owner, repo));
+        if !repo_dir.exists() {
+            bail!("Model '{}' not found in cache", repo_id);
         }
 
-        fs::remove_dir_all(&parakeet_repo_dir)
-            .with_context(|| format!("Failed to delete Parakeet model directory: {}", parakeet_repo_dir.display()))?;
-        tracing::info!("Deleted Parakeet model: {}", parakeet_repo_dir.display());
+        fs::remove_dir_all(&repo_dir)
+            .with_context(|| format!("Failed to delete model directory: {}", repo_dir.display()))?;
+        tracing::info!("Deleted model repo: {}", repo_dir.display());
         Ok(())
     }
 
     pub fn delete_diarize_model(&self) -> Result<()> {
-        let cache_dir = self.model_cache_dir()?;
-        let diarize_repo_dir = cache_dir.join("models--altunenes--speaker-diarization-community-1-onnx");
-        if !diarize_repo_dir.exists() {
-            bail!("Diarization model not found in cache");
-        }
-
-        fs::remove_dir_all(&diarize_repo_dir)
-            .with_context(|| format!("Failed to delete diarization model directory: {}", diarize_repo_dir.display()))?;
-        tracing::info!("Deleted diarization model: {}", diarize_repo_dir.display());
-        Ok(())
+        self.delete_hf_repo(&manifest::diarize().repo)
     }
 
     /// Clean up orphaned blob files that are no longer referenced by any symlinks
@@ -833,75 +838,47 @@ impl ModelManager {
         Ok(())
     }
 
-    /// List all cached models in the cache directory.
-    /// Returns a vector of model names (e.g., "tiny", "base", "small", "moonshine-tiny").
+    /// List all cached models, driven by the manifest.
+    /// Returns the ids of models whose files are present in the cache
+    /// (e.g. "tiny", "parakeet", "moonshine-tiny"), plus the diarization model.
     pub fn list_cached_models(&self) -> Result<Vec<String>> {
         let cache_dir = self.model_cache_dir()?;
         if !cache_dir.exists() { return Ok(vec![]); }
 
         let mut models = std::collections::HashSet::new();
 
-        // Look in the Whisper repository directory
-        let whisper_repo_dir = cache_dir.join("models--ggerganov--whisper.cpp").join("snapshots");
-        if whisper_repo_dir.exists() {
-            // Iterate through snapshot directories
-            for snapshot_entry in fs::read_dir(&whisper_repo_dir).context("Failed to read snapshots dir")? {
-                let snapshot_entry = snapshot_entry?;
-                let snapshot_path = snapshot_entry.path();
-                if !snapshot_path.is_dir() { continue; }
-
-                // Look for ggml-{model}.bin files in this snapshot
-                for file_entry in fs::read_dir(&snapshot_path).context("Failed to read snapshot dir")? {
-                    let file_entry = file_entry?;
-                    let path = file_entry.path();
-                    if path.is_file() {
-                        if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                            if name.starts_with("ggml-") && name.ends_with(".bin") {
-                                // Extract model name from "ggml-{model}.bin"
-                                let model_part = name.strip_prefix("ggml-").unwrap_or("");
-                                let model_name = model_part.strip_suffix(".bin").unwrap_or("");
-                                if !model_name.is_empty() {
-                                    models.insert(model_name.to_string());
-                                }
-                            }
-                        }
+        for entry in &manifest::MANIFEST.models {
+            let present = match &entry.source {
+                Source::WhisperGgml { model } => {
+                    let filename = format!("ggml-{}.bin", model);
+                    self.find_cached_snapshot_with_files(WHISPER_REPO_ID, &[filename.as_str()])
+                        .unwrap_or(None)
+                        .is_some()
+                }
+                Source::Hf { repo, files } => {
+                    if let Some((subdir, key)) = Self::flat_layout(entry) {
+                        let dir = cache_dir.join(subdir).join(key);
+                        files.iter().all(|f| dir.join(f.dest()).exists())
+                    } else {
+                        let paths: Vec<&str> = files.iter().map(|f| f.path()).collect();
+                        self.find_cached_snapshot_with_files(repo, &paths)
+                            .unwrap_or(None)
+                            .is_some()
                     }
                 }
+            };
+            if present {
+                models.insert(entry.id.clone());
             }
         }
 
-        // Look in the Moonshine cache directory
-        let moonshine_dir = cache_dir.join("moonshine");
-        if moonshine_dir.exists() {
-            let required_files = ["encoder_model.onnx", "decoder_model_merged.onnx", "tokenizer.json"];
-            for entry in fs::read_dir(&moonshine_dir).context("Failed to read moonshine dir")? {
-                let entry = entry?;
-                let path = entry.path();
-                if !path.is_dir() { continue; }
-                // Check that all required model files exist in this folder
-                let all_present = required_files.iter().all(|f| path.join(f).exists());
-                if all_present {
-                    if let Some(folder_name) = path.file_name().and_then(|s| s.to_str()) {
-                        // Map folder name back to model value: "tiny" -> "moonshine-tiny", "base-es" -> "moonshine-base-es"
-                        models.insert(format!("moonshine-{}", folder_name));
-                    }
-                }
-            }
-        }
-
-        // Look in the Parakeet cache directory (hf-hub structure)
+        let diarize = manifest::diarize();
+        let diarize_files: Vec<&str> = diarize.files.iter().map(|s| s.as_str()).collect();
         if self.find_cached_snapshot_with_files(
-            "istupakov/parakeet-tdt-0.6b-v3-onnx",
-            &["encoder-model.int8.onnx", "decoder_joint-model.int8.onnx"],
+            &diarize.repo,
+            &diarize_files,
         ).unwrap_or(None).is_some() {
-            models.insert("parakeet".to_string());
-        }
-
-        if self.find_cached_snapshot_with_files(
-            DIARIZE_REPO_ID,
-            &DIARIZE_REQUIRED_FILES,
-        ).unwrap_or(None).is_some() {
-            models.insert(DIARIZE_MODEL_ID.to_string());
+            models.insert(diarize.id.clone());
         }
 
         let mut result: Vec<String> = models.into_iter().collect();
@@ -909,19 +886,26 @@ impl ModelManager {
         Ok(result)
     }
 
-    /// Delete a cached model by name.
-    /// Returns true if successfully deleted, false if model doesn't exist or deletion failed.
+    /// Delete a cached model by id. Routing is driven by the manifest.
+    /// Returns true if successfully deleted, false if it doesn't exist or fails.
     pub fn delete_cached_model(&self, model_name: &str) -> bool {
-        if model_name.starts_with("moonshine-") {
-            return self.delete_moonshine_model(model_name).is_ok();
-        }
-        if model_name == "parakeet" {
-            return self.delete_parakeet_model().is_ok();
-        }
-        if model_name == DIARIZE_MODEL_ID {
+        if model_name == manifest::diarize().id {
             return self.delete_diarize_model().is_ok();
         }
-        self.delete_whisper_model(model_name).is_ok()
+        match manifest::get(model_name) {
+            Some(entry) => match &entry.source {
+                Source::WhisperGgml { model } => self.delete_whisper_model(model).is_ok(),
+                Source::Hf { repo, .. } => {
+                    if let Some((subdir, key)) = Self::flat_layout(entry) {
+                        self.delete_flat_dir(subdir, &key).is_ok()
+                    } else {
+                        self.delete_hf_repo(repo).is_ok()
+                    }
+                }
+            },
+            // Unknown id: best-effort whisper symlink removal (legacy behavior).
+            None => self.delete_whisper_model(model_name).is_ok(),
+        }
     }
 
     /// Setup for a new download: cancel previous download and create new token
@@ -1233,27 +1217,6 @@ fn remove_snapshot_file_and_blob(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn url_filename(url: &str) -> Option<String> {
-    url.rsplit('/').next().map(|s| s.to_string())
-}
-
-fn parse_hf_blob_url(url: &str) -> Option<(String, String)> {
-    let trimmed = url.strip_prefix("https://huggingface.co/")?;
-    let mut parts = trimmed.split('/');
-    let owner = parts.next()?;
-    let repo = parts.next()?;
-    let blob = parts.next()?;
-    if blob != "blob" {
-        return None;
-    }
-    let _rev = parts.next()?;
-    let filename = parts.next()?;
-    if owner.is_empty() || repo.is_empty() || filename.is_empty() {
-        return None;
-    }
-    Some((format!("{}/{}", owner, repo), filename.to_string()))
-}
-
 async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
     if let Some(parent) = dest_path.parent() { fs::create_dir_all(parent).ok(); }
     // Explicit client with a connect timeout so a dead/blocked endpoint fails fast
@@ -1263,12 +1226,15 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
         .connect_timeout(std::time::Duration::from_secs(30))
         .build()
         .context("Failed to build HTTP client")?;
-    let resp = client.get(url).send().await.context("Failed to GET url")?;
+    let mut resp = client.get(url).send().await.context("Failed to GET url")?;
     if !resp.status().is_success() {
         bail!("Failed to download '{}': status {}", url, resp.status());
     }
-    let bytes = resp.bytes().await.context("Failed to read body bytes")?;
+    // Stream the body to disk in chunks rather than buffering the whole file in
+    // memory — model files can be hundreds of MB to multiple GB.
     let mut f = fs::File::create(dest_path).context("Failed to create destination file")?;
-    std::io::copy(&mut bytes.as_ref(), &mut f).context("Failed to write file")?;
+    while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
+        std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+    }
     Ok(())
 }
