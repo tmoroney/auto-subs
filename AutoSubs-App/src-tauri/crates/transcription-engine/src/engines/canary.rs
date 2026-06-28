@@ -1,8 +1,12 @@
 //! Canary speech recognition backend.
 //!
 //! Wraps the transcribe-rs Canary engine (NVIDIA NeMo Canary, multilingual
-//! European-language ASR). Produces segment-level text; word timestamps are
-//! interpolated across each segment, mirroring the Moonshine/SenseVoice backends.
+//! European-language ASR). Canary is an attention-based autoregressive
+//! encoder/decoder whose ONNX decoder exposes no alignment signal, so
+//! transcribe-rs returns `segments: None` and `supports_timestamps: false`.
+//! Real token timestamps are therefore unavailable; word timestamps are
+//! interpolated across each segment, mirroring the Moonshine backend. (Unlike
+//! Canary, the CTC-based SenseVoice backend does surface real token timing.)
 
 use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use crate::utils::{interpolate_word_timestamps, split_speech_segment};

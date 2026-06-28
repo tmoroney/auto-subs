@@ -1,11 +1,13 @@
 //! SenseVoice speech recognition backend.
 //!
 //! Wraps the transcribe-rs SenseVoice engine (FunAudioLLM SenseVoice, a
-//! non-autoregressive multilingual ASR covering zh/en/ja/ko/yue). Produces
-//! segment-level text; word timestamps are interpolated across each segment,
-//! mirroring the Moonshine backend.
+//! non-autoregressive multilingual ASR covering zh/en/ja/ko/yue). SenseVoice is
+//! a CTC model, so transcribe-rs surfaces real per-token timestamps in
+//! `TranscriptionResult.segments`. We group those subword tokens into word
+//! timestamps (mirroring the Parakeet backend) and fall back to interpolation
+//! only when the model does not return token timing.
 
-use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
+use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use crate::utils::{interpolate_word_timestamps, split_speech_segment};
 use eyre::{Result, eyre};
 use std::path::Path;
@@ -70,11 +72,61 @@ pub async fn transcribe_sense_voice(
             continue;
         }
 
-        let seg_start = speech_segment.start + user_offset;
-        let seg_end = speech_segment.end + user_offset;
+        let base_offset = speech_segment.start + user_offset;
+        let fallback_end = speech_segment.end + user_offset;
 
-        let word_timestamps = interpolate_word_timestamps(&text, seg_start, seg_end);
-        let words_opt = (!word_timestamps.is_empty()).then_some(word_timestamps);
+        // SenseVoice is a CTC model, so transcribe-rs returns real per-token
+        // timestamps (subword pieces with the `▁` U+2581 word-start marker).
+        // Build word timestamps from those, mirroring the Parakeet backend, and
+        // fall back to interpolation only when token timing is unavailable.
+        let mut words: Vec<WordTimestamp> = Vec::new();
+        if let Some(token_segments) = &result.segments {
+            let mut is_first_word = true;
+            for t in token_segments {
+                // Convert the sentencepiece `▁` (U+2581) word-start marker into a
+                // leading space. Because `▁` always sits at the front of a
+                // word-initial token, this naturally yields a leading space for new
+                // words and none for continuation pieces — exactly what the
+                // formatter uses to decide spacing and merge subword fragments.
+                let mut w_text = t
+                    .text
+                    .replace('\u{2581}', " ")
+                    .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
+                    .to_string();
+                if w_text.trim().is_empty() {
+                    continue;
+                }
+
+                // The first emitted word should not carry a leading space.
+                if is_first_word {
+                    w_text = w_text.trim_start().to_string();
+                    if w_text.is_empty() {
+                        continue;
+                    }
+                }
+
+                words.push(WordTimestamp {
+                    text: w_text,
+                    start: base_offset + t.start as f64,
+                    end: base_offset + t.end as f64,
+                    probability: None,
+                });
+
+                is_first_word = false;
+            }
+        }
+
+        let (seg_start, seg_end) = if let (Some(first), Some(last)) = (words.first(), words.last()) {
+            (first.start, last.end)
+        } else {
+            // No token timing available: interpolate across the chunk window.
+            let s = base_offset;
+            let e = fallback_end;
+            words = interpolate_word_timestamps(&text, s, e);
+            (s, e)
+        };
+
+        let words_opt = (!words.is_empty()).then_some(words);
 
         if let Some(last) = segments.last_mut() {
             if last.end > seg_start {
