@@ -347,6 +347,24 @@
       "description": "초고속",
       "details": "최소 메모리로 가장 빠른 영어 자막 생성. 빠른 초안에 최적.",
       "label": "Whisper 초소형"
+    },
+    "sense_voice": {
+      "badge": "다국어",
+      "description": "다국어(아시아)",
+      "details": "중국어, 영어, 일본어, 한국어 및 광둥어에 높은 정확도를 제공합니다.",
+      "label": "SenseVoice"
+    },
+    "canary": {
+      "badge": "유럽어",
+      "description": "다국어(유럽)",
+      "details": "25개 유럽 언어에서 높은 정확도(NVIDIA NeMo Canary).",
+      "label": "Canary"
+    },
+    "cohere": {
+      "badge": "다국어",
+      "description": "다국어(대형)",
+      "details": "Cohere의 대형 다국어 자막 생성 모델.",
+      "label": "Cohere"
     }
   },
   "progressSteps": {

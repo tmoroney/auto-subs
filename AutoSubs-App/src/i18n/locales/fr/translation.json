@@ -338,6 +338,24 @@
       "description": "Rapide et précis",
       "details": "Transcription espagnole rapide sur l'appareil avec une bonne précision.",
       "badge": "Espagnol"
+    },
+    "sense_voice": {
+      "label": "SenseVoice",
+      "description": "Multilingue (asiatique)",
+      "details": "Grande précision pour le chinois, l'anglais, le japonais, le coréen et le cantonais.",
+      "badge": "Multilingue"
+    },
+    "canary": {
+      "label": "Canary",
+      "description": "Multilingue (européen)",
+      "details": "Haute précision dans 25 langues européennes (NVIDIA NeMo Canary).",
+      "badge": "Européen"
+    },
+    "cohere": {
+      "label": "Cohere",
+      "description": "Multilingue (grand)",
+      "details": "Grand modèle de transcription multilingue de Cohere.",
+      "badge": "Multilingue"
     }
   },
   "completion": {
