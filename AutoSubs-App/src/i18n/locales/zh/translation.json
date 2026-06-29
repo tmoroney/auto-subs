@@ -164,7 +164,9 @@
       "translate": "翻译",
       "searchSourcePlaceholder": "搜索语言...",
       "searchTargetPlaceholder": "搜索目标语言...",
-      "noLanguageFound": "未找到语言。"
+      "noLanguageFound": "未找到语言。",
+      "nativeTranslation": "模型原生翻译",
+      "googleTranslation": "Google翻译"
     }
   },
   "speakerEditor": {

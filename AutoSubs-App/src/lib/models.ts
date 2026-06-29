@@ -24,6 +24,7 @@ interface ManifestUi {
 
 interface ManifestModel {
   id: string;
+  engine: string;
   ui: ManifestUi;
 }
 
@@ -40,7 +41,7 @@ function i18nBase(id: string): string {
 }
 
 /** Build a UI `Model` from a manifest entry and its i18n key base. */
-function toModel(id: string, ui: ManifestUi, keyBase: string): Model {
+function toModel(id: string, engine: string, ui: ManifestUi, keyBase: string): Model {
   return {
     value: id,
     label: `models.${keyBase}.label`,
@@ -50,6 +51,7 @@ function toModel(id: string, ui: ManifestUi, keyBase: string): Model {
     image: `/${ui.image}`,
     details: `models.${keyBase}.details`,
     badge: `models.${keyBase}.badge`,
+    engine,
     languageSupport: ui.languageSupport,
     accuracy: ui.accuracy as Model["accuracy"],
     weight: ui.weight as Model["weight"],
@@ -91,7 +93,7 @@ export const modelFilterOrders = {
 };
 
 export const models: Model[] = manifest.models.map((m) =>
-  toModel(m.id, m.ui, i18nBase(m.id))
+  toModel(m.id, m.engine, m.ui, i18nBase(m.id))
 );
 
 /**
@@ -101,6 +103,7 @@ export const models: Model[] = manifest.models.map((m) =>
  */
 export const diarizeModel: Model = toModel(
   manifest.diarize.id,
+  "diarize",
   manifest.diarize.ui,
   "diarize"
 );

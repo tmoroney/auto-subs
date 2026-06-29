@@ -213,7 +213,27 @@ impl Engine {
         // Capture translation options before moving `options` into the pipeline
         let translate_to = options.translate_target.clone();
         let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
-        let whisper_to_en = options.whisper_to_english.unwrap_or(false);
+        let use_native = options.use_native_translation.unwrap_or(false);
+
+        // Determine whether the selected engine can natively translate
+        // (source → target). If not, we fall back to Google Translate post-pass.
+        let native_target: Option<String> = if use_native {
+            if let Some(ref target) = translate_to {
+                if is_whisper && target == "en" {
+                    Some(target.clone()) // Whisper built-in translate-to-English
+                } else if engine_kind == ModelEngine::Canary
+                    && crate::engines::canary::canary_supports_translation(&from_lang, target)
+                {
+                    Some(target.clone()) // Canary native translation
+                } else {
+                    None // Not supported natively → Google fallback
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         let (mut segments, detected_lang) = match engine_kind {
             ModelEngine::Parakeet => {
@@ -292,6 +312,7 @@ impl Engine {
                     _model_path.as_path(),
                     speech_segments,
                     &options,
+                    native_target.as_deref(),
                     cb.progress,
                     cb.new_segment_callback,
                     cb.is_cancelled,
@@ -322,9 +343,12 @@ impl Engine {
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
 
-        // `whisper_to_english` only applies to Whisper models (they can do built-in translate-to-English).
-        // If a non-Whisper model is used, we should not suppress the normal post-translation step.
-        let suppress_post_translation = is_whisper && whisper_to_en;
+        // `use_native_translation` requests the model's built-in translation.
+        // The routing above determined `native_target` — when set, the engine
+        // already produced output in the target language, so we suppress the
+        // Google Translate post-pass. When None (model can't do native for this
+        // pair), we fall back to Google Translate if `translate_target` is set.
+        let suppress_post_translation = native_target.is_some();
 
         if !suppress_post_translation {
             if let Some(to_lang) = translate_to.as_deref() {
@@ -335,12 +359,12 @@ impl Engine {
         }
 
         // Determine the final output language of the transcript.
-        // - Whisper built-in translate-to-English => "en"
-        // - Post-translation to a target => that target
+        // - Native translation (Whisper→en or Canary→supported) => the target
+        // - Post-translation via Google Translate => the target
         // - Otherwise => effective (detected or user-specified) language
-        let output_lang: String = if suppress_post_translation {
-            "en".to_string()
-        } else if let Some(ref to_lang) = translate_to {
+        // Since `translate_target` always carries the target when translation
+        // is on (including "en"), this covers both native and Google paths.
+        let output_lang: String = if let Some(ref to_lang) = translate_to {
             to_lang.clone()
         } else {
             effective_lang.to_string()

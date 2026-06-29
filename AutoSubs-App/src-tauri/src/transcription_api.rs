@@ -272,27 +272,18 @@ pub async fn transcribe_audio<R: Runtime>(
             Some(0) => None,
             other => other,
         };
-        // Handle translation - use target_language from frontend
+        // Handle translation - use target_language from frontend.
+        // `translate_target` always carries the target (including "en").
+        // `use_native_translation` requests the model's built-in translation
+        // when it supports the (source, target) pair; the engine layer falls
+        // back to Google Translate post-pass when native isn't possible.
         if options.translate.unwrap_or(false) {
-            if let Some(target) = options.target_language {
-                if target == "en" {
-                    // English: use Whisper's built-in translation
-                    transcribe_options.whisper_to_english = Some(true);
-                    transcribe_options.translate_target = None;
-                } else {
-                    // Non-English: use post-translation via Google Translate
-                    transcribe_options.whisper_to_english = Some(false);
-                    transcribe_options.translate_target = Some(target);
-                }
-            } else {
-                // Default to English for backward compatibility
-                transcribe_options.whisper_to_english = Some(true);
-                transcribe_options.translate_target = None;
-            }
+            let target = options.target_language.unwrap_or_else(|| "en".to_string());
+            transcribe_options.translate_target = Some(target);
+            transcribe_options.use_native_translation = Some(true);
         } else {
-            // Translation disabled
-            transcribe_options.whisper_to_english = Some(false);
             transcribe_options.translate_target = None;
+            transcribe_options.use_native_translation = Some(false);
         }
 
         if let Some(prompt) = options.custom_prompt.as_deref().map(str::trim).filter(|prompt| !prompt.is_empty()) {

@@ -20,14 +20,34 @@ use transcribe_rs::onnx::{
 // Canary encodes a whole clip per call; cap chunk length to bound memory.
 const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
+/// Languages supported by Canary 1B v2 for both transcription and translation.
+/// (Canary Flash supports only en/de/es/fr, but the manifest currently ships
+/// only V2. If a Flash variant is added later, differentiate by model id.)
+pub const CANARY_V2_LANGUAGES: &[&str] = &[
+    "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt",
+    "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
+];
+
+/// Returns true if Canary can natively translate from `from` to `to`.
+/// Canary requires a concrete source language (no auto-detection) and both
+/// languages must be in its supported set.
+pub fn canary_supports_translation(from: &str, to: &str) -> bool {
+    from != "auto"
+        && CANARY_V2_LANGUAGES.contains(&from)
+        && CANARY_V2_LANGUAGES.contains(&to)
+}
+
 /// Transcribe audio segments using the Canary engine.
 ///
 /// Returns `(segments, detected_language)`. Canary does not surface a detected
 /// language, so we echo the requested language hint (or `None` for auto).
+/// When `native_target` is `Some`, Canary's built-in translation is used to
+/// translate each segment to that target language.
 pub async fn transcribe_canary(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
+    native_target: Option<&str>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -49,6 +69,7 @@ pub async fn transcribe_canary(
     let hint = if lang == "auto" { "en".to_string() } else { lang.clone() };
     let params = CanaryParams {
         language: Some(hint),
+        target_language: native_target.map(|t| t.to_string()),
         ..Default::default()
     };
     let user_offset = options.offset.unwrap_or(0.0);
@@ -123,6 +144,14 @@ pub async fn transcribe_canary(
         }
     }
 
-    let detected_lang = if lang == "auto" { None } else { Some(lang) };
+    // When native translation is used, the output language is the target.
+    // Otherwise echo the requested language hint (or None for auto).
+    let detected_lang = if let Some(t) = native_target {
+        Some(t.to_string())
+    } else if lang == "auto" {
+        None
+    } else {
+        Some(lang)
+    };
     Ok((segments, detected_lang))
 }

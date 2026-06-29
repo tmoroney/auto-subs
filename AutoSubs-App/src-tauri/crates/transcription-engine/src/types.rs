@@ -31,12 +31,16 @@ pub struct TranscribeOptions {
     pub model: String,
     pub lang: Option<String>,
 
-    // If true, use Whisper's built-in translation-to-English during transcription.
-    // Ignored if `translate_target` is set to a non-English language.
-    pub whisper_to_english: Option<bool>,
+    // If true, prefer the model's built-in translation when it supports the
+    // (source, target) pair. Whisper can natively translate to English only;
+    // Canary can natively translate between any of its supported languages.
+    // If the model can't do native translation for the requested pair, falls
+    // back to Google Translate post-pass (when `translate_target` is set).
+    pub use_native_translation: Option<bool>,
 
-    // If set, perform a post-pass translation of segments to this target language using Google Translate.
-    // If set to "en", this takes precedence over `whisper_to_english` (for explicit control).
+    // Target language for translation. Always set when translation is enabled
+    // (including "en"). The engine layer decides whether to fulfill this
+    // natively or via Google Translate post-pass.
     pub translate_target: Option<String>,
 
     pub enable_vad: Option<bool>, // Enable Voice Activity Detection to isolate speech segments
@@ -51,7 +55,7 @@ impl Default for TranscribeOptions {
             offset: Some(0.0),
             model: "base".to_string(), // Default to base model
             lang: Some("auto".to_string()),
-            whisper_to_english: Some(false),
+            use_native_translation: Some(false),
             translate_target: None,
             enable_vad: Some(true),
             enable_diarize: None,

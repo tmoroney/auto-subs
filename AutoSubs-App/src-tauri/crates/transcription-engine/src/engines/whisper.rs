@@ -57,8 +57,12 @@ fn setup_params(options: &TranscribeOptions) -> FullParams {
         params.set_language(Some(lang));
     }
 
-    // Set translation options (Whisper built-in to English)
-    if options.whisper_to_english.unwrap_or(false) {
+    // Set translation options (Whisper built-in to English).
+    // Whisper can only natively translate to English, so we activate it only
+    // when use_native_translation is requested and the target is "en".
+    if options.use_native_translation.unwrap_or(false)
+        && options.translate_target.as_deref() == Some("en")
+    {
         params.set_translate(true);
     }
 
@@ -445,7 +449,8 @@ pub async fn run_transcription_pipeline(
             }
         
             // Choose word timestamps strategy and apply offset where needed in one place
-            let translated = options.whisper_to_english.unwrap_or(false);
+            let translated = options.use_native_translation.unwrap_or(false)
+                && options.translate_target.as_deref() == Some("en");
             let word_timestamps: Vec<WordTimestamp> = if translated {
                 // Interpolated times are already absolute via approx_* (which include base_offset)
                 interpolate_word_timestamps(&text, approx_start, approx_end)

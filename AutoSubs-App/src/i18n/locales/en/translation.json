@@ -166,7 +166,9 @@
       "translate": "Translate",
       "searchSourcePlaceholder": "Search languages...",
       "searchTargetPlaceholder": "Search target languages...",
-      "noLanguageFound": "No language found."
+      "noLanguageFound": "No language found.",
+      "nativeTranslation": "Model native translation",
+      "googleTranslation": "Google Translate"
     }
   },
   "speakerEditor": {

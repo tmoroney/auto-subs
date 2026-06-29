@@ -63,7 +63,9 @@
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
       "source": "ソース",
-      "translate": "翻訳"
+      "translate": "翻訳",
+      "nativeTranslation": "モデルネイティブ翻訳",
+      "googleTranslation": "Google翻訳"
     },
     "fileDialog": {
       "mediaFiles": "メディアファイル (ffmpeg 対応)"

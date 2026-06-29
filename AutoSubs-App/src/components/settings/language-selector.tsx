@@ -1,9 +1,10 @@
 import * as React from "react"
-import { Globe, Languages, Check } from "lucide-react"
+import { Globe, Languages, Check, Cpu, Cloud } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from "@/contexts/SettingsContext"
-import { languages, translateLanguages } from "@/lib/languages"
+import { languages, translateLanguages, getTranslationMethod } from "@/lib/languages"
+import { models } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/animated-tabs"
 import { useTranslation } from "react-i18next"
@@ -12,6 +13,7 @@ export function LanguageSelector() {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
+    const currentModel = models[settings.model]
     const sourceInputRef = React.useRef<HTMLInputElement>(null)
     const translateInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -73,7 +75,11 @@ export function LanguageSelector() {
                     <CommandList>
                         <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                         <CommandGroup>
-                            {translateLanguages.map((language) => (
+                            {translateLanguages.map((language) => {
+                                const method = currentModel
+                                    ? getTranslationMethod(currentModel.engine, settings.language, language.value)
+                                    : "google"
+                                return (
                                 <CommandItem
                                     value={language.label}
                                     key={language.value}
@@ -93,8 +99,20 @@ export function LanguageSelector() {
                                         )}
                                     />
                                     {language.label}
+                                    {method === "native" ? (
+                                        <Cpu
+                                            className="ml-auto size-3.5 text-muted-foreground"
+                                            aria-label={t("actionBar.language.nativeTranslation")}
+                                        />
+                                    ) : (
+                                        <Cloud
+                                            className="ml-auto size-3.5 text-muted-foreground"
+                                            aria-label={t("actionBar.language.googleTranslation")}
+                                        />
+                                    )}
                                 </CommandItem>
-                            ))}
+                                )
+                            })}
                         </CommandGroup>
                     </CommandList>
                 </Command>
