@@ -6,7 +6,7 @@
 
 use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use crate::utils::{interpolate_word_timestamps, split_speech_segment};
-use eyre::{Result, eyre};
+use eyre::{Result, bail, eyre};
 use std::path::Path;
 use transcribe_rs::onnx::{
     Quantization,
@@ -26,9 +26,16 @@ pub async fn transcribe_cohere(
     options: &TranscribeOptions,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
-    _abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+    abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Cohere transcribe called with model: {:?}", model_path);
+
+    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Cohere, so we can
+    // only stop between chunks. Bounding latency to one chunk (~30s) is far
+    // better than running to completion.
+    let cancelled = || abort_callback.as_ref().map(|c| c()).unwrap_or(false);
+
+    if cancelled() { bail!("Transcription cancelled"); }
 
     let mut model = CohereModel::load(model_path, &Quantization::Int4)
         .map_err(|e| eyre!("Failed to load Cohere model: {}", e))?;
@@ -50,6 +57,8 @@ pub async fn transcribe_cohere(
     let mut segments: Vec<Segment> = Vec::new();
 
     for (i, speech_segment) in expanded.iter().enumerate() {
+        if cancelled() { bail!("Transcription cancelled"); }
+
         let samples: Vec<f32> = speech_segment.samples
             .iter()
             .map(|&s| s as f32 / 32768.0)
@@ -58,6 +67,8 @@ pub async fn transcribe_cohere(
         let result = model
             .transcribe_with(&samples, &params)
             .map_err(|e| eyre!("Cohere transcription failed: {}", e))?;
+
+        if cancelled() { bail!("Transcription cancelled"); }
 
         let text = result.text.trim().to_string();
         if text.is_empty() {

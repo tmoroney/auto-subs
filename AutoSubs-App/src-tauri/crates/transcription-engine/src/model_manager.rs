@@ -858,7 +858,10 @@ impl ModelManager {
                 Source::Hf { repo, files } => {
                     if let Some((subdir, key)) = Self::flat_layout(entry) {
                         let dir = cache_dir.join(subdir).join(key);
-                        files.iter().all(|f| dir.join(f.dest()).exists())
+                        // Validate (not just existence) so partial/too-small files
+                        // left by an interrupted download aren't reported as cached.
+                        // Mirrors the fast-path check used in `ensure_hf_flat`.
+                        files.iter().all(|f| validate_model_file(&dir.join(f.dest())).is_ok())
                     } else {
                         let paths: Vec<&str> = files.iter().map(|f| f.path()).collect();
                         self.find_cached_snapshot_with_files(repo, &paths)
@@ -1230,11 +1233,42 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
     if !resp.status().is_success() {
         bail!("Failed to download '{}': status {}", url, resp.status());
     }
-    // Stream the body to disk in chunks rather than buffering the whole file in
-    // memory — model files can be hundreds of MB to multiple GB.
-    let mut f = fs::File::create(dest_path).context("Failed to create destination file")?;
-    while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
-        std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+    // Stream to a `.part` temp file in the same directory, then atomically rename
+    // on success. This avoids leaving a partial file at the destination path if the
+    // transfer fails mid-stream — otherwise `list_cached_models` (which only checks
+    // existence for flat-layout models) would mark a half-downloaded model as cached.
+    // The temp file lives in the same directory as the destination, so `fs::rename`
+    // is atomic on the same filesystem across all platforms.
+    let part_path = {
+        let mut name = dest_path.file_name().map(|s| s.to_os_string()).unwrap_or_default();
+        name.push(".part");
+        dest_path.with_file_name(name)
+    };
+
+    // Best-effort cleanup of any stale `.part` file from a previous failed attempt.
+    let _ = fs::remove_file(&part_path);
+
+    let stream_result: Result<()> = async {
+        let mut f = fs::File::create(&part_path).context("Failed to create temp download file")?;
+        while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
+            std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+        }
+        f.sync_all().context("Failed to sync download file")?;
+        Ok(())
     }
-    Ok(())
+    .await;
+
+    match stream_result {
+        Ok(()) => {
+            fs::rename(&part_path, dest_path).with_context(|| {
+                format!("Failed to finalize download to {}", dest_path.display())
+            })?;
+            Ok(())
+        }
+        Err(e) => {
+            // Remove the partial temp file so it isn't mistaken for a complete download.
+            let _ = fs::remove_file(&part_path);
+            Err(e)
+        }
+    }
 }

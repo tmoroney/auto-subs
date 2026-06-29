@@ -1,10 +1,13 @@
 //! Parakeet (NeMo) speech recognition backend.
 //!
-//! This module wraps the transcribe-rs Parakeet engine to provide
-//! NVIDIA NeMo Parakeet speech-to-text capabilities.
+//! This module wraps the transcribe-rs Parakeet engine (NVIDIA NeMo
+//! Parakeet-TDT 0.6b v3) to provide multilingual speech-to-text. The model
+//! supports 25 European languages plus Russian and Ukrainian; transcribe-rs
+//! does not surface a detected language, so this wrapper returns `None` and
+//! the caller falls back to the requested hint or script-based formatting.
 
 use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
-use eyre::{Result, eyre};
+use eyre::{Result, bail, eyre};
 use std::path::Path;
 use transcribe_rs::onnx::{
     Quantization,
@@ -19,22 +22,30 @@ use transcribe_rs::onnx::{
 /// # Arguments
 /// * `model_path` - Path to the Parakeet model directory
 /// * `speech_segments` - Pre-processed speech segments from VAD/diarization
-/// * `options` - Transcription options (note: Parakeet is English-only, language options are ignored)
+/// * `options` - Transcription options (Parakeet is multilingual; transcribe-rs does not surface a detected language, so the caller uses the requested hint or script-based formatting)
 /// * `progress_callback` - Optional callback for progress updates
 /// * `new_segment_callback` - Optional callback for new segment notifications
-/// * `_abort_callback` - Optional callback to check for cancellation (not yet implemented for Parakeet)
+/// * `abort_callback` - Optional callback to check for cancellation; checked before load and between chunks
 ///
 /// # Returns
-/// A tuple of (segments, detected_language) where detected_language is always Some("en") for Parakeet.
+/// A tuple of (segments, detected_language) where detected_language is always None for Parakeet
+/// (it does not surface a detected language; the caller falls back to the requested hint or
+/// script-based formatting when the hint is "auto").
 pub async fn transcribe_parakeet(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
-    _abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+    abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Parakeet transcribe called with model: {:?}", model_path);
+
+    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Parakeet, so we can
+    // only stop between chunks (one speech segment at a time).
+    let cancelled = || abort_callback.as_ref().map(|c| c()).unwrap_or(false);
+
+    if cancelled() { bail!("Transcription cancelled"); }
 
     // Create and load Parakeet model
     let mut model = ParakeetModel::load(model_path, &Quantization::Int8)
@@ -53,6 +64,8 @@ pub async fn transcribe_parakeet(
     let total_segments = speech_segments.len();
 
     for (i, speech_segment) in speech_segments.iter().enumerate() {
+        if cancelled() { bail!("Transcription cancelled"); }
+
         // Convert i16 samples to f32 for Parakeet
         let samples: Vec<f32> = speech_segment.samples
             .iter()
@@ -62,6 +75,8 @@ pub async fn transcribe_parakeet(
         // Transcribe this segment
         let result = model.transcribe_with(&samples, &inference_params)
             .map_err(|e| eyre!("Parakeet transcription failed: {}", e))?;
+
+        if cancelled() { bail!("Transcription cancelled"); }
 
         // Base offset for this chunk
         let base_offset = speech_segment.start + user_offset;

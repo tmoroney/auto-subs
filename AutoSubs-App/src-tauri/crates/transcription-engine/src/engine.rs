@@ -350,7 +350,23 @@ impl Engine {
         // Using the source language here was the cause of the spacing bug: when translating
         // from a CJK language (e.g. Japanese) to English, the CJK profile (insert_interword_space=false)
         // was applied to English output, stripping all inter-word spaces.
-        let mut pp_cfg = PostProcessConfig::for_language(&output_lang);
+        //
+        // When the output language is still "auto" (engine reported no detected
+        // language and no translate target), infer the script from the transcribed
+        // text so CJK/Korean/RTL/Indic/SE-Asian output is not formatted with Latin
+        // spacing/wrapping rules. Engines like SenseVoice/Canary/Cohere/Parakeet do
+        // not surface a detected language, so this is the only way to pick the right
+        // profile for their `auto` output.
+        let mut pp_cfg = if output_lang == "auto" {
+            let joined: String = segments
+                .iter()
+                .map(|s| s.text.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            PostProcessConfig::for_text(&joined)
+        } else {
+            PostProcessConfig::for_language(&output_lang)
+        };
         if let Some(d) = density {
             pp_cfg.apply_density(d);
             // If custom density, set max_chars_per_line directly from the provided value
