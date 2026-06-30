@@ -2,9 +2,11 @@
 //!
 //! This module wraps the transcribe-rs Parakeet engine (NVIDIA NeMo
 //! Parakeet-TDT 0.6b v3) to provide multilingual speech-to-text. The model
-//! supports 25 European languages plus Russian and Ukrainian; transcribe-rs
-//! does not surface a detected language, so this wrapper returns `None` and
-//! the caller falls back to the requested hint or script-based formatting.
+//! supports 25 European languages plus Russian and Ukrainian and handles
+//! language internally — it does not accept a source-language hint, so the
+//! `language` field in `ParakeetParams` is unused. transcribe-rs does not
+//! surface a detected language, so this wrapper returns `None` and the caller
+//! falls back to the requested hint (or "auto") for script-based formatting.
 
 use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
 use eyre::{Result, bail, eyre};
@@ -22,15 +24,18 @@ use transcribe_rs::onnx::{
 /// # Arguments
 /// * `model_path` - Path to the Parakeet model directory
 /// * `speech_segments` - Pre-processed speech segments from VAD/diarization
-/// * `options` - Transcription options (Parakeet is multilingual; transcribe-rs does not surface a detected language, so the caller uses the requested hint or script-based formatting)
+/// * `options` - Transcription options (Parakeet auto-detects the spoken
+///   language internally and does not use the `lang` hint for decoding;
+///   transcribe-rs does not surface a detected language, so the caller uses
+///   the requested hint — or "auto" — only for script-based formatting)
 /// * `progress_callback` - Optional callback for progress updates
 /// * `new_segment_callback` - Optional callback for new segment notifications
 /// * `abort_callback` - Optional callback to check for cancellation; checked before load and between chunks
 ///
 /// # Returns
 /// A tuple of (segments, detected_language) where detected_language is always None for Parakeet
-/// (it does not surface a detected language; the caller falls back to the requested hint or
-/// script-based formatting when the hint is "auto").
+/// (it auto-detects the spoken language internally but does not surface it; the caller falls
+/// back to the requested hint — or "auto" — for script-based formatting).
 pub async fn transcribe_parakeet(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,

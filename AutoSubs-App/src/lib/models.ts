@@ -109,10 +109,30 @@ export const diarizeModel: Model = toModel(
 );
 
 /**
+ * Check if a model's engine supports automatic language detection.
+ * - Multilingual Whisper: yes (built-in auto-detection)
+ * - Single-language models (Whisper .en, Moonshine variants): no
+ * - Restricted models: depends on the engine — SenseVoice and Parakeet
+ *   support auto; Canary and Cohere do not.
+ */
+export function modelSupportsAutoDetect(model: Model): boolean {
+  switch (model.languageSupport.kind) {
+    case "multilingual":
+      return true
+    case "single_language":
+      return false
+    case "restricted":
+      return model.engine === "sense_voice" || model.engine === "parakeet"
+    default:
+      return true
+  }
+}
+
+/**
  * Check if a model supports a specific language
  */
 export function modelSupportsLanguage(model: Model, language: string): boolean {
-  if (language === "auto") return true
+  if (language === "auto") return modelSupportsAutoDetect(model)
 
   switch (model.languageSupport.kind) {
     case "multilingual":

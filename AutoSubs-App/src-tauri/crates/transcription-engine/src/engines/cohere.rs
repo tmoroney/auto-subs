@@ -16,10 +16,18 @@ use transcribe_rs::onnx::{
 // Cohere decodes autoregressively per clip; cap chunk length to bound work/memory.
 const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
+/// Languages supported by Cohere's transcription ONNX export.
+pub const COHERE_LANGUAGES: &[&str] = &[
+    "en", "de", "fr", "it", "es", "pt", "el", "nl", "pl", "ar", "vi", "zh", "ja", "ko",
+];
+
 /// Transcribe audio segments using the Cohere engine.
 ///
 /// Returns `(segments, detected_language)`. Cohere does not surface a detected
-/// language, so we echo the requested language hint (or `None` for auto).
+/// language, so we echo the requested language hint. The source language must
+/// be concrete (not `auto`); this function bails with a descriptive error if
+/// the caller leaves it at `auto`, since Cohere has no auto-detection and
+/// silently coercing to English would corrupt non-English transcripts.
 pub async fn transcribe_cohere(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
@@ -41,9 +49,28 @@ pub async fn transcribe_cohere(
         .map_err(|e| eyre!("Failed to load Cohere model: {}", e))?;
 
     let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
-    let hint = if lang == "auto" { "en".to_string() } else { lang.clone() };
+    // Cohere is an autoregressive ASR with no built-in language detection; it
+    // requires a concrete source language hint. Silently coercing "auto" to
+    // "en" (as the underlying library does) would decode non-English audio with
+    // an English prompt, producing a garbage transcript. Refuse instead so the
+    // UI can prompt the user to pick an explicit supported language or switch
+    // to an auto-detecting engine (Whisper/SenseVoice/Parakeet).
+    if lang == "auto" {
+        bail!(
+            "Cohere cannot auto-detect the source language. Please select an explicit \
+             source language from Cohere's supported set (e.g. en, de, fr, ja, zh, ...) or \
+             use an auto-detecting engine such as Whisper, SenseVoice, or Parakeet."
+        );
+    }
+    if !COHERE_LANGUAGES.contains(&lang.as_str()) {
+        bail!(
+            "Cohere does not support source language '{}'. Supported languages: {}",
+            lang,
+            COHERE_LANGUAGES.join(", "),
+        );
+    }
     let params = CohereParams {
-        language: Some(hint),
+        language: Some(lang.clone()),
         ..Default::default()
     };
     let user_offset = options.offset.unwrap_or(0.0);
@@ -118,6 +145,6 @@ pub async fn transcribe_cohere(
         }
     }
 
-    let detected_lang = if lang == "auto" { None } else { Some(lang) };
+    let detected_lang = Some(lang);
     Ok((segments, detected_lang))
 }

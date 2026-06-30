@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
 import { Model } from "@/types"
-import { modelFilterOrders } from "@/lib/models"
+import { modelFilterOrders, modelSupportsLanguage } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
@@ -99,36 +99,12 @@ export function ModelPicker({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [activeFilter, setActiveFilter] = React.useState<FilterType>('recommended')
 
-  const modelSupportsLanguage = React.useCallback((model: Model, lang: string) => {
-    if (lang === "auto") return true
-
-    switch (model.languageSupport.kind) {
-      case "multilingual":
-        return true
-      case "single_language":
-        return model.languageSupport.language === lang
-      case "restricted":
-        return model.languageSupport.languages.includes(lang)
-      default:
-        return true
-    }
-  }, [])
-
   const filteredModels = React.useMemo(() => {
     let models
 
-    // When language is "auto", only show Whisper models and Parakeet
-    if (selectedLanguage === "auto") {
-      models = modelsState.filter((model) => {
-        // Include Parakeet and all Whisper models (multilingual or restricted)
-        return model.value === "parakeet" ||
-          model.languageSupport.kind === "multilingual" ||
-          model.languageSupport.kind === "restricted"
-      })
-    } else {
-      // For specific languages, use existing language support logic
-      models = modelsState.filter((model) => modelSupportsLanguage(model, selectedLanguage))
-    }
+    // Use the shared modelSupportsLanguage helper, which now correctly
+    // handles "auto" by checking the engine's auto-detection capability.
+    models = modelsState.filter((model) => modelSupportsLanguage(model, selectedLanguage))
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -157,7 +133,7 @@ export function ModelPicker({
     }
 
     return models
-  }, [modelsState, modelSupportsLanguage, selectedLanguage, searchQuery, activeFilter, t])
+  }, [modelsState, selectedLanguage, searchQuery, activeFilter, t])
 
   return (
     <TooltipProvider delayDuration={400}>
