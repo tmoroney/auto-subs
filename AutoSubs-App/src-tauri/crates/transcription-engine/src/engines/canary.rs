@@ -40,7 +40,10 @@ pub fn canary_supports_translation(from: &str, to: &str) -> bool {
 /// Transcribe audio segments using the Canary engine.
 ///
 /// Returns `(segments, detected_language)`. Canary does not surface a detected
-/// language, so we echo the requested language hint (or `None` for auto).
+/// language, so we echo the requested language hint. The source language must
+/// be concrete (not `auto`); this function bails with a descriptive error if
+/// the caller leaves it at `auto`, since Canary has no auto-detection and
+/// silently coercing to English would corrupt non-English transcripts.
 /// When `native_target` is `Some`, Canary's built-in translation is used to
 /// translate each segment to that target language.
 pub async fn transcribe_canary(
@@ -65,10 +68,29 @@ pub async fn transcribe_canary(
         .map_err(|e| eyre!("Failed to load Canary model: {}", e))?;
 
     let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
-    // Canary expects a concrete source language hint; fall back to English for "auto".
-    let hint = if lang == "auto" { "en".to_string() } else { lang.clone() };
+    // Canary is an attention-based ASR with no built-in language detection; it
+    // requires a concrete source language hint. Silently coercing "auto" to
+    // "en" would decode non-English audio with an English prompt, producing a
+    // garbage transcript (and, if native translation is enabled, a translation
+    // based on that garbage). Refuse instead so the UI can prompt the user to
+    // pick an explicit supported language or switch to an auto-detecting engine
+    // (Whisper/SenseVoice/Parakeet).
+    if lang == "auto" {
+        bail!(
+            "Canary cannot auto-detect the source language. Please select an explicit \
+             source language from Canary's supported set (e.g. en, de, es, fr, ...) or \
+             use an auto-detecting engine such as Whisper, SenseVoice, or Parakeet."
+        );
+    }
+    if !CANARY_V2_LANGUAGES.contains(&lang.as_str()) {
+        bail!(
+            "Canary does not support source language '{}'. Supported languages: {}",
+            lang,
+            CANARY_V2_LANGUAGES.join(", "),
+        );
+    }
     let params = CanaryParams {
-        language: Some(hint),
+        language: Some(lang.clone()),
         target_language: native_target.map(|t| t.to_string()),
         ..Default::default()
     };
@@ -145,11 +167,10 @@ pub async fn transcribe_canary(
     }
 
     // When native translation is used, the output language is the target.
-    // Otherwise echo the requested language hint (or None for auto).
+    // Otherwise echo the requested language hint (which is guaranteed concrete
+    // here, since "auto" was rejected above).
     let detected_lang = if let Some(t) = native_target {
         Some(t.to_string())
-    } else if lang == "auto" {
-        None
     } else {
         Some(lang)
     };

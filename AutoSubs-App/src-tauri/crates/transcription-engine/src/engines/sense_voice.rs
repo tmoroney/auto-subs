@@ -20,6 +20,23 @@ use transcribe_rs::onnx::{
 // length to bound memory on very long speech segments.
 const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
+/// Returns true if `s` is non-empty and consists solely of CJK characters
+/// (Han ideographs, Hiragana, Katakana, Hangul, and fullwidth/halfwidth forms).
+/// Used to synthesize word boundaries for SenseVoice CJK tokens that arrive
+/// without the sentencepiece `▁` word-start marker.
+fn is_cjk_text(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| {
+           ('\u{3040}'..='\u{30FF}').contains(&c) // Hiragana + Katakana (incl. halfwidth katakana)
+        || ('\u{3400}'..='\u{4DBF}').contains(&c) // CJK Unified Ideographs Extension A
+        || ('\u{4E00}'..='\u{9FFF}').contains(&c) // CJK Unified Ideographs
+        || ('\u{F900}'..='\u{FAFF}').contains(&c) // CJK Compatibility Ideographs
+        || ('\u{AC00}'..='\u{D7AF}').contains(&c) // Hangul Syllables
+        || ('\u{1100}'..='\u{11FF}').contains(&c) // Hangul Jamo
+        || ('\u{3130}'..='\u{318F}').contains(&c) // Hangul Compatibility Jamo
+        || ('\u{FF00}'..='\u{FFEF}').contains(&c) // Fullwidth/Halfwidth forms
+    })
+}
+
 /// Transcribe audio segments using the SenseVoice engine.
 ///
 /// Returns `(segments, detected_language)`. SenseVoice does not surface a
@@ -95,6 +112,10 @@ pub async fn transcribe_sense_voice(
         if let Some(token_segments) = &result.segments {
             let mut is_first_word = true;
             for t in token_segments {
+                // Record whether the sentencepiece `▁` (U+2581) word-start marker
+                // was present before stripping it; CJK tokens commonly arrive
+                // without it (see the boundary synthesis below).
+                let had_word_marker = t.text.starts_with('\u{2581}');
                 // Convert the sentencepiece `▁` (U+2581) word-start marker into a
                 // leading space. Because `▁` always sits at the front of a
                 // word-initial token, this naturally yields a leading space for new
@@ -107,6 +128,19 @@ pub async fn transcribe_sense_voice(
                     .to_string();
                 if w_text.trim().is_empty() {
                     continue;
+                }
+
+                // SenseVoice CJK output commonly emits adjacent Han/Kana/Hangul
+                // tokens *without* the `▁` word-start marker. After the conversion
+                // above those tokens have no leading boundary, so the formatter's
+                // `merge_continuations` would treat zero-gap alphabetic tokens as
+                // subword continuations and collapse an entire sentence into one
+                // "word" — defeating both CJK caption wrapping and the per-token
+                // timing this engine is meant to preserve. Synthesize a leading
+                // space for markerless CJK tokens so each is treated as its own
+                // word, mirroring how the `▁` marker delineates Latin words.
+                if !had_word_marker && is_cjk_text(w_text.trim()) {
+                    w_text = format!(" {}", w_text.trim());
                 }
 
                 // The first emitted word should not carry a leading space.
@@ -175,4 +209,82 @@ pub async fn transcribe_sense_voice(
 
     let detected_lang = if lang == "auto" { None } else { Some(lang) };
     Ok((segments, detected_lang))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_cjk_text;
+
+    #[test]
+    fn is_cjk_text_detects_cjk_scripts() {
+        // Han
+        assert!(is_cjk_text("你好"));
+        assert!(is_cjk_text("世界"));
+        // Hiragana / Katakana
+        assert!(is_cjk_text("こんにちは"));
+        assert!(is_cjk_text("テスト"));
+        // Hangul
+        assert!(is_cjk_text("안녕하세요"));
+        // Mixed CJK scripts still count as CJK
+        assert!(is_cjk_text("你好テスト안녕"));
+    }
+
+    #[test]
+    fn is_cjk_text_rejects_latin_and_mixed() {
+        assert!(!is_cjk_text(""));
+        assert!(!is_cjk_text("hello"));
+        assert!(!is_cjk_text("Hello"));
+        // A Latin letter mixed into CJK disqualifies the token
+        assert!(!is_cjk_text("你A好"));
+        // Punctuation alone is not CJK text
+        assert!(!is_cjk_text("。"));
+    }
+
+    /// Build the word texts the same way the transcription loop does, so this
+    /// test pins the boundary-synthesis behavior that prevents
+    /// `merge_continuations` from collapsing markerless CJK tokens.
+    fn synthesize_word(raw_token: &str, is_first: bool) -> String {
+        let had_word_marker = raw_token.starts_with('\u{2581}');
+        let mut w_text = raw_token
+            .replace('\u{2581}', " ")
+            .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
+            .to_string();
+        if w_text.trim().is_empty() {
+            return String::new();
+        }
+        if !had_word_marker && is_cjk_text(w_text.trim()) {
+            w_text = format!(" {}", w_text.trim());
+        }
+        if is_first {
+            w_text = w_text.trim_start().to_string();
+        }
+        w_text
+    }
+
+    #[test]
+    fn cjk_tokens_without_marker_get_leading_space() {
+        // First word: leading space is trimmed, but boundary is still recorded
+        // (the token is its own word — no continuation merge into a predecessor).
+        assert_eq!(synthesize_word("你好", true), "你好");
+        // Subsequent markerless CJK tokens must gain a leading space so the
+        // formatter treats each as a separate word instead of merging them.
+        assert_eq!(synthesize_word("世界", false), " 世界");
+        assert_eq!(synthesize_word("テスト", false), " テスト");
+        assert_eq!(synthesize_word("안녕", false), " 안녕");
+    }
+
+    #[test]
+    fn cjk_tokens_with_marker_keep_leading_space() {
+        // Tokens that already carry the `▁` marker behave as before.
+        assert_eq!(synthesize_word("▁你好", false), " 你好");
+        assert_eq!(synthesize_word("▁你好", true), "你好");
+    }
+
+    #[test]
+    fn latin_continuation_tokens_do_not_get_synthesized_boundary() {
+        // A markerless Latin subword piece must NOT gain a leading space —
+        // otherwise subword continuation merging would break.
+        assert_eq!(synthesize_word("ing", false), "ing");
+        assert_eq!(synthesize_word("▁play", false), " play");
+    }
 }

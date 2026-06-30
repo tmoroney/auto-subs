@@ -1260,9 +1260,26 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
 
     match stream_result {
         Ok(()) => {
-            fs::rename(&part_path, dest_path).with_context(|| {
-                format!("Failed to finalize download to {}", dest_path.display())
-            })?;
+            // On POSIX, `fs::rename` atomically replaces an existing destination.
+            // On Windows, `fs::rename` fails if the destination already exists, which
+            // would block finalization when re-downloading a corrupt or partial
+            // flat-layout model file that `ensure_hf_flat` already detected at
+            // `dest_path` (validation failed → re-download → can't rename over the
+            // bad file). Retry once after removing a pre-existing destination so the
+            // fresh download replaces the corrupt one instead of stranding the user
+            // with a `.part` they can't finalize without manual cleanup.
+            if let Err(e) = fs::rename(&part_path, dest_path) {
+                if dest_path.exists() {
+                    let _ = fs::remove_file(dest_path);
+                    fs::rename(&part_path, dest_path).with_context(|| {
+                        format!("Failed to finalize download to {}", dest_path.display())
+                    })?;
+                } else {
+                    return Err(e).with_context(|| {
+                        format!("Failed to finalize download to {}", dest_path.display())
+                    });
+                }
+            }
             Ok(())
         }
         Err(e) => {
