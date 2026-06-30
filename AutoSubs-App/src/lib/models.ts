@@ -80,14 +80,16 @@ export const modelFilterOrders = {
     "large-v3"
   ],
   accuracy: [
-    "large-v3", "canary", "large-v3-turbo", "parakeet", "moonshine-tiny-vi", "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "medium.en", "medium",
-    "cohere", "sense-voice", "moonshine-base", "small.en", "small", "moonshine-tiny-uk",
+    "cohere", "parakeet", "canary", "large-v3", "large-v3-turbo",
+    "moonshine-tiny-vi", "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "medium.en", "medium",
+    "sense-voice", "moonshine-base", "small.en", "small", "moonshine-tiny-uk",
     "tiny", "tiny.en", "base", "base.en", "moonshine-tiny"
   ],
   recommended: [
-    "parakeet", "canary", "large-v3-turbo", "large-v3", "sense-voice", "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja",
-    "moonshine-tiny-ko", "moonshine-tiny-uk", "moonshine-tiny-vi", "moonshine-base", "small.en", "small",
-    "medium", "medium.en", "cohere",
+    "parakeet", "canary", "sense-voice", "cohere", "large-v3-turbo", "large-v3",
+    "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "moonshine-tiny-uk", "moonshine-tiny-vi",
+    "moonshine-base", "small.en", "small",
+    "medium", "medium.en",
     "tiny", "tiny.en", "base", "base.en", "moonshine-tiny"
   ]
 };

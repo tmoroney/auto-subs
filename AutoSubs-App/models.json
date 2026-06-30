@@ -21,7 +21,7 @@
         "size": "700MB",
         "ram": "2GB",
         "image": "parakeet.png",
-        "accuracy": 3,
+        "accuracy": 4,
         "weight": 3,
         "languageSupport": {
           "kind": "restricted",
@@ -253,7 +253,7 @@
           "tokens.txt"
         ]
       },
-      "ui": { "size": "2GB", "ram": "4GB", "image": "whale.png", "accuracy": 3, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
+      "ui": { "size": "2GB", "ram": "4GB", "image": "whale.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
