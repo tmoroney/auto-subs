@@ -124,7 +124,7 @@ export function modelSupportsAutoDetect(model: Model): boolean {
     case "single_language":
       return false
     case "restricted":
-      return model.engine === "sense_voice" || model.engine === "parakeet"
+      return model.engine === "parakeet"
     default:
       return true
   }

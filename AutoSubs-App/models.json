@@ -20,7 +20,7 @@
       "ui": {
         "size": "700MB",
         "ram": "2GB",
-        "image": "parakeet.png",
+        "image": "macaw.png",
         "accuracy": 4,
         "weight": 3,
         "languageSupport": {
@@ -207,7 +207,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "200MB", "ram": "1GB", "image": "owl.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": { "size": "200MB", "ram": "1GB", "image": "hedgehog.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
     },
     {
       "id": "sense-voice",
@@ -235,7 +235,7 @@
           { "path": "nemo128.onnx", "repo": "istupakov/parakeet-tdt-0.6b-v3-onnx" }
         ]
       },
-      "ui": { "size": "1GB", "ram": "3GB", "image": "lynx.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"] } }
+      "ui": { "size": "1GB", "ram": "3GB", "image": "parrot.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"] } }
     },
     {
       "id": "cohere",
@@ -253,7 +253,7 @@
           "tokens.txt"
         ]
       },
-      "ui": { "size": "2GB", "ram": "4GB", "image": "whale.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
+      "ui": { "size": "2GB", "ram": "4GB", "image": "moose.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
