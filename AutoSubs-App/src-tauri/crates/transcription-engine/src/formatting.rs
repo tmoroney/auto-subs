@@ -152,6 +152,16 @@ impl PostProcessConfig {
         cfg
     }
 
+    /// Build a config by scanning the transcribed text for the dominant script.
+    /// Used when the engine reports no detected language (e.g. `language = "auto"`
+    /// with SenseVoice/Canary/Cohere/Parakeet), so CJK/Korean/RTL/Indic/SE-Asian
+    /// output is not formatted with Latin spacing/wrapping rules.
+    pub fn for_text(text: &str) -> Self {
+        let mut cfg = Self::with_profile(profile_for_text(text));
+        cfg.lang = "auto".to_string();
+        cfg
+    }
+
     /// Scale `max_chars_per_line` by density factor (~0.7 / 1.0 / 1.3).
     pub fn apply_density(&mut self, density: TextDensity) {
         match density {
@@ -248,6 +258,90 @@ pub fn profile_for_lang(lang: &str) -> ScriptProfile {
         // Indic
         "hi" | "bn" | "ta" | "te" | "ml" | "mr" | "gu" | "pa" | "kn" | "or" | "si" => ScriptProfile::Indic,
         // default
+        _ => ScriptProfile::Latin,
+    }
+}
+
+/// Infer a `ScriptProfile` by scanning the transcribed text for non-Latin
+/// Unicode block ranges and returning the dominant one. Used when the engine
+/// does not surface a detected language (e.g. SenseVoice/Canary/Cohere/Parakeet
+/// with `language = "auto"`), so CJK/Korean/RTL/Indic/SE-Asian output is not
+/// accidentally formatted with Latin spacing/wrapping rules.
+///
+/// Latin and Cyrillic both use inter-word spaces and map to `Latin`, so
+/// European/Cyrillic output (e.g. Parakeet) correctly keeps Latin formatting.
+pub fn profile_for_text(text: &str) -> ScriptProfile {
+    let mut cjk = 0u32;
+    let mut korean = 0u32;
+    let mut rtl = 0u32;
+    let mut se_asian = 0u32;
+    let mut indic = 0u32;
+
+    for c in text.chars() {
+        let cp = c as u32;
+        // CJK: Unified Ideographs + Hiragana + Katakana + CJK punctuation
+        if (0x4E00..=0x9FFF).contains(&cp)
+            || (0x3040..=0x309F).contains(&cp)
+            || (0x30A0..=0x30FF).contains(&cp)
+            || (0x3400..=0x4DBF).contains(&cp)
+            || (0xFF00..=0xFFEF).contains(&cp) // Fullwidth forms
+        {
+            cjk += 1;
+        }
+        // Hangul syllables + Jamo
+        else if (0xAC00..=0xD7AF).contains(&cp)
+            || (0x1100..=0x11FF).contains(&cp)
+            || (0x3130..=0x318F).contains(&cp)
+        {
+            korean += 1;
+        }
+        // Arabic + Hebrew (RTL)
+        else if (0x0600..=0x06FF).contains(&cp)
+            || (0x0750..=0x077F).contains(&cp)
+            || (0x0590..=0x05FF).contains(&cp)
+            || (0xFB50..=0xFDFF).contains(&cp)
+            || (0xFE70..=0xFEFF).contains(&cp)
+        {
+            rtl += 1;
+        }
+        // Thai + Lao + Khmer + Myanmar (SE Asian, no inter-word spaces)
+        else if (0x0E00..=0x0E7F).contains(&cp)
+            || (0x0E80..=0x0EFF).contains(&cp)
+            || (0x1780..=0x17FF).contains(&cp)
+            || (0x1000..=0x109F).contains(&cp)
+        {
+            se_asian += 1;
+        }
+        // Indic: Devanagari + Bengali + Tamil + Telugu + Malayalam + others
+        else if (0x0900..=0x097F).contains(&cp)
+            || (0x0980..=0x09FF).contains(&cp)
+            || (0x0A00..=0x0A7F).contains(&cp)
+            || (0x0A80..=0x0AFF).contains(&cp)
+            || (0x0B00..=0x0B7F).contains(&cp)
+            || (0x0B80..=0x0BFF).contains(&cp)
+            || (0x0C00..=0x0C7F).contains(&cp)
+            || (0x0C80..=0x0CFF).contains(&cp)
+            || (0x0D00..=0x0D7F).contains(&cp)
+            || (0x0D80..=0x0DFF).contains(&cp)
+        {
+            indic += 1;
+        }
+    }
+
+    let best = [
+        (cjk, ScriptProfile::CJK),
+        (korean, ScriptProfile::Korean),
+        (rtl, ScriptProfile::RTL),
+        (se_asian, ScriptProfile::SEAsianNoSpace),
+        (indic, ScriptProfile::Indic),
+    ]
+    .into_iter()
+    .max_by_key(|&(n, _)| n);
+
+    match best {
+        Some((n, profile)) if n > 0 => profile,
+        // No non-Latin characters: default to Latin (also correct for Cyrillic,
+        // which uses inter-word spaces like Latin).
         _ => ScriptProfile::Latin,
     }
 }

@@ -73,6 +73,7 @@ export interface Model {
     image: string
     details: string
     badge: string
+    engine: string
     languageSupport:
     | { kind: "multilingual" }
     | { kind: "single_language"; language: string }

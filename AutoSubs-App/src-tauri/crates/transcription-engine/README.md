@@ -82,7 +82,7 @@ translate::translate_segments(segments.as_mut_slice(), "en", "es", None).await?;
 Notes:
 
 - Translation changes the text and may desynchronize exact word-level timestamps from the translated words. The original timings remain attached to the source-language segmentation; use line-level timings for display if exact word timings post-translation are not required.
-- If you only need English output, Whisper itself can translate to English (`options.whisper_to_english = Some(true)`), but that does not re-align word timestamps to the translated tokens.
+- If you only need English output, Whisper itself can translate to English (`options.use_native_translation = Some(true)` with `translate_target = Some("en")`), but that does not re-align word timestamps to the translated tokens.
 
 ## Formatting only (standalone)
 

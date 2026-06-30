@@ -164,7 +164,9 @@
       "translate": "Traducir",
       "searchSourcePlaceholder": "Buscar idiomas...",
       "searchTargetPlaceholder": "Buscar idiomas de destino...",
-      "noLanguageFound": "No se encontró ningún idioma."
+      "noLanguageFound": "No se encontró ningún idioma.",
+      "nativeTranslation": "Traducción nativa del modelo",
+      "googleTranslation": "Google Translate"
     }
   },
   "speakerEditor": {
@@ -338,6 +340,24 @@
       "description": "Rápido y preciso",
       "details": "Transcripción rápida en español en el dispositivo con buena precisión.",
       "badge": "Español"
+    },
+    "sense_voice": {
+      "label": "SenseVoice",
+      "description": "Multilingüe (asiático)",
+      "details": "Gran precisión para chino, inglés, japonés, coreano y cantonés.",
+      "badge": "Multilingüe"
+    },
+    "canary": {
+      "label": "Canary",
+      "description": "Multilingüe (europeo)",
+      "details": "Alta precisión en 25 idiomas europeos (NVIDIA NeMo Canary).",
+      "badge": "Europeo"
+    },
+    "cohere": {
+      "label": "Cohere",
+      "description": "Multilingüe (grande)",
+      "details": "Modelo grande de transcripción multilingüe de Cohere.",
+      "badge": "Multilingüe"
     }
   },
   "completion": {

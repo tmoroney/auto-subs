@@ -221,3 +221,40 @@ export const translateLanguages = [
   { label: "Yoruba", value: "yo" },
   { label: "Zulu", value: "zu" },
 ]
+
+/**
+ * Languages that Canary 1B v2 can natively translate between.
+ * Must mirror `CANARY_V2_LANGUAGES` in the Rust canary engine.
+ */
+export const CANARY_TRANSLATE_LANGUAGES = [
+  "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu",
+  "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
+]
+
+/**
+ * Determine whether the selected model will use its built-in (native)
+ * translation or fall back to Google Translate for the given source→target pair.
+ *
+ * - Whisper: native translation to English only
+ * - Canary: native translation between any of its supported languages
+ *   (requires an explicit source language, not "auto")
+ * - All other engines: Google Translate
+ */
+export function getTranslationMethod(
+  engine: string,
+  sourceLang: string,
+  targetLang: string,
+): "native" | "google" {
+  if (engine === "whisper" && targetLang === "en") {
+    return "native"
+  }
+  if (
+    engine === "canary" &&
+    sourceLang !== "auto" &&
+    CANARY_TRANSLATE_LANGUAGES.includes(sourceLang) &&
+    CANARY_TRANSLATE_LANGUAGES.includes(targetLang)
+  ) {
+    return "native"
+  }
+  return "google"
+}

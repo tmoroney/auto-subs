@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod engine;
 pub mod engines;
+pub mod manifest;
 pub mod model_manager;
 pub mod vad;
 pub mod types;

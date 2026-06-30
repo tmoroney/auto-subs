@@ -164,7 +164,9 @@
       "translate": "翻译",
       "searchSourcePlaceholder": "搜索语言...",
       "searchTargetPlaceholder": "搜索目标语言...",
-      "noLanguageFound": "未找到语言。"
+      "noLanguageFound": "未找到语言。",
+      "nativeTranslation": "模型原生翻译",
+      "googleTranslation": "Google翻译"
     }
   },
   "speakerEditor": {
@@ -338,6 +340,24 @@
       "description": "快速且准确",
       "details": "快速的本地西班牙语转录，精度良好。",
       "badge": "西班牙语"
+    },
+    "sense_voice": {
+      "label": "SenseVoice",
+      "description": "多语言（亚洲）",
+      "details": "对中文、英语、日语、韩语和粤语具有很高的准确性。",
+      "badge": "多语言"
+    },
+    "canary": {
+      "label": "Canary",
+      "description": "多语言（欧洲）",
+      "details": "在 25 种欧洲语言上具有高准确性（NVIDIA NeMo Canary）。",
+      "badge": "欧洲"
+    },
+    "cohere": {
+      "label": "Cohere",
+      "description": "多语言（大型）",
+      "details": "Cohere 的大型多语言转录模型。",
+      "badge": "多语言"
     }
   },
   "completion": {

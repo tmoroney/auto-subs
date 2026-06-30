@@ -1,9 +1,11 @@
 import * as React from "react"
-import { Globe, Languages, Check } from "lucide-react"
+import { Globe, Languages, Check, Cpu, Cloud } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSettings } from "@/contexts/SettingsContext"
-import { languages, translateLanguages } from "@/lib/languages"
+import { languages, translateLanguages, getTranslationMethod } from "@/lib/languages"
+import { models, modelSupportsLanguage } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/animated-tabs"
 import { useTranslation } from "react-i18next"
@@ -12,6 +14,7 @@ export function LanguageSelector() {
     const { t } = useTranslation()
     const { settings, updateSetting } = useSettings()
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
+    const currentModel = models[settings.model]
     const sourceInputRef = React.useRef<HTMLInputElement>(null)
     const translateInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -27,7 +30,8 @@ export function LanguageSelector() {
     }, [languageTab])
 
     return (
-        <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
+        <TooltipProvider>
+            <Tabs value={languageTab} onValueChange={(value) => setLanguageTab(value as 'source' | 'translate')}>
             <TabsContent value="source" className="mt-0 border-b">
                 <Command className="max-h-[240px] rounded-b-none">
                     <CommandInput ref={sourceInputRef} placeholder={t("actionBar.language.searchSourcePlaceholder")} />
@@ -36,13 +40,20 @@ export function LanguageSelector() {
                         <CommandGroup>
                             {languages
                                 .slice()
-                                .map((language) => (
+                                .map((language) => {
+                                    const supported = currentModel
+                                        ? modelSupportsLanguage(currentModel, language.value)
+                                        : true
+                                    return (
                                     <CommandItem
                                         value={language.label}
                                         key={language.value}
                                         onSelect={() => {
                                             updateSetting("language", language.value);
                                         }}
+                                        className={cn(
+                                            !supported && "opacity-40 pointer-events-auto"
+                                        )}
                                     >
                                         <Check
                                             className={cn(
@@ -54,7 +65,8 @@ export function LanguageSelector() {
                                         />
                                         {language.label}
                                     </CommandItem>
-                                ))}
+                                    )
+                                })}
                         </CommandGroup>
                     </CommandList>
                 </Command>
@@ -73,7 +85,11 @@ export function LanguageSelector() {
                     <CommandList>
                         <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                         <CommandGroup>
-                            {translateLanguages.map((language) => (
+                            {translateLanguages.map((language) => {
+                                const method = currentModel
+                                    ? getTranslationMethod(currentModel.engine, settings.language, language.value)
+                                    : "google"
+                                return (
                                 <CommandItem
                                     value={language.label}
                                     key={language.value}
@@ -93,8 +109,38 @@ export function LanguageSelector() {
                                         )}
                                     />
                                     {language.label}
+                                    {method === "native" ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="ml-auto mr-2" onPointerDown={(e) => e.stopPropagation()}>
+                                                    <Cpu
+                                                        className="size-3.5 text-muted-foreground"
+                                                        aria-label={t("actionBar.language.nativeTranslation")}
+                                                    />
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Model translation</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="ml-auto mr-2" onPointerDown={(e) => e.stopPropagation()}>
+                                                    <Cloud
+                                                        className="size-3.5 text-muted-foreground"
+                                                        aria-label={t("actionBar.language.googleTranslation")}
+                                                    />
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Google Translate</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    )}
                                 </CommandItem>
-                            ))}
+                                )
+                            })}
                         </CommandGroup>
                     </CommandList>
                 </Command>
@@ -113,5 +159,6 @@ export function LanguageSelector() {
                 </TabsTrigger>
             </TabsList>
         </Tabs>
+        </TooltipProvider>
     )
 }

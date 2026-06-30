@@ -63,7 +63,9 @@
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
       "source": "ソース",
-      "translate": "翻訳"
+      "translate": "翻訳",
+      "nativeTranslation": "モデルネイティブ翻訳",
+      "googleTranslation": "Google翻訳"
     },
     "fileDialog": {
       "mediaFiles": "メディアファイル (ffmpeg 対応)"
@@ -347,6 +349,24 @@
       "description": "超高速",
       "details": "最小メモリで最速の英語文字起こし。クイックドラフトに最適。",
       "label": "Whisper 超小型版"
+    },
+    "sense_voice": {
+      "badge": "多言語",
+      "description": "多言語（アジア）",
+      "details": "中国語、英語、日本語、韓国語、広東語に高い精度を発揮します。",
+      "label": "SenseVoice"
+    },
+    "canary": {
+      "badge": "ヨーロッパ語",
+      "description": "多言語（ヨーロッパ）",
+      "details": "25 のヨーロッパ言語で高精度（NVIDIA NeMo Canary）。",
+      "label": "Canary"
+    },
+    "cohere": {
+      "badge": "多言語",
+      "description": "多言語（大型）",
+      "details": "Cohere の大型多言語文字起こしモデル。",
+      "label": "Cohere"
     }
   },
   "progressSteps": {

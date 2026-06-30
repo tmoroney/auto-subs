@@ -58,6 +58,36 @@ pub fn cs_to_s(cs: i64) -> f64 {
     cs as f64 * 0.01
 }
 
+/// Split a speech segment into chunks no longer than `max_seconds` (at 16 kHz),
+/// preserving absolute timing and speaker id. Used by ONNX backends that process
+/// a whole clip per call (Moonshine, SenseVoice, Canary, Cohere) to bound memory.
+pub fn split_speech_segment(
+    seg: &crate::types::SpeechSegment,
+    max_seconds: f64,
+) -> Vec<crate::types::SpeechSegment> {
+    const SAMPLE_RATE: usize = 16000;
+    let max_samples = (max_seconds * SAMPLE_RATE as f64) as usize;
+    if max_samples == 0 || seg.samples.len() <= max_samples {
+        return vec![seg.clone()];
+    }
+
+    let mut out = Vec::new();
+    let mut idx = 0usize;
+    while idx < seg.samples.len() {
+        let end_idx = (idx + max_samples).min(seg.samples.len());
+        let start_s = idx as f64 / SAMPLE_RATE as f64;
+        let end_s = end_idx as f64 / SAMPLE_RATE as f64;
+        out.push(crate::types::SpeechSegment {
+            start: seg.start + start_s,
+            end: seg.start + end_s,
+            samples: seg.samples[idx..end_idx].to_vec(),
+            speaker_id: seg.speaker_id.clone(),
+        });
+        idx = end_idx;
+    }
+    out
+}
+
 /// Generate approximate per-word timestamps by interpolating across [start, end]
 /// proportional to word lengths. Used when real word-level timestamps are unavailable
 /// (e.g. translation output, Moonshine).

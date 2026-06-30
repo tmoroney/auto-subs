@@ -6,7 +6,7 @@ struct CliArgs {
     model: String,
     lang: Option<String>,
     translate_to: Option<String>,
-    whisper_to_english: bool,
+    use_native_translation: bool,
     diarize: bool,
     vad: Option<bool>,
     max_speakers: Option<usize>,
@@ -20,7 +20,7 @@ fn print_usage(program: &str) {
     eprintln!("  --model <name>                 Model to use (default: tiny)");
     eprintln!("  --lang <code>                  Source language code (default: auto)");
     eprintln!("  --translate-to <code>          Translate transcript to target language");
-    eprintln!("  --whisper-to-english           Use Whisper translation-to-English mode");
+    eprintln!("  --native-translation           Use the model's built-in translation (Whisper→en, Canary→supported)");
     eprintln!("  --diarize                      Enable speaker labeling");
     eprintln!("  --no-vad                       Disable voice activity detection");
     eprintln!("  --max-speakers <n>             Limit detected speakers when diarization is enabled");
@@ -36,7 +36,7 @@ fn parse_args() -> Result<CliArgs> {
     let mut model = "tiny".to_string();
     let mut lang = Some("auto".to_string());
     let mut translate_to: Option<String> = None;
-    let mut whisper_to_english = false;
+    let mut use_native_translation = false;
     let mut diarize = false;
     let mut vad = Some(true);
     let mut max_speakers: Option<usize> = None;
@@ -54,8 +54,8 @@ fn parse_args() -> Result<CliArgs> {
             "--translate-to" => {
                 translate_to = Some(args.next().ok_or_else(|| eyre!("missing value for --translate-to"))?);
             }
-            "--whisper-to-english" => {
-                whisper_to_english = true;
+            "--native-translation" => {
+                use_native_translation = true;
             }
             "--diarize" => {
                 diarize = true;
@@ -102,7 +102,7 @@ fn parse_args() -> Result<CliArgs> {
         model,
         lang,
         translate_to,
-        whisper_to_english,
+        use_native_translation,
         diarize,
         vad,
         max_speakers,
@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
     let options = TranscribeOptions {
         model: args.model,
         lang: args.lang,
-        whisper_to_english: Some(args.whisper_to_english),
+        use_native_translation: Some(args.use_native_translation),
         translate_target: args.translate_to,
         enable_vad: args.vad,
         enable_diarize: Some(args.diarize),

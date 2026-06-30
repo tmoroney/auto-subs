@@ -1,57 +1,78 @@
+//! Cohere speech recognition backend.
+//!
+//! Wraps the transcribe-rs Cohere engine (Cohere's transcription ONNX export).
+//! Produces segment-level text; word timestamps are interpolated across each
+//! segment, mirroring the Moonshine/SenseVoice backends.
+
 use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
+use crate::utils::{interpolate_word_timestamps, split_speech_segment};
 use eyre::{Result, bail, eyre};
 use std::path::Path;
 use transcribe_rs::onnx::{
     Quantization,
-    moonshine::{MoonshineModel, MoonshineParams, MoonshineVariant},
+    cohere::{CohereModel, CohereParams},
 };
 
-const MAX_SEGMENT_SECONDS: f64 = 64.0;
+// Cohere decodes autoregressively per clip; cap chunk length to bound work/memory.
+const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
-use crate::utils::{interpolate_word_timestamps, split_speech_segment};
+/// Languages supported by Cohere's transcription ONNX export.
+pub const COHERE_LANGUAGES: &[&str] = &[
+    "en", "de", "fr", "it", "es", "pt", "el", "nl", "pl", "ar", "vi", "zh", "ja", "ko",
+];
 
-pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(MoonshineVariant, Option<&'static str>)> {
-    let m = model_name.to_lowercase();
-    let suffix = m.strip_prefix("moonshine-")?;
-
-    let (variant, lang) = match suffix {
-        "tiny" => (MoonshineVariant::Tiny, Some("en")),
-        "tiny-ar" => (MoonshineVariant::TinyAr, Some("ar")),
-        "tiny-zh" => (MoonshineVariant::TinyZh, Some("zh")),
-        "tiny-ja" => (MoonshineVariant::TinyJa, Some("ja")),
-        "tiny-ko" => (MoonshineVariant::TinyKo, Some("ko")),
-        "tiny-uk" => (MoonshineVariant::TinyUk, Some("uk")),
-        "tiny-vi" => (MoonshineVariant::TinyVi, Some("vi")),
-        "base" => (MoonshineVariant::Base, Some("en")),
-        "base-es" => (MoonshineVariant::BaseEs, Some("es")),
-        _ => return None,
-    };
-
-    Some((variant, lang))
-}
-
-pub async fn transcribe_moonshine(
+/// Transcribe audio segments using the Cohere engine.
+///
+/// Returns `(segments, detected_language)`. Cohere does not surface a detected
+/// language, so we echo the requested language hint. The source language must
+/// be concrete (not `auto`); this function bails with a descriptive error if
+/// the caller leaves it at `auto`, since Cohere has no auto-detection and
+/// silently coercing to English would corrupt non-English transcripts.
+pub async fn transcribe_cohere(
     model_path: &Path,
-    variant: MoonshineVariant,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
-    tracing::debug!("Moonshine transcribe called with model: {:?}", model_path);
+    tracing::debug!("Cohere transcribe called with model: {:?}", model_path);
 
-    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Moonshine, so we
-    // can only stop between chunks (~64s max). Bounding latency is far better
-    // than running to completion.
+    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Cohere, so we can
+    // only stop between chunks. Bounding latency to one chunk (~30s) is far
+    // better than running to completion.
     let cancelled = || abort_callback.as_ref().map(|c| c()).unwrap_or(false);
 
     if cancelled() { bail!("Transcription cancelled"); }
 
-    let mut model = MoonshineModel::load(model_path, variant, &Quantization::default())
-        .map_err(|e| eyre!("Failed to load Moonshine model: {}", e))?;
+    let mut model = CohereModel::load(model_path, &Quantization::Int4)
+        .map_err(|e| eyre!("Failed to load Cohere model: {}", e))?;
 
-    let params = MoonshineParams { max_length: None, ..Default::default() };
+    let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
+    // Cohere is an autoregressive ASR with no built-in language detection; it
+    // requires a concrete source language hint. Silently coercing "auto" to
+    // "en" (as the underlying library does) would decode non-English audio with
+    // an English prompt, producing a garbage transcript. Refuse instead so the
+    // UI can prompt the user to pick an explicit supported language or switch
+    // to an auto-detecting engine (Whisper/SenseVoice/Parakeet).
+    if lang == "auto" {
+        bail!(
+            "Cohere cannot auto-detect the source language. Please select an explicit \
+             source language from Cohere's supported set (e.g. en, de, fr, ja, zh, ...) or \
+             use an auto-detecting engine such as Whisper, SenseVoice, or Parakeet."
+        );
+    }
+    if !COHERE_LANGUAGES.contains(&lang.as_str()) {
+        bail!(
+            "Cohere does not support source language '{}'. Supported languages: {}",
+            lang,
+            COHERE_LANGUAGES.join(", "),
+        );
+    }
+    let params = CohereParams {
+        language: Some(lang.clone()),
+        ..Default::default()
+    };
     let user_offset = options.offset.unwrap_or(0.0);
 
     let mut expanded: Vec<SpeechSegment> = Vec::new();
@@ -72,7 +93,7 @@ pub async fn transcribe_moonshine(
 
         let result = model
             .transcribe_with(&samples, &params)
-            .map_err(|e| eyre!("Moonshine transcription failed: {}", e))?;
+            .map_err(|e| eyre!("Cohere transcription failed: {}", e))?;
 
         if cancelled() { bail!("Transcription cancelled"); }
 
@@ -124,9 +145,6 @@ pub async fn transcribe_moonshine(
         }
     }
 
-    let detected_lang = moonshine_variant_from_model_name(&options.model)
-        .and_then(|(_, lang)| lang)
-        .map(|s| s.to_string());
-
+    let detected_lang = Some(lang);
     Ok((segments, detected_lang))
 }
