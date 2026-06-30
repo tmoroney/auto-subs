@@ -115,6 +115,78 @@ Select a Preset Style |  Or create your own
 
 ---
 
+## Supported Models
+
+AutoSubs ships with several local transcription model families. All run fully on-device — nothing is sent to the cloud. Models are downloaded on demand from the in-app Model Manager.
+
+> Accuracy is a relative 1–4 rating within AutoSubs (higher is better). Sizes and RAM figures are approximate.
+
+### Whisper
+
+OpenAI's Whisper, via `whisper-rs` (GGML). Each size is available in a multilingual variant and an `.en` English-only variant (the `.en` models are slightly more accurate on English audio).
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| tiny / tiny.en | 80 MB | 1 GB | Multilingual / English | ★ |
+| base / base.en | 150 MB | 1 GB | Multilingual / English | ★ |
+| small / small.en | 480 MB | 2 GB | Multilingual / English | ★★ |
+| medium / medium.en | 1.5 GB | 5 GB | Multilingual / English | ★★★ |
+| large-v3-turbo | 1.6 GB | 6 GB | Multilingual | ★★★ |
+| large-v3 | 3.1 GB | 10 GB | Multilingual | ★★★★ |
+
+### Moonshine
+
+Useful Sensors' Moonshine, via ONNX Runtime. The `tiny` English model is quantized; the language-specific `tiny` variants and the `base` model are float-precision.
+
+| Model | Size | RAM | Language | Accuracy |
+|---|---|---|---|---|
+| moonshine-tiny | 60 MB | 1 GB | English | ★ |
+| moonshine-tiny-ar | 120 MB | 1 GB | Arabic | ★★★ |
+| moonshine-tiny-zh | 120 MB | 1 GB | Chinese | ★★★ |
+| moonshine-tiny-ja | 120 MB | 1 GB | Japanese | ★★★ |
+| moonshine-tiny-ko | 120 MB | 1 GB | Korean | ★★★ |
+| moonshine-tiny-uk | 120 MB | 1 GB | Ukrainian | ★★ |
+| moonshine-tiny-vi | 120 MB | 1 GB | Vietnamese | ★★★ |
+| moonshine-base | 200 MB | 1 GB | English | ★★ |
+
+### Parakeet
+
+NVIDIA's Parakeet-TDT-0.6B-v3 (int8 ONNX). Fast and accurate, with support for 25 European languages plus Russian and Ukrainian.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| parakeet | 700 MB | 2 GB | 25 languages (EU + RU + UK) | ★★★★ |
+
+### SenseVoice
+
+Alibaba's SenseVoice (int8 ONNX). Compact and well-suited to CJK audio.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| sense-voice | 230 MB | 1 GB | Chinese, English, Japanese, Korean, Cantonese | ★★★ |
+
+### Canary
+
+NVIDIA's Canary-1B-v2 (int8 ONNX). A multilingual encoder-decoder model that also supports native translation.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| canary | 1 GB | 3 GB | 25 languages (EU + RU + UK) | ★★★★ |
+
+### Cohere
+
+Cohere Transcribe (int4 ONNX). The highest-accuracy option for a focused set of 14 widely-spoken languages.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| cohere | 2 GB | 4 GB | Arabic, German, Greek, English, Spanish, French, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Vietnamese, Chinese | ★★★★ |
+
+### Diarization & VAD
+
+In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription).
+
+---
+
 ## Contributing
 
 PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started, including the dev setup and a full codebase walkthrough via **[AutoSubs DeepWiki](https://deepwiki.com/tmoroney/auto-subs)**.
