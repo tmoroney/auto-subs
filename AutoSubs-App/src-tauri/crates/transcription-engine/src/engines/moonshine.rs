@@ -1,14 +1,12 @@
-use crate::types::{SpeechSegment, Segment, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
-use eyre::{Result, bail, eyre};
+use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
+use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
+use eyre::{eyre, Result};
 use std::path::Path;
 use transcribe_rs::onnx::{
-    Quantization,
     moonshine::{MoonshineModel, MoonshineParams, MoonshineVariant},
+    Quantization,
 };
-
-const MAX_SEGMENT_SECONDS: f64 = 64.0;
-
-use crate::utils::{interpolate_word_timestamps, split_speech_segment};
+use transcribe_rs::{TranscriptionResult};
 
 pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(MoonshineVariant, Option<&'static str>)> {
     let m = model_name.to_lowercase();
@@ -30,6 +28,71 @@ pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(MoonshineV
     Some((variant, lang))
 }
 
+fn moonshine_lang_from_variant(variant: MoonshineVariant) -> Option<&'static str> {
+    match variant {
+        MoonshineVariant::Tiny => Some("en"),
+        MoonshineVariant::TinyAr => Some("ar"),
+        MoonshineVariant::TinyZh => Some("zh"),
+        MoonshineVariant::TinyJa => Some("ja"),
+        MoonshineVariant::TinyKo => Some("ko"),
+        MoonshineVariant::TinyUk => Some("uk"),
+        MoonshineVariant::TinyVi => Some("vi"),
+        MoonshineVariant::Base => Some("en"),
+        MoonshineVariant::BaseEs => Some("es"),
+    }
+}
+
+pub struct MoonshineEngine {
+    model: MoonshineModel,
+    params: MoonshineParams,
+    detected_lang: Option<String>,
+}
+
+impl MoonshineEngine {
+    pub fn load(model_path: &Path, variant: MoonshineVariant) -> Result<Self> {
+        let model = MoonshineModel::load(model_path, variant, &Quantization::default())
+            .map_err(|e| eyre!("Failed to load Moonshine model: {}", e))?;
+
+        Ok(Self {
+            model,
+            params: MoonshineParams {
+                max_length: None,
+                ..Default::default()
+            },
+            detected_lang: moonshine_lang_from_variant(variant).map(|s| s.to_string()),
+        })
+    }
+}
+
+impl OnnxEngine for MoonshineEngine {
+    const MAX_SEGMENT_SECONDS: f64 = 64.0;
+
+    fn load(model_path: &Path) -> Result<Self> {
+        let model_name = model_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| eyre!("Unknown Moonshine model: {}", model_path.display()))?;
+        let (variant, _) = moonshine_variant_from_model_name(model_name)
+            .ok_or_else(|| eyre!("Unknown Moonshine model: {}", model_name))?;
+
+        MoonshineEngine::load(model_path, variant)
+    }
+
+    fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
+        self.model
+            .transcribe_with(samples, &self.params)
+            .map_err(|e| eyre!("Moonshine transcription failed: {}", e))
+    }
+
+    fn word_timing(&self) -> WordTiming {
+        WordTiming::Interpolated
+    }
+
+    fn detected_lang(&self) -> Option<String> {
+        self.detected_lang.clone()
+    }
+}
+
 pub async fn transcribe_moonshine(
     model_path: &Path,
     variant: MoonshineVariant,
@@ -41,92 +104,18 @@ pub async fn transcribe_moonshine(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Moonshine transcribe called with model: {:?}", model_path);
 
-    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Moonshine, so we
-    // can only stop between chunks (~64s max). Bounding latency is far better
-    // than running to completion.
-    let cancelled = || abort_callback.as_ref().map(|c| c()).unwrap_or(false);
-
-    if cancelled() { bail!("Transcription cancelled"); }
-
-    let mut model = MoonshineModel::load(model_path, variant, &Quantization::default())
-        .map_err(|e| eyre!("Failed to load Moonshine model: {}", e))?;
-
-    let params = MoonshineParams { max_length: None, ..Default::default() };
-    let user_offset = options.offset.unwrap_or(0.0);
-
-    let mut expanded: Vec<SpeechSegment> = Vec::new();
-    for seg in &speech_segments {
-        expanded.extend(split_speech_segment(seg, MAX_SEGMENT_SECONDS));
+    if abort_callback.as_ref().map(|c| c()).unwrap_or(false) {
+        eyre::bail!("Transcription cancelled");
     }
 
-    let total_segments = expanded.len().max(1);
-    let mut segments: Vec<Segment> = Vec::new();
-
-    for (i, speech_segment) in expanded.iter().enumerate() {
-        if cancelled() { bail!("Transcription cancelled"); }
-
-        let samples: Vec<f32> = speech_segment.samples
-            .iter()
-            .map(|&s| s as f32 / 32768.0)
-            .collect();
-
-        let result = model
-            .transcribe_with(&samples, &params)
-            .map_err(|e| eyre!("Moonshine transcription failed: {}", e))?;
-
-        if cancelled() { bail!("Transcription cancelled"); }
-
-        let text = result.text.trim().to_string();
-        if text.is_empty() {
-            if let Some(progress_callback) = progress_callback {
-                let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-                progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
-            }
-            continue;
-        }
-
-        let seg_start = speech_segment.start + user_offset;
-        let seg_end = speech_segment.end + user_offset;
-
-        let word_timestamps = interpolate_word_timestamps(&text, seg_start, seg_end);
-        let words_opt = (!word_timestamps.is_empty()).then_some(word_timestamps);
-
-        if let Some(last) = segments.last_mut() {
-            if last.end > seg_start {
-                last.end = seg_start;
-            }
-            if let Some(words) = &mut last.words {
-                if let Some(last_word) = words.last_mut() {
-                    if last_word.end > last.end {
-                        last_word.end = last.end;
-                    }
-                }
-            }
-        }
-
-        let segment = Segment {
-            speaker_id: speech_segment.speaker_id.clone(),
-            start: seg_start,
-            end: seg_end,
-            text,
-            words: words_opt,
-        };
-
-        if let Some(cb) = new_segment_callback {
-            cb(&segment);
-        }
-
-        segments.push(segment);
-
-        if let Some(progress_callback) = progress_callback {
-            let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-            progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
-        }
-    }
-
-    let detected_lang = moonshine_variant_from_model_name(&options.model)
-        .and_then(|(_, lang)| lang)
-        .map(|s| s.to_string());
-
-    Ok((segments, detected_lang))
+    let engine = MoonshineEngine::load(model_path, variant)?;
+    run_onnx_pipeline(
+        engine,
+        speech_segments,
+        options.offset.unwrap_or(0.0),
+        progress_callback,
+        new_segment_callback,
+        abort_callback,
+    )
+    .await
 }

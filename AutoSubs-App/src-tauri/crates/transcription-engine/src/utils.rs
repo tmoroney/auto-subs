@@ -125,6 +125,23 @@ pub fn interpolate_word_timestamps(line: &str, start: f64, end: f64) -> Vec<crat
     out
 }
 
+/// Clamp the previous segment (and its last word) so it doesn't overlap the
+/// new segment's start, then push. Mirrors the logic duplicated across engines.
+pub fn push_segment_clamped(
+    segments: &mut Vec<crate::types::Segment>,
+    seg: crate::types::Segment,
+) {
+    if let Some(last) = segments.last_mut() {
+        if last.end > seg.start { last.end = seg.start; }
+        if let Some(words) = &mut last.words {
+            if let Some(lw) = words.last_mut() {
+                if lw.end > last.end { lw.end = last.end; }
+            }
+        }
+    }
+    segments.push(seg);
+}
+
 /// List of supported target language codes for Google Translate (unofficial endpoint).
 pub fn get_translate_languages() -> Vec<&'static str> {
     vec![
@@ -152,178 +169,3 @@ pub fn get_whisper_languages() -> Vec<&'static str> {
         "sa", "lb", "my", "bo", "tl", "mg", "as", "tt", "haw", "ln", "ha", "ba", "jw", "su", "yue",
     ]
 }
-
-// List of supported language codes for Whisper (includes "auto"):
-// - `auto`: Automatic language detection
-// - `en`: English
-// - `zh`: Chinese
-// - `de`: German
-// - `es`: Spanish
-// - `ru`: Russian
-// - `ko`: Korean
-// - `fr`: French
-// - `ja`: Japanese
-// - `pt`: Portuguese
-// - `tr`: Turkish
-// - `pl`: Polish
-// - `ca`: Catalan
-// - `nl`: Dutch
-// - `ar`: Arabic
-// - `sv`: Swedish
-// - `it`: Italian
-// - `id`: Indonesian
-// - `hi`: Hindi
-// - `fi`: Finnish
-// - `vi`: Vietnamese
-// - `he`: Hebrew
-// - `uk`: Ukrainian
-// - `el`: Greek
-// - `ms`: Malay
-// - `cs`: Czech
-// - `ro`: Romanian
-// - `da`: Danish
-// - `hu`: Hungarian
-// - `ta`: Tamil
-// - `no`: Norwegian
-// - `th`: Thai
-// - `ur`: Urdu
-// - `hr`: Croatian
-// - `bg`: Bulgarian
-// - `lt`: Lithuanian
-// - `la`: Latin
-// - `lv`: Latvian
-// - `mt`: Maltese
-// - `mi`: Maori
-// - `mr`: Marathi
-// - `mn`: Mongolian
-// - `my`: Myanmar (Burmese)
-// - `ne`: Nepali
-// - `so`: Somali
-// - `es`: Spanish
-// - `su`: Sundanese
-// - `sw`: Swahili
-// - `sv`: Swedish
-// - `tg`: Tajik
-// - `ta`: Tamil
-// - `te`: Telugu
-// - `th`: Thai
-// - `tr`: Turkish
-// - `uk`: Ukrainian
-// - `ur`: Urdu
-// - `ug`: Uyghur
-// - `uz`: Uzbek
-// - `vi`: Vietnamese
-// - `cy`: Welsh
-// - `xh`: Xhosa
-// - `yi`: Yiddish
-// - `yo`: Yoruba
-// - `zu`: Zulu
-
-// List of supported language codes for translation:
-// - `af`: Afrikaans
-// - `sq`: Albanian
-// - `am`: Amharic
-// - `ar`: Arabic
-// - `hy`: Armenian
-// - `az`: Azerbaijani
-// - `eu`: Basque
-// - `be`: Belarusian
-// - `bn`: Bengali
-// - `bs`: Bosnian
-// - `bg`: Bulgarian
-// - `ca`: Catalan
-// - `ceb`: Cebuano
-// - `ny`: Chichewa
-// - `zh`: Chinese (Simplified)
-// - `zh-TW`: Chinese (Traditional)
-// - `co`: Corsican
-// - `hr`: Croatian
-// - `cs`: Czech
-// - `da`: Danish
-// - `nl`: Dutch
-// - `en`: English
-// - `eo`: Esperanto
-// - `et`: Estonian
-// - `tl`: Filipino
-// - `fi`: Finnish
-// - `fr`: French
-// - `fy`: Frisian
-// - `gl`: Galician
-// - `ka`: Georgian
-// - `de`: German
-// - `el`: Greek
-// - `gu`: Gujarati
-// - `ht`: Haitian Creole
-// - `ha`: Hausa
-// - `haw`: Hawaiian
-// - `he`: Hebrew
-// - `hi`: Hindi
-// - `hmn`: Hmong
-// - `hu`: Hungarian
-// - `is`: Icelandic
-// - `ig`: Igbo
-// - `id`: Indonesian
-// - `ga`: Irish
-// - `it`: Italian
-// - `ja`: Japanese
-// - `jv`: Javanese
-// - `kn`: Kannada
-// - `kk`: Kazakh
-// - `km`: Khmer
-// - `rw`: Kinyarwanda
-// - `ko`: Korean
-// - `ku`: Kurdish (Kurmanji)
-// - `ky`: Kyrgyz
-// - `lo`: Lao
-// - `la`: Latin
-// - `lv`: Latvian
-// - `lt`: Lithuanian
-// - `lb`: Luxembourgish
-// - `mk`: Macedonian
-// - `mg`: Malagasy
-// - `ms`: Malay
-// - `ml`: Malayalam
-// - `mt`: Maltese
-// - `mi`: Maori
-// - `mr`: Marathi
-// - `mn`: Mongolian
-// - `my`: Myanmar (Burmese)
-// - `ne`: Nepali
-// - `no`: Norwegian
-// - `or`: Odia (Oriya)
-// - `ps`: Pashto
-// - `fa`: Persian
-// - `pl`: Polish
-// - `pt`: Portuguese
-// - `pa`: Punjabi
-// - `ro`: Romanian
-// - `ru`: Russian
-// - `sm`: Samoan
-// - `gd`: Scots Gaelic
-// - `sr`: Serbian
-// - `st`: Sesotho
-// - `sn`: Shona
-// - `sd`: Sindhi
-// - `si`: Sinhala
-// - `sk`: Slovak
-// - `sl`: Slovenian
-// - `so`: Somali
-// - `es`: Spanish
-// - `su`: Sundanese
-// - `sw`: Swahili
-// - `sv`: Swedish
-// - `tg`: Tajik
-// - `ta`: Tamil
-// - `te`: Telugu
-// - `th`: Thai
-// - `tr`: Turkish
-// - `uk`: Ukrainian
-// - `ur`: Urdu
-// - `ug`: Uyghur
-// - `uz`: Uzbek
-// - `vi`: Vietnamese
-// - `cy`: Welsh
-// - `xh`: Xhosa
-// - `yi`: Yiddish
-// - `yo`: Yoruba
-// - `zu`: Zulu
