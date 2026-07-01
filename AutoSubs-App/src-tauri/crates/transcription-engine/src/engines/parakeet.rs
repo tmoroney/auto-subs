@@ -1,41 +1,81 @@
 //! Parakeet (NeMo) speech recognition backend.
-//!
-//! This module wraps the transcribe-rs Parakeet engine (NVIDIA NeMo
-//! Parakeet-TDT 0.6b v3) to provide multilingual speech-to-text. The model
-//! supports 25 European languages plus Russian and Ukrainian and handles
-//! language internally — it does not accept a source-language hint, so the
-//! `language` field in `ParakeetParams` is unused. transcribe-rs does not
-//! surface a detected language, so this wrapper returns `None` and the caller
-//! falls back to the requested hint (or "auto") for script-based formatting.
 
-use crate::types::{SpeechSegment, Segment, WordTimestamp, TranscribeOptions, LabeledProgressFn, NewSegmentFn, ProgressType};
-use eyre::{Result, bail, eyre};
+use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
+use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions, WordTimestamp};
+use eyre::{eyre, Result};
 use std::path::Path;
 use transcribe_rs::onnx::{
-    Quantization,
     parakeet::{ParakeetModel, ParakeetParams, TimestampGranularity},
+    Quantization,
 };
+use transcribe_rs::{TranscriptionSegment, TranscriptionResult};
 
-/// Transcribe audio segments using the Parakeet engine.
-///
-/// This function handles the conversion between internal types and transcribe-rs types,
-/// and processes speech segments through the Parakeet model.
-///
-/// # Arguments
-/// * `model_path` - Path to the Parakeet model directory
-/// * `speech_segments` - Pre-processed speech segments from VAD/diarization
-/// * `options` - Transcription options (Parakeet auto-detects the spoken
-///   language internally and does not use the `lang` hint for decoding;
-///   transcribe-rs does not surface a detected language, so the caller uses
-///   the requested hint — or "auto" — only for script-based formatting)
-/// * `progress_callback` - Optional callback for progress updates
-/// * `new_segment_callback` - Optional callback for new segment notifications
-/// * `abort_callback` - Optional callback to check for cancellation; checked before load and between chunks
-///
-/// # Returns
-/// A tuple of (segments, detected_language) where detected_language is always None for Parakeet
-/// (it auto-detects the spoken language internally but does not surface it; the caller falls
-/// back to the requested hint — or "auto" — for script-based formatting).
+pub struct ParakeetEngine {
+    model: ParakeetModel,
+    params: ParakeetParams,
+}
+
+fn parakeet_segments_to_words(segments: &[TranscriptionSegment], base_offset: f64) -> Vec<WordTimestamp> {
+    let mut words = Vec::new();
+    let mut is_first_word = true;
+
+    for w in segments {
+        let mut w_text = w
+            .text
+            .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
+            .to_string();
+        if w_text.trim().is_empty() {
+            continue;
+        }
+
+        if !is_first_word && !w_text.starts_with(' ') && !w_text.starts_with('\n') {
+            w_text.insert(0, ' ');
+        }
+
+        words.push(WordTimestamp {
+            text: w_text,
+            start: base_offset + w.start as f64,
+            end: base_offset + w.end as f64,
+            probability: None,
+        });
+
+        is_first_word = false;
+    }
+
+    words
+}
+
+impl OnnxEngine for ParakeetEngine {
+    const MAX_SEGMENT_SECONDS: f64 = 30.0;
+
+    fn load(model_path: &Path) -> Result<Self> {
+        let model = ParakeetModel::load(model_path, &Quantization::Int8)
+            .map_err(|e| eyre!("Failed to load Parakeet model: {}", e))?;
+
+        Ok(Self {
+            model,
+            params: ParakeetParams {
+                timestamp_granularity: Some(TimestampGranularity::Word),
+                ..Default::default()
+            },
+        })
+    }
+
+    fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
+        self.model
+            .transcribe_with(samples, &self.params)
+            .map_err(|e| eyre!("Parakeet transcription failed: {}", e))
+    }
+
+    fn word_timing(&self) -> WordTiming {
+        WordTiming::FromTokens { map: parakeet_segments_to_words, interpolate_on_empty: false }
+    }
+
+    fn detected_lang(&self) -> Option<String> {
+        None
+    }
+}
+
 pub async fn transcribe_parakeet(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
@@ -46,131 +86,18 @@ pub async fn transcribe_parakeet(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Parakeet transcribe called with model: {:?}", model_path);
 
-    // transcribe-rs 0.3.11 exposes no in-flight abort hook on Parakeet, so we can
-    // only stop between chunks (one speech segment at a time).
-    let cancelled = || abort_callback.as_ref().map(|c| c()).unwrap_or(false);
-
-    if cancelled() { bail!("Transcription cancelled"); }
-
-    // Create and load Parakeet model
-    let mut model = ParakeetModel::load(model_path, &Quantization::Int8)
-        .map_err(|e| eyre!("Failed to load Parakeet model: {}", e))?;
-
-    // Configure inference for word-level timestamps
-    let inference_params = ParakeetParams {
-        timestamp_granularity: Some(TimestampGranularity::Word),
-        ..Default::default()
-    };
-
-    // Apply user offset
-    let user_offset = options.offset.unwrap_or(0.0);
-
-    let mut segments: Vec<Segment> = Vec::new();
-    let total_segments = speech_segments.len();
-
-    for (i, speech_segment) in speech_segments.iter().enumerate() {
-        if cancelled() { bail!("Transcription cancelled"); }
-
-        // Convert i16 samples to f32 for Parakeet
-        let samples: Vec<f32> = speech_segment.samples
-            .iter()
-            .map(|&s| s as f32 / 32768.0)
-            .collect();
-
-        // Transcribe this segment
-        let result = model.transcribe_with(&samples, &inference_params)
-            .map_err(|e| eyre!("Parakeet transcription failed: {}", e))?;
-
-        if cancelled() { bail!("Transcription cancelled"); }
-
-        // Base offset for this chunk
-        let base_offset = speech_segment.start + user_offset;
-
-        // Convert transcribe-rs output to our internal format.
-        // We emit one Segment per input speech segment, and populate word timestamps
-        // from the word-level segments returned by transcribe-rs.
-        let text = result.text.trim().to_string();
-        if !text.is_empty() {
-            let mut words: Vec<WordTimestamp> = Vec::new();
-
-            if let Some(transcribe_segments) = result.segments {
-                let mut is_first_word = true;
-                for w in transcribe_segments {
-                    // Preserve leading whitespace so the formatter can correctly re-insert spaces
-                    // between words (it inspects `WordTimestamp.text` for leading space/newline).
-                    // Only trim trailing whitespace/terminators.
-                    let mut w_text = w
-                        .text
-                        .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
-                        .to_string();
-                    if w_text.trim().is_empty() {
-                        continue;
-                    }
-
-                    // Parakeet word pieces often do not include leading space markers.
-                    // Our formatter uses leading spaces/newlines to decide inter-word spacing
-                    // and to avoid merging continuation pieces, so synthesize them.
-                    if !is_first_word && !w_text.starts_with(' ') && !w_text.starts_with('\n') {
-                        w_text.insert(0, ' ');
-                    }
-
-                    words.push(WordTimestamp {
-                        text: w_text,
-                        start: base_offset + w.start as f64,
-                        end: base_offset + w.end as f64,
-                        probability: None,
-                    });
-
-                    is_first_word = false;
-                }
-            }
-
-            let (seg_start, seg_end) = if let (Some(first), Some(last)) = (words.first(), words.last()) {
-                (first.start, last.end)
-            } else {
-                (
-                    base_offset,
-                    base_offset + (speech_segment.end - speech_segment.start),
-                )
-            };
-
-            // Prevent overlaps with previous segment
-            if let Some(last) = segments.last_mut() {
-                if last.end > seg_start {
-                    last.end = seg_start;
-                }
-                if let Some(last_words) = &mut last.words {
-                    if let Some(last_word) = last_words.last_mut() {
-                        if last_word.end > last.end {
-                            last_word.end = last.end;
-                        }
-                    }
-                }
-            }
-
-            let segment = Segment {
-                speaker_id: speech_segment.speaker_id.clone(),
-                start: seg_start,
-                end: seg_end,
-                text,
-                words: (!words.is_empty()).then_some(words),
-            };
-
-            if let Some(cb) = new_segment_callback {
-                cb(&segment);
-            }
-
-            segments.push(segment);
-        }
-
-        // Emit progress update
-        if let Some(progress_callback) = progress_callback {
-            let progress = ((i + 1) as f64 / total_segments as f64 * 100.0) as i32;
-            progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
-        }
+    if abort_callback.as_ref().map(|c| c()).unwrap_or(false) {
+        eyre::bail!("Transcription cancelled");
     }
 
-    tracing::debug!("Parakeet transcription complete: {} segments", segments.len());
-
-    Ok((segments, None))
+    let engine = ParakeetEngine::load(model_path)?;
+    run_onnx_pipeline(
+        engine,
+        speech_segments,
+        options.offset.unwrap_or(0.0),
+        progress_callback,
+        new_segment_callback,
+        abort_callback,
+    )
+    .await
 }

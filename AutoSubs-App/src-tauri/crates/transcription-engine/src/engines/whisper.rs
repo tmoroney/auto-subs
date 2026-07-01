@@ -4,7 +4,7 @@ use std::path::Path;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperSegment, DtwParameters, DtwMode, DtwModelPreset};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Mutex;
-use crate::utils::{cs_to_s, calculate_dtw_mem_size};
+use crate::utils::{calculate_dtw_mem_size, cs_to_s, push_segment_clamped};
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -469,20 +469,6 @@ pub async fn run_transcription_pipeline(
             );
             let words_opt = (!word_timestamps.is_empty()).then_some(word_timestamps);
         
-            // prevent slight overlaps with previous segment
-            if let Some(last) = segments.last_mut() {
-                if last.end > seg_start {
-                    last.end = seg_start;
-                }
-                if let Some(words) = &mut last.words {
-                    if let Some(last_word) = words.last_mut() {
-                        if last_word.end > last.end {
-                            last_word.end = last.end;
-                        }
-                    }
-                }
-            }
-
             // Embedding and speaker identification (speaker diarization) - if enabled
             let mut speaker_id = None;
             if num_segments > 0 {
@@ -510,7 +496,7 @@ pub async fn run_transcription_pipeline(
                 let progress = ((i + 1) as f64 / speech_segments.len() as f64 * 100.0) as i32;
                 progress_callback(progress, ProgressType::Transcribe, "progressSteps.transcribe");
             }
-            segments.push(segment);
+            push_segment_clamped(&mut segments, segment);
         }
     }
 
@@ -521,5 +507,5 @@ pub async fn run_transcription_pipeline(
     // Clear progress bridge to avoid dangling references beyond this async call
     if let Ok(mut slot) = PROGRESS_CALLBACK.lock() { *slot = None; }
 
-    return Ok((segments, detected_lang));
+    Ok((segments, detected_lang))
 }
