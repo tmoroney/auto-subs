@@ -31,9 +31,11 @@ mod tests {
             max_speakers: None,
             density: None,
             max_lines: None,
+            custom_max_chars_per_line: None,
             text_case: None,
             remove_punctuation: None,
             censored_words: None,
+            custom_prompt: None,
         };
 
         let res = transcribe_audio(handle, options).await;
@@ -77,9 +79,11 @@ mod tests {
             max_speakers: None,
             density: None,
             max_lines: None,
+            custom_max_chars_per_line: None,
             text_case: None,
             remove_punctuation: None,
             censored_words: None,
+            custom_prompt: None,
         };
 
         let res = transcribe_audio(handle, options).await;
