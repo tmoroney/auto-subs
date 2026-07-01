@@ -136,6 +136,13 @@ fn resolve_native_target(
     }
 
     let target = translate_to?;
+    // Skip native translation when the user explicitly set the source
+    // language equal to the target — there's nothing to translate. The
+    // "auto" case is handled after detection via the effective_lang check
+    // in `transcribe_audio`.
+    if from_lang != "auto" && from_lang == target {
+        return None;
+    }
     match engine_kind {
         ModelEngine::Whisper if target == "en" => Some(target.to_string()),
         ModelEngine::Canary if crate::engines::canary::canary_supports_translation(from_lang, target) => {
@@ -299,9 +306,15 @@ impl Engine {
 
         if !suppress_post_translation {
             if let Some(to_lang) = translate_to.as_deref() {
-                crate::translate::translate_segments(segments.as_mut_slice(), effective_lang, to_lang, cb.progress)
-                    .await
-                    .map_err(|e| eyre!("{}", e))?;
+                // Skip the Google Translate post-pass when the effective
+                // (detected or user-specified) source language matches the
+                // target — translating would be a wasteful no-op and could
+                // even corrupt the text via a round-trip through the API.
+                if effective_lang != to_lang {
+                    crate::translate::translate_segments(segments.as_mut_slice(), effective_lang, to_lang, cb.progress)
+                        .await
+                        .map_err(|e| eyre!("{}", e))?;
+                }
             }
         }
 

@@ -89,11 +89,17 @@ export function LanguageSelector() {
                                 const method = currentModel
                                     ? getTranslationMethod(currentModel.engine, settings.language, language.value)
                                     : "google"
+                                // Disable selecting the source language as the
+                                // translation target — translating a language
+                                // to itself is a no-op and almost always a mistake.
+                                const isSourceLang = language.value === settings.language
                                 return (
                                 <CommandItem
                                     value={language.label}
                                     key={language.value}
+                                    disabled={isSourceLang}
                                     onSelect={() => {
+                                        if (isSourceLang) return
                                         updateSetting("targetLanguage", language.value);
                                         if (!settings.translate) {
                                             updateSetting("translate", true);
