@@ -7,6 +7,7 @@ import { ProgressProvider } from './ProgressContext';
 import { PresetsProvider } from './PresetsContext';
 import { ErrorDialogProvider } from './ErrorDialogContext';
 import { IntegrationProvider } from './IntegrationContext';
+import { AudioPreviewProvider } from './AudioPreviewContext';
 
 import { AdobeProvider } from './AdobeContext';
 
@@ -50,13 +51,15 @@ export function EditorWorkspaceProviders({ children }: EditorWorkspaceProvidersP
   return (
     <ResolveProvider>
       <AdobeProvider>
-        <SubtitleDocumentProvider>
-          <ProgressProvider>
-            <PresetsProvider>
-              {children}
-            </PresetsProvider>
-          </ProgressProvider>
-        </SubtitleDocumentProvider>
+        <AudioPreviewProvider>
+          <SubtitleDocumentProvider>
+            <ProgressProvider>
+              <PresetsProvider>
+                {children}
+              </PresetsProvider>
+            </ProgressProvider>
+          </SubtitleDocumentProvider>
+        </AudioPreviewProvider>
       </AdobeProvider>
     </ResolveProvider>
   );

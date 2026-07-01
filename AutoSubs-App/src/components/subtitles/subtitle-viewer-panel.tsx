@@ -40,6 +40,7 @@ import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 import { Speaker, Template, Track } from "@/types";
 import { useTranslation } from "react-i18next";
 import { PlusIcon, type PlusIconHandle } from "../ui/plus";
@@ -627,6 +628,18 @@ export function SubtitleViewerPanel({
 
   const jumpToTime = isAdobeActive ? adobeJumpToTime : resolveJumpToTime;
 
+  const { seekToTime: seekAudioPreview } = useAudioPreview();
+
+  // When a timestamp is clicked, jump the connected timeline AND seek the
+  // local audio preview (if one is loaded) to the same position.
+  const handleJumpToTime = React.useCallback(
+    async (seconds: number) => {
+      seekAudioPreview(seconds);
+      await jumpToTime(seconds);
+    },
+    [jumpToTime, seekAudioPreview],
+  );
+
   const { settings } = useSettings();
   const { t } = useTranslation();
   const hasSubtitles = subtitles.length > 0;
@@ -828,7 +841,7 @@ export function SubtitleViewerPanel({
         searchWholeWord={searchWholeWord}
         selectedIndex={selectedIndex}
         onSelectedIndexChange={setSelectedIndex}
-        onJumpToTime={jumpToTime}
+        onJumpToTime={handleJumpToTime}
         t={t}
         transcriptDocuments={transcriptDocuments}
         isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}

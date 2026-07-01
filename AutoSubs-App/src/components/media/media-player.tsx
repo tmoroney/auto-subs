@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 
 interface MediaPlayerProps {
   src: string;
@@ -71,6 +72,8 @@ export function MediaPlayer({
 
   const [barCount, setBarCount] = React.useState(80);
   const barCountRef = React.useRef(80);
+
+  const { registerSeeker } = useAudioPreview();
 
   React.useEffect(() => {
     const el = waveformOuterRef.current;
@@ -219,6 +222,26 @@ export function MediaPlayer({
     }
     rAFRef.current = requestAnimationFrame(updateProgress);
   }, [onTimeUpdate, applyProgress]);
+
+  // Register a seeker so other parts of the app (e.g. the subtitles list
+  // timestamp buttons) can jump the audio preview to a specific time. The
+  // media also begins playing from the seeked position.
+  React.useEffect(() => {
+    registerSeeker((time: number) => {
+      const media = mediaRef.current;
+      if (!media) return;
+      const clamped = Math.max(0, Math.min(durationRef.current || 0, time));
+      media.currentTime = clamped;
+      const pct =
+        durationRef.current > 0 ? (clamped / durationRef.current) * 100 : 0;
+      applyProgress(pct);
+      if (timeDisplayRef.current) {
+        timeDisplayRef.current.textContent = `${formatTime(clamped)} / ${formatTime(durationRef.current)}`;
+      }
+      void media.play().catch(() => {});
+    });
+    return () => registerSeeker(null);
+  }, [registerSeeker, applyProgress]);
 
   const updateBuffered = React.useCallback(() => {
     const media = mediaRef.current;

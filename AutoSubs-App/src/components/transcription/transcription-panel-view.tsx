@@ -114,7 +114,14 @@ export function TranscriptionPanelView({
   >(null);
   const [isRefreshingTracks, setIsRefreshingTracks] = React.useState(false);
 
-  const selectedFile = selectedFileProp ?? localSelectedFile;
+  // Distinguish "prop not provided" (undefined → fall back to local state)
+  // from "prop explicitly cleared" (null → respect the parent's reset).
+  // Using `??` would treat null as "not set" and resurrect a stale
+  // `localSelectedFile` after the parent clears the file, leaving the
+  // Generate button looking enabled while `handleStartTranscription`
+  // silently no-ops on a null `fileInput`.
+  const selectedFile =
+    selectedFileProp !== undefined ? selectedFileProp : localSelectedFile;
 
   const setSelectedFile = React.useCallback(
     (file: string | null) => {
