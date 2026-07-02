@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ProcessingStepItem } from "@/components/processing/processing-step-item";
-import { useSettings } from "@/contexts/SettingsContext";
 import type { TimelineInfo } from "@/types";
 import type { ProcessingStep } from "./utils";
 
@@ -34,7 +33,6 @@ export function ProcessingStepsList({
   onViewSubtitles,
   isSubtitleViewerOpen = false,
 }: ProcessingStepsListProps) {
-  const { settings: currentSettings } = useSettings();
   const { t } = useTranslation();
   const visibleSteps =
     isProcessing && steps.length === 0
@@ -79,7 +77,6 @@ export function ProcessingStepsList({
                 onViewSubtitles={onViewSubtitles}
                 isSubtitleViewerOpen={isSubtitleViewerOpen}
                 livePreviewSegments={livePreviewSegments}
-                settings={currentSettings}
                 timelineInfo={timelineInfo}
                 selectedIntegration={selectedIntegration}
               />

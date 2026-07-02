@@ -9,8 +9,9 @@ import {
 import { Download, FileText, Plus, VolumeX } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { ImportExportPopover } from "@/components/common/import-export-popover"
-import { Settings, TimelineInfo } from "@/types"
+import { TimelineInfo } from "@/types"
 import { useResolve } from "@/contexts/ResolveContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslation } from "react-i18next"
@@ -20,7 +21,6 @@ export interface CompletionStepProps {
     onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
     isSubtitleViewerOpen?: boolean;
-    settings: Settings;
     timelineInfo: TimelineInfo;
     selectedIntegration?: "davinci" | "premiere" | "aftereffects";
 }
@@ -29,7 +29,6 @@ export function CompletionStepItem({
     onAddToTimeline,
     onViewSubtitles,
     isSubtitleViewerOpen = false,
-    settings,
     timelineInfo,
     selectedIntegration
 }: CompletionStepProps) {
@@ -88,7 +87,7 @@ export function CompletionStepItem({
                             )}
                             {(!isResolveConnected || !isMobile) && (
                                 <ImportExportPopover
-                                    onImport={() => importSubtitles(settings, null, "")}
+                                    onImport={() => importSubtitles(useSettingsStore.getState(), null, "")}
                                     onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
                                     hasSubtitles={hasSubtitles}
                                     trigger={
@@ -105,7 +104,6 @@ export function CompletionStepItem({
                             )}
                             {(isResolveConnected || isAdobeConnected) && (
                                 <AddToTimelineDialog
-                                    settings={settings}
                                     timelineInfo={timelineInfo}
                                     templates={isAdobe ? [] : resolveTemplates}
                                     templatesLoading={!isAdobe && resolveTemplatesLoading}

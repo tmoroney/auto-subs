@@ -10,7 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { getVersion } from "@tauri-apps/api/app"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
@@ -67,7 +67,10 @@ function AppContentBody() {
   >([])
   const [hasLoadedTranscriptDocuments, setHasLoadedTranscriptDocuments] =
     React.useState(false)
-  const { settings, isHydrated } = useSettings()
+  const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted)
+  const tourCompleted = useSettingsStore((s) => s.tourCompleted)
+  const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
+  const isHydrated = useSettingsStore((s) => s.isHydrated)
   const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
@@ -104,17 +107,17 @@ function AppContentBody() {
   }, [loadTranscriptDocuments])
 
   // Priority gating: only show one onboarding-style dialog at a time.
-  const showGettingStarted = isHydrated && !settings.onboardingCompleted
+  const showGettingStarted = isHydrated && !onboardingCompleted
   const showWhatsNew =
     isHydrated &&
-    settings.onboardingCompleted &&
+    onboardingCompleted &&
     !!currentVersion &&
-    settings.lastSeenVersion !== currentVersion
+    lastSeenVersion !== currentVersion
 
   const showTour =
     isHydrated &&
-    settings.onboardingCompleted &&
-    settings.tourCompleted === false &&
+    onboardingCompleted &&
+    tourCompleted === false &&
     !showWhatsNew
 
   const handleCloseSubtitleViewer = React.useCallback(() => {

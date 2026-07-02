@@ -39,7 +39,7 @@ import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 import { Speaker, Template, Track } from "@/types";
 import { useTranslation } from "react-i18next";
@@ -490,7 +490,6 @@ function SubtitleContent({
 }
 
 interface AddToTimelineFooterProps {
-  settings: ReturnType<typeof useSettings>["settings"];
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"];
   templates: Template[];
   templatesLoading: boolean;
@@ -508,7 +507,6 @@ interface AddToTimelineFooterProps {
 }
 
 function AddToTimelineFooter({
-  settings,
   timelineInfo,
   templates,
   templatesLoading,
@@ -523,7 +521,6 @@ function AddToTimelineFooter({
   return (
     <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
       <AddToTimelineDialog
-        settings={settings}
         timelineInfo={timelineInfo}
         templates={templates}
         templatesLoading={templatesLoading}
@@ -640,7 +637,6 @@ export function SubtitleViewerPanel({
     [jumpToTime, seekAudioPreview],
   );
 
-  const { settings } = useSettings();
   const { t } = useTranslation();
   const hasSubtitles = subtitles.length > 0;
 
@@ -716,7 +712,7 @@ export function SubtitleViewerPanel({
   const handleApplyReformat = async () => {
     await flushPendingSubtitleSave();
     const timelineId = timelineInfo?.timelineId || "";
-    await reformatSubtitles(settings, null, timelineId);
+    await reformatSubtitles(useSettingsStore.getState(), null, timelineId);
     setShowReformat(false);
   };
 
@@ -769,7 +765,7 @@ export function SubtitleViewerPanel({
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
           <ImportExportPopover
-            onImport={() => importSubtitles(settings, null, "")}
+            onImport={() => importSubtitles(useSettingsStore.getState(), null, "")}
             onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
             hasSubtitles={subtitles.length > 0}
             defaultTab={subtitles.length > 0 ? "export" : "import"}
@@ -850,7 +846,6 @@ export function SubtitleViewerPanel({
 
       {isIntegrationConnected && subtitles.length > 0 && (
         <AddToTimelineFooter
-          settings={settings}
           timelineInfo={timelineInfo}
           templates={isAdobeActive ? [] : resolveTemplates}
           templatesLoading={!isAdobeActive && resolveTemplatesLoading}

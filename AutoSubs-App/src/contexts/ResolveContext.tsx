@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Template, TimelineInfo } from '@/types';
 import { getTimelineInfo, getTemplates, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
 import { useIntegration } from '@/contexts/IntegrationContext';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsStore } from '@/stores/settings-store';
 import { validateExportedAudioFile } from '@/utils/file-utils';
 
 interface ResolveContextType {
@@ -30,7 +30,7 @@ const ResolveContext = createContext<ResolveContextType | null>(null);
 
 export function ResolveProvider({ children }: { children: React.ReactNode }) {
   const { selectedIntegration } = useIntegration();
-  const { settings } = useSettings();
+  const exportRange = useSettingsStore((s) => s.exportRange);
   const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [], projectName: "" });
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -175,7 +175,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         const { exportAudio, getExportProgress } = await import('@/api/resolve-api');
 
         // Start the export (non-blocking)
-        const exportResult = await exportAudio(inputTracks, settings.exportRange || "entire");
+        const exportResult = await exportAudio(inputTracks, exportRange || "entire");
         console.log("Export started:", exportResult);
 
         // Poll for export progress until completion.

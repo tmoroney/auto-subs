@@ -3,7 +3,7 @@ import { Globe, Languages, Check, Cpu, Cloud } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { languages, translateLanguages, getTranslationMethod } from "@/lib/languages"
 import { models, modelSupportsLanguage } from "@/lib/models"
 import { cn } from "@/lib/utils"
@@ -12,9 +12,13 @@ import { useTranslation } from "react-i18next"
 
 export function LanguageSelector() {
     const { t } = useTranslation()
-    const { settings, updateSetting } = useSettings()
+    const model = useSettingsStore((s) => s.model)
+    const language = useSettingsStore((s) => s.language)
+    const targetLanguage = useSettingsStore((s) => s.targetLanguage)
+    const translate = useSettingsStore((s) => s.translate)
+    const updateSetting = useSettingsStore((s) => s.updateSetting)
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
-    const currentModel = models[settings.model]
+    const currentModel = models[model]
     const sourceInputRef = React.useRef<HTMLInputElement>(null)
     const translateInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -40,16 +44,16 @@ export function LanguageSelector() {
                         <CommandGroup>
                             {languages
                                 .slice()
-                                .map((language) => {
+                                .map((lang) => {
                                     const supported = currentModel
-                                        ? modelSupportsLanguage(currentModel, language.value)
+                                        ? modelSupportsLanguage(currentModel, lang.value)
                                         : true
                                     return (
                                     <CommandItem
-                                        value={language.label}
-                                        key={language.value}
+                                        value={lang.label}
+                                        key={lang.value}
                                         onSelect={() => {
-                                            updateSetting("language", language.value);
+                                            updateSetting("language", lang.value);
                                         }}
                                         className={cn(
                                             !supported && "opacity-40 pointer-events-auto"
@@ -58,12 +62,12 @@ export function LanguageSelector() {
                                         <Check
                                             className={cn(
                                                 "mr-2 size-4",
-                                                language.value === settings.language
+                                                lang.value === language
                                                     ? "opacity-100"
                                                     : "opacity-0"
                                             )}
                                         />
-                                        {language.label}
+                                        {lang.label}
                                     </CommandItem>
                                     )
                                 })}
@@ -77,7 +81,7 @@ export function LanguageSelector() {
                     <div className="relative">
                         <CommandInput ref={translateInputRef} placeholder={t("actionBar.language.searchTargetPlaceholder")} className="border-0 focus-visible:ring-0 px-0 pr-12" />
                         <Switch
-                            checked={settings.translate}
+                            checked={translate}
                             onCheckedChange={(checked: boolean) => updateSetting("translate", checked)}
                             className="absolute right-2 top-1/2 -translate-y-1/2"
                         />
@@ -85,23 +89,23 @@ export function LanguageSelector() {
                     <CommandList>
                         <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
                         <CommandGroup>
-                            {translateLanguages.map((language) => {
+                            {translateLanguages.map((lang) => {
                                 const method = currentModel
-                                    ? getTranslationMethod(currentModel.engine, settings.language, language.value)
+                                    ? getTranslationMethod(currentModel.engine, language, lang.value)
                                     : "google"
                                 // Disable selecting the source language as the
                                 // translation target — translating a language
                                 // to itself is a no-op and almost always a mistake.
-                                const isSourceLang = language.value === settings.language
+                                const isSourceLang = lang.value === language
                                 return (
                                 <CommandItem
-                                    value={language.label}
-                                    key={language.value}
+                                    value={lang.label}
+                                    key={lang.value}
                                     disabled={isSourceLang}
                                     onSelect={() => {
                                         if (isSourceLang) return
-                                        updateSetting("targetLanguage", language.value);
-                                        if (!settings.translate) {
+                                        updateSetting("targetLanguage", lang.value);
+                                        if (!translate) {
                                             updateSetting("translate", true);
                                         }
                                     }}
@@ -109,12 +113,12 @@ export function LanguageSelector() {
                                     <Check
                                         className={cn(
                                             "mr-2 size-4",
-                                            language.value === settings.targetLanguage
+                                            lang.value === targetLanguage
                                                 ? "opacity-100"
                                                 : "opacity-0"
                                         )}
                                     />
-                                    {language.label}
+                                    {lang.label}
                                     {method === "native" ? (
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -159,7 +163,7 @@ export function LanguageSelector() {
                 <TabsTrigger value="translate" className="flex-1 gap-1.5 text-xs py-1.5">
                     <Languages className="size-3.5" />
                     {t("actionBar.language.translate")}
-                    {settings.translate && (
+                    {translate && (
                         <span className="ml-0.5 size-1.5 rounded-full bg-primary" />
                     )}
                 </TabsTrigger>

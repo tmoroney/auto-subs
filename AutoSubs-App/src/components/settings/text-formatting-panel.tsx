@@ -17,7 +17,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useShallow } from "zustand/react/shallow"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useTranslation } from "react-i18next"
 import { BUILT_IN_CENSOR_LISTS } from "@/censor/built-in-lists"
 import { getActiveCensorWords } from "@/censor/merge"
@@ -37,9 +38,37 @@ export function TextFormattingPanel({
     applyDisabled = false,
 }: TextFormattingPanelProps) {
     const { t } = useTranslation()
-    const { settings, updateSetting } = useSettings()
+    const {
+        textDensity,
+        customMaxCharsPerLine,
+        maxLinesPerSubtitle,
+        textCase,
+        removePunctuation,
+        enableCensor,
+        activeCensorLists,
+        censoredWords,
+    } = useSettingsStore(
+        useShallow((s) => ({
+            textDensity: s.textDensity,
+            customMaxCharsPerLine: s.customMaxCharsPerLine,
+            maxLinesPerSubtitle: s.maxLinesPerSubtitle,
+            textCase: s.textCase,
+            removePunctuation: s.removePunctuation,
+            enableCensor: s.enableCensor,
+            activeCensorLists: s.activeCensorLists,
+            censoredWords: s.censoredWords,
+        })),
+    )
+    const updateSetting = useSettingsStore((s) => s.updateSetting)
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
+
+    // Derive the active censor word count from the subscribed fields so it
+    // stays reactive without a non-reactive getState() call during render.
+    const censorWordCount = React.useMemo(
+        () => getActiveCensorWords({ enableCensor, censoredWords, activeCensorLists }).length,
+        [enableCensor, censoredWords, activeCensorLists],
+    )
 
     return (
         <div>
@@ -51,7 +80,7 @@ export function TextFormattingPanel({
                         <p className="text-xs text-muted-foreground">{t("actionBar.format.textDensityDescription")}</p>
                     </div>
                     <Select
-                        value={settings.textDensity}
+                        value={textDensity}
                         onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single" | "custom")}
                     >
                         <SelectTrigger className="w-32">
@@ -68,7 +97,7 @@ export function TextFormattingPanel({
                 </div>
 
                 {/* Custom Max Chars Per Line (only shown when custom density is selected) */}
-                {settings.textDensity === "custom" && (
+                {textDensity === "custom" && (
                     <div className="flex items-center justify-between">
                         <div>
                             <Label className="text-sm font-medium">{t("actionBar.format.customCharsTitle")}</Label>
@@ -78,7 +107,7 @@ export function TextFormattingPanel({
                             type="number"
                             min="1"
                             max="100"
-                            value={settings.customMaxCharsPerLine}
+                            value={customMaxCharsPerLine}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("customMaxCharsPerLine", Number(e.target.value))}
                             className="w-20"
                         />
@@ -94,7 +123,7 @@ export function TextFormattingPanel({
                     <Input
                         type="number"
                         min="1"
-                        value={settings.maxLinesPerSubtitle}
+                        value={maxLinesPerSubtitle}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
                         className="w-20"
                     />
@@ -107,7 +136,7 @@ export function TextFormattingPanel({
                         <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
                     </div>
                     <Select
-                        value={settings.textCase}
+                        value={textCase}
                         onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
                     >
                         <SelectTrigger className="w-32">
@@ -129,7 +158,7 @@ export function TextFormattingPanel({
                         <p className="text-xs text-muted-foreground">{t("actionBar.format.removePunctuationDescription")}</p>
                     </div>
                     <Switch
-                        checked={settings.removePunctuation}
+                        checked={removePunctuation}
                         onCheckedChange={(checked: boolean) => updateSetting("removePunctuation", checked)}
                     />
                 </div>
@@ -139,8 +168,8 @@ export function TextFormattingPanel({
                     <div className="space-y-0.5">
                         <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
                         <p className="text-xs text-muted-foreground">
-                            {t("actionBar.censor.wordCount", { count: getActiveCensorWords(settings).length })}
-                            {!settings.enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
+                            {t("actionBar.censor.wordCount", { count: censorWordCount })}
+                            {!enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -168,7 +197,7 @@ export function TextFormattingPanel({
                                         <span className="text-sm font-medium">{t("actionBar.censor.lists")}</span>
                                         <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
                                             {BUILT_IN_CENSOR_LISTS.map((list) => {
-                                                const isActive = (settings.activeCensorLists ?? []).includes(list.id);
+                                                const isActive = (activeCensorLists ?? []).includes(list.id);
                                                 return (
                                                     <div key={list.id} className="flex items-center justify-between">
                                                         <div className="flex-1 min-w-0 pr-2">
@@ -182,13 +211,13 @@ export function TextFormattingPanel({
                                                             <Switch
                                                                 checked={isActive}
                                                                 onCheckedChange={(checked: boolean) => {
-                                                                    const current = settings.activeCensorLists ?? [];
+                                                                    const current = activeCensorLists ?? [];
                                                                     if (checked) {
                                                                         updateSetting("activeCensorLists", [...current, list.id]);
                                                                     } else {
                                                                         updateSetting("activeCensorLists", current.filter((id: string) => id !== list.id));
                                                                     }
-                                                                    if (checked && !settings.enableCensor) {
+                                                                    if (checked && !enableCensor) {
                                                                         updateSetting("enableCensor", true);
                                                                     }
                                                                 }}
@@ -211,9 +240,9 @@ export function TextFormattingPanel({
                                             className="flex items-center gap-2 rounded-lg border bg-muted/30 pr-1"
                                             onSubmit={(e) => {
                                                 e.preventDefault();
-                                                if (!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())) return;
-                                                updateSetting("censoredWords", [...(settings.censoredWords || []), newCensoredWord.trim()]);
-                                                if (!settings.enableCensor) updateSetting("enableCensor", true);
+                                                if (!newCensoredWord.trim() || (censoredWords || []).includes(newCensoredWord.trim())) return;
+                                                updateSetting("censoredWords", [...(censoredWords || []), newCensoredWord.trim()]);
+                                                if (!enableCensor) updateSetting("enableCensor", true);
                                                 setNewCensoredWord("");
                                             }}
                                         >
@@ -226,26 +255,26 @@ export function TextFormattingPanel({
                                             <Button
                                                 type="submit"
                                                 size="sm"
-                                                disabled={!newCensoredWord.trim() || (settings.censoredWords || []).includes(newCensoredWord.trim())}
+                                                disabled={!newCensoredWord.trim() || (censoredWords || []).includes(newCensoredWord.trim())}
                                             >
                                                 {t("common.add")}
                                             </Button>
                                         </form>
 
                                         <ScrollArea className="max-h-[150px] rounded-lg border bg-muted/20 p-3">
-                                            {(settings.censoredWords || []).length === 0 ? (
+                                            {(censoredWords || []).length === 0 ? (
                                                 <div className="text-sm text-muted-foreground text-center py-4">
                                                     {t("actionBar.censor.empty")}
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-wrap gap-2">
-                                                    {(settings.censoredWords || []).map((word: string, index: number) => (
+                                                    {(censoredWords || []).map((word: string, index: number) => (
                                                         <Badge
                                                             key={word}
                                                             variant="secondary"
                                                             className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
                                                             onClick={() => {
-                                                                const updatedWords = (settings.censoredWords || []).filter((_: string, i: number) => i !== index);
+                                                                const updatedWords = (censoredWords || []).filter((_: string, i: number) => i !== index);
                                                                 updateSetting("censoredWords", updatedWords);
                                                             }}
                                                         >
@@ -268,7 +297,7 @@ export function TextFormattingPanel({
                             </DialogContent>
                         </Dialog>
                         <Switch
-                            checked={settings.enableCensor}
+                            checked={enableCensor}
                             onCheckedChange={(checked: boolean) => updateSetting("enableCensor", checked)}
                         />
                     </div>

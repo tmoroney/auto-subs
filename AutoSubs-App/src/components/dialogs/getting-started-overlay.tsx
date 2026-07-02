@@ -2,7 +2,7 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
@@ -26,25 +26,28 @@ import { Globe, Check, MoveRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function GettingStartedOverlay() {
-  const { settings, updateSetting, isHydrated } = useSettings();
+  const uiLanguage = useSettingsStore((s) => s.uiLanguage);
+  const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+  const isHydrated = useSettingsStore((s) => s.isHydrated);
   const { t } = useTranslation();
   const { timelineInfo: resolveTimeline } = useResolve();
   const { isConnected: isPremiereConnected } = useAdobe();
   
   const isResolveConnected = resolveTimeline.timelineId !== "";
   const isIntegrationConnected = isResolveConnected || isPremiereConnected;
-  const shouldShow = isHydrated && !settings.onboardingCompleted;
+  const shouldShow = isHydrated && !onboardingCompleted;
 
   const [selection, setSelection] = React.useState<string>(() => {
-    return normalizeUiLanguage(settings.uiLanguage);
+    return normalizeUiLanguage(uiLanguage);
   });
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (shouldShow) {
-      setSelection(normalizeUiLanguage(settings.uiLanguage));
+      setSelection(normalizeUiLanguage(uiLanguage));
     }
-  }, [shouldShow, settings.uiLanguage]);
+  }, [shouldShow, uiLanguage]);
 
   const handleLanguageSelect = (value: string) => {
     setSelection(value);

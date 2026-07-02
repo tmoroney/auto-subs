@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Track } from "@/types"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useTranslation } from "react-i18next"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIntegration } from "@/contexts/IntegrationContext"
@@ -15,15 +15,17 @@ interface TrackSelectorProps {
 
 export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorProps) {
     const { t } = useTranslation()
-    const { settings, updateSetting } = useSettings()
+    const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp)
+    const exportRange = useSettingsStore((s) => s.exportRange)
+    const updateSetting = useSettingsStore((s) => s.updateSetting)
     const { selectedIntegration } = useIntegration()
 
     // Get selected tracks for the active application
-    const selectedTracks = settings.selectedInputTracksByApp[selectedIntegration] || []
+    const selectedTracks = selectedInputTracksByApp[selectedIntegration] || []
 
     const updateTracks = (newTracks: string[]) => {
         updateSetting("selectedInputTracksByApp", {
-            ...settings.selectedInputTracksByApp,
+            ...selectedInputTracksByApp,
             [selectedIntegration]: newTracks
         });
     };
@@ -69,7 +71,7 @@ export function TrackSelector({ inputTracks, isPremiereActive }: TrackSelectorPr
             {isPremiereActive && (
                 <div className="px-4 py-2 border-b bg-muted/10">
                     <Tabs 
-                        value={settings.exportRange || "entire"} 
+                        value={exportRange || "entire"}
                         onValueChange={(val) => updateSetting("exportRange", val as "entire" | "inout")}
                         className="w-full"
                     >
