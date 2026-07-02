@@ -16,7 +16,7 @@ import {
   type UploadIconHandle,
 } from "@/components/ui/icons/upload";
 import { cn } from "@/lib/utils";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import type { Track } from "@/types";
 import { SUPPORTED_MEDIA_EXTENSIONS, isVideoExtension } from "./utils";
 import { MediaPlayer } from "@/components/media/media-player";
@@ -225,11 +225,13 @@ export function TimelineTrackSelector({
   className,
 }: TimelineTrackSelectorProps) {
   const { t, i18n } = useTranslation();
-  const { settings: currentSettings, updateSetting } = useSettings();
+  const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp);
+  const exportRange = useSettingsStore((s) => s.exportRange);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const [isSpinning, setIsSpinning] = React.useState(false);
 
   const selectedTracks =
-    currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
+    selectedInputTracksByApp[selectedIntegration] || [];
   const selectedTrackCount = selectedTracks.length;
   const formatTrackNumber = React.useCallback(
     (value: number) => formatLocalizedTrackNumber(value, i18n.language),
@@ -239,21 +241,21 @@ export function TimelineTrackSelector({
   const toggleInputTrack = React.useCallback(
     (trackId: string) => {
       const currentTracks =
-        currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
+        selectedInputTracksByApp[selectedIntegration] || [];
       const isSelected = currentTracks.includes(trackId);
       const nextTracks = isSelected
         ? currentTracks.filter((id: string) => id !== trackId)
         : [...currentTracks, trackId];
 
       const nextMap = {
-        ...currentSettings.selectedInputTracksByApp,
+        ...selectedInputTracksByApp,
         [selectedIntegration]: nextTracks,
       };
 
       updateSetting("selectedInputTracksByApp", nextMap);
     },
     [
-      currentSettings.selectedInputTracksByApp,
+      selectedInputTracksByApp,
       selectedIntegration,
       updateSetting,
     ],
@@ -298,7 +300,7 @@ export function TimelineTrackSelector({
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
               <span>{t("actionBar.tracks.exportRange.inout")}</span>
               <Switch
-                checked={currentSettings.exportRange === "inout"}
+                checked={exportRange === "inout"}
                 onCheckedChange={(checked) =>
                   updateSetting("exportRange", checked ? "inout" : "entire")
                 }

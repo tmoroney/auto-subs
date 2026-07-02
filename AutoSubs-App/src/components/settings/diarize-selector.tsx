@@ -1,12 +1,14 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useTranslation } from "react-i18next";
 
 export function SpeakerSelector() {
   const { t } = useTranslation();
-  const { settings, updateSetting } = useSettings();
+  const enableDiarize = useSettingsStore((s) => s.enableDiarize);
+  const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
 
   // 0 = Auto, then 2-10 speakers (skips 1)
   const speakerValues = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -40,13 +42,13 @@ export function SpeakerSelector() {
 
             <span
               className={`text-sm font-medium ${
-                settings.enableDiarize ? "text-primary" : "text-red-500"
+                enableDiarize ? "text-primary" : "text-red-500"
               }`}
             >
-              {settings.enableDiarize
-                ? settings.maxSpeakers === null
+              {enableDiarize
+                ? maxSpeakers === null
                   ? t("actionBar.common.auto")
-                  : settings.maxSpeakers
+                  : maxSpeakers
                 : t("actionBar.speakers.disabled")}
             </span>
           </div>
@@ -54,12 +56,12 @@ export function SpeakerSelector() {
           <Slider
             value={[
               sliderIndexFor(
-                settings.enableDiarize ? (settings.maxSpeakers ?? 0) : 0,
+                enableDiarize ? (maxSpeakers ?? 0) : 0,
               ),
             ]}
             onValueChange={([index]: [number]) => {
               // Dragging the slider automatically enables diarization
-              if (!settings.enableDiarize) {
+              if (!enableDiarize) {
                 updateSetting("enableDiarize", true);
               }
 
@@ -94,7 +96,7 @@ export function SpeakerSelector() {
             </div>
 
             <Switch
-              checked={settings.enableDiarize}
+              checked={enableDiarize}
               onCheckedChange={(checked: boolean) =>
                 updateSetting("enableDiarize", checked)
               }

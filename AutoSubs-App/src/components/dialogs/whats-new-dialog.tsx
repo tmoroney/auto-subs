@@ -5,7 +5,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useTranslation } from "react-i18next";
 
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -35,7 +35,10 @@ interface ReleaseInfo {
 
 export function WhatsNewDialog() {
   const { t } = useTranslation();
-  const { settings, updateSetting, isHydrated } = useSettings();
+  const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted);
+  const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+  const isHydrated = useSettingsStore((s) => s.isHydrated);
 
   const [currentVersion, setCurrentVersion] = React.useState<string>("");
   const [release, setRelease] = React.useState<ReleaseInfo | null>(null);
@@ -49,9 +52,9 @@ export function WhatsNewDialog() {
   // - Show whenever stored lastSeenVersion differs from running version.
   const shouldShow =
     isHydrated &&
-    settings.onboardingCompleted &&
+    onboardingCompleted &&
     !!currentVersion &&
-    settings.lastSeenVersion !== currentVersion;
+    lastSeenVersion !== currentVersion;
 
   React.useEffect(() => {
     if (shouldShow) {
@@ -149,7 +152,7 @@ export function WhatsNewDialog() {
           )}
         </DialogHeader>
 
-        {(!!settings.lastSeenVersion || showResolveRestartNotice) && (
+        {(!!lastSeenVersion || showResolveRestartNotice) && (
           <Alert className="border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
             <Server className="size-4" />
             <AlertTitle>

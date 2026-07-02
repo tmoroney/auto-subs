@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/animated-tabs"
 import { useIntegration } from "@/contexts/IntegrationContext"
 import { DEFAULT_PRESET_ID, usePresets } from "@/contexts/PresetsContext"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { CaptionPreset, Template, TimelineInfo } from "@/types"
 import {
     AnimatedPresetActions,
@@ -225,7 +225,10 @@ export function CaptionTemplateSelectionDialog({
     timelineInfo,
 }: CaptionTemplateSelectionDialogProps) {
     const { t } = useTranslation()
-    const { settings, updateSetting } = useSettings()
+    const captionMode = useSettingsStore((s) => s.captionMode)
+    const selectedTemplate = useSettingsStore((s) => s.selectedTemplate)
+    const presetId = useSettingsStore((s) => s.presetId)
+    const updateSetting = useSettingsStore((s) => s.updateSetting)
     const {
         presets,
         getPreset,
@@ -236,9 +239,9 @@ export function CaptionTemplateSelectionDialog({
         exportPreset,
     } = usePresets()
     const [selection, setSelection] = React.useState<CaptionTemplateSelection>(() => ({
-        mode: settings.captionMode,
-        templateValue: settings.selectedTemplate.value,
-        presetId: settings.presetId || DEFAULT_PRESET_ID,
+        mode: captionMode,
+        templateValue: selectedTemplate.value,
+        presetId: presetId || DEFAULT_PRESET_ID,
     }))
     const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null)
     const [loadingTimedOut, setLoadingTimedOut] = React.useState(false)
@@ -250,9 +253,9 @@ export function CaptionTemplateSelectionDialog({
         setPrevHydrateKey(hydrateKey)
         if (open) {
             setSelection({
-                mode: settings.captionMode,
-                templateValue: settings.selectedTemplate.value,
-                presetId: settings.presetId || DEFAULT_PRESET_ID,
+                mode: captionMode,
+                templateValue: selectedTemplate.value,
+                presetId: presetId || DEFAULT_PRESET_ID,
             })
             setTemplateLoadError(null)
             setLoadingTimedOut(false)

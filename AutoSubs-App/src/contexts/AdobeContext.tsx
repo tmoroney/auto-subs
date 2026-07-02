@@ -6,7 +6,7 @@ import { requestSequenceInfo, requestAudioExport, requestImportSRT, requestJumpT
 import { getAudioExportDir, getSubtitleDocumentPath, loadSubtitleDocumentSubtitles } from '@/utils/file-utils';
 import { generateSrt } from '@/utils/srt-utils';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useIntegration } from '@/contexts/IntegrationContext';
 
 interface AdobeContextType {
@@ -52,7 +52,7 @@ function toTimelineInfo(data: any): TimelineInfo {
 }
 
 export function AdobeProvider({ children }: { children: React.ReactNode }) {
-  const { settings: currentSettings } = useSettings();
+  const exportRange = useSettingsStore((s) => s.exportRange);
   const { selectedIntegration } = useIntegration();
 
   const [appConnections, setAppConnections] = useState<Record<string, boolean>>({
@@ -209,8 +209,7 @@ export function AdobeProvider({ children }: { children: React.ReactNode }) {
     try {
       const exportDir = await getAudioExportDir();
       const tracks = inputTracks.map(Number).filter(n => !isNaN(n));
-      const exportRange = currentSettings.exportRange || 'entire';
-      const result = await sendRequestAndWait((sid) => requestAudioExport(exportDir, tracks, exportRange, '', sid, selectedIntegration));
+      const result = await sendRequestAndWait((sid) => requestAudioExport(exportDir, tracks, exportRange || 'entire', '', sid, selectedIntegration));
       const data = typeof result === 'string' ? JSON.parse(result) : result;
       if (data && data.success) {
         setExportProgress(100);

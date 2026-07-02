@@ -12,24 +12,26 @@ import {
   type ChevronsUpDownIconHandle,
 } from "@/components/ui/icons/chevrons-up-down";
 import { LanguageSelector } from "@/components/settings/language-selector";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { languages, translateLanguages } from "@/lib/languages";
 
 export function LanguageButton() {
   const { t } = useTranslation();
-  const { settings } = useSettings();
+  const language = useSettingsStore((s) => s.language);
+  const targetLanguage = useSettingsStore((s) => s.targetLanguage);
+  const translate = useSettingsStore((s) => s.translate);
   const [open, setOpen] = React.useState(false);
   const chevronsRef = React.useRef<ChevronsUpDownIconHandle>(null);
 
   const sourceLanguageLabel =
-    settings.language === "auto"
+    language === "auto"
       ? t("actionBar.common.auto")
-      : languages.find((l) => l.value === settings.language)?.label ??
-        settings.language;
+      : languages.find((l) => l.value === language)?.label ??
+        language;
 
   const targetLanguageLabel =
-    translateLanguages.find((l) => l.value === settings.targetLanguage)
-      ?.label ?? settings.targetLanguage;
+    translateLanguages.find((l) => l.value === targetLanguage)
+      ?.label ?? targetLanguage;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,7 +50,7 @@ export function LanguageButton() {
             <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
               {sourceLanguageLabel}
             </span>
-            {settings.translate ? (
+            {translate ? (
               <>
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">

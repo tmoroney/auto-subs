@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next"
 import { Settings, Speaker, Template, TimelineInfo } from "@/types"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext"
-import { useSettings } from "@/contexts/SettingsContext"
+import { useSettingsStore } from "@/stores/settings-store"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import {
     ANIMATED_CAPTION_TEMPLATE,
@@ -80,7 +80,7 @@ export function AddToTimelineDialog({
     const isAdobe = selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
     const { t } = useTranslation()
     const { speakers, updateSpeakers, currentSubtitleDocumentFilename } = useSubtitleDocument()
-    const { updateSetting } = useSettings()
+    const updateSetting = useSettingsStore((s) => s.updateSetting)
     const {
         presets,
         getPreset,

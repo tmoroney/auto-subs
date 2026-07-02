@@ -2,7 +2,7 @@ import * as React from "react";
 import { Joyride, STATUS } from "react-joyride";
 import type { Step, EventData, TooltipRenderProps } from "react-joyride";
 import { useTranslation } from "react-i18next";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -85,7 +85,7 @@ function TourTooltip({
 
 export function OnboardingTour() {
   const { t } = useTranslation();
-  const { updateSetting } = useSettings();
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const [run, setRun] = React.useState(true);
 
   const steps: Step[] = React.useMemo(

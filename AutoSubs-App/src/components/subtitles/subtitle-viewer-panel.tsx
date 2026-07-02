@@ -39,9 +39,9 @@ import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
-import { Speaker, Template, Track } from "@/types";
+import { Speaker, Settings, Template, Track } from "@/types";
 import { useTranslation } from "react-i18next";
 import { PlusIcon, type PlusIconHandle } from "../ui/plus";
 import { listSubtitleDocuments, type SubtitleDocumentListItem } from "@/utils/file-utils";
@@ -490,7 +490,7 @@ function SubtitleContent({
 }
 
 interface AddToTimelineFooterProps {
-  settings: ReturnType<typeof useSettings>["settings"];
+  settings: Settings;
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"];
   templates: Template[];
   templatesLoading: boolean;
@@ -640,7 +640,7 @@ export function SubtitleViewerPanel({
     [jumpToTime, seekAudioPreview],
   );
 
-  const { settings } = useSettings();
+  const settings = useSettingsStore();
   const { t } = useTranslation();
   const hasSubtitles = subtitles.length > 0;
 

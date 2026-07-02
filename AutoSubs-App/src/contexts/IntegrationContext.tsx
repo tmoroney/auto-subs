@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsStore } from '@/stores/settings-store';
 
 export type Integration = "davinci" | "premiere" | "aftereffects";
 
@@ -11,8 +11,8 @@ interface IntegrationContextType {
 const IntegrationContext = createContext<IntegrationContextType | null>(null);
 
 export function IntegrationProvider({ children }: { children: React.ReactNode }) {
-  const { settings, updateSetting } = useSettings();
-  const selectedIntegration = settings.preferredEditorIntegration;
+  const selectedIntegration = useSettingsStore((s) => s.preferredEditorIntegration);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const setSelectedIntegration = React.useCallback((integration: Integration) => {
     updateSetting("preferredEditorIntegration", integration);
   }, [updateSetting]);

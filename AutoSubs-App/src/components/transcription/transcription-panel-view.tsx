@@ -5,11 +5,10 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ModelPicker } from "@/components/settings/model-picker";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 import type {
   Model,
-  Settings,
   TimelineInfo,
   Track,
 } from "@/types";
@@ -54,7 +53,6 @@ export interface TranscriptionPanelViewProps {
   onTranscriptDocumentsRefresh: () => Promise<void>;
   livePreviewSegments: any[];
   isSubtitleViewerOpen?: boolean;
-  settings: Settings;
   timelineInfo: TimelineInfo;
   templates: TimelineInfo["templates"];
   templatesLoading: boolean;
@@ -107,7 +105,8 @@ export function TranscriptionPanelView({
   selectedIntegration,
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation();
-  const { settings: currentSettings, updateSetting } = useSettings();
+  const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
 
   const [localSelectedFile, setLocalSelectedFile] = React.useState<
     string | null
@@ -171,7 +170,7 @@ export function TranscriptionPanelView({
   // Clean up selected tracks that no longer exist (runs on both manual and auto refresh)
   React.useEffect(() => {
     const currentSelectedTracks =
-      currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
+      selectedInputTracksByApp[selectedIntegration] || [];
     const validTrackIds = inputTracks.map((track) => track.value);
     const cleanedSelectedTracks = currentSelectedTracks.filter((trackId: string) =>
       validTrackIds.includes(trackId)
@@ -179,15 +178,15 @@ export function TranscriptionPanelView({
 
     if (cleanedSelectedTracks.length !== currentSelectedTracks.length) {
       const nextMap = {
-        ...currentSettings.selectedInputTracksByApp,
+        ...selectedInputTracksByApp,
         [selectedIntegration]: cleanedSelectedTracks,
       };
       updateSetting("selectedInputTracksByApp", nextMap);
     }
-  }, [inputTracks, currentSettings.selectedInputTracksByApp, selectedIntegration, updateSetting]);
+  }, [inputTracks, selectedInputTracksByApp, selectedIntegration, updateSetting]);
 
   const selectedTracks =
-    currentSettings.selectedInputTracksByApp[selectedIntegration] || [];
+    selectedInputTracksByApp[selectedIntegration] || [];
   const selectedTrackCount = selectedTracks.length;
   const hasProcessingSteps = processingSteps.length > 0;
   const showProcessing = isProcessing || hasProcessingSteps;
@@ -195,8 +194,8 @@ export function TranscriptionPanelView({
 
   const startDisabled =
     isProcessing ||
-    (currentSettings.audioInputMode === "file" && !selectedFile) ||
-    (currentSettings.audioInputMode === "timeline" &&
+    (audioInputMode === "file" && !selectedFile) ||
+    (audioInputMode === "timeline" &&
       (selectedTrackCount === 0 || inputTracks.length === 0));
 
   const formatSectionNumber = React.useCallback(
@@ -205,7 +204,7 @@ export function TranscriptionPanelView({
   );
 
   const startButtonLabel =
-    currentSettings.audioInputMode === "timeline" &&
+    audioInputMode === "timeline" &&
     selectedTrackCount > 0 &&
     inputTracks.length > 0
       ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
@@ -288,7 +287,7 @@ export function TranscriptionPanelView({
                         isRefreshingTracks={isRefreshingTracks}
                         className={cn(
                           "row-start-1 col-start-1 transition-opacity duration-0",
-                          currentSettings.audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
+                          audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
                         )}
                       />
                       <FileDropArea
@@ -296,7 +295,7 @@ export function TranscriptionPanelView({
                         onSelectedFileChange={setSelectedFile}
                         className={cn(
                           "row-start-1 col-start-1 transition-opacity duration-0",
-                          currentSettings.audioInputMode !== "file" && "opacity-0 pointer-events-none"
+                          audioInputMode !== "file" && "opacity-0 pointer-events-none"
                         )}
                       />
                     </div>

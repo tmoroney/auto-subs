@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { languages, translateLanguages } from "@/lib/languages";
 import type { Model } from "@/types";
 
@@ -29,47 +29,57 @@ function useRunSummary(
   selectedModelIndex: number,
 ): string {
   const { t } = useTranslation();
-  const { settings } = useSettings();
+  const audioInputMode = useSettingsStore((s) => s.audioInputMode);
+  const language = useSettingsStore((s) => s.language);
+  const targetLanguage = useSettingsStore((s) => s.targetLanguage);
+  const translate = useSettingsStore((s) => s.translate);
+  const enableDiarize = useSettingsStore((s) => s.enableDiarize);
+  const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
+  const textDensity = useSettingsStore((s) => s.textDensity);
+  const textCase = useSettingsStore((s) => s.textCase);
+  const enableGpu = useSettingsStore((s) => s.enableGpu);
+  const enableDTW = useSettingsStore((s) => s.enableDTW);
+  const removePunctuation = useSettingsStore((s) => s.removePunctuation);
 
   const sourceModeLabel =
-    settings.audioInputMode === "timeline"
+    audioInputMode === "timeline"
       ? t("actionBar.mode.timeline")
       : t("actionBar.mode.fileInput");
 
   const selectedModelLabel = t(modelsState[selectedModelIndex].label);
 
   const sourceLanguageLabel =
-    settings.language === "auto"
+    language === "auto"
       ? t("actionBar.common.auto")
-      : languages.find((l) => l.value === settings.language)?.label ??
-        settings.language;
+      : languages.find((l) => l.value === language)?.label ??
+        language;
 
   const targetLanguageLabel =
-    translateLanguages.find((l) => l.value === settings.targetLanguage)
-      ?.label ?? settings.targetLanguage;
+    translateLanguages.find((l) => l.value === targetLanguage)
+      ?.label ?? targetLanguage;
 
-  const languageSummary = settings.translate
+  const languageSummary = translate
     ? `${sourceLanguageLabel} → ${targetLanguageLabel}`
     : sourceLanguageLabel;
 
-  const diarizeLabel = settings.enableDiarize
-    ? settings.maxSpeakers === null
+  const diarizeLabel = enableDiarize
+    ? maxSpeakers === null
       ? t("actionBar.common.auto")
-      : settings.maxSpeakers
+      : maxSpeakers
     : t("actionBar.common.off");
 
   const textDensityLabel = t(
-    `actionBar.format.textDensity.${settings.textDensity}`,
+    `actionBar.format.textDensity.${textDensity}`,
   );
 
   const textCaseLabel =
-    settings.textCase !== "none"
-      ? t(`actionBar.format.textCase.${settings.textCase}`)
+    textCase !== "none"
+      ? t(`actionBar.format.textCase.${textCase}`)
       : "";
 
-  const gpuLabel = settings.enableGpu ? t("settings.gpu.title") : "";
-  const dtwLabel = settings.enableDTW ? t("settings.dtw.title") : "";
-  const punctuationLabel = settings.removePunctuation
+  const gpuLabel = enableGpu ? t("settings.gpu.title") : "";
+  const dtwLabel = enableDTW ? t("settings.dtw.title") : "";
+  const punctuationLabel = removePunctuation
     ? t("actionBar.format.removePunctuationTitle")
     : "";
 
@@ -79,22 +89,22 @@ function useRunSummary(
     languageSummary,
   ];
 
-  if (settings.enableDiarize) {
+  if (enableDiarize) {
     summaryParts.push(`${t("actionBar.speakers.title")}: ${diarizeLabel}`);
   }
-  if (settings.textDensity !== "standard") {
+  if (textDensity !== "standard") {
     summaryParts.push(textDensityLabel);
   }
-  if (settings.enableGpu) {
+  if (enableGpu) {
     summaryParts.push(gpuLabel);
   }
-  if (settings.enableDTW) {
+  if (enableDTW) {
     summaryParts.push(dtwLabel);
   }
-  if (settings.textCase !== "none") {
+  if (textCase !== "none") {
     summaryParts.push(textCaseLabel);
   }
-  if (settings.removePunctuation) {
+  if (removePunctuation) {
     summaryParts.push(punctuationLabel);
   }
 

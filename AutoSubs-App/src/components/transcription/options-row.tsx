@@ -11,13 +11,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { SpeakerSelector } from "@/components/settings/diarize-selector";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 import { migrateCustomPrompt } from "./utils";
 
 export function OptionsRow() {
   const { t } = useTranslation();
-  const { settings: currentSettings, updateSetting } = useSettings();
+  const enableDiarize = useSettingsStore((s) => s.enableDiarize);
+  const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
+  const customPrompt = useSettingsStore((s) => s.customPrompt);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [openSpeakerPopover, setOpenSpeakerPopover] = React.useState(false);
   const [openTextFormattingPopover, setOpenTextFormattingPopover] =
@@ -46,10 +49,10 @@ export function OptionsRow() {
     return () => observer.disconnect();
   }, []);
 
-  const diarizeLabel = currentSettings.enableDiarize
-    ? currentSettings.maxSpeakers === null
+  const diarizeLabel = enableDiarize
+    ? maxSpeakers === null
       ? t("actionBar.common.auto")
-      : currentSettings.maxSpeakers
+      : maxSpeakers
     : t("actionBar.common.off");
 
   return (
@@ -129,7 +132,7 @@ export function OptionsRow() {
         open={openCustomPromptPopover}
         onOpenChange={setOpenCustomPromptPopover}
         showLabel={showPromptOptionLabel}
-        customPrompt={currentSettings.customPrompt}
+        customPrompt={customPrompt}
         onCustomPromptChange={(value) => updateSetting("customPrompt", value)}
       />
     </div>
