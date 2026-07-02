@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { platform } from "@tauri-apps/plugin-os";
 import { Settings } from "@/types";
-import { getPreferredUiLanguage, normalizeUiLanguage } from "@/i18n";
+import { getPreferredUiLanguage, normalizeUiLanguage, initI18n } from "@/i18n";
 import {
   models,
   modelSupportsLanguage,
@@ -192,6 +192,13 @@ export async function hydrateSettingsStore(): Promise<void> {
     // Trigger persist's rehydration (zustand merges persisted state over
     // the current in-memory state).
     await useSettingsStore.persist.rehydrate();
+
+    // Initialise i18n with the hydrated UI language *before* marking the
+    // store as hydrated. SettingsProvider gates children on isHydrated, so
+    // this guarantees the first render of children uses the correct language
+    // and avoids a one-frame flash of the default (en) UI for returning
+    // non-English users.
+    initI18n(useSettingsStore.getState().uiLanguage);
   } catch (error) {
     console.error("Error initializing settings store:", error);
   } finally {

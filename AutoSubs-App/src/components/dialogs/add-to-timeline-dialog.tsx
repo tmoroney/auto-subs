@@ -16,9 +16,10 @@ import {
     Palette,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { Settings, Speaker, Template, TimelineInfo } from "@/types"
+import { Speaker, Template, TimelineInfo } from "@/types"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext"
+import { useShallow } from "zustand/react/shallow"
 import { useSettingsStore } from "@/stores/settings-store"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import {
@@ -44,7 +45,6 @@ interface Selection {
 
 interface AddToTimelineDialogProps {
     children: React.ReactNode
-    settings: Settings
     timelineInfo: TimelineInfo
     templates: Template[]
     templatesLoading: boolean
@@ -67,7 +67,6 @@ const STEPS = [
 
 export function AddToTimelineDialog({
     children,
-    settings,
     timelineInfo,
     templates,
     templatesLoading,
@@ -80,7 +79,16 @@ export function AddToTimelineDialog({
     const isAdobe = selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
     const { t } = useTranslation()
     const { speakers, updateSpeakers, currentSubtitleDocumentFilename } = useSubtitleDocument()
-    const updateSetting = useSettingsStore((s) => s.updateSetting)
+    const { selectedTemplate, presetId, selectedOutputTrack, captionMode, updateSetting } =
+        useSettingsStore(
+            useShallow((s) => ({
+                selectedTemplate: s.selectedTemplate,
+                presetId: s.presetId,
+                selectedOutputTrack: s.selectedOutputTrack,
+                captionMode: s.captionMode,
+                updateSetting: s.updateSetting,
+            })),
+        )
     const {
         presets,
         getPreset,
@@ -95,9 +103,9 @@ export function AddToTimelineDialog({
     const [currentStep, setCurrentStep] = React.useState(0)
     const [selection, setSelection] = React.useState<Selection>(() => ({
         mode: "regular",
-        templateValue: settings.selectedTemplate.value,
-        presetId: settings.presetId || DEFAULT_PRESET_ID,
-        outputTrack: settings.selectedOutputTrack,
+        templateValue: selectedTemplate.value,
+        presetId: presetId || DEFAULT_PRESET_ID,
+        outputTrack: selectedOutputTrack,
     }))
     const [localSpeakers, setLocalSpeakers] = React.useState<Speaker[]>(speakers)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -122,9 +130,9 @@ export function AddToTimelineDialog({
 
     // Keep refs so the open-effect can read the latest values without being
     // re-triggered every time settings/speakers get a new object reference.
-    const settingsRef = React.useRef(settings)
+    const settingsRef = React.useRef({ selectedTemplate, presetId, selectedOutputTrack, captionMode })
     const speakersRef = React.useRef(speakers)
-    settingsRef.current = settings
+    settingsRef.current = { selectedTemplate, presetId, selectedOutputTrack, captionMode }
     speakersRef.current = speakers
 
     // Re-hydrate from settings whenever the dialog opens; a fresh session should

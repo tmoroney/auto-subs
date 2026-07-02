@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
 import { SegmentPreview } from "@/components/processing/segment-preview"
-import { Settings, TimelineInfo } from "@/types"
+import { TimelineInfo } from "@/types"
 
 export interface ProcessingStepProps {
     title: string;
@@ -23,7 +23,6 @@ export interface ProcessingStepProps {
     onViewSubtitles?: () => void;
     isSubtitleViewerOpen?: boolean;
     livePreviewSegments?: any[];
-    settings?: Settings;
     timelineInfo?: TimelineInfo;
     selectedIntegration?: "davinci" | "premiere" | "aftereffects";
 }
@@ -41,13 +40,12 @@ export function ProcessingStepItem({
     onViewSubtitles,
     isSubtitleViewerOpen = false,
     livePreviewSegments = [],
-    settings,
     timelineInfo,
     selectedIntegration
 }: ProcessingStepProps) {
     // If this is the completion step, render the special completion component
-    if (id === 'Complete' && onExportToFile && onAddToTimeline && settings && timelineInfo) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} settings={settings} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
+    if (id === 'Complete' && onExportToFile && onAddToTimeline && timelineInfo) {
+        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
     }
 
     return (

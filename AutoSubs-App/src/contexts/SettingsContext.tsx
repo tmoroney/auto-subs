@@ -80,7 +80,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     requestAnimationFrame(() => setShouldShowChildren(true));
   }, [isHydrated]);
 
-  // Re-initialise i18n when the UI language changes.
+  // Re-initialise i18n when the UI language changes at runtime (e.g. via the
+  // settings dialog). The initial i18n setup happens inside
+  // hydrateSettingsStore() before isHydrated flips to true, so children first
+  // render with the correct language; this effect only handles subsequent
+  // changes.
   const uiLanguage = useSettingsStore((s) => s.uiLanguage);
   useEffect(() => {
     if (!isHydrated) return;

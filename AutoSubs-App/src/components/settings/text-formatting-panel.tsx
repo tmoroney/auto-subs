@@ -63,6 +63,13 @@ export function TextFormattingPanel({
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
 
+    // Derive the active censor word count from the subscribed fields so it
+    // stays reactive without a non-reactive getState() call during render.
+    const censorWordCount = React.useMemo(
+        () => getActiveCensorWords({ enableCensor, censoredWords, activeCensorLists }).length,
+        [enableCensor, censoredWords, activeCensorLists],
+    )
+
     return (
         <div>
             <div className="p-4 space-y-3">
@@ -161,7 +168,7 @@ export function TextFormattingPanel({
                     <div className="space-y-0.5">
                         <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
                         <p className="text-xs text-muted-foreground">
-                            {t("actionBar.censor.wordCount", { count: getActiveCensorWords(useSettingsStore.getState()).length })}
+                            {t("actionBar.censor.wordCount", { count: censorWordCount })}
                             {!enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
                         </p>
                     </div>

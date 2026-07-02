@@ -1,7 +1,9 @@
 import { Settings } from '@/types';
 import { BUILT_IN_CENSOR_LISTS } from './built-in-lists';
 
-export function getActiveCensorWords(settings: Settings): string[] {
+export function getActiveCensorWords(
+    settings: Pick<Settings, 'enableCensor' | 'censoredWords' | 'activeCensorLists'>,
+): string[] {
     if (!settings.enableCensor) return [];
 
     const custom = settings.censoredWords ?? [];
