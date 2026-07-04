@@ -48,23 +48,17 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
       let newTimelineInfo = await getTimelineInfo();
       setTimelineInfo({ ...newTimelineInfo, templates });
     } catch (error) {
-      // Silently fail for connection errors to avoid console flooding
-      // The calling context can handle UI updates if needed
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // Connection refused / Resolve offline — fail silently to avoid console
-      // flooding during background polling. Matches both the raw reqwest
-      // "Connection refused" / "tcp connect error" strings and the friendlier
-      // "DaVinci Resolve is not running" message returned by resolve_bridge.
+      // Resolve offline — fail silently during background polling. Matches both
+      // raw reqwest strings and the friendly message from resolve_bridge.
       if (
         errorMessage.includes('Connection refused') ||
         errorMessage.includes('tcp connect error') ||
         errorMessage.includes('DaVinci Resolve is not running') ||
         errorMessage.includes('AutoSubs bridge is unavailable')
       ) {
-        // Connection refused - Resolve is not running, fail silently
         return;
       }
-      // For other errors, still throw but don't log to console
       throw error;
     }
   }, [templates]);

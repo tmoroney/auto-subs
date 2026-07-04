@@ -51,13 +51,9 @@ pub async fn resolve_bridge(args: ResolveBridgeArgs) -> Result<String, String> {
         .send()
         .await
         .map_err(|e| {
-            // "Resolve offline" is normal if Resolve isn't running or the user is in standalone mode.
             tracing::debug!("resolve_bridge: could not connect to Resolve (this is normal if Resolve is closed): {}", e);
-            // Distinguish "Resolve is not running" (connection refused / no route) from
-            // genuine network/timeout errors so the frontend can show a user-facing
-            // message like "DaVinci Resolve is not running" instead of a generic
-            // "resolve request failed" (issue A3). reqwest exposes `is_connect()`
-            // for connection-layer failures and `is_timeout()` for timeouts.
+            // Distinguish "Resolve offline" from timeouts so the frontend can show
+            // a user-facing message instead of a generic error.
             if e.is_connect() {
                 "DaVinci Resolve is not running or the AutoSubs bridge is unavailable. \
                  Please open DaVinci Resolve and launch the AutoSubs script from \

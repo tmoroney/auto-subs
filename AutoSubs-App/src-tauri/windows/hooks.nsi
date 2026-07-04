@@ -1,15 +1,9 @@
 !macro NSIS_HOOK_POSTINSTALL
-  ; J3: Clean up old v2 Resolve Scripts menu entries before installing v3.
-  ; The v2 installer dropped several files/folders under Resolve's Fusion/Scripts
-  ; directory that v3 no longer uses; without removing them, users see duplicate
-  ; "AutoSubs" / "AutoSubs V2" entries in Resolve's Workspace > Scripts menu.
-  ; All paths are in $APPDATA (per-user) since that's where v2 installed them.
+  ; Remove old v2 entries to prevent duplicate Resolve Scripts menu items.
   Delete "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs V2.lua"
-  ; Old v2 modules folder + its install-path files (v3 bakes the path into AutoSubs.lua)
   Delete "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs\install_path.txt"
   Delete "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs\install_path.json"
   RMDir /r "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs"
-  ; v2 also copied the script to the Workflow Integration Plugins folder under a V2 name
   Delete "$PROGRAMDATA\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins\AutoSubs V2.lua"
 
   ; Generate AutoSubs.lua with the installation path baked in (no file read needed at launch)
@@ -26,9 +20,7 @@
   FileWrite $0 "AutoSubs:Init(app_executable, resources_folder, false)$\r$\n"
   FileClose $0
 
-  ; Remove the old AutoSubs modules folder if a previous v3 install copied it
-  ; (v3 now loads modules from the install dir via package.path, so the copy
-  ; under Scripts\Utility is redundant and can cause stale-module issues).
+  ; Remove redundant v3 modules copy (now loaded from install dir via package.path).
   RMDir /r "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs"
 
   ; Remove install_path.txt written by older versions
