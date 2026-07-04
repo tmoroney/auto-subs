@@ -32,7 +32,8 @@ PREMIERE_PATH="$HOME/Library/Application Support/Adobe/CEP/extensions"
 mkdir -p "$PREMIERE_PATH"
 cp -r "$RESOURCES_PATH/com.autosubs.adobe" "$PREMIERE_PATH"
 
-# Enable PlayerDebugMode for Adobe CEP extensions (CSXS 6-12)
+# Enable PlayerDebugMode for Adobe CEP extensions (CSXS 6-14)
+# CSXS.13/14 are required for Premiere Pro 2026 (v26); older keys cover legacy versions.
 defaults write com.adobe.CSXS.6 PlayerDebugMode 1
 defaults write com.adobe.CSXS.7 PlayerDebugMode 1
 defaults write com.adobe.CSXS.8 PlayerDebugMode 1
@@ -40,5 +41,7 @@ defaults write com.adobe.CSXS.9 PlayerDebugMode 1
 defaults write com.adobe.CSXS.10 PlayerDebugMode 1
 defaults write com.adobe.CSXS.11 PlayerDebugMode 1
 defaults write com.adobe.CSXS.12 PlayerDebugMode 1
+defaults write com.adobe.CSXS.13 PlayerDebugMode 1
+defaults write com.adobe.CSXS.14 PlayerDebugMode 1
 
 exit 0

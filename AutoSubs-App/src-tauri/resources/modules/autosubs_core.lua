@@ -138,7 +138,14 @@ local currentExportJob = {
         offset = 0   -- offset on timeline in seconds (regardless of timeline start)
     },
     trackStates = nil,
-    clipBoundaries = nil
+    clipBoundaries = nil,
+    -- C2/C3: user state captured before ExportAudio clobbers the Deliver page
+    -- render settings and the page switch clears timeline In/Out markers.
+    -- Restored by restore_user_state() at the end of AddSubtitles (or on
+    -- cancel/error) so the user's render settings and markers survive the
+    -- export+placement flow.
+    savedPage = nil,       -- the Resolve page the user was on before ExportAudio
+    savedMarks = nil       -- raw GetMarkInOut() dict (relative frame values)
 }
 
 -- UTF-8 aware character count
@@ -405,6 +412,48 @@ local function reset_tracks()
         timeline:SetTrackEnable("audio", i, currentExportJob["trackStates"][i])
     end
     currentExportJob["clipBoundaries"] = nil
+end
+
+-- C2/C3: Restore the user's pre-export UI state. ExportAudio switches to the
+-- Deliver page and overwrites the render settings (TargetDir/CustomName/etc.);
+-- Resolve's render-job + page-switch flow also clears timeline In/Out markers.
+-- This helper puts both back so the user doesn't lose their render config or
+-- markers after an AutoSubs export+placement run. Safe to call when no state
+-- was saved (e.g. standalone AddSubtitles without a prior export) — it no-ops.
+local function restore_user_state()
+    if currentExportJob.savedMarks ~= nil then
+        local timeline = project:GetCurrentTimeline()
+        if timeline and timeline.SetMarkInOut then
+            for _, markType in ipairs({ "audio", "video" }) do
+                local m = currentExportJob.savedMarks[markType]
+                local ok = false
+                if m and m["in"] ~= nil and m["out"] ~= nil then
+                    ok = pcall(timeline.SetMarkInOut, timeline, m["in"], m["out"], markType)
+                elseif timeline.ClearMarkInOut then
+                    ok = pcall(timeline.ClearMarkInOut, timeline, markType)
+                end
+                if not ok then
+                    print("[AutoSubs] restore_user_state: could not restore " .. markType .. " markers")
+                end
+            end
+        end
+        currentExportJob.savedMarks = nil
+    end
+
+    -- Reset the render MarkIn/MarkOut we set during ExportAudio so the user's
+    -- next Deliver-page render uses the full timeline (SelectAllFrames) instead
+    -- of the audio-export range. There is no GetRenderSettings() API, so we
+    -- can't fully restore the user's previous preset, but clearing the mark
+    -- range prevents the most surprising symptom (a render limited to the
+    -- audio export region).
+    if currentExportJob.savedPage ~= nil then
+        pcall(function()
+            project:SetRenderSettings({ SelectAllFrames = true })
+        end)
+        -- Return the user to the page they were on before the export.
+        pcall(resolve.OpenPage, resolve, currentExportJob.savedPage)
+        currentExportJob.savedPage = nil
+    end
 end
 
 local function check_track_empty(trackIndex, markIn, markOut)
@@ -742,12 +791,40 @@ function ExportAudio(outputDir, inputTracks, exportRange)
         rangeEnd = timeline:GetEndFrame()
     end
 
-    -- Trim to actual clip boundaries (skip leading/trailing silence) and apply to render
+    -- Trim to actual clip boundaries (skip leading/trailing silence) and apply to render.
+    -- get_clip_boundaries() returns nil for start/end when no enabled clips fall inside the
+    -- marker region (e.g. the user picked an in/out range with no audio, or muted every
+    -- selected track). Previously the nil propagated into the print() concatenation below
+    -- and crashed the Lua handler mid-request, which left the HTTP connection open and
+    -- surfaced upstream as an A4-style timeout. Guard both values and fall back to the
+    -- broad region (markers or full timeline) so the export still proceeds.
     if rangeStart then
         local exportStart, exportEnd = get_clip_boundaries(timeline, selected, rangeStart, rangeEnd)
+        if exportStart == nil or exportEnd == nil then
+            print("[AutoSubs] No clips found in export range — falling back to full region " ..
+                tostring(rangeStart) .. " - " .. tostring(rangeEnd))
+            exportStart = rangeStart
+            exportEnd = rangeEnd
+        end
         renderSettings.MarkIn = exportStart
         renderSettings.MarkOut = exportEnd
-        print("[AutoSubs] Export range: " .. exportStart .. " - " .. exportEnd)
+        print("[AutoSubs] Export range: " .. tostring(exportStart) .. " - " .. tostring(exportEnd))
+    end
+
+    -- C2/C3: Capture the user's current page and timeline In/Out markers BEFORE
+    -- we switch to the Deliver page and overwrite render settings. Resolve's
+    -- render-job + page-switch flow clears the markers, so without saving them
+    -- here they'd be gone by the time AddSubtitles runs. restore_user_state()
+    -- (called at the end of AddSubtitles / on cancel) puts both back.
+    currentExportJob.savedPage = nil
+    currentExportJob.savedMarks = nil
+    pcall(function()
+        currentExportJob.savedPage = resolve:GetCurrentPage()
+    end)
+    if timeline.GetMarkInOut then
+        pcall(function()
+            currentExportJob.savedMarks = timeline:GetMarkInOut() or nil
+        end)
     end
 
     -- Must switch to Deliver page to start render and customise settings (wierd quirk of Resolve API)
@@ -970,6 +1047,7 @@ local function get_template(rootFolder, templateName)
     end
 
     local templateItem = nil
+    local resolvedName = templateName -- tracks which template was actually found
     if templateName ~= nil and templateName ~= "" then
         templateItem = get_template_item(rootFolder, templateName)
     end
@@ -982,13 +1060,26 @@ local function get_template(rootFolder, templateName)
     end
     if not templateItem then
         templateItem = get_template_item(rootFolder, "Default Template")
+        resolvedName = "Default Template"
+    end
+    -- Final fallback: the bundled animated caption template. This catches both B2
+    -- ("Default Template" missing) and B3 (user-selected "Text+" or other custom
+    -- template that isn't in the media pool). Without this, a missing user template
+    -- aborted placement entirely; now we still place subtitles using the AutoSubs
+    -- Caption template so the user sees *something* on the timeline.
+    if not templateItem then
+        templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
+        resolvedName = ANIMATED_CAPTION
     end
     if not templateItem then
-        return nil, nil, "Could not find subtitle template '" .. tostring(templateName) .. "' in media pool"
+        return nil, nil, "Could not find subtitle template '" .. tostring(templateName) ..
+            "' in media pool (also tried 'Default Template' and '" .. ANIMATED_CAPTION .. "')"
     end
 
     local template_frame_rate = templateItem:GetClipProperty()["FPS"]
-    return templateItem, template_frame_rate, nil
+    -- Return the resolved name so callers can correctly detect the animated caption
+    -- template even when a fallback was used (the isAnimated flag depends on it).
+    return templateItem, template_frame_rate, nil, resolvedName
 end
 
 local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate, timelineStart)
@@ -1097,16 +1188,28 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
+        -- Guard against malformed segments (nil start/end). A nil time would otherwise
+        -- propagate into to_frames() and surface as a "compare number with nil" crash
+        -- deep in the append loop (issue B5). Skip the segment and warn so the user can
+        -- see which segment was bad rather than losing the whole placement.
+        if subtitle["start"] == nil or subtitle["end"] == nil then
+            print(string.format("[AutoSubs] Skipping subtitle #%d with missing start/end time (start=%s, end=%s)",
+                i, tostring(subtitle["start"]), tostring(subtitle["end"])))
+            goto continue
+        end
         local start_frame = to_frames(subtitle["start"], frame_rate)
         local end_frame = to_frames(subtitle["end"], frame_rate)
         local timeline_pos = timelineStart + start_frame
         local clip_timeline_duration = end_frame - start_frame
 
         if i < #subtitles then
-            local next_start = timelineStart + to_frames(subtitles[i + 1]["start"], frame_rate)
-            local frames_between = next_start - (timeline_pos + clip_timeline_duration)
-            if frames_between < joinThreshold then
-                clip_timeline_duration = clip_timeline_duration + frames_between + 1
+            local nextSub = subtitles[i + 1]
+            if nextSub and nextSub["start"] ~= nil then
+                local next_start = timelineStart + to_frames(nextSub["start"], frame_rate)
+                local frames_between = next_start - (timeline_pos + clip_timeline_duration)
+                if frames_between < joinThreshold then
+                    clip_timeline_duration = clip_timeline_duration + frames_between + 1
+                end
             end
         end
 
@@ -1130,6 +1233,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
         }
 
         table.insert(clipList, newClip)
+        ::continue::
     end
 
     return clipList
@@ -1181,6 +1285,17 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                     local autosubsTool = comp:FindTool("AutoSubs")
                     autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
                     template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
+
+                    -- C1: Explicitly sync the downstream CharacterLevelStyling1
+                    -- tool's Text so the Follower1 -> CLS binding chain re-evaluates
+                    -- with the correct text on playback. The macro's ExecuteOnChange
+                    -- callback also does this, but setting it here guarantees it even
+                    -- if the callback didn't fire (e.g. when the input value doesn't
+                    -- change between clips, ExecuteOnChange can be skipped by Fusion).
+                    local clsTool = comp:FindTool("CharacterLevelStyling1")
+                    if clsTool then
+                        pcall(clsTool.SetInput, clsTool, "Text", subtitleText)
+                    end
 
                     -- Apply caption preset settings via the macro's built-in helper
                     -- so inspector values captured during a preset edit are faithfully
@@ -1239,6 +1354,13 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     refresh_project()
     resolve:OpenPage("edit")
 
+    -- C2/C3: Wrap the placement logic so we can restore the user's pre-export page
+    -- and In/Out markers on EVERY exit path (success, partial failure, hard error).
+    -- restore_user_state() is safe to call when nothing was saved (standalone
+    -- AddSubtitles without a prior export) — it no-ops in that case.
+    local result
+    local ok, err = pcall(function()
+        result = (function()
     local data, loadErr = load_subtitle_data(filePath)
     if not data then
         return make_error("Failed to load subtitle file", loadErr)
@@ -1279,7 +1401,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
     local rootFolder = mediaPool:GetRootFolder()
-    local templateItem, template_frame_rate, templateErr = get_template(rootFolder, templateName)
+    local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder, templateName)
     if not templateItem then
         return make_error("Template not found", templateErr)
     end
@@ -1287,20 +1409,61 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
         template_frame_rate, timelineStart)
 
+    -- B4: AppendToTimeline silently returns an empty table when the destination
+    -- video track is locked. Detect locked target tracks, temporarily unlock
+    -- them for the append, then restore the original lock state. This addresses
+    -- the most common root cause of "AppendToTimeline returned empty" reports.
+    local lockedTracks = {} -- maps trackIndex -> true for tracks we unlocked
+    if timeline.GetIsTrackLocked and timeline.SetTrackLock then
+        local trackSet = {}
+        for _, clip in ipairs(clipList) do
+            trackSet[clip.trackIndex] = true
+        end
+        for ti in pairs(trackSet) do
+            local isLocked = false
+            pcall(function()
+                isLocked = timeline:GetIsTrackLocked("video", ti) or false
+            end)
+            if isLocked then
+                pcall(timeline.SetTrackLock, timeline, "video", ti, false)
+                lockedTracks[ti] = true
+                print("[AutoSubs] Temporarily unlocked video track " .. ti .. " for placement")
+            end
+        end
+    end
+
     -- AppendToTimeline can fail (e.g. locked timeline, invalid clips). Surface
     -- the real Resolve error instead of silently returning an empty table.
     local appendOk, timelineItems = pcall(function()
         return mediaPool:AppendToTimeline(clipList)
     end)
+
+    -- Re-lock any tracks we unlocked, regardless of whether the append succeeded.
+    for ti in pairs(lockedTracks) do
+        pcall(timeline.SetTrackLock, timeline, "video", ti, true)
+        print("[AutoSubs] Re-locked video track " .. ti)
+    end
+
     if not appendOk then
         return make_error("Failed to add subtitles to timeline", timelineItems)
     end
     if type(timelineItems) ~= "table" or #timelineItems == 0 then
+        -- Include a hint about the most common remaining causes now that locked
+        -- tracks are handled automatically: an invalid/corrupt template clip or
+        -- a trackIndex outside the valid range.
         return make_error("Failed to add subtitles to timeline",
-            "Resolve did not return any timeline items from AppendToTimeline")
+            "Resolve did not return any timeline items from AppendToTimeline. " ..
+            "This can happen if the template clip is invalid/corrupt or the target " ..
+            "track index is out of range. Try re-importing the template or choosing " ..
+            "a different track.")
     end
 
-    local isAnimated = templateName == ANIMATED_CAPTION and true or false
+    -- Use the *resolved* template name (returned by get_template) rather than the
+    -- user-requested name, so a fallback to the AutoSubs Caption template still
+    -- enables the animated-text application path. Without this, falling back to
+    -- ANIMATED_CAPTION while isAnimated=false would call SetInput("StyledText")
+    -- on the animated macro and silently fail to place any text.
+    local isAnimated = resolvedTemplateName == ANIMATED_CAPTION and true or false
 
     -- Auto-swap the caption Font for non-Latin transcript languages when the
     -- user is still on the macro's default font. Uses the transcript JSON's
@@ -1341,6 +1504,19 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     return { ok = true, fontSwap = fontSwap }
+        end)() -- end of inner placement function
+    end)
+
+    -- Always restore the user's page + markers, whether placement succeeded,
+    -- partially failed, or errored. Safe to call unconditionally.
+    restore_user_state()
+
+    if not ok then
+        -- Re-raise unexpected errors (not the structured make_error returns,
+        -- which are captured in `result`) as a structured error.
+        return make_error("Failed to add subtitles", err)
+    end
+    return result
 end
 
 local function extract_frame(comp, exportDir)

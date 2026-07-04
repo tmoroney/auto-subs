@@ -918,6 +918,20 @@
 								local text = tool:GetInput("Text")
 								if text then
 									tool:SetInput("StyledText", text)
+									-- C1: Keep the downstream CharacterLevelStyling1 tool's Text
+									-- in sync with the macro's Text input. The binding chain is
+									--   Template.StyledText <- Follower1.StyledText
+									--   Follower1.Text <- CharacterLevelStyling1.StyledText
+									-- and CharacterLevelStyling1.StyledText is driven by its
+									-- CharacterLevelStyling spline, which is built from
+									-- CharacterLevelStyling1.Text. Without this sync, that tool
+									-- kept the macro's "Subtitle Example Text" placeholder, so
+									-- on playback Fusion re-evaluated the chain with the old
+									-- text and the subs reverted to the placeholder.
+									local cls = comp:FindTool("CharacterLevelStyling1")
+									if cls then
+										cls:SetInput("Text", text)
+									end
 									local func = tool:GetData("UpdateTextContent")
 									if func then
 										loadstring(func)()(comp, tool, text)
