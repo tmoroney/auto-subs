@@ -895,6 +895,12 @@ impl ModelManager {
                 }
                 Err(e) => {
                     last_error = Some(e);
+                    // A cancelled download won't succeed on retry — stop immediately
+                    // instead of burning the remaining attempts (each of which would
+                    // just re-run cleanup and bail again at the cancellation guard).
+                    if cancel_token.is_cancelled() {
+                        break;
+                    }
                     if attempt < HUB_DOWNLOAD_MAX_RETRIES {
                         self.cleanup_stale_locks().ok();
                     }
@@ -904,10 +910,13 @@ impl ModelManager {
         let path = match success {
             Some(path) => path,
             None => {
+                // `download_with_stall_watchdog` already attaches the
+                // "Failed to download '{filename}' from '{repo_id}'" context, so
+                // propagate its error as-is rather than double-wrapping the prefix.
                 let err = last_error
                     .take()
                     .expect("download loop should always capture an error before failing");
-                bail!("Failed to download '{}' from '{}': {}", filename, repo_id, err);
+                return Err(err);
             }
         };
 
