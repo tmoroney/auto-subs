@@ -19,6 +19,10 @@ const WHISPER_REPO_ID: &str = "ggerganov/whisper.cpp";
 // internally by hf-hub) for transient network errors while downloading a model.
 const HUB_DOWNLOAD_MAX_RETRIES: usize = 3;
 
+// How long `download_blocking_with_stall_watchdog` waits without any download progress
+// before giving up and reporting a stall (see its doc comment for rationale).
+const STALL_TIMEOUT_SECS: u64 = 90;
+
 // Global download state to ensure only one download runs at a time
 static ACTIVE_DOWNLOAD: Lazy<Mutex<Option<Arc<CancellationToken>>>> = Lazy::new(|| Mutex::new(None));
 
@@ -554,10 +558,13 @@ impl ModelManager {
             .ok_or_else(|| eyre!("diarize manifest is missing the embedding file"))?;
 
         let files: Vec<&str> = d.files.iter().map(|s| s.as_str()).collect();
-        let had_cached_diarize_bundle = self
-            .find_cached_snapshot_with_files(&d.repo, &files)
-            .unwrap_or(None)
-            .is_some();
+        // Validate (not just check existence) so a stale/corrupt/partial diarize
+        // file left by an interrupted download isn't treated as "already cached",
+        // which would suppress the final 100% progress callback after a re-download.
+        let had_cached_diarize_bundle = match self.find_cached_snapshot_with_files(&d.repo, &files) {
+            Ok(Some(snapshot_dir)) => files.iter().all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok()),
+            _ => false,
+        };
 
         // Segmentation model: 0..50% of the diarize download progress.
         let seg_path = self
@@ -851,12 +858,19 @@ impl ModelManager {
         }
     }
 
-    /// Setup for a new download: cancel previous download and create new token
-    fn setup_new_download(&self) -> Result<Arc<CancellationToken>> {
-        let mut active = ACTIVE_DOWNLOAD.lock().unwrap();
+    /// Setup for a new download: cancel previous download and create new token.
+    ///
+    /// This is `async` (rather than a plain blocking fn) because it may wait out a grace
+    /// period for the previous download's background thread to finish; using
+    /// `tokio::time::sleep` instead of `thread::sleep` for that wait avoids starving the
+    /// tokio runtime's worker thread for up to 3 seconds.
+    async fn setup_new_download(&self) -> Result<Arc<CancellationToken>> {
+        // Take the previous token and release the lock immediately — we must not hold a
+        // std::sync::MutexGuard across the `.await` points below.
+        let old_token = ACTIVE_DOWNLOAD.lock().unwrap().take();
 
         // Cancel and cleanup previous download if it exists
-        if let Some(old_token) = active.take() {
+        if let Some(old_token) = old_token {
             old_token.cancel();
 
             // The previous download's background thread (see
@@ -866,11 +880,12 @@ impl ModelManager {
             // blobs). Give it a short, bounded grace period to finish naturally before we
             // wipe stale locks — this narrows, though doesn't fully close, the window for
             // racing with it (hf-hub's sync API offers no true abort).
-            if let Some(handle) = ACTIVE_DOWNLOAD_THREAD.lock().unwrap().take() {
+            let handle = ACTIVE_DOWNLOAD_THREAD.lock().unwrap().take();
+            if let Some(handle) = handle {
                 if !handle.is_finished() {
                     let deadline = Instant::now() + std::time::Duration::from_secs(3);
                     while !handle.is_finished() && Instant::now() < deadline {
-                        thread::sleep(std::time::Duration::from_millis(100));
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     }
                     if !handle.is_finished() {
                         tracing::warn!(
@@ -888,7 +903,7 @@ impl ModelManager {
 
         // Create new token for this download
         let new_token = Arc::new(CancellationToken::new());
-        *active = Some(new_token.clone());
+        *ACTIVE_DOWNLOAD.lock().unwrap() = Some(new_token.clone());
         Ok(new_token)
     }
 
@@ -909,7 +924,7 @@ impl ModelManager {
         label: &str,
     ) -> Result<PathBuf> {
         // Setup: Cancel old download, create new token, cleanup partial files
-        let cancel_token = self.setup_new_download()?;
+        let cancel_token = self.setup_new_download().await?;
         
         // Increment generation counter to invalidate any stale callbacks
         DOWNLOAD_GENERATION.fetch_add(1, Ordering::Relaxed);
@@ -970,9 +985,11 @@ impl ModelManager {
             .build()
             .with_context(|| format!("Failed to build hf-hub API for repo '{}'", repo_id))?;
 
-        let path = self.download_blocking_with_stall_watchdog(
-            &api, repo_id, filename, progress, is_cancelled, offset, scale, label, &cancel_token,
-        )?;
+        let path = self
+            .download_blocking_with_stall_watchdog(
+                &api, repo_id, filename, progress, is_cancelled, offset, scale, label, &cancel_token,
+            )
+            .await?;
 
         // Validate the downloaded/cached file; if invalid, remove and retry once
         if let Err(e) = validate_model_file(&path) {
@@ -987,6 +1004,7 @@ impl ModelManager {
                 .download_blocking_with_stall_watchdog(
                     &api, repo_id, filename, progress, is_cancelled, offset, scale, label, &cancel_token,
                 )
+                .await
                 .with_context(|| format!("Failed to re-download '{}' from '{}'", filename, repo_id))?;
             validate_model_file(&path2)
                 .with_context(|| format!("Model validation failed for '{}' from '{}'", filename, repo_id))?;
@@ -1005,7 +1023,7 @@ impl ModelManager {
     /// otherwise hang the whole transcription indefinitely with no error and no visible
     /// progress (the "stuck at 0% forever" symptom). Polling with a stall timeout turns
     /// that into a clear, recoverable error instead.
-    fn download_blocking_with_stall_watchdog(
+    async fn download_blocking_with_stall_watchdog(
         &self,
         api: &hf_hub::api::sync::Api,
         repo_id: &str,
@@ -1017,7 +1035,6 @@ impl ModelManager {
         label: &str,
         cancel_token: &Arc<CancellationToken>,
     ) -> Result<PathBuf> {
-        const STALL_TIMEOUT_SECS: u64 = 90;
         const POLL_INTERVAL_MS: u64 = 500;
 
         let current = Arc::new(AtomicUsize::new(0));
@@ -1041,6 +1058,7 @@ impl ModelManager {
 
         let mut last_seen = 0usize;
         let mut last_progress_at = Instant::now();
+        let mut rx = rx;
 
         loop {
             if let Some(is_cancelled) = is_cancelled {
@@ -1058,7 +1076,19 @@ impl ModelManager {
                 bail!("Download cancelled");
             }
 
-            match rx.recv_timeout(std::time::Duration::from_millis(POLL_INTERVAL_MS)) {
+            // Poll the background thread's result off the async executor thread:
+            // `recv_timeout` blocks the calling thread for up to `POLL_INTERVAL_MS`, which
+            // for a multi-GB download can run for 30+ minutes and would otherwise starve
+            // the tokio runtime's worker thread for that entire duration.
+            let (rx2, recv_result) = tokio::task::spawn_blocking(move || {
+                let res = rx.recv_timeout(std::time::Duration::from_millis(POLL_INTERVAL_MS));
+                (rx, res)
+            })
+            .await
+            .context("Download polling task panicked")?;
+            rx = rx2;
+
+            match recv_result {
                 Ok(Ok(path)) => return Ok(path),
                 Ok(Err(e)) => bail!("Failed to download '{}' from '{}': {}", filename, repo_id, e),
                 Err(mpsc::RecvTimeoutError::Timeout) => {
@@ -1331,8 +1361,13 @@ mod tests {
 
     /// Regression test for the "stuck at 0% forever" bug: a download attempt for a file
     /// that doesn't exist must return an error promptly, not hang indefinitely.
-    #[test]
-    fn download_watchdog_fails_fast_for_missing_file() {
+    ///
+    /// Ignored by default because it makes a real HTTP request to huggingface.co, making
+    /// it sensitive to network availability in CI. Run explicitly with
+    /// `cargo test -- --ignored`.
+    #[tokio::test]
+    #[ignore]
+    async fn download_watchdog_fails_fast_for_missing_file() {
         let cache_dir = std::env::temp_dir().join(format!(
             "autosubs-test-cache-{}-{}",
             std::process::id(),
@@ -1350,23 +1385,27 @@ mod tests {
         let cancel_token = Arc::new(CancellationToken::new());
 
         let start = Instant::now();
-        let result = manager.download_blocking_with_stall_watchdog(
-            &api,
-            WHISPER_REPO_ID,
-            "this-file-does-not-exist.bin",
-            None,
-            None,
-            0.0,
-            100.0,
-            "test",
-            &cancel_token,
-        );
+        let result = manager
+            .download_blocking_with_stall_watchdog(
+                &api,
+                WHISPER_REPO_ID,
+                "this-file-does-not-exist.bin",
+                None,
+                None,
+                0.0,
+                100.0,
+                "test",
+                &cancel_token,
+            )
+            .await;
 
         let _ = fs::remove_dir_all(&cache_dir);
 
         assert!(result.is_err(), "expected an error for a nonexistent file");
+        // Bound against the watchdog's own stall timeout (rather than an arbitrary
+        // shorter value) so a slow-but-reachable HF response can't cause a false failure.
         assert!(
-            start.elapsed() < std::time::Duration::from_secs(60),
+            start.elapsed() < std::time::Duration::from_secs(STALL_TIMEOUT_SECS),
             "download watchdog should fail fast instead of hanging"
         );
     }
