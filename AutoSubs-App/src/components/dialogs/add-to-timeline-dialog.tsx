@@ -395,7 +395,7 @@ export function AddToTimelineDialog({
                     )}
 
                     {activeSteps[currentStep]?.key === "speakers" && (
-                        <ScrollArea>
+                        <ScrollArea className="max-h-[400px] pr-4 -mr-4">
                             <div className="space-y-3">
                                 {localSpeakers.map((speaker, index) => (
                                     <div key={index} className="rounded-sm border p-3 bg-card">

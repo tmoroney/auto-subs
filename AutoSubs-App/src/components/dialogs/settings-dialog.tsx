@@ -28,6 +28,7 @@ import { Field, FieldGroup } from "@/components/ui/field";
 import { initI18n, normalizeUiLanguage } from "@/i18n";
 import { uiLanguages } from "@/lib/languages";
 import { useRef } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -42,6 +43,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
   const deleteIconRef = useRef<DeleteIconHandle>(null);
+  const [appVersion, setAppVersion] = React.useState<string>("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getVersion()
+      .then((v) => {
+        if (!cancelled) setAppVersion(v);
+      })
+      .catch(() => {
+        if (!cancelled) setAppVersion("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleResetSettings = async () => {
     const shouldReset = await ask(t("settings.reset.confirm"), {
@@ -119,6 +135,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <DialogTitle>{t("settings.title")}</DialogTitle>
             <DialogDescription className="text-xs">
               {t("settings.description")}
+              {appVersion && (
+                <span className="ml-1 text-muted-foreground/70">
+                  · v{appVersion}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
