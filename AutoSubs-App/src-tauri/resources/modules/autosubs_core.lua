@@ -515,17 +515,45 @@ function GetExportProgress()
                     cancelled = true,
                     message = "Export was cancelled"
                 }
-            else
-                -- Normal completion
-                currentExportJob.progress = 100
+            end
+
+            -- IsRenderingInProgress() going false only means Resolve stopped
+            -- rendering — it does NOT mean the job actually succeeded. Check
+            -- the job's real status so a silently failed render (e.g. bad
+            -- output path, disk full, no encoder) is reported as an error
+            -- instead of a fabricated success with a non-existent file.
+            local jobStatus, jobError
+            if currentExportJob.pid then
+                local ok, status = pcall(function()
+                    return project:GetRenderJobStatus(currentExportJob.pid)
+                end)
+                if ok and type(status) == "table" then
+                    jobStatus = status["JobStatus"]
+                    jobError = status["Error"]
+                end
+            end
+
+            if jobStatus and jobStatus ~= "Complete" then
+                local detail = jobError or ("Render job status: " .. tostring(jobStatus))
+                print("[AutoSubs] Export did not complete successfully: " .. detail)
                 return {
                     active = false,
-                    progress = 100,
-                    completed = true,
-                    message = "Export completed successfully",
-                    audioInfo = currentExportJob.audioInfo
+                    progress = currentExportJob.progress,
+                    error = true,
+                    message = "Audio export failed in Resolve",
+                    detail = detail
                 }
             end
+
+            -- Normal completion
+            currentExportJob.progress = 100
+            return {
+                active = false,
+                progress = 100,
+                completed = true,
+                message = "Export completed successfully",
+                audioInfo = currentExportJob.audioInfo
+            }
         end
     else
         -- No PID available - something went wrong

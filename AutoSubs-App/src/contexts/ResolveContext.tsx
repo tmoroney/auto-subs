@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Template, TimelineInfo } from '@/types';
-import { getTimelineInfo, getTemplates, cancelExport, addSubtitlesToTimeline } from '@/api/resolve-api';
+import { getTimelineInfo, getTemplates, cancelExport, addSubtitlesToTimeline, ResolveApiError } from '@/api/resolve-api';
 import { useIntegration } from '@/contexts/IntegrationContext';
 import { useSettingsStore } from '@/stores/settings-store';
 import { validateExportedAudioFile } from '@/utils/file-utils';
@@ -240,10 +240,14 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
             setExportProgress(0);
             return null;
           } else if (progressResult.error) {
-            console.error("Export error:", progressResult.message);
+            console.error("Export error:", progressResult.message, progressResult.detail);
             setIsExporting(false);
             setExportProgress(0);
-            throw new Error(progressResult.message || "Export failed");
+            throw new ResolveApiError(
+              progressResult.message || "Export failed",
+              progressResult.detail,
+              "GetExportProgress",
+            );
           }
 
           // Wait before next poll (avoid overwhelming the server)

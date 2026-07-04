@@ -21,7 +21,7 @@ Closed: #569, #585, #590, #594, #608, #631.
 | **A2** GetMarkInOut missing | #580 | ✅ Fixed | Commit `5de405f`. Guards `if timeline.GetMarkInOut then` at lines 624 & 929; falls back to timeline start/end frames. |
 | **A3** Generic error when Resolve closed | #583 | 🟡 Partially Fixed | `resolve_bridge.rs:53-56` adds debug log noting it's normal, but user-facing error is still generic `"resolve request failed: ..."`. |
 | **A4** HTTP timeout (handler hangs) | #614 #589 | 🔴 Likely Still Present | No specific fix; downstream symptom of A1's nil-crash leaving the connection open. Will resolve once A1 is fixed. |
-| **A5** Export path missing on Windows | #621 #616 #604 #582 | 🟡 Partially Fixed | `file-utils.ts:505-542` adds `validateExportedAudioFile()` with 6 retries + size check (fixes the race). But Lua path construction at line 772 still doesn't use wide-char `_wfopen`/`to_wide_string` — special-char paths may still fail. |
+| **A5** Export path missing on Windows | #621 #616 #604 #582 #639 | ✅ Fixed | Root cause found: `GetExportProgress()` reported success whenever `IsRenderingInProgress()` went false, without checking the actual render job status, so failed renders were reported as completed with a non-existent file. Now checks `project:GetRenderJobStatus(pid)` and surfaces the real failure via `ResolveApiError`. `file-utils.ts:505-542`'s `validateExportedAudioFile()` retry logic remains as a second safety net. |
 | **A6** Failed to start audio export | #631 #594 | ⚪ N/A | Already closed. |
 | **B1** 'AutoSubs Caption' template not found | #620 #612 #601 #588 #575 | ✅ Fixed | Commits `5482913` + PR #581. `refresh_project()` (104-112) detects project switches and resets import flag; `get_templates()` (302-310) auto-imports from `caption-bin.drb`; `get_template()` retries after auto-import. |
 | **B2** 'Default Template' not found | #587 #578 | 🔴 Still Present | Fallback chain (964-992) goes requested → "Default Template" → error. **No fallback to `AutoSubs Caption`** when the custom name is missing. |
@@ -99,7 +99,7 @@ Each package is self-contained — a single agent can own it without needing con
 #### WP5 — UI / UX
 *Owns: H1. Primary files: `AutoSubs-App/src/components/dialogs/onboarding-tour.tsx`.*
 
-- 🟡 **H1** (1 report) — the end-of-process speaker list and add-to-timeline dialog already have `<ScrollArea max-h-[400px]>`. The onboarding tour tooltip (`onboarding-tour.tsx`) still uses a fixed `w-80` with no max-height/overflow and may clip on small screens. Add a max-height + `overflow: auto` to the tooltip container.
+- 🟡 **H1** (1 report) — two separate overflow spots. **(a) FIXED:** the speakers list in `add-to-timeline-dialog.tsx` used a bare `<ScrollArea>` with no height constraint, so it grew unbounded and could overflow the dialog; added `max-h-[400px]` (matching the pattern in `subtitle-viewer-panel.tsx`). **(b) Open:** the onboarding tour tooltip (`onboarding-tour.tsx:31`) still uses a fixed `w-80` with no max-height/overflow and may clip on small screens. Add a max-height + `overflow: auto` to the tooltip container.
 
 #### WP6 — Feature requests (larger scope)
 *Owns: #596, #570, #568. Not bug fixes — schedule separately.*
@@ -166,11 +166,13 @@ Both report the HTTP request to the Resolve Lua server (port 56002) timing out. 
 ---
 
 ### A5. "Resolve reported an audio export path, but the file does not exist"
-**Issues:** #621, #616, #604, #582
+**Issues:** #621, #616, #604, #582, #639
 
-All four are Windows, v3.6.1/v3.6.2, Resolve 21. Resolve claims it exported audio to `...AppData\Local\com.autosubs\Audio\autosubs-exported-audio-*.wav`, but the file isn't there when AutoSubs checks.
+All Windows, v3.6.1/v3.6.2, Resolve 21. Resolve claims it exported audio to `...AppData\Local\com.autosubs\Audio\autosubs-exported-audio-*.wav`, but the file isn't there when AutoSubs checks.
 
-**Likely root cause:** Either Resolve's export silently failed, the file landed elsewhere (wide-character path issue per AGENTS.md §3), or a race condition where AutoSubs checks before the file is flushed. Worth verifying whether the Windows `_wfopen` path handling is fully covering the export step.
+**Root cause (confirmed):** `GetExportProgress()` in `autosubs_core.lua` treated `project:IsRenderingInProgress() == false` as unconditional success and returned the (never-written) `audioInfo.path`. Resolve's render job can stop (`IsRenderingInProgress` → false) without actually succeeding — e.g. a failed/cancelled job from a bad output path, full disk, or missing encoder — and the API gives no exception for this, only a job status. The code never checked `project:GetRenderJobStatus(pid)` for the real `JobStatus`/`Error`, so a failed render was reported to the frontend as a completed export with a bogus path.
+
+**Fix applied:** `GetExportProgress()` now calls `project:GetRenderJobStatus(pid)` once rendering stops and only reports `completed = true` when `JobStatus == "Complete"`; otherwise it returns `{ error = true, message = "Audio export failed in Resolve", detail = <JobStatus/Error> }`. `ResolveContext.tsx` now throws a `ResolveApiError` (carrying the detail) instead of a generic `Error`, so the existing export-failure error dialog surfaces the real Resolve-reported reason. This doesn't rule out a residual wide-character path issue for non-ASCII export dirs, but it fixes the "silent render failure reported as success" case, which matches most of these reports (plain ASCII paths).
 
 ---
 
