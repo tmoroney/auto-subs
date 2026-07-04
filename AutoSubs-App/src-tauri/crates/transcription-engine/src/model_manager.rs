@@ -5,7 +5,7 @@ use hf_hub::api::sync::ApiBuilder;
 use hf_hub::api::Progress as HubProgress;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Instant, SystemTime};
@@ -26,13 +26,18 @@ const STALL_TIMEOUT_SECS: u64 = 90;
 // Global download state to ensure only one download runs at a time
 static ACTIVE_DOWNLOAD: Lazy<Mutex<Option<Arc<CancellationToken>>>> = Lazy::new(|| Mutex::new(None));
 
-// Handle of the background OS thread currently running a blocking hf-hub download (see
-// `download_blocking_with_stall_watchdog`). hf-hub's sync API has no way to interrupt an
-// in-flight download, so on cancellation/stall-timeout the polling side gives up and
-// returns while this thread keeps running in the background. Tracking the handle lets
-// `setup_new_download` give it a bounded grace period to finish before the next attempt
-// wipes shared `.lock`/`.part` files out from under it.
-static ACTIVE_DOWNLOAD_THREAD: Lazy<Mutex<Option<thread::JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
+// Handles of background OS threads currently running (or that may still be running) a
+// blocking hf-hub download (see `download_blocking_with_stall_watchdog`). hf-hub's sync API
+// has no way to interrupt an in-flight download, so on cancellation/stall-timeout the
+// polling side gives up and returns while the thread keeps running in the background.
+// Tracking the handles lets `setup_new_download` give them a bounded grace period to finish
+// before the next attempt wipes shared `.lock`/`.part` files out from under them.
+//
+// This is a `Vec` (rather than a single `Option`) so a freshly-spawned handle can never be
+// silently overwritten/lost by a concurrent call while it's mid-flight: every download
+// pushes its handle here, and `setup_new_download` drains and grace-periods all of them
+// atomically under the same lock.
+static ACTIVE_DOWNLOAD_THREADS: Lazy<Mutex<Vec<thread::JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 // Generation counter to invalidate old progress callbacks
 static DOWNLOAD_GENERATION: AtomicU64 = AtomicU64::new(0);
@@ -45,12 +50,19 @@ static DOWNLOAD_GENERATION: AtomicU64 = AtomicU64::new(0);
 struct ChannelProgress {
     current: Arc<AtomicUsize>,
     total: Arc<AtomicUsize>,
+    // Set once hf-hub's `init` callback fires, i.e. once the HTTP response headers have
+    // actually been received. Lets the polling side tell "still establishing the
+    // connection" apart from "connected but no data flowing", so the stall-timeout clock
+    // can be reset to give a full, fresh budget for genuine data stalls instead of also
+    // being consumed by slow connection setup.
+    connected: Arc<AtomicBool>,
 }
 
 impl HubProgress for ChannelProgress {
     fn init(&mut self, size: usize, _filename: &str) {
         self.total.store(size, Ordering::Relaxed);
         self.current.store(0, Ordering::Relaxed);
+        self.connected.store(true, Ordering::Relaxed);
     }
 
     fn update(&mut self, size: usize) {
@@ -873,29 +885,28 @@ impl ModelManager {
         if let Some(old_token) = old_token {
             old_token.cancel();
 
-            // The previous download's background thread (see
-            // `download_blocking_with_stall_watchdog`) has no way to be interrupted, so if
-            // it was abandoned due to a stall-timeout or cancellation it may still be
+            // Previous downloads' background threads (see
+            // `download_blocking_with_stall_watchdog`) have no way to be interrupted, so if
+            // one was abandoned due to a stall-timeout or cancellation it may still be
             // running and writing to the shared hf-hub cache (`.lock`/`.part` files,
-            // blobs). Give it a short, bounded grace period to finish naturally before we
-            // wipe stale locks — this narrows, though doesn't fully close, the window for
-            // racing with it (hf-hub's sync API offers no true abort).
-            let handle = ACTIVE_DOWNLOAD_THREAD.lock().unwrap().take();
-            if let Some(handle) = handle {
-                if !handle.is_finished() {
-                    let deadline = Instant::now() + std::time::Duration::from_secs(3);
-                    while !handle.is_finished() && Instant::now() < deadline {
-                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                    }
-                    if !handle.is_finished() {
-                        tracing::warn!(
-                            "Previous download thread is still running after grace period; \
-                             proceeding anyway (it will finish/fail independently)."
-                        );
-                    }
+            // blobs). Give them a short, bounded grace period to finish naturally before we
+            // wipe stale locks. Draining the whole `Vec` atomically under one lock (rather
+            // than a single `Option`) means a handle pushed concurrently by another in-flight
+            // download can never be silently overwritten/lost here.
+            let handles = std::mem::take(&mut *ACTIVE_DOWNLOAD_THREADS.lock().unwrap());
+            if !handles.is_empty() {
+                let deadline = Instant::now() + std::time::Duration::from_secs(3);
+                while handles.iter().any(|h| !h.is_finished()) && Instant::now() < deadline {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                 }
-                // Whether finished or not, we don't block further: drop the handle so the
-                // OS thread (if still alive) keeps running fully detached.
+                if handles.iter().any(|h| !h.is_finished()) {
+                    tracing::warn!(
+                        "Previous download thread(s) still running after grace period; \
+                         proceeding anyway (they will finish/fail independently)."
+                    );
+                }
+                // Whether finished or not, we don't block further: drop the handles so any
+                // still-alive OS threads keep running fully detached.
             }
 
             self.cleanup_stale_locks().ok();
@@ -1039,13 +1050,14 @@ impl ModelManager {
 
         let current = Arc::new(AtomicUsize::new(0));
         let total = Arc::new(AtomicUsize::new(0));
+        let connected = Arc::new(AtomicBool::new(false));
         let (tx, rx) = mpsc::channel();
 
         {
             let api = api.clone();
             let repo_id_owned = repo_id.to_string();
             let filename_owned = filename.to_string();
-            let cp = ChannelProgress { current: current.clone(), total: total.clone() };
+            let cp = ChannelProgress { current: current.clone(), total: total.clone(), connected: connected.clone() };
             let handle = thread::spawn(move || {
                 let repo = api.model(repo_id_owned);
                 let result = repo.download_with_progress(&filename_owned, cp);
@@ -1053,11 +1065,15 @@ impl ModelManager {
             });
             // Track the handle so a subsequent `setup_new_download` can give this thread
             // a brief grace period before touching shared lock files (see there for why).
-            *ACTIVE_DOWNLOAD_THREAD.lock().unwrap() = Some(handle);
+            // Pushed onto a shared `Vec` (rather than stored in a single `Option`) so it
+            // can't be silently overwritten/lost if another download's handle is pushed or
+            // drained concurrently.
+            ACTIVE_DOWNLOAD_THREADS.lock().unwrap().push(handle);
         }
 
         let mut last_seen = 0usize;
         let mut last_progress_at = Instant::now();
+        let mut was_connected = false;
         let mut rx = rx;
 
         loop {
@@ -1092,6 +1108,18 @@ impl ModelManager {
                 Ok(Ok(path)) => return Ok(path),
                 Ok(Err(e)) => bail!("Failed to download '{}' from '{}': {}", filename, repo_id, e),
                 Err(mpsc::RecvTimeoutError::Timeout) => {
+                    // The connection may take a while to establish (slow DNS/TLS/proxy),
+                    // which is not itself a "stall" in the data-transfer sense. Reset the
+                    // clock the moment we observe the connection has actually come up
+                    // (hf-hub's `init` callback firing) so a slow connection start doesn't
+                    // eat into the budget meant for genuine mid-transfer stalls. Connection
+                    // establishment itself is still bounded by the same timeout, counted
+                    // from thread spawn.
+                    if !was_connected && connected.load(Ordering::Relaxed) {
+                        was_connected = true;
+                        last_progress_at = Instant::now();
+                    }
+
                     let cur = current.load(Ordering::Relaxed);
                     let tot = total.load(Ordering::Relaxed);
                     if cur != last_seen {
