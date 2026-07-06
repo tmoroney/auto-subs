@@ -87,7 +87,7 @@ pub struct PostProcessConfig {
     pub max_chars_per_line: usize, // e.g., 38
     /// Max lines per subtitle cue (commonly 2)
     pub max_lines: usize,          // e.g., 2
-    /// Characters-per-second cap; weâ€™ll split further if exceeded
+    /// Characters-per-second cap; we’ll split further if exceeded
     pub cps_cap: f64,              // e.g., 17.0
     /// If a pause between words >= this, we consider it a strong split candidate
     pub split_gap_sec: f64,        // e.g., 0.5
@@ -247,7 +247,7 @@ pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
 
 pub fn profile_for_lang(lang: &str) -> ScriptProfile {
     match lang {
-        // CJK (Chinese & Japanese â€” no inter-word spaces)
+        // CJK (Chinese & Japanese — no inter-word spaces)
         "zh" | "zh-CN" | "zh-TW" | "ja" => ScriptProfile::CJK,
         // Korean uses Hangul but separates words with spaces (eojeol)
         "ko" => ScriptProfile::Korean,
@@ -477,7 +477,7 @@ fn strip_punct_chars(s: &str) -> String {
     PUNCT_RE.replace_all(s, "").into_owned()
 }
 
-/// Port of the JS `getCensoredVersion`: first + '*' * (len-2) + last, or all '*' if â‰¤3 chars.
+/// Port of the JS `getCensoredVersion`: first + '*' * (len-2) + last, or all '*' if ≤3 chars.
 fn censored_replacement(clean: &str) -> String {
     let chars: Vec<char> = clean.chars().collect();
     let n = chars.len();
@@ -523,7 +523,7 @@ fn apply_content_formatting(t: &mut Tok, cfg: &PostProcessConfig, censor_set: &H
         if !clean_trim.is_empty() && censor_set.contains(&clean_trim.to_lowercase()) {
             let replacement = censored_replacement(clean_trim);
             // Replace the first occurrence of `clean_trim` within `t.word` to preserve any
-            // surrounding characters (e.g. internal apostrophes) â€” mirrors JS `word.replace(clean, censored)`.
+            // surrounding characters (e.g. internal apostrophes) — mirrors JS `word.replace(clean, censored)`.
             if let Some(idx) = t.word.find(clean_trim) {
                 let mut new_word = String::with_capacity(t.word.len());
                 new_word.push_str(&t.word[..idx]);
@@ -567,7 +567,7 @@ fn is_letter_word(s: &str) -> bool {
 /// and both sides look like alphabetic words. This avoids outputs like
 /// "trans" + "human" + "ism" and instead yields "transhumanism", and equally
 /// fixes Cyrillic/Greek/etc. BPE fragments that Whisper emits without a leading
-/// space (e.g. "Ð¿Ñ€Ð¸" + "Ð²ÐµÑ‚ÑÑ‚Ð²ÑƒÑŽ" -> "Ð¿Ñ€Ð¸Ð²ÐµÑ‚ÑÑ‚Ð²ÑƒÑŽ").
+/// space (e.g. "при" + "ветствую" -> "приветствую").
 fn merge_continuations(toks: &mut Vec<Tok>) {
     if toks.is_empty() { return; }
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
@@ -581,7 +581,7 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
             // Case 1: punctuation-only token -> append its punc to previous's
             // punc field rather than absorbing prev.punc into the word body.
             // This preserves terminal markers like "." when followed by a
-            // closing quote/bracket (e.g. `ê°™ì•„ìš”.` + `"` -> punc=`."`).
+            // closing quote/bracket (e.g. `같아요.` + `"` -> punc=`."`).
             if t.word.is_empty() && !t.punc.is_empty() {
                 prev.punc.push_str(&t.punc);
                 prev.end = prev.end.max(t.end);
@@ -609,7 +609,7 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
 
 fn split_trailing_punct(s: &str) -> (&str, &str) {
     let is_punc = |c: char| matches!(c,
-        '.' | '!' | '?' | ',' | ';' | ':' | 'â€¦' | 'ã€‚' | 'ï¼' | 'ï¼Ÿ' | 'ã€' | 'ï¼Œ' | 'â€”' | 'â€“' | ')' | ']' | '}' | '"'
+        '.' | '!' | '?' | ',' | ';' | ':' | '…' | '。' | '！' | '？' | '、' | '，' | '—' | '–' | ')' | ']' | '}' | '"'
     );
     // Walk backwards by char to correctly handle multi-byte Unicode punctuation
     let cut = s.char_indices().rev()
@@ -622,12 +622,12 @@ fn split_trailing_punct(s: &str) -> (&str, &str) {
 
 fn is_terminal_punct(p: &str) -> bool {
     // Match if any character in the punc string is a sentence terminator.
-    // Looser than equality so combos like `."`, `?)`, `â€¦"` still trigger
+    // Looser than equality so combos like `."`, `?)`, `…"` still trigger
     // line breaks when a closing quote/bracket trails the terminator.
-    p.chars().any(|c| matches!(c, '.' | '!' | '?' | 'â€¦' | 'ã€‚' | 'ï¼' | 'ï¼Ÿ'))
+    p.chars().any(|c| matches!(c, '.' | '!' | '?' | '…' | '。' | '！' | '？'))
 }
 
-fn is_comma_like(p: &str) -> bool { matches!(p, "," | "ï¼Œ" | "ã€" | ";") }
+fn is_comma_like(p: &str) -> bool { matches!(p, "," | "，" | "、" | ";") }
 
 fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig) {
     if toks.is_empty() { return; }
@@ -760,14 +760,14 @@ fn is_function_word(word: &str, lang: &str) -> bool {
         ),
         "de" => matches!(w.as_str(),
             "und" | "oder" | "aber" | "dass" | "weil" | "wenn" | "wo" | "ob" |
-            "von" | "in" | "mit" | "fÃ¼r" | "an" | "auf" | "aus" | "nach"
+            "von" | "in" | "mit" | "für" | "an" | "auf" | "aus" | "nach"
         ),
         "pt" => matches!(w.as_str(),
             "e" | "ou" | "mas" | "que" | "porque" | "quando" | "onde" | "se" |
             "de" | "em" | "com" | "por" | "para" | "a" | "sem" | "sobre"
         ),
         "it" => matches!(w.as_str(),
-            "e" | "o" | "ma" | "che" | "perchÃ©" | "quando" | "dove" | "se" |
+            "e" | "o" | "ma" | "che" | "perché" | "quando" | "dove" | "se" |
             "di" | "in" | "con" | "per" | "da" | "su" | "tra" | "senza"
         ),
         "nl" => matches!(w.as_str(),
@@ -965,10 +965,10 @@ fn find_balanced_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
 /// Includes closing punctuation, small kana, prolonged sound mark, etc.
 fn violates_kinsoku_start(c: char) -> bool {
     matches!(c,
-        'ã€‚' | 'ã€' | 'ï¼Œ' | '.' | ',' | '!' | '?' | 'ï¼' | 'ï¼Ÿ' | 'â€¦' |
-        'ï¼‰' | ')' | 'ã€' | 'ã€' | 'ã€‘' | 'ã€‰' | 'ã€‹' | 'ï½' | ']' | '}' |
-        'ã' | 'ãƒ' | 'ã…' | 'ã‡' | 'ã‰' | 'ã£' | 'ã‚ƒ' | 'ã‚…' | 'ã‚‡' | 'ã‚Ž' |
-        'ã‚¡' | 'ã‚£' | 'ã‚¥' | 'ã‚§' | 'ã‚©' | 'ãƒƒ' | 'ãƒ£' | 'ãƒ¥' | 'ãƒ§' | 'ãƒ®' | 'ãƒ¼'
+        '。' | '、' | '，' | '.' | ',' | '!' | '?' | '！' | '？' | '…' |
+        '）' | ')' | '」' | '』' | '】' | '〉' | '》' | '｝' | ']' | '}' |
+        'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ' | 'ゃ' | 'ゅ' | 'ょ' | 'ゎ' |
+        'ァ' | 'ィ' | 'ゥ' | 'ェ' | 'ォ' | 'ッ' | 'ャ' | 'ュ' | 'ョ' | 'ヮ' | 'ー'
     )
 }
 
@@ -1067,12 +1067,12 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
         let dur = cues[i].end - cues[i].start;
         if dur > cfg.max_sub_dur {
             if let Some(words) = &cues[i].words {
-                if words.len() >= 4 { // need enough words so both halves get â‰¥2
+                if words.len() >= 4 { // need enough words so both halves get ≥2
                     // Find the word boundary closest to the midpoint in time
                     let mid_time = cues[i].start + dur / 2.0;
                     let split_at = words.iter().enumerate()
-                        .skip(2) // ensure first half has â‰¥2 words
-                        .take(words.len() - 3) // ensure second half has â‰¥2 words
+                        .skip(2) // ensure first half has ≥2 words
+                        .take(words.len() - 3) // ensure second half has ≥2 words
                         .min_by_key(|(_, w)| ((w.start - mid_time).abs() * 1000.0) as i64)
                         .map(|(idx, _)| idx)
                         .unwrap_or(2);
@@ -1108,7 +1108,7 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
     }
 
     // --- Pass 3: Split cues that exceed CPS cap ---
-    // Only split if both halves would have â‰¥2 words and the split actually
+    // Only split if both halves would have ≥2 words and the split actually
     // improves (lowers) the CPS of the worse half compared to the original.
     let mut i = 0;
     while i < cues.len() {
@@ -1123,7 +1123,7 @@ fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
 
             if cps > cfg.cps_cap {
                 if let Some(words) = &cues[i].words {
-                    if words.len() >= 4 { // need enough words so both halves get â‰¥2
+                    if words.len() >= 4 { // need enough words so both halves get ≥2
                         let mid_time = cues[i].start + dur / 2.0;
                         let split_at = words.iter().enumerate()
                             .skip(2)
@@ -1223,7 +1223,7 @@ mod tests {
 
     #[test]
     fn transhumanism_line_wrapping() {
-        // Latin profile with standard density â†’ CPL = 38
+        // Latin profile with standard density → CPL = 38
         let mut cfg = PostProcessConfig::latin();
         cfg.max_lines = 1; // one line per cue to test line-wrapping directly
 
@@ -1295,7 +1295,7 @@ mod tests {
             eprintln!("  cue {}: {:?}", i, cue.text);
         }
 
-        // No single-word orphan lines (a line with â‰¤ 8 chars is suspicious)
+        // No single-word orphan lines (a line with ≤ 8 chars is suspicious)
         let min_line_chars = 8;
         for cue in &cues {
             for line in cue.text.split('\n') {
@@ -1307,7 +1307,7 @@ mod tests {
             }
         }
 
-        // Every cue line should be â‰¤ CPL
+        // Every cue line should be ≤ CPL
         for cue in &cues {
             for line in cue.text.split('\n') {
                 assert!(line.len() <= cfg.max_chars_per_line,
@@ -1365,24 +1365,24 @@ mod tests {
         cfg.max_lines = 1;
 
         // Longer Japanese text that exceeds CPL, forcing comma/pause-based breaks.
-        // "ç§ãŸã¡ã«ã¨ã£ã¦ã€è¶…äººä¸»ç¾©ã¯æœ€ã‚‚é‡è¦ãªèª²é¡Œã§ã‚ã‚Šã€ç¤¾ä¼šã®é€²åŒ–ã«ä¸å¯æ¬ ãªã‚‚ã®ã§ã™ã€‚"
+        // "私たちにとって、超人主義は最も重要な課題であり、社会の進化に不可欠なものです。"
         let seg = Segment {
             start: 0.0,
             end: 8.0,
             text: String::new(),
             speaker_id: None,
             words: Some(vec![
-                WordTimestamp { text: "ç§ãŸã¡ã«ã¨ã£ã¦".into(),   start: 0.0, end: 1.0, probability: None },
-                WordTimestamp { text: "ã€".into(),              start: 1.0, end: 1.0, probability: None },
-                WordTimestamp { text: "è¶…äººä¸»ç¾©ã¯".into(),       start: 1.4, end: 2.5, probability: None },
-                WordTimestamp { text: "æœ€ã‚‚é‡è¦ãª".into(),       start: 2.5, end: 3.2, probability: None },
-                WordTimestamp { text: "èª²é¡Œã§ã‚ã‚Š".into(),       start: 3.2, end: 4.0, probability: None },
-                WordTimestamp { text: "ã€".into(),              start: 4.0, end: 4.0, probability: None },
-                // 0.4s pause after comma â€” above half of split_gap_sec
-                WordTimestamp { text: "ç¤¾ä¼šã®é€²åŒ–ã«".into(),     start: 4.4, end: 5.5, probability: None },
-                WordTimestamp { text: "ä¸å¯æ¬ ãª".into(),         start: 5.5, end: 6.3, probability: None },
-                WordTimestamp { text: "ã‚‚ã®ã§ã™".into(),         start: 6.3, end: 7.0, probability: None },
-                WordTimestamp { text: "ã€‚".into(),              start: 7.0, end: 7.1, probability: None },
+                WordTimestamp { text: "私たちにとって".into(),   start: 0.0, end: 1.0, probability: None },
+                WordTimestamp { text: "、".into(),              start: 1.0, end: 1.0, probability: None },
+                WordTimestamp { text: "超人主義は".into(),       start: 1.4, end: 2.5, probability: None },
+                WordTimestamp { text: "最も重要な".into(),       start: 2.5, end: 3.2, probability: None },
+                WordTimestamp { text: "課題であり".into(),       start: 3.2, end: 4.0, probability: None },
+                WordTimestamp { text: "、".into(),              start: 4.0, end: 4.0, probability: None },
+                // 0.4s pause after comma — above half of split_gap_sec
+                WordTimestamp { text: "社会の進化に".into(),     start: 4.4, end: 5.5, probability: None },
+                WordTimestamp { text: "不可欠な".into(),         start: 5.5, end: 6.3, probability: None },
+                WordTimestamp { text: "ものです".into(),         start: 6.3, end: 7.0, probability: None },
+                WordTimestamp { text: "。".into(),              start: 7.0, end: 7.1, probability: None },
             ]),
         };
 
@@ -1393,8 +1393,8 @@ mod tests {
             eprintln!("  cue {}: {:?}", i, cue.text);
         }
 
-        // Should break on commas and terminal punct (â‰¥3 cues)
-        assert!(cues.len() >= 3, "expected â‰¥3 cues for CJK, got {}: {:?}",
+        // Should break on commas and terminal punct (≥3 cues)
+        assert!(cues.len() >= 3, "expected ≥3 cues for CJK, got {}: {:?}",
             cues.len(), cues.iter().map(|c| &c.text).collect::<Vec<_>>());
 
         // No line should exceed CPL (using grapheme count for CJK)
@@ -1456,9 +1456,9 @@ mod tests {
         }
 
         // First cue should be extended to at least min_sub_dur (1.0s)
-        assert!(cues.len() >= 2, "expected â‰¥2 cues");
+        assert!(cues.len() >= 2, "expected ≥2 cues");
         let first_dur = cues[0].end - cues[0].start;
-        assert!(first_dur >= 0.99, "first cue duration {:.3} should be â‰¥ min_sub_dur (1.0)", first_dur);
+        assert!(first_dur >= 0.99, "first cue duration {:.3} should be ≥ min_sub_dur (1.0)", first_dur);
         // But should not overlap the next cue
         if cues.len() > 1 {
             assert!(cues[0].end <= cues[1].start + 0.001,
@@ -1515,7 +1515,7 @@ mod tests {
         let mut cfg = PostProcessConfig::for_language("fr");
         cfg.max_lines = 1;
 
-        // French text: "Le transhumanisme est de la plus grande importance pour l'Ã©volution de l'humanitÃ©"
+        // French text: "Le transhumanisme est de la plus grande importance pour l'évolution de l'humanité"
         let seg = Segment {
             start: 0.0,
             end: 6.0,
@@ -1531,9 +1531,9 @@ mod tests {
                 WordTimestamp { text: " grande".into(),         start: 2.2, end: 2.6, probability: None },
                 WordTimestamp { text: " importance".into(),     start: 2.6, end: 3.2, probability: None },
                 WordTimestamp { text: " pour".into(),           start: 3.2, end: 3.5, probability: None },
-                WordTimestamp { text: " l'Ã©volution".into(),    start: 3.5, end: 4.2, probability: None },
+                WordTimestamp { text: " l'évolution".into(),    start: 3.5, end: 4.2, probability: None },
                 WordTimestamp { text: " de".into(),             start: 4.2, end: 4.4, probability: None },
-                WordTimestamp { text: " l'humanitÃ©".into(),     start: 4.4, end: 5.5, probability: None },
+                WordTimestamp { text: " l'humanité".into(),     start: 4.4, end: 5.5, probability: None },
             ]),
         };
 
@@ -1544,7 +1544,7 @@ mod tests {
         }
 
         // Should have multiple cues (text is ~70 chars, CPL=38)
-        assert!(cues.len() >= 2, "expected â‰¥2 cues for French text, got {}", cues.len());
+        assert!(cues.len() >= 2, "expected ≥2 cues for French text, got {}", cues.len());
 
         // French function words like "de", "pour" should not be orphaned at end of line
         for cue in &cues {
@@ -1559,20 +1559,20 @@ mod tests {
     #[test]
     fn kinsoku_prevents_bad_line_starts() {
         // Verify the kinsoku helper function works correctly
-        assert!(violates_kinsoku_start('ã€‚'));
-        assert!(violates_kinsoku_start('ã€'));
-        assert!(violates_kinsoku_start('ã£'));
-        assert!(violates_kinsoku_start('ãƒ¼'));
-        assert!(!violates_kinsoku_start('ç§'));
+        assert!(violates_kinsoku_start('。'));
+        assert!(violates_kinsoku_start('、'));
+        assert!(violates_kinsoku_start('っ'));
+        assert!(violates_kinsoku_start('ー'));
+        assert!(!violates_kinsoku_start('私'));
         assert!(!violates_kinsoku_start('A'));
 
         // Verify adjust_kinsoku shifts the break point
         let toks = vec![
-            Tok { word: "ãƒ†ã‚¹ãƒˆ".into(), punc: "".into(), start: 0.0, end: 0.5, prob: None, speaker: None, leading_space: false, segment_break: false },
-            Tok { word: "ãƒ¼".into(), punc: "".into(), start: 0.5, end: 0.6, prob: None, speaker: None, leading_space: false, segment_break: false },
-            Tok { word: "ãƒ‡ãƒ¼ã‚¿".into(), punc: "".into(), start: 0.6, end: 1.0, prob: None, speaker: None, leading_space: false, segment_break: false },
+            Tok { word: "テスト".into(), punc: "".into(), start: 0.0, end: 0.5, prob: None, speaker: None, leading_space: false, segment_break: false },
+            Tok { word: "ー".into(), punc: "".into(), start: 0.5, end: 0.6, prob: None, speaker: None, leading_space: false, segment_break: false },
+            Tok { word: "データ".into(), punc: "".into(), start: 0.6, end: 1.0, prob: None, speaker: None, leading_space: false, segment_break: false },
         ];
-        // Breaking at index 1 would put 'ãƒ¼' at line start â€” kinsoku should shift to 2
+        // Breaking at index 1 would put 'ー' at line start — kinsoku should shift to 2
         let adjusted = adjust_kinsoku(&toks, 1);
         assert_eq!(adjusted, 2, "kinsoku should shift break past prolonged sound mark");
     }
