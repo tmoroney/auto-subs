@@ -152,16 +152,6 @@ impl PostProcessConfig {
         cfg
     }
 
-    /// Build a config by scanning the transcribed text for the dominant script.
-    /// Used when the engine reports no detected language (e.g. `language = "auto"`
-    /// with SenseVoice/Canary/Cohere/Parakeet), so CJK/Korean/RTL/Indic/SE-Asian
-    /// output is not formatted with Latin spacing/wrapping rules.
-    pub fn for_text(text: &str) -> Self {
-        let mut cfg = Self::with_profile(profile_for_text(text));
-        cfg.lang = "auto".to_string();
-        cfg
-    }
-
     /// Scale `max_chars_per_line` by density factor (~0.7 / 1.0 / 1.3).
     pub fn apply_density(&mut self, density: TextDensity) {
         match density {
@@ -258,90 +248,6 @@ pub fn profile_for_lang(lang: &str) -> ScriptProfile {
         // Indic
         "hi" | "bn" | "ta" | "te" | "ml" | "mr" | "gu" | "pa" | "kn" | "or" | "si" => ScriptProfile::Indic,
         // default
-        _ => ScriptProfile::Latin,
-    }
-}
-
-/// Infer a `ScriptProfile` by scanning the transcribed text for non-Latin
-/// Unicode block ranges and returning the dominant one. Used when the engine
-/// does not surface a detected language (e.g. SenseVoice/Canary/Cohere/Parakeet
-/// with `language = "auto"`), so CJK/Korean/RTL/Indic/SE-Asian output is not
-/// accidentally formatted with Latin spacing/wrapping rules.
-///
-/// Latin and Cyrillic both use inter-word spaces and map to `Latin`, so
-/// European/Cyrillic output (e.g. Parakeet) correctly keeps Latin formatting.
-pub fn profile_for_text(text: &str) -> ScriptProfile {
-    let mut cjk = 0u32;
-    let mut korean = 0u32;
-    let mut rtl = 0u32;
-    let mut se_asian = 0u32;
-    let mut indic = 0u32;
-
-    for c in text.chars() {
-        let cp = c as u32;
-        // CJK: Unified Ideographs + Hiragana + Katakana + CJK punctuation
-        if (0x4E00..=0x9FFF).contains(&cp)
-            || (0x3040..=0x309F).contains(&cp)
-            || (0x30A0..=0x30FF).contains(&cp)
-            || (0x3400..=0x4DBF).contains(&cp)
-            || (0xFF00..=0xFFEF).contains(&cp) // Fullwidth forms
-        {
-            cjk += 1;
-        }
-        // Hangul syllables + Jamo
-        else if (0xAC00..=0xD7AF).contains(&cp)
-            || (0x1100..=0x11FF).contains(&cp)
-            || (0x3130..=0x318F).contains(&cp)
-        {
-            korean += 1;
-        }
-        // Arabic + Hebrew (RTL)
-        else if (0x0600..=0x06FF).contains(&cp)
-            || (0x0750..=0x077F).contains(&cp)
-            || (0x0590..=0x05FF).contains(&cp)
-            || (0xFB50..=0xFDFF).contains(&cp)
-            || (0xFE70..=0xFEFF).contains(&cp)
-        {
-            rtl += 1;
-        }
-        // Thai + Lao + Khmer + Myanmar (SE Asian, no inter-word spaces)
-        else if (0x0E00..=0x0E7F).contains(&cp)
-            || (0x0E80..=0x0EFF).contains(&cp)
-            || (0x1780..=0x17FF).contains(&cp)
-            || (0x1000..=0x109F).contains(&cp)
-        {
-            se_asian += 1;
-        }
-        // Indic: Devanagari + Bengali + Tamil + Telugu + Malayalam + others
-        else if (0x0900..=0x097F).contains(&cp)
-            || (0x0980..=0x09FF).contains(&cp)
-            || (0x0A00..=0x0A7F).contains(&cp)
-            || (0x0A80..=0x0AFF).contains(&cp)
-            || (0x0B00..=0x0B7F).contains(&cp)
-            || (0x0B80..=0x0BFF).contains(&cp)
-            || (0x0C00..=0x0C7F).contains(&cp)
-            || (0x0C80..=0x0CFF).contains(&cp)
-            || (0x0D00..=0x0D7F).contains(&cp)
-            || (0x0D80..=0x0DFF).contains(&cp)
-        {
-            indic += 1;
-        }
-    }
-
-    let best = [
-        (cjk, ScriptProfile::CJK),
-        (korean, ScriptProfile::Korean),
-        (rtl, ScriptProfile::RTL),
-        (se_asian, ScriptProfile::SEAsianNoSpace),
-        (indic, ScriptProfile::Indic),
-    ]
-    .into_iter()
-    .max_by_key(|&(n, _)| n);
-
-    match best {
-        Some((n, profile)) if n > 0 => profile,
-        // No non-Latin characters: default to Latin (also correct for Cyrillic,
-        // which uses inter-word spaces like Latin).
         _ => ScriptProfile::Latin,
     }
 }
@@ -813,10 +719,15 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
             cur_chars = 0;
         }
 
+        // Is this token a continuation of the previous token?
+        let is_continuation = cfg.insert_interword_space && !tok.leading_space;
+
         // Force line break after terminal punctuation on previous token
         if !cur.is_empty() && is_terminal_punct(&cur.last().unwrap().punc) {
-            lines.push(std::mem::take(&mut cur));
-            cur_chars = 0;
+            if !is_continuation {
+                lines.push(std::mem::take(&mut cur));
+                cur_chars = 0;
+            }
         }
 
         // Proactive break: if line is sufficiently full and we're at a natural break point.
@@ -829,7 +740,7 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
             // Use a softer threshold (half of split_gap_sec) for proactive breaks.
             let pause = (tok.start - prev.end) >= cfg.split_gap_sec * 0.5;
 
-            if break_after_comma || break_before_function_word || pause {
+            if !is_continuation && (break_after_comma || break_before_function_word || pause) {
                 lines.push(std::mem::take(&mut cur));
                 cur_chars = 0;
             }
@@ -839,7 +750,7 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
         let space_cost = if cfg.insert_interword_space && tok.leading_space && !cur.is_empty() { 1 } else { 0 };
         let new_len = cur_chars + space_cost + tc;
 
-        if new_len > cfg.max_chars_per_line && !cur.is_empty() {
+        if new_len > cfg.max_chars_per_line && !cur.is_empty() && !is_continuation {
             // Find the best break point within the current line
             let mut break_idx = find_best_break(&cur, cfg);
             if cfg.enforce_kinsoku { break_idx = adjust_kinsoku(&cur, break_idx); }
@@ -894,27 +805,29 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
 fn find_best_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
     // Priority 1: After terminal punctuation
     for i in (1..line.len()).rev() {
-        if is_terminal_punct(&line[i - 1].punc) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_terminal_punct(&line[i - 1].punc) {
             return i;
         }
     }
     // Priority 2: After comma/semicolon
     for i in (1..line.len()).rev() {
-        if is_comma_like(&line[i - 1].punc) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_comma_like(&line[i - 1].punc) {
             return i;
         }
     }
     // Priority 3: Before function word (language-aware)
     for i in (1..line.len()).rev() {
-        if is_function_word(&line[i].word, &cfg.lang) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_function_word(&line[i].word, &cfg.lang) {
             return i;
         }
     }
     // Priority 4: At a long pause
     for i in (1..line.len()).rev() {
-        let gap = line[i].start - line[i - 1].end;
-        if gap >= cfg.split_gap_sec {
-            return i;
+        if !cfg.insert_interword_space || line[i].leading_space {
+            let gap = line[i].start - line[i - 1].end;
+            if gap >= cfg.split_gap_sec {
+                return i;
+            }
         }
     }
     // No natural break found
@@ -937,12 +850,16 @@ fn find_balanced_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
         }
         running_chars += tok_chars(&line[i], cfg);
 
-        if i > 0 { // don't split before the first word
-            let diff = if running_chars > target { running_chars - target } else { target - running_chars };
-            if diff < best_diff {
-                best_diff = diff;
-                // Break AFTER position i (i.e., at index i+1)
-                best_pos = i + 1;
+        // We want to evaluate the break AFTER token i (i.e. splitting at index i+1).
+        // The token that will start the next line is line[i+1].
+        // So we should only allow this break if line[i+1] has a leading space (when spaces are used).
+        if i > 0 && i + 1 < line.len() {
+            if !cfg.insert_interword_space || line[i + 1].leading_space {
+                let diff = if running_chars > target { running_chars - target } else { target - running_chars };
+                if diff < best_diff {
+                    best_diff = diff;
+                    best_pos = i + 1;
+                }
             }
         }
     }
