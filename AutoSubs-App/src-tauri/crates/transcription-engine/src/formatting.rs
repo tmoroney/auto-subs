@@ -49,6 +49,12 @@ struct Tok {
 /// the same phrase rather than detecting a real pause.
 const SEGMENT_BREAK_GAP_SEC: f64 = 0.3;
 
+/// Maximum gap between two tokens for the right token to be treated as a BPE
+/// sub-word continuation of the left token. Larger gaps are treated as separate
+/// words, which prevents a token that merely has no leading space from being
+/// treated as a continuation and suppressing sentence-end line breaks.
+const SUBWORD_GAP_SEC: f64 = 0.03;
+
 #[inline]
 fn round3(x: f64) -> f64 { (x * 1000.0).round() / 1000.0 }
 
@@ -588,12 +594,12 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
                 continue;
             }
             let right_cont = !t.leading_space;
-            let both_ascii_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
+            let both_letter_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
             let no_prev_punc = prev.punc.is_empty();
             // Only merge if the boundary is essentially contiguous (tiny gap)
-            let tiny_gap = (t.start - prev.end) <= 0.03;
-            if right_cont && both_ascii_word && no_prev_punc && tiny_gap {
-                // Merge t into prev without inserting a space
+            let tiny_gap = (t.start - prev.end) <= SUBWORD_GAP_SEC;
+            if right_cont && both_letter_word && no_prev_punc && tiny_gap {
+                // Merge t into prev without inserting a space.
                 let merged = join_tokens(prev, &t, /*insert_space*/ false);
                 prev.word = merged.0;
                 prev.punc = merged.1;
@@ -796,7 +802,9 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
     for tok in toks.iter() {
         let tc = tok_chars(tok, cfg);
 
-        // Force line break on speaker change
+        // Force line break on speaker change. Speaker boundaries are always
+        // stronger than token continuity, so this is intentionally not gated by
+        // `is_continuation` computed below.
         if !cur.is_empty() {
             let speaker_change = cur.last().unwrap().speaker != tok.speaker;
             if speaker_change {
@@ -808,15 +816,31 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
         // Force line break at a whisper segment boundary with a real pause.
         // This preserves natural utterance boundaries even for short cues
         // that wouldn't trip the proactive line-fill threshold below.
+        // Like speaker changes, segment boundaries take precedence over a
+        // continuation flag.
         if !cur.is_empty() && tok.segment_break {
             lines.push(std::mem::take(&mut cur));
             cur_chars = 0;
         }
 
+        // Is this token a continuation of the previous token? A true BPE
+        // sub-word fragment has no leading space and arrives essentially
+        // immediately after the previous token. If it is further away, it is
+        // treated as a separate word and sentence-end boundaries still apply.
+        let is_continuation = if cur.is_empty() {
+            false
+        } else {
+            cfg.insert_interword_space
+                && !tok.leading_space
+                && (tok.start - cur.last().unwrap().end) <= SUBWORD_GAP_SEC
+        };
+
         // Force line break after terminal punctuation on previous token
         if !cur.is_empty() && is_terminal_punct(&cur.last().unwrap().punc) {
-            lines.push(std::mem::take(&mut cur));
-            cur_chars = 0;
+            if !is_continuation {
+                lines.push(std::mem::take(&mut cur));
+                cur_chars = 0;
+            }
         }
 
         // Proactive break: if line is sufficiently full and we're at a natural break point.
@@ -829,7 +853,7 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
             // Use a softer threshold (half of split_gap_sec) for proactive breaks.
             let pause = (tok.start - prev.end) >= cfg.split_gap_sec * 0.5;
 
-            if break_after_comma || break_before_function_word || pause {
+            if !is_continuation && (break_after_comma || break_before_function_word || pause) {
                 lines.push(std::mem::take(&mut cur));
                 cur_chars = 0;
             }
@@ -839,7 +863,7 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
         let space_cost = if cfg.insert_interword_space && tok.leading_space && !cur.is_empty() { 1 } else { 0 };
         let new_len = cur_chars + space_cost + tc;
 
-        if new_len > cfg.max_chars_per_line && !cur.is_empty() {
+        if new_len > cfg.max_chars_per_line && !cur.is_empty() && !is_continuation {
             // Find the best break point within the current line
             let mut break_idx = find_best_break(&cur, cfg);
             if cfg.enforce_kinsoku { break_idx = adjust_kinsoku(&cur, break_idx); }
@@ -894,27 +918,29 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
 fn find_best_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
     // Priority 1: After terminal punctuation
     for i in (1..line.len()).rev() {
-        if is_terminal_punct(&line[i - 1].punc) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_terminal_punct(&line[i - 1].punc) {
             return i;
         }
     }
     // Priority 2: After comma/semicolon
     for i in (1..line.len()).rev() {
-        if is_comma_like(&line[i - 1].punc) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_comma_like(&line[i - 1].punc) {
             return i;
         }
     }
     // Priority 3: Before function word (language-aware)
     for i in (1..line.len()).rev() {
-        if is_function_word(&line[i].word, &cfg.lang) {
+        if (!cfg.insert_interword_space || line[i].leading_space) && is_function_word(&line[i].word, &cfg.lang) {
             return i;
         }
     }
     // Priority 4: At a long pause
     for i in (1..line.len()).rev() {
-        let gap = line[i].start - line[i - 1].end;
-        if gap >= cfg.split_gap_sec {
-            return i;
+        if !cfg.insert_interword_space || line[i].leading_space {
+            let gap = line[i].start - line[i - 1].end;
+            if gap >= cfg.split_gap_sec {
+                return i;
+            }
         }
     }
     // No natural break found
@@ -937,12 +963,16 @@ fn find_balanced_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
         }
         running_chars += tok_chars(&line[i], cfg);
 
-        if i > 0 { // don't split before the first word
-            let diff = if running_chars > target { running_chars - target } else { target - running_chars };
-            if diff < best_diff {
-                best_diff = diff;
-                // Break AFTER position i (i.e., at index i+1)
-                best_pos = i + 1;
+        // We want to evaluate the break AFTER token i (i.e. splitting at index i+1).
+        // The token that will start the next line is line[i+1].
+        // So we should only allow this break if line[i+1] has a leading space (when spaces are used).
+        if i > 0 && i + 1 < line.len() {
+            if !cfg.insert_interword_space || line[i + 1].leading_space {
+                let diff = if running_chars > target { running_chars - target } else { target - running_chars };
+                if diff < best_diff {
+                    best_diff = diff;
+                    best_pos = i + 1;
+                }
             }
         }
     }
@@ -1676,5 +1706,67 @@ mod tests {
 
         let cfg = PostProcessConfig::default();
         assert_eq!(cfg.lang, "en");
+    }
+
+    #[test]
+    fn arabic_bpe_fragments_not_split() {
+        // Regression for Arabic/RTL word splitting: BPE fragments emitted
+        // without a leading space must be merged into a single word and not
+        // split across subtitle lines.
+        let mut cfg = PostProcessConfig::for_language("ar");
+        cfg.max_lines = 1;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "ال".into(),    start: 0.0, end: 0.2, probability: None },
+                // No leading space: continuation of the Arabic word "العالم" (the world).
+                WordTimestamp { text: "عالم".into(),  start: 0.2, end: 0.7, probability: None },
+                // Arabic comma as a standalone token.
+                WordTimestamp { text: "،".into(),     start: 0.7, end: 0.8, probability: None },
+                WordTimestamp { text: " مرحبا".into(), start: 1.0, end: 1.5, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        // BPE fragments should render as one word.
+        assert!(joined.contains("العالم"), "expected merged Arabic word in: {}", joined);
+        assert!(!joined.contains("ال عالم"), "Arabic BPE fragments should not be separated: {}", joined);
+    }
+
+    #[test]
+    fn terminal_punct_breaks_with_no_leading_space_and_large_gap() {
+        // A token with no leading space but a large gap after terminal
+        // punctuation should not be treated as a continuation, and the
+        // sentence boundary should still be respected.
+        let mut cfg = PostProcessConfig::default();
+        cfg.max_lines = 1;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "Hello".into(), start: 0.0, end: 0.3, probability: None },
+                WordTimestamp { text: ".".into(),    start: 0.3, end: 0.4, probability: None },
+                // 0.05s gap after the period, no leading space, but not a real BPE continuation.
+                WordTimestamp { text: "World".into(), start: 0.45, end: 0.9, probability: None },
+                WordTimestamp { text: ".".into(),    start: 0.9, end: 1.0, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        assert!(cues.len() >= 2,
+            "expected separate cues after terminal punctuation, got {}: {:?}",
+            cues.len(), cues.iter().map(|c| &c.text).collect::<Vec<_>>());
+        let first = cues.first().unwrap().text.clone();
+        let second = cues.get(1).unwrap().text.clone();
+        assert!(first.contains("Hello"), "first cue should contain 'Hello': {:?}", first);
+        assert!(second.contains("World"), "second cue should contain 'World': {:?}", second);
     }
 }
