@@ -282,7 +282,6 @@ jobs:
         tag_name: ${{ env.TAG }}
 
   build-linux:
-    needs: [build-mac]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout AutoSubs Repo Code
@@ -374,9 +373,20 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           tag_name: ${{ env.TAG }}
 
-  compose-latest-json:
+  trigger-updater-json:
+    name: Trigger updater JSON generation
     needs: [build-mac]
-    uses: ./.github/workflows/generate-updater-json.yml
-    with:
-      tag: ${{ github.event.release.tag_name || inputs.tag }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger generate-updater-json workflow
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          # Generate the updater JSON once both Mac architectures are uploaded.
+          # The same workflow is also triggered by the Windows upload script after
+          # the Windows .exe and .sig are added. The workflow itself checks whether
+          # all required Mac + Windows signatures are present before generating
+          # latest.json, so whichever upload finishes last will actually produce it.
+          gh workflow run generate-updater-json.yml \
+            --repo ${{ github.repository }} \
+            -f tag="${{ env.TAG }}"

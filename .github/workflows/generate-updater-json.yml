@@ -7,24 +7,19 @@ on:
         description: 'Release tag to update (e.g. v3.5.0)'
         required: true
         type: string
-  workflow_call:
-    inputs:
-      tag:
-        description: 'Release tag to update (e.g. v3.5.0)'
-        required: true
-        type: string
 
 permissions:
   contents: write
 
+env:
+  TAG: ${{ inputs.tag }}
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  REPO: ${{ github.repository }}
+
 jobs:
   compose-json:
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ inputs.tag }}
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      REPO: ${{ github.repository }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,39 +29,59 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Download signatures from release
+      - name: Download required signatures from release
+        id: download-sigs
         run: |
-          set -Eeuo pipefail
+          set -Euo pipefail
           mkdir -p artifacts
 
-          echo "Downloading signatures for $TAG..."
-          
-          # Mac ARM
-          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-macos-aarch64.app.tar.gz.sig" --dir artifacts --clobber || echo "Mac ARM signature not found"
-          
-          # Mac Intel
-          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-macos-x86_64.app.tar.gz.sig" --dir artifacts --clobber || echo "Mac Intel signature not found"
-          
-          # Windows
-          gh release download "$TAG" --repo "$REPO" --pattern "AutoSubs-windows-x86_64.exe.sig" --dir artifacts --clobber || echo "Windows signature not found"
+          echo "Checking signatures for $TAG..."
+
+          # Required assets for a complete updater JSON. Linux does not use the
+          # Tauri updater, so it is intentionally omitted here.
+          REQUIRED=(
+            "AutoSubs-macos-aarch64.app.tar.gz.sig"
+            "AutoSubs-macos-x86_64.app.tar.gz.sig"
+            "AutoSubs-windows-x86_64.exe.sig"
+          )
+
+          MISSING=0
+          for PATTERN in "${REQUIRED[@]}"; do
+            echo "Downloading $PATTERN..."
+            if ! gh release download "$TAG" --repo "$REPO" --pattern "$PATTERN" --dir artifacts --clobber; then
+              echo "  $PATTERN not found in release $TAG"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ "$MISSING" -gt 0 ]; then
+            echo ""
+            echo "⏳ Missing $MISSING required signature(s). This is expected if a platform"
+            echo "   has not finished uploading yet. Exiting cleanly; the workflow will be"
+            echo "   re-triggered when the remaining assets are uploaded."
+            echo "all_present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ All required signatures present."
+            echo "all_present=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Compose latest.json
+        if: steps.download-sigs.outputs.all_present == 'true'
         run: |
-          set -Eeuo pipefail
-          
-          # Read signatures or set to empty if missing
-          ARM_SIG=$(cat artifacts/AutoSubs-macos-aarch64.app.tar.gz.sig 2>/dev/null || echo "")
-          INTEL_SIG=$(cat artifacts/AutoSubs-macos-x86_64.app.tar.gz.sig 2>/dev/null || echo "")
-          WINDOWS_SIG=$(cat artifacts/AutoSubs-windows-x86_64.exe.sig 2>/dev/null || echo "")
+          set -Euo pipefail
+
+          # Read signatures (they were verified in the previous step)
+          ARM_SIG=$(cat artifacts/AutoSubs-macos-aarch64.app.tar.gz.sig)
+          INTEL_SIG=$(cat artifacts/AutoSubs-macos-x86_64.app.tar.gz.sig)
+          WINDOWS_SIG=$(cat artifacts/AutoSubs-windows-x86_64.exe.sig)
 
           VERSION="${TAG#v}"
           PUB_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          
+
           # Fetch release notes/name
           NOTES=$(gh release view "$TAG" --repo "$REPO" --json name --jq .name || echo "$TAG")
 
-          # Build the JSON object
-          # We only include platforms that have a signature
+          # Build the JSON object for all platforms that have updater support
           jq -n \
             --arg version "$VERSION" \
             --arg pub_date "$PUB_DATE" \
@@ -80,19 +95,20 @@ jobs:
               version: $version,
               pub_date: $pub_date,
               notes: $notes,
-              platforms: {}
-            } 
-            | if $arm_sig != "" then .platforms["darwin-aarch64"] = { signature: $arm_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-aarch64.app.tar.gz" } else . end
-            | if $intel_sig != "" then .platforms["darwin-x86_64"] = { signature: $intel_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-x86_64.app.tar.gz" } else . end
-            | if $win_sig != "" then .platforms["windows-x86_64"] = { signature: $win_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-windows-x86_64.exe" } else . end
-            ' > latest.json
+              platforms: {
+                "darwin-aarch64": { signature: $arm_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-aarch64.app.tar.gz" },
+                "darwin-x86_64": { signature: $intel_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-macos-x86_64.app.tar.gz" },
+                "windows-x86_64": { signature: $win_sig, url: "https://github.com/\($repo)/releases/download/\($tag)/AutoSubs-windows-x86_64.exe" }
+              }
+            }' > latest.json
 
           echo "Generated latest.json:"
           cat latest.json
 
       - name: Upload latest.json to release
+        if: steps.download-sigs.outputs.all_present == 'true'
         run: |
-          set -Eeuo pipefail
+          set -Euo pipefail
           # Delete existing asset if it exists
           gh release delete-asset "$TAG" latest.json --repo "$REPO" --yes || echo "No existing latest.json to delete"
 

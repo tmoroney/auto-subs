@@ -14,12 +14,14 @@ if ($Tag -notmatch '^v') {
 $Version = $Tag -replace '^v', ''
 $Repo = "tmoroney/auto-subs"
 
-$BundleDir = Join-Path $PSScriptRoot ".." "src-tauri" "target" "release" "bundle" "nsis" | Resolve-Path
+$BundleDir = Join-Path $PSScriptRoot ".." "src-tauri" "target" "release" "bundle" "nsis"
 
 if (-not (Test-Path $BundleDir)) {
     Write-Error "NSIS bundle directory not found: $BundleDir. Did you run 'npm run build:win' first?"
     exit 1
 }
+
+$BundleDir = Resolve-Path $BundleDir
 
 # Tauri NSIS outputs something like AutoSubs_3.7.0_x64-setup.exe (or with a locale suffix).
 $Installer = Get-ChildItem -Path $BundleDir -Filter "AutoSubs_*-setup.exe" | Select-Object -First 1
@@ -57,3 +59,13 @@ gh release upload $Tag `
     --clobber
 
 Write-Host "✅ Windows artifacts uploaded to $Repo release $Tag"
+
+# Trigger the updater JSON workflow. It checks whether the Mac signatures are
+# already present before generating latest.json, so whichever upload finishes
+# last (Mac CI or this Windows upload) will actually produce the file.
+Write-Host "Triggering updater JSON generation..."
+gh workflow run generate-updater-json.yml `
+    --repo $Repo `
+    -f tag="$Tag"
+
+Write-Host "✅ Updater JSON generation triggered"
