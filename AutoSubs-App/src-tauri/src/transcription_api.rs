@@ -666,9 +666,20 @@ pub async fn reformat_subtitles(
         })
         .collect();
 
-    // Build config from language profile, then apply density and max_lines
+    // Build config from language profile, then apply density and max_lines.
+    // Some engines do not report a language, so keep reformatting consistent
+    // with initial transcription by inferring the dominant script for `auto`.
     let lang = options.language.as_deref().unwrap_or("en");
-    let mut config = PostProcessConfig::for_language(lang);
+    let mut config = if lang.eq_ignore_ascii_case("auto") {
+        let text = engine_segments
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        PostProcessConfig::for_text(&text)
+    } else {
+        PostProcessConfig::for_language(lang)
+    };
 
     if let Some(ref density_str) = options.text_density {
         let density: TextDensity = match density_str.to_lowercase().as_str() {
@@ -679,7 +690,7 @@ pub async fn reformat_subtitles(
             _ => TextDensity::Standard,
         };
         config.apply_density(density);
-        
+
         // If custom density, set max_chars_per_line directly from the provided value
         if density == TextDensity::Custom {
             if let Some(custom_cpl) = options.custom_max_chars_per_line {

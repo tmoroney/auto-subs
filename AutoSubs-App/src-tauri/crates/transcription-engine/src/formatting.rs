@@ -1,17 +1,11 @@
-// Subtitle post-processing utilities for Whisper-style outputs (DTW+VAD already applied)
-// Focus: natural line breaks, punctuation/pauses-aware grouping, CPL/CPS enforcement,
-// word-edge clamping and tiny-word merging.
+// Subtitle post-processing for timestamped transcription output.
 //
-// Input types are provided by the user (WordTimestamp, Segment). We add:
-// - PostProcessConfig: knobs for caps and thresholds
-// - SubtitleCue: finalized two-line subtitle unit ready for rendering/exports
-// - process_segments(): main entrypoint
+// Pipeline: normalize engine tokens, establish speaker/pause/sentence boundaries,
+// apply content transforms, wrap at punctuation or balanced legal boundaries,
+// then schedule minimum display duration without overlapping the next cue.
 //
-// Notes:
-// * We assume segments.words are in chronological order and include basic punctuation as standalone tokens or
-//   attached to words (we handle both by extracting trailing punctuation).
-// * If you have a frame-level VAD mask, you can plug it into `SilenceOracle` to refine clamping; otherwise we
-//   rely on inter-word gaps and simple thresholds.
+// Input words are assumed to be chronological. Punctuation may be attached or
+// emitted as standalone tokens; both forms are normalized here.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -93,21 +87,14 @@ pub struct PostProcessConfig {
     pub max_chars_per_line: usize, // e.g., 38
     /// Max lines per subtitle cue (commonly 2)
     pub max_lines: usize,          // e.g., 2
-    /// Characters-per-second cap; we’ll split further if exceeded
-    pub cps_cap: f64,              // e.g., 17.0
     /// If a pause between words >= this, we consider it a strong split candidate
     pub split_gap_sec: f64,        // e.g., 0.5
-    /// Minimum duration for a single word (merged if below)
-    pub min_word_dur: f64,         // e.g., 0.10
     /// Minimum duration per subtitle cue
     pub min_sub_dur: f64,          // e.g., 1.0
     /// Maximum duration per subtitle cue
     pub max_sub_dur: f64,          // e.g., 6.0
     pub insert_interword_space: bool,   // false for CJK
-    pub use_grapheme_len: bool,         // true outside ASCII-only
     pub enforce_kinsoku: bool,          // true for JA
-    /// Language code used for language-aware line breaking (e.g. "en", "fr", "de")
-    pub lang: String,
     /// When true, emit one word per subtitle cue (set by TextDensity::Single)
     pub single_word: bool,
     /// Content formatting: case transform applied to rendered words.
@@ -126,15 +113,11 @@ impl Default for PostProcessConfig {
         Self {
             max_chars_per_line: 38,
             max_lines: 1,
-            cps_cap: 17.0,
             split_gap_sec: 0.5,
-            min_word_dur: 0.10,
             min_sub_dur: 1.0,
             max_sub_dur: 6.0,
             insert_interword_space: true,
-            use_grapheme_len: true,
             enforce_kinsoku: false,
-            lang: "en".to_string(),
             single_word: false,
             text_case: TextCase::None,
             remove_punctuation: false,
@@ -153,9 +136,7 @@ impl PostProcessConfig {
 
     /// Build a config from a language code by inferring the appropriate ScriptProfile.
     pub fn for_language(lang: &str) -> Self {
-        let mut cfg = Self::with_profile(profile_for_lang(lang));
-        cfg.lang = lang.to_string();
-        cfg
+        Self::with_profile(profile_for_lang(lang))
     }
 
     /// Build a config by scanning the transcribed text for the dominant script.
@@ -163,9 +144,7 @@ impl PostProcessConfig {
     /// with SenseVoice/Canary/Cohere/Parakeet), so CJK/Korean/RTL/Indic/SE-Asian
     /// output is not formatted with Latin spacing/wrapping rules.
     pub fn for_text(text: &str) -> Self {
-        let mut cfg = Self::with_profile(profile_for_text(text));
-        cfg.lang = "auto".to_string();
-        cfg
+        Self::with_profile(profile_for_text(text))
     }
 
     /// Scale `max_chars_per_line` by density factor (~0.7 / 1.0 / 1.3).
@@ -199,62 +178,55 @@ impl PostProcessConfig {
     pub fn indic() -> Self { Self::with_profile(ScriptProfile::Indic) }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScriptProfile { Latin, CJK, Korean, SEAsianNoSpace, RTL, Indic }
 
 pub fn apply_profile(cfg: &mut PostProcessConfig, p: ScriptProfile) {
     match p {
         ScriptProfile::Latin => {
             cfg.max_chars_per_line = 38; // previously 36..=40; pick 38
-            cfg.cps_cap = 17.0;
             cfg.insert_interword_space = true;
-            cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = false;
         }
         ScriptProfile::CJK => {
             cfg.max_chars_per_line = 20; // previously 16..=22; pick 20
-            cfg.cps_cap = 11.5;
             cfg.insert_interword_space = false;
-            cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = true; // simple blacklist rules
         }
         ScriptProfile::Korean => {
             // Korean uses Hangul (CJK-width characters) but, unlike Chinese/Japanese,
             // separates words with spaces (eojeol). Treat width like CJK but keep spaces.
             cfg.max_chars_per_line = 22;
-            cfg.cps_cap = 12.0;
             cfg.insert_interword_space = true;
-            cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = false; // kinsoku is a Japanese convention
         }
         ScriptProfile::SEAsianNoSpace => { // Thai, Khmer, Lao, etc.
             cfg.max_chars_per_line = 22; // previously 18..=26; pick 22
-            cfg.cps_cap = 13.0;
             cfg.insert_interword_space = true; // tokens likely presegmented
-            cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = false;
         }
         ScriptProfile::RTL => { // Arabic, Hebrew
             cfg.max_chars_per_line = 28; // previously 24..=32; pick 28
-            cfg.cps_cap = 14.0;
             cfg.insert_interword_space = true;
-            cfg.use_grapheme_len = true;
             cfg.enforce_kinsoku = false;
         }
         ScriptProfile::Indic => {
             cfg.max_chars_per_line = 30; // previously 26..=34; pick 30
-            cfg.cps_cap = 15.0;
             cfg.insert_interword_space = true;
-            cfg.use_grapheme_len = true; // avoid breaking inside conjuncts
             cfg.enforce_kinsoku = false;
         }
     }
 }
 
 pub fn profile_for_lang(lang: &str) -> ScriptProfile {
-    match lang {
+    let primary = lang
+        .split(['-', '_'])
+        .next()
+        .unwrap_or(lang)
+        .to_ascii_lowercase();
+    match primary.as_str() {
         // CJK (Chinese & Japanese — no inter-word spaces)
-        "zh" | "zh-CN" | "zh-TW" | "ja" => ScriptProfile::CJK,
+        "zh" | "ja" => ScriptProfile::CJK,
         // Korean uses Hangul but separates words with spaces (eojeol)
         "ko" => ScriptProfile::Korean,
         // SE Asian no-space
@@ -268,8 +240,8 @@ pub fn profile_for_lang(lang: &str) -> ScriptProfile {
     }
 }
 
-/// Infer a `ScriptProfile` by scanning the transcribed text for non-Latin
-/// Unicode block ranges and returning the dominant one. Used when the engine
+/// Infer a `ScriptProfile` by scanning the transcribed text and returning the
+/// dominant writing-system profile. Used when the engine
 /// does not surface a detected language (e.g. SenseVoice/Canary/Cohere/Parakeet
 /// with `language = "auto"`), so CJK/Korean/RTL/Indic/SE-Asian output is not
 /// accidentally formatted with Latin spacing/wrapping rules.
@@ -282,6 +254,7 @@ pub fn profile_for_text(text: &str) -> ScriptProfile {
     let mut rtl = 0u32;
     let mut se_asian = 0u32;
     let mut indic = 0u32;
+    let mut spaced = 0u32;
 
     for c in text.chars() {
         let cp = c as u32;
@@ -290,7 +263,8 @@ pub fn profile_for_text(text: &str) -> ScriptProfile {
             || (0x3040..=0x309F).contains(&cp)
             || (0x30A0..=0x30FF).contains(&cp)
             || (0x3400..=0x4DBF).contains(&cp)
-            || (0xFF00..=0xFFEF).contains(&cp) // Fullwidth forms
+            || (0xF900..=0xFAFF).contains(&cp)
+            || (0xFF66..=0xFF9F).contains(&cp)
         {
             cjk += 1;
         }
@@ -331,10 +305,15 @@ pub fn profile_for_text(text: &str) -> ScriptProfile {
             || (0x0D80..=0x0DFF).contains(&cp)
         {
             indic += 1;
+        } else if c.is_alphabetic() {
+            // Latin, Cyrillic, Greek, and other scripts that use spaces. This
+            // count is essential: one CJK character in an otherwise English
+            // transcript must not disable all inter-word spacing.
+            spaced += 1;
         }
     }
 
-    let best = [
+    let best_non_latin = [
         (cjk, ScriptProfile::CJK),
         (korean, ScriptProfile::Korean),
         (rtl, ScriptProfile::RTL),
@@ -344,23 +323,21 @@ pub fn profile_for_text(text: &str) -> ScriptProfile {
     .into_iter()
     .max_by_key(|&(n, _)| n);
 
-    match best {
-        Some((n, profile)) if n > 0 => profile,
-        // No non-Latin characters: default to Latin (also correct for Cyrillic,
-        // which uses inter-word spaces like Latin).
+    match best_non_latin {
+        // Ties intentionally preserve spaces for mixed-script text.
+        Some((n, profile)) if n > spaced => profile,
+        // No dominant non-Latin script: preserve spaces conservatively.
         _ => ScriptProfile::Latin,
     }
 }
 
-/// Main entry: post-process transcription segments into readable subtitle cues.
+/// Main entry: post-process timestamped transcription segments into readable cues.
 pub fn process_segments(
     segments: &[Segment],
     cfg: &PostProcessConfig,
 ) -> Vec<Segment> {
-    // 1) Collect words from all segments, keep speaker_id continuity.
-    //    Mark the first word of each non-first segment with `segment_break`
-    //    when the gap from the previous word's end is large enough to be a
-    //    real utterance boundary (vs. whisper sub-splitting one phrase).
+    // 1) Normalize all engine outputs into real word tokens. Segment text is
+    //    tokenized as a fallback for engines that do not provide word data.
     let mut all: Vec<(Option<String>, WordTimestamp, bool)> = Vec::new();
     let mut prev_end: Option<f64> = None;
     for (seg_idx, seg) in segments.iter().enumerate() {
@@ -368,13 +345,17 @@ pub fn process_segments(
         let words: Vec<WordTimestamp> = match &seg.words {
             Some(ws) if !ws.is_empty() => ws.clone(),
             _ => {
-                if !seg.text.trim().is_empty() {
-                    vec![WordTimestamp {
-                        text: seg.text.clone(), start: seg.start, end: seg.end, probability: None,
-                    }]
+                let fallback_end = if seg.end > seg.start {
+                    seg.end
                 } else {
-                    Vec::new()
-                }
+                    seg.start + cfg.min_sub_dur.max(0.0)
+                };
+                interpolate_segment_words(
+                    &seg.text,
+                    seg.start,
+                    fallback_end,
+                    cfg.insert_interword_space,
+                )
             }
         };
         for (w_idx, w) in words.into_iter().enumerate() {
@@ -388,8 +369,9 @@ pub fn process_segments(
     }
     if all.is_empty() { return Vec::new(); }
 
-    // 2) Normalize tokens: separate trailing punctuation for split logic.
-
+    // 2) Separate trailing punctuation and preserve the engine's explicit
+    //    leading-space marker. That marker identifies both word boundaries and
+    //    BPE continuation pieces.
     let mut toks: Vec<Tok> = Vec::with_capacity(all.len());
     for (speaker, w, segment_break) in all.into_iter() {
         let (core_raw, punc_raw) = split_trailing_punct(&w.text);
@@ -414,59 +396,100 @@ pub fn process_segments(
         });
     }
 
-    // 3) Merge subword continuation pieces (right token without leading space) into the previous token.
-    merge_continuations(&mut toks);
-
-    // 4) Clamp tiny words and adjust boundaries using gaps.
-    clamp_and_merge_tiny_words(&mut toks, cfg);
-
-    // Fast path: single-word mode emits one cue per merged token.
-    if cfg.single_word {
-        let censor_set = build_censor_set(&cfg.censored_words);
-        return toks.into_iter().map(|mut t| {
-            apply_content_formatting(&mut t, cfg, &censor_set);
-            let text = format!("{}{}", t.word, t.punc).trim().to_string();
-            Segment {
-                start: round3(t.start.max(0.0)),
-                end: round3(t.end),
-                text: text.clone(),
-                words: Some(vec![WordTimestamp {
-                    text: render_token(&t),
-                    start: round3(t.start.max(0.0)),
-                    end: round3(t.end),
-                    probability: t.prob,
-                }]),
-                speaker_id: t.speaker.clone(),
-            }
-        }).collect();
+    // 3) Merge BPE continuation pieces, but never across speakers or meaningful
+    //    segment boundaries.
+    merge_continuations(&mut toks, cfg.insert_interword_space);
+    if !cfg.insert_interword_space {
+        split_no_space_tokens(&mut toks);
     }
 
-    // 5) Wrap tokens into lines using greedy line-filling with natural break priorities.
-    //    Line wrapping uses ORIGINAL punctuation/casing to pick natural break points.
-    let mut lines = wrap_into_lines(&toks, cfg);
+    // 4) Repair invalid timestamps without changing recognized word identity.
+    sanitize_word_times(&mut toks);
 
-    // 5b) Apply content formatting (case, punctuation removal, censoring) to tokens
-    //     AFTER wrapping but BEFORE rendering. This lets the rendered text reflect
-    //     user-facing transforms without disrupting line-break heuristics.
-    {
-        let censor_set = build_censor_set(&cfg.censored_words);
-        for line in lines.iter_mut() {
-            for t in line.iter_mut() {
+    let censor_set = build_censor_set(&cfg.censored_words);
+
+    // Fast path: single-word mode emits one cue per normalized word.
+    if cfg.single_word {
+        let mut cues: Vec<Segment> = toks.into_iter().map(|mut t| {
+            apply_content_formatting(&mut t, cfg, &censor_set);
+            segment_from_lines(&[vec![t]], cfg)
+        }).collect();
+        schedule_min_duration(&mut cues, cfg.min_sub_dur);
+        return cues;
+    }
+
+    // 5) Hard boundaries are independent of visual line length: speakers,
+    //    meaningful pauses, sentence endings, and maximum cue duration.
+    let groups = split_into_cue_groups(toks, cfg);
+
+    // 6) Transform and render each group exactly once. Wrapping happens after
+    //    case conversion so Unicode case expansion cannot violate CPL.
+    let mut cues = Vec::new();
+    for mut group in groups {
+        for t in &mut group {
                 apply_content_formatting(t, cfg, &censor_set);
-            }
+        }
+        let lines = wrap_group(group, cfg);
+        let max_lines = cfg.max_lines.max(1);
+        for cue_lines in lines.chunks(max_lines) {
+            cues.push(segment_from_lines(cue_lines, cfg));
         }
     }
 
-    // 6) Bundle consecutive lines into subtitle cues (respecting max_lines and speaker boundaries).
-    let mut cues = group_lines_into_cues(lines, cfg);
-
-    // 7) Enforce duration limits and CPS cap.
-    enforce_duration_limits(&mut cues, cfg);
+    // 7) Minimum display duration is a scheduling concern and therefore runs
+    //    last, while also clamping any natural overlap between adjacent cues.
+    schedule_min_duration(&mut cues, cfg.min_sub_dur);
 
     cues
 }
 
 // === Implementation details ===
+
+fn interpolate_segment_words(
+    text: &str,
+    start: f64,
+    end: f64,
+    uses_spaces: bool,
+) -> Vec<WordTimestamp> {
+    let words: Vec<&str> = if uses_spaces {
+        text.split_whitespace().collect()
+    } else {
+        UnicodeSegmentation::graphemes(text.trim(), true)
+            .filter(|grapheme| !grapheme.chars().all(char::is_whitespace))
+            .collect()
+    };
+    if words.is_empty() {
+        return Vec::new();
+    }
+
+    let duration = (end - start).max(0.0);
+    let weights: Vec<usize> = words
+        .iter()
+        .map(|word| word.chars().count().max(1))
+        .collect();
+    let total_weight: usize = weights.iter().sum();
+    let mut consumed = 0usize;
+
+    words
+        .iter()
+        .enumerate()
+        .map(|(index, word)| {
+            let word_start = start + duration * consumed as f64 / total_weight as f64;
+            consumed += weights[index];
+            let word_end = start + duration * consumed as f64 / total_weight as f64;
+            WordTimestamp {
+                text: if uses_spaces && index > 0 {
+                    format!(" {word}")
+                } else {
+                    (*word).to_string()
+                },
+                start: word_start,
+                end: word_end,
+                probability: None,
+            }
+        })
+        .collect()
+}
 
 // ---- Content formatting (case, punctuation removal, censoring) ----
 
@@ -574,13 +597,15 @@ fn is_letter_word(s: &str) -> bool {
 /// "trans" + "human" + "ism" and instead yields "transhumanism", and equally
 /// fixes Cyrillic/Greek/etc. BPE fragments that Whisper emits without a leading
 /// space (e.g. "при" + "ветствую" -> "приветствую").
-fn merge_continuations(toks: &mut Vec<Tok>) {
+fn merge_continuations(toks: &mut Vec<Tok>, uses_spaces: bool) {
     if toks.is_empty() { return; }
     let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
     for t in std::mem::take(toks).into_iter() {
         if let Some(prev) = out.last_mut() {
-            // Never merge across a forced segment boundary.
-            if t.segment_break {
+            // Token adjacency is not stronger than an utterance or speaker
+            // boundary. In particular, diarized segments often touch with no
+            // measurable gap.
+            if t.segment_break || prev.speaker != t.speaker {
                 out.push(t);
                 continue;
             }
@@ -598,7 +623,7 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
             let no_prev_punc = prev.punc.is_empty();
             // Only merge if the boundary is essentially contiguous (tiny gap)
             let tiny_gap = (t.start - prev.end) <= SUBWORD_GAP_SEC;
-            if right_cont && both_letter_word && no_prev_punc && tiny_gap {
+            if uses_spaces && right_cont && both_letter_word && no_prev_punc && tiny_gap {
                 // Merge t into prev without inserting a space.
                 let merged = join_tokens(prev, &t, /*insert_space*/ false);
                 prev.word = merged.0;
@@ -613,9 +638,40 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
     *toks = out;
 }
 
+/// No-space scripts can arrive as tokenizer fragments, words, or an entire
+/// sentence in one timestamp. Grapheme tokens provide stable legal break
+/// boundaries regardless of the upstream engine's tokenization.
+fn split_no_space_tokens(toks: &mut Vec<Tok>) {
+    let mut out = Vec::new();
+    for token in std::mem::take(toks) {
+        let graphemes: Vec<&str> = UnicodeSegmentation::graphemes(token.word.as_str(), true).collect();
+        if graphemes.len() <= 1 {
+            out.push(token);
+            continue;
+        }
+
+        let duration = (token.end - token.start).max(0.0);
+        let count = graphemes.len();
+        for (index, grapheme) in graphemes.into_iter().enumerate() {
+            out.push(Tok {
+                word: grapheme.to_string(),
+                punc: if index + 1 == count { token.punc.clone() } else { String::new() },
+                start: token.start + duration * index as f64 / count as f64,
+                end: token.start + duration * (index + 1) as f64 / count as f64,
+                prob: token.prob,
+                speaker: token.speaker.clone(),
+                leading_space: index == 0 && token.leading_space,
+                segment_break: index == 0 && token.segment_break,
+            });
+        }
+    }
+    *toks = out;
+}
+
 fn split_trailing_punct(s: &str) -> (&str, &str) {
     let is_punc = |c: char| matches!(c,
-        '.' | '!' | '?' | ',' | ';' | ':' | '…' | '。' | '！' | '？' | '、' | '，' | '—' | '–' | ')' | ']' | '}' | '"'
+        '.' | '!' | '?' | ',' | ';' | ':' | '…' | '。' | '！' | '？' | '、' | '，' |
+        '،' | '؛' | '؟' | '—' | '–' | ')' | ']' | '}' | '"' | '”' | '’' | '»'
     );
     // Walk backwards by char to correctly handle multi-byte Unicode punctuation
     let cut = s.char_indices().rev()
@@ -630,70 +686,24 @@ fn is_terminal_punct(p: &str) -> bool {
     // Match if any character in the punc string is a sentence terminator.
     // Looser than equality so combos like `."`, `?)`, `…"` still trigger
     // line breaks when a closing quote/bracket trails the terminator.
-    p.chars().any(|c| matches!(c, '.' | '!' | '?' | '…' | '。' | '！' | '？'))
+    p.chars().any(|c| matches!(c, '.' | '!' | '?' | '…' | '。' | '！' | '？' | '؟'))
 }
 
-fn is_comma_like(p: &str) -> bool { matches!(p, "," | "，" | "、" | ";") }
+fn is_comma_like(p: &str) -> bool {
+    p.chars().any(|c| matches!(c, ',' | '，' | '、' | ';' | '،' | '؛'))
+}
 
-fn clamp_and_merge_tiny_words(toks: &mut Vec<Tok>, cfg: &PostProcessConfig) {
-    if toks.is_empty() { return; }
-
-    // First pass: expand tokens that are shorter than min_word_dur.
-    for t in toks.iter_mut() {
-        let dur = t.end - t.start;
-        if dur < cfg.min_word_dur {
-            let grow = (cfg.min_word_dur - dur) / 2.0;
-            t.start -= grow;
-            t.end += grow;
+fn sanitize_word_times(toks: &mut [Tok]) {
+    for tok in toks {
+        if !tok.start.is_finite() {
+            tok.start = 0.0;
         }
-    }
-
-    // Second pass: resolve overlaps between adjacent tokens.
-    // Each boundary is handled exactly once by only looking backward.
-    for i in 1..toks.len() {
-        if toks[i - 1].end > toks[i].start {
-            let mid = 0.5 * (toks[i - 1].end + toks[i].start);
-            toks[i - 1].end = mid;
-            toks[i].start = mid;
+        if !tok.end.is_finite() {
+            tok.end = tok.start;
         }
+        tok.start = tok.start.max(0.0);
+        tok.end = tok.end.max(tok.start);
     }
-
-    // Third pass: merge very tiny words with neighbors (prefer next).
-    // Never merge across a forced segment boundary in either direction.
-    let mut out: Vec<Tok> = Vec::with_capacity(toks.len());
-    let mut i = 0;
-    while i < toks.len() {
-        let dur = toks[i].end - toks[i].start;
-        let can_merge_forward = i + 1 < toks.len() && !toks[i + 1].segment_break;
-        let can_merge_back = i > 0 && !toks[i].segment_break;
-        if dur < cfg.min_word_dur && can_merge_forward {
-            // merge i into i+1
-            let mut next = toks[i + 1].clone();
-            let merged_word = join_tokens(&toks[i], &next, cfg.insert_interword_space);
-            next.word = merged_word.0;
-            next.punc = merged_word.1;
-            next.start = toks[i].start.min(next.start);
-            next.leading_space = merged_word.2;
-            // Preserve the boundary marker if the absorbed token carried it.
-            next.segment_break = next.segment_break || toks[i].segment_break;
-            out.push(next);
-            i += 2;
-        } else if dur < cfg.min_word_dur && can_merge_back {
-            // merge into previous
-            let mut prev = out.pop().unwrap();
-            let merged_word = join_tokens(&prev, &toks[i], cfg.insert_interword_space);
-            prev.word = merged_word.0;
-            prev.punc = merged_word.1;
-            prev.end = prev.end.max(toks[i].end);
-            prev.leading_space = merged_word.2;
-            out.push(prev);
-            i += 1;
-        } else {
-            out.push(toks[i].clone());
-            i += 1;
-        }
-    }
-    *toks = out;
 }
 
 fn join_tokens(a: &Tok, b: &Tok, insert_space: bool) -> (String, String, bool) {
@@ -726,258 +736,92 @@ fn render_slice(slice: &[Tok], cfg: &PostProcessConfig) -> String {
 }
 
 fn slice_chars(slice: &[Tok], cfg: &PostProcessConfig) -> usize {
-    let core_len: usize = if cfg.use_grapheme_len {
-        slice.iter().map(|t| UnicodeSegmentation::graphemes(t.word.as_str(), true).count() + UnicodeSegmentation::graphemes(t.punc.as_str(), true).count()).sum()
-    } else {
-        slice.iter().map(|t| t.word.len() + t.punc.len()).sum()
-    };
+    let core_len: usize = slice
+        .iter()
+        .map(|t| {
+            UnicodeSegmentation::graphemes(t.word.as_str(), true).count()
+                + UnicodeSegmentation::graphemes(t.punc.as_str(), true).count()
+        })
+        .sum();
     let spaces = if cfg.insert_interword_space { slice.iter().skip(1).filter(|t| t.leading_space).count() } else { 0 };
     core_len + spaces
 }
 
-fn tok_chars(t: &Tok, cfg: &PostProcessConfig) -> usize {
-    if cfg.use_grapheme_len {
-        UnicodeSegmentation::graphemes(t.word.as_str(), true).count()
-            + UnicodeSegmentation::graphemes(t.punc.as_str(), true).count()
-    } else {
-        t.word.len() + t.punc.len()
-    }
-}
+/// Wrap one already-bounded cue group. Text remains on one line while it fits;
+/// when it overflows, a legal boundary is selected using punctuation, pauses,
+/// and line balance. No language dictionary is required.
+fn wrap_group(mut remaining: Vec<Tok>, cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
+    let cap = cfg.max_chars_per_line.max(1);
+    let mut lines = Vec::new();
 
-/// Language-aware function-word detection for natural line breaking.
-/// Covers conjunctions, prepositions, and other short grammatical words
-/// that make good "break before" candidates across major languages.
-fn is_function_word(word: &str, lang: &str) -> bool {
-    let w = word.to_lowercase();
-    match lang {
-        "en" => matches!(w.as_str(),
-            "and" | "or" | "but" | "so" | "yet" | "nor" |
-            "that" | "which" | "because" | "although" | "while" |
-            "when" | "where" | "if" | "unless" | "since" | "whether" |
-            "to" | "of" | "for" | "in" | "on" | "with" | "at" | "by" | "from"
-        ),
-        "es" => matches!(w.as_str(),
-            "y" | "o" | "pero" | "que" | "porque" | "cuando" | "donde" | "si" |
-            "de" | "en" | "con" | "por" | "para" | "a" | "sin" | "sobre"
-        ),
-        "fr" => matches!(w.as_str(),
-            "et" | "ou" | "mais" | "que" | "parce" | "quand" | "si" |
-            "de" | "en" | "avec" | "pour" | "dans" | "sur" | "sans"
-        ),
-        "de" => matches!(w.as_str(),
-            "und" | "oder" | "aber" | "dass" | "weil" | "wenn" | "wo" | "ob" |
-            "von" | "in" | "mit" | "für" | "an" | "auf" | "aus" | "nach"
-        ),
-        "pt" => matches!(w.as_str(),
-            "e" | "ou" | "mas" | "que" | "porque" | "quando" | "onde" | "se" |
-            "de" | "em" | "com" | "por" | "para" | "a" | "sem" | "sobre"
-        ),
-        "it" => matches!(w.as_str(),
-            "e" | "o" | "ma" | "che" | "perché" | "quando" | "dove" | "se" |
-            "di" | "in" | "con" | "per" | "da" | "su" | "tra" | "senza"
-        ),
-        "nl" => matches!(w.as_str(),
-            "en" | "of" | "maar" | "dat" | "omdat" | "wanneer" | "waar" | "als" |
-            "van" | "in" | "met" | "voor" | "aan" | "op" | "uit" | "naar"
-        ),
-        // CJK, Arabic, Thai, etc. rely on commas + pauses (which is correct for those scripts)
-        _ => false,
-    }
-}
-
-/// Walk all tokens, filling each line up to `max_chars_per_line`.
-/// Proactively breaks at natural points (conjunctions, prepositions, commas)
-/// when the line is sufficiently full, to avoid orphan lines.
-/// Also force line breaks on speaker change and after terminal punctuation.
-fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
-    if toks.is_empty() { return Vec::new(); }
-
-    let mut lines: Vec<Vec<Tok>> = Vec::new();
-    let mut cur: Vec<Tok> = Vec::new();
-    let mut cur_chars: usize = 0;
-
-    // Threshold for proactive breaking: break at natural points when line is this full.
-    let proactive_threshold = (cfg.max_chars_per_line as f64 * 0.65) as usize;
-
-    for tok in toks.iter() {
-        let tc = tok_chars(tok, cfg);
-
-        // Force line break on speaker change. Speaker boundaries are always
-        // stronger than token continuity, so this is intentionally not gated by
-        // `is_continuation` computed below.
-        if !cur.is_empty() {
-            let speaker_change = cur.last().unwrap().speaker != tok.speaker;
-            if speaker_change {
-                lines.push(std::mem::take(&mut cur));
-                cur_chars = 0;
-            }
+    while slice_chars(&remaining, cfg) > cap && remaining.len() > 1 {
+        let split = choose_line_break(&remaining, cfg, cap);
+        if split == 0 || split >= remaining.len() {
+            break;
         }
-
-        // Force line break at a whisper segment boundary with a real pause.
-        // This preserves natural utterance boundaries even for short cues
-        // that wouldn't trip the proactive line-fill threshold below.
-        // Like speaker changes, segment boundaries take precedence over a
-        // continuation flag.
-        if !cur.is_empty() && tok.segment_break {
-            lines.push(std::mem::take(&mut cur));
-            cur_chars = 0;
-        }
-
-        // Is this token a continuation of the previous token? A true BPE
-        // sub-word fragment has no leading space and arrives essentially
-        // immediately after the previous token. If it is further away, it is
-        // treated as a separate word and sentence-end boundaries still apply.
-        let is_continuation = if cur.is_empty() {
-            false
-        } else {
-            cfg.insert_interword_space
-                && !tok.leading_space
-                && (tok.start - cur.last().unwrap().end) <= SUBWORD_GAP_SEC
-        };
-
-        // Force line break after terminal punctuation on previous token
-        if !cur.is_empty() && is_terminal_punct(&cur.last().unwrap().punc) {
-            if !is_continuation {
-                lines.push(std::mem::take(&mut cur));
-                cur_chars = 0;
-            }
-        }
-
-        // Proactive break: if line is sufficiently full and we're at a natural break point.
-        // Uses language-universal signals (commas, pauses) plus language-aware function words.
-        if cur_chars >= proactive_threshold && !cur.is_empty() {
-            let prev = cur.last().unwrap();
-            let break_after_comma = is_comma_like(&prev.punc);
-            let break_before_function_word = is_function_word(&tok.word, &cfg.lang);
-            // Pauses are a universal phrase-boundary signal across all languages.
-            // Use a softer threshold (half of split_gap_sec) for proactive breaks.
-            let pause = (tok.start - prev.end) >= cfg.split_gap_sec * 0.5;
-
-            if !is_continuation && (break_after_comma || break_before_function_word || pause) {
-                lines.push(std::mem::take(&mut cur));
-                cur_chars = 0;
-            }
-        }
-
-        // Would adding this token overflow the line?
-        let space_cost = if cfg.insert_interword_space && tok.leading_space && !cur.is_empty() { 1 } else { 0 };
-        let new_len = cur_chars + space_cost + tc;
-
-        if new_len > cfg.max_chars_per_line && !cur.is_empty() && !is_continuation {
-            // Find the best break point within the current line
-            let mut break_idx = find_best_break(&cur, cfg);
-            if cfg.enforce_kinsoku { break_idx = adjust_kinsoku(&cur, break_idx); }
-            if break_idx < cur.len() {
-                // Split: 0..break_idx stays, break_idx.. carries forward
-                let carry: Vec<Tok> = cur.split_off(break_idx);
-                lines.push(std::mem::take(&mut cur));
-                cur = carry;
-                cur_chars = slice_chars(&cur, cfg);
-            } else {
-                // Fallback: split at a balanced position instead of keeping everything
-                let mut target_idx = find_balanced_break(&cur, cfg);
-                if cfg.enforce_kinsoku { target_idx = adjust_kinsoku(&cur, target_idx); }
-                if target_idx < cur.len() {
-                    let carry: Vec<Tok> = cur.split_off(target_idx);
-                    lines.push(std::mem::take(&mut cur));
-                    cur = carry;
-                    cur_chars = slice_chars(&cur, cfg);
-                } else {
-                    lines.push(std::mem::take(&mut cur));
-                    cur_chars = 0;
-                }
-            }
-
-            // Recompute with the new current line state
-            let space_cost = if cfg.insert_interword_space && tok.leading_space && !cur.is_empty() { 1 } else { 0 };
-            cur_chars += space_cost + tc;
-            cur.push(tok.clone());
-        } else {
-            cur_chars = new_len;
-            cur.push(tok.clone());
-        }
+        let carry = remaining.split_off(split);
+        lines.push(remaining);
+        remaining = carry;
     }
 
-    if !cur.is_empty() {
-        lines.push(cur);
+    if !remaining.is_empty() {
+        lines.push(remaining);
     }
-
     lines
 }
 
-/// Scan backward through the line to find the best break point.
-/// Returns the index at which to split: tokens before this index stay,
-/// this index and after are carried to the next line.
-///
-/// Break priority (first match scanning backward wins):
-/// 1. After terminal punctuation (. ! ?)
-/// 2. After comma/semicolon
-/// 3. Before a language-aware function word (conjunctions, prepositions, etc.)
-/// 4. At a long pause (gap >= split_gap_sec)
-/// 5. Fallback: break at the end (keep entire line)
-fn find_best_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
-    // Priority 1: After terminal punctuation
-    for i in (1..line.len()).rev() {
-        if (!cfg.insert_interword_space || line[i].leading_space) && is_terminal_punct(&line[i - 1].punc) {
-            return i;
+fn choose_line_break(tokens: &[Tok], cfg: &PostProcessConfig, cap: usize) -> usize {
+    let mut candidates = Vec::new();
+    for index in 1..tokens.len() {
+        if cfg.insert_interword_space && !tokens[index].leading_space {
+            continue;
         }
-    }
-    // Priority 2: After comma/semicolon
-    for i in (1..line.len()).rev() {
-        if (!cfg.insert_interword_space || line[i].leading_space) && is_comma_like(&line[i - 1].punc) {
-            return i;
+        let left_len = slice_chars(&tokens[..index], cfg);
+        if left_len > cap {
+            continue;
         }
-    }
-    // Priority 3: Before function word (language-aware)
-    for i in (1..line.len()).rev() {
-        if (!cfg.insert_interword_space || line[i].leading_space) && is_function_word(&line[i].word, &cfg.lang) {
-            return i;
+        if cfg.enforce_kinsoku && !is_kinsoku_break(tokens, index) {
+            continue;
         }
+        candidates.push((index, left_len, break_priority(tokens, index, cfg)));
     }
-    // Priority 4: At a long pause
-    for i in (1..line.len()).rev() {
-        if !cfg.insert_interword_space || line[i].leading_space {
-            let gap = line[i].start - line[i - 1].end;
-            if gap >= cfg.split_gap_sec {
-                return i;
+
+    // If kinsoku rules leave no fitting boundary, preserving the width limit is
+    // preferable to emitting an arbitrarily long line.
+    if candidates.is_empty() && cfg.enforce_kinsoku {
+        for index in 1..tokens.len() {
+            if slice_chars(&tokens[..index], cfg) <= cap {
+                candidates.push((index, slice_chars(&tokens[..index], cfg), 0));
             }
         }
     }
-    // No natural break found
-    line.len()
+
+    let total_len = slice_chars(tokens, cfg);
+    let line_count = total_len.div_ceil(cap);
+    let target = total_len.div_ceil(line_count);
+    let natural_tolerance = cap / 3;
+
+    candidates
+        .iter()
+        .filter(|(_, len, priority)| {
+            *priority > 0 && len.abs_diff(target) <= natural_tolerance
+        })
+        .max_by_key(|(_, len, priority)| (*priority, usize::MAX - len.abs_diff(target)))
+        .or_else(|| candidates.iter().min_by_key(|(_, len, _)| len.abs_diff(target)))
+        .map(|(index, _, _)| *index)
+        .unwrap_or(1)
 }
 
-/// Fallback break: find a position closest to 60% of CPL for a balanced split.
-/// Used when find_best_break finds no natural break point.
-fn find_balanced_break(line: &[Tok], cfg: &PostProcessConfig) -> usize {
-    if line.len() <= 1 { return line.len(); }
-
-    let target = (cfg.max_chars_per_line as f64 * 0.6) as usize;
-    let mut best_pos = line.len();
-    let mut best_diff = usize::MAX;
-    let mut running_chars: usize = 0;
-
-    for i in 0..line.len() {
-        if cfg.insert_interword_space && line[i].leading_space && i > 0 {
-            running_chars += 1;
-        }
-        running_chars += tok_chars(&line[i], cfg);
-
-        // We want to evaluate the break AFTER token i (i.e. splitting at index i+1).
-        // The token that will start the next line is line[i+1].
-        // So we should only allow this break if line[i+1] has a leading space (when spaces are used).
-        if i > 0 && i + 1 < line.len() {
-            if !cfg.insert_interword_space || line[i + 1].leading_space {
-                let diff = if running_chars > target { running_chars - target } else { target - running_chars };
-                if diff < best_diff {
-                    best_diff = diff;
-                    best_pos = i + 1;
-                }
-            }
-        }
+fn break_priority(tokens: &[Tok], index: usize, cfg: &PostProcessConfig) -> u8 {
+    let left = &tokens[index - 1];
+    let right = &tokens[index];
+    if is_terminal_punct(&left.punc) {
+        3
+    } else if is_comma_like(&left.punc) || right.start - left.end >= cfg.split_gap_sec * 0.5 {
+        2
+    } else {
+        0
     }
-
-    if best_pos < line.len() { best_pos } else { line.len() }
 }
 
 /// Characters that must NOT appear at the start of a line (Japanese kinsoku shori).
@@ -991,219 +835,103 @@ fn violates_kinsoku_start(c: char) -> bool {
     )
 }
 
-/// Apply kinsoku adjustment to a break index within a line.
-/// If the first character of the token at `break_idx` would violate kinsoku start rules,
-/// shift the break forward by one (pull that token onto the previous line) to fix it.
-fn adjust_kinsoku(line: &[Tok], break_idx: usize) -> usize {
-    if break_idx >= line.len() || break_idx == 0 { return break_idx; }
-    // Check the first character of the token that would start the new line
-    let first_char = line[break_idx].word.chars().next()
-        .or_else(|| line[break_idx].punc.chars().next());
-    if let Some(c) = first_char {
-        if violates_kinsoku_start(c) && break_idx + 1 <= line.len() {
-            // Pull this token onto the previous line instead
-            return break_idx + 1;
-        }
-    }
-    break_idx
+fn violates_kinsoku_end(c: char) -> bool {
+    matches!(c,
+        '（' | '(' | '「' | '『' | '【' | '〈' | '《' | '｛' | '[' | '{'
+    )
 }
 
-/// Bundle consecutive lines into subtitle cues, respecting max_lines and speaker boundaries.
-fn group_lines_into_cues(lines: Vec<Vec<Tok>>, cfg: &PostProcessConfig) -> Vec<Segment> {
-    let mut cues: Vec<Segment> = Vec::new();
-    let mut i = 0;
+fn is_kinsoku_break(tokens: &[Tok], index: usize) -> bool {
+    let left_char = tokens[index - 1]
+        .punc
+        .chars()
+        .last()
+        .or_else(|| tokens[index - 1].word.chars().last());
+    let right_char = tokens[index]
+        .word
+        .chars()
+        .next()
+        .or_else(|| tokens[index].punc.chars().next());
 
-    while i < lines.len() {
-        let mut cue_lines: Vec<&Vec<Tok>> = vec![&lines[i]];
-        let cue_speaker = lines[i].first().and_then(|t| t.speaker.clone());
-        let mut j = i + 1;
-
-        while cue_lines.len() < cfg.max_lines && j < lines.len() {
-            // Don't mix speakers in one cue
-            let next_speaker = lines[j].first().and_then(|t| t.speaker.clone());
-            if next_speaker != cue_speaker {
-                break;
-            }
-            // A whisper segment boundary forces a fresh cue, not just a new line
-            if lines[j].first().map(|t| t.segment_break).unwrap_or(false) {
-                break;
-            }
-            cue_lines.push(&lines[j]);
-            j += 1;
-        }
-
-        // Build the Segment
-        let all_toks: Vec<&Tok> = cue_lines.iter().flat_map(|l| l.iter()).collect();
-        let start = all_toks.first().map(|t| t.start).unwrap_or(0.0);
-        let end = all_toks.last().map(|t| t.end).unwrap_or(start);
-
-        let text_lines: Vec<String> = cue_lines.iter()
-            .map(|line| render_slice(line, cfg))
-            .collect();
-        let text = text_lines.join("\n");
-
-        let words: Vec<WordTimestamp> = all_toks.iter()
-            .map(|t| WordTimestamp {
-                text: render_token(t),
-                start: round3(t.start),
-                end: round3(t.end),
-                probability: t.prob,
-            })
-            .collect();
-
-        cues.push(Segment {
-            start: round3(start.max(0.0)),
-            end: round3(end),
-            text,
-            words: Some(words),
-            speaker_id: cue_speaker,
-        });
-
-        i = j;
-    }
-
-    cues
+    !left_char.is_some_and(violates_kinsoku_end)
+        && !right_char.is_some_and(violates_kinsoku_start)
 }
 
-/// Post-pass: enforce min/max subtitle duration and characters-per-second cap.
-/// - Extends short cues to `min_sub_dur` (clamped to not overlap the next cue).
-/// - Splits cues that exceed `max_sub_dur` at the best word boundary.
-/// - Splits cues where CPS exceeds `cps_cap` to give each half more screen time.
-fn enforce_duration_limits(cues: &mut Vec<Segment>, cfg: &PostProcessConfig) {
-    // --- Pass 1: Extend short cues to min_sub_dur ---
-    for i in 0..cues.len() {
-        let dur = cues[i].end - cues[i].start;
-        if dur < cfg.min_sub_dur {
-            // Extend end, but don't overlap the next cue's start
-            let max_end = if i + 1 < cues.len() { cues[i + 1].start } else { f64::MAX };
-            cues[i].end = round3((cues[i].start + cfg.min_sub_dur).min(max_end));
+/// Partition normalized words at boundaries that must survive visual wrapping.
+/// A maximum-duration boundary is introduced before a word when adding that
+/// word would exceed the configured duration. A single intrinsically long word
+/// remains indivisible.
+fn split_into_cue_groups(toks: Vec<Tok>, cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
+    let mut groups = Vec::new();
+    let mut current: Vec<Tok> = Vec::new();
+
+    for tok in toks {
+        if let Some(previous) = current.last() {
+            let speaker_change = previous.speaker != tok.speaker;
+            let long_pause = tok.start - previous.end >= cfg.split_gap_sec;
+            let exceeds_max_duration = cfg.max_sub_dur > 0.0
+                && tok.end - current[0].start > cfg.max_sub_dur;
+            if speaker_change || tok.segment_break || long_pause || exceeds_max_duration {
+                groups.push(std::mem::take(&mut current));
+            }
+        }
+
+        let ends_sentence = is_terminal_punct(&tok.punc);
+        current.push(tok);
+        if ends_sentence {
+            groups.push(std::mem::take(&mut current));
         }
     }
 
-    // --- Pass 2: Split cues that exceed max_sub_dur ---
-    let mut i = 0;
-    while i < cues.len() {
-        let dur = cues[i].end - cues[i].start;
-        if dur > cfg.max_sub_dur {
-            if let Some(words) = &cues[i].words {
-                if words.len() >= 4 { // need enough words so both halves get ≥2
-                    // Find the word boundary closest to the midpoint in time
-                    let mid_time = cues[i].start + dur / 2.0;
-                    let split_at = words.iter().enumerate()
-                        .skip(2) // ensure first half has ≥2 words
-                        .take(words.len() - 3) // ensure second half has ≥2 words
-                        .min_by_key(|(_, w)| ((w.start - mid_time).abs() * 1000.0) as i64)
-                        .map(|(idx, _)| idx)
-                        .unwrap_or(2);
-
-                    let second_words: Vec<WordTimestamp> = words[split_at..].to_vec();
-                    let first_words: Vec<WordTimestamp> = words[..split_at].to_vec();
-
-                    if first_words.len() >= 2 && second_words.len() >= 2 {
-                        let first_text = first_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                        let second_text = second_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                        let first_end = first_words.last().unwrap().end;
-                        let second_start = second_words.first().unwrap().start;
-
-                        let second_cue = Segment {
-                            start: round3(second_start),
-                            end: cues[i].end,
-                            text: second_text.trim().to_string(),
-                            words: Some(second_words),
-                            speaker_id: cues[i].speaker_id.clone(),
-                        };
-
-                        cues[i].end = round3(first_end);
-                        cues[i].text = first_text.trim().to_string();
-                        cues[i].words = Some(first_words);
-
-                        cues.insert(i + 1, second_cue);
-                        continue; // re-check the same index (first half might still be too long)
-                    }
-                }
-            }
-        }
-        i += 1;
+    if !current.is_empty() {
+        groups.push(current);
     }
+    groups
+}
 
-    // --- Pass 3: Split cues that exceed CPS cap ---
-    // Only split if both halves would have ≥2 words and the split actually
-    // improves (lowers) the CPS of the worse half compared to the original.
-    let mut i = 0;
-    while i < cues.len() {
-        let dur = cues[i].end - cues[i].start;
-        if dur > 0.0 {
-            let char_count = if cfg.use_grapheme_len {
-                UnicodeSegmentation::graphemes(cues[i].text.as_str(), true).count()
-            } else {
-                cues[i].text.len()
-            };
-            let cps = char_count as f64 / dur;
+fn segment_from_lines(lines: &[Vec<Tok>], cfg: &PostProcessConfig) -> Segment {
+    let tokens: Vec<&Tok> = lines.iter().flat_map(|line| line.iter()).collect();
+    let start = tokens.first().map(|token| token.start).unwrap_or(0.0);
+    let end = tokens.last().map(|token| token.end).unwrap_or(start);
+    let speaker_id = tokens.first().and_then(|token| token.speaker.clone());
+    let text = lines
+        .iter()
+        .map(|line| render_slice(line, cfg))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let words = tokens
+        .into_iter()
+        .map(|token| WordTimestamp {
+            text: render_token(token),
+            start: round3(token.start),
+            end: round3(token.end),
+            probability: token.prob,
+        })
+        .collect();
 
-            if cps > cfg.cps_cap {
-                if let Some(words) = &cues[i].words {
-                    if words.len() >= 4 { // need enough words so both halves get ≥2
-                        let mid_time = cues[i].start + dur / 2.0;
-                        let split_at = words.iter().enumerate()
-                            .skip(2)
-                            .take(words.len() - 3)
-                            .min_by_key(|(_, w)| ((w.start - mid_time).abs() * 1000.0) as i64)
-                            .map(|(idx, _)| idx)
-                            .unwrap_or(2);
+    Segment {
+        start: round3(start),
+        end: round3(end),
+        text,
+        words: Some(words),
+        speaker_id,
+    }
+}
 
-                        let second_words: Vec<WordTimestamp> = words[split_at..].to_vec();
-                        let first_words: Vec<WordTimestamp> = words[..split_at].to_vec();
+fn schedule_min_duration(cues: &mut [Segment], min_duration: f64) {
+    let min_duration = min_duration.max(0.0);
+    for index in 0..cues.len() {
+        let next_start = cues.get(index + 1).map(|cue| cue.start).unwrap_or(f64::MAX);
+        let desired_end = cues[index].end.max(cues[index].start + min_duration);
+        cues[index].end = round3(desired_end.min(next_start).max(cues[index].start));
 
-                        if first_words.len() >= 2 && second_words.len() >= 2 {
-                            let first_text = first_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                            let second_text = second_words.iter().map(|w| w.text.as_str()).collect::<String>();
-                            let first_end = first_words.last().unwrap().end;
-                            let second_start = second_words.first().unwrap().start;
-
-                            // Only proceed if the split actually improves CPS meaningfully
-                            // and neither half would be too short to display well.
-                            let first_dur = first_end - cues[i].start;
-                            let second_dur = cues[i].end - second_start;
-                            let first_chars = if cfg.use_grapheme_len {
-                                UnicodeSegmentation::graphemes(first_text.trim(), true).count()
-                            } else { first_text.trim().len() };
-                            let second_chars = if cfg.use_grapheme_len {
-                                UnicodeSegmentation::graphemes(second_text.trim(), true).count()
-                            } else { second_text.trim().len() };
-
-                            // Don't create orphan cues shorter than ~10 chars
-                            let min_cue_chars = 10;
-                            if first_chars < min_cue_chars || second_chars < min_cue_chars {
-                                i += 1; continue;
-                            }
-
-                            let first_cps = if first_dur > 0.0 { first_chars as f64 / first_dur } else { f64::MAX };
-                            let second_cps = if second_dur > 0.0 { second_chars as f64 / second_dur } else { f64::MAX };
-                            let worst_half_cps = first_cps.max(second_cps);
-
-                            // Require at least 10% improvement to justify the split
-                            if worst_half_cps < cps * 0.9 {
-                                let second_cue = Segment {
-                                    start: round3(second_start),
-                                    end: cues[i].end,
-                                    text: second_text.trim().to_string(),
-                                    words: Some(second_words),
-                                    speaker_id: cues[i].speaker_id.clone(),
-                                };
-
-                                cues[i].end = round3(first_end);
-                                cues[i].text = first_text.trim().to_string();
-                                cues[i].words = Some(first_words);
-
-                                cues.insert(i + 1, second_cue);
-                                continue; // re-check
-                            }
-                        }
-                    }
-                }
+        let cue_end = cues[index].end;
+        if let Some(words) = cues[index].words.as_mut() {
+            for word in words {
+                word.end = word.end.min(cue_end);
+                word.start = word.start.min(word.end);
             }
         }
-        i += 1;
     }
 }
 
@@ -1334,15 +1062,6 @@ mod tests {
             }
         }
 
-        // Prepositions/conjunctions should not be orphaned at end of line
-        for cue in &cues {
-            for line in cue.text.split('\n') {
-                let trimmed = line.trim();
-                assert!(!trimmed.ends_with(" and"), "line ends with orphaned 'and': {:?}", trimmed);
-                assert!(!trimmed.ends_with(" of"), "line ends with orphaned 'of': {:?}", trimmed);
-                assert!(!trimmed.ends_with(" to"), "line ends with orphaned 'to': {:?}", trimmed);
-            }
-        }
     }
 
     #[test]
@@ -1530,7 +1249,7 @@ mod tests {
     }
 
     #[test]
-    fn french_function_word_breaking() {
+    fn french_text_wraps_without_language_dictionary() {
         let mut cfg = PostProcessConfig::for_language("fr");
         cfg.max_lines = 1;
 
@@ -1565,19 +1284,20 @@ mod tests {
         // Should have multiple cues (text is ~70 chars, CPL=38)
         assert!(cues.len() >= 2, "expected ≥2 cues for French text, got {}", cues.len());
 
-        // French function words like "de", "pour" should not be orphaned at end of line
+        // The formatter applies the same deterministic punctuation/balance
+        // policy to every space-separated language.
         for cue in &cues {
             for line in cue.text.split('\n') {
-                let trimmed = line.trim();
-                assert!(!trimmed.ends_with(" de"), "line ends with orphaned 'de': {:?}", trimmed);
-                assert!(!trimmed.ends_with(" pour"), "line ends with orphaned 'pour': {:?}", trimmed);
+                assert!(UnicodeSegmentation::graphemes(line, true).count() <= cfg.max_chars_per_line);
             }
         }
+        let joined = cues.iter().map(|cue| cue.text.as_str()).collect::<Vec<_>>().join(" ");
+        assert_eq!(joined.split_whitespace().collect::<Vec<_>>().join(" "),
+            "Le transhumanisme est de la plus grande importance pour l'évolution de l'humanité");
     }
 
     #[test]
     fn kinsoku_prevents_bad_line_starts() {
-        // Verify the kinsoku helper function works correctly
         assert!(violates_kinsoku_start('。'));
         assert!(violates_kinsoku_start('、'));
         assert!(violates_kinsoku_start('っ'));
@@ -1585,15 +1305,13 @@ mod tests {
         assert!(!violates_kinsoku_start('私'));
         assert!(!violates_kinsoku_start('A'));
 
-        // Verify adjust_kinsoku shifts the break point
         let toks = vec![
             Tok { word: "テスト".into(), punc: "".into(), start: 0.0, end: 0.5, prob: None, speaker: None, leading_space: false, segment_break: false },
             Tok { word: "ー".into(), punc: "".into(), start: 0.5, end: 0.6, prob: None, speaker: None, leading_space: false, segment_break: false },
             Tok { word: "データ".into(), punc: "".into(), start: 0.6, end: 1.0, prob: None, speaker: None, leading_space: false, segment_break: false },
         ];
-        // Breaking at index 1 would put 'ー' at line start — kinsoku should shift to 2
-        let adjusted = adjust_kinsoku(&toks, 1);
-        assert_eq!(adjusted, 2, "kinsoku should shift break past prolonged sound mark");
+        assert!(!is_kinsoku_break(&toks, 1));
+        assert!(is_kinsoku_break(&toks, 2));
     }
 
     // --- Content formatting tests ---
@@ -1696,16 +1414,12 @@ mod tests {
     }
 
     #[test]
-    fn lang_field_set_correctly() {
-        let cfg = PostProcessConfig::for_language("fr");
-        assert_eq!(cfg.lang, "fr");
-
-        let cfg = PostProcessConfig::for_language("ja");
-        assert_eq!(cfg.lang, "ja");
-        assert!(cfg.enforce_kinsoku);
-
-        let cfg = PostProcessConfig::default();
-        assert_eq!(cfg.lang, "en");
+    fn language_tags_are_normalized_to_primary_subtags() {
+        assert_eq!(profile_for_lang("en-US"), ScriptProfile::Latin);
+        assert_eq!(profile_for_lang("PT_br"), ScriptProfile::Latin);
+        assert_eq!(profile_for_lang("zh-TW"), ScriptProfile::CJK);
+        assert_eq!(profile_for_lang("JA-jp"), ScriptProfile::CJK);
+        assert_eq!(profile_for_lang("ko-KR"), ScriptProfile::Korean);
     }
 
     #[test]
@@ -1768,5 +1482,248 @@ mod tests {
         let second = cues.get(1).unwrap().text.clone();
         assert!(first.contains("Hello"), "first cue should contain 'Hello': {:?}", first);
         assert!(second.contains("World"), "second cue should contain 'World': {:?}", second);
+    }
+
+    #[test]
+    fn continuation_merge_never_crosses_speakers() {
+        let cfg = PostProcessConfig::default();
+        let first = Segment {
+            start: 0.0,
+            end: 0.5,
+            text: String::new(),
+            speaker_id: Some("A".into()),
+            words: Some(vec![WordTimestamp {
+                text: "Hello".into(), start: 0.0, end: 0.5, probability: None,
+            }]),
+        };
+        let second = Segment {
+            start: 0.5,
+            end: 1.0,
+            text: String::new(),
+            speaker_id: Some("B".into()),
+            // Deliberately no leading space and no gap: this looks exactly like
+            // a BPE continuation except for the speaker boundary.
+            words: Some(vec![WordTimestamp {
+                text: "World".into(), start: 0.5, end: 1.0, probability: None,
+            }]),
+        };
+
+        let cues = process_segments(&[first, second], &cfg);
+        assert_eq!(cues.len(), 2);
+        assert_eq!(cues[0].text, "Hello");
+        assert_eq!(cues[0].speaker_id.as_deref(), Some("A"));
+        assert_eq!(cues[1].text, "World");
+        assert_eq!(cues[1].speaker_id.as_deref(), Some("B"));
+    }
+
+    #[test]
+    fn strong_pause_inside_one_engine_segment_forces_new_cue() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.split_gap_sec = 0.5;
+        let segment = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "Hello".into(), start: 0.0, end: 0.3, probability: None },
+                WordTimestamp { text: " again".into(), start: 2.0, end: 2.5, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 2);
+        assert_eq!(cues[0].text, "Hello");
+        assert_eq!(cues[1].text, "again");
+    }
+
+    #[test]
+    fn mixed_latin_text_does_not_select_no_space_profile() {
+        assert_eq!(
+            profile_for_text("An English sentence mentioning 東京 once"),
+            ScriptProfile::Latin
+        );
+        assert_eq!(profile_for_text("AB東京"), ScriptProfile::Latin);
+        assert_eq!(profile_for_text("これは日本語の文章です"), ScriptProfile::CJK);
+        assert_eq!(profile_for_text("ｶﾀｶﾅ"), ScriptProfile::CJK);
+        assert_eq!(profile_for_text("ＦＵＬＬＷＩＤＴＨ"), ScriptProfile::Latin);
+    }
+
+    #[test]
+    fn arabic_question_mark_ends_a_cue() {
+        let cfg = PostProcessConfig::for_language("ar");
+        let segment = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "مرحبا؟".into(), start: 0.0, end: 0.7, probability: None },
+                WordTimestamp { text: " أهلا".into(), start: 0.8, end: 1.4, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 2);
+        assert_eq!(cues[0].text, "مرحبا؟");
+        assert_eq!(cues[1].text, "أهلا");
+    }
+
+    #[test]
+    fn max_duration_also_splits_short_word_lists() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.max_sub_dur = 2.5;
+        cfg.min_sub_dur = 0.0;
+        let segment = Segment {
+            start: 0.0,
+            end: 6.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "One".into(), start: 0.0, end: 2.0, probability: None },
+                WordTimestamp { text: " two".into(), start: 2.0, end: 4.0, probability: None },
+                WordTimestamp { text: " three".into(), start: 4.0, end: 6.0, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 3);
+        assert!(cues.iter().all(|cue| cue.end - cue.start <= cfg.max_sub_dur));
+    }
+
+    #[test]
+    fn text_only_segments_are_tokenized_before_wrapping() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.max_chars_per_line = 12;
+        cfg.max_lines = 1;
+        cfg.min_sub_dur = 0.0;
+        let segment = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: "Fallback text still wraps correctly".into(),
+            speaker_id: None,
+            words: None,
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert!(cues.len() > 1);
+        assert!(cues.iter().all(|cue| {
+            UnicodeSegmentation::graphemes(cue.text.as_str(), true).count()
+                <= cfg.max_chars_per_line
+        }));
+        assert_eq!(
+            cues.iter().map(|cue| cue.text.as_str()).collect::<Vec<_>>().join(" "),
+            "Fallback text still wraps correctly"
+        );
+    }
+
+    #[test]
+    fn zero_duration_text_only_segments_use_minimum_display_duration() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.min_sub_dur = 2.0;
+        let segment = Segment {
+            start: 3.0,
+            end: 3.0,
+            text: "Fallback timing".into(),
+            words: None,
+            speaker_id: None,
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 1);
+        assert_eq!((cues[0].start, cues[0].end), (3.0, 5.0));
+        let words = cues[0].words.as_ref().unwrap();
+        assert_eq!(words.len(), 2);
+        assert!(words.iter().all(|word| word.start < word.end));
+        assert_eq!(words.last().unwrap().end, cues[0].end);
+    }
+
+    #[test]
+    fn no_space_engine_tokens_remain_breakable() {
+        let mut cfg = PostProcessConfig::for_language("ja");
+        cfg.max_chars_per_line = 8;
+        cfg.max_lines = 1;
+        cfg.min_sub_dur = 0.0;
+        let text = "これはとても長い日本語字幕のテストです";
+        let segment = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: text.into(),
+            // Some engines expose an entire no-space sentence as one word.
+            words: Some(vec![WordTimestamp {
+                text: text.into(), start: 0.0, end: 2.0, probability: None,
+            }]),
+            speaker_id: None,
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert!(cues.len() > 1);
+        assert!(cues.iter().all(|cue| {
+            UnicodeSegmentation::graphemes(cue.text.as_str(), true).count()
+                <= cfg.max_chars_per_line
+        }));
+        assert_eq!(cues.iter().map(|cue| cue.text.as_str()).collect::<String>(), text);
+    }
+
+    #[test]
+    fn no_space_text_only_segments_wrap_by_grapheme() {
+        let mut cfg = PostProcessConfig::for_language("ja");
+        cfg.max_chars_per_line = 8;
+        cfg.max_lines = 1;
+        cfg.min_sub_dur = 0.0;
+        let text = "これは単語時刻なしの日本語字幕です";
+        let segment = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: text.into(),
+            words: None,
+            speaker_id: None,
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert!(cues.len() > 1);
+        assert!(cues.iter().all(|cue| {
+            UnicodeSegmentation::graphemes(cue.text.as_str(), true).count()
+                <= cfg.max_chars_per_line
+        }));
+        assert_eq!(cues.iter().map(|cue| cue.text.as_str()).collect::<String>(), text);
+    }
+
+    #[test]
+    fn final_scheduling_clamps_natural_cue_overlap() {
+        let cfg = PostProcessConfig::default();
+        let first = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: Some("A".into()),
+            words: Some(vec![
+                WordTimestamp {
+                    text: "First".into(), start: 0.0, end: 2.0, probability: None,
+                },
+                WordTimestamp {
+                    text: " overlap".into(), start: 0.5, end: 2.5, probability: None,
+                },
+                WordTimestamp {
+                    text: " ends".into(), start: 1.0, end: 2.0, probability: None,
+                },
+            ]),
+        };
+        let second = Segment {
+            start: 1.5,
+            end: 3.0,
+            text: String::new(),
+            speaker_id: Some("B".into()),
+            words: Some(vec![WordTimestamp {
+                text: "Second".into(), start: 1.5, end: 3.0, probability: None,
+            }]),
+        };
+
+        let cues = process_segments(&[first, second], &cfg);
+        assert_eq!(cues.len(), 2);
+        assert!(cues[0].end <= cues[1].start);
+        assert!(cues[0].words.as_ref().unwrap().iter().all(|word| {
+            word.start <= word.end && word.end <= cues[0].end
+        }));
     }
 }
