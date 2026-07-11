@@ -595,21 +595,16 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
             }
             let right_cont = !t.leading_space;
             let both_letter_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
+            let no_prev_punc = prev.punc.is_empty();
             // Only merge if the boundary is essentially contiguous (tiny gap)
             let tiny_gap = (t.start - prev.end) <= SUBWORD_GAP_SEC;
-            if right_cont && both_letter_word && tiny_gap {
-                // Merge t into prev without inserting a space. Preserve the
-                // punctuation that belongs at the end of the merged word: the
-                // later token's trailing punctuation if it has any, otherwise
-                // the previous token's punctuation (e.g. "Happ" + "." + "y"
-                // -> "Happy."). This prevents BPE fragments from landing on a
-                // separate line with a misplaced separator.
-                prev.word.push_str(&t.word);
-                if !t.punc.is_empty() {
-                    prev.punc = t.punc.clone();
-                }
+            if right_cont && both_letter_word && no_prev_punc && tiny_gap {
+                // Merge t into prev without inserting a space.
+                let merged = join_tokens(prev, &t, /*insert_space*/ false);
+                prev.word = merged.0;
+                prev.punc = merged.1;
                 prev.end = prev.end.max(t.end);
-                // leading_space remains from prev
+                // leading_space remains from prev (merged.2)
                 continue;
             }
         }
