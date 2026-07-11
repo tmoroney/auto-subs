@@ -352,7 +352,7 @@ pub fn profile_for_text(text: &str) -> ScriptProfile {
     }
 }
 
-/// Main entry: post-process whisper segments into readable subtitle cues.
+/// Main entry: post-process transcription segments into readable subtitle cues.
 pub fn process_segments(
     segments: &[Segment],
     cfg: &PostProcessConfig,
