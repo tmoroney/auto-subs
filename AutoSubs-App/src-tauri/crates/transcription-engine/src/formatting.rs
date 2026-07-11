@@ -49,6 +49,12 @@ struct Tok {
 /// the same phrase rather than detecting a real pause.
 const SEGMENT_BREAK_GAP_SEC: f64 = 0.3;
 
+/// Maximum gap between two tokens for the right token to be treated as a BPE
+/// sub-word continuation of the left token. Larger gaps are treated as separate
+/// words, which prevents a token that merely has no leading space from being
+/// treated as a continuation and suppressing sentence-end line breaks.
+const SUBWORD_GAP_SEC: f64 = 0.03;
+
 #[inline]
 fn round3(x: f64) -> f64 { (x * 1000.0).round() / 1000.0 }
 
@@ -588,17 +594,22 @@ fn merge_continuations(toks: &mut Vec<Tok>) {
                 continue;
             }
             let right_cont = !t.leading_space;
-            let both_ascii_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
-            let no_prev_punc = prev.punc.is_empty();
+            let both_letter_word = is_letter_word(&prev.word) && is_letter_word(&t.word);
             // Only merge if the boundary is essentially contiguous (tiny gap)
-            let tiny_gap = (t.start - prev.end) <= 0.03;
-            if right_cont && both_ascii_word && no_prev_punc && tiny_gap {
-                // Merge t into prev without inserting a space
-                let merged = join_tokens(prev, &t, /*insert_space*/ false);
-                prev.word = merged.0;
-                prev.punc = merged.1;
+            let tiny_gap = (t.start - prev.end) <= SUBWORD_GAP_SEC;
+            if right_cont && both_letter_word && tiny_gap {
+                // Merge t into prev without inserting a space. Preserve the
+                // punctuation that belongs at the end of the merged word: the
+                // later token's trailing punctuation if it has any, otherwise
+                // the previous token's punctuation (e.g. "Happ" + "." + "y"
+                // -> "Happy."). This prevents BPE fragments from landing on a
+                // separate line with a misplaced separator.
+                prev.word.push_str(&t.word);
+                if !t.punc.is_empty() {
+                    prev.punc = t.punc.clone();
+                }
                 prev.end = prev.end.max(t.end);
-                // leading_space remains from prev (merged.2)
+                // leading_space remains from prev
                 continue;
             }
         }
@@ -796,7 +807,9 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
     for tok in toks.iter() {
         let tc = tok_chars(tok, cfg);
 
-        // Force line break on speaker change
+        // Force line break on speaker change. Speaker boundaries are always
+        // stronger than token continuity, so this is intentionally not gated by
+        // `is_continuation` computed below.
         if !cur.is_empty() {
             let speaker_change = cur.last().unwrap().speaker != tok.speaker;
             if speaker_change {
@@ -808,13 +821,24 @@ fn wrap_into_lines(toks: &[Tok], cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
         // Force line break at a whisper segment boundary with a real pause.
         // This preserves natural utterance boundaries even for short cues
         // that wouldn't trip the proactive line-fill threshold below.
+        // Like speaker changes, segment boundaries take precedence over a
+        // continuation flag.
         if !cur.is_empty() && tok.segment_break {
             lines.push(std::mem::take(&mut cur));
             cur_chars = 0;
         }
 
-        // Is this token a continuation of the previous token?
-        let is_continuation = cfg.insert_interword_space && !tok.leading_space;
+        // Is this token a continuation of the previous token? A true BPE
+        // sub-word fragment has no leading space and arrives essentially
+        // immediately after the previous token. If it is further away, it is
+        // treated as a separate word and sentence-end boundaries still apply.
+        let is_continuation = if cur.is_empty() {
+            false
+        } else {
+            cfg.insert_interword_space
+                && !tok.leading_space
+                && (tok.start - cur.last().unwrap().end) <= SUBWORD_GAP_SEC
+        };
 
         // Force line break after terminal punctuation on previous token
         if !cur.is_empty() && is_terminal_punct(&cur.last().unwrap().punc) {
@@ -1687,5 +1711,67 @@ mod tests {
 
         let cfg = PostProcessConfig::default();
         assert_eq!(cfg.lang, "en");
+    }
+
+    #[test]
+    fn arabic_bpe_fragments_not_split() {
+        // Regression for Arabic/RTL word splitting: BPE fragments emitted
+        // without a leading space must be merged into a single word and not
+        // split across subtitle lines.
+        let mut cfg = PostProcessConfig::for_language("ar");
+        cfg.max_lines = 1;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 3.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "ال".into(),    start: 0.0, end: 0.2, probability: None },
+                // No leading space: continuation of the Arabic word "العالم" (the world).
+                WordTimestamp { text: "عالم".into(),  start: 0.2, end: 0.7, probability: None },
+                // Arabic comma as a standalone token.
+                WordTimestamp { text: "،".into(),     start: 0.7, end: 0.8, probability: None },
+                WordTimestamp { text: " مرحبا".into(), start: 1.0, end: 1.5, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        let joined: String = cues.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ");
+        // BPE fragments should render as one word.
+        assert!(joined.contains("العالم"), "expected merged Arabic word in: {}", joined);
+        assert!(!joined.contains("ال عالم"), "Arabic BPE fragments should not be separated: {}", joined);
+    }
+
+    #[test]
+    fn terminal_punct_breaks_with_no_leading_space_and_large_gap() {
+        // A token with no leading space but a large gap after terminal
+        // punctuation should not be treated as a continuation, and the
+        // sentence boundary should still be respected.
+        let mut cfg = PostProcessConfig::default();
+        cfg.max_lines = 1;
+
+        let seg = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "Hello".into(), start: 0.0, end: 0.3, probability: None },
+                WordTimestamp { text: ".".into(),    start: 0.3, end: 0.4, probability: None },
+                // 0.05s gap after the period, no leading space, but not a real BPE continuation.
+                WordTimestamp { text: "World".into(), start: 0.45, end: 0.9, probability: None },
+                WordTimestamp { text: ".".into(),    start: 0.9, end: 1.0, probability: None },
+            ]),
+        };
+
+        let cues = process_segments(&[seg], &cfg);
+        assert!(cues.len() >= 2,
+            "expected separate cues after terminal punctuation, got {}: {:?}",
+            cues.len(), cues.iter().map(|c| &c.text).collect::<Vec<_>>());
+        let first = cues.first().unwrap().text.clone();
+        let second = cues.get(1).unwrap().text.clone();
+        assert!(first.contains("Hello"), "first cue should contain 'Hello': {:?}", first);
+        assert!(second.contains("World"), "second cue should contain 'World': {:?}", second);
     }
 }
