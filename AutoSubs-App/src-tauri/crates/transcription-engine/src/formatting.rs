@@ -344,12 +344,19 @@ pub fn process_segments(
         let speaker = seg.speaker_id.clone();
         let words: Vec<WordTimestamp> = match &seg.words {
             Some(ws) if !ws.is_empty() => ws.clone(),
-            _ => interpolate_segment_words(
-                &seg.text,
-                seg.start,
-                seg.end,
-                cfg.insert_interword_space,
-            ),
+            _ => {
+                let fallback_end = if seg.end > seg.start {
+                    seg.end
+                } else {
+                    seg.start + cfg.min_sub_dur.max(0.0)
+                };
+                interpolate_segment_words(
+                    &seg.text,
+                    seg.start,
+                    fallback_end,
+                    cfg.insert_interword_space,
+                )
+            }
         };
         for (w_idx, w) in words.into_iter().enumerate() {
             let is_first_in_seg = w_idx == 0;
@@ -918,8 +925,12 @@ fn schedule_min_duration(cues: &mut [Segment], min_duration: f64) {
         let desired_end = cues[index].end.max(cues[index].start + min_duration);
         cues[index].end = round3(desired_end.min(next_start).max(cues[index].start));
 
-        if let Some(last_word) = cues[index].words.as_mut().and_then(|words| words.last_mut()) {
-            last_word.end = last_word.end.min(cues[index].end);
+        let cue_end = cues[index].end;
+        if let Some(words) = cues[index].words.as_mut() {
+            for word in words {
+                word.end = word.end.min(cue_end);
+                word.start = word.start.min(word.end);
+            }
         }
     }
 }
@@ -1607,6 +1618,27 @@ mod tests {
     }
 
     #[test]
+    fn zero_duration_text_only_segments_use_minimum_display_duration() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.min_sub_dur = 2.0;
+        let segment = Segment {
+            start: 3.0,
+            end: 3.0,
+            text: "Fallback timing".into(),
+            words: None,
+            speaker_id: None,
+        };
+
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 1);
+        assert_eq!((cues[0].start, cues[0].end), (3.0, 5.0));
+        let words = cues[0].words.as_ref().unwrap();
+        assert_eq!(words.len(), 2);
+        assert!(words.iter().all(|word| word.start < word.end));
+        assert_eq!(words.last().unwrap().end, cues[0].end);
+    }
+
+    #[test]
     fn no_space_engine_tokens_remain_breakable() {
         let mut cfg = PostProcessConfig::for_language("ja");
         cfg.max_chars_per_line = 8;
@@ -1665,9 +1697,17 @@ mod tests {
             end: 2.0,
             text: String::new(),
             speaker_id: Some("A".into()),
-            words: Some(vec![WordTimestamp {
-                text: "First".into(), start: 0.0, end: 2.0, probability: None,
-            }]),
+            words: Some(vec![
+                WordTimestamp {
+                    text: "First".into(), start: 0.0, end: 2.0, probability: None,
+                },
+                WordTimestamp {
+                    text: " overlap".into(), start: 0.5, end: 2.5, probability: None,
+                },
+                WordTimestamp {
+                    text: " ends".into(), start: 1.0, end: 2.0, probability: None,
+                },
+            ]),
         };
         let second = Segment {
             start: 1.5,
@@ -1682,6 +1722,8 @@ mod tests {
         let cues = process_segments(&[first, second], &cfg);
         assert_eq!(cues.len(), 2);
         assert!(cues[0].end <= cues[1].start);
-        assert!(cues[0].words.as_ref().unwrap().last().unwrap().end <= cues[0].end);
+        assert!(cues[0].words.as_ref().unwrap().iter().all(|word| {
+            word.start <= word.end && word.end <= cues[0].end
+        }));
     }
 }
