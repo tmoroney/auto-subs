@@ -82,7 +82,6 @@ local luaresolve = nil
 local font_fallback = nil
 
 -- OS SPECIFIC CONFIGURATION
-local assets_path
 local resources_path
 local main_app
 local command_open
@@ -305,7 +304,7 @@ get_templates = function()
         print("Default template not found. Importing default template...")
         defaultTemplateImportAttempted = true
         pcall(function()
-            mediaPool:ImportFolderFromFile(join_path(assets_path, "caption-bin.drb"))
+            mediaPool:ImportFolderFromFile(join_path(resources_path, "caption-bin.drb"))
             -- Append the default template to the list
             table.insert(t, { label = ANIMATED_CAPTION, value = ANIMATED_CAPTION })
         end)
@@ -2097,8 +2096,6 @@ local AutoSubs = {
         json = require("dkjson")
         luaresolve = require("libavutil")
         font_fallback = require("font_fallback")
-
-        assets_path = join_path(resources_path, "AutoSubs")
         StartServer()
     end
 }

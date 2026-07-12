@@ -14,7 +14,6 @@ mkdir -p "$UTILITY_PATH"
 
 # Copy Lua file
 cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
-cp -r "$RESOURCES_PATH/AutoSubs" "$UTILITY_PATH"
 
 # Write JSON file with installation path
 echo "$INSTALL_PATH" > "$TEXT_FILE"

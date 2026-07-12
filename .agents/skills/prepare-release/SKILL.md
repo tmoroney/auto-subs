@@ -1,26 +1,11 @@
 ---
 name: prepare-release
-description: Use this skill whenever the user wants to prepare, cut, or draft a new release of AutoSubs. Trigger on phrases like "prepare for release", "cut a release", "make a release", "release the app", "draft a release", or any mention of publishing a new version. This skill reads commits since the last tag, writes user-facing release notes, recommends a semantic version bump, asks the user to confirm, updates all version files via the bump-version script, commits, tags, creates a draft GitHub release, and triggers the Mac/Linux packaging workflow.
+description: Use this skill whenever the user wants to prepare/draft a new release of AutoSubs. Trigger on phrases like "prepare for release", "make a release", "release the app", "draft a release", or any mention of publishing a new version. This skill reads commits since the last tag, writes user-facing release notes, recommends a semantic version bump, asks the user to confirm, updates all version files via the bump-version script, commits, tags, creates a draft GitHub release, and triggers the Mac/Linux packaging workflow.
 ---
 
 # Prepare a new AutoSubs release
 
-This skill turns release preparation into a single conversation. You (the
-agent) will gather the changelog, write user-friendly release notes, recommend
-a version bump, ask the user to confirm, bump the version everywhere, commit
-and tag, create a draft GitHub release, and trigger the Mac/Linux build
-workflow.
-
-## When to use
-
-Use this skill whenever the user says anything like:
-- "prepare for release"
-- "cut a release"
-- "make a release"
-- "draft a release"
-- "release the app"
-- "ship a new version"
-- "I want to publish the next version"
+This skill turns release preparation into a single conversation. You (the agent) will gather the changelog, write user-friendly release notes, recommend a version bump, ask the user to confirm, bump the version everywhere, commit and tag, create a draft GitHub release, and trigger the Mac/Linux build workflow.
 
 ## Pre-requisites
 
@@ -28,8 +13,7 @@ Before running, verify that these are available and configured:
 - `git` is available and the repo has a clean working tree.
 - `gh` CLI is authenticated and can create releases for `tmoroney/auto-subs`.
 - Node.js and npm are available in `AutoSubs-App/`.
-- The user is on a branch where they want to release from (usually `main` or
-  `enhance-model-manager`).
+- The user is on a branch where they want to release from (usually `main` or `enhance-model-manager`).
 
 > **Git state:** If there are uncommitted changes, stop and ask the user if they
 > want to commit, stash, or abort before continuing.
