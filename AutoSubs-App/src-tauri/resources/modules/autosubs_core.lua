@@ -15,7 +15,7 @@ local DEV_MODE = false
 -- Server Port
 local PORT = 56002
 
--- Windows FFI bindings for wide-character file operations to handle special characters in paths
+-- Platform-specific FFI bindings
 if ffi.os == "Windows" then
     ffi.cdef [[
         typedef wchar_t WCHAR;
@@ -31,6 +31,21 @@ if ffi.os == "Windows" then
         void* _wfopen(const WCHAR* filename, const WCHAR* mode);
         size_t fread(void* buffer, size_t size, size_t count, void* stream);
         int fclose(void* stream);
+
+        void Sleep(unsigned int ms);
+        int ShellExecuteA(
+            void* hwnd,
+            const char* lpOperation,
+            const char* lpFile,
+            const char* lpParameters,
+            const char* lpDirectory,
+            int nShowCmd);
+    ]]
+else
+    ffi.cdef [[
+        int system(const char *command);
+        struct timespec { long tv_sec; long tv_nsec; };
+        int nanosleep(const struct timespec *req, struct timespec *rem);
     ]]
 end
 
@@ -2062,32 +2077,13 @@ end
 local AutoSubs = {
     Init = function(self, executable_path, resources_folder, dev_mode)
         DEV_MODE = dev_mode
-        if ffi.os == "Windows" then
-            -- Define Windows API functions using FFI to prevent terminal opening
-            ffi.cdef [[
-                void Sleep(unsigned int ms);
-                int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
-            ]]
+        main_app = executable_path
+        resources_path = resources_folder
 
-            main_app = executable_path
-            resources_path = resources_folder
-            command_open = 'start "" "' .. main_app .. '"'
-        else
-            ffi.cdef [[
-                int system(const char *command);
-                struct timespec { long tv_sec; long tv_nsec; };
-                int nanosleep(const struct timespec *req, struct timespec *rem);
-            ]]
-
-            if ffi.os == "OSX" then
-                main_app = executable_path
-                resources_path = resources_folder
-                command_open = 'open ' .. main_app
-            else -- Linux
-                main_app = executable_path
-                resources_path = resources_folder
-                command_open = string.format("'%s' &", main_app)
-            end
+        if ffi.os == "OSX" then
+            command_open = 'open ' .. main_app
+        elseif ffi.os ~= "Windows" then -- Linux
+            command_open = string.format("'%s' &", main_app)
         end
 
         -- Set package path for module loading and import required modules
