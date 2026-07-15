@@ -15,7 +15,7 @@ local DEV_MODE = false
 -- Server Port
 local PORT = 56002
 
--- Windows FFI bindings for wide-character file operations to handle special characters in paths
+-- Platform-specific FFI bindings
 if ffi.os == "Windows" then
     ffi.cdef [[
         typedef wchar_t WCHAR;
@@ -31,6 +31,21 @@ if ffi.os == "Windows" then
         void* _wfopen(const WCHAR* filename, const WCHAR* mode);
         size_t fread(void* buffer, size_t size, size_t count, void* stream);
         int fclose(void* stream);
+
+        void Sleep(unsigned int ms);
+        int ShellExecuteA(
+            void* hwnd,
+            const char* lpOperation,
+            const char* lpFile,
+            const char* lpParameters,
+            const char* lpDirectory,
+            int nShowCmd);
+    ]]
+else
+    ffi.cdef [[
+        int system(const char *command);
+        struct timespec { long tv_sec; long tv_nsec; };
+        int nanosleep(const struct timespec *req, struct timespec *rem);
     ]]
 end
 
@@ -75,11 +90,52 @@ local function read_file(file_path)
     end
 end
 
+local function join_path(dir, filename)
+    local sep = package.config:sub(1, 1) -- returns '\\' on Windows, '/' elsewhere
+    -- Remove trailing separator from dir, if any
+    if dir:sub(-1) == sep then
+        return dir .. filename
+    else
+        return dir .. sep .. filename
+    end
+end
+
+-- Pause execution for a specified number of seconds (platform-independent)
+local function sleep(n)
+    if ffi.os == "Windows" then
+        ffi.C.Sleep(n * 1000)
+    else
+        local ts = ffi.new("struct timespec")
+        ts.tv_sec = math.floor(n)
+        ts.tv_nsec = (n - math.floor(n)) * 1e9
+        ffi.C.nanosleep(ts, nil)
+    end
+end
+
 -- Load external libraries
 local socket = nil
 local json = nil
 local luaresolve = nil
 local font_fallback = nil
+
+-- Function to read a JSON file. Returns the decoded table on success, or
+-- `nil, err` on failure so callers can surface the real reason.
+local function read_json_file(file_path)
+    local ok, content = pcall(read_file, file_path)
+    if not ok then
+        return nil, tostring(content)
+    end
+
+    -- Parse the JSON content
+    if json == nil or json.decode == nil then
+        return nil, "JSON library not available"
+    end
+    local data, _, err = json.decode(content, 1, nil)
+    if err then
+        return nil, tostring(err)
+    end
+    return data
+end
 
 -- OS SPECIFIC CONFIGURATION
 local assets_path
@@ -143,12 +199,6 @@ local currentExportJob = {
     savedMarks = nil       -- raw GetMarkInOut() dict (relative frame values)
 }
 
--- UTF-8 aware character count
-local function utf8len(s)
-    local _, count = s:gsub("[^\128-\191]", "")
-    return count
-end
-
 -- Helper that wraps a Resolve-facing operation in pcall and returns a
 -- structured `{ error = <short reason>, detail = <underlying error> }` on
 -- failure, or the function's result on success. Used so the frontend error
@@ -156,35 +206,6 @@ end
 -- "something went wrong".
 local function make_error(short, detail)
     return { error = short, detail = tostring(detail or "") }
-end
-
--- Function to read a JSON file. Returns the decoded table on success, or
--- `nil, err` on failure so callers can surface the real reason.
-local function read_json_file(file_path)
-    local ok, content = pcall(read_file, file_path)
-    if not ok then
-        return nil, tostring(content)
-    end
-
-    -- Parse the JSON content
-    if json == nil or json.decode == nil then
-        return nil, "JSON library not available"
-    end
-    local data, _, err = json.decode(content, 1, nil)
-    if err then
-        return nil, tostring(err)
-    end
-    return data
-end
-
-local function join_path(dir, filename)
-    local sep = package.config:sub(1, 1) -- returns '\\' on Windows, '/' elsewhere
-    -- Remove trailing separator from dir, if any
-    if dir:sub(-1) == sep then
-        return dir .. filename
-    else
-        return dir .. sep .. filename
-    end
 end
 
 -- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
@@ -204,26 +225,6 @@ end
 -- Convert seconds to frames based on the timeline frame rate
 local function to_frames(seconds, frameRate)
     return seconds * frameRate
-end
-
--- Pause execution for a specified number of seconds (platform-independent)
-local function sleep(n)
-    if ffi.os == "Windows" then
-        ffi.C.Sleep(n * 1000)
-    else
-        local ts = ffi.new("struct timespec")
-        ts.tv_sec = math.floor(n)
-        ts.tv_nsec = (n - math.floor(n)) * 1e9
-        ffi.C.nanosleep(ts, nil)
-    end
-end
-
-local function create_response(body)
-    local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
-        "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
-
-    local response = header .. body
-    return response
 end
 
 -- input of time in seconds
@@ -1223,6 +1224,12 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     return clipList
 end
 
+-- UTF-8 aware character count
+local function utf8len(s)
+    local _, count = s:gsub("[^\128-\191]", "")
+    return count
+end
+
 local function to_word_timing(transcript_words, frameRate, segmentStart)
     local result = {}
     local startIndex = 0
@@ -1829,6 +1836,14 @@ local function send_exit_via_socket()
     end
 end
 
+local function create_response(body)
+    local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
+        "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
+
+    local response = header .. body
+    return response
+end
+
 function StartServer()
     -- Set up server socket configuration
     local info = assert(socket.find_first_address("127.0.0.1", PORT))
@@ -2062,32 +2077,13 @@ end
 local AutoSubs = {
     Init = function(self, executable_path, resources_folder, dev_mode)
         DEV_MODE = dev_mode
-        if ffi.os == "Windows" then
-            -- Define Windows API functions using FFI to prevent terminal opening
-            ffi.cdef [[
-                void Sleep(unsigned int ms);
-                int ShellExecuteA(void* hwnd, const char* lpOperation, const char* lpFile, const char* lpParameters, const char* lpDirectory, int nShowCmd);
-            ]]
+        main_app = executable_path
+        resources_path = resources_folder
 
-            main_app = executable_path
-            resources_path = resources_folder
-            command_open = 'start "" "' .. main_app .. '"'
-        else
-            ffi.cdef [[
-                int system(const char *command);
-                struct timespec { long tv_sec; long tv_nsec; };
-                int nanosleep(const struct timespec *req, struct timespec *rem);
-            ]]
-
-            if ffi.os == "OSX" then
-                main_app = executable_path
-                resources_path = resources_folder
-                command_open = 'open ' .. main_app
-            else -- Linux
-                main_app = executable_path
-                resources_path = resources_folder
-                command_open = string.format("'%s' &", main_app)
-            end
+        if ffi.os == "OSX" then
+            command_open = 'open ' .. main_app
+        elseif ffi.os ~= "Windows" then -- Linux
+            command_open = string.format("'%s' &", main_app)
         end
 
         -- Set package path for module loading and import required modules
