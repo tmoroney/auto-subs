@@ -116,14 +116,28 @@ local function find_clip_by_name(folder, name)
     return nil
 end
 
-local function write_version_module(version)
-    local file, err = io.open(PATHS.versionModule, "w")
+local function read_file(path)
+    local file = io.open(path, "rb")
+    if not file then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    return content
+end
+
+local function write_file(path, content)
+    local file, err = io.open(path, "wb")
     if not file then
         return false, err
     end
-    file:write("return " .. string.format("%q", version) .. "\n")
+    file:write(content)
     file:close()
     return true
+end
+
+local function write_version_module(version)
+    return write_file(PATHS.versionModule, "return " .. string.format("%q", version) .. "\n")
 end
 
 ------------------------------------------------------------------------
@@ -265,22 +279,55 @@ local function step_version_and_export(updatedBin, newTemplate)
     print("  Renamed template → " .. VERSIONED_CAPTION)
 
     local tmpBin = PATHS.captionBin .. ".tmp.drb"
+    local bakBin = PATHS.captionBin .. ".bak.drb"
+    os.remove(tmpBin)
+    os.remove(bakBin)
+
     if not updatedBin:Export(tmpBin) then
         return nil, "Failed to export caption bin"
     end
 
-    local ok, err = write_version_module(TEMPLATE_VERSION)
-    if not ok then
-        os.remove(tmpBin)
-        return nil, "Failed to write caption template version: " .. tostring(err)
+    -- Keep the previous bin intact until the new one is in place, so a failed
+    -- promote never leaves the repo without caption-bin.drb.
+    local probe = io.open(PATHS.captionBin, "rb")
+    local hadOld = probe ~= nil
+    if probe then
+        probe:close()
     end
 
-    os.remove(PATHS.captionBin)
+    if hadOld then
+        local bakOk, bakErr = os.rename(PATHS.captionBin, bakBin)
+        if not bakOk then
+            os.remove(tmpBin)
+            return nil, "Failed to backup caption bin: " .. tostring(bakErr)
+        end
+    end
+
     local renameOk, renameErr = os.rename(tmpBin, PATHS.captionBin)
     if not renameOk then
+        os.remove(tmpBin)
+        if hadOld then
+            os.rename(bakBin, PATHS.captionBin)
+        end
         return nil, "Failed to replace caption bin: " .. tostring(renameErr)
     end
 
+    -- Version module last: on failure restore the previous bin + version so the
+    -- artifact pair never diverges.
+    local previousVersion = read_file(PATHS.versionModule)
+    local ok, err = write_version_module(TEMPLATE_VERSION)
+    if not ok then
+        os.remove(PATHS.captionBin)
+        if hadOld then
+            os.rename(bakBin, PATHS.captionBin)
+        end
+        if previousVersion then
+            write_file(PATHS.versionModule, previousVersion)
+        end
+        return nil, "Failed to write caption template version: " .. tostring(err)
+    end
+
+    os.remove(bakBin)
     print("  Exported caption-bin.drb + version " .. TEMPLATE_VERSION)
     return true
 end
