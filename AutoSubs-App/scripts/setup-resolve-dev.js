@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { execFileSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,16 +38,58 @@ function getResolveScriptsPath() {
   }
 }
 
-// Placeholder that the dev launcher template expects to have replaced with the
-// absolute path to this checkout's `src-tauri/resources` folder.
+// Placeholders that templates expect to have replaced with absolute paths.
 const RESOURCES_PLACEHOLDER = '[[__AUTOSUBS_RESOURCES_FOLDER__]]';
+const REPO_PATH_PLACEHOLDER = '[[__AUTOSUBS_REPO_PATH__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
+const CAPTION_UPDATER_NAME = 'AutoSubs - Update Caption Template.lua';
 
 // Older name this script used to generate; cleaned up so contributors don't end
 // up with a duplicate, stale entry in the Resolve Scripts menu.
 const LEGACY_LAUNCHER_NAME = 'Testing-AutoSubs.lua';
+
+// On Windows, Resolve's Lua io.open, os.rename and bmd.readfile use narrow
+// (ANSI) APIs, so a checkout under a non-ASCII path breaks the updater. Use
+// the 8.3 short path for the repo root to keep the generated REPO_PATH ASCII.
+function isAsciiSafe(p) {
+  for (let i = 0; i < p.length; i += 1) {
+    if (p.charCodeAt(i) > 127) return false;
+  }
+  return true;
+}
+
+function toWindowsShortPath(longPath) {
+  if (process.platform !== 'win32') return longPath;
+
+  const escaped = longPath.replace(/'/g, "''");
+  const command = [
+    `Add-Type -Name Win32 -Namespace Kernel32 -MemberDefinition '[DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathNameW(string lpszLongPath, System.Text.StringBuilder lpszShortPath, int cchBuffer);'`,
+    `$short = New-Object System.Text.StringBuilder 260`,
+    `[Kernel32.Win32]::GetShortPathNameW('${escaped}', $short, $short.Capacity) | Out-Null`,
+    `$short.ToString()`,
+  ].join('; ');
+
+  let shortPath;
+  try {
+    shortPath = execFileSync('powershell', ['-Command', command], { encoding: 'utf8' }).trim();
+  } catch {
+    shortPath = '';
+  }
+
+  if (shortPath && isAsciiSafe(shortPath)) {
+    return shortPath;
+  }
+  if (isAsciiSafe(longPath)) {
+    return longPath;
+  }
+
+  console.error(`❌ Repository path contains non-ASCII characters and Windows 8.3 short names are disabled or unavailable.`);
+  console.error(`   Move the checkout to an ASCII-only path (e.g. C:\\AutoSubs) or enable 8.3 short names.`);
+  console.error(`   Path: ${longPath}`);
+  process.exit(1);
+}
 
 function setupResolveDev() {
   console.log('Setting up Resolve integration for development...');
@@ -55,6 +98,8 @@ function setupResolveDev() {
   const resourcesFolder = path.join(__dirname, '..', 'src-tauri', 'resources');
   const sourceFile = path.join(resourcesFolder, LAUNCHER_NAME);
   const destFile = path.join(resolvePath, LAUNCHER_NAME);
+  const captionUpdaterSource = path.join(__dirname, '..', '..', 'Resolve-Integration', 'scripts', CAPTION_UPDATER_NAME);
+  const captionUpdaterDest = path.join(resolvePath, CAPTION_UPDATER_NAME);
 
   // Check if source template exists
   if (!fs.existsSync(sourceFile)) {
@@ -109,6 +154,44 @@ function setupResolveDev() {
     console.log(`   Destination: ${destFile}`);
   } catch (err) {
     console.error(`❌ Failed to write ${LAUNCHER_NAME}: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(captionUpdaterSource)) {
+    console.error(`❌ Caption updater source file not found: ${captionUpdaterSource}`);
+    process.exit(1);
+  }
+
+  // Bake the absolute repo path into the caption updater (same pattern as the
+  // dev launcher). Generates a Resolve-side copy so every contributor's machine
+  // points at their own checkout.
+  const repoRoot = path.resolve(__dirname, '..', '..');
+  let captionUpdater;
+  try {
+    captionUpdater = fs.readFileSync(captionUpdaterSource, 'utf8');
+  } catch (err) {
+    console.error(`❌ Failed to read caption updater template: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (!captionUpdater.includes(REPO_PATH_PLACEHOLDER)) {
+    console.error(`❌ Caption updater is missing the expected placeholder ${REPO_PATH_PLACEHOLDER}.`);
+    console.error(`   File: ${captionUpdaterSource}`);
+    process.exit(1);
+  }
+
+  const repoPath = toWindowsShortPath(repoRoot);
+  captionUpdater = captionUpdater.replace(REPO_PATH_PLACEHOLDER, `[[${repoPath}]]`);
+
+  try {
+    // Remove a previous symlink/copy first so writeFileSync always replaces it.
+    fs.rmSync(captionUpdaterDest, { force: true });
+    fs.writeFileSync(captionUpdaterDest, captionUpdater);
+    console.log(`✓ ${CAPTION_UPDATER_NAME} generated successfully`);
+    console.log(`   Repo: ${repoPath}`);
+    console.log(`   Destination: ${captionUpdaterDest}`);
+  } catch (err) {
+    console.error(`❌ Failed to write ${CAPTION_UPDATER_NAME}: ${err.message}`);
     process.exit(1);
   }
 

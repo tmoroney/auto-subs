@@ -181,7 +181,7 @@ irm https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master
 
 You need a Fusion text clip on the timeline to open in the Fusion page. The easiest starting point is the "AutoSubs Caption" clip in the **AutoSubs** bin in your media pool:
 
-1. If the bin isn't in your media pool, drag `AutoSubs-App/src-tauri/resources/AutoSubs/caption-bin.drb` into the media pool to import it.
+1. If the bin isn't in your media pool, drag `AutoSubs-App/src-tauri/resources/caption-bin.drb` into the media pool to import it.
 2. Drag the **AutoSubs Caption** clip from the bin onto the timeline.
 3. Double-click the clip to open it in the Fusion page.
 4. Delete the existing macro node.
@@ -257,7 +257,7 @@ To regenerate the bin:
 1. In Resolve, drag the Fusion Text with the updated macro loaded into your media pool.
 2. Name the clip exactly **"AutoSubs Caption"** — this name is hardcoded in `autosubs_core.lua`.
 3. Replace the current clip in the **AutoSubs** bin, then export the bin.
-4. Replace `AutoSubs-App/src-tauri/resources/AutoSubs/caption-bin.drb` with the exported file.
+4. Replace `AutoSubs-App/src-tauri/resources/caption-bin.drb` with the exported file.
 
 ## Platform-Specific Notes
 
