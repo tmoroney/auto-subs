@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { execFileSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,28 @@ const CAPTION_UPDATER_NAME = 'AutoSubs - Update Caption Template.lua';
 // Older name this script used to generate; cleaned up so contributors don't end
 // up with a duplicate, stale entry in the Resolve Scripts menu.
 const LEGACY_LAUNCHER_NAME = 'Testing-AutoSubs.lua';
+
+// On Windows, Resolve's Lua io.open, os.rename and bmd.readfile use narrow
+// (ANSI) APIs, so a checkout under a non-ASCII path breaks the updater. Use
+// the 8.3 short path for the repo root to keep the generated REPO_PATH ASCII.
+function toWindowsShortPath(longPath) {
+  if (process.platform !== 'win32') return longPath;
+
+  const escaped = longPath.replace(/'/g, "''");
+  const command = [
+    `Add-Type -Name Win32 -Namespace Kernel32 -MemberDefinition '[DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathNameW(string lpszLongPath, System.Text.StringBuilder lpszShortPath, int cchBuffer);'`,
+    `$short = New-Object System.Text.StringBuilder 260`,
+    `[Kernel32.Win32]::GetShortPathNameW('${escaped}', $short, $short.Capacity) | Out-Null`,
+    `$short.ToString()`,
+  ].join('; ');
+
+  try {
+    const shortPath = execFileSync('powershell', ['-Command', command], { encoding: 'utf8' }).trim();
+    return shortPath || longPath;
+  } catch {
+    return longPath;
+  }
+}
 
 function setupResolveDev() {
   console.log('Setting up Resolve integration for development...');
@@ -138,14 +161,15 @@ function setupResolveDev() {
     process.exit(1);
   }
 
-  captionUpdater = captionUpdater.replace(REPO_PATH_PLACEHOLDER, `[[${repoRoot}]]`);
+  const repoPath = toWindowsShortPath(repoRoot);
+  captionUpdater = captionUpdater.replace(REPO_PATH_PLACEHOLDER, `[[${repoPath}]]`);
 
   try {
     // Remove a previous symlink/copy first so writeFileSync always replaces it.
     fs.rmSync(captionUpdaterDest, { force: true });
     fs.writeFileSync(captionUpdaterDest, captionUpdater);
     console.log(`✓ ${CAPTION_UPDATER_NAME} generated successfully`);
-    console.log(`   Repo: ${repoRoot}`);
+    console.log(`   Repo: ${repoPath}`);
     console.log(`   Destination: ${captionUpdaterDest}`);
   } catch (err) {
     console.error(`❌ Failed to write ${CAPTION_UPDATER_NAME}: ${err.message}`);

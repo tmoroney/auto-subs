@@ -116,6 +116,14 @@ local function find_clip_by_name(folder, name)
     return nil
 end
 
+local function rollback_media_pool_changes(originalBin, updatedBin)
+    local basicTemplate = find_clip_by_name(updatedBin, BASIC_TEMPLATE)
+    if basicTemplate then
+        mediaPool:MoveClips({ basicTemplate }, originalBin)
+    end
+    mediaPool:DeleteFolders({ updatedBin })
+end
+
 local function read_file(path)
     local file = io.open(path, "rb")
     if not file then
@@ -317,9 +325,22 @@ local function step_version_and_export(updatedBin, newTemplate)
     local previousVersion = read_file(PATHS.versionModule)
     local ok, err = write_version_module(TEMPLATE_VERSION)
     if not ok then
-        os.remove(PATHS.captionBin)
         if hadOld then
-            os.rename(bakBin, PATHS.captionBin)
+            -- Restore the previous artifact before discarding the promoted one. If
+            -- the restore fails, put the promoted artifact back so the repo never
+            -- loses its packaged caption-bin.drb.
+            local recovery = PATHS.captionBin .. ".recovery.drb"
+            os.remove(recovery)
+            os.rename(PATHS.captionBin, recovery)
+            local restoreOk, restoreErr = os.rename(bakBin, PATHS.captionBin)
+            if not restoreOk then
+                os.rename(recovery, PATHS.captionBin)
+                if previousVersion then
+                    write_file(PATHS.versionModule, previousVersion)
+                end
+                return nil, "Failed to write caption template version and could not restore previous caption bin: " .. tostring(restoreErr)
+            end
+            os.remove(recovery)
         end
         if previousVersion then
             write_file(PATHS.versionModule, previousVersion)
@@ -377,6 +398,7 @@ end
 
 local clip, updateErr = step_update_caption_template(template)
 if not clip then
+    rollback_media_pool_changes(originalBin, updatedBin)
     return abort(updateErr)
 end
 
