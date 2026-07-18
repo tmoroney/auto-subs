@@ -22,17 +22,40 @@ local mediaPool = project:GetMediaPool()
 -- Config
 ------------------------------------------------------------------------
 
-local REPO_PATH = "/Users/moroneyt/Documents/AutoSubsV3"
+-- `npm run setup-resolve` replaces this placeholder with the absolute path to
+-- the local checkout. Do not hardcode a machine-specific path here.
+local REPO_PATH = [[__AUTOSUBS_REPO_PATH__]]
+if REPO_PATH == "__AUTOSUBS_REPO_PATH__" then
+    error(
+        "'AutoSubs - Update Caption Template.lua' has not been generated yet. " ..
+        "Run `npm run setup-resolve` from the AutoSubs-App directory."
+    )
+end
+
 local ANIMATED_CAPTION = "AutoSubs Caption"
 local AUTOSUBS_BIN = "AutoSubs"
 local BASIC_TEMPLATE = "Basic Template"
 local TEMPLATE_VERSION = os.date("%Y-%m-%d")
 local VERSIONED_CAPTION = ANIMATED_CAPTION .. " " .. TEMPLATE_VERSION
 
+local sep = package.config:sub(1, 1) -- '\\' on Windows, '/' elsewhere
+local function join_path(dir, ...)
+    local parts = { ... }
+    local path = dir
+    for i = 1, #parts do
+        if path:sub(-1) == sep then
+            path = path .. parts[i]
+        else
+            path = path .. sep .. parts[i]
+        end
+    end
+    return path
+end
+
 local PATHS = {
-    captionBin = REPO_PATH .. "/AutoSubs-App/src-tauri/resources/caption-bin.drb",
-    macro = REPO_PATH .. "/Resolve-Integration/autosubs-macro.setting",
-    versionModule = REPO_PATH .. "/AutoSubs-App/src-tauri/resources/modules/caption_template_version.lua",
+    captionBin = join_path(REPO_PATH, "AutoSubs-App", "src-tauri", "resources", "caption-bin.drb"),
+    macro = join_path(REPO_PATH, "Resolve-Integration", "autosubs-macro.setting"),
+    versionModule = join_path(REPO_PATH, "AutoSubs-App", "src-tauri", "resources", "modules", "caption_template_version.lua"),
 }
 
 ------------------------------------------------------------------------

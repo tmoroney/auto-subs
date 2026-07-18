@@ -53,7 +53,7 @@ Check whether the Fusion caption macro has changed since the last release:
 git diff --name-only ${LAST_TAG}..HEAD -- Resolve-Integration/autosubs-macro.setting
 ```
 
-If that command prints `Resolve-Integration/autosubs-macro.setting`, make an explicit note that `autosubs-macro.setting` has changed. Advise the user to open a project in DaVinci Resolve and run **AutoSubs - Update Caption Template** from the **Workspace -> Scripts** menu to regenerate `AutoSubs-App/src-tauri/resources/caption-bin.drb` before finalizing the release. (The script is symlinked there by `AutoSubs-App/scripts/setup-resolve-dev.js`.)
+If that command prints `Resolve-Integration/autosubs-macro.setting`, make an explicit note that `autosubs-macro.setting` has changed. Advise the user to open a project in DaVinci Resolve and run **AutoSubs - Update Caption Template** from the **Workspace -> Scripts** menu to regenerate `AutoSubs-App/src-tauri/resources/caption-bin.drb` before finalizing the release. (The script is generated there by `AutoSubs-App/scripts/setup-resolve-dev.js` with your checkout path baked in.)
 
 ### 3. Write user-facing release notes
 

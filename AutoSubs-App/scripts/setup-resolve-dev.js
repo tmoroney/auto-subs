@@ -37,9 +37,9 @@ function getResolveScriptsPath() {
   }
 }
 
-// Placeholder that the dev launcher template expects to have replaced with the
-// absolute path to this checkout's `src-tauri/resources` folder.
+// Placeholders that templates expect to have replaced with absolute paths.
 const RESOURCES_PLACEHOLDER = '[[__AUTOSUBS_RESOURCES_FOLDER__]]';
+const REPO_PATH_PLACEHOLDER = '[[__AUTOSUBS_REPO_PATH__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
@@ -120,19 +120,36 @@ function setupResolveDev() {
     process.exit(1);
   }
 
+  // Bake the absolute repo path into the caption updater (same pattern as the
+  // dev launcher). Generates a Resolve-side copy so every contributor's machine
+  // points at their own checkout.
+  const repoRoot = path.resolve(__dirname, '..', '..');
+  let captionUpdater;
   try {
+    captionUpdater = fs.readFileSync(captionUpdaterSource, 'utf8');
+  } catch (err) {
+    console.error(`❌ Failed to read caption updater template: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (!captionUpdater.includes(REPO_PATH_PLACEHOLDER)) {
+    console.error(`❌ Caption updater is missing the expected placeholder ${REPO_PATH_PLACEHOLDER}.`);
+    console.error(`   File: ${captionUpdaterSource}`);
+    process.exit(1);
+  }
+
+  captionUpdater = captionUpdater.replace(REPO_PATH_PLACEHOLDER, `[[${repoRoot}]]`);
+
+  try {
+    // Remove a previous symlink/copy first so writeFileSync always replaces it.
     fs.rmSync(captionUpdaterDest, { force: true });
-    fs.symlinkSync(captionUpdaterSource, captionUpdaterDest, 'file');
-    console.log(`✓ ${CAPTION_UPDATER_NAME} linked successfully`);
-  } catch (linkErr) {
-    try {
-      fs.rmSync(captionUpdaterDest, { force: true });
-      fs.copyFileSync(captionUpdaterSource, captionUpdaterDest);
-      console.warn(`⚠ Could not create a symlink; copied ${CAPTION_UPDATER_NAME} instead`);
-    } catch (copyErr) {
-      console.error(`❌ Failed to install ${CAPTION_UPDATER_NAME}: ${copyErr.message}`);
-      process.exit(1);
-    }
+    fs.writeFileSync(captionUpdaterDest, captionUpdater);
+    console.log(`✓ ${CAPTION_UPDATER_NAME} generated successfully`);
+    console.log(`   Repo: ${repoRoot}`);
+    console.log(`   Destination: ${captionUpdaterDest}`);
+  } catch (err) {
+    console.error(`❌ Failed to write ${CAPTION_UPDATER_NAME}: ${err.message}`);
+    process.exit(1);
   }
 
   // Remove any launcher generated under the old name so it doesn't linger as a
