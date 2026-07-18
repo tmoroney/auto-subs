@@ -43,6 +43,7 @@ const RESOURCES_PLACEHOLDER = '[[__AUTOSUBS_RESOURCES_FOLDER__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
+const CAPTION_UPDATER_NAME = 'AutoSubs - Update Caption Template.lua';
 
 // Older name this script used to generate; cleaned up so contributors don't end
 // up with a duplicate, stale entry in the Resolve Scripts menu.
@@ -55,6 +56,8 @@ function setupResolveDev() {
   const resourcesFolder = path.join(__dirname, '..', 'src-tauri', 'resources');
   const sourceFile = path.join(resourcesFolder, LAUNCHER_NAME);
   const destFile = path.join(resolvePath, LAUNCHER_NAME);
+  const captionUpdaterSource = path.join(__dirname, '..', '..', 'Resolve-Integration', 'scripts', CAPTION_UPDATER_NAME);
+  const captionUpdaterDest = path.join(resolvePath, CAPTION_UPDATER_NAME);
 
   // Check if source template exists
   if (!fs.existsSync(sourceFile)) {
@@ -110,6 +113,26 @@ function setupResolveDev() {
   } catch (err) {
     console.error(`❌ Failed to write ${LAUNCHER_NAME}: ${err.message}`);
     process.exit(1);
+  }
+
+  if (!fs.existsSync(captionUpdaterSource)) {
+    console.error(`❌ Caption updater source file not found: ${captionUpdaterSource}`);
+    process.exit(1);
+  }
+
+  try {
+    fs.rmSync(captionUpdaterDest, { force: true });
+    fs.symlinkSync(captionUpdaterSource, captionUpdaterDest, 'file');
+    console.log(`✓ ${CAPTION_UPDATER_NAME} linked successfully`);
+  } catch (linkErr) {
+    try {
+      fs.rmSync(captionUpdaterDest, { force: true });
+      fs.copyFileSync(captionUpdaterSource, captionUpdaterDest);
+      console.warn(`⚠ Could not create a symlink; copied ${CAPTION_UPDATER_NAME} instead`);
+    } catch (copyErr) {
+      console.error(`❌ Failed to install ${CAPTION_UPDATER_NAME}: ${copyErr.message}`);
+      process.exit(1);
+    }
   }
 
   // Remove any launcher generated under the old name so it doesn't linger as a
