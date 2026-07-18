@@ -147,7 +147,11 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
-local ANIMATED_CAPTION = "AutoSubs Caption"
+local ANIMATED_CAPTION_DISPLAY_NAME = "AutoSubs Caption"
+local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
+local ANIMATED_CAPTION = ANIMATED_CAPTION_DISPLAY_NAME .. " " .. CAPTION_TEMPLATE_VERSION
+local AUTOSUBS_BIN = "AutoSubs"
+local STAGING_BIN = "AutoSubs New"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
 
@@ -282,34 +286,133 @@ local get_template_item
 local get_video_tracks
 local get_audio_tracks
 
+local function is_animated_caption(templateName)
+    return type(templateName) == "string" and
+        (templateName == ANIMATED_CAPTION_DISPLAY_NAME or
+            templateName:sub(1, #ANIMATED_CAPTION_DISPLAY_NAME + 1) == ANIMATED_CAPTION_DISPLAY_NAME .. " ")
+end
+
+local function resolve_template_name(templateName)
+    if templateName == ANIMATED_CAPTION_DISPLAY_NAME then
+        return ANIMATED_CAPTION
+    end
+    return templateName
+end
+
+local function get_root_subfolder(rootFolder, folderName)
+    for _, subfolder in ipairs(rootFolder:GetSubFolderList()) do
+        if subfolder:GetName() == folderName then
+            return subfolder
+        end
+    end
+    return nil
+end
+
+local function get_folder_template_item(folder, templateName)
+    for _, clip in ipairs(folder:GetClipList()) do
+        local props = clip:GetClipProperty()
+        if props["Clip Name"] == templateName and is_matching_title(props["Type"]) then
+            return clip
+        end
+    end
+    return nil
+end
+
+local function find_default_template(rootFolder)
+    local autosubsFolder = get_root_subfolder(rootFolder, AUTOSUBS_BIN)
+    if autosubsFolder then
+        local template = get_folder_template_item(autosubsFolder, ANIMATED_CAPTION)
+        if template then
+            return template, autosubsFolder
+        end
+    end
+
+    for _, subfolder in ipairs(rootFolder:GetSubFolderList()) do
+        local template = get_folder_template_item(subfolder, ANIMATED_CAPTION)
+        if template then
+            return template, subfolder
+        end
+    end
+    return nil, nil
+end
+
+local function move_default_template(rootFolder, template, sourceFolder)
+    local autosubsFolder = get_root_subfolder(rootFolder, AUTOSUBS_BIN)
+    if not autosubsFolder then
+        autosubsFolder = mediaPool:AddSubFolder(rootFolder, AUTOSUBS_BIN)
+    end
+    if not autosubsFolder then
+        print("Failed to create AutoSubs media pool folder")
+        return nil
+    end
+    if sourceFolder:GetUniqueId() == autosubsFolder:GetUniqueId() then
+        return template
+    end
+
+    local moved, moveResult = pcall(function()
+        return mediaPool:MoveClips({ template }, autosubsFolder)
+    end)
+    if not moved or not moveResult then
+        print("Failed to move default template into AutoSubs media pool folder")
+        return nil
+    end
+
+    local sourceFolderName = sourceFolder:GetName()
+    local isStagingFolder = sourceFolderName == STAGING_BIN or
+        sourceFolderName:sub(1, #STAGING_BIN + 1) == STAGING_BIN .. " "
+    if isStagingFolder and #sourceFolder:GetClipList() == 0 and #sourceFolder:GetSubFolderList() == 0 then
+        pcall(function()
+            mediaPool:DeleteFolders({ sourceFolder })
+        end)
+    end
+    return template
+end
+
+-- Add default template to mediapool if not available (get version with resolve:GetVersion()[1])
+local function ensure_default_template(rootFolder)
+    local template, sourceFolder = find_default_template(rootFolder)
+    if template then
+        return move_default_template(rootFolder, template, sourceFolder)
+    end
+    if defaultTemplateImportAttempted then
+        return nil
+    end
+
+    print("Default template not found. Importing default template...")
+    defaultTemplateImportAttempted = true
+    local imported, importResult = pcall(function()
+        return mediaPool:ImportFolderFromFile(join_path(resources_path, "caption-bin.drb"))
+    end)
+    if not imported or not importResult then
+        print("Failed to import default template")
+        return nil
+    end
+
+    template, sourceFolder = find_default_template(rootFolder)
+    if not template then
+        print("Imported caption bin did not contain '" .. ANIMATED_CAPTION .. "'")
+        return nil
+    end
+    return move_default_template(rootFolder, template, sourceFolder)
+end
+
 -- Get a list of all Text+ templates in the media pool
 get_templates = function()
     local rootFolder = mediaPool:GetRootFolder()
     local t = {}
-    local hasDefault = false
+    local hasDefault = ensure_default_template(rootFolder) ~= nil
 
     walk_media_pool(rootFolder, function(clip)
         local props = clip:GetClipProperty()
         local clipType = props["Type"]
         if is_matching_title(clipType) then
             local clipName = props["Clip Name"]
-            table.insert(t, { label = clipName, value = clipName })
-            if clipName == ANIMATED_CAPTION then
-                hasDefault = true
+            if not (hasDefault and clipName == ANIMATED_CAPTION_DISPLAY_NAME) then
+                local displayName = clipName == ANIMATED_CAPTION and ANIMATED_CAPTION_DISPLAY_NAME or clipName
+                table.insert(t, { label = displayName, value = displayName })
             end
         end
     end)
-
-    -- Add default template to mediapool if not available (get version with resolve:GetVersion()[1])
-    if not hasDefault and not defaultTemplateImportAttempted then
-        print("Default template not found. Importing default template...")
-        defaultTemplateImportAttempted = true
-        pcall(function()
-            mediaPool:ImportFolderFromFile(join_path(resources_path, "caption-bin.drb"))
-            -- Append the default template to the list
-            table.insert(t, { label = ANIMATED_CAPTION, value = ANIMATED_CAPTION })
-        end)
-    end
 
     return t
 end
@@ -317,6 +420,7 @@ end
 -- Find the template item with the specified name using media pool traversal
 get_template_item = function(folder, templateName)
     local found = nil
+    templateName = resolve_template_name(templateName)
     walk_media_pool(folder, function(clip)
         local props = clip:GetClipProperty()
         if props["Clip Name"] == templateName then
@@ -1031,12 +1135,10 @@ end
 
 local function get_template(rootFolder, templateName)
     if templateName == "" then
-        local availableTemplates = get_templates()
-        if #availableTemplates > 0 then
-            templateName = availableTemplates[1].value
-        end
+        templateName = ANIMATED_CAPTION
     end
 
+    templateName = resolve_template_name(templateName)
     local templateItem = nil
     local resolvedName = templateName -- tracks which template was actually found
     if templateName ~= nil and templateName ~= "" then
@@ -1437,7 +1539,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
 
     -- Use the resolved template name so a fallback to ANIMATED_CAPTION still
     -- enables the animated-text path.
-    local isAnimated = resolvedTemplateName == ANIMATED_CAPTION and true or false
+    local isAnimated = is_animated_caption(resolvedTemplateName)
 
     -- Auto-swap the caption Font for non-Latin transcript languages when the
     -- user is still on the macro's default font. Uses the transcript JSON's
@@ -1591,7 +1693,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
     local timelineItem = appended[1]
 
-    local isAnimated = templateName == ANIMATED_CAPTION and true or false
+    local isAnimated = is_animated_caption(templateName)
     local fontSwap = nil
     if isAnimated and font_fallback then
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
