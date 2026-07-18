@@ -275,7 +275,7 @@ local function walk_media_pool(folder, onClip)
 
     -- Visit all clips in this folder
     for _, clip in ipairs(folder:GetClipList()) do
-        local stop = onClip(clip)
+        local stop = onClip(clip, folder)
         if stop then return true end
     end
 end
@@ -307,6 +307,19 @@ local function get_root_subfolder(rootFolder, folderName)
     return nil
 end
 
+local function find_template_item(folder, templateName)
+    local template, sourceBin
+    templateName = resolve_template_name(templateName)
+    walk_media_pool(folder, function(clip, clipFolder)
+        if clip:GetClipProperty()["Clip Name"] == templateName then
+            template = clip
+            sourceBin = clipFolder
+            return true
+        end
+    end)
+    return template, sourceBin
+end
+
 local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate)
     local obsoleteTemplates = {}
     local currentTemplateId = currentTemplate:GetUniqueId()
@@ -330,7 +343,7 @@ end
 
 -- Add default template to mediapool if not available (get version with resolve:GetVersion()[1])
 local function ensure_default_template(rootFolder)
-    local template = get_template_item(rootFolder, ANIMATED_CAPTION)
+    local template = find_template_item(rootFolder, ANIMATED_CAPTION)
     if template then
         return template
     end
@@ -359,8 +372,9 @@ local function ensure_default_template(rootFolder)
         return nil
     end
 
-    template = get_template_item(rootFolder, ANIMATED_CAPTION)
-    if not template then
+    local sourceBin
+    template, sourceBin = find_template_item(rootFolder, ANIMATED_CAPTION)
+    if not template or not sourceBin then
         print("Imported caption bin did not contain '" .. ANIMATED_CAPTION .. "'")
         return nil
     end
@@ -377,6 +391,11 @@ local function ensure_default_template(rootFolder)
     end
 
     delete_obsolete_caption_templates(targetBin, template)
+    local remainingClips = sourceBin:GetClipList()
+    if #remainingClips > 0 then
+        mediaPool:DeleteClips(remainingClips)
+    end
+    mediaPool:DeleteFolders({ sourceBin })
     return template
 end
 
@@ -402,18 +421,7 @@ get_templates = function()
 end
 
 -- Find the template item with the specified name using media pool traversal
-get_template_item = function(folder, templateName)
-    local found = nil
-    templateName = resolve_template_name(templateName)
-    walk_media_pool(folder, function(clip)
-        local props = clip:GetClipProperty()
-        if props["Clip Name"] == templateName then
-            found = clip
-            return true -- early stop traversal
-        end
-    end)
-    return found
-end
+get_template_item = find_template_item
 
 function GetTimelineInfo()
     -- Get project and media pool (resets template-import flag on project switch)
