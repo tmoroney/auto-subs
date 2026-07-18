@@ -335,9 +335,9 @@ local function step_version_and_export(updatedBin, newTemplate)
             local restoreOk, restoreErr = os.rename(bakBin, PATHS.captionBin)
             if not restoreOk then
                 os.rename(recovery, PATHS.captionBin)
-                if previousVersion then
-                    write_file(PATHS.versionModule, previousVersion)
-                end
+                -- The promoted bin is the new one; keep the version module paired
+                -- with it instead of reverting to the previous version.
+                write_version_module(TEMPLATE_VERSION)
                 return nil, "Failed to write caption template version and could not restore previous caption bin: " .. tostring(restoreErr)
             end
             os.remove(recovery)

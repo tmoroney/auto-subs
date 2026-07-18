@@ -53,6 +53,13 @@ const LEGACY_LAUNCHER_NAME = 'Testing-AutoSubs.lua';
 // On Windows, Resolve's Lua io.open, os.rename and bmd.readfile use narrow
 // (ANSI) APIs, so a checkout under a non-ASCII path breaks the updater. Use
 // the 8.3 short path for the repo root to keep the generated REPO_PATH ASCII.
+function isAsciiSafe(p) {
+  for (let i = 0; i < p.length; i += 1) {
+    if (p.charCodeAt(i) > 127) return false;
+  }
+  return true;
+}
+
 function toWindowsShortPath(longPath) {
   if (process.platform !== 'win32') return longPath;
 
@@ -64,12 +71,24 @@ function toWindowsShortPath(longPath) {
     `$short.ToString()`,
   ].join('; ');
 
+  let shortPath;
   try {
-    const shortPath = execFileSync('powershell', ['-Command', command], { encoding: 'utf8' }).trim();
-    return shortPath || longPath;
+    shortPath = execFileSync('powershell', ['-Command', command], { encoding: 'utf8' }).trim();
   } catch {
+    shortPath = '';
+  }
+
+  if (shortPath && isAsciiSafe(shortPath)) {
+    return shortPath;
+  }
+  if (isAsciiSafe(longPath)) {
     return longPath;
   }
+
+  console.error(`❌ Repository path contains non-ASCII characters and Windows 8.3 short names are disabled or unavailable.`);
+  console.error(`   Move the checkout to an ASCII-only path (e.g. C:\\AutoSubs) or enable 8.3 short names.`);
+  console.error(`   Path: ${longPath}`);
+  process.exit(1);
 }
 
 function setupResolveDev() {
