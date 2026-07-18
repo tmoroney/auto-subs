@@ -175,10 +175,12 @@ local function step_update_caption_template(template)
         trackIndex = 2,
     }
 
-    local clip = mediaPool:AppendToTimeline({ clipInfo })[1]
-    if not clip then
+    local appended = mediaPool:AppendToTimeline({ clipInfo })
+    if not appended or not appended[1] then
         return nil, "Failed to append template to timeline"
     end
+    local clip = appended[1]
+    print("  Appended template to timeline")
 
     -- Appending activates the clip's Fusion comp automatically
     local comp = fu:GetCurrentComp()
@@ -239,13 +241,21 @@ local function step_version_and_export(updatedBin, newTemplate)
     newTemplate:SetName(VERSIONED_CAPTION)
     print("  Renamed template → " .. VERSIONED_CAPTION)
 
-    if not updatedBin:Export(PATHS.captionBin) then
+    local tmpBin = PATHS.captionBin .. ".tmp.drb"
+    if not updatedBin:Export(tmpBin) then
         return nil, "Failed to export caption bin"
     end
 
     local ok, err = write_version_module(TEMPLATE_VERSION)
     if not ok then
+        os.remove(tmpBin)
         return nil, "Failed to write caption template version: " .. tostring(err)
+    end
+
+    os.remove(PATHS.captionBin)
+    local renameOk, renameErr = os.rename(tmpBin, PATHS.captionBin)
+    if not renameOk then
+        return nil, "Failed to replace caption bin: " .. tostring(renameErr)
     end
 
     print("  Exported caption-bin.drb + version " .. TEMPLATE_VERSION)
