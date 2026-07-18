@@ -2,12 +2,13 @@
   AutoSubs — Update Caption Template
 
   Workflow:
-    1. Find (or import) the existing caption template
-    2. Drop it on the timeline and open its Fusion comp
-    3. Replace the AutoSubs macro with the latest .setting
-    4. Wait for you to drag the updated clip into the staging bin
-    5. Version, package, and export the caption bin
-    6. Clean up the temporary timeline clip
+    1. Find (or import) the existing caption bin
+    2. Create a new AutoSubs bin for the updated caption
+    3. Move the basic template into the new bin
+    4. Update the caption template on the timeline
+    5. Wait for you to drag the updated clip into the new bin
+    6. Version and export the new bin
+    7. Delete the original caption bin and leave the updated bin in place
 ]]
 
 local resolve = Resolve()
@@ -23,7 +24,7 @@ local mediaPool = project:GetMediaPool()
 
 local REPO_PATH = "/Users/moroneyt/Documents/AutoSubsV3"
 local ANIMATED_CAPTION = "AutoSubs Caption"
-local STAGING_BIN = "AutoSubs New"
+local AUTOSUBS_BIN = "AutoSubs"
 local BASIC_TEMPLATE = "Basic Template"
 local TEMPLATE_VERSION = os.date("%Y-%m-%d")
 local VERSIONED_CAPTION = ANIMATED_CAPTION .. " " .. TEMPLATE_VERSION
@@ -65,45 +66,31 @@ local function is_caption_template(clipName)
         or clipName:sub(1, #ANIMATED_CAPTION + 1) == ANIMATED_CAPTION .. " "
 end
 
-local function find_template(folder)
+local function find_root_subfolder(name)
+    for _, folder in ipairs(mediaPool:GetRootFolder():GetSubFolderList()) do
+        if folder:GetName() == name then
+            return folder
+        end
+    end
+    return nil
+end
+
+local function find_caption_template(folder)
     for _, clip in ipairs(folder:GetClipList()) do
         if is_caption_template(clip:GetClipProperty()["Clip Name"]) then
             return clip
         end
     end
-
-    for _, subfolder in ipairs(folder:GetSubFolderList()) do
-        local template = find_template(subfolder)
-        if template then
-            return template
-        end
-    end
-
     return nil
 end
 
-local function ensure_basic_template(targetBin)
-    for _, clip in ipairs(targetBin:GetClipList()) do
-        if clip:GetClipProperty()["Clip Name"] == BASIC_TEMPLATE then
-            return
+local function find_clip_by_name(folder, name)
+    for _, clip in ipairs(folder:GetClipList()) do
+        if clip:GetClipProperty()["Clip Name"] == name then
+            return clip
         end
     end
-
-    local rootFolder = mediaPool:GetRootFolder()
-    local targetId = targetBin:GetUniqueId()
-
-    for _, subfolder in ipairs(rootFolder:GetSubFolderList()) do
-        if subfolder:GetUniqueId() ~= targetId then
-            for _, clip in ipairs(subfolder:GetClipList()) do
-                if clip:GetClipProperty()["Clip Name"] == BASIC_TEMPLATE then
-                    pcall(function()
-                        mediaPool:MoveClips({ clip }, targetBin)
-                    end)
-                    return
-                end
-            end
-        end
-    end
+    return nil
 end
 
 local function write_version_module(version)
@@ -120,38 +107,65 @@ end
 -- Workflow steps
 ------------------------------------------------------------------------
 
-local function step_find_or_import_template()
-    print("[1/6] Finding existing caption template…")
+local function step_find_or_import_caption_bin()
+    print("[1/7] Finding existing caption bin…")
 
-    local template = find_template(mediaPool:GetRootFolder())
-    if template then
-        print("  Found: " .. template:GetClipProperty()["Clip Name"])
-        return template
+    local originalBin = find_root_subfolder(AUTOSUBS_BIN)
+    if originalBin then
+        print("  Found: " .. originalBin:GetName())
+        return originalBin
     end
 
     print("  Not found — importing caption-bin.drb…")
     local rootFolder = mediaPool:GetRootFolder()
     local previousFolder = mediaPool:GetCurrentFolder()
     mediaPool:SetCurrentFolder(rootFolder)
-
-    local success = mediaPool:ImportFolderFromFile(PATHS.captionBin)
+    local imported = mediaPool:ImportFolderFromFile(PATHS.captionBin)
     mediaPool:SetCurrentFolder(previousFolder)
 
-    if not success then
+    if not imported then
         return nil, "Failed to import caption bin"
     end
 
-    template = find_template(mediaPool:GetRootFolder())
-    if not template then
-        return nil, "Failed to find imported template"
+    originalBin = find_root_subfolder(AUTOSUBS_BIN)
+    if not originalBin then
+        return nil, "Failed to find imported " .. AUTOSUBS_BIN .. " bin"
     end
 
-    print("  Imported: " .. template:GetClipProperty()["Clip Name"])
-    return template
+    print("  Imported: " .. originalBin:GetName())
+    return originalBin
 end
 
-local function step_place_on_timeline(template)
-    print("[2/6] Placing template on timeline…")
+local function step_create_updated_bin()
+    print("[2/7] Creating new caption bin…")
+
+    local updatedBin = mediaPool:AddSubFolder(mediaPool:GetRootFolder(), AUTOSUBS_BIN)
+    if not updatedBin then
+        return nil, "Failed to create new caption bin"
+    end
+
+    print("  Created: " .. updatedBin:GetName())
+    return updatedBin
+end
+
+local function step_move_basic_template(originalBin, updatedBin)
+    print("[3/7] Moving basic template into new caption bin…")
+
+    local basicTemplate = find_clip_by_name(originalBin, BASIC_TEMPLATE)
+    if not basicTemplate then
+        return nil, "Failed to find " .. BASIC_TEMPLATE .. " in " .. originalBin:GetName()
+    end
+
+    if not mediaPool:MoveClips({ basicTemplate }, updatedBin) then
+        return nil, "Failed to move " .. BASIC_TEMPLATE .. " into new caption bin"
+    end
+
+    print("  Moved: " .. BASIC_TEMPLATE)
+    return true
+end
+
+local function step_update_caption_template(template)
+    print("[4/7] Updating caption template on timeline…")
 
     local clipInfo = {
         mediaPoolItem = template,
@@ -172,13 +186,6 @@ local function step_place_on_timeline(template)
         return nil, "Failed to get current Fusion comp"
     end
 
-    print("  Clip on timeline, Fusion comp ready")
-    return clip, comp
-end
-
-local function step_reload_macro(comp)
-    print("[3/6] Reloading AutoSubs macro…")
-
     local oldTool = comp:FindTool("AutoSubs")
     if oldTool then
         oldTool:Delete()
@@ -193,7 +200,6 @@ local function step_reload_macro(comp)
 
     local autoSubs = comp:FindTool("AutoSubs")
     local mediaOut = comp:FindTool("MediaOut1")
-
     if not autoSubs or not mediaOut then
         return nil, string.format(
             "Missing tools after paste (AutoSubs=%s, MediaOut1=%s)",
@@ -204,34 +210,36 @@ local function step_reload_macro(comp)
 
     mediaOut:ConnectInput("Input", autoSubs)
     print("  Macro pasted and connected to MediaOut1")
-    return true
+    return clip
 end
 
-local function step_wait_for_user_drag()
-    print("[4/6] Waiting for you to drag the updated caption into \"" .. STAGING_BIN .. "\"…")
+local function step_wait_for_user_drag(updatedBin)
+    print("[5/7] Waiting for you to drag the updated caption into \"" .. updatedBin:GetName() .. "\"…")
 
-    local captionBin = mediaPool:AddSubFolder(mediaPool:GetRootFolder(), STAGING_BIN)
-    print("  Staging bin ready: " .. captionBin:GetName())
+    if not mediaPool:SetCurrentFolder(updatedBin) then
+        return nil, "Failed to select new caption bin"
+    end
+
+    local initialClipCount = #updatedBin:GetClipList()
 
     while true do
-        local clips = captionBin:GetClipList()
-        if #clips > 0 then
-            print("  Received: " .. clips[1]:GetClipProperty()["Clip Name"])
-            return captionBin, clips[1]
+        local clips = updatedBin:GetClipList()
+        if #clips > initialClipCount then
+            local newTemplate = clips[#clips]
+            print("  Received: " .. newTemplate:GetClipProperty()["Clip Name"])
+            return newTemplate
         end
         sleep(0.2)
     end
 end
 
-local function step_version_and_export(captionBin, newTemplate)
-    print("[5/6] Versioning and exporting caption bin…")
+local function step_version_and_export(updatedBin, newTemplate)
+    print("[6/7] Versioning and exporting caption bin…")
 
     newTemplate:SetName(VERSIONED_CAPTION)
     print("  Renamed template → " .. VERSIONED_CAPTION)
 
-    ensure_basic_template(captionBin)
-
-    if not captionBin:Export(PATHS.captionBin) then
+    if not updatedBin:Export(PATHS.captionBin) then
         return nil, "Failed to export caption bin"
     end
 
@@ -244,29 +252,19 @@ local function step_version_and_export(captionBin, newTemplate)
     return true
 end
 
-local function step_cleanup(captionBin, clip)
-    print("[6/6] Cleaning up…")
-    if clip then
-        timeline:DeleteClips({ clip })
+local function step_cleanup(originalBin, clip)
+    print("[7/7] Deleting the original caption bin…")
+
+    if clip and not timeline:DeleteClips({ clip }) then
+        return nil, "Failed to delete temporary timeline clip"
     end
-    if captionBin then
-        -- Move new items to
-        local rootFolder = mediaPool:GetRootFolder()
-        local autoSubsBin = nil
-        for _, folder in ipairs(rootFolder:GetSubFolderList()) do
-            if folder:GetName() == "AutoSubs" then
-                autoSubsBin = folder
-                break
-            end
-        end
-        if autoSubsBin then
-            mediaPool:MoveClips(captionBin:GetClipList(), autoSubsBin)
-            print("  Moved clips to AutoSubs bin")
-        end
-        mediaPool:DeleteFolders({ captionBin })
-        print("  Deleted staging bin")
+
+    if not mediaPool:DeleteFolders({ originalBin }) then
+        return nil, "Failed to delete original caption bin"
     end
-    print("  Done")
+
+    print("  Deleted original caption bin")
+    return true
 end
 
 ------------------------------------------------------------------------
@@ -277,32 +275,45 @@ local function abort(message)
     print("ERROR: " .. message)
 end
 
-local template, err = step_find_or_import_template()
+local originalBin, err = step_find_or_import_caption_bin()
+if not originalBin then
+    return abort(err)
+end
+
+local template = find_caption_template(originalBin)
 if not template then
-    return abort(err)
+    return abort("Failed to find " .. ANIMATED_CAPTION .. " in " .. originalBin:GetName())
 end
 
-local clip, compOrErr = step_place_on_timeline(template)
+local updatedBin, createErr = step_create_updated_bin()
+if not updatedBin then
+    return abort(createErr)
+end
+
+local ok, moveErr = step_move_basic_template(originalBin, updatedBin)
+if not ok then
+    return abort(moveErr)
+end
+
+local clip, updateErr = step_update_caption_template(template)
 if not clip then
-    return abort(compOrErr)
-end
-local comp = compOrErr
-
-local ok, reloadErr = step_reload_macro(comp)
-if not ok then
-    step_cleanup(clip)
-    return abort(reloadErr)
+    return abort(updateErr)
 end
 
-local captionBin, newTemplate = step_wait_for_user_drag()
+local newTemplate, dragErr = step_wait_for_user_drag(updatedBin)
+if not newTemplate then
+    return abort(dragErr)
+end
 
-ok, err = step_version_and_export(captionBin, newTemplate)
+ok, err = step_version_and_export(updatedBin, newTemplate)
 if not ok then
-    step_cleanup(captionBin, clip)
     return abort(err)
 end
 
-step_cleanup(captionBin, clip)
+ok, err = step_cleanup(originalBin, clip)
+if not ok then
+    return abort(err)
+end
 print("Caption template updated successfully → " .. VERSIONED_CAPTION)
 print("Next steps:")
 print("  1. Commit updated caption-bin.drb to git")

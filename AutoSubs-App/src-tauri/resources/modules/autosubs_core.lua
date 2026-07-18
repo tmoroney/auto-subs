@@ -151,7 +151,6 @@ local ANIMATED_CAPTION_DISPLAY_NAME = "AutoSubs Caption"
 local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
 local ANIMATED_CAPTION = ANIMATED_CAPTION_DISPLAY_NAME .. " " .. CAPTION_TEMPLATE_VERSION
 local AUTOSUBS_BIN = "AutoSubs"
-local STAGING_BIN = "AutoSubs New"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
 
@@ -308,42 +307,6 @@ local function get_root_subfolder(rootFolder, folderName)
     return nil
 end
 
-local function get_folder_template_item(folder, templateName)
-    for _, clip in ipairs(folder:GetClipList()) do
-        local props = clip:GetClipProperty()
-        if props["Clip Name"] == templateName and is_matching_title(props["Type"]) then
-            return clip
-        end
-    end
-    return nil
-end
-
-local function find_default_template_in_folder(folder)
-    local template = get_folder_template_item(folder, ANIMATED_CAPTION)
-    if template then
-        return template, folder
-    end
-
-    for _, subfolder in ipairs(folder:GetSubFolderList()) do
-        local nestedTemplate, sourceFolder = find_default_template_in_folder(subfolder)
-        if nestedTemplate then
-            return nestedTemplate, sourceFolder
-        end
-    end
-    return nil, nil
-end
-
-local function find_default_template(rootFolder)
-    local autosubsFolder = get_root_subfolder(rootFolder, AUTOSUBS_BIN)
-    if autosubsFolder then
-        local template = get_folder_template_item(autosubsFolder, ANIMATED_CAPTION)
-        if template then
-            return template, autosubsFolder
-        end
-    end
-    return find_default_template_in_folder(rootFolder)
-end
-
 local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate)
     local obsoleteTemplates = {}
     local currentTemplateId = currentTemplate:GetUniqueId()
@@ -365,83 +328,17 @@ local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate
     end
 end
 
-local function folder_has_clip(folder, clipName)
-    for _, clip in ipairs(folder:GetClipList()) do
-        if clip:GetClipProperty()["Clip Name"] == clipName then
-            return true
-        end
-    end
-    return false
-end
-
-local function is_staging_folder_name(folderName)
-    return folderName == STAGING_BIN or folderName:sub(1, #STAGING_BIN + 1) == STAGING_BIN .. " "
-end
-
-local function move_default_template(rootFolder, template, sourceFolder)
-    local autosubsFolder = get_root_subfolder(rootFolder, AUTOSUBS_BIN)
-    if not autosubsFolder then
-        autosubsFolder = mediaPool:AddSubFolder(rootFolder, AUTOSUBS_BIN)
-    end
-    if not autosubsFolder then
-        print("Failed to create AutoSubs media pool folder")
-        return nil
-    end
-    if sourceFolder:GetUniqueId() == autosubsFolder:GetUniqueId() then
-        delete_obsolete_caption_templates(autosubsFolder, template)
-        return template
-    end
-
-    local clipsToMove = {}
-    for _, clip in ipairs(sourceFolder:GetClipList()) do
-        local clipName = clip:GetClipProperty()["Clip Name"]
-        if not folder_has_clip(autosubsFolder, clipName) then
-            table.insert(clipsToMove, clip)
-        end
-    end
-
-    if #clipsToMove > 0 then
-        local moved, moveResult = pcall(function()
-            return mediaPool:MoveClips(clipsToMove, autosubsFolder)
-        end)
-        if not moved or not moveResult then
-            print("Failed to move clips into AutoSubs media pool folder")
-            return nil
-        end
-    end
-
-    local sourceFolderName = sourceFolder:GetName()
-    if is_staging_folder_name(sourceFolderName) then
-        local remainingClips = {}
-        for _, clip in ipairs(sourceFolder:GetClipList()) do
-            table.insert(remainingClips, clip)
-        end
-        if #remainingClips > 0 then
-            pcall(function()
-                mediaPool:DeleteClips(remainingClips)
-            end)
-        end
-        if #sourceFolder:GetClipList() == 0 and #sourceFolder:GetSubFolderList() == 0 then
-            pcall(function()
-                mediaPool:DeleteFolders({ sourceFolder })
-            end)
-        end
-    end
-
-    delete_obsolete_caption_templates(autosubsFolder, template)
-    return template
-end
-
 -- Add default template to mediapool if not available (get version with resolve:GetVersion()[1])
 local function ensure_default_template(rootFolder)
-    local template, sourceFolder = find_default_template(rootFolder)
+    local template = get_template_item(rootFolder, ANIMATED_CAPTION)
     if template then
-        return move_default_template(rootFolder, template, sourceFolder)
+        return template
     end
     if defaultTemplateImportAttempted then
         return nil
     end
 
+    local targetBin = get_root_subfolder(rootFolder, AUTOSUBS_BIN)
     print("Default template not found. Importing default template...")
     defaultTemplateImportAttempted = true
     local previousFolder = nil
@@ -462,12 +359,25 @@ local function ensure_default_template(rootFolder)
         return nil
     end
 
-    template, sourceFolder = find_default_template(rootFolder)
+    template = get_template_item(rootFolder, ANIMATED_CAPTION)
     if not template then
         print("Imported caption bin did not contain '" .. ANIMATED_CAPTION .. "'")
         return nil
     end
-    return move_default_template(rootFolder, template, sourceFolder)
+    if not targetBin then
+        return template
+    end
+
+    local moved, moveResult = pcall(function()
+        return mediaPool:MoveClips({ template }, targetBin)
+    end)
+    if not moved or not moveResult then
+        print("Failed to move imported caption template into AutoSubs media pool folder")
+        return nil
+    end
+
+    delete_obsolete_caption_templates(targetBin, template)
+    return template
 end
 
 -- Get a list of all Text+ templates in the media pool
