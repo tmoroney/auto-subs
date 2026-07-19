@@ -11,6 +11,15 @@ use std::path::Path;
 use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 use uroman::{Uroman, rom_format};
 
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+/// Cache for ISO-639-3 pass-through codes that are not in the hard-coded alias
+/// table. Each distinct code is leaked once so the returned `&'static str` stays
+/// valid for the life of the process.
+static ISO_639_3_CACHE: Lazy<Mutex<HashMap<String, &'static str>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
 const SAMPLE_RATE: usize = 16_000;
 const INPUTS_TO_LOGITS_RATIO: usize = 320;
 const WINDOW_SAMPLES: usize = 30 * SAMPLE_RATE;
@@ -748,6 +757,12 @@ pub fn iso_639_3(language: Option<&str>) -> Option<&'static str> {
         "yi" | "yid" => Some("yid"),
         "yo" | "yor" => Some("yor"),
         "auto" | "und" | "" => None,
+        _ if code.len() == 3 && code.chars().all(|c| c.is_ascii_alphabetic()) => {
+            let mut cache = ISO_639_3_CACHE.lock().unwrap();
+            Some(*cache.entry(code.clone()).or_insert_with(|| {
+                Box::leak(code.into_boxed_str())
+            }))
+        }
         _ => None,
     }
 }
@@ -780,6 +795,12 @@ fn prepare_text_with(
                     original_text,
                     normalized_tokens: vec![vocabulary.len()],
                 });
+            } else {
+                tracing::warn!(
+                    original_text = %original_text,
+                    language = ?language,
+                    "alignment unit dropped: uroman produced no alignable ASCII text"
+                );
             }
             continue;
         }
@@ -802,7 +823,9 @@ fn prepare_text_with(
         }
     }
     if units.is_empty() {
-        bail!("transcript contains no alignable text after normalization");
+        bail!(
+            "transcript contains no alignable text after normalization (language={language:?}); the language or script may not be supported by the romanizer"
+        );
     }
     Ok(units)
 }

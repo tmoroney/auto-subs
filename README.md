@@ -201,6 +201,8 @@ AutoSubs code is MIT-licensed. The optional MMS forced-alignment weights are dow
 
 The forced-aligner weights originate from Meta's MMS model, with forced-alignment conversion work by MahmoudAshraf and ONNX/INT8 conversion by [onnx-community](https://huggingface.co/onnx-community/mms-300m-1130-forced-aligner-ONNX). Conversion and quantization changes were made by those respective projects; no endorsement is implied.
 
+While MMS supports over a thousand languages, word-level alignment relies on romanizing the transcript with [uroman](https://github.com/o24s/uroman-rs). uroman covers the major world scripts (Latin, Cyrillic, Arabic, CJK, most Indic scripts, etc.), but very low-resource minority languages whose scripts are not included in its data may produce degraded or missing word timestamps.
+
 ## Acknowledgments
 
 AutoSubs is built on top of excellent open-source projects:
