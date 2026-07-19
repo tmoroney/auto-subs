@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Gauge, Clock, GraduationCap, Terminal } from "lucide-react";
+import { AudioLines, Gauge, Clock, GraduationCap, Terminal } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -39,6 +39,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const uiLanguage = useSettingsStore((s) => s.uiLanguage);
   const enableGpu = useSettingsStore((s) => s.enableGpu);
   const enableDTW = useSettingsStore((s) => s.enableDTW);
+  const enableForcedAlignment = useSettingsStore((s) => s.enableForcedAlignment);
+  const translate = useSettingsStore((s) => s.translate);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
@@ -248,6 +250,32 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Switch
                         checked={enableDTW}
                         onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
+                      />
+                    </ItemActions>
+                  </Item>
+                </Field>
+
+                <Field>
+                  <Item variant="outline" size="sm">
+                    <ItemMedia variant="icon" className="bg-purple-100 dark:bg-purple-900/30">
+                      <AudioLines className="size-4 text-purple-600 dark:text-purple-400" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{t("settings.forcedAlignment.title")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-2">
+                        {translate
+                          ? t("settings.forcedAlignment.translationIncompatible")
+                          : t("settings.forcedAlignment.description")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        checked={enableForcedAlignment}
+                        disabled={translate}
+                        onCheckedChange={(checked) =>
+                          updateSetting("enableForcedAlignment", checked)
+                        }
+                        aria-label={t("settings.forcedAlignment.title")}
                       />
                     </ItemActions>
                   </Item>

@@ -81,6 +81,13 @@ export interface Model {
     accuracy: 1 | 2 | 3 | 4 // 1 = Poor, 2 = Standard, 3 = Excellent, 4 = Best-in-class
     weight: 1 | 2 | 3 | 4 // 1 = Very Heavy, 2 = Heavy, 3 = Standard, 4 = Lightweight
     isDownloaded: boolean
+    repositoryUrl?: string
+    license?: {
+        spdx: string
+        url: string
+        attribution: string
+        commercialUse: boolean
+    }
 }
 
 // Settings Interface
@@ -113,6 +120,7 @@ export interface Settings {
     enableDiarize: boolean,
     maxSpeakers: number | null,
     enableDTW: boolean,
+    enableForcedAlignment: boolean,
     enableGpu: boolean,
 
     // Text settings
@@ -175,6 +183,7 @@ export interface TranscriptionOptions {
     translate: boolean,
     targetLanguage: string,
     enableDtw: boolean,
+    enableForcedAlignment: boolean,
     enableGpu: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,

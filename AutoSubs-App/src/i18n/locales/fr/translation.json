@@ -14,6 +14,15 @@
       "title": "Alignement temporel dynamique",
       "description": "Améliorer la précision du minutage au niveau des mots"
     },
+    "forcedAlignment": {
+      "title": "Alignement forcé",
+      "description": "Effectuer une passe de minutage supplémentaire (téléchargement d’un modèle de 317 Mo)",
+      "translationIncompatible": "Indisponible pendant la traduction, car le texte traduit ne correspond pas aux mots prononcés",
+      "summary": "Alignement forcé",
+      "downloadConfirmationTitle": "Télécharger le modèle d’alignement forcé ?",
+      "downloadConfirmationBody": "AutoSubs téléchargera le modèle MMS facultatif d’alignement forcé de {{size}}. Attribution : {{attribution}}. Les poids sont sous licence CC BY-NC 4.0 pour un usage non commercial et sont distincts de la licence MIT d’AutoSubs. Il vous incombe de vérifier que votre utilisation respecte la licence du modèle.",
+      "downloadAndContinue": "Télécharger et continuer"
+    },
     "uiLanguage": {
       "title": "Langue de l’application",
       "description": "Met à jour menus et boutons"
@@ -221,6 +230,16 @@
       "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.",
       "badge": "Labels de speaker"
     },
+    "aligner": {
+      "label": "Modèle MMS d’alignement forcé",
+      "description": "Pack de minutage acoustique des mots",
+      "details": "Modèle facultatif qui aligne les mots de la transcription sur la parole originale.",
+      "badge": "Minutage des mots",
+      "licenseRestriction": "CC BY-NC 4.0 · Non commercial",
+      "attribution": "Modèle MMS de Meta · conversion d’origine par MahmoudAshraf · conversion ONNX par onnx-community",
+      "repository": "Dépôt du modèle",
+      "licenseLink": "Licence du modèle"
+    },
     "tiny": {
       "label": "Whisper Tiny",
       "description": "Ultra-rapide",
@@ -372,6 +391,7 @@
     "download": "Téléchargement du modèle",
     "diarize": "Identification des intervenants",
     "transcribe": "Voix en texte",
+    "align": "Alignement des mots",
     "translate": "Traduction vers {{language}}",
     "normaliseAudio": "Normalisation de l'audio",
     "preparingAudio": "Préparation de l'audio...",

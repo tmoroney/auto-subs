@@ -29,7 +29,7 @@ import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { SupportDialog } from "@/components/dialogs/support-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
 import { useModels } from "@/contexts/ModelsContext";
-import { diarizeModel } from "@/lib/models";
+import { alignerModel, diarizeModel } from "@/lib/models";
 import type { Model } from "@/types";
 
 export function SettingsDropdown() {
@@ -43,11 +43,15 @@ export function SettingsDropdown() {
   const [tooltipOpen, setTooltipOpen] = React.useState(false);
   const suppressTooltipUntilRef = React.useRef(0);
 
-  const managerModels: Model[] = downloadedModelValues.includes(
-    diarizeModel.value,
-  )
-    ? [...modelsState, { ...diarizeModel, isDownloaded: true }]
-    : modelsState;
+  const managerModels: Model[] = [
+    ...modelsState,
+    ...(downloadedModelValues.includes(diarizeModel.value)
+      ? [{ ...diarizeModel, isDownloaded: true }]
+      : []),
+    ...(downloadedModelValues.includes(alignerModel.value)
+      ? [{ ...alignerModel, isDownloaded: true }]
+      : []),
+  ];
 
   const handleThemeChange = (themeValue: string) => {
     setTheme(themeValue as "dark" | "light" | "system");

@@ -117,6 +117,7 @@ fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
         ProgressType::Download => "📥",
         ProgressType::Diarize => "🗣️",
         ProgressType::Transcribe => "🎵",
+        ProgressType::Align => "⏱️",
         ProgressType::Translate => "🌍",
     };
     println!("{prefix} {label}: {percent}%");

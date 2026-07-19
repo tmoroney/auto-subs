@@ -156,6 +156,10 @@
           "takesValue": true
         },
         {
+          "name": "forced-alignment",
+          "description": "Refine word timestamps with the optional MMS forced aligner."
+        },
+        {
           "name": "gpu",
           "description": "Force GPU acceleration on."
         },

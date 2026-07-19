@@ -14,6 +14,15 @@
       "title": "Dynamisches Time Warping",
       "description": "Verbessert die Wort-Timing-Genauigkeit"
     },
+    "forcedAlignment": {
+      "title": "Erzwungene Ausrichtung",
+      "description": "Zusätzlichen Timing-Durchlauf ausführen (317-MB-Modell-Download)",
+      "translationIncompatible": "Während der Übersetzung nicht verfügbar, da der übersetzte Text nicht den gesprochenen Wörtern entspricht",
+      "summary": "Erzwungene Ausrichtung",
+      "downloadConfirmationTitle": "Modell für erzwungene Ausrichtung herunterladen?",
+      "downloadConfirmationBody": "AutoSubs lädt das optionale MMS-Modell für erzwungene Ausrichtung ({{size}}) herunter. Namensnennung: {{attribution}}. Die Gewichte sind unter CC BY-NC 4.0 für nichtkommerzielle Nutzung lizenziert und von der MIT-Lizenz von AutoSubs getrennt. Du bist dafür verantwortlich, dass deine Nutzung der Modelllizenz entspricht.",
+      "downloadAndContinue": "Herunterladen und fortfahren"
+    },
     "uiLanguage": {
       "title": "App-Sprache",
       "description": "Aktualisiert Menüs und Buttons"
@@ -221,6 +230,16 @@
       "details": "Wird für Sprecherdiarisierung und Kennzeichnung verwendet.",
       "badge": "Sprecher-Labels"
     },
+    "aligner": {
+      "label": "MMS-Modell für erzwungene Ausrichtung",
+      "description": "Bundle für akustische Wort-Timings",
+      "details": "Optionales Modell, das Transkriptwörter an der Originalsprache ausrichtet.",
+      "badge": "Wort-Timing",
+      "licenseRestriction": "CC BY-NC 4.0 · Nichtkommerziell",
+      "attribution": "Meta MMS-Modell · Upstream-Konvertierung durch MahmoudAshraf · ONNX-Konvertierung durch onnx-community",
+      "repository": "Modell-Repository",
+      "licenseLink": "Modelllizenz"
+    },
     "tiny": {
       "label": "Whisper Tiny",
       "description": "Ultraschnell",
@@ -372,6 +391,7 @@
     "download": "Modell wird geladen",
     "diarize": "Sprecher werden identifiziert",
     "transcribe": "Sprache zu Text",
+    "align": "Wortzeiten werden ausgerichtet",
     "translate": "Übersetze nach {{language}}",
     "normaliseAudio": "Audio wird normalisiert",
     "preparingAudio": "Audio wird vorbereitet...",

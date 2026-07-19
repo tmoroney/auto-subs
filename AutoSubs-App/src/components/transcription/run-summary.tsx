@@ -39,6 +39,7 @@ function useRunSummary(
   const textCase = useSettingsStore((s) => s.textCase);
   const enableGpu = useSettingsStore((s) => s.enableGpu);
   const enableDTW = useSettingsStore((s) => s.enableDTW);
+  const enableForcedAlignment = useSettingsStore((s) => s.enableForcedAlignment);
   const removePunctuation = useSettingsStore((s) => s.removePunctuation);
 
   const sourceModeLabel =
@@ -100,6 +101,9 @@ function useRunSummary(
   }
   if (enableDTW) {
     summaryParts.push(dtwLabel);
+  }
+  if (enableForcedAlignment && !translate) {
+    summaryParts.push(t("settings.forcedAlignment.summary"));
   }
   if (textCase !== "none") {
     summaryParts.push(textCaseLabel);
