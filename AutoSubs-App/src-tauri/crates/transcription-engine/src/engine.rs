@@ -386,13 +386,18 @@ impl Engine {
         let native_target =
             resolve_native_target(engine_kind, &from_lang, translate_to.as_deref(), use_native);
 
+        let mut engine_cfg = self.cfg.clone();
+        if enable_forced_alignment {
+            engine_cfg.enable_dtw = Some(false);
+        }
+
         let (mut segments, detected_lang) = crate::engines::run_engine(
             engine_kind,
             _model_path.as_path(),
             speech_segments,
             &options,
             native_target.as_deref(),
-            &self.cfg,
+            &engine_cfg,
             cb.progress,
             cb.new_segment_callback,
             engine_cancellation,
@@ -402,7 +407,12 @@ impl Engine {
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
 
-        if enable_forced_alignment && translate_to.is_none() {
+        let has_native_word_timestamps = matches!(
+            engine_kind,
+            ModelEngine::Parakeet | ModelEngine::SenseVoice
+        );
+
+        if enable_forced_alignment && translate_to.is_none() && !has_native_word_timestamps {
             if alignment_cancellation
                 .as_ref()
                 .is_some_and(|cancelled| cancelled())
@@ -440,7 +450,14 @@ impl Engine {
                 alignment_cancellation.as_deref(),
             )?;
         } else if enable_forced_alignment {
-            tracing::info!("forced alignment skipped because translation is enabled");
+            if has_native_word_timestamps {
+                tracing::info!(
+                    "forced alignment skipped: {} provides native word-level timestamps",
+                    options.model
+                );
+            } else {
+                tracing::info!("forced alignment skipped because translation is enabled");
+            }
         }
 
         // `use_native_translation` requests the model's built-in translation.
