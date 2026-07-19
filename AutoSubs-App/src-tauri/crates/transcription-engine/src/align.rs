@@ -203,7 +203,9 @@ impl Aligner {
             bail!("stitched logits are not rectangular");
         }
         if extension > 0 {
-            let trim = extension / INPUTS_TO_LOGITS_RATIO;
+            // Round up so any frame that contains a padded sample is discarded,
+            // preventing CTC from placing a word boundary beyond the real audio slice.
+            let trim = extension.div_ceil(INPUTS_TO_LOGITS_RATIO);
             frames = frames
                 .checked_sub(trim)
                 .context("final extension exceeds generated frames")?;

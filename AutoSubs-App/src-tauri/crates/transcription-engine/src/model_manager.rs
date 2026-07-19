@@ -773,6 +773,16 @@ impl ModelManager {
             }
         }
 
+        let aligner = manifest::aligner();
+        let aligner_files: Vec<&str> = aligner.files.iter().map(FileSpec::path).collect();
+        // Same validation as diarize: partial/corrupt aligner files must not be reported
+        // as cached, otherwise the UI keeps prompting to download a model that exists.
+        if let Ok(Some(snapshot_dir)) = self.find_cached_snapshot_with_files(&aligner.repo, &aligner_files) {
+            if aligner_files.iter().all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok()) {
+                models.insert(aligner.id.clone());
+            }
+        }
+
         let mut result: Vec<String> = models.into_iter().collect();
         result.sort(); // Sort for consistent ordering
         Ok(result)
