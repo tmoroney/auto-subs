@@ -377,6 +377,12 @@
       "description": "다국어(대형)",
       "details": "Cohere의 대형 다국어 자막 생성 모델.",
       "label": "Cohere"
+    },
+    "omni_asr_300m_ctc": {
+      "label": "Omni-ASR 300M CTC",
+      "description": "On-device Multilingual",
+      "details": "Fast on-device transcription for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
+      "badge": "Multilingual"
     }
   },
   "progressSteps": {

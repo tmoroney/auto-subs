@@ -44,6 +44,8 @@ const MODELS: &[&str] = &[
     "large-v3",
     // Parakeet
     "parakeet",
+    // Omni-ASR
+    "omni-asr-300m-ctc",
     // Moonshine
     "moonshine-tiny",
     "moonshine-base",
