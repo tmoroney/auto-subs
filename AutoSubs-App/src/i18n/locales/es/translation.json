@@ -14,6 +14,15 @@
       "title": "Warping de Tiempo Dinámico",
       "description": "Mejora la precisión del tiempo a nivel de palabra"
     },
+    "forcedAlignment": {
+      "title": "Alineación forzada",
+      "description": "Ejecuta una pasada adicional de tiempos (descarga de modelo de 317 MB)",
+      "translationIncompatible": "No disponible durante la traducción porque el texto traducido no coincide con las palabras pronunciadas",
+      "summary": "Alineación forzada",
+      "downloadConfirmationTitle": "¿Descargar el modelo de alineación forzada?",
+      "downloadConfirmationBody": "AutoSubs descargará el modelo MMS opcional de alineación forzada de {{size}}. Atribución: {{attribution}}. Los pesos tienen licencia CC BY-NC 4.0 para uso no comercial y están separados de la licencia MIT de AutoSubs. Eres responsable de garantizar que tu uso cumpla la licencia del modelo.",
+      "downloadAndContinue": "Descargar y continuar"
+    },
     "uiLanguage": {
       "title": "Idioma de la aplicación",
       "description": "Actualiza menús y botones"
@@ -221,6 +230,16 @@
       "details": "Se utiliza para la diarización y el etiquetado de hablantes.",
       "badge": "Etiquetas de hablante"
     },
+    "aligner": {
+      "label": "Modelo MMS de alineación forzada",
+      "description": "Paquete de tiempos acústicos por palabra",
+      "details": "Modelo opcional que alinea las palabras de la transcripción con el habla original.",
+      "badge": "Tiempos de palabras",
+      "licenseRestriction": "CC BY-NC 4.0 · No comercial",
+      "attribution": "Modelo MMS de Meta · conversión original de MahmoudAshraf · conversión ONNX de onnx-community",
+      "repository": "Repositorio del modelo",
+      "licenseLink": "Licencia del modelo"
+    },
     "tiny": {
       "label": "Whisper Diminuto",
       "description": "Ultra-rápido",
@@ -372,6 +391,7 @@
     "download": "Descargando modelo",
     "diarize": "Identificando hablantes",
     "transcribe": "Voz a texto",
+    "align": "Alineando tiempos de palabras",
     "translate": "Traduciendo a {{language}}",
     "normaliseAudio": "Normalizando audio",
     "preparingAudio": "Preparando audio...",

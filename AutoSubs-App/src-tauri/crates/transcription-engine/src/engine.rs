@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use crate::formatting::{PostProcessConfig, TextCase, TextDensity, process_segments};
+use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use eyre::eyre;
-use crate::types::{SpeechSegment, LabeledProgressFn, NewSegmentFn, Segment};
-use crate::formatting::{process_segments, PostProcessConfig, TextCase, TextDensity};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Frontend-requested content formatting applied after structural line-wrapping.
 #[derive(Clone, Debug, Default)]
@@ -16,14 +17,15 @@ use crate::manifest::{self, Engine as ModelEngine};
 
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
-    pub cache_dir: PathBuf, // Cache directory for downloaded models
+    pub cache_dir: PathBuf,              // Cache directory for downloaded models
     pub enable_dtw: Option<bool>, // Enable DTW for better word timestamps - this will disable flash attention
     pub enable_flash_attn: Option<bool>, // Enable flash attention for faster inference (works best for larger models)
-    pub use_gpu: Option<bool>, // Enable GPU acceleration
-    pub gpu_device: Option<i32>, // GPU device id, default 0
-    pub vad_model_path: Option<String>, // Path to Voice Activity Detection (VAD) model
+    pub use_gpu: Option<bool>,           // Enable GPU acceleration
+    pub gpu_device: Option<i32>,         // GPU device id, default 0
+    pub vad_model_path: Option<String>,  // Path to Voice Activity Detection (VAD) model
     pub diarize_segment_model_path: Option<String>, // Optional path to diarization segmentation model; if None, it will be downloaded
     pub diarize_embedding_model_path: Option<String>, // Optional path to diarization embedding model; if None, it will be downloaded
+    pub aligner_model_dir: Option<String>,
 }
 
 impl Default for EngineConfig {
@@ -37,6 +39,7 @@ impl Default for EngineConfig {
             vad_model_path: None,
             diarize_segment_model_path: None,
             diarize_embedding_model_path: None,
+            aligner_model_dir: None,
         }
     }
 }
@@ -58,12 +61,19 @@ async fn prepare_speech_segments(
     is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync + 'static)>,
 ) -> eyre::Result<Vec<SpeechSegment>> {
     let speech_segments = if let Some(true) = options.enable_diarize {
-        let (seg_path, emb_path) = match (&cfg.diarize_segment_model_path, &cfg.diarize_embedding_model_path) {
+        let (seg_path, emb_path) = match (
+            &cfg.diarize_segment_model_path,
+            &cfg.diarize_embedding_model_path,
+        ) {
             (Some(seg), Some(emb)) => (PathBuf::from(seg), PathBuf::from(emb)),
             _ => models.ensure_diarize_models(progress, is_cancelled).await?,
         };
 
-        let threshold = options.advanced.as_ref().and_then(|a| a.diarize_threshold).unwrap_or(0.5);
+        let threshold = options
+            .advanced
+            .as_ref()
+            .and_then(|a| a.diarize_threshold)
+            .unwrap_or(0.5);
         let diarize_options = diarize::DiarizeOptions {
             segment_model_path: seg_path,
             embedding_model_path: emb_path,
@@ -79,7 +89,8 @@ async fn prepare_speech_segments(
                 callback(pct, crate::ProgressType::Diarize, "progressSteps.diarize");
             }
         };
-        let diarize_progress_callback = progress.map(|_| &diarize_progress as &diarize::ProgressFn<'_>);
+        let diarize_progress_callback =
+            progress.map(|_| &diarize_progress as &diarize::ProgressFn<'_>);
 
         diarize::diarize(
             audio_samples,
@@ -145,11 +156,96 @@ fn resolve_native_target(
     }
     match engine_kind {
         ModelEngine::Whisper if target == "en" => Some(target.to_string()),
-        ModelEngine::Canary if crate::engines::canary::canary_supports_translation(from_lang, target) => {
+        ModelEngine::Canary
+            if crate::engines::canary::canary_supports_translation(from_lang, target) =>
+        {
             Some(target.to_string())
         }
         _ => None,
     }
+}
+
+fn align_segments(
+    aligner_dir: &std::path::Path,
+    audio_samples: &[i16],
+    segments: &mut [Segment],
+    language: Option<&str>,
+    user_offset: f64,
+    progress: Option<&LabeledProgressFn>,
+    is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+) -> eyre::Result<()> {
+    let mut aligner = crate::align::Aligner::load(aligner_dir)?;
+    let audio_duration = audio_samples.len() as f64 / 16_000.0;
+    let eligible = segments
+        .iter()
+        .filter(|segment| !segment.text.trim().is_empty())
+        .count();
+    let mut completed = 0usize;
+    if let Some(callback) = progress {
+        callback(
+            if eligible == 0 { 100 } else { 0 },
+            crate::ProgressType::Align,
+            "progressSteps.align",
+        );
+    }
+
+    for segment in segments
+        .iter_mut()
+        .filter(|segment| !segment.text.trim().is_empty())
+    {
+        if is_cancelled.is_some_and(|cancelled| cancelled()) {
+            eyre::bail!("Transcription cancelled");
+        }
+        let audio_start = (segment.start - user_offset - 0.25).clamp(0.0, audio_duration);
+        let audio_end = (segment.end - user_offset + 0.25).clamp(audio_start, audio_duration);
+        let sample_start = (audio_start * 16_000.0).floor() as usize;
+        let sample_end = ((audio_end * 16_000.0).ceil() as usize).min(audio_samples.len());
+        let result = aligner.align_words(
+            &audio_samples[sample_start..sample_end],
+            &segment.text,
+            language,
+            is_cancelled,
+        );
+        match result {
+            Ok(mut words) if !words.is_empty() => {
+                let shift = audio_start + user_offset;
+                let mut previous_end = segment.start;
+                for word in &mut words {
+                    word.start = (word.start + shift).clamp(segment.start, segment.end);
+                    word.end = (word.end + shift).clamp(word.start, segment.end);
+                    word.start = word.start.max(previous_end).min(word.end);
+                    previous_end = word.end;
+                }
+                segment.words = Some(words);
+            }
+            Ok(_) => tracing::warn!(
+                segment_start = segment.start,
+                segment_end = segment.end,
+                "forced alignment produced no words; retaining existing timestamps"
+            ),
+            Err(error) => {
+                if is_cancelled.is_some_and(|cancelled| cancelled()) {
+                    eyre::bail!("Transcription cancelled");
+                }
+                tracing::warn!(
+                    segment_start = segment.start,
+                    segment_end = segment.end,
+                    error = %error,
+                    "forced alignment failed for segment; retaining existing timestamps"
+                );
+            }
+        }
+        completed += 1;
+        if let Some(callback) = progress {
+            let percent = if eligible == 0 {
+                100
+            } else {
+                (completed * 100 / eligible) as i32
+            };
+            callback(percent, crate::ProgressType::Align, "progressSteps.align");
+        }
+    }
+    Ok(())
 }
 
 fn build_post_process_config(
@@ -223,7 +319,9 @@ impl Engine {
         // Route to the appropriate engine based on the manifest. Models not in
         // the manifest fall back to Whisper (legacy behavior).
         let model_entry = manifest::get(&options.model);
-        let engine_kind = model_entry.map(|e| e.engine).unwrap_or(ModelEngine::Whisper);
+        let engine_kind = model_entry
+            .map(|e| e.engine)
+            .unwrap_or(ModelEngine::Whisper);
         // Ensure/download the appropriate model.
         let _model_path = match model_entry {
             Some(entry) => {
@@ -264,7 +362,11 @@ impl Engine {
         );
 
         if let Some(progress_callback) = cb.progress {
-            progress_callback(0, crate::ProgressType::Transcribe, "workspace.empty.loadingModel");
+            progress_callback(
+                0,
+                crate::ProgressType::Transcribe,
+                "workspace.empty.loadingModel",
+            );
         }
 
         let transcribe_start = std::time::Instant::now();
@@ -273,13 +375,21 @@ impl Engine {
         let translate_to = options.translate_target.clone();
         let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
         let use_native = options.use_native_translation.unwrap_or(false);
+        let enable_forced_alignment = options.enable_forced_alignment.unwrap_or(false);
+        let user_offset = options.offset.unwrap_or(0.0);
+        let alignment_cancellation: Option<Arc<dyn Fn() -> bool + Send + Sync>> =
+            cb.is_cancelled.map(Arc::from);
+        let engine_cancellation = alignment_cancellation
+            .clone()
+            .map(|cancelled| Box::new(move || cancelled()) as Box<dyn Fn() -> bool + Send + Sync>);
 
-        let native_target = resolve_native_target(
-            engine_kind,
-            &from_lang,
-            translate_to.as_deref(),
-            use_native,
-        );
+        let native_target =
+            resolve_native_target(engine_kind, &from_lang, translate_to.as_deref(), use_native);
+
+        let mut engine_cfg = self.cfg.clone();
+        if enable_forced_alignment {
+            engine_cfg.enable_dtw = Some(false);
+        }
 
         let (mut segments, detected_lang) = crate::engines::run_engine(
             engine_kind,
@@ -287,15 +397,68 @@ impl Engine {
             speech_segments,
             &options,
             native_target.as_deref(),
-            &self.cfg,
+            &engine_cfg,
             cb.progress,
             cb.new_segment_callback,
-            cb.is_cancelled,
+            engine_cancellation,
         )
         .await?;
 
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
+
+        let has_native_word_timestamps = matches!(
+            engine_kind,
+            ModelEngine::Parakeet | ModelEngine::SenseVoice
+        );
+
+        if enable_forced_alignment && translate_to.is_none() && !has_native_word_timestamps {
+            if alignment_cancellation
+                .as_ref()
+                .is_some_and(|cancelled| cancelled())
+            {
+                eyre::bail!("Transcription cancelled");
+            }
+            let aligner_dir = match &self.cfg.aligner_model_dir {
+                Some(path) => {
+                    let path = PathBuf::from(path);
+                    for required in [
+                        "onnx/model_int8.onnx",
+                        "vocab.json",
+                        "config.json",
+                        "preprocessor_config.json",
+                    ] {
+                        if !path.join(required).is_file() {
+                            eyre::bail!("Aligner model directory is missing {required}");
+                        }
+                    }
+                    path
+                }
+                None => {
+                    self.models
+                        .ensure_aligner_model(cb.progress, alignment_cancellation.as_deref())
+                        .await?
+                }
+            };
+            align_segments(
+                &aligner_dir,
+                &original_samples,
+                &mut segments,
+                Some(effective_lang),
+                user_offset,
+                cb.progress,
+                alignment_cancellation.as_deref(),
+            )?;
+        } else if enable_forced_alignment {
+            if has_native_word_timestamps {
+                tracing::info!(
+                    "forced alignment skipped: {} provides native word-level timestamps",
+                    options.model
+                );
+            } else {
+                tracing::info!("forced alignment skipped because translation is enabled");
+            }
+        }
 
         // `use_native_translation` requests the model's built-in translation.
         // The routing above determined `native_target` — when set, the engine
@@ -311,9 +474,14 @@ impl Engine {
                 // target — translating would be a wasteful no-op and could
                 // even corrupt the text via a round-trip through the API.
                 if effective_lang != to_lang {
-                    crate::translate::translate_segments(segments.as_mut_slice(), effective_lang, to_lang, cb.progress)
-                        .await
-                        .map_err(|e| eyre!("{}", e))?;
+                    crate::translate::translate_segments(
+                        segments.as_mut_slice(),
+                        effective_lang,
+                        to_lang,
+                        cb.progress,
+                    )
+                    .await
+                    .map_err(|e| eyre!("{}", e))?;
                 }
             }
         }

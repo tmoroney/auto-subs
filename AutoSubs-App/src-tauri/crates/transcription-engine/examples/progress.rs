@@ -5,6 +5,7 @@ use transcription_engine::{Callbacks, Engine, EngineConfig, ProgressType, Transc
 static DOWNLOAD_COUNT: AtomicU32 = AtomicU32::new(0);
 static DIARIZE_COUNT: AtomicU32 = AtomicU32::new(0);
 static TRANSCRIBE_COUNT: AtomicU32 = AtomicU32::new(0);
+static ALIGN_COUNT: AtomicU32 = AtomicU32::new(0);
 static TRANSLATE_COUNT: AtomicU32 = AtomicU32::new(0);
 
 struct CliArgs {
@@ -87,6 +88,10 @@ fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
         ProgressType::Transcribe => {
             let count = TRANSCRIBE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
             println!("[TRANSCRIBE #{count}] {percent}%: {label}");
+        }
+        ProgressType::Align => {
+            let count = ALIGN_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+            println!("[ALIGN #{count}] {percent}%: {label}");
         }
         ProgressType::Translate => {
             let count = TRANSLATE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;

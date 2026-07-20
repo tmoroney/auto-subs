@@ -40,6 +40,7 @@ pub struct Manifest {
     pub vad: VadModel,
     /// Speaker diarization model (user-downloadable, has a UI card).
     pub diarize: DiarizeModel,
+    pub aligner: AlignerModel,
 }
 
 /// Silero VAD model, fetched on demand during transcription.
@@ -62,6 +63,24 @@ pub struct DiarizeModel {
     pub files: Vec<String>,
     #[serde(default)]
     pub ui: Option<Ui>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AlignerModel {
+    pub id: String,
+    pub repo: String,
+    pub files: Vec<FileSpec>,
+    pub license: ModelLicense,
+    pub ui: Ui,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ModelLicense {
+    pub spdx: String,
+    pub url: String,
+    pub attribution: String,
+    #[serde(rename = "commercialUse")]
+    pub commercial_use: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -189,8 +208,7 @@ impl FileSpec {
             FileSpec::Plain(_) => false,
             FileSpec::Detailed(f) => {
                 let basename = f.path.rsplit('/').next().unwrap_or(&f.path);
-                f.dest.as_deref().map(|d| d != basename).unwrap_or(false)
-                    || f.path.contains('/')
+                f.dest.as_deref().map(|d| d != basename).unwrap_or(false) || f.path.contains('/')
             }
         }
     }
@@ -241,6 +259,10 @@ pub fn vad() -> &'static VadModel {
 /// The speaker-diarization model.
 pub fn diarize() -> &'static DiarizeModel {
     &MANIFEST.diarize
+}
+
+pub fn aligner() -> &'static AlignerModel {
+    &MANIFEST.aligner
 }
 
 #[cfg(test)]
@@ -298,6 +320,47 @@ mod tests {
         assert!(d.repo.contains('/'), "diarize repo must be owner/name");
         assert!(!d.id.is_empty(), "diarize id must be set");
         assert!(!d.files.is_empty(), "diarize needs >=1 file");
+    }
+
+    #[test]
+    fn aligner_is_wellformed() {
+        let a = aligner();
+        assert!(!a.id.is_empty(), "aligner id must be set");
+        assert_eq!(
+            a.repo.split('/').count(),
+            2,
+            "aligner repo must be owner/name"
+        );
+        assert_eq!(
+            a.files
+                .iter()
+                .filter(|f| f.path().ends_with(".onnx"))
+                .count(),
+            1,
+            "aligner needs exactly one ONNX artifact"
+        );
+        for required in ["vocab.json", "config.json", "preprocessor_config.json"] {
+            assert!(
+                a.files.iter().any(|f| f.path() == required),
+                "aligner is missing {required}"
+            );
+        }
+        assert_eq!(a.license.spdx, "CC-BY-NC-4.0");
+        assert!(!a.license.commercial_use);
+        assert!(a.license.url.starts_with("https://"));
+        assert!(!a.license.attribution.is_empty());
+        assert_eq!(a.ui.size, "317MB");
+        assert!(!a.ui.ram.is_empty());
+        assert!(!a.ui.image.is_empty());
+        assert!(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../public")
+                .join(&a.ui.image)
+                .is_file(),
+            "aligner image must exist in public/"
+        );
+        assert!((1..=4).contains(&a.ui.accuracy));
+        assert!((1..=4).contains(&a.ui.weight));
     }
 
     #[test]

@@ -6,12 +6,13 @@ pub enum ProgressType {
     Download,
     Diarize,
     Transcribe,
+    Align,
     Translate,
 }
 
 // Shared callback types
-pub type LabeledProgressFn = dyn Fn(i32, ProgressType, &str) + Send + Sync;     // progress with type and label
-pub type NewSegmentFn = dyn Fn(&Segment) + Send + Sync;           // new segment notifications
+pub type LabeledProgressFn = dyn Fn(i32, ProgressType, &str) + Send + Sync; // progress with type and label
+pub type NewSegmentFn = dyn Fn(&Segment) + Send + Sync; // new segment notifications
 
 #[derive(Clone, Debug, Default)]
 pub struct AdvancedTranscribe {
@@ -45,6 +46,7 @@ pub struct TranscribeOptions {
 
     pub enable_vad: Option<bool>, // Enable Voice Activity Detection to isolate speech segments
     pub enable_diarize: Option<bool>, // Labels segments with speaker_id
+    pub enable_forced_alignment: Option<bool>,
     pub max_speakers: Option<usize>, // Max number of speakers to detect (otherwise auto detection may create too many speakers)
     pub advanced: Option<AdvancedTranscribe>, // Optional knobs
 }
@@ -59,6 +61,7 @@ impl Default for TranscribeOptions {
             translate_target: None,
             enable_vad: Some(true),
             enable_diarize: None,
+            enable_forced_alignment: Some(false),
             max_speakers: None,
             advanced: None,
         }

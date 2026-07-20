@@ -577,6 +577,17 @@ impl ModelManager {
         Ok((seg_path, emb_path))
     }
 
+    pub async fn ensure_aligner_model(
+        &self,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        let aligner = manifest::aligner();
+        let files: Vec<&str> = aligner.files.iter().map(FileSpec::path).collect();
+        self.ensure_hf_snapshot(&aligner.repo, &files, progress, is_cancelled)
+            .await
+    }
+
     pub fn delete_whisper_model(&self, model: &str) -> Result<()> {
         let cache_dir = self.model_cache_dir()?;
         if !cache_dir.exists() { return Ok(()); }
@@ -762,6 +773,16 @@ impl ModelManager {
             }
         }
 
+        let aligner = manifest::aligner();
+        let aligner_files: Vec<&str> = aligner.files.iter().map(FileSpec::path).collect();
+        // Same validation as diarize: partial/corrupt aligner files must not be reported
+        // as cached, otherwise the UI keeps prompting to download a model that exists.
+        if let Ok(Some(snapshot_dir)) = self.find_cached_snapshot_with_files(&aligner.repo, &aligner_files) {
+            if aligner_files.iter().all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok()) {
+                models.insert(aligner.id.clone());
+            }
+        }
+
         let mut result: Vec<String> = models.into_iter().collect();
         result.sort(); // Sort for consistent ordering
         Ok(result)
@@ -772,6 +793,9 @@ impl ModelManager {
     pub fn delete_cached_model(&self, model_name: &str) -> bool {
         if model_name == manifest::diarize().id {
             return self.delete_diarize_model().is_ok();
+        }
+        if model_name == manifest::aligner().id {
+            return self.delete_hf_repo(&manifest::aligner().repo).is_ok();
         }
         match manifest::get(model_name) {
             Some(entry) => match &entry.source {

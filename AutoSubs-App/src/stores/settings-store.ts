@@ -44,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   translate: false,
   targetLanguage: "en",
   enableDTW: true, // gpu enabled by default on mac and linux, disabled by default on windows
+  enableForcedAlignment: false,
   enableGpu: true,
   enableDiarize: false,
   maxSpeakers: null,

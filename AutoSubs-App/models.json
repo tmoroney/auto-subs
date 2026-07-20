@@ -267,5 +267,30 @@
     "repo": "altunenes/speaker-diarization-community-1-onnx",
     "files": ["segmentation-community-1.onnx", "embedding_model.onnx"],
     "ui": { "size": "40MB", "ram": "", "image": "diarize.png", "accuracy": 3, "weight": 3, "languageSupport": { "kind": "multilingual" } }
+  },
+  "_aligner_comment": "Optional MMS forced-alignment model, downloaded separately under CC BY-NC 4.0.",
+  "aligner": {
+    "id": "mms-forced-aligner",
+    "repo": "onnx-community/mms-300m-1130-forced-aligner-ONNX",
+    "files": [
+      "onnx/model_int8.onnx",
+      "vocab.json",
+      "config.json",
+      "preprocessor_config.json"
+    ],
+    "license": {
+      "spdx": "CC-BY-NC-4.0",
+      "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+      "attribution": "Meta MMS forced-alignment model; upstream conversion by MahmoudAshraf; ONNX conversion by onnx-community",
+      "commercialUse": false
+    },
+    "ui": {
+      "size": "317MB",
+      "ram": "1GB",
+      "image": "diarize.png",
+      "accuracy": 4,
+      "weight": 1,
+      "languageSupport": { "kind": "multilingual" }
+    }
   }
 }

@@ -1,6 +1,6 @@
-use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
-use tauri::test::{mock_builder, mock_context, noop_assets};
+use crate::transcription_api::{FrontendTranscribeOptions, transcribe_audio};
 use std::fs;
+use tauri::test::{mock_builder, mock_context, noop_assets};
 
 #[cfg(test)]
 mod tests {
@@ -28,6 +28,7 @@ mod tests {
             enable_dtw: Some(false),
             enable_gpu: Some(true),
             enable_diarize: Some(false),
+            enable_forced_alignment: Some(false),
             max_speakers: None,
             density: None,
             max_lines: None,
@@ -47,8 +48,8 @@ mod tests {
                 "{}/tests/data/transcript-smoke.json",
                 env!("CARGO_MANIFEST_DIR")
             );
-            let json = serde_json::to_string_pretty(&transcript)
-                .expect("failed to serialize transcript");
+            let json =
+                serde_json::to_string_pretty(&transcript).expect("failed to serialize transcript");
             fs::write(&out_path, json).expect("failed to write transcript file");
             eprintln!("Saved transcript to {}", out_path);
         }
@@ -76,6 +77,7 @@ mod tests {
             enable_dtw: Some(true),
             enable_gpu: Some(true),
             enable_diarize: Some(true),
+            enable_forced_alignment: Some(false),
             max_speakers: None,
             density: None,
             max_lines: None,

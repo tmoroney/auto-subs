@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
@@ -62,8 +62,8 @@ export function ManageModelsDialog({
             </p>
           ) : (
             downloadedModels.map((model) => (
-              <div key={model.value} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
+              <div key={model.value} className="flex items-start justify-between gap-3 p-3 border rounded-lg">
+                <div className="flex min-w-0 items-start gap-3">
                   <img
                     src={model.image}
                     alt={t(model.label)}
@@ -75,6 +75,34 @@ export function ManageModelsDialog({
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t(model.badge)}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{model.size}</p>
+                    {model.license ? (
+                      <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                        <p>{t("models.aligner.licenseRestriction")}</p>
+                        <p>{t("models.aligner.attribution")}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {model.repositoryUrl ? (
+                            <a
+                              href={model.repositoryUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:underline"
+                            >
+                              {t("models.aligner.repository")}
+                              <ExternalLink className="size-3" />
+                            </a>
+                          ) : null}
+                          <a
+                            href={model.license.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {t("models.aligner.licenseLink")}
+                            <ExternalLink className="size-3" />
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <Button

@@ -12,7 +12,8 @@ import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { ResolveApiError } from "@/api/resolve-api";
-import { diarizeModel } from "@/lib/models";
+import { alignerModel, diarizeModel } from "@/lib/models";
+import { ask } from "@tauri-apps/plugin-dialog";
 import SubSlateCard from "@/components/ui/SubSlateCard";
 import type { TranscriptionOptions } from "@/types";
 import type { SubtitleDocumentListItem } from "@/utils/file-utils";
@@ -53,6 +54,7 @@ export function TranscriptionPanel({
     targetLanguage,
     audioInputMode,
     enableDTW,
+    enableForcedAlignment,
     enableGpu,
     enableDiarize,
     maxSpeakers,
@@ -74,6 +76,7 @@ export function TranscriptionPanel({
       targetLanguage: s.targetLanguage,
       audioInputMode: s.audioInputMode,
       enableDTW: s.enableDTW,
+      enableForcedAlignment: s.enableForcedAlignment,
       enableGpu: s.enableGpu,
       enableDiarize: s.enableDiarize,
       maxSpeakers: s.maxSpeakers,
@@ -219,8 +222,14 @@ export function TranscriptionPanel({
   const isDiarizeModelDownloaded = downloadedModelValues.includes(
     diarizeModel.value,
   );
+  const isAlignerModelDownloaded = downloadedModelValues.includes(
+    alignerModel.value,
+  );
+  const willUseForcedAlignment = enableForcedAlignment && !translate;
   const hasPendingDownloads =
-    !isModelCached || (enableDiarize && !isDiarizeModelDownloaded);
+    !isModelCached ||
+    (enableDiarize && !isDiarizeModelDownloaded) ||
+    (willUseForcedAlignment && !isAlignerModelDownloaded);
 
   React.useEffect(() => {
     const cleanup = setupEventListeners({
@@ -229,6 +238,7 @@ export function TranscriptionPanel({
       isResolveMode: audioInputMode === "timeline",
       hasPendingDownloads,
       enableDiarize,
+      enableForcedAlignment: willUseForcedAlignment,
     });
 
     return cleanup;
@@ -239,6 +249,7 @@ export function TranscriptionPanel({
     audioInputMode,
     hasPendingDownloads,
     enableDiarize,
+    willUseForcedAlignment,
   ]);
 
   React.useEffect(() => {
@@ -327,6 +338,22 @@ export function TranscriptionPanel({
       return;
     }
 
+    if (willUseForcedAlignment && !isAlignerModelDownloaded) {
+      const confirmed = await ask(
+        tErr("settings.forcedAlignment.downloadConfirmationBody", {
+          size: alignerModel.size,
+          attribution: alignerModel.license?.attribution,
+        }),
+        {
+          title: tErr("settings.forcedAlignment.downloadConfirmationTitle"),
+          kind: "warning",
+          okLabel: tErr("settings.forcedAlignment.downloadAndContinue"),
+          cancelLabel: tErr("common.cancel"),
+        },
+      );
+      if (!confirmed) return;
+    }
+
     setIsProcessing(true);
     setTranscriptionProgress(0);
     clearProgressSteps();
@@ -337,6 +364,7 @@ export function TranscriptionPanel({
       isResolveMode: audioInputMode === "timeline",
       hasPendingDownloads,
       enableDiarize,
+      enableForcedAlignment: willUseForcedAlignment,
     });
 
     try {
@@ -361,6 +389,7 @@ export function TranscriptionPanel({
         translate,
         targetLanguage,
         enableDtw: enableDTW,
+        enableForcedAlignment: willUseForcedAlignment,
         enableGpu,
         enableDiarize,
         maxSpeakers,

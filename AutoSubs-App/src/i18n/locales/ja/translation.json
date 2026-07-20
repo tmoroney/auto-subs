@@ -254,6 +254,16 @@
       "details": "話者のダイアリゼーションとラベリングに使用されます。",
       "badge": "話者ラベル"
     },
+    "aligner": {
+      "label": "MMS 強制アライメントモデル",
+      "description": "音声に基づく単語タイミングモデル",
+      "details": "文字起こしの単語を元の音声に合わせるオプションモデルです。",
+      "badge": "単語タイミング",
+      "licenseRestriction": "CC BY-NC 4.0 · 非商用",
+      "attribution": "Meta MMS モデル。MahmoudAshraf および onnx-community による変換。",
+      "repository": "モデルリポジトリ",
+      "licenseLink": "モデルライセンス"
+    },
     "moonshine_base": {
       "badge": "英語専用",
       "description": "高速・高精度",
@@ -374,6 +384,7 @@
     "diarize": "話者を識別中",
     "processing": "処理中",
     "transcribe": "音声をテキストに変換中",
+    "align": "単語タイミングを調整中",
     "translate": "{{language}} に翻訳中",
     "normaliseAudio": "音声を正規化中",
     "preparingAudio": "音声を準備中...",
@@ -384,6 +395,15 @@
     "dtw": {
       "description": "単語レベルのタイミング精度を向上",
       "title": "動的時間伸縮法"
+    },
+    "forcedAlignment": {
+      "title": "強制アライメント",
+      "description": "追加のタイミング処理を実行（317MB のモデルをダウンロード）",
+      "translationIncompatible": "翻訳文は音声で話された単語と一致しないため、翻訳中は利用できません",
+      "summary": "強制アライメント",
+      "downloadConfirmationTitle": "強制アライメントモデルをダウンロードしますか？",
+      "downloadConfirmationBody": "AutoSubs はオプションの {{size}} MMS 強制アライメントモデルをダウンロードします。帰属表示：{{attribution}}。モデルの重みは非商用利用に限る CC BY-NC 4.0 でライセンスされ、AutoSubs の MIT ライセンスとは別です。モデルライセンスに準拠して利用する責任はユーザーにあります。",
+      "downloadAndContinue": "ダウンロードして続行"
     },
     "restartOnboarding": "オンボーディングを再開",
     "openLogsFolder": "ログフォルダを開く",

@@ -14,6 +14,15 @@
       "title": "动态时间规整",
       "description": "提高词级时间准确性"
     },
+    "forcedAlignment": {
+      "title": "强制对齐",
+      "description": "执行额外的时间校准（需下载 317MB 模型）",
+      "translationIncompatible": "翻译时不可用，因为译文与音频中说出的词语不一致",
+      "summary": "强制对齐",
+      "downloadConfirmationTitle": "下载强制对齐模型？",
+      "downloadConfirmationBody": "AutoSubs 将下载可选的 {{size}} MMS 强制对齐模型。署名：{{attribution}}。模型权重采用 CC BY-NC 4.0 许可，仅限非商业用途，并独立于 AutoSubs 的 MIT 许可证。您有责任确保自己的使用方式符合模型许可证。",
+      "downloadAndContinue": "下载并继续"
+    },
     "uiLanguage": {
       "title": "应用语言",
       "description": "更新菜单和按钮"
@@ -221,6 +230,16 @@
       "details": "用于说话人分离和标注。",
       "badge": "说话人标签"
     },
+    "aligner": {
+      "label": "MMS 强制对齐模型",
+      "description": "词语声学时间校准包",
+      "details": "将转录词语与原始语音对齐的可选模型。",
+      "badge": "词语时间",
+      "licenseRestriction": "CC BY-NC 4.0 · 仅限非商业用途",
+      "attribution": "Meta MMS 模型 · MahmoudAshraf 上游转换 · onnx-community ONNX 转换",
+      "repository": "模型仓库",
+      "licenseLink": "模型许可证"
+    },
     "tiny": {
       "label": "Whisper 微型",
       "description": "超快速",
@@ -372,6 +391,7 @@
     "download": "正在下载模型",
     "diarize": "正在识别说话人",
     "transcribe": "语音转文本",
+    "align": "正在对齐单词时间",
     "translate": "正在翻译为 {{language}}",
     "normaliseAudio": "正在标准化音频",
     "preparingAudio": "正在准备音频...",

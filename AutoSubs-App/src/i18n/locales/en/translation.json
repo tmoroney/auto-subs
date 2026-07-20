@@ -14,6 +14,15 @@
       "title": "Dynamic Time Warping",
       "description": "Improve word-level timing accuracy"
     },
+    "forcedAlignment": {
+      "title": "Forced Alignment",
+      "description": "Run an extra timing pass (317MB model download)",
+      "translationIncompatible": "Unavailable during translation because translated text does not match the spoken words",
+      "summary": "Forced alignment",
+      "downloadConfirmationTitle": "Download forced alignment model?",
+      "downloadConfirmationBody": "AutoSubs will download the optional {{size}} MMS forced-alignment model. Attribution: {{attribution}}. The weights are licensed under CC BY-NC 4.0 for noncommercial use and are separate from AutoSubs' MIT license. You are responsible for ensuring your use complies with the model license.",
+      "downloadAndContinue": "Download and continue"
+    },
     "uiLanguage": {
       "title": "App Language",
       "description": "Updates menus and buttons"
@@ -225,6 +234,16 @@
       "details": "Used for speaker diarization and labeling.",
       "badge": "Speaker Labels"
     },
+    "aligner": {
+      "label": "MMS Forced Alignment Model",
+      "description": "Acoustic word timing bundle",
+      "details": "Optional model that aligns transcript words to the original speech.",
+      "badge": "Word Timing",
+      "licenseRestriction": "CC BY-NC 4.0 · Noncommercial",
+      "attribution": "Meta MMS model · upstream conversion by MahmoudAshraf · ONNX conversion by onnx-community",
+      "repository": "Model repository",
+      "licenseLink": "Model license"
+    },
     "tiny": {
       "label": "Whisper Tiny",
       "description": "Ultra-fast",
@@ -376,6 +395,7 @@
     "download": "Downloading model",
     "diarize": "Identifying speakers",
     "transcribe": "Speech to text",
+    "align": "Aligning word timings",
     "translate": "Translating to {{language}}",
     "normaliseAudio": "Normalising audio",
     "preparingAudio": "Preparing audio...",

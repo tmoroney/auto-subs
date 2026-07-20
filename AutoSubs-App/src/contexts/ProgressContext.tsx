@@ -21,7 +21,7 @@ interface ProgressContextType {
   completeAllProgressSteps: () => void;
   cancelAllProgressSteps: () => void;
   updateProgressStep: (event: { progress: number; type?: string; label?: string }) => void;
-  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => () => void;
+  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean; enableForcedAlignment?: boolean }) => () => void;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
@@ -34,7 +34,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const seenSegmentsRef = useRef<Set<string>>(new Set());
   
   // Ref to track latest settings for use in closures/callbacks
-  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, hasPendingDownloads: false, enableDiarize: false });
+  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, hasPendingDownloads: false, enableDiarize: false, enableForcedAlignment: false });
 
   const resolveProgressLabel = useCallback((label?: string, progress?: number): string => {
     if (!label) {
@@ -56,7 +56,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   // Simplified progress step management
   const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
     // Only process events with known step types - ignore unknown/null types
-    const knownTypes = ['Export', 'Download', 'Diarize', 'Transcribe', 'Translate']
+    const knownTypes = ['Export', 'Download', 'Diarize', 'Transcribe', 'Align', 'Translate']
     if (!event.type || !knownTypes.includes(event.type)) {
       console.log('Ignoring progress event with unknown type:', event.type)
       return
@@ -151,6 +151,8 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         return i18n.t('progressSteps.diarize');
       case 'Transcribe':
         return i18n.t('progressSteps.transcribe');
+      case 'Align':
+        return i18n.t('progressSteps.align');
       case 'Translate':
         return i18n.t('progressSteps.translate', {
           language: getLanguageDisplayName(settingsRef.current.targetLanguage),
@@ -167,6 +169,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     if (settingsRef.current.hasPendingDownloads) order.push('Download')
     if (settingsRef.current.enableDiarize) order.push('Diarize')
     order.push('Transcribe')
+    if (settingsRef.current.enableForcedAlignment) order.push('Align')
     if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
       order.push('Translate')
     }
@@ -219,7 +222,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Set up simplified event listener
-  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean }) => {
+  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean; enableForcedAlignment?: boolean }) => {
     // Update settings ref
     settingsRef.current = {
       targetLanguage: settings.targetLanguage,
@@ -227,6 +230,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       isResolveMode: settings.isResolveMode ?? false,
       hasPendingDownloads: settings.hasPendingDownloads ?? false,
       enableDiarize: settings.enableDiarize ?? false,
+      enableForcedAlignment: settings.enableForcedAlignment ?? false,
     };
     
     const setup = async () => {

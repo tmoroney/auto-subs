@@ -25,11 +25,16 @@ futures = "0.3"
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread", "sync"] }
 tokio-util = "0.7"
 unicode-segmentation = "1.11"
+ort = { version = "=2.0.0-rc.12", features = ["ndarray"] }
+ndarray = "0.16"
+uroman = "0.6.5"
+unicode-normalization = "0.1"
 
 [features]
-coreml = ["whisper-rs/coreml", "diarize/coreml"]
-directml = ["diarize/directml"]
-cuda = ["whisper-rs/cuda", "diarize/load-dynamic"]
+coreml = ["whisper-rs/coreml", "diarize/coreml", "ort/coreml"]
+directml = ["diarize/directml", "ort/directml"]
+load-dynamic = ["ort/load-dynamic"]
+cuda = ["whisper-rs/cuda", "diarize/load-dynamic", "load-dynamic"]
 openblas = ["whisper-rs/openblas"]
 metal = ["whisper-rs/metal"]
 rocm = ["whisper-rs/hipblas"]
@@ -37,7 +42,7 @@ vulkan = ["whisper-rs/vulkan"]
 
 # Platform/arch presets
 mac-aarch = ["coreml", "metal"]
-mac-x86_64 = ["metal", "diarize/load-dynamic"]
+mac-x86_64 = ["metal", "diarize/load-dynamic", "load-dynamic"]
 windows = ["vulkan", "directml"]  # Whisper GPU via Vulkan + Pyannote via DirectML (requires Vulkan SDK: https://vulkan.lunarg.com)
 linux = ["vulkan"]
 

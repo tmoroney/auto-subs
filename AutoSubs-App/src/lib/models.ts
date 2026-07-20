@@ -28,9 +28,24 @@ interface ManifestModel {
   ui: ManifestUi;
 }
 
+interface ManifestLicense {
+  spdx: string;
+  url: string;
+  attribution: string;
+  commercialUse: boolean;
+}
+
+interface ManifestAuxiliaryModel {
+  id: string;
+  repo: string;
+  ui: ManifestUi;
+  license?: ManifestLicense;
+}
+
 interface ManifestFile {
   models: ManifestModel[];
-  diarize: { id: string; ui: ManifestUi };
+  diarize: ManifestAuxiliaryModel;
+  aligner: ManifestAuxiliaryModel;
 }
 
 const manifest = manifestData as unknown as ManifestFile;
@@ -109,6 +124,17 @@ export const diarizeModel: Model = toModel(
   manifest.diarize.ui,
   "diarize"
 );
+
+export const alignerModel: Model = {
+  ...toModel(
+    manifest.aligner.id,
+    "aligner",
+    manifest.aligner.ui,
+    "aligner"
+  ),
+  repositoryUrl: `https://huggingface.co/${manifest.aligner.repo}`,
+  license: manifest.aligner.license,
+};
 
 /**
  * Check if a model's engine supports automatic language detection.

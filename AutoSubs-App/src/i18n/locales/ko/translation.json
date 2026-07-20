@@ -246,6 +246,16 @@
       "details": "화자 분리 및 라벨링에 사용됩니다.",
       "label": "화자 분리 모델"
     },
+    "aligner": {
+      "label": "MMS 강제 정렬 모델",
+      "description": "음향 기반 단어 타이밍 모델",
+      "details": "자막 단어를 원본 음성에 맞추는 선택적 모델입니다.",
+      "badge": "단어 타이밍",
+      "licenseRestriction": "CC BY-NC 4.0 · 비상업적 사용",
+      "attribution": "Meta MMS 모델. MahmoudAshraf 및 onnx-community가 변환했습니다.",
+      "repository": "모델 저장소",
+      "licenseLink": "모델 라이선스"
+    },
     "manage": {
       "confirmBody": "{{model}} 모델을 기기에서 삭제합니다. 나중에 이 모델을 사용하면 다시 다운로드해야 합니다.",
       "confirmTitle": "정말 삭제하시겠습니까?",
@@ -374,6 +384,7 @@
     "diarize": "화자 식별 중",
     "processing": "처리 중",
     "transcribe": "음성을 텍스트로 변환 중",
+    "align": "단어 타이밍 정렬 중",
     "translate": "{{language}}(으)로 번역 중",
     "normaliseAudio": "오디오 정규화 중",
     "preparingAudio": "오디오 준비 중...",
@@ -384,6 +395,15 @@
     "dtw": {
       "description": "단어 수준 타이밍 정확도 향상",
       "title": "동적 시간 왜곡"
+    },
+    "forcedAlignment": {
+      "title": "강제 정렬",
+      "description": "추가 타이밍 처리 실행(317MB 모델 다운로드)",
+      "translationIncompatible": "번역된 텍스트는 음성으로 말한 단어와 일치하지 않으므로 번역 중에는 사용할 수 없습니다",
+      "summary": "강제 정렬",
+      "downloadConfirmationTitle": "강제 정렬 모델을 다운로드하시겠습니까?",
+      "downloadConfirmationBody": "AutoSubs가 선택 사항인 {{size}} MMS 강제 정렬 모델을 다운로드합니다. 저작자 표시: {{attribution}}. 모델 가중치는 비상업적 사용을 위한 CC BY-NC 4.0 라이선스이며 AutoSubs의 MIT 라이선스와 별개입니다. 모델 라이선스를 준수하여 사용할 책임은 사용자에게 있습니다.",
+      "downloadAndContinue": "다운로드하고 계속"
     },
     "restartOnboarding": "온보딩 다시 시작",
     "openLogsFolder": "로그 폴더 열기",

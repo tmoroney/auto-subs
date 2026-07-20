@@ -23,7 +23,7 @@ use tauri_plugin_cli::{CliExt, Matches};
 use std::process::Command;
 
 use crate::transcript_types::{Segment, Transcript};
-use crate::transcription_api::{transcribe_audio, FrontendTranscribeOptions};
+use crate::transcription_api::{FrontendTranscribeOptions, transcribe_audio};
 use transcription_engine::TextDensity;
 
 /// Transcription model identifiers accepted by `--model`, grouped by family and
@@ -160,16 +160,29 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         None => None,
     };
 
+    let translate = arg_flag(&m, "translate");
+    let forced_alignment = arg_flag(&m, "forced-alignment");
+    if translate && forced_alignment {
+        eprintln!("autosubs: --forced-alignment cannot be used with --translate");
+        flush_and_exit(2);
+    }
+    if forced_alignment {
+        eprintln!(
+            "autosubs: MMS forced-alignment weights may be downloaded (317MB); CC BY-NC 4.0, noncommercial use"
+        );
+    }
+
     let options = FrontendTranscribeOptions {
         audio_path: input,
         offset: None,
         model: arg_str(&m, "model").unwrap_or_else(|| "small".to_string()),
         lang: arg_str(&m, "lang"),
-        translate: Some(arg_flag(&m, "translate")),
+        translate: Some(translate),
         target_language: arg_str(&m, "target-language"),
         enable_dtw: None,
         enable_gpu,
         enable_diarize: Some(arg_flag(&m, "diarize")),
+        enable_forced_alignment: Some(forced_alignment),
         max_speakers: arg_num(&m, "max-speakers"),
         density,
         max_lines: arg_num(&m, "max-lines"),
@@ -552,7 +565,10 @@ pub fn cli_command_status() -> CliStatus {
     #[cfg(target_os = "windows")]
     {
         let dir = exe_dir();
-        let installed = dir.as_ref().map(|d| windows_path_contains(d)).unwrap_or(false);
+        let installed = dir
+            .as_ref()
+            .map(|d| windows_path_contains(d))
+            .unwrap_or(false);
         CliStatus {
             installed,
             manageable: true,
@@ -687,7 +703,13 @@ fn windows_path_contains(dir: &std::path::Path) -> bool {
 #[cfg(target_os = "windows")]
 fn run_powershell(script: &str) -> Result<(), String> {
     let out = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
         .output()
         .map_err(|e| format!("failed to run PowerShell: {e}"))?;
     if out.status.success() {
