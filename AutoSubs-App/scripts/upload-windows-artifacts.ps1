@@ -1,10 +1,30 @@
-#Requires -Version 7.2
+#Requires -Version 5.1
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [string]$Tag
 )
 
 $ErrorActionPreference = "Stop"
+
+$Repo = "tmoroney/auto-subs"
+
+if (-not $Tag) {
+    Write-Host "No tag supplied. Looking up the newest release for $Repo..."
+    $releases = gh release list --repo $Repo --json tagName,isDraft --limit 30 | ConvertFrom-Json
+    $draft = $releases | Where-Object { $_.isDraft } | Select-Object -First 1
+    if ($draft) {
+        $Tag = $draft.tagName
+        Write-Host "Using newest draft release: $Tag"
+    } else {
+        $release = $releases | Select-Object -First 1
+        if (-not $release) {
+            Write-Error "No release found for $Repo. Create a release first or pass a tag explicitly."
+            exit 1
+        }
+        $Tag = $release.tagName
+        Write-Host "No draft release found; using newest release: $Tag"
+    }
+}
 
 # Normalize tag to vX.Y.Z
 if ($Tag -notmatch '^v') {
@@ -12,9 +32,9 @@ if ($Tag -notmatch '^v') {
 }
 
 $Version = $Tag -replace '^v', ''
-$Repo = "tmoroney/auto-subs"
 
-$BundleDir = Join-Path $PSScriptRoot ".." "src-tauri" "target" "release" "bundle" "nsis"
+$TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { [System.IO.Path]::Combine($PSScriptRoot, "..", "src-tauri", "target") }
+$BundleDir = [System.IO.Path]::Combine($TargetDir, "release", "bundle", "nsis")
 
 if (-not (Test-Path $BundleDir)) {
     Write-Error "NSIS bundle directory not found: $BundleDir. Did you run 'npm run build:win' first?"
@@ -24,9 +44,10 @@ if (-not (Test-Path $BundleDir)) {
 $BundleDir = Resolve-Path $BundleDir
 
 # Tauri NSIS outputs something like AutoSubs_3.7.0_x64-setup.exe (or with a locale suffix).
-$Installer = Get-ChildItem -Path $BundleDir -Filter "AutoSubs_*-setup.exe" | Select-Object -First 1
+$InstallerFilter = "AutoSubs_${Version}*-setup.exe"
+$Installer = Get-ChildItem -Path $BundleDir -Filter $InstallerFilter | Select-Object -First 1
 if (-not $Installer) {
-    Write-Error "No installer found in $BundleDir matching AutoSubs_*-setup.exe"
+    Write-Error "No installer found in $BundleDir matching $InstallerFilter"
     exit 1
 }
 
