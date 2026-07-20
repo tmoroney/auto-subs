@@ -780,28 +780,28 @@ fn prepare_text_with(
     let is_cjk = matches!(iso, Some("jpn" | "zho" | "yue"));
     let source_units = split_display_units(text, is_cjk);
     let mut units = Vec::new();
+    let star_id = vocabulary.len();
     for original_text in source_units {
         let normalized = normalize_text_unit(&original_text);
         if normalized.is_empty() {
+            // Symbols, numeric parentheticals, and other text that normalizes
+            // away still deserve a star token so the original word survives.
+            units.push(AlignmentUnit {
+                original_text,
+                normalized_tokens: vec![star_id],
+            });
             continue;
         }
         let romanized = uroman
             .romanize_string::<rom_format::Str>(&normalized, iso)
             .to_string();
         let filtered = filter_romanized(&romanized);
-        if filtered.is_empty() {
-            if is_cjk {
-                units.push(AlignmentUnit {
-                    original_text,
-                    normalized_tokens: vec![vocabulary.len()],
-                });
-            } else {
-                tracing::warn!(
-                    original_text = %original_text,
-                    language = ?language,
-                    "alignment unit dropped: uroman produced no alignable ASCII text"
-                );
-            }
+        if filtered.is_empty() || filtered.chars().all(|character| character.is_ascii_digit()) {
+            // Pure numbers or unromanizable text fall back to a single star token.
+            units.push(AlignmentUnit {
+                original_text,
+                normalized_tokens: vec![star_id],
+            });
             continue;
         }
         let mut normalized_tokens = Vec::new();
@@ -809,6 +809,10 @@ fn prepare_text_with(
             .chars()
             .filter(|character| !character.is_whitespace())
         {
+            if character.is_ascii_digit() {
+                normalized_tokens.push(star_id);
+                continue;
+            }
             let token = character.to_string();
             let id = vocabulary.get(&token).copied().ok_or_else(|| {
                 eyre!("normalized character {character:?} is not in the model vocabulary")
@@ -888,14 +892,7 @@ fn normalize_text_unit(text: &str) -> String {
             }
         })
         .collect();
-    let mut words = Vec::new();
-    for word in mapped.split_whitespace() {
-        if word.chars().all(is_numeric_character) {
-            continue;
-        }
-        words.push(word);
-    }
-    words.join(" ")
+    mapped.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn remove_numeric_parentheticals(text: &str) -> String {
@@ -929,7 +926,7 @@ fn filter_romanized(text: &str) -> String {
     let mut output = String::new();
     let mut previous_space = true;
     for character in text.chars().flat_map(char::to_lowercase) {
-        if character.is_ascii_lowercase() || character == '\'' {
+        if character.is_ascii_lowercase() || character == '\'' || character.is_ascii_digit() {
             output.push(character);
             previous_space = false;
         } else if character.is_whitespace() && !previous_space {
@@ -938,10 +935,6 @@ fn filter_romanized(text: &str) -> String {
         }
     }
     output.trim().to_string()
-}
-
-fn is_numeric_character(character: char) -> bool {
-    character.is_numeric() || matches!(character, '\u{2170}'..='\u{2179}' | '\u{ff10}'..='\u{ff19}')
 }
 
 fn is_punctuation(character: char) -> bool {
@@ -1174,7 +1167,7 @@ mod tests {
     fn normalization_covers_latin_apostrophes_digits_and_punctuation() {
         assert_eq!(normalize_text_unit(" HéLLo,  WORLD! "), "héllo world");
         assert_eq!(normalize_text_unit("l’amour"), "l'amour");
-        assert_eq!(normalize_text_unit("123"), "");
+        assert_eq!(normalize_text_unit("123"), "123");
         assert_eq!(normalize_text_unit("version2"), "version2");
         assert_eq!(normalize_text_unit("(Sam 23:17)"), "");
     }
@@ -1242,14 +1235,34 @@ mod tests {
     }
 
     #[test]
-    fn text_preparation_rejects_unalignable_text_without_panicking() {
+    fn text_preparation_uses_star_fallback_for_unalignable_units() {
         let uroman = Uroman::new();
         let vocabulary = vocabulary();
+        let star_id = vocabulary.len();
+
         assert!(prepare_text_with(&uroman, &vocabulary, "", None).is_err());
         assert!(prepare_text_with(&uroman, &vocabulary, "   ", None).is_err());
-        assert!(prepare_text_with(&uroman, &vocabulary, "!!!", None).is_err());
-        assert!(prepare_text_with(&uroman, &vocabulary, "12345", None).is_err());
-        assert!(prepare_text_with(&uroman, &vocabulary, "✨", None).is_err());
+
+        for text in ["!!!", "12345", "✨"] {
+            let units = prepare_text_with(&uroman, &vocabulary, text, None)
+                .unwrap_or_else(|error| panic!("{text:?} should prepare with a star token: {error}"));
+            assert_eq!(units.len(), 1, "{text:?} should produce exactly one unit");
+            assert_eq!(units[0].original_text, text);
+            assert_eq!(units[0].normalized_tokens, vec![star_id]);
+        }
+    }
+
+    #[test]
+    fn text_preparation_preserves_digits_in_mixed_words() {
+        let uroman = Uroman::new();
+        let vocabulary = vocabulary();
+        let star_id = vocabulary.len();
+
+        let units = prepare_text_with(&uroman, &vocabulary, "section2", None)
+            .expect("mixed alphanumeric word should prepare");
+        assert_eq!(units.len(), 1);
+        assert_eq!(units[0].original_text, "section2");
+        assert_eq!(units[0].normalized_tokens.last().copied(), Some(star_id));
     }
 
     #[test]
