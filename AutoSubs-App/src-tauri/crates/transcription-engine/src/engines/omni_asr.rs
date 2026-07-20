@@ -112,7 +112,12 @@ impl OmniAsrEngine {
                 .map(|(i, _)| i as i64)
                 .unwrap_or(-1);
 
-            if id == self.blank_id || id == prev_id {
+            if id == self.blank_id {
+                // A blank separates repeated labels, so reset repeat suppression.
+                prev_id = id;
+                continue;
+            }
+            if id == prev_id {
                 continue;
             }
 
