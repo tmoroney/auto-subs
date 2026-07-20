@@ -3,8 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getVersion } from "@tauri-apps/api/app";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { useTranslation } from "react-i18next";
-
 import { useSettingsStore } from "@/stores/settings-store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,9 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ExternalLink, Loader2, AlertCircle, Server } from "lucide-react";
-import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status";
+import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
 
 const RELEASE_API_URL =
   "https://api.github.com/repos/tmoroney/auto-subs/releases/latest";
@@ -34,7 +30,6 @@ interface ReleaseInfo {
 }
 
 export function WhatsNewDialog() {
-  const { t } = useTranslation();
   const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted);
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
@@ -44,7 +39,6 @@ export function WhatsNewDialog() {
   const [release, setRelease] = React.useState<ReleaseInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showResolveRestartNotice, setShowResolveRestartNotice] = React.useState(false);
 
   // Determine whether the popup should be visible.
   // - Skip on true first run (no onboarding done yet) so GettingStartedOverlay shows first.
@@ -55,16 +49,6 @@ export function WhatsNewDialog() {
     onboardingCompleted &&
     !!currentVersion &&
     lastSeenVersion !== currentVersion;
-
-  React.useEffect(() => {
-    if (shouldShow) {
-      const hasRestartNotice = localStorage.getItem(UPDATE_RESTART_NOTICE_KEY) === "1";
-      if (hasRestartNotice) {
-        localStorage.removeItem(UPDATE_RESTART_NOTICE_KEY);
-        setShowResolveRestartNotice(true);
-      }
-    }
-  }, [shouldShow]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -151,21 +135,6 @@ export function WhatsNewDialog() {
             <DialogDescription>Released {formattedDate}</DialogDescription>
           )}
         </DialogHeader>
-
-        {(!!lastSeenVersion || showResolveRestartNotice) && (
-          <Alert className="border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-            <Server className="size-4" />
-            <AlertTitle>
-              {t("update.restartResolveServer.title", "Update installed")}
-            </AlertTitle>
-            <AlertDescription>
-              {t(
-                "update.restartResolveServer.description",
-                "AutoSubs restarted and disconnected from Resolve. In DaVinci Resolve, run Workspace -> Scripts -> AutoSubs again to start the updated Lua server.",
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
 
         <ScrollArea className="h-[40vh] max-h-[350px] px-2">
           {loading && (

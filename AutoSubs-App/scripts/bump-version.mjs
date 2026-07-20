@@ -122,6 +122,24 @@ function updateCargoLockVersion(filePath, version) {
   return true;
 }
 
+function updateVersionLua(filePath, version) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  version.lua not found: ${filePath}`);
+    return false;
+  }
+
+  const expected = `return "${version}"\n`;
+  const content = fs.readFileSync(filePath, 'utf-8');
+  if (content === expected) {
+    console.log(`⚠️  No changes needed for version.lua (already at ${version})`);
+    return false;
+  }
+
+  fs.writeFileSync(filePath, expected, 'utf-8');
+  console.log(`✓ Updated version.lua: ${path.relative(rootDir, filePath)}`);
+  return true;
+}
+
 function verifyFiles(version) {
   const checks = [
     { path: path.join(rootDir, 'package.json'), field: 'version' },
@@ -215,6 +233,10 @@ function main() {
   }
 
   if (updateCargoLockVersion(path.join(rootDir, 'src-tauri', 'Cargo.lock'), version)) {
+    updatedCount++;
+  }
+
+  if (updateVersionLua(path.join(rootDir, 'src-tauri', 'resources', 'modules', 'version.lua'), version)) {
     updatedCount++;
   }
 

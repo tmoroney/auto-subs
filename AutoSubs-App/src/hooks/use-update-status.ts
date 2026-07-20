@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 
-export const UPDATE_RESTART_NOTICE_KEY = "autosubs-update-restart-notice";
-
 type UpdatePhase =
   | "idle"
   | "downloading"
@@ -54,7 +52,6 @@ export function useUpdateStatus(): UpdateStatus {
 
       unlisten.push(
         await listen("update-restarting", () => {
-          localStorage.setItem(UPDATE_RESTART_NOTICE_KEY, "1");
           setPhase("restarting");
           setPercentage(null);
         })
@@ -69,7 +66,6 @@ export function useUpdateStatus(): UpdateStatus {
 
       unlisten.push(
         await listen("update-error", () => {
-          localStorage.removeItem(UPDATE_RESTART_NOTICE_KEY);
           setPhase("error");
           setPercentage(null);
           if (errorTimeout) clearTimeout(errorTimeout);
