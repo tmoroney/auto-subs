@@ -1993,8 +1993,6 @@ function StartServer()
     -- Server loop with signal handling
     local quitServer = false
     local shouldReload = false
-    local new_resources_path = nil
-    local new_executable_path = nil
     while not quitServer do
         -- Server loop to handle client connections
         local client, err = server:accept()
@@ -2124,8 +2122,6 @@ function StartServer()
                                 body = safe_json(GetVersion())
                             elseif data.func == "ReloadServer" then
                                 print("[AutoSubs Server] Reload requested by client...")
-                                new_resources_path = data.resourcesPath
-                                new_executable_path = data.executablePath
                                 body = safe_json({ message = "Reloading server" })
                                 quitServer = true
                                 shouldReload = true
@@ -2204,8 +2200,31 @@ function StartServer()
     if shouldReload then
         print("[AutoSubs Server] Hot-reloading autosubs_core...")
 
-        local reload_resources_path = new_resources_path or resources_path
-        local reload_executable_path = new_executable_path or main_app
+        -- Always reload from the resources directory this server was started with,
+        -- so a caller cannot ask us to execute Lua from an arbitrary path.
+        local reload_resources_path = resources_path
+        local reload_executable_path = main_app
+
+        -- Ensure the new modules directory is searched first.
+        local new_modules_path = join_path(reload_resources_path, "modules")
+        package.path = new_modules_path .. "/?.lua;" .. package.path
+
+        local new_core_path = join_path(new_modules_path, "autosubs_core.lua")
+        local new_core_chunk, load_err = loadfile(new_core_path)
+        if not new_core_chunk then
+            print("[AutoSubs Server] Failed to load new autosubs_core.lua:", load_err)
+            print("[AutoSubs Server] Restarting previous server...")
+            launch_app = false
+            return StartServer()
+        end
+
+        local new_core = new_core_chunk()
+        if type(new_core) ~= "table" or type(new_core.Init) ~= "function" then
+            print("[AutoSubs Server] New autosubs_core.lua did not return an AutoSubs table")
+            print("[AutoSubs Server] Restarting previous server...")
+            launch_app = false
+            return StartServer()
+        end
 
         -- Clear cached modules that may have changed so the new resources are used.
         package.loaded["autosubs_core"] = nil
@@ -2217,25 +2236,18 @@ function StartServer()
         -- Intentionally keep ljsocket and libavutil cached: they call ffi.cdef and
         -- their API is stable, so reloading them risks redefinition errors.
 
-        -- Ensure the new modules directory is searched first.
-        local new_modules_path = join_path(reload_resources_path, "modules")
-        package.path = new_modules_path .. "/?.lua;" .. package.path
-
-        local new_core_path = join_path(new_modules_path, "autosubs_core.lua")
-        local new_core_chunk, load_err = loadfile(new_core_path)
-        if not new_core_chunk then
-            print("[AutoSubs Server] Failed to load new autosubs_core.lua:", load_err)
-            return
+        local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE, false)
+        if not ok then
+            print("[AutoSubs Server] New server initialization failed:", init_err)
+            print("[AutoSubs Server] Restarting previous server...")
+            -- Drop the broken new module so a later reload can be retried.
+            package.loaded["autosubs_core"] = nil
+            launch_app = false
+            return StartServer()
         end
 
-        local new_core = new_core_chunk()
-        if type(new_core) ~= "table" or type(new_core.Init) ~= "function" then
-            print("[AutoSubs Server] New autosubs_core.lua did not return an AutoSubs table")
-            return
-        end
-
-        package.loaded["autosubs_core"] = new_core
-        return new_core:Init(reload_executable_path, reload_resources_path, DEV_MODE, false)
+        -- Init tail-calls StartServer; if it returns we are done.
+        return
     end
 
     print("Server shut down.")

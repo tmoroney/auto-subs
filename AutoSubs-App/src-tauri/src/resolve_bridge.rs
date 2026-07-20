@@ -139,3 +139,11 @@ pub async fn reload_resolve_server() -> Result<(), String> {
     send_resolve_payload(json!({"func": "ReloadServer"}), Duration::from_secs(3)).await?;
     Ok(())
 }
+
+/// Tauri command that lets the frontend ask for the Resolve server's reported
+/// version. Returns `null` when the server is unreachable or predates the
+/// `GetVersion` endpoint.
+#[tauri::command]
+pub async fn get_resolve_server_version() -> Result<Option<String>, String> {
+    resolve_server_version().await
+}
