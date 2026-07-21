@@ -383,9 +383,9 @@
       "badge": "Multilingual"
     },
     "omni_asr_1b_ctc": {
-      "label": "Omni-ASR 1B CTC",
+      "label": "Omni-ASR",
       "description": "On-device Multilingual",
-      "details": "Larger and more accurate multilingual CTC model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
+      "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
     }
   },

@@ -264,7 +264,7 @@
         "repo": "csukuangfj2/sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-2026-02-05",
         "files": ["model.onnx", "model.weights", "tokens.txt"]
       },
-      "ui": { "size": "3.7GB", "ram": "4GB", "image": "globe.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
+      "ui": { "size": "3.7GB", "ram": "4GB", "image": "lyrebird.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
