@@ -216,7 +216,7 @@ pub async fn transcribe_omni_asr(
         bail!("Transcription cancelled");
     }
 
-    let engine = OmniAsrEngine::load(model_path)?;
+    let engine = crate::engines::onnx::load_with_directml_fallback(|| OmniAsrEngine::load(model_path))?;
     run_onnx_pipeline(
         engine,
         speech_segments,

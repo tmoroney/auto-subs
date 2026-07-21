@@ -124,7 +124,7 @@ pub async fn transcribe_sense_voice(
         eyre::bail!("Transcription cancelled");
     }
 
-    let mut engine = SenseVoiceEngine::load(model_path)?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(|| SenseVoiceEngine::load(model_path))?;
     let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
     engine.params.language = Some(lang.clone());
     engine.detected_lang = if lang == "auto" { None } else { Some(lang) };

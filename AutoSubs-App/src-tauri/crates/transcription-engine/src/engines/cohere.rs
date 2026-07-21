@@ -71,7 +71,7 @@ pub async fn transcribe_cohere(
         );
     }
 
-    let mut engine = CohereEngine::load(model_path)?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(|| CohereEngine::load(model_path))?;
     let supported_languages = engine.model.capabilities().languages;
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(

@@ -108,7 +108,7 @@ pub async fn transcribe_moonshine(
         eyre::bail!("Transcription cancelled");
     }
 
-    let engine = MoonshineEngine::load(model_path, variant)?;
+    let engine = crate::engines::onnx::load_with_directml_fallback(|| MoonshineEngine::load(model_path, variant))?;
     run_onnx_pipeline(
         engine,
         speech_segments,

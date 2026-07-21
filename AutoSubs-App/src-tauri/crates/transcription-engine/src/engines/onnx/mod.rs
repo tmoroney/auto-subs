@@ -4,6 +4,8 @@ use crate::types::{
 use crate::utils::{interpolate_word_timestamps, push_segment_clamped, split_speech_segment};
 use eyre::{bail, Result};
 use transcribe_rs::{TranscriptionResult, TranscriptionSegment};
+#[cfg(all(target_os = "windows", feature = "directml"))]
+use transcribe_rs::{get_ort_accelerator, set_ort_accelerator, OrtAccelerator};
 
 /// How an engine derives word timestamps.
 #[derive(Clone, Copy)]
@@ -27,6 +29,26 @@ pub trait OnnxEngine: Sized {
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult>;
     fn word_timing(&self) -> WordTiming;
     fn detected_lang(&self) -> Option<String>;
+}
+
+/// Try to load an ONNX engine. If DirectML was selected and fails to initialize,
+/// fall back to the Auto/CPU accelerator once and retry.
+pub fn load_with_directml_fallback<F, E>(mut loader: F) -> Result<E>
+where
+    F: FnMut() -> Result<E>,
+{
+    match loader() {
+        Ok(engine) => Ok(engine),
+        Err(e) => {
+            #[cfg(all(target_os = "windows", feature = "directml"))]
+            if get_ort_accelerator() == OrtAccelerator::DirectMl {
+                tracing::warn!("ONNX DirectML init failed ({}); falling back to CPU/Auto", e);
+                set_ort_accelerator(OrtAccelerator::Auto);
+                return loader();
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Shared driver for the ONNX engines.

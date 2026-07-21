@@ -90,7 +90,7 @@ pub async fn transcribe_parakeet(
         eyre::bail!("Transcription cancelled");
     }
 
-    let engine = ParakeetEngine::load(model_path)?;
+    let engine = crate::engines::onnx::load_with_directml_fallback(|| ParakeetEngine::load(model_path))?;
     run_onnx_pipeline(
         engine,
         speech_segments,

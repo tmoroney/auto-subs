@@ -83,7 +83,7 @@ pub async fn transcribe_canary(
         );
     }
 
-    let mut engine = CanaryEngine::load(model_path)?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(|| CanaryEngine::load(model_path))?;
     let supported_languages = engine.model.capabilities().languages;
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(
