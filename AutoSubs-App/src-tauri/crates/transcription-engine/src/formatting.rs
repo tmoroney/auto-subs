@@ -524,20 +524,21 @@ fn censored_replacement(clean: &str) -> String {
     }
 }
 
-/// Lowercase then uppercase the first letter of every "word" (separated by non-word chars).
-/// Mirrors JS `.toLocaleLowerCase().replace(/\b\w/g, c => c.toUpperCase())`.
+/// Title-case a Latin token: lowercase the whole token, then uppercase only the
+/// first alphabetic character. This avoids capitalising after internal punctuation
+/// such as apostrophes (e.g. "don't" -> "Don't") or censorship asterisks
+/// (e.g. "h**l" -> "H**l").
 fn titlecase_latin(s: &str) -> String {
     let lower = s.to_lowercase();
     let mut out = String::with_capacity(lower.len());
-    let mut prev_is_word = false;
+    let mut saw_alpha = false;
     for c in lower.chars() {
-        let is_word = c.is_alphanumeric() || c == '_';
-        if is_word && !prev_is_word {
+        if !saw_alpha && c.is_alphabetic() {
             for uc in c.to_uppercase() { out.push(uc); }
+            saw_alpha = true;
         } else {
             out.push(c);
         }
-        prev_is_word = is_word;
     }
     out
 }
