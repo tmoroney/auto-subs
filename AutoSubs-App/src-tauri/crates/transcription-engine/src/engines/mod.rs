@@ -5,6 +5,7 @@
 //! - **Parakeet**: NVIDIA's NeMo Parakeet model via transcribe-rs (ONNX format)
 //! - **Moonshine**: Useful Sensors' Moonshine via transcribe-rs (ONNX format)
 //! - **SenseVoice**: FunAudioLLM SenseVoice via transcribe-rs (ONNX format)
+//! - **OmniAsr**: Facebook Omni-ASR 300M CTC via ORT (ONNX format)
 
 use crate::engine::EngineConfig;
 use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
@@ -18,6 +19,7 @@ pub mod onnx;
 pub mod canary;
 pub mod cohere;
 pub mod moonshine;
+pub mod omni_asr;
 pub mod parakeet;
 pub mod sense_voice;
 
@@ -28,6 +30,7 @@ pub use canary::transcribe_canary;
 pub use cohere::transcribe_cohere;
 pub use moonshine::transcribe_moonshine;
 pub use parakeet::transcribe_parakeet;
+pub use omni_asr::transcribe_omni_asr;
 pub use sense_voice::transcribe_sense_voice;
 
 #[allow(clippy::too_many_arguments)]
@@ -128,6 +131,17 @@ pub async fn run_engine(
         }
         ModelEngine::Cohere => {
             crate::engines::cohere::transcribe_cohere(
+                model_path,
+                speech_segments,
+                options,
+                progress,
+                new_segment_callback,
+                abort_callback,
+            )
+            .await
+        }
+        ModelEngine::OmniAsr => {
+            crate::engines::omni_asr::transcribe_omni_asr(
                 model_path,
                 speech_segments,
                 options,

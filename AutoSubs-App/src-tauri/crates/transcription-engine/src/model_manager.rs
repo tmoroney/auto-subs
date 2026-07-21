@@ -283,6 +283,7 @@ impl ModelManager {
             MEngine::Cohere => Some(("cohere", entry.id.clone())),
             MEngine::SenseVoice => Some(("sense_voice", entry.id.clone())),
             MEngine::Parakeet => Some(("parakeet", entry.id.clone())),
+            MEngine::OmniAsr => Some(("omni_asr", entry.id.clone())),
             MEngine::Whisper => Some(("whisper", entry.id.clone())),
         }
     }

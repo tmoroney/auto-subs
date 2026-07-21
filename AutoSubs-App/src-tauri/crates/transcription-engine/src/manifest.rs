@@ -122,6 +122,7 @@ pub enum Engine {
     Cohere,
     Gigaam,
     SenseVoice,
+    OmniAsr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -378,6 +379,7 @@ mod tests {
                         | Engine::SenseVoice
                         | Engine::Canary
                         | Engine::Cohere
+                        | Engine::OmniAsr
                 ),
                 "model '{}' uses engine {:?} which has no wrapper yet",
                 e.id,

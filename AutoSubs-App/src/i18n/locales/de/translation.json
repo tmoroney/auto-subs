@@ -377,6 +377,12 @@
       "description": "Mehrsprachig (Groß)",
       "details": "Großes mehrsprachiges Transkriptionsmodell von Cohere.",
       "badge": "Mehrsprachig"
+    },
+    "omni_asr_1b_ctc": {
+      "label": "Omni-ASR 1B CTC",
+      "description": "On-device Multilingual",
+      "details": "Larger and more accurate multilingual CTC model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
+      "badge": "Multilingual"
     }
   },
   "completion": {
