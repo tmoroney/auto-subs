@@ -98,6 +98,7 @@ pub async fn transcribe_moonshine(
     variant: MoonshineVariant,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
+    use_gpu: Option<bool>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -108,7 +109,7 @@ pub async fn transcribe_moonshine(
         eyre::bail!("Transcription cancelled");
     }
 
-    let engine = crate::engines::onnx::load_with_directml_fallback(|| MoonshineEngine::load(model_path, variant))?;
+    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || MoonshineEngine::load(model_path, variant))?;
     run_onnx_pipeline(
         engine,
         speech_segments,

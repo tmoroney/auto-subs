@@ -64,6 +64,7 @@ pub async fn transcribe_canary(
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
     native_target: Option<&str>,
+    use_gpu: Option<bool>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -83,7 +84,7 @@ pub async fn transcribe_canary(
         );
     }
 
-    let mut engine = crate::engines::onnx::load_with_directml_fallback(|| CanaryEngine::load(model_path))?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || CanaryEngine::load(model_path))?;
     let supported_languages = engine.model.capabilities().languages;
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(

@@ -31,32 +31,58 @@ pub trait OnnxEngine: Sized {
     fn detected_lang(&self) -> Option<String>;
 }
 
-/// Try to load an ONNX engine. If DirectML was selected and fails to initialize,
-/// fall back to the Auto/CPU accelerator once and retry, restoring the original
-/// accelerator if the retry also fails so later valid loads can still use DirectML.
-pub fn load_with_directml_fallback<F, E>(mut loader: F) -> Result<E>
+#[cfg(all(target_os = "windows", feature = "directml"))]
+static ONNX_ACCEL_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Load an ONNX engine while the process-wide transcribe-rs accelerator is
+/// configured for this request's GPU preference. On Windows builds with the
+/// DirectML feature enabled, a user-allowed GPU request selects DirectML;
+/// CPU-only selects CpuOnly. If DirectML fails to initialize, we retry once
+/// with Auto (CPU) and restore the previous accelerator if that also fails.
+pub fn load_with_directml_fallback<F, E>(_use_gpu: Option<bool>, mut loader: F) -> Result<E>
 where
     F: FnMut() -> Result<E>,
 {
-    match loader() {
-        Ok(engine) => Ok(engine),
-        Err(e) => {
-            #[cfg(all(target_os = "windows", feature = "directml"))]
-            {
-                let prev = get_ort_accelerator();
-                if prev == OrtAccelerator::DirectMl {
-                    tracing::warn!("ONNX DirectML init failed ({}); falling back to CPU/Auto", e);
-                    set_ort_accelerator(OrtAccelerator::Auto);
-                    let result = loader();
-                    if result.is_err() {
-                        set_ort_accelerator(prev);
-                    }
-                    return result;
-                }
-            }
-            Err(e)
+    #[cfg(all(target_os = "windows", feature = "directml"))]
+    {
+        let use_gpu = _use_gpu;
+        let _guard = ONNX_ACCEL_LOCK.lock().unwrap();
+        let prev = get_ort_accelerator();
+        let desired = if use_gpu.unwrap_or(true) {
+            OrtAccelerator::DirectMl
+        } else {
+            OrtAccelerator::CpuOnly
+        };
+
+        if prev != desired {
+            set_ort_accelerator(desired);
         }
+
+        let result = match loader() {
+            Ok(engine) => Ok(engine),
+            Err(e) if desired == OrtAccelerator::DirectMl => {
+                tracing::warn!("ONNX DirectML init failed ({}); falling back to CPU/Auto", e);
+                set_ort_accelerator(OrtAccelerator::Auto);
+                let retry = loader();
+                if retry.is_err() {
+                    set_ort_accelerator(prev);
+                }
+                retry
+            }
+            Err(e) => Err(e),
+        };
+
+        // If we errored without a fallback path, leave the process-wide state
+        // as we found it so the next request starts from a known place.
+        if result.is_err() && desired != OrtAccelerator::Auto && prev != desired {
+            set_ort_accelerator(prev);
+        }
+
+        return result;
     }
+
+    #[cfg(not(all(target_os = "windows", feature = "directml")))]
+    loader()
 }
 
 /// Shared driver for the ONNX engines.

@@ -47,12 +47,14 @@ pub async fn run_engine(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     let num_samples: usize = speech_segments.iter().map(|s| s.samples.len()).sum();
 
+    let use_gpu = cfg.use_gpu;
     match engine_kind {
         ModelEngine::Parakeet => {
             crate::engines::parakeet::transcribe_parakeet(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -68,6 +70,7 @@ pub async fn run_engine(
                 variant,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -111,6 +114,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -123,6 +127,7 @@ pub async fn run_engine(
                 speech_segments,
                 options,
                 native_target,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -134,6 +139,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -145,6 +151,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
