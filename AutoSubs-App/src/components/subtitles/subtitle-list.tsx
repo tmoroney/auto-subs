@@ -190,7 +190,8 @@ const SubtitleList = ({
     }, [selectedIndex]);
 
     const formatTimecode = (seconds: number | string): string => {
-        const sec = typeof seconds === 'string' ? parseFloat(seconds) : seconds;
+        const parsed = typeof seconds === 'string' ? parseFloat(seconds) : seconds;
+        const sec = typeof parsed === 'number' && !isNaN(parsed) ? Math.max(0, parsed) : 0;
         const hours = Math.floor(sec / 3600);
         const minutes = Math.floor((sec % 3600) / 60);
         const secs = Math.floor(sec % 60);
