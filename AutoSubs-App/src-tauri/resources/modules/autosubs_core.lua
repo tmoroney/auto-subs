@@ -12,12 +12,31 @@ local resolve = resolve_env.get_resolve()
 
 local DEV_MODE = false
 
+-- Whether to launch the main app when the server starts. Disabled during hot-reload
+-- because the app is already running.
+local launch_app = true
+
+-- App version reported by the GetVersion endpoint; used to detect stale servers.
+local VERSION = require("version")
+
 -- Server Port
 local PORT = 56002
 
 -- Platform-specific FFI bindings
+-- Safe wrapper around ffi.cdef so this module can be hot-reloaded without
+-- crashing on re-declarations of C types/functions that are already defined.
+local function safe_cdef(def)
+    local ok, err = pcall(ffi.cdef, def)
+    if not ok then
+        err = tostring(err):lower()
+        if not (err:find("redefine") or err:find("redecl")) then
+            error(err, 2)
+        end
+    end
+end
+
 if ffi.os == "Windows" then
-    ffi.cdef [[
+    safe_cdef([[
         typedef wchar_t WCHAR;
 
         int MultiByteToWideChar(
@@ -40,13 +59,13 @@ if ffi.os == "Windows" then
             const char* lpParameters,
             const char* lpDirectory,
             int nShowCmd);
-    ]]
+    ]])
 else
-    ffi.cdef [[
+    safe_cdef([[
         int system(const char *command);
         struct timespec { long tv_sec; long tv_nsec; };
         int nanosleep(const struct timespec *req, struct timespec *rem);
-    ]]
+    ]])
 end
 
 -- Helper to convert a UTF-8 string to a wide-character (WCHAR) string
@@ -454,6 +473,10 @@ end
 function GetTemplates()
     refresh_project()
     return get_templates()
+end
+
+function GetVersion()
+    return { version = VERSION }
 end
 
 -- Get a list of possible output tracks for subtitles
@@ -1977,13 +2000,14 @@ function StartServer()
     print("AutoSubs server is listening on port: ", PORT)
     print("Press Ctrl+C to stop the server")
 
-    -- Launch app if not in dev mode
-    if not DEV_MODE then
+    -- Launch app if not in dev mode and not hot-reloading.
+    if not DEV_MODE and launch_app then
         LaunchApp()
     end
 
     -- Server loop with signal handling
     local quitServer = false
+    local shouldReload = false
     while not quitServer do
         -- Server loop to handle client connections
         local client, err = server:accept()
@@ -2108,6 +2132,14 @@ function StartServer()
                                 print("[AutoSubs Server] Cancelling caption preset edit...")
                                 local result = CancelPresetEdit()
                                 body = safe_json(result)
+                            elseif data.func == "GetVersion" then
+                                print("[AutoSubs Server] Getting version...")
+                                body = safe_json(GetVersion())
+                            elseif data.func == "ReloadServer" then
+                                print("[AutoSubs Server] Reload requested by client...")
+                                body = safe_json({ message = "Reloading server" })
+                                quitServer = true
+                                shouldReload = true
                             elseif data.func == "Exit" then
                                 body = safe_json({ message = "Server shutting down" })
                                 quitServer = true
@@ -2179,12 +2211,67 @@ function StartServer()
 
     print("Shutting down AutoSubs Link server...")
     server:close()
+
+    if shouldReload then
+        print("[AutoSubs Server] Hot-reloading autosubs_core...")
+
+        -- Always reload from the resources directory this server was started with,
+        -- so a caller cannot ask us to execute Lua from an arbitrary path.
+        local reload_resources_path = resources_path
+        local reload_executable_path = main_app
+
+        -- Ensure the new modules directory is searched first.
+        local new_modules_path = join_path(reload_resources_path, "modules")
+        package.path = new_modules_path .. "/?.lua;" .. package.path
+
+        local new_core_path = join_path(new_modules_path, "autosubs_core.lua")
+        local new_core_chunk, load_err = loadfile(new_core_path)
+        if not new_core_chunk then
+            print("[AutoSubs Server] Failed to load new autosubs_core.lua:", load_err)
+            print("[AutoSubs Server] Restarting previous server...")
+            launch_app = false
+            return StartServer()
+        end
+
+        local new_core = new_core_chunk()
+        if type(new_core) ~= "table" or type(new_core.Init) ~= "function" then
+            print("[AutoSubs Server] New autosubs_core.lua did not return an AutoSubs table")
+            print("[AutoSubs Server] Restarting previous server...")
+            launch_app = false
+            return StartServer()
+        end
+
+        -- Clear cached modules that may have changed so the new resources are used.
+        package.loaded["autosubs_core"] = nil
+        package.loaded["resolve_env"] = nil
+        package.loaded["caption_template_version"] = nil
+        package.loaded["font_fallback"] = nil
+        package.loaded["dkjson"] = nil
+        package.loaded["version"] = nil
+        -- Intentionally keep ljsocket and libavutil cached: they call ffi.cdef and
+        -- their API is stable, so reloading them risks redefinition errors.
+
+        local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE, false)
+        if not ok then
+            print("[AutoSubs Server] New server initialization failed:", init_err)
+            print("[AutoSubs Server] Restarting previous server...")
+            -- Drop the broken new module so a later reload can be retried.
+            package.loaded["autosubs_core"] = nil
+            launch_app = false
+            return StartServer()
+        end
+
+        -- Init tail-calls StartServer; if it returns we are done.
+        return
+    end
+
     print("Server shut down.")
 end
 
 local AutoSubs = {
-    Init = function(self, executable_path, resources_folder, dev_mode)
+    Init = function(self, executable_path, resources_folder, dev_mode, should_launch_app)
         DEV_MODE = dev_mode
+        launch_app = should_launch_app ~= false
         main_app = executable_path
         resources_path = resources_folder
 
@@ -2201,7 +2288,7 @@ local AutoSubs = {
         json = require("dkjson")
         luaresolve = require("libavutil")
         font_fallback = require("font_fallback")
-        StartServer()
+        return StartServer()
     end
 }
 

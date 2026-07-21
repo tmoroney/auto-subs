@@ -2,10 +2,10 @@ import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { useTranslation } from "react-i18next";
-
 import { useSettingsStore } from "@/stores/settings-store";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -16,9 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ExternalLink, Loader2, AlertCircle, Server } from "lucide-react";
-import { UPDATE_RESTART_NOTICE_KEY } from "@/hooks/use-update-status";
 
 const RELEASE_API_URL =
   "https://api.github.com/repos/tmoroney/auto-subs/releases/latest";
@@ -34,17 +32,18 @@ interface ReleaseInfo {
 }
 
 export function WhatsNewDialog() {
-  const { t } = useTranslation();
   const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted);
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const isHydrated = useSettingsStore((s) => s.isHydrated);
 
   const [currentVersion, setCurrentVersion] = React.useState<string>("");
+  const [resolveVersion, setResolveVersion] = React.useState<string | null>(
+    null,
+  );
   const [release, setRelease] = React.useState<ReleaseInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showResolveRestartNotice, setShowResolveRestartNotice] = React.useState(false);
 
   // Determine whether the popup should be visible.
   // - Skip on true first run (no onboarding done yet) so GettingStartedOverlay shows first.
@@ -55,16 +54,6 @@ export function WhatsNewDialog() {
     onboardingCompleted &&
     !!currentVersion &&
     lastSeenVersion !== currentVersion;
-
-  React.useEffect(() => {
-    if (shouldShow) {
-      const hasRestartNotice = localStorage.getItem(UPDATE_RESTART_NOTICE_KEY) === "1";
-      if (hasRestartNotice) {
-        localStorage.removeItem(UPDATE_RESTART_NOTICE_KEY);
-        setShowResolveRestartNotice(true);
-      }
-    }
-  }, [shouldShow]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -79,6 +68,26 @@ export function WhatsNewDialog() {
       cancelled = true;
     };
   }, []);
+
+  // Check the Resolve server's reported version so we can keep the restart
+  // notice visible while the server is still running an old (or unreachable)
+  // version, and hide it once the backend has confirmed a match.
+  React.useEffect(() => {
+    let cancelled = false;
+    invoke<string | null>("get_resolve_server_version")
+      .then((v) => {
+        if (!cancelled) setResolveVersion(v);
+      })
+      .catch(() => {
+        if (!cancelled) setResolveVersion(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showResolveRestartNotice =
+    currentVersion !== "" && resolveVersion !== currentVersion;
 
   React.useEffect(() => {
     if (!shouldShow) return;
@@ -152,17 +161,14 @@ export function WhatsNewDialog() {
           )}
         </DialogHeader>
 
-        {(!!lastSeenVersion || showResolveRestartNotice) && (
+        {showResolveRestartNotice && (
           <Alert className="border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
             <Server className="size-4" />
-            <AlertTitle>
-              {t("update.restartResolveServer.title", "Update installed")}
-            </AlertTitle>
+            <AlertTitle>Update installed</AlertTitle>
             <AlertDescription>
-              {t(
-                "update.restartResolveServer.description",
-                "AutoSubs restarted and disconnected from Resolve. In DaVinci Resolve, run Workspace -> Scripts -> AutoSubs again to start the updated Lua server.",
-              )}
+              AutoSubs restarted and disconnected from Resolve. In DaVinci
+              Resolve, run Workspace -&gt; Scripts -&gt; AutoSubs again to start
+              the updated Lua server.
             </AlertDescription>
           </Alert>
         )}

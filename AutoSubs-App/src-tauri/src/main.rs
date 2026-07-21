@@ -173,6 +173,69 @@ fn is_newer_version(latest: &str, current: &str) -> bool {
     matches!((parse(latest), parse(current)), (Some(l), Some(c)) if l > c)
 }
 
+/// If a Resolve server is already running (e.g. from a previous app session
+/// or before a restart), ask it to hot-reload when its version differs from
+/// the app's version. This lets updated Lua code take effect without forcing
+/// the user to relaunch the AutoSubs script in Resolve.
+async fn ensure_resolve_server_is_current(app_version: &str) {
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let server_version = match resolve_bridge::resolve_server_version().await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            tracing::info!("Resolve server does not report a version; skipping auto-reload");
+            return;
+        }
+        Err(e) => {
+            tracing::debug!("Resolve server not reachable on startup: {}", e);
+            return;
+        }
+    };
+
+    if server_version == app_version {
+        tracing::info!("Resolve server is already at version {}", app_version);
+        return;
+    }
+
+    tracing::info!(
+        "Resolve server is at version {}, app is {}; requesting reload...",
+        server_version,
+        app_version
+    );
+    if let Err(e) = resolve_bridge::reload_resolve_server().await {
+        tracing::warn!("Failed to request Resolve server reload: {}", e);
+        return;
+    }
+
+    for attempt in 0..15 {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        match resolve_bridge::resolve_server_version().await {
+            Ok(Some(v)) if v == app_version => {
+                tracing::info!(
+                    "Resolve server reloaded to version {} after {} attempts",
+                    app_version,
+                    attempt + 1
+                );
+                return;
+            }
+            Ok(Some(v)) => {
+                tracing::debug!("Resolve server still at version {} after reload", v);
+            }
+            Ok(None) => {
+                tracing::debug!("Resolve server response missing version during reload");
+            }
+            Err(e) => {
+                tracing::debug!("Resolve server not yet reachable after reload: {}", e);
+            }
+        }
+    }
+
+    tracing::warn!(
+        "Resolve server did not report version {} after reload",
+        app_version
+    );
+}
+
 struct InstallSignal(Arc<Notify>);
 
 #[tauri::command]
@@ -363,6 +426,13 @@ fn main() {
                 });
             }
 
+            // If a Resolve server from a previous session is running, make sure it
+            // hot-reloads to the current app's Lua code and version.
+            let app_version = app.package_info().version.to_string();
+            tauri::async_runtime::spawn(async move {
+                ensure_resolve_server_is_current(&app_version).await;
+            });
+
             // Check for updates in the background on startup
             let install_signal = Arc::new(Notify::new());
             app.manage(InstallSignal(install_signal.clone()));
@@ -446,6 +516,13 @@ fn main() {
                                   return;
                                 }
 
+                                // Ask the running Resolve server (if any) to hot-reload
+                                // into the new Lua code before the app restarts, so the
+                                // user does not have to relaunch the AutoSubs script.
+                                if let Err(e) = resolve_bridge::reload_resolve_server().await {
+                                  tracing::warn!("Failed to reload Resolve server during update: {}", e);
+                                }
+
                                 let _ = handle_for_dl.emit("update-restarting", json!({}));
                                 handle_for_dl.restart();
                               }
@@ -471,6 +548,7 @@ fn main() {
             logging::export_backend_logs,
             logging::open_log_dir,
             resolve_bridge::resolve_bridge,
+            resolve_bridge::get_resolve_server_version,
             adobe_bridge::send_to_adobe,
             trigger_install_update,
             audio_preprocess::extract_audio_peaks,

@@ -13,10 +13,7 @@ import {
 import { IntegrationStatus } from "@/components/layout/integration-status";
 import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
 import { CaptionTemplateSelectionDialog } from "@/components/dialogs/caption-style/template-selection";
-import {
-  UPDATE_RESTART_NOTICE_KEY,
-  useUpdateStatus,
-} from "@/hooks/use-update-status";
+import { useUpdateStatus } from "@/hooks/use-update-status";
 import type { TimelineInfo } from "@/types";
 import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { SettingsDropdown } from "./settings-dropdown";
@@ -46,7 +43,6 @@ function UpdateStatusIndicator({
   const { t } = useTranslation();
 
   function handleInstallUpdate() {
-    localStorage.setItem(UPDATE_RESTART_NOTICE_KEY, "1");
     void invoke("trigger_install_update");
   }
 

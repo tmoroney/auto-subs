@@ -15,6 +15,7 @@ use std::time::Duration;
 
 use once_cell::sync::Lazy;
 use serde::Deserialize;
+use serde_json::json;
 
 const RESOLVE_ENDPOINT: &str = "http://127.0.0.1:56002/";
 
@@ -83,4 +84,66 @@ pub async fn resolve_bridge(args: ResolveBridgeArgs) -> Result<String, String> {
     }
 
     Ok(body)
+}
+
+/// Sends an arbitrary JSON payload to the Resolve Lua server and returns the
+/// raw response body. Used internally for version probes and hot-reload
+/// requests; the command above is the public frontend-facing entry point.
+pub async fn send_resolve_payload(
+    payload: serde_json::Value,
+    timeout: Duration,
+) -> Result<String, String> {
+    let response = RESOLVE_CLIENT
+        .post(RESOLVE_ENDPOINT)
+        .timeout(timeout)
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("resolve request failed: {}", e))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response body: {}", e))?;
+
+    if !status.is_success() {
+        return Err(format!(
+            "Resolve server returned {}: {}",
+            status.as_u16(),
+            body
+        ));
+    }
+
+    Ok(body)
+}
+
+/// Queries the Resolve server for its version. Returns `None` if the server
+/// is reachable but does not report a version (i.e. it predates the
+/// `GetVersion` endpoint).
+pub async fn resolve_server_version() -> Result<Option<String>, String> {
+    let body = send_resolve_payload(json!({"func": "GetVersion"}), Duration::from_secs(2)).await?;
+    let parsed: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("invalid JSON from Resolve server: {}", e))?;
+    Ok(parsed
+        .get("version")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string()))
+}
+
+/// Asks the running Resolve server to hot-reload itself from the updated
+/// application resources. The server replies before it tears down its
+/// socket, so this returns as soon as the request is acknowledged.
+pub async fn reload_resolve_server() -> Result<(), String> {
+    send_resolve_payload(json!({"func": "ReloadServer"}), Duration::from_secs(3)).await?;
+    Ok(())
+}
+
+/// Tauri command that lets the frontend ask for the Resolve server's reported
+/// version. Returns `null` when the server is unreachable or predates the
+/// `GetVersion` endpoint.
+#[tauri::command]
+pub async fn get_resolve_server_version() -> Result<Option<String>, String> {
+    resolve_server_version().await
 }
