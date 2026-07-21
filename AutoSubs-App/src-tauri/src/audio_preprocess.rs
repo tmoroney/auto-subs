@@ -195,6 +195,52 @@ pub fn build_args(
     args
 }
 
+/// On Windows a `.bat`/`.cmd` "ffmpeg" shim cannot be launched directly.
+/// Try to read the shim and extract the real `ffmpeg.exe` path it invokes.
+#[cfg(target_os = "windows")]
+fn resolve_batch_shim(shim_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let contents = std::fs::read_to_string(shim_path).ok()?;
+    let lower = contents.to_lowercase();
+    let exe_marker = "ffmpeg.exe";
+    let mut search_start = 0usize;
+
+    while let Some(pos) = lower[search_start..].find(exe_marker) {
+        let abs_pos = search_start + pos;
+        let before = &contents[..abs_pos + exe_marker.len()];
+        let candidate = if let Some(quote_pos) = before[..abs_pos].rfind('"') {
+            // Quoted path, keep the quote so trim_matches can remove it.
+            before[quote_pos..abs_pos + exe_marker.len()].trim().trim_matches('"').trim().to_string()
+        } else if let Some(ws_pos) = before[..abs_pos].rfind(|c: char| c.is_whitespace()) {
+            before[ws_pos + 1..abs_pos + exe_marker.len()].trim().to_string()
+        } else {
+            before[..abs_pos + exe_marker.len()].trim().to_string()
+        };
+
+        if candidate.is_empty() {
+            search_start = abs_pos + 1;
+            continue;
+        }
+
+        let candidate_path = std::path::PathBuf::from(&candidate);
+        let resolved = if candidate_path.is_absolute() {
+            candidate_path
+        } else {
+            shim_path
+                .parent()
+                .unwrap_or(shim_path)
+                .join(&candidate_path)
+        };
+
+        if resolved.exists() {
+            return Some(resolved);
+        }
+
+        search_start = abs_pos + 1;
+    }
+
+    None
+}
+
 pub async fn run_ffmpeg<R: Runtime>(
     app: &AppHandle<R>,
     args: &[String],
@@ -227,21 +273,43 @@ pub async fn run_ffmpeg<R: Runtime>(
         tracing::warn!("ffmpeg sidecar not found; falling back to system ffmpeg");
     }
 
-    // System ffmpeg fallback. On Windows try the .exe first to avoid .bat/.cmd
-    // shims that Rust's Command cannot launch directly (and that would require
-    // a shell and re-interpret media paths).
+    // System ffmpeg fallback. Try to locate a working ffmpeg binary on PATH,
+    // resolving any `.bat`/`.cmd` shim to the underlying `.exe` so we never need
+    // to pass media paths through `cmd /c` shell parsing.
     let mut errors: Vec<String> = Vec::new();
     #[cfg(target_os = "windows")]
     {
-        for cmd_name in ["ffmpeg.exe", "ffmpeg"] {
-            match TokioCommand::new(cmd_name).args(args).output().await {
-                Ok(out) => {
-                    return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
-                }
-                Err(e) => {
-                    errors.push(format!("{}: {}", cmd_name, e));
+        if let Ok(resolved) = which::which("ffmpeg") {
+            let ext = resolved
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            let exe_to_try: Option<std::path::PathBuf> = if ext == "bat" || ext == "cmd" {
+                resolve_batch_shim(&resolved).or_else(|| {
+                    tracing::warn!(
+                        "ffmpeg on PATH is a {} shim and no underlying ffmpeg.exe was found; trying it directly",
+                        ext
+                    );
+                    None
+                })
+            } else {
+                Some(resolved)
+            };
+
+            if let Some(exe) = exe_to_try {
+                let exe_str = exe.to_string_lossy().to_string();
+                match TokioCommand::new(&exe).args(args).output().await {
+                    Ok(out) => {
+                        return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+                    }
+                    Err(e) => {
+                        errors.push(format!("{}: {}", exe_str, e));
+                    }
                 }
             }
+        } else {
+            errors.push("ffmpeg: not found on PATH".to_string());
         }
     }
     #[cfg(not(target_os = "windows"))]
