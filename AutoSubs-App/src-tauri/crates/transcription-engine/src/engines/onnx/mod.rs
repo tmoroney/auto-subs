@@ -32,7 +32,8 @@ pub trait OnnxEngine: Sized {
 }
 
 /// Try to load an ONNX engine. If DirectML was selected and fails to initialize,
-/// fall back to the Auto/CPU accelerator once and retry.
+/// fall back to the Auto/CPU accelerator once and retry, restoring the original
+/// accelerator if the retry also fails so later valid loads can still use DirectML.
 pub fn load_with_directml_fallback<F, E>(mut loader: F) -> Result<E>
 where
     F: FnMut() -> Result<E>,
@@ -41,10 +42,17 @@ where
         Ok(engine) => Ok(engine),
         Err(e) => {
             #[cfg(all(target_os = "windows", feature = "directml"))]
-            if get_ort_accelerator() == OrtAccelerator::DirectMl {
-                tracing::warn!("ONNX DirectML init failed ({}); falling back to CPU/Auto", e);
-                set_ort_accelerator(OrtAccelerator::Auto);
-                return loader();
+            {
+                let prev = get_ort_accelerator();
+                if prev == OrtAccelerator::DirectMl {
+                    tracing::warn!("ONNX DirectML init failed ({}); falling back to CPU/Auto", e);
+                    set_ort_accelerator(OrtAccelerator::Auto);
+                    let result = loader();
+                    if result.is_err() {
+                        set_ort_accelerator(prev);
+                    }
+                    return result;
+                }
             }
             Err(e)
         }
