@@ -296,14 +296,19 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(cfg: EngineConfig) -> Self {
-        // On Windows builds with the DirectML feature enabled, default ONNX
-        // execution to DirectML when the user has not disabled GPU. `transcribe-rs`'s
-        // Auto accelerator does not include DirectML, so Parakeet/SenseVoice/Moonshine
+        // On Windows builds with the DirectML feature enabled, align the process-wide
+        // ONNX accelerator with the user's GPU toggle. `transcribe-rs`'s Auto
+        // accelerator does not include DirectML, so Parakeet/SenseVoice/Moonshine
         // would silently run on the CPU even when a GPU is available.
         #[cfg(all(target_os = "windows", feature = "directml"))]
-        if cfg.use_gpu.unwrap_or(true) && get_ort_accelerator() == OrtAccelerator::Auto {
-            tracing::info!("defaulting ONNX execution provider to DirectML on Windows");
-            set_ort_accelerator(OrtAccelerator::DirectMl);
+        if cfg.use_gpu.unwrap_or(true) {
+            if get_ort_accelerator() != OrtAccelerator::DirectMl {
+                tracing::info!("defaulting ONNX execution provider to DirectML on Windows");
+                set_ort_accelerator(OrtAccelerator::DirectMl);
+            }
+        } else if get_ort_accelerator() != OrtAccelerator::CpuOnly {
+            tracing::info!("GPU disabled; forcing ONNX execution provider to CPU");
+            set_ort_accelerator(OrtAccelerator::CpuOnly);
         }
 
         Self {
