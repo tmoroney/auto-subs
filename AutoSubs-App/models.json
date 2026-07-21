@@ -265,6 +265,17 @@
         "files": ["model.onnx", "tokens.txt"]
       },
       "ui": { "size": "1.3GB", "ram": "2GB", "image": "globe.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "multilingual" } }
+    },
+    {
+      "id": "omni-asr-1b-ctc",
+      "engine": "omni_asr",
+      "quantization": "fp32",
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj2/sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-2026-02-05",
+        "files": ["model.onnx", "model.weights", "tokens.txt"]
+      },
+      "ui": { "size": "3.7GB", "ram": "4GB", "image": "globe.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
