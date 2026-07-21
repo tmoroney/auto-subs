@@ -963,9 +963,10 @@ function ExportAudio(outputDir, inputTracks, exportRange)
         currentExportJob.pid = pid
         project:StartRendering(pid)
 
-        -- Resolve may not immediately populate the job list. Prefer the job that
-        -- matches the PID we just added, otherwise fall back to the last job,
-        -- and finally to the render settings we configured ourselves.
+        -- Resolve may not immediately populate the job list. Prefer the job
+        -- whose ID matches the PID we just added; if it isn't visible yet, fall
+        -- back to the render settings we configured ourselves instead of picking
+        -- an unrelated job from the list.
         local jobInfo
         local renderJobList = project:GetRenderJobList()
         if type(renderJobList) == "table" and #renderJobList > 0 then
@@ -977,7 +978,7 @@ function ExportAudio(outputDir, inputTracks, exportRange)
                 end
             end
             if not jobInfo then
-                jobInfo = renderJobList[#renderJobList]
+                print("[AutoSubs] Render job PID is not visible in the job list yet: " .. tostring(pid))
             end
         end
 
@@ -992,8 +993,12 @@ function ExportAudio(outputDir, inputTracks, exportRange)
             }
         end
 
-        local markIn = jobInfo["MarkIn"] or renderSettings.MarkIn or 0
-        local markOut = jobInfo["MarkOut"] or renderSettings.MarkOut or 0
+        -- Use timeline bounds when neither the job record nor our render settings
+        -- provide marks, so the offset and progress calculations never divide by zero.
+        local timelineStart = timeline:GetStartFrame()
+        local timelineEnd = timeline:GetEndFrame()
+        local markIn = jobInfo["MarkIn"] or renderSettings.MarkIn or timelineStart
+        local markOut = jobInfo["MarkOut"] or renderSettings.MarkOut or timelineEnd
 
         -- Calculate offset to align subtitles back to timeline (exported audio starts at mark in, not timeline 0)
         local framesFromTimelineStart = markIn - timeline:GetStartFrame()
