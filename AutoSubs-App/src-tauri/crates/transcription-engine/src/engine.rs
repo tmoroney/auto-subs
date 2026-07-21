@@ -52,6 +52,27 @@ pub struct Callbacks<'a> {
     pub is_cancelled: Option<Box<dyn Fn() -> bool + Send + Sync + 'static>>,
 }
 
+/// Fallback speech segmentation when VAD/diarization returns nothing.
+/// Splits the audio into fixed non-overlapping chunks of `chunk_seconds`
+/// so transcription still has a chance to produce output on quiet or noisy
+/// inputs that confuse the VAD model.
+fn fixed_chunk_fallback(audio_samples: &[i16], chunk_seconds: f64) -> Vec<SpeechSegment> {
+    const SAMPLE_RATE: f64 = 16000.0;
+    let chunk_samples = (chunk_seconds * SAMPLE_RATE) as usize;
+    let total = audio_samples.len();
+    let mut segments = Vec::new();
+    for start in (0..total).step_by(chunk_samples) {
+        let end = (start + chunk_samples).min(total);
+        segments.push(SpeechSegment {
+            start: start as f64 / SAMPLE_RATE,
+            end: end as f64 / SAMPLE_RATE,
+            samples: audio_samples[start..end].to_vec(),
+            speaker_id: None,
+        });
+    }
+    segments
+}
+
 async fn prepare_speech_segments(
     models: &mut crate::model_manager::ModelManager,
     cfg: &EngineConfig,
@@ -132,6 +153,22 @@ async fn prepare_speech_segments(
             speaker_id: None,
         }]
     };
+
+    // If VAD/diarization found no speech at all, fall back to fixed 30s chunks
+    // instead of producing an empty transcript. This keeps quiet/noisy clips
+    // usable while still respecting Whisper's ~30s context limit.
+    if speech_segments.is_empty() {
+        tracing::warn!(
+            "speech detection returned 0 segments; falling back to fixed 30s chunks"
+        );
+        let fallback = fixed_chunk_fallback(audio_samples, 30.0);
+        tracing::info!(
+            "fallback: split {}s of audio into {} fixed chunk(s)",
+            audio_samples.len() as f64 / 16000.0,
+            fallback.len()
+        );
+        return Ok(fallback);
+    }
 
     Ok(speech_segments)
 }
