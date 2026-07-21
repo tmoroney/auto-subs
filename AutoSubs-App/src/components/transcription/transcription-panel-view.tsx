@@ -172,6 +172,11 @@ export function TranscriptionPanelView({
     const currentSelectedTracks =
       selectedInputTracksByApp[selectedIntegration] || [];
     const validTrackIds = inputTracks.map((track) => track.value);
+
+    // Don't wipe persisted selections while the track list is still loading
+    // or when the host editor reports no audio tracks yet.
+    if (validTrackIds.length === 0) return;
+
     const cleanedSelectedTracks = currentSelectedTracks.filter((trackId: string) =>
       validTrackIds.includes(trackId)
     );
