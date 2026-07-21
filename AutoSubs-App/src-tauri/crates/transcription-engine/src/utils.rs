@@ -1,17 +1,17 @@
 /// Estimate a safe DTW working-set size (in bytes) for whisper.cpp DTW.
 /// Pass the result to `DtwParameters { dtw_mem_size, .. }`.
-pub fn calculate_dtw_mem_size(num_samples: usize, model_name: &str) -> usize {
-    // DTW is computed on a single Whisper chunk (max 30 s). Cap the frame
-    // count there so the allocation does not depend on total audio length.
-    const FRAME_SAMPLES: usize = 160; // 10 ms at 16 kHz
+///
+/// The allocation must cover a full Whisper 30-second chunk regardless of the
+/// actual clip length, because the native encoder pads short audio to the full
+/// 1500 audio-token geometry.
+pub fn calculate_dtw_mem_size(model_name: &str) -> usize {
     const CHUNK_SECONDS: usize = 30;
     const CHUNK_FRAMES: usize = CHUNK_SECONDS * 100;
-    const MAX_TOKENS: usize = 448;
+    const N_AUDIO_TOKENS: usize = CHUNK_FRAMES / 2;
+    const N_TOKENS: usize = 448;
 
-    let total_frames = (num_samples + FRAME_SAMPLES - 1) / FRAME_SAMPLES;
-    let chunk_frames = total_frames.min(CHUNK_FRAMES);
-    let n_audio_tokens = chunk_frames / 2;
-    let n_tokens = MAX_TOKENS;
+    let n_audio_tokens = N_AUDIO_TOKENS;
+    let n_tokens = N_TOKENS;
 
     // Alignment-head count per model preset. These are the lengths of the
     // g_aheads_* arrays in whisper.cpp for token-level DTW.
