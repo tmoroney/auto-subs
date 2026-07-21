@@ -93,28 +93,6 @@ For command-line usage, see the **[CLI Guide](CLI.md)** with complete reference,
 
 ---
 
-## Integrations
-
-AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
-
-Select a Preset Style |  Or create your own
-:-------------------------:|:-------------------------:
-<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/f5338833-cdbb-4aae-9480-0aa8cbffda60"> | <img width="500" alt="Advanced Settings" src="https://github.com/user-attachments/assets/9d2680ce-e80a-408f-a36f-54387a16f53c">
-
----
-
-## What's New in v3.5
-
-**Transcription:** Voice Activity Detection, multiple models (Whisper/Parakeet/Moonshine), improved speaker diarization, and built-in translation.
-
-**Editing & UI:** Free-text subtitle editing with auto-timing, transcript history, 6 new UI languages, and custom titlebar.
-
-**DaVinci Resolve:** Animated caption macro with per-word highlighting, preset system, marker-based word timing, and instant conflict detection.
-
-**Bug Fixes (v3.5.1):** Formatting improvements, Resolve export corrections, Model Manager recovery, and Linux stability fixes.
-
----
-
 ## Supported Models
 
 AutoSubs ships with several local transcription model families. All run fully on-device — nothing is sent to the cloud. Models are downloaded on demand from the in-app Model Manager.
@@ -184,6 +162,16 @@ Cohere Transcribe (int4 ONNX). The highest-accuracy option for a focused set of 
 ### Diarization & VAD
 
 In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription).
+
+---
+
+## Integrations
+
+AutoSubs can run as a standalone subtitle generator, connect directly to DaVinci Resolve, or communicate with Adobe Premiere Pro and After Effects through the bundled CEP extension.
+
+Select a Preset Style |  Or create your own
+:-------------------------:|:-------------------------:
+<img width="800" alt="Transcription Page" src="https://github.com/user-attachments/assets/f5338833-cdbb-4aae-9480-0aa8cbffda60"> | <img width="500" alt="Advanced Settings" src="https://github.com/user-attachments/assets/9d2680ce-e80a-408f-a36f-54387a16f53c">
 
 ---
 
