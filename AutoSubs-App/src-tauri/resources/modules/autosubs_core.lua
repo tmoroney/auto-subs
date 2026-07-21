@@ -963,22 +963,55 @@ function ExportAudio(outputDir, inputTracks, exportRange)
         currentExportJob.pid = pid
         project:StartRendering(pid)
 
+        -- Resolve may not immediately populate the job list. Prefer the job that
+        -- matches the PID we just added, otherwise fall back to the last job,
+        -- and finally to the render settings we configured ourselves.
+        local jobInfo
         local renderJobList = project:GetRenderJobList()
-        local jobInfo = renderJobList[#renderJobList]
+        if type(renderJobList) == "table" and #renderJobList > 0 then
+            for i = #renderJobList, 1, -1 do
+                local j = renderJobList[i]
+                if type(j) == "table" and (j["JobId"] == pid or j["Id"] == pid) then
+                    jobInfo = j
+                    break
+                end
+            end
+            if not jobInfo then
+                jobInfo = renderJobList[#renderJobList]
+            end
+        end
+
+        -- Fallback so a missing or empty job list doesn't crash the server.
+        if not jobInfo then
+            print("[AutoSubs] GetRenderJobList did not return job info for PID " .. tostring(pid) .. ", using configured render settings")
+            jobInfo = {
+                TargetDir = outputDir,
+                OutputFilename = exportName .. ".wav",
+                MarkIn = renderSettings.MarkIn,
+                MarkOut = renderSettings.MarkOut
+            }
+        end
+
+        local markIn = jobInfo["MarkIn"] or renderSettings.MarkIn or 0
+        local markOut = jobInfo["MarkOut"] or renderSettings.MarkOut or 0
 
         -- Calculate offset to align subtitles back to timeline (exported audio starts at mark in, not timeline 0)
-        local framesFromTimelineStart = jobInfo["MarkIn"] - timeline:GetStartFrame()
-        local timeOffsetInSeconds = framesFromTimelineStart / timeline:GetSetting("timelineFrameRate")
+        local framesFromTimelineStart = markIn - timeline:GetStartFrame()
+        local frameRate = timeline:GetSetting("timelineFrameRate") or 24
+        local timeOffsetInSeconds = framesFromTimelineStart / frameRate
+
+        local targetDir = jobInfo["TargetDir"] or outputDir
+        local outputFilename = jobInfo["OutputFilename"] or (exportName .. ".wav")
 
         local audioInfo = {
-            path = join_path(jobInfo["TargetDir"], jobInfo["OutputFilename"]),
-            markIn = jobInfo["MarkIn"],
-            markOut = jobInfo["MarkOut"],
+            path = join_path(targetDir, outputFilename),
+            markIn = markIn,
+            markOut = markOut,
             offset = timeOffsetInSeconds
         }
         currentExportJob.audioInfo = audioInfo
 
-        print("Export started with PID: " .. pid)
+        print("Export started with PID: " .. tostring(pid) .. ", path: " .. audioInfo.path)
     end)
 
     -- Handle export start result
