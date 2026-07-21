@@ -146,7 +146,7 @@ pub fn create_context(
             _ => DtwModelPreset::Small, // Defaulting to Small
         };
 
-        let dtw_mem_size = calculate_dtw_mem_size(num_samples.unwrap_or(0));
+        let dtw_mem_size = calculate_dtw_mem_size(num_samples.unwrap_or(0), model_name);
         tracing::info!("DTW enabled: allocating {} MB for DTW memory", dtw_mem_size / 1024 / 1024);
         ctx_params.dtw_parameters(DtwParameters {
             mode: DtwMode::ModelPreset { model_preset },
