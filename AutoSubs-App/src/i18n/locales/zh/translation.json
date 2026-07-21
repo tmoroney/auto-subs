@@ -378,12 +378,6 @@
       "details": "Cohere 的大型多语言转录模型。",
       "badge": "多语言"
     },
-    "omni_asr_300m_ctc": {
-      "label": "Omni-ASR 300M CTC",
-      "description": "On-device Multilingual",
-      "details": "Fast on-device transcription for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
-      "badge": "Multilingual"
-    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR 1B CTC",
       "description": "On-device Multilingual",
