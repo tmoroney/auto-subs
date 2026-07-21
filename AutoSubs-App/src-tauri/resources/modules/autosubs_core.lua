@@ -618,7 +618,12 @@ function GetExportProgress()
             -- the job's real status so a silently failed render (e.g. bad
             -- output path, disk full, no encoder) is reported as an error
             -- instead of a fabricated success with a non-existent file.
-            local jobStatus, jobError
+            --
+            -- Resolve localizes JobStatus (e.g. "Finalizado", "Concluído",
+            -- "Завершено"), so we cannot compare only to the English word
+            -- "Complete". A real failure is indicated by a non-empty Error
+            -- field or an unfinished CompletionPercentage.
+            local jobStatus, jobError, completionPercentage
             if currentExportJob.pid then
                 local ok, status = pcall(function()
                     return project:GetRenderJobStatus(currentExportJob.pid)
@@ -626,11 +631,21 @@ function GetExportProgress()
                 if ok and type(status) == "table" then
                     jobStatus = status["JobStatus"]
                     jobError = status["Error"]
+                    completionPercentage = status["CompletionPercentage"]
                 end
             end
 
-            if jobStatus and jobStatus ~= "Complete" then
-                local detail = jobError or ("Render job status: " .. tostring(jobStatus))
+            local detail
+            if jobError and tostring(jobError) ~= "" then
+                detail = tostring(jobError)
+            elseif type(completionPercentage) == "number" and completionPercentage < 100 then
+                detail = "Render job incomplete (" .. tostring(completionPercentage) .. "%)"
+                if jobStatus then
+                    detail = detail .. ": " .. tostring(jobStatus)
+                end
+            end
+
+            if detail then
                 print("[AutoSubs] Export did not complete successfully: " .. detail)
                 return {
                     active = false,
@@ -641,7 +656,7 @@ function GetExportProgress()
                 }
             end
 
-            -- Normal completion
+            -- Normal completion (Resolve may report a localized JobStatus here).
             currentExportJob.progress = 100
             return {
                 active = false,
