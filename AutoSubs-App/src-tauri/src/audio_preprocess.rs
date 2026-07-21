@@ -199,32 +199,62 @@ pub async fn run_ffmpeg<R: Runtime>(
     app: &AppHandle<R>,
     args: &[String],
 ) -> Result<(bool, Option<i32>, Vec<u8>, Vec<u8>)> {
-    let sidecar_command = app.shell().sidecar("ffmpeg");
-    let result = match sidecar_command {
-        Ok(cmd) => match cmd.args(args.to_vec()).output().await {
+    // Try the bundled sidecar first. If it exists but is not a valid executable
+    // (e.g. Windows error 193, a shim file, or a quarantined binary), skip it.
+    if let Ok(cmd) = app.shell().sidecar("ffmpeg") {
+        match cmd.args(args.to_vec()).output().await {
             Ok(o) => {
                 let stderr_str = String::from_utf8_lossy(&o.stderr);
                 if !o.status.success() && stderr_str.contains("shim file") {
                     tracing::warn!("ffmpeg sidecar shim error, falling back to system ffmpeg");
-                    let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-                    (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
                 } else {
-                    (o.status.success(), o.status.code(), o.stdout, o.stderr)
+                    return Ok((o.status.success(), o.status.code(), o.stdout, o.stderr));
                 }
             }
-            Err(_) => {
-                tracing::warn!("ffmpeg sidecar unavailable, falling back to system ffmpeg");
-                let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            Err(e) => {
+                let os = e.raw_os_error();
+                tracing::warn!(
+                    "ffmpeg sidecar unavailable (kind={:?}, os={:?}), falling back to system ffmpeg",
+                    e.kind(),
+                    os
+                );
+                if os == Some(193) {
+                    tracing::warn!("ffmpeg sidecar is not a valid Win32 executable; skipping");
+                }
             }
-        },
-        Err(e) => {
-            tracing::warn!("ffmpeg sidecar init error: {}. Falling back to system ffmpeg", e);
-            let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
         }
-    };
-    Ok(result)
+    } else {
+        tracing::warn!("ffmpeg sidecar not found; falling back to system ffmpeg");
+    }
+
+    // System ffmpeg fallback. On Windows, also try `cmd /c ffmpeg` so that
+    // .bat/.cmd shims (which Rust's Command cannot launch directly) still work.
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(out) = TokioCommand::new("ffmpeg").args(args).output().await {
+            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+        }
+        if let Ok(out) = TokioCommand::new("cmd")
+            .arg("/c")
+            .arg("ffmpeg")
+            .args(args)
+            .output()
+            .await
+        {
+            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(out) = TokioCommand::new("ffmpeg").args(args).output().await {
+            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+        }
+    }
+
+    bail!(
+        "No usable ffmpeg binary found. The bundled sidecar is unavailable and 'ffmpeg' is not on PATH. \
+         Install ffmpeg (e.g. 'brew install ffmpeg', 'choco install ffmpeg', or 'apt install ffmpeg') and restart the app."
+    )
 }
 
 /// Converts audio/video files to mono 16kHz 16-bit PCM WAV using FFmpeg.
