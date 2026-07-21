@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Gauge, Clock, GraduationCap, Terminal } from "lucide-react";
+import { AudioLines, Gauge, Clock, GraduationCap, Terminal, ChevronDown } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -45,7 +45,26 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
   const deleteIconRef = useRef<DeleteIconHandle>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = React.useState<string>("");
+  const [canScrollDown, setCanScrollDown] = React.useState(false);
+
+  const updateScrollHint = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      setCanScrollDown(false);
+      return;
+    }
+    // Small tolerance so sub-pixel layout doesn't leave a stuck hint.
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setCanScrollDown(remaining > 2);
+  }, []);
+
+  const scrollToBottom = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -129,11 +148,46 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [cliStatus, refreshCliStatus, t]);
 
+  React.useEffect(() => {
+    if (!open) {
+      setCanScrollDown(false);
+      return;
+    }
+
+    const el = scrollRef.current;
+    if (!el) return;
+
+    updateScrollHint();
+
+    const onScroll = () => updateScrollHint();
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => updateScrollHint())
+      : null;
+    resizeObserver?.observe(el);
+    // Content height can change independently of the viewport (e.g. CLI section).
+    if (el.firstElementChild) {
+      resizeObserver?.observe(el.firstElementChild);
+    }
+
+    window.addEventListener("resize", updateScrollHint);
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateScrollHint);
+    };
+  }, [open, updateScrollHint, cliStatus, i18n.language]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form>
-        <DialogContent className="sm:max-w-[560px]" key={i18n.language}>
-          <DialogHeader>
+        <DialogContent
+          className="gap-0 sm:max-w-[560px]"
+          key={i18n.language}
+        >
+          <DialogHeader className="pb-4">
             <DialogTitle>{t("settings.title")}</DialogTitle>
             <DialogDescription className="text-xs">
               {t("settings.description")}
@@ -145,7 +199,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="relative">
+            <div
+              ref={scrollRef}
+              className="max-h-[min(55vh,420px)] space-y-6 overflow-y-auto overscroll-contain pr-1 pb-4"
+            >
             {/* Language Settings */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -217,6 +275,32 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <FieldGroup className="gap-3">
                 <Field>
                   <Item variant="outline" size="sm">
+                    <ItemMedia variant="icon" className="bg-purple-100 dark:bg-purple-900/30">
+                      <AudioLines className="size-4 text-purple-600 dark:text-purple-400" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{t("settings.forcedAlignment.title")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-2">
+                        {translate
+                          ? t("settings.forcedAlignment.translationIncompatible")
+                          : t("settings.forcedAlignment.description")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        checked={enableForcedAlignment}
+                        disabled={translate}
+                        onCheckedChange={(checked) =>
+                          updateSetting("enableForcedAlignment", checked)
+                        }
+                        aria-label={t("settings.forcedAlignment.title")}
+                      />
+                    </ItemActions>
+                  </Item>
+                </Field>
+
+                <Field>
+                  <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
                       <Gauge className="size-4 text-yellow-600 dark:text-yellow-400" />
                     </ItemMedia>
@@ -250,32 +334,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Switch
                         checked={enableDTW}
                         onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
-                      />
-                    </ItemActions>
-                  </Item>
-                </Field>
-
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-purple-100 dark:bg-purple-900/30">
-                      <AudioLines className="size-4 text-purple-600 dark:text-purple-400" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{t("settings.forcedAlignment.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-2">
-                        {translate
-                          ? t("settings.forcedAlignment.translationIncompatible")
-                          : t("settings.forcedAlignment.description")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        checked={enableForcedAlignment}
-                        disabled={translate}
-                        onCheckedChange={(checked) =>
-                          updateSetting("enableForcedAlignment", checked)
-                        }
-                        aria-label={t("settings.forcedAlignment.title")}
                       />
                     </ItemActions>
                   </Item>
@@ -330,6 +388,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </Item>
                   </Field>
                 </FieldGroup>
+              </div>
+            )}
+            </div>
+
+            {canScrollDown && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-10 items-end justify-center bg-gradient-to-t from-background/80 to-transparent pb-2.5">
+                <button
+                  type="button"
+                  onClick={scrollToBottom}
+                  className="pointer-events-auto rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={t("common.scrollDown", "Scroll down")}
+                >
+                  <ChevronDown className="size-5 animate-bounce" />
+                </button>
               </div>
             )}
           </div>
