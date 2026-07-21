@@ -674,12 +674,23 @@ fn macos_create_link_unprivileged(exe: &str, link: &str) -> Result<(), std::io::
         }
     }
 
-    // Replace any existing symlink/file at the destination.
-    if std::fs::symlink_metadata(link_path).is_ok() {
-        std::fs::remove_file(link_path)?;
-    }
+    // Create a temporary symlink alongside the destination and atomically
+    // rename it into place. This ensures the old link is never removed
+    // before the new link is created, even if the operation is interrupted.
+    let temp_name = format!(".autosubs.{}.tmp", std::process::id());
+    let temp_link = link_path.with_file_name(&temp_name);
 
-    std::os::unix::fs::symlink(exe, link_path)
+    let cleanup = || {
+        let _ = std::fs::remove_file(&temp_link);
+    };
+
+    cleanup();
+    std::os::unix::fs::symlink(exe, &temp_link)?;
+    if let Err(e) = std::fs::rename(&temp_link, link_path) {
+        cleanup();
+        return Err(e);
+    }
+    Ok(())
 }
 
 /// Try to remove the `autosubs` symlink without elevation. `Ok` is returned
