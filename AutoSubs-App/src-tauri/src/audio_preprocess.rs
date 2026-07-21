@@ -195,18 +195,87 @@ pub fn build_args(
     args
 }
 
+/// Expand the most common batch variables found in a `.bat`/`.cmd` shim so we
+/// can locate the underlying `ffmpeg.exe` without invoking `cmd /c`.
+#[cfg(target_os = "windows")]
+fn expand_batch_vars(shim_path: &std::path::Path, text: &str) -> String {
+    let shim_dir = shim_path
+        .parent()
+        .and_then(|p| p.to_str())
+        .unwrap_or("")
+        .trim_end_matches('\\');
+    let (shim_drive, shim_path_part) = if let Some(colon_pos) = shim_dir.find(':') {
+        (&shim_dir[..colon_pos + 1], &shim_dir[colon_pos + 1..])
+    } else {
+        ("", shim_dir)
+    };
+    let shim_dir_with_sep = if shim_dir.is_empty() {
+        "".to_string()
+    } else {
+        format!("{}\\", shim_dir)
+    };
+    let shim_path_part_with_sep = if shim_path_part.is_empty() {
+        "\\".to_string()
+    } else {
+        format!("{}\\", shim_path_part)
+    };
+
+    let mut expanded = text
+        .replace("%~dp0", &shim_dir_with_sep)
+        .replace("%~d0", shim_drive)
+        .replace("%~p0", &shim_path_part_with_sep);
+
+    // Replace %VAR% with environment variables; leave unknown ones untouched.
+    let mut result = String::with_capacity(expanded.len());
+    let mut chars = expanded.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            if chars.peek() == Some(&'%') {
+                chars.next(); // literal % from %%
+                result.push('%');
+                continue;
+            }
+            let mut var = String::new();
+            let mut closed = false;
+            for next in chars.by_ref() {
+                if next == '%' {
+                    closed = true;
+                    break;
+                }
+                var.push(next);
+            }
+            if closed {
+                if let Ok(val) = std::env::var(&var) {
+                    result.push_str(&val);
+                } else {
+                    result.push('%');
+                    result.push_str(&var);
+                    result.push('%');
+                }
+            } else {
+                result.push('%');
+                result.push_str(&var);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 /// On Windows a `.bat`/`.cmd` "ffmpeg" shim cannot be launched directly.
 /// Try to read the shim and extract the real `ffmpeg.exe` path it invokes.
 #[cfg(target_os = "windows")]
 fn resolve_batch_shim(shim_path: &std::path::Path) -> Option<std::path::PathBuf> {
     let contents = std::fs::read_to_string(shim_path).ok()?;
-    let lower = contents.to_lowercase();
+    let expanded = expand_batch_vars(shim_path, &contents);
+    let lower = expanded.to_lowercase();
     let exe_marker = "ffmpeg.exe";
     let mut search_start = 0usize;
 
     while let Some(pos) = lower[search_start..].find(exe_marker) {
         let abs_pos = search_start + pos;
-        let before = &contents[..abs_pos + exe_marker.len()];
+        let before = &expanded[..abs_pos + exe_marker.len()];
         let candidate = if let Some(quote_pos) = before[..abs_pos].rfind('"') {
             // Quoted path, keep the quote so trim_matches can remove it.
             before[quote_pos..abs_pos + exe_marker.len()].trim().trim_matches('"').trim().to_string()
@@ -287,10 +356,13 @@ pub async fn run_ffmpeg<R: Runtime>(
                 .to_lowercase();
             let exe_to_try: Option<std::path::PathBuf> = if ext == "bat" || ext == "cmd" {
                 resolve_batch_shim(&resolved).or_else(|| {
-                    tracing::warn!(
-                        "ffmpeg on PATH is a {} shim and no underlying ffmpeg.exe was found; trying it directly",
+                    let msg = format!(
+                        "{}: found {} shim on PATH but could not resolve underlying ffmpeg.exe",
+                        resolved.display(),
                         ext
                     );
+                    tracing::warn!("{}", msg);
+                    errors.push(msg);
                     None
                 })
             } else {
