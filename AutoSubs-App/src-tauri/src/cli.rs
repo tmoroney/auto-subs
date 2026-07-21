@@ -597,9 +597,18 @@ pub fn install_cli_command() -> Result<CliStatus, String> {
     #[cfg(target_os = "macos")]
     {
         let exe = current_exe_string()?;
-        run_admin_macos(&format!(
-            "mkdir -p /usr/local/bin && ln -sf '{exe}' '{MACOS_CLI_LINK}'"
-        ))?;
+        if let Err(_) = macos_create_link_unprivileged(&exe, MACOS_CLI_LINK) {
+            let script = format!(
+                "mkdir -p {} && ln -sf {} {}",
+                sh_quote("/usr/local/bin"),
+                sh_quote(&exe),
+                sh_quote(MACOS_CLI_LINK)
+            );
+            run_admin_macos(
+                &script,
+                "AutoSubs needs your administrator password to install the `autosubs` command.",
+            )?;
+        }
     }
     #[cfg(target_os = "windows")]
     {
@@ -623,7 +632,13 @@ pub fn install_cli_command() -> Result<CliStatus, String> {
 pub fn uninstall_cli_command() -> Result<CliStatus, String> {
     #[cfg(target_os = "macos")]
     {
-        run_admin_macos(&format!("rm -f '{MACOS_CLI_LINK}'"))?;
+        if let Err(_) = macos_remove_link_unprivileged(MACOS_CLI_LINK) {
+            let script = format!("rm -f {}", sh_quote(MACOS_CLI_LINK));
+            run_admin_macos(
+                &script,
+                "AutoSubs needs your administrator password to remove the `autosubs` command.",
+            )?;
+        }
     }
     #[cfg(target_os = "windows")]
     {
@@ -639,6 +654,46 @@ pub fn uninstall_cli_command() -> Result<CliStatus, String> {
     Ok(cli_command_status())
 }
 
+/// Quote a string for safe use inside `/bin/sh` single-quoted arguments.
+#[cfg(target_os = "macos")]
+fn sh_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+/// Try to create the `autosubs` symlink without elevation. Returns `Ok` on
+/// success or if the link already points to `exe`. Any error causes a fallback
+/// to the privileged AppleScript path.
+#[cfg(target_os = "macos")]
+fn macos_create_link_unprivileged(exe: &str, link: &str) -> Result<(), std::io::Error> {
+    let link_path = std::path::Path::new(link);
+
+    // Already installed and points to this executable.
+    if let Ok(target) = std::fs::read_link(link_path) {
+        if target.to_string_lossy() == exe {
+            return Ok(());
+        }
+    }
+
+    // Replace any existing symlink/file at the destination.
+    if std::fs::symlink_metadata(link_path).is_ok() {
+        std::fs::remove_file(link_path)?;
+    }
+
+    std::os::unix::fs::symlink(exe, link_path)
+}
+
+/// Try to remove the `autosubs` symlink without elevation. `Ok` is returned
+/// when the link is gone (or never existed); an error causes a fallback to the
+/// privileged AppleScript path.
+#[cfg(target_os = "macos")]
+fn macos_remove_link_unprivileged(link: &str) -> Result<(), std::io::Error> {
+    let link_path = std::path::Path::new(link);
+    if std::fs::symlink_metadata(link_path).is_ok() {
+        std::fs::remove_file(link_path)?;
+    }
+    Ok(())
+}
+
 #[cfg(target_os = "macos")]
 fn current_exe_string() -> Result<String, String> {
     std::env::current_exe()
@@ -649,9 +704,12 @@ fn current_exe_string() -> Result<String, String> {
 /// Run a shell command with administrator privileges via the native macOS
 /// password prompt (AppleScript). Used because `/usr/local/bin` is root-owned.
 #[cfg(target_os = "macos")]
-fn run_admin_macos(shell_script: &str) -> Result<(), String> {
-    let escaped = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
-    let apple = format!("do shell script \"{escaped}\" with administrator privileges");
+fn run_admin_macos(shell_script: &str, prompt: &str) -> Result<(), String> {
+    let script_escaped = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
+    let prompt_escaped = prompt.replace('\\', "\\\\").replace('"', "\\\"");
+    let apple = format!(
+        "do shell script \"{script_escaped}\" with prompt \"{prompt_escaped}\" with administrator privileges"
+    );
     let out = Command::new("osascript")
         .arg("-e")
         .arg(apple)
