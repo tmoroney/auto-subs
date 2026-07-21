@@ -112,8 +112,15 @@ pub fn create_context(
     }
     let mut ctx_params = WhisperContextParameters::default();
 
-    // Force disable GPU if explicitly disabled
-    if let Some(false) = use_gpu {
+    // On Intel Macs, whisper.cpp's Metal backend frequently aborts the process
+    // inside ggml_metal_synchronize (failed command buffers / OOM). Default to
+    // CPU-only there; if the user explicitly toggles GPU off we respect that too.
+    let default_use_gpu = !cfg!(all(target_os = "macos", target_arch = "x86_64"));
+    let effective_use_gpu = use_gpu.unwrap_or(default_use_gpu);
+    ctx_params.use_gpu = effective_use_gpu;
+
+    if cfg!(all(target_os = "macos", target_arch = "x86_64")) && effective_use_gpu {
+        tracing::warn!("GPU requested on Intel Mac; forcing CPU to avoid Metal/ggml aborts");
         ctx_params.use_gpu = false;
     }
 
@@ -147,7 +154,7 @@ pub fn create_context(
         });
     } else {
         // Enable flash attention if DTW is disabled (and GPU is available)
-        if enable_flash_attn.unwrap_or(true) && use_gpu.unwrap_or(true) {
+        if enable_flash_attn.unwrap_or(true) && ctx_params.use_gpu {
             ctx_params.flash_attn(true);
         }
     }
