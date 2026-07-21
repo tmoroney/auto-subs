@@ -227,33 +227,39 @@ pub async fn run_ffmpeg<R: Runtime>(
         tracing::warn!("ffmpeg sidecar not found; falling back to system ffmpeg");
     }
 
-    // System ffmpeg fallback. On Windows, also try `cmd /c ffmpeg` so that
-    // .bat/.cmd shims (which Rust's Command cannot launch directly) still work.
+    // System ffmpeg fallback. On Windows try the .exe first to avoid .bat/.cmd
+    // shims that Rust's Command cannot launch directly (and that would require
+    // a shell and re-interpret media paths).
+    let mut errors: Vec<String> = Vec::new();
     #[cfg(target_os = "windows")]
     {
-        if let Ok(out) = TokioCommand::new("ffmpeg").args(args).output().await {
-            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
-        }
-        if let Ok(out) = TokioCommand::new("cmd")
-            .arg("/c")
-            .arg("ffmpeg")
-            .args(args)
-            .output()
-            .await
-        {
-            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+        for cmd_name in ["ffmpeg.exe", "ffmpeg"] {
+            match TokioCommand::new(cmd_name).args(args).output().await {
+                Ok(out) => {
+                    return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+                }
+                Err(e) => {
+                    errors.push(format!("{}: {}", cmd_name, e));
+                }
+            }
         }
     }
     #[cfg(not(target_os = "windows"))]
     {
-        if let Ok(out) = TokioCommand::new("ffmpeg").args(args).output().await {
-            return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+        match TokioCommand::new("ffmpeg").args(args).output().await {
+            Ok(out) => {
+                return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+            }
+            Err(e) => {
+                errors.push(format!("ffmpeg: {}", e));
+            }
         }
     }
 
     bail!(
         "No usable ffmpeg binary found. The bundled sidecar is unavailable and 'ffmpeg' is not on PATH. \
-         Install ffmpeg (e.g. 'brew install ffmpeg', 'choco install ffmpeg', or 'apt install ffmpeg') and restart the app."
+         Errors: {}. Install ffmpeg (e.g. 'brew install ffmpeg', 'choco install ffmpeg', or 'apt install ffmpeg') and restart the app.",
+        errors.join("; ")
     )
 }
 
