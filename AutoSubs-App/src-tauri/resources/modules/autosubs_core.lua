@@ -622,8 +622,7 @@ function GetExportProgress()
             -- Resolve localizes JobStatus (e.g. "Finalizado", "Concluído",
             -- "Завершено"), so we cannot compare only to the English word
             -- "Complete". A real failure is indicated by a non-empty Error
-            -- field, a recognizable failure/cancel status, or an unfinished
-            -- CompletionPercentage.
+            -- field or an unfinished CompletionPercentage.
             local jobStatus, jobError, completionPercentage
             if currentExportJob.pid then
                 local ok, status = pcall(function()
@@ -636,36 +635,14 @@ function GetExportProgress()
                 end
             end
 
-            -- Recognize failure/cancelation despite localized JobStatus strings.
-            -- Lua string.lower only handles ASCII, so we include common variants
-            -- in their original casing as well as lowercased ASCII forms.
-            local function is_failure_status(statusStr)
-                if not statusStr then return false end
-                local s = tostring(statusStr):lower()
-                local failures = {
-                    failed = true, failure = true, error = true,
-                    abort = true, aborted = true, stopped = true,
-                    cancelled = true, canceled = true,
-                    cancelado = true, cancelada = true,
-                    annulé = true, annule = true, annulée = true,
-                    annulliert = true, annuliert = true,
-                    abgebrochen = true, abgebrochene = true,
-                    fehlgeschlagen = true, fehlgeschlagene = true,
-                    fallido = true, fallida = true, fracasado = true,
-                    échoué = true, échouée = true, echoue = true, echouee = true,
-                    misslyckades = true, mislukt = true,
-                    ["отменено"] = true, ["Отменено"] = true,
-                }
-                return failures[s] == true
-            end
-
             local detail
             if jobError and tostring(jobError) ~= "" then
                 detail = tostring(jobError)
-            elseif is_failure_status(jobStatus) then
-                detail = "Render job status: " .. tostring(jobStatus)
             elseif type(completionPercentage) == "number" and completionPercentage < 100 then
-                detail = "Render job incomplete (" .. tostring(completionPercentage) .. "%): " .. tostring(jobStatus)
+                detail = "Render job incomplete (" .. tostring(completionPercentage) .. "%)"
+                if jobStatus then
+                    detail = detail .. ": " .. tostring(jobStatus)
+                end
             end
 
             if detail then
