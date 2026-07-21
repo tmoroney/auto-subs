@@ -524,21 +524,27 @@ fn censored_replacement(clean: &str) -> String {
     }
 }
 
-/// Title-case a Latin token: lowercase the whole token, then uppercase only the
-/// first alphabetic character. This avoids capitalising after internal punctuation
-/// such as apostrophes (e.g. "don't" -> "Don't") or censorship asterisks
-/// (e.g. "h**l" -> "H**l").
+/// Title-case a Latin token: lowercase the whole token, then uppercase the first
+/// letter of each word. Apostrophes and censorship asterisks are treated as part
+/// of a word, so "don't" and "h**l" become "Don't" and "H**l", while hyphen-
+/// and slash-delimited compounds (e.g. "well-known", "mother/father") still get
+/// each part capitalised.
 fn titlecase_latin(s: &str) -> String {
+    fn is_word_char(c: char) -> bool {
+        c.is_alphanumeric() || c == '_' || c == '\'' || c == '\u{2019}' || c == '*'
+    }
+
     let lower = s.to_lowercase();
     let mut out = String::with_capacity(lower.len());
-    let mut saw_alpha = false;
+    let mut prev_is_word = false;
     for c in lower.chars() {
-        if !saw_alpha && c.is_alphabetic() {
+        let word = is_word_char(c);
+        if word && !prev_is_word {
             for uc in c.to_uppercase() { out.push(uc); }
-            saw_alpha = true;
         } else {
             out.push(c);
         }
+        prev_is_word = word;
     }
     out
 }
