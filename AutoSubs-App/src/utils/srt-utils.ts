@@ -2,8 +2,9 @@ import { Subtitle } from "../types";
 
 // src/utils/srtUtils.ts
 export function formatTimecode(seconds: number): string {
-    const ms = Math.floor((seconds % 1) * 1000);
-    const total = Math.floor(seconds);
+    const safeSeconds = typeof seconds === "number" && !isNaN(seconds) ? Math.max(0, seconds) : 0;
+    const ms = Math.floor((safeSeconds % 1) * 1000);
+    const total = Math.floor(safeSeconds);
     const s = total % 60;
     const m = Math.floor((total / 60) % 60);
     const h = Math.floor(total / 3600);
@@ -22,6 +23,18 @@ export function generateSrt(subtitles: Subtitle[]): string {
     const sanitized = (JSON.parse(JSON.stringify(subtitles)) as any[]).filter(
         sub => sub && typeof sub === 'object' && 'start' in sub && 'end' in sub
     ) as Subtitle[];
+
+    // Guard against negative timeline offsets: if any cue starts before 0, shift the
+    // whole set so the earliest start becomes 0. This keeps SRT valid while preserving
+    // relative timing. SRT cannot represent negative timecodes.
+    const numericStarts = sanitized.map(sub => Number(sub.start)).filter(v => !isNaN(v));
+    const minStart = numericStarts.length > 0 ? Math.min(0, ...numericStarts) : 0;
+    if (minStart < 0) {
+        for (const sub of sanitized) {
+            sub.start = Number(sub.start) - minStart;
+            sub.end = Number(sub.end) - minStart;
+        }
+    }
 
     // 1. Enforce minimum duration and fix overlaps
     const MIN_DURATION = 0.4; // 400ms minimum duration for readability

@@ -107,8 +107,12 @@ export function TextFormattingPanel({
                             type="number"
                             min="1"
                             max="100"
+                            step="1"
                             value={customMaxCharsPerLine}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("customMaxCharsPerLine", Number(e.target.value))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
+                                updateSetting("customMaxCharsPerLine", n);
+                            }}
                             className="w-20"
                         />
                     </div>
@@ -123,8 +127,12 @@ export function TextFormattingPanel({
                     <Input
                         type="number"
                         min="1"
+                        step="1"
                         value={maxLinesPerSubtitle}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting("maxLinesPerSubtitle", Number(e.target.value))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
+                            updateSetting("maxLinesPerSubtitle", n);
+                        }}
                         className="w-20"
                     />
                 </div>

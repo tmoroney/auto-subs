@@ -392,12 +392,15 @@ export function TranscriptionPanel({
         enableForcedAlignment: willUseForcedAlignment,
         enableGpu,
         enableDiarize,
-        maxSpeakers,
+        maxSpeakers:
+          typeof maxSpeakers === "number" && !isNaN(maxSpeakers)
+            ? Math.floor(maxSpeakers) || null
+            : null,
         density: textDensity,
-        maxLines: maxLinesPerSubtitle,
+        maxLines: Math.max(1, Math.floor(maxLinesPerSubtitle ?? 1)),
         customMaxCharsPerLine:
           textDensity === "custom"
-            ? customMaxCharsPerLine
+            ? Math.max(1, Math.floor(customMaxCharsPerLine ?? 1))
             : undefined,
         textCase,
         removePunctuation,
