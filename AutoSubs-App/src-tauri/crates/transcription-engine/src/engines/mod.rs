@@ -45,8 +45,6 @@ pub async fn run_engine(
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
-    let num_samples: usize = speech_segments.iter().map(|s| s.samples.len()).sum();
-
     let use_gpu = cfg.use_gpu;
     match engine_kind {
         ModelEngine::Parakeet => {
@@ -91,7 +89,6 @@ pub async fn run_engine(
                 cfg.use_gpu,
                 cfg.enable_dtw,
                 cfg.enable_flash_attn,
-                Some(num_samples),
             )
             .map_err(|e| eyre!("Failed to create Whisper context: {}", e))?;
             tracing::info!(
