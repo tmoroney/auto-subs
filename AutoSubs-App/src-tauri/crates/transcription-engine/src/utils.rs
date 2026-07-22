@@ -1,49 +1,73 @@
 /// Estimate a safe DTW working-set size (in bytes) for whisper.cpp DTW.
-/// Pass the result to `DtwParameters { dtw_mem_size, .. }`.
-pub fn calculate_dtw_mem_size(num_samples: usize) -> usize {
-    // Frame geometry at 16 kHz: 10 ms per frame → 160 samples per frame
-    const FRAME_SAMPLES: usize = 160;
-    let num_frames = (num_samples + FRAME_SAMPLES - 1) / FRAME_SAMPLES; // ceil division
+///
+/// The constants below come from whisper.cpp's fixed 30-second processing geometry:
+/// - `n_audio_ctx = 1500`: 30 s of 16 kHz audio produces 3000 mel frames, and the
+///   encoder's two stride-2 convolutions collapse that to 1500 audio tokens.
+///   See `whisper_hparams::n_audio_ctx` in `whisper.cpp`.
+/// - `n_text_ctx = 448`: the decoder context size. See `whisper_hparams::n_text_ctx`.
+/// - The alignment-head counts are the sizes of the `g_aheads_*` arrays in
+///   `whisper.cpp/src/whisper.cpp` (e.g. lines 384-410 in the version shipped with
+///   `whisper-rs-sys` 0.15.0) and mirrored in `g_aheads` to the `WHISPER_AHEADS_*`
+///   presets used by `DtwModelPreset`.
+///
+/// The allocation must cover a full Whisper 30-second chunk regardless of the
+/// actual clip length because `whisper_full` pads shorter audio to the full
+/// 1500 audio-token geometry, and `dtw_and_backtrace` allocates
+/// `(n_tokens + 1) * (n_audio_tokens + 1)` cost/trace matrices per chunk.
+pub fn calculate_dtw_mem_size(model_name: &str) -> usize {
+    const N_AUDIO_TOKENS: usize = 1500; // 30 s -> 3000 mel frames -> 1500 encoder tokens
+    const N_TOKENS: usize = 448;        // whisper.cpp n_text_ctx
 
-    // Memory model bits
-    const BYTES_F32: usize = 4;
-    const BYTES_I32: usize = 4;
-
-    // Rolling buffers + auxiliaries (cost, prev, scratch, etc.)
-    // Use 4 lanes to leave headroom on long segments/presets.
-    const LANES: usize = 4;
-
-    // Dynamic band: narrow for short audio, wider for long audio.
-    // Keeps quality while bounding memory.
-    let band_frames = match num_frames {
-        0..=15_000 => 96,    // ≤150 s
-        15_001..=45_000 => 128, // 150–450 s
-        _ => 160,            // >450 s
+    // Alignment-head counts are the lengths of the `g_aheads_*` arrays in
+    // whisper.cpp's `src/whisper.cpp` (search for `g_aheads_`). This match arm
+    // mirrors the `g_aheads` map in that file.
+    let n_heads = match model_name {
+        "tiny.en" => 8,
+        "tiny" => 6,
+        "base.en" => 5,
+        "base" => 8,
+        "small.en" => 19,
+        "small" => 10,
+        "medium.en" => 18,
+        "medium" => 6,
+        "large-v1" => 9,
+        "large-v2" => 23,
+        "large-v3" => 10,
+        "large-v3-turbo" => 6,
+        _ => 24, // conservative fallback for unknown / future variants
     };
 
-    // Core DP working set (float costs) plus an int32 backtrack-ish buffer
-    let dp_bytes = num_frames
-        .saturating_mul(band_frames)
-        .saturating_mul(LANES)
-        .saturating_mul(BYTES_F32);
+    // Main cross-QK tensor. whisper.cpp builds `ggml_new_tensor_3d(..., n_tokens,
+    // n_audio_tokens, n_heads)` and then applies `ggml_norm`, `ggml_permute`,
+    // `ggml_map_custom1` (median filter), `ggml_mean` and `ggml_scale` before
+    // `dtw_and_backtrace`. Each of those nodes can materialise a same-size f32
+    // tensor, so we over-allocate by a small factor for graph intermediates.
+    let cross_qk_bytes = N_TOKENS
+        .saturating_mul(N_AUDIO_TOKENS)
+        .saturating_mul(n_heads)
+        .saturating_mul(4);
+    let graph_intermediate_bytes = cross_qk_bytes.saturating_mul(3);
 
-    let bt_bytes = num_frames
-        .saturating_mul(BYTES_I32); // rough backtrack/indices budget
+    // dtw_and_backtrace allocates a `cost` (f32) and `trace` (i32) matrix of
+    // size `(n_tokens + 1) * (n_audio_tokens + 1)` per chunk.
+    let dtw_matrix_bytes = (N_TOKENS + 1)
+        .saturating_mul(N_AUDIO_TOKENS + 1)
+        .saturating_mul(4 + 4);
 
-    // Fixed baseline for internal scratch
-    const BASELINE_MB: usize = 24;
-    let base_bytes = BASELINE_MB * 1024 * 1024;
+    // Graph overhead + small result tensors.
+    const OVERHEAD_MB: usize = 16;
+    let overhead_bytes = OVERHEAD_MB * 1024 * 1024;
 
-    // Total and clamps
-    let total = base_bytes
-        .saturating_add(dp_bytes)
-        .saturating_add(bt_bytes);
+    let total = cross_qk_bytes
+        .saturating_add(graph_intermediate_bytes)
+        .saturating_add(dtw_matrix_bytes)
+        .saturating_add(overhead_bytes);
 
-    let min_bytes = 24 * 1024 * 1024;   // 24 MB floor
-    let max_bytes = 768 * 1024 * 1024;  // 768 MB ceiling
+    let min_bytes = 32 * 1024 * 1024;  // 32 MB floor
+    let max_bytes = 768 * 1024 * 1024; // 768 MB ceiling
     let clamped = total.clamp(min_bytes, max_bytes);
 
-    // Align up to 8 MB so we never round *down* below requirement
+    // Align up to 8 MB so we never round *down* below the requirement
     const ALIGN: usize = 8 * 1024 * 1024;
     (clamped + (ALIGN - 1)) & !(ALIGN - 1)
 }
