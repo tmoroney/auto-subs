@@ -206,6 +206,7 @@ pub async fn transcribe_omni_asr(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
+    use_gpu: Option<bool>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -216,7 +217,7 @@ pub async fn transcribe_omni_asr(
         bail!("Transcription cancelled");
     }
 
-    let engine = OmniAsrEngine::load(model_path)?;
+    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || OmniAsrEngine::load(model_path))?;
     run_onnx_pipeline(
         engine,
         speech_segments,

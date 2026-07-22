@@ -4,6 +4,7 @@ use eyre::eyre;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+
 /// Frontend-requested content formatting applied after structural line-wrapping.
 #[derive(Clone, Debug, Default)]
 pub struct ContentFormatting {

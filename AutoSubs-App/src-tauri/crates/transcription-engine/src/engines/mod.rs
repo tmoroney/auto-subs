@@ -45,12 +45,14 @@ pub async fn run_engine(
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
+    let use_gpu = cfg.use_gpu;
     match engine_kind {
         ModelEngine::Parakeet => {
             crate::engines::parakeet::transcribe_parakeet(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -66,6 +68,7 @@ pub async fn run_engine(
                 variant,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -108,6 +111,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -120,6 +124,7 @@ pub async fn run_engine(
                 speech_segments,
                 options,
                 native_target,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -131,6 +136,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,
@@ -142,6 +148,7 @@ pub async fn run_engine(
                 model_path,
                 speech_segments,
                 options,
+                use_gpu,
                 progress,
                 new_segment_callback,
                 abort_callback,

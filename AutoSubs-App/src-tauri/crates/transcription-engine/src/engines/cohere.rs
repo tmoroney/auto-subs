@@ -52,6 +52,7 @@ pub async fn transcribe_cohere(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
+    use_gpu: Option<bool>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -71,7 +72,7 @@ pub async fn transcribe_cohere(
         );
     }
 
-    let mut engine = CohereEngine::load(model_path)?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || CohereEngine::load(model_path))?;
     let supported_languages = engine.model.capabilities().languages;
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(

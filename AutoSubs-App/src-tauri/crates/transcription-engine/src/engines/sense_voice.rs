@@ -114,6 +114,7 @@ pub async fn transcribe_sense_voice(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
     options: &TranscribeOptions,
+    use_gpu: Option<bool>,
     progress_callback: Option<&LabeledProgressFn>,
     new_segment_callback: Option<&NewSegmentFn>,
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
@@ -124,7 +125,7 @@ pub async fn transcribe_sense_voice(
         eyre::bail!("Transcription cancelled");
     }
 
-    let mut engine = SenseVoiceEngine::load(model_path)?;
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || SenseVoiceEngine::load(model_path))?;
     let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
     engine.params.language = Some(lang.clone());
     engine.detected_lang = if lang == "auto" { None } else { Some(lang) };
