@@ -1,23 +1,31 @@
 /// Estimate a safe DTW working-set size (in bytes) for whisper.cpp DTW.
-/// Pass the result to `DtwParameters { dtw_mem_size, .. }`.
+///
+/// The constants below come from whisper.cpp's fixed 30-second processing geometry:
+/// - `n_audio_ctx = 1500`: 30 s of 16 kHz audio produces 3000 mel frames, and the
+///   encoder's two stride-2 convolutions collapse that to 1500 audio tokens.
+///   See `whisper_hparams::n_audio_ctx` in `whisper.cpp`.
+/// - `n_text_ctx = 448`: the decoder context size. See `whisper_hparams::n_text_ctx`.
+/// - The alignment-head counts are the sizes of the `g_aheads_*` arrays in
+///   `whisper.cpp/src/whisper.cpp` (e.g. lines 384-410 in the version shipped with
+///   `whisper-rs-sys` 0.15.0) and mirrored in `g_aheads` to the `WHISPER_AHEADS_*`
+///   presets used by `DtwModelPreset`.
 ///
 /// The allocation must cover a full Whisper 30-second chunk regardless of the
-/// actual clip length, because the native encoder pads short audio to the full
-/// 1500 audio-token geometry.
+/// actual clip length because `whisper_full` pads shorter audio to the full
+/// 1500 audio-token geometry, and `dtw_and_backtrace` allocates
+/// `(n_tokens + 1) * (n_audio_tokens + 1)` cost/trace matrices per chunk.
 pub fn calculate_dtw_mem_size(model_name: &str) -> usize {
-    const CHUNK_SECONDS: usize = 30;
-    const CHUNK_FRAMES: usize = CHUNK_SECONDS * 100;
-    const N_AUDIO_TOKENS: usize = CHUNK_FRAMES / 2;
-    const N_TOKENS: usize = 448;
+    const N_AUDIO_TOKENS: usize = 1500; // 30 s -> 3000 mel frames -> 1500 encoder tokens
+    const N_TOKENS: usize = 448;        // whisper.cpp n_text_ctx
 
-    let n_audio_tokens = N_AUDIO_TOKENS;
-    let n_tokens = N_TOKENS;
-
-    // Alignment-head count per model preset. These are the lengths of the
-    // g_aheads_* arrays in whisper.cpp for token-level DTW.
+    // Alignment-head counts are the lengths of the `g_aheads_*` arrays in
+    // whisper.cpp's `src/whisper.cpp` (search for `g_aheads_`). This match arm
+    // mirrors the `g_aheads` map in that file.
     let n_heads = match model_name {
-        "tiny.en" | "tiny" => 8,
-        "base.en" | "base" => 8,
+        "tiny.en" => 8,
+        "tiny" => 6,
+        "base.en" => 5,
+        "base" => 8,
         "small.en" => 19,
         "small" => 10,
         "medium.en" => 18,
@@ -26,29 +34,32 @@ pub fn calculate_dtw_mem_size(model_name: &str) -> usize {
         "large-v2" => 23,
         "large-v3" => 10,
         "large-v3-turbo" => 6,
-        _ => 24,
+        _ => 24, // conservative fallback for unknown / future variants
     };
 
-    // Main cross-QK tensor (float) and a few same-shape intermediates
-    // produced by ggml_norm / ggml_permute / ggml_scale inside DTW.
-    let w_bytes = n_tokens
-        .saturating_mul(n_audio_tokens)
+    // Main cross-QK tensor. whisper.cpp builds `ggml_new_tensor_3d(..., n_tokens,
+    // n_audio_tokens, n_heads)` and then applies `ggml_norm`, `ggml_permute`,
+    // `ggml_map_custom1` (median filter), `ggml_mean` and `ggml_scale` before
+    // `dtw_and_backtrace`. Each of those nodes can materialise a same-size f32
+    // tensor, so we over-allocate by a small factor for graph intermediates.
+    let cross_qk_bytes = N_TOKENS
+        .saturating_mul(N_AUDIO_TOKENS)
         .saturating_mul(n_heads)
         .saturating_mul(4);
-    let intermediate_bytes = w_bytes.saturating_mul(2);
+    let graph_intermediate_bytes = cross_qk_bytes.saturating_mul(3);
 
-    // dtw_and_backtrace allocates cost (f32) and trace (i32) matrices of
-    // size (n_tokens + 1) * (n_audio_tokens + 1).
-    let dtw_matrix_bytes = (n_tokens + 1)
-        .saturating_mul(n_audio_tokens + 1)
+    // dtw_and_backtrace allocates a `cost` (f32) and `trace` (i32) matrix of
+    // size `(n_tokens + 1) * (n_audio_tokens + 1)` per chunk.
+    let dtw_matrix_bytes = (N_TOKENS + 1)
+        .saturating_mul(N_AUDIO_TOKENS + 1)
         .saturating_mul(4 + 4);
 
-    // Graph overhead + small result tensors
+    // Graph overhead + small result tensors.
     const OVERHEAD_MB: usize = 16;
     let overhead_bytes = OVERHEAD_MB * 1024 * 1024;
 
-    let total = w_bytes
-        .saturating_add(intermediate_bytes)
+    let total = cross_qk_bytes
+        .saturating_add(graph_intermediate_bytes)
         .saturating_add(dtw_matrix_bytes)
         .saturating_add(overhead_bytes);
 
