@@ -54,24 +54,90 @@ pub struct Callbacks<'a> {
 }
 
 /// Fallback speech segmentation when VAD/diarization returns nothing.
-/// Splits the audio into fixed non-overlapping chunks of `chunk_seconds`
-/// so transcription still has a chance to produce output on quiet or noisy
-/// inputs that confuse the VAD model.
+///
+/// Splits the audio into chunks of roughly `chunk_seconds` while trying to place
+/// boundaries on short silence windows instead of cutting through speech. This
+/// avoids splitting a word or syllable when the audio crosses a chunk edge.
 fn fixed_chunk_fallback(audio_samples: &[i16], chunk_seconds: f64) -> Vec<SpeechSegment> {
     const SAMPLE_RATE: f64 = 16000.0;
+    const SEARCH_WINDOW_SECONDS: f64 = 0.5; // look ~0.5 s before the target for silence
+
     let chunk_samples = (chunk_seconds * SAMPLE_RATE) as usize;
+    let search_window = (SEARCH_WINDOW_SECONDS * SAMPLE_RATE) as usize;
     let total = audio_samples.len();
+
     let mut segments = Vec::new();
-    for start in (0..total).step_by(chunk_samples) {
-        let end = (start + chunk_samples).min(total);
+    let mut start = 0usize;
+    while start < total {
+        let target = (start + chunk_samples).min(total);
+        let split = if target == total {
+            total
+        } else {
+            find_low_energy_split(audio_samples, start, target, search_window)
+        };
+
         segments.push(SpeechSegment {
             start: start as f64 / SAMPLE_RATE,
-            end: end as f64 / SAMPLE_RATE,
-            samples: audio_samples[start..end].to_vec(),
+            end: split as f64 / SAMPLE_RATE,
+            samples: audio_samples[start..split].to_vec(),
             speaker_id: None,
         });
+
+        if split == total {
+            break;
+        }
+        start = split;
     }
     segments
+}
+
+/// Find a split point near `target` that falls inside a low-energy window.
+///
+/// Searches `[target.saturating_sub(search_window), target]` in 10 ms frames
+/// and returns the frame start with the lowest RMS energy. If the lowest
+/// energy is not significantly below the local average (no real silence found),
+/// it falls back to `target` to avoid arbitrarily long chunks.
+fn find_low_energy_split(
+    samples: &[i16],
+    start: usize,
+    target: usize,
+    search_window: usize,
+) -> usize {
+    const FRAME_SAMPLES: usize = 160; // 10 ms at 16 kHz
+
+    let end = target.min(samples.len());
+    let search_start = target.saturating_sub(search_window).max(start);
+    if search_start >= end || end.saturating_sub(search_start) < FRAME_SAMPLES {
+        return end;
+    }
+
+    let mut best_idx = end;
+    let mut best_energy = u64::MAX;
+    let mut total_energy: u64 = 0;
+    let mut frame_count = 0usize;
+
+    let mut frame = search_start;
+    while frame + FRAME_SAMPLES <= end {
+        let energy = samples[frame..frame + FRAME_SAMPLES]
+            .iter()
+            .map(|&s| (s as i32).saturating_mul(s as i32) as u64)
+            .sum();
+        total_energy += energy;
+        frame_count += 1;
+        if energy < best_energy {
+            best_energy = energy;
+            best_idx = frame;
+        }
+        frame += FRAME_SAMPLES;
+    }
+
+    // Accept the lowest-energy frame only if it is roughly an order of magnitude
+    // quieter than the average frame in the search window.
+    if frame_count > 0 && best_energy.saturating_mul(frame_count as u64).saturating_mul(10) < total_energy {
+        best_idx
+    } else {
+        end
+    }
 }
 
 async fn prepare_speech_segments(
