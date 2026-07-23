@@ -2,12 +2,12 @@ use crate::types::WordTimestamp;
 use eyre::{Context, ContextCompat, Result, bail, eyre};
 use ndarray::{Array2, ArrayView2, s};
 use ort::session::Session;
-use ort::session::builder::GraphOptimizationLevel;
 use ort::value::{Tensor, ValueType};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use transcribe_rs::onnx::session::create_session_with_threads;
 use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 use uroman::{Uroman, rom_format};
 
@@ -101,15 +101,10 @@ impl Aligner {
         }
 
         let model_path = model_dir.join("onnx/model_int8.onnx");
-        let session = Session::builder()
-            .map_err(|error| eyre!("failed to create ONNX session builder: {error}"))?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|error| eyre!("failed to set ONNX optimization level: {error}"))?
-            .with_intra_threads(1)
-            .map_err(|error| eyre!("failed to set ONNX intra-op threads: {error}"))?
-            .with_inter_threads(1)
-            .map_err(|error| eyre!("failed to set ONNX inter-op threads: {error}"))?
-            .commit_from_file(&model_path)
+        let n_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        let session = create_session_with_threads(&model_path, n_threads)
             .map_err(|error| eyre!("failed to load {}: {error}", model_path.display()))?;
         validate_session(&session, vocabulary.len())?;
 
