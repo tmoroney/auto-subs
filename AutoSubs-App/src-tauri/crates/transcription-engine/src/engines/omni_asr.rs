@@ -1,8 +1,8 @@
-//! Omni-ASR 300M CTC speech recognition backend.
+//! Omni-ASR 1B CTC speech recognition backend.
 //!
 //! Uses the ONNX-converted Facebook Omni-ASR CTC model directly through
-//! `ort`. The 300M CTC variant is lightweight, supports 1600+ languages, and
-//! does not produce capitalization or punctuation. Word timestamps are not
+//! `ort`. The 1B CTC variant supports 1600+ languages, and does not produce
+//! capitalization or punctuation. Word timestamps are not
 //! emitted by the model, so the shared ONNX driver interpolates them over each
 //! chunk. Forced alignment (when enabled) refines those timings afterwards.
 
@@ -10,10 +10,10 @@ use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{bail, eyre, Context, Result};
 use ndarray::{Array2, Array3};
-use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
 use std::collections::HashMap;
 use std::path::Path;
+use transcribe_rs::onnx::session::create_session_with_threads;
 use transcribe_rs::TranscriptionResult;
 
 pub struct OmniAsrEngine {
@@ -35,15 +35,10 @@ impl OmniAsrEngine {
             bail!("Omni-ASR tokens not found at {}", tokens_path.display());
         }
 
-        let session = Session::builder()
-            .map_err(|e| eyre!("{e}"))?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|e| eyre!("{e}"))?
-            .with_intra_threads(1)
-            .map_err(|e| eyre!("{e}"))?
-            .with_inter_threads(1)
-            .map_err(|e| eyre!("{e}"))?
-            .commit_from_file(&model_path)
+        let n_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        let session = create_session_with_threads(&model_path, n_threads)
             .map_err(|e| eyre!("Failed to load Omni-ASR ONNX model: {e}"))?;
 
         let id_to_token = Self::load_tokens(&tokens_path)?;
@@ -139,7 +134,7 @@ impl OmniAsrEngine {
 }
 
 impl OnnxEngine for OmniAsrEngine {
-    /// The 300M CTC model is trained on ≤30s chunks and rejects audio ≥40s.
+    /// The 1B CTC model is trained on ≤30s chunks and rejects audio ≥40s.
     const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
     fn load(model_path: &Path) -> Result<Self> {
