@@ -64,7 +64,7 @@ export function ProcessingStepsList({
           "linear-gradient(to bottom, black 90%, transparent 100%)",
       }}
     >
-      <div ref={containerRef} className="w-full relative z-10">
+      <div ref={containerRef} className="w-full relative z-10 pb-20">
         <div className="flex flex-col gap-4">
           {currentStep && (
             <ActivePhaseVisualizer
