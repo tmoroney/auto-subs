@@ -604,7 +604,19 @@ impl Engine {
 
             // The pipeline may still be translating the final batch; finish it
             // and use its ordered output as the authoritative segments.
-            let translated = pipeline.finish().await?;
+            let mut translated = pipeline.finish().await?;
+
+            // The engine's returned vector has had overlapping boundaries clamped,
+            // but the translation pipeline snapshots segments before that clamping.
+            // Apply the clamped timings from the engine to the translated segments
+            // so the final transcript cannot contain overlapping intervals.
+            for (i, clamped) in _segments.iter().enumerate() {
+                if let Some(seg) = translated.get_mut(i) {
+                    seg.start = clamped.start;
+                    seg.end = clamped.end.max(clamped.start);
+                    crate::translate::regenerate_words_uniform(seg);
+                }
+            }
 
             // Prefer the detected language from the engine; fall back to the
             // user-specified source language.
