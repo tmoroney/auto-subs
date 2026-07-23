@@ -538,6 +538,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             transcription_api::transcribe_audio,
+            transcription_api::ensure_models,
             transcription_api::cancel_transcription,
             transcription_api::reformat_subtitles,
             models::get_downloaded_models,

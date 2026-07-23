@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
-    Callbacks, ContentFormatting, Engine, EngineConfig, PostProcessConfig, ProgressType,
+    Callbacks, ContentFormatting, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType,
     Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
 };
 
@@ -78,6 +78,12 @@ pub struct FrontendTranscribeOptions {
     pub remove_punctuation: Option<bool>,
     pub censored_words: Option<Vec<String>>,
     pub custom_prompt: Option<String>,
+    // Optional pre-resolved model paths (filled by ensure_models command).
+    pub asr_model_path: Option<String>,
+    pub vad_model_path: Option<String>,
+    pub diarize_segment_path: Option<String>,
+    pub diarize_embedding_path: Option<String>,
+    pub aligner_model_dir: Option<String>,
 }
 
 /// Parse a frontend text_case string ("none"|"lowercase"|"uppercase"|"titlecase") into TextCase.
@@ -158,6 +164,80 @@ impl<'a> From<&'a FrontendTranscribeOptions> for TranscribeOptionsLogView<'a> {
     }
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EnsureModelsRequest {
+    pub model: String,
+    pub enable_vad: Option<bool>,
+    pub enable_diarize: Option<bool>,
+    pub enable_forced_alignment: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EnsureModelsResponse {
+    pub asr_model_path: String,
+    pub vad_model_path: Option<String>,
+    pub diarize_segment_path: Option<String>,
+    pub diarize_embedding_path: Option<String>,
+    pub aligner_dir: Option<String>,
+}
+
+#[command]
+pub async fn ensure_models<R: Runtime>(
+    app: AppHandle<R>,
+    request: EnsureModelsRequest,
+) -> Result<EnsureModelsResponse, String> {
+    use transcription_engine::Engine;
+
+    let cache_dir = get_cache_dir(app.clone()).map_err(|e| format!("Failed to get cache directory: {e}"))?;
+    let engine = Engine::new(EngineConfig {
+        cache_dir,
+        ..Default::default()
+    });
+
+    let options = TranscribeOptions {
+        model: request.model,
+        enable_vad: request.enable_vad,
+        enable_diarize: request.enable_diarize,
+        enable_forced_alignment: request.enable_forced_alignment,
+        ..Default::default()
+    };
+
+    let progress_app = app.clone();
+    let progress = move |percent: i32, progress_type: ProgressType, label: &str| {
+        let _ = progress_app.emit(
+            "labeled-progress",
+            LabeledProgress {
+                progress: percent,
+                progress_type: Some(format!("{:?}", progress_type)),
+                label: Some(label.to_string()),
+            },
+        );
+    };
+
+    let is_cancelled = || {
+        if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+            *should_cancel
+        } else {
+            false
+        }
+    };
+
+    let cfg = engine
+        .prepare_models(&options, Some(&progress), Some(&is_cancelled))
+        .await
+        .map_err(|e| format!("Failed to prepare models: {e}"))?;
+
+    Ok(EnsureModelsResponse {
+        asr_model_path: cfg.asr_model_path.ok_or_else(|| "ASR model path missing".to_string())?,
+        vad_model_path: cfg.vad_model_path,
+        diarize_segment_path: cfg.diarize_segment_model_path,
+        diarize_embedding_path: cfg.diarize_embedding_model_path,
+        aligner_dir: cfg.aligner_model_dir,
+    })
+}
+
 #[command]
 pub async fn transcribe_audio<R: Runtime>(
     app: AppHandle<R>,
@@ -217,6 +297,14 @@ pub async fn transcribe_audio<R: Runtime>(
     });
 
     // --- Audio Normalization (only task left in app before passing to crate) ---
+    LATEST_PROGRESS.store(0, Ordering::Relaxed);
+    if let Ok(mut lock) = LATEST_PROGRESS_TYPE.lock() {
+        *lock = Some(ProgressType::Prepare);
+    }
+    if let Ok(mut lock) = LATEST_PROGRESS_LABEL.lock() {
+        *lock = Some("progressSteps.prepare.normalize".to_string());
+    }
+
     let audio_path = if should_normalize(options.audio_path.clone().into()) {
         create_normalized_audio(app.clone(), options.audio_path.clone().into(), None)
             .await
@@ -228,6 +316,11 @@ pub async fn transcribe_audio<R: Runtime>(
         tracing::info!("audio normalization skipped");
         options.audio_path.clone().into()
     };
+
+    LATEST_PROGRESS.store(100, Ordering::Relaxed);
+    if let Ok(mut lock) = LATEST_PROGRESS_LABEL.lock() {
+        *lock = Some("progressSteps.prepare.normalize".to_string());
+    }
     tracing::debug!("normalized audio path: {}", audio_path.display());
 
     // Clone app handle for segment callback and wrap in Arc for thread-safe sharing
@@ -268,17 +361,18 @@ pub async fn transcribe_audio<R: Runtime>(
             Err(e) => tracing::warn!("list_cached_models failed: {}", e),
         }
 
-        // Create engine config with proper cache directory
+        // Create engine config with proper cache directory and any pre-resolved model paths
         let engine_config = EngineConfig {
             cache_dir,
             enable_dtw: options.enable_dtw.or(Some(true)), // Enable DTW for better word timestamps
             enable_flash_attn: Some(true),                 // Engine handles DTW/flash attention mutual exclusion
             use_gpu: options.enable_gpu.or(Some(true)),    // Enable GPU acceleration when available
             gpu_device: None,                 // Use default GPU device
-            vad_model_path: None,             // Use default VAD model
-            diarize_segment_model_path: None, // Download segmentation model if needed
-            diarize_embedding_model_path: None, // Download embedding model if needed
-            aligner_model_dir: None,
+            vad_model_path: options.vad_model_path.clone(),
+            diarize_segment_model_path: options.diarize_segment_path.clone(),
+            diarize_embedding_model_path: options.diarize_embedding_path.clone(),
+            aligner_model_dir: options.aligner_model_dir.clone(),
+            asr_model_path: options.asr_model_path.clone(),
         };
 
         let mut engine = Engine::new(engine_config);
@@ -323,12 +417,17 @@ pub async fn transcribe_audio<R: Runtime>(
         // For now, we pass the enable_gpu option if the crate supports it in the future
 
         // Set up callbacks using whisper-diarize-rs built-in cancellation
-        let segment_callback = move |segment: &WDSegment| {
-            tracing::trace!("new segment: {}", segment.text);
+        let segment_callback: Arc<dyn Fn(usize, &WDSegment) + Send + Sync> = Arc::new(move |index: usize, segment: &WDSegment| {
+            tracing::trace!("new segment [{index}]: {}", segment.text);
 
-            // Emit the segment text to frontend for live preview
-            let _ = segment_emit_app_clone.emit("new-segment", segment.text.clone());
-        };
+            // Emit the full segment to the frontend so the live preview can
+            // show speaker labels and run the translation decrypt transition.
+            let payload = serde_json::json!({
+                "index": index,
+                "segment": segment,
+            });
+            let _ = segment_emit_app_clone.emit("new-segment", payload);
+        });
 
         // Reset per-run stage log de-dup state.
         if let Ok(mut g) = LAST_LOGGED_PROGRESS_TYPE.lock() {
@@ -337,8 +436,7 @@ pub async fn transcribe_audio<R: Runtime>(
 
         // Log one info! per distinct ProgressType transition; tick-by-tick
         // progress stays at trace level to avoid filling the log with %s.
-        let callbacks = Callbacks {
-            progress: Some(&|percent: i32, progress_type: ProgressType, label: &str| {
+        let progress_callback: Arc<LabeledProgressFn> = Arc::new(|percent: i32, progress_type: ProgressType, label: &str| {
                 if let Ok(mut guard) = LAST_LOGGED_PROGRESS_TYPE.lock() {
                     if guard.as_ref() != Some(&progress_type) {
                         tracing::info!("{}: stage={:?}", label, progress_type);
@@ -355,15 +453,21 @@ pub async fn transcribe_audio<R: Runtime>(
                 if let Ok(mut progress_label_lock) = LATEST_PROGRESS_LABEL.lock() {
                     *progress_label_lock = Some(label.to_string());
                 }
-            }),
-            new_segment_callback: Some(&segment_callback),
-            is_cancelled: Some(Box::new(|| {
-                if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
-                    *should_cancel
-                } else {
-                    false
-                }
-            })),
+        });
+
+
+        let is_cancelled: Arc<dyn Fn() -> bool + Send + Sync> = Arc::new(|| {
+            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+                *should_cancel
+            } else {
+                false
+            }
+        });
+
+        let callbacks = Callbacks {
+            progress: Some(progress_callback),
+            new_segment_callback: Some(segment_callback),
+            is_cancelled: Some(is_cancelled),
         };
 
         // Check for cancellation before starting transcription

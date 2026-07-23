@@ -1,9 +1,8 @@
 use crate::formatting::{PostProcessConfig, TextCase, TextDensity, process_segments};
-use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
-use eyre::eyre;
+use crate::types::{Callbacks, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
 
 /// Frontend-requested content formatting applied after structural line-wrapping.
 #[derive(Clone, Debug, Default)]
@@ -14,7 +13,6 @@ pub struct ContentFormatting {
 }
 
 use crate::manifest::{self, Engine as ModelEngine};
-// callback type aliases are defined in crate::types
 
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
@@ -27,6 +25,7 @@ pub struct EngineConfig {
     pub diarize_segment_model_path: Option<String>, // Optional path to diarization segmentation model; if None, it will be downloaded
     pub diarize_embedding_model_path: Option<String>, // Optional path to diarization embedding model; if None, it will be downloaded
     pub aligner_model_dir: Option<String>,
+    pub asr_model_path: Option<String>, // Optional pre-resolved ASR model path
 }
 
 impl Default for EngineConfig {
@@ -41,16 +40,9 @@ impl Default for EngineConfig {
             diarize_segment_model_path: None,
             diarize_embedding_model_path: None,
             aligner_model_dir: None,
+            asr_model_path: None,
         }
     }
-}
-
-#[derive(Default)]
-pub struct Callbacks<'a> {
-    // Unified progress callback: receives percent and a label describing the stage
-    pub progress: Option<&'a LabeledProgressFn>,
-    pub new_segment_callback: Option<&'a NewSegmentFn>,
-    pub is_cancelled: Option<Box<dyn Fn() -> bool + Send + Sync + 'static>>,
 }
 
 /// Fallback speech segmentation when VAD/diarization returns nothing.
@@ -146,7 +138,7 @@ async fn prepare_speech_segments(
     audio_samples: &[i16],
     options: &crate::TranscribeOptions,
     progress: Option<&LabeledProgressFn>,
-    is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync + 'static)>,
+    is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
 ) -> eyre::Result<Vec<SpeechSegment>> {
     let speech_segments = if let Some(true) = options.enable_diarize {
         let (seg_path, emb_path) = match (
@@ -174,7 +166,7 @@ async fn prepare_speech_segments(
 
         let diarize_progress = |pct| {
             if let Some(callback) = progress {
-                callback(pct, crate::ProgressType::Diarize, "progressSteps.diarize");
+                callback(pct, crate::ProgressType::Analyze, "progressSteps.analyze.diarize");
             }
         };
         let diarize_progress_callback =
@@ -203,6 +195,9 @@ async fn prepare_speech_segments(
             audio_samples.len(),
             audio_samples.len() as f64 / 16000.0
         );
+        if let Some(callback) = progress {
+            callback(0, crate::ProgressType::Analyze, "progressSteps.analyze.vad");
+        }
         let vad_start = std::time::Instant::now();
         let speech_segments = crate::vad::get_segments(&vad_model_path_str, audio_samples)
             .map_err(|e| eyre::eyre!("{:?}", e))?;
@@ -211,6 +206,9 @@ async fn prepare_speech_segments(
             speech_segments.len(),
             vad_start.elapsed().as_secs_f64()
         );
+        if let Some(callback) = progress {
+            callback(100, crate::ProgressType::Analyze, "progressSteps.analyze.vad");
+        }
         speech_segments
     } else {
         vec![SpeechSegment {
@@ -288,8 +286,8 @@ fn align_segments(
     if let Some(callback) = progress {
         callback(
             if eligible == 0 { 100 } else { 0 },
-            crate::ProgressType::Align,
-            "progressSteps.align",
+            crate::ProgressType::Refine,
+            "progressSteps.refine",
         );
     }
 
@@ -346,7 +344,7 @@ fn align_segments(
             } else {
                 (completed * 100 / eligible) as i32
             };
-            callback(percent, crate::ProgressType::Align, "progressSteps.align");
+            callback(percent, crate::ProgressType::Refine, "progressSteps.refine");
         }
     }
     Ok(())
@@ -404,6 +402,62 @@ impl Engine {
         }
     }
 
+    /// Ensure all models required for the given options are downloaded and
+    /// return an `EngineConfig` with the resolved model paths filled in.
+    /// This is the backend entry point for the "Prepare" phase so the UI can
+    /// pre-download models while audio is being exported/normalised.
+    pub async fn prepare_models(
+        &self,
+        options: &crate::TranscribeOptions,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> eyre::Result<EngineConfig> {
+        let mut cfg = self.cfg.clone();
+
+        // ASR model
+        let model_entry = manifest::get(&options.model);
+        let asr_path = match model_entry {
+            Some(entry) => {
+                if let Some(p) = &cfg.asr_model_path {
+                    PathBuf::from(p)
+                } else {
+                    self.models.ensure_model(entry, progress, is_cancelled).await?
+                }
+            }
+            None => {
+                if let Some(p) = &cfg.asr_model_path {
+                    PathBuf::from(p)
+                } else {
+                    self.models.ensure_whisper_model(&options.model, progress, is_cancelled).await?
+                }
+            }
+        };
+        cfg.asr_model_path = Some(asr_path.to_string_lossy().to_string());
+
+        // VAD model (always used unless explicitly disabled)
+        if options.enable_vad.unwrap_or(true) && cfg.vad_model_path.is_none() {
+            let vad_path = self.models.ensure_vad_model(progress, is_cancelled).await?;
+            cfg.vad_model_path = Some(vad_path.to_string_lossy().to_string());
+        }
+
+        // Diarization models
+        if options.enable_diarize.unwrap_or(false) {
+            if cfg.diarize_segment_model_path.is_none() || cfg.diarize_embedding_model_path.is_none() {
+                let (seg_path, emb_path) = self.models.ensure_diarize_models(progress, is_cancelled).await?;
+                cfg.diarize_segment_model_path = Some(seg_path.to_string_lossy().to_string());
+                cfg.diarize_embedding_model_path = Some(emb_path.to_string_lossy().to_string());
+            }
+        }
+
+        // Aligner model
+        if options.enable_forced_alignment.unwrap_or(false) && cfg.aligner_model_dir.is_none() {
+            let aligner_dir = self.models.ensure_aligner_model(progress, is_cancelled).await?;
+            cfg.aligner_model_dir = Some(aligner_dir.to_string_lossy().to_string());
+        }
+
+        Ok(cfg)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn transcribe_audio(
         &mut self,
@@ -413,7 +467,7 @@ impl Engine {
         density: Option<TextDensity>,
         custom_max_chars_per_line: Option<usize>,
         content_formatting: Option<ContentFormatting>,
-        cb: Option<Callbacks<'_>>,
+        cb: Option<Callbacks>,
     ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
         let cb = cb.unwrap_or_default();
         if !std::path::PathBuf::from(audio_path).exists() {
@@ -426,17 +480,35 @@ impl Engine {
         let engine_kind = model_entry
             .map(|e| e.engine)
             .unwrap_or(ModelEngine::Whisper);
-        // Ensure/download the appropriate model.
+
+        // Ensure/download the appropriate model. If a pre-resolved path is
+        // present (from prepare_models), use it and skip the cache check.
         let _model_path = match model_entry {
             Some(entry) => {
-                self.models
-                    .ensure_model(entry, cb.progress, cb.is_cancelled.as_deref())
-                    .await?
+                if let Some(p) = &self.cfg.asr_model_path {
+                    let path = PathBuf::from(p);
+                    if !path.exists() {
+                        eyre::bail!("ASR model path does not exist: {}", p);
+                    }
+                    path
+                } else {
+                    self.models
+                        .ensure_model(entry, cb.progress.as_deref(), cb.is_cancelled.as_deref())
+                        .await?
+                }
             }
             None => {
-                self.models
-                    .ensure_whisper_model(&options.model, cb.progress, cb.is_cancelled.as_deref())
-                    .await?
+                if let Some(p) = &self.cfg.asr_model_path {
+                    let path = PathBuf::from(p);
+                    if !path.exists() {
+                        eyre::bail!("Whisper model path does not exist: {}", p);
+                    }
+                    path
+                } else {
+                    self.models
+                        .ensure_whisper_model(&options.model, cb.progress.as_deref(), cb.is_cancelled.as_deref())
+                        .await?
+                }
             }
         };
 
@@ -450,7 +522,7 @@ impl Engine {
             &self.cfg,
             &original_samples,
             &options,
-            cb.progress,
+            cb.progress.as_deref(),
             cb.is_cancelled.as_deref(),
         )
         .await?;
@@ -465,14 +537,6 @@ impl Engine {
             options.model
         );
 
-        if let Some(progress_callback) = cb.progress {
-            progress_callback(
-                0,
-                crate::ProgressType::Transcribe,
-                "workspace.empty.loadingModel",
-            );
-        }
-
         let transcribe_start = std::time::Instant::now();
 
         // Capture translation options before moving `options` into the pipeline
@@ -482,7 +546,7 @@ impl Engine {
         let enable_forced_alignment = options.enable_forced_alignment.unwrap_or(false);
         let user_offset = options.offset.unwrap_or(0.0);
         let alignment_cancellation: Option<Arc<dyn Fn() -> bool + Send + Sync>> =
-            cb.is_cancelled.map(Arc::from);
+            cb.is_cancelled.clone();
         let engine_cancellation = alignment_cancellation
             .clone()
             .map(|cancelled| Box::new(move || cancelled()) as Box<dyn Fn() -> bool + Send + Sync>);
@@ -495,18 +559,70 @@ impl Engine {
             engine_cfg.enable_dtw = Some(false);
         }
 
-        let (mut segments, detected_lang) = crate::engines::run_engine(
-            engine_kind,
-            _model_path.as_path(),
-            speech_segments,
-            &options,
-            native_target.as_deref(),
-            &engine_cfg,
-            cb.progress,
-            cb.new_segment_callback,
-            engine_cancellation,
-        )
-        .await?;
+        // `use_native_translation` requests the model's built-in translation.
+        // The routing above determined `native_target` — when set, the engine
+        // already produced output in the target language, so we suppress the
+        // Google Translate post-pass. When None (model can't do native for this
+        // pair), we fall back to Google Translate if `translate_target` is set.
+        let suppress_post_translation = native_target.is_some();
+
+        // Build a streaming translation pipeline when it will be used. The
+        // pipeline consumes segments as they are emitted by the ASR engine,
+        // batches them, translates, and re-emits the translated text back to
+        // the live preview using the same segment index.
+        let translation_pipeline: Option<crate::translation_pipeline::TranslationPipeline> =
+            if !suppress_post_translation && translate_to.is_some() {
+                Some(crate::translation_pipeline::TranslationPipeline::new(
+                    from_lang.clone(),
+                    translate_to.clone().unwrap_or_default(),
+                    cb.clone(),
+                ))
+            } else {
+                None
+            };
+
+        let (mut segments, detected_lang) = if let Some(pipeline) = translation_pipeline {
+            let submitter = pipeline.submitter().clone();
+            let next_index = Arc::new(AtomicUsize::new(0));
+            let submit_cb: Arc<NewSegmentFn> = Arc::new(move |_idx: usize, segment: &Segment| {
+                let idx = next_index.fetch_add(1, Ordering::SeqCst);
+                submitter.submit(idx, segment.clone());
+            });
+
+            let (_segments, detected_lang) = crate::engines::run_engine(
+                engine_kind,
+                _model_path.as_path(),
+                speech_segments,
+                &options,
+                native_target.as_deref(),
+                &engine_cfg,
+                cb.progress.as_deref(),
+                Some(&*submit_cb),
+                engine_cancellation,
+            )
+            .await?;
+
+            // The pipeline may still be translating the final batch; finish it
+            // and use its ordered output as the authoritative segments.
+            let translated = pipeline.finish().await?;
+
+            // Prefer the detected language from the engine; fall back to the
+            // user-specified source language.
+            (translated, detected_lang)
+        } else {
+            crate::engines::run_engine(
+                engine_kind,
+                _model_path.as_path(),
+                speech_segments,
+                &options,
+                native_target.as_deref(),
+                &engine_cfg,
+                cb.progress.as_deref(),
+                cb.new_segment_callback.as_deref(),
+                engine_cancellation,
+            )
+            .await?
+        };
 
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
@@ -540,7 +656,7 @@ impl Engine {
                 }
                 None => {
                     self.models
-                        .ensure_aligner_model(cb.progress, alignment_cancellation.as_deref())
+                        .ensure_aligner_model(cb.progress.as_deref(), alignment_cancellation.as_deref())
                         .await?
                 }
             };
@@ -550,7 +666,7 @@ impl Engine {
                 &mut segments,
                 Some(effective_lang),
                 user_offset,
-                cb.progress,
+                cb.progress.as_deref(),
                 alignment_cancellation.as_deref(),
             )?;
         } else if enable_forced_alignment {
@@ -561,32 +677,6 @@ impl Engine {
                 );
             } else {
                 tracing::info!("forced alignment skipped because translation is enabled");
-            }
-        }
-
-        // `use_native_translation` requests the model's built-in translation.
-        // The routing above determined `native_target` — when set, the engine
-        // already produced output in the target language, so we suppress the
-        // Google Translate post-pass. When None (model can't do native for this
-        // pair), we fall back to Google Translate if `translate_target` is set.
-        let suppress_post_translation = native_target.is_some();
-
-        if !suppress_post_translation {
-            if let Some(to_lang) = translate_to.as_deref() {
-                // Skip the Google Translate post-pass when the effective
-                // (detected or user-specified) source language matches the
-                // target — translating would be a wasteful no-op and could
-                // even corrupt the text via a round-trip through the API.
-                if effective_lang != to_lang {
-                    crate::translate::translate_segments(
-                        segments.as_mut_slice(),
-                        effective_lang,
-                        to_lang,
-                        cb.progress,
-                    )
-                    .await
-                    .map_err(|e| eyre!("{}", e))?;
-                }
             }
         }
 
@@ -625,7 +715,13 @@ impl Engine {
         // Run structural + content formatting to produce the display-ready segments,
         // while preserving the raw post-translation `segments` as `original_segments`
         // so the frontend can reformat later without re-transcribing.
+        if let Some(callback) = cb.progress.as_deref() {
+            callback(0, crate::ProgressType::Finish, "progressSteps.finish");
+        }
         let formatted_segments = process_segments(&segments, &pp_cfg);
+        if let Some(callback) = cb.progress.as_deref() {
+            callback(100, crate::ProgressType::Finish, "progressSteps.finish");
+        }
 
         let elapsed = transcribe_start.elapsed();
         tracing::info!(

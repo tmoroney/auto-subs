@@ -398,15 +398,21 @@
     "addToTimeline": "Add to Timeline"
   },
   "progressSteps": {
-    "download": "Downloading model",
-    "diarize": "Identifying speakers",
-    "transcribe": "Speech to text",
-    "align": "Aligning word timings",
-    "translate": "Translating to {{language}}",
-    "normaliseAudio": "Normalising audio",
-    "preparingAudio": "Preparing audio...",
     "processing": "Processing",
-    "export": "Export"
+    "prepare": "Preparing audio and models",
+    "prepare.export": "Exporting audio from timeline",
+    "prepare.normalize": "Normalising audio",
+    "prepare.asr": "Downloading speech model",
+    "prepare.vad": "Downloading voice detector",
+    "prepare.diarize": "Downloading speaker model",
+    "prepare.aligner": "Downloading aligner model",
+    "analyze": "Analysing audio",
+    "analyze.vad": "Finding speech regions",
+    "analyze.diarize": "Identifying speakers",
+    "analyze.loading": "Loading model into memory",
+    "transcribe": "Speech to text",
+    "refine": "Aligning word timings",
+    "finish": "Formatting subtitles"
   },
   "subtitles": {
     "title": "Subtitles",

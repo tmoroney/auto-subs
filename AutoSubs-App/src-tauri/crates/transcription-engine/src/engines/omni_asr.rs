@@ -7,7 +7,7 @@
 //! chunk. Forced alignment (when enabled) refines those timings afterwards.
 
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
-use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
+use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{bail, eyre, Context, Result};
 use ndarray::{Array2, Array3};
 use ort::session::builder::GraphOptimizationLevel;
@@ -217,7 +217,14 @@ pub async fn transcribe_omni_asr(
         bail!("Transcription cancelled");
     }
 
+    if let Some(cb) = progress_callback {
+        cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
     let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || OmniAsrEngine::load(model_path))?;
+    if let Some(cb) = progress_callback {
+        cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
+
     run_onnx_pipeline(
         engine,
         speech_segments,

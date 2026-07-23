@@ -12,10 +12,10 @@ import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { ResolveApiError } from "@/api/resolve-api";
-import { alignerModel, diarizeModel } from "@/lib/models";
+import { alignerModel } from "@/lib/models";
 import { ask } from "@tauri-apps/plugin-dialog";
 import SubSlateCard from "@/components/ui/SubSlateCard";
-import type { TranscriptionOptions } from "@/types";
+import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } from "@/types";
 import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { getActiveCensorWords } from "@/censor/merge";
 import { TranscriptionPanelView } from "./transcription-panel-view";
@@ -218,26 +218,15 @@ export function TranscriptionPanel({
     }
   }, [processingSteps]);
 
-  const isModelCached = modelsState[model]?.isDownloaded ?? false;
-  const isDiarizeModelDownloaded = downloadedModelValues.includes(
-    diarizeModel.value,
-  );
   const isAlignerModelDownloaded = downloadedModelValues.includes(
     alignerModel.value,
   );
   const willUseForcedAlignment = enableForcedAlignment && !translate;
-  const hasPendingDownloads =
-    !isModelCached ||
-    (enableDiarize && !isDiarizeModelDownloaded) ||
-    (willUseForcedAlignment && !isAlignerModelDownloaded);
 
   React.useEffect(() => {
     const cleanup = setupEventListeners({
       targetLanguage,
       language,
-      isResolveMode: audioInputMode === "timeline",
-      hasPendingDownloads,
-      enableDiarize,
       enableForcedAlignment: willUseForcedAlignment,
     });
 
@@ -246,9 +235,6 @@ export function TranscriptionPanel({
     setupEventListeners,
     targetLanguage,
     language,
-    audioInputMode,
-    hasPendingDownloads,
-    enableDiarize,
     willUseForcedAlignment,
   ]);
 
@@ -256,7 +242,8 @@ export function TranscriptionPanel({
     if (audioInputMode === "timeline" && isExporting) {
       updateProgressStep({
         progress: exportProgress,
-        type: "Export",
+        type: "Prepare",
+        label: "progressSteps.prepare.export",
       });
     }
   }, [
@@ -361,18 +348,25 @@ export function TranscriptionPanel({
     setupEventListeners({
       targetLanguage,
       language,
-      isResolveMode: audioInputMode === "timeline",
-      hasPendingDownloads,
-      enableDiarize,
       enableForcedAlignment: willUseForcedAlignment,
     });
 
     try {
-      const audioInfo = await getSourceAudio(
-        audioInputMode,
-        fileInput,
-        activeSelectedTracks,
-      );
+      const ensureModelsRequest: EnsureModelsRequest = {
+        model: modelsState[model].value,
+        enable_vad: true,
+        enable_diarize: enableDiarize,
+        enable_forced_alignment: willUseForcedAlignment,
+      };
+
+      const [audioInfo, modelPaths] = await Promise.all([
+        getSourceAudio(
+          audioInputMode,
+          fileInput,
+          activeSelectedTracks,
+        ),
+        invoke<EnsureModelsResponse>("ensure_models", { request: ensureModelsRequest }),
+      ]);
 
       if (!audioInfo) {
         // `getSourceAudio` returns null only on user-initiated cancellation.
@@ -406,6 +400,11 @@ export function TranscriptionPanel({
         removePunctuation,
         censoredWords: enableCensor ? getActiveCensorWords(useSettingsStore.getState()) : [],
         customPrompt: customPrompt.trim() || undefined,
+        asrModelPath: modelPaths.asr_model_path,
+        vadModelPath: modelPaths.vad_model_path,
+        diarizeSegmentPath: modelPaths.diarize_segment_path,
+        diarizeEmbeddingPath: modelPaths.diarize_embedding_path,
+        alignerModelDir: modelPaths.aligner_dir,
       };
 
       const transcript = await invoke("transcribe_audio", { options });

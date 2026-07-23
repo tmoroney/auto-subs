@@ -195,6 +195,27 @@ export interface TranscriptionOptions {
     removePunctuation: boolean,
     censoredWords: string[],
     customPrompt?: string,
+    // Pre-resolved model paths from ensure_models.
+    asrModelPath?: string,
+    vadModelPath?: string,
+    diarizeSegmentPath?: string,
+    diarizeEmbeddingPath?: string,
+    alignerModelDir?: string,
+}
+
+export interface EnsureModelsRequest {
+    model: string,
+    enable_vad: boolean,
+    enable_diarize: boolean,
+    enable_forced_alignment: boolean,
+}
+
+export interface EnsureModelsResponse {
+    asr_model_path: string,
+    vad_model_path?: string,
+    diarize_segment_path?: string,
+    diarize_embedding_path?: string,
+    aligner_dir?: string,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

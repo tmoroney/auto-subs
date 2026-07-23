@@ -1,18 +1,37 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-// Progress types for the labeled progress callback
+// Unified pipeline phases for the labeled progress callback
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProgressType {
-    Download,
-    Diarize,
+    Prepare,
+    Analyze,
     Transcribe,
-    Align,
-    Translate,
+    Refine,
+    Finish,
 }
 
 // Shared callback types
 pub type LabeledProgressFn = dyn Fn(i32, ProgressType, &str) + Send + Sync; // progress with type and label
-pub type NewSegmentFn = dyn Fn(&Segment) + Send + Sync; // new segment notifications
+pub type NewSegmentFn = dyn Fn(usize, &Segment) + Send + Sync; // (index, segment) new segment notifications
+
+/// Owned callbacks shared between the pipeline and spawned worker tasks.
+#[derive(Clone)]
+pub struct Callbacks {
+    pub progress: Option<Arc<LabeledProgressFn>>,
+    pub new_segment_callback: Option<Arc<NewSegmentFn>>,
+    pub is_cancelled: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
+}
+
+impl Default for Callbacks {
+    fn default() -> Self {
+        Self {
+            progress: None,
+            new_segment_callback: None,
+            is_cancelled: None,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct AdvancedTranscribe {

@@ -1,4 +1,5 @@
 use eyre::{Result, eyre};
+use std::sync::Arc;
 use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TranscribeOptions};
 
 struct CliArgs {
@@ -114,16 +115,16 @@ fn parse_args() -> Result<CliArgs> {
 #[allow(dead_code)]
 fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
     let prefix = match progress_type {
-        ProgressType::Download => "📥",
-        ProgressType::Diarize => "🗣️",
+        ProgressType::Prepare => "⚙️",
+        ProgressType::Analyze => "🔍",
         ProgressType::Transcribe => "🎵",
-        ProgressType::Align => "⏱️",
-        ProgressType::Translate => "🌍",
+        ProgressType::Refine => "✨",
+        ProgressType::Finish => "✅",
     };
     println!("{prefix} {label}: {percent}%");
 }
 
-fn on_new_segment(segment: &Segment) {
+fn on_new_segment(_index: usize, segment: &Segment) {
     match &segment.speaker_id {
         Some(speaker) => println!("[{speaker}] {}", segment.text),
         None => println!("{}", segment.text),
@@ -153,8 +154,8 @@ async fn main() -> Result<()> {
     };
 
     let callbacks = Callbacks {
-        progress: None, // Some(&on_progress),
-        new_segment_callback: Some(&on_new_segment),
+        progress: None, // Some(Arc::new(on_progress)),
+        new_segment_callback: Some(Arc::new(on_new_segment)),
         is_cancelled: None,
     };
 

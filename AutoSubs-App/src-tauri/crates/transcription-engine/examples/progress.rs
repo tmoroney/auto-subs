@@ -1,5 +1,6 @@
 use eyre::{Result, eyre};
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use transcription_engine::{Callbacks, Engine, EngineConfig, ProgressType, TranscribeOptions};
 
 static DOWNLOAD_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -77,25 +78,25 @@ fn parse_args() -> Result<CliArgs> {
 
 fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
     match progress_type {
-        ProgressType::Download => {
+        ProgressType::Prepare => {
             let count = DOWNLOAD_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-            println!("[DOWNLOAD #{count}] {percent}%: {label}");
+            println!("[PREPARE #{count}] {percent}%: {label}");
         }
-        ProgressType::Diarize => {
+        ProgressType::Analyze => {
             let count = DIARIZE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-            println!("[DIARIZE #{count}] {percent}%: {label}");
+            println!("[ANALYZE #{count}] {percent}%: {label}");
         }
         ProgressType::Transcribe => {
             let count = TRANSCRIBE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
             println!("[TRANSCRIBE #{count}] {percent}%: {label}");
         }
-        ProgressType::Align => {
+        ProgressType::Refine => {
             let count = ALIGN_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-            println!("[ALIGN #{count}] {percent}%: {label}");
+            println!("[REFINE #{count}] {percent}%: {label}");
         }
-        ProgressType::Translate => {
+        ProgressType::Finish => {
             let count = TRANSLATE_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-            println!("[TRANSLATE #{count}] {percent}%: {label}");
+            println!("[FINISH #{count}] {percent}%: {label}");
         }
     }
 }
@@ -114,7 +115,7 @@ async fn main() -> Result<()> {
     };
 
     let callbacks = Callbacks {
-        progress: Some(&on_progress),
+        progress: Some(Arc::new(on_progress)),
         new_segment_callback: None,
         is_cancelled: None,
     };
