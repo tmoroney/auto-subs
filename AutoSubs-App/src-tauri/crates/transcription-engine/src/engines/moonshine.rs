@@ -1,5 +1,5 @@
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
-use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
+use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
 use transcribe_rs::onnx::{
@@ -109,7 +109,14 @@ pub async fn transcribe_moonshine(
         eyre::bail!("Transcription cancelled");
     }
 
+    if let Some(cb) = progress_callback {
+        cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
     let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || MoonshineEngine::load(model_path, variant))?;
+    if let Some(cb) = progress_callback {
+        cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
+
     run_onnx_pipeline(
         engine,
         speech_segments,

@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { Subtitle } from '@/types';
-import { translateLanguages } from '@/lib/languages';
 import i18n from '@/i18n';
+
+const PHASES = ['Prepare', 'Analyze', 'Transcribe', 'Refine', 'Finish'] as const;
+type Phase = (typeof PHASES)[number];
 
 interface ProcessingStep {
   id: string;
@@ -14,294 +16,249 @@ interface ProcessingStep {
   isCancelled?: boolean;
 }
 
+interface ProgressSettings {
+  targetLanguage: string;
+  language: string;
+  enableForcedAlignment: boolean;
+}
+
 interface ProgressContextType {
   processingSteps: ProcessingStep[];
   livePreviewSegments: Subtitle[];
+  currentPhase: string;
+  currentPhaseProgress: number;
   clearProgressSteps: () => void;
   completeAllProgressSteps: () => void;
   cancelAllProgressSteps: () => void;
   updateProgressStep: (event: { progress: number; type?: string; label?: string }) => void;
-  setupEventListeners: (settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean; enableForcedAlignment?: boolean }) => () => void;
+  setupEventListeners: (settings: { targetLanguage: string; language: string; enableForcedAlignment?: boolean }) => () => void;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
 
+interface PhaseState {
+  progress: number;
+  subProgress: Record<string, number>;
+  latestLabel?: string;
+  isActive: boolean;
+  isCompleted: boolean;
+  isCancelled?: boolean;
+}
+
+function defaultPhaseState(): PhaseState {
+  return { progress: 0, subProgress: {}, isActive: false, isCompleted: false };
+}
+
+function phaseTitle(phase: string): string {
+  const key = `progressSteps.${phase.toLowerCase()}`;
+  const translated = i18n.t(key);
+  return translated === key ? phase : translated;
+}
+
+function resolveLabel(label?: string, progress?: number, targetLanguage?: string): string {
+  if (!label || typeof label !== 'string') {
+    return `${Math.round(progress ?? 0)}%`;
+  }
+  if (label.includes('.')) {
+    const translated = i18n.t(label, targetLanguage && label === 'progressSteps.translate'
+      ? { language: targetLanguage }
+      : undefined);
+    return translated === label ? `${Math.round(progress ?? 0)}%` : translated;
+  }
+  return label.trim() || `${Math.round(progress ?? 0)}%`;
+}
+
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
-  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+  const [phaseMap, setPhaseMap] = useState<Record<Phase, PhaseState>>({
+    Prepare: defaultPhaseState(),
+    Analyze: defaultPhaseState(),
+    Transcribe: defaultPhaseState(),
+    Refine: defaultPhaseState(),
+    Finish: defaultPhaseState(),
+  });
   const [livePreviewSegments, setLivePreviewSegments] = useState<Subtitle[]>([]);
-  
-  // Track seen segments to prevent duplicates across multiple listener setups
-  const seenSegmentsRef = useRef<Set<string>>(new Set());
-  
-  // Ref to track latest settings for use in closures/callbacks
-  const settingsRef = useRef({ targetLanguage: 'en', language: 'auto', isResolveMode: false, hasPendingDownloads: false, enableDiarize: false, enableForcedAlignment: false });
+  const settingsRef = useRef<ProgressSettings>({ targetLanguage: 'en', language: 'auto', enableForcedAlignment: false });
+  const unlistenersRef = useRef<Array<() => void>>([]);
+  const listenersSetupRef = useRef(false);
 
-  const resolveProgressLabel = useCallback((label?: string, progress?: number): string => {
-    if (!label) {
-      return `${Math.round(progress ?? 0)}%`
+  const getPhasesInOrder = useCallback((): Phase[] => {
+    const order: Phase[] = ['Prepare', 'Analyze', 'Transcribe', 'Finish'];
+    if (settingsRef.current.enableForcedAlignment) {
+      order.splice(3, 0, 'Refine');
+    }
+    return order;
+  }, []);
+
+  const updateProgressStep = useCallback((event: { progress: number; type?: string; label?: string }) => {
+    const phase = event.type as Phase;
+    if (!phase || !PHASES.includes(phase)) {
+      console.log('Ignoring progress event with unknown type:', event.type);
+      return;
     }
 
-    if (label.includes('.')) {
-      const translated = label === 'progressSteps.translate'
-        ? i18n.t(label, {
-            language: getLanguageDisplayName(settingsRef.current.targetLanguage),
-          })
-        : i18n.t(label)
-      return translated === label ? `${Math.round(progress ?? 0)}%` : translated
-    }
+    const progress = Math.max(0, Math.min(100, event.progress ?? 0));
 
-    return label.trim() || `${Math.round(progress ?? 0)}%`
-  }, [])
+    setPhaseMap((prev) => {
+      const next: Record<Phase, PhaseState> = { ...prev } as Record<Phase, PhaseState>;
+      const current = next[phase] ?? defaultPhaseState();
 
-  // Simplified progress step management
-  const updateProgressStep = (event: { progress: number, type?: string, label?: string }) => {
-    // Only process events with known step types - ignore unknown/null types
-    const knownTypes = ['Export', 'Download', 'Diarize', 'Transcribe', 'Align', 'Translate']
-    if (!event.type || !knownTypes.includes(event.type)) {
-      console.log('Ignoring progress event with unknown type:', event.type)
-      return
-    }
+      let overallProgress = progress;
+      let subProgress = { ...current.subProgress };
 
-    const stepDescription = resolveProgressLabel(event.label, event.progress)
-    
-    setProcessingSteps(prev => {
-      const stepId = event.type!
-      const stepTitle = getStepTitle(event.type)
-      const stepOrder = getStepOrder()
-      
-      // Find existing step
-      const existingStepIndex = prev.findIndex(s => s.id === stepId)
-      
-      if (existingStepIndex >= 0) {
-        // Update existing step
-        const updated = [...prev]
-        updated[existingStepIndex] = {
-          ...updated[existingStepIndex],
-          progress: event.progress,
-          description: stepDescription,
-          isActive: event.progress < 100,
-          isCompleted: event.progress >= 100
-        }
-        
-        // When this step is active (progress < 100), set all previous steps to completed
-        if (event.progress < 100) {
-          const currentStepOrderIndex = stepOrder.indexOf(stepId)
-          
-          return updated.map((step, index) => {
-            const stepOrderIndex = stepOrder.indexOf(step.id)
-            const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
-            
-            return {
-              ...step,
-              isActive: index === existingStepIndex,
-              isCompleted: isPreviousStep || (index === existingStepIndex && event.progress >= 100),
-              progress: isPreviousStep ? 100 : step.progress,
-              description: isPreviousStep ? '100%' : step.description
-            }
-          })
-        }
-        
-        return updated
+      if (phase === 'Prepare' && event.label) {
+        subProgress[event.label] = progress;
+        const values = Object.values(subProgress);
+        const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        overallProgress = Math.max(current.progress, avg);
       } else {
-        // Add new step
-        const newStep: ProcessingStep = {
-          id: stepId,
-          title: stepTitle,
-          description: stepDescription,
-          progress: event.progress,
-          isActive: event.progress < 100,
-          isCompleted: event.progress >= 100
-        }
-        
-        // When adding new active step, set all previous steps to completed
-        if (event.progress < 100) {
-          const currentStepOrderIndex = stepOrder.indexOf(stepId)
-          
-          return prev.map(step => {
-            const stepOrderIndex = stepOrder.indexOf(step.id)
-            const isPreviousStep = currentStepOrderIndex > -1 && stepOrderIndex > -1 && stepOrderIndex < currentStepOrderIndex
-            
-            return {
-              ...step,
-              isActive: false,
-              isCompleted: isPreviousStep || step.isCompleted,
-              progress: isPreviousStep ? 100 : step.progress,
-              description: isPreviousStep ? '100%' : step.description
-            }
-          }).concat(newStep)
-        }
-        
-        return [...prev, newStep]
-      }
-    })
-  }
-  
-  const getLanguageDisplayName = (languageCode: string): string => {
-    const language = translateLanguages.find((lang: any) => lang.value === languageCode)
-    return language ? language.label : languageCode
-  }
-  
-  const getStepTitle = (type?: string): string => {
-    switch (type) {
-      case 'Export':
-        return i18n.t('progressSteps.export');
-      case 'Download':
-        return i18n.t('progressSteps.download');
-      case 'Diarize':
-        return i18n.t('progressSteps.diarize');
-      case 'Transcribe':
-        return i18n.t('progressSteps.transcribe');
-      case 'Align':
-        return i18n.t('progressSteps.align');
-      case 'Translate':
-        return i18n.t('progressSteps.translate', {
-          language: getLanguageDisplayName(settingsRef.current.targetLanguage),
-        });
-      default:
-        return type || i18n.t('progressSteps.processing');
-    }
-  }
-
-  // Define the order of progress steps
-  const getStepOrder = (): string[] => {
-    const order: string[] = []
-    if (settingsRef.current.isResolveMode) order.push('Export')
-    if (settingsRef.current.hasPendingDownloads) order.push('Download')
-    if (settingsRef.current.enableDiarize) order.push('Diarize')
-    order.push('Transcribe')
-    if (settingsRef.current.enableForcedAlignment) order.push('Align')
-    if (settingsRef.current.targetLanguage && settingsRef.current.targetLanguage !== settingsRef.current.language) {
-      order.push('Translate')
-    }
-    return order
-  }
-  
-  const clearProgressSteps = () => {
-    setProcessingSteps([])
-    // Also clear live preview segments when starting new transcription
-    setLivePreviewSegments([])
-    seenSegmentsRef.current.clear()
-    console.log('Cleared progress steps and live preview segments');
-  }
-  
-  const completeAllProgressSteps = () => {
-    setProcessingSteps(prev => {
-      const updatedSteps = prev.map(step => ({
-        ...step,
-        progress: 100,
-        isActive: false,
-        isCompleted: true
-      }));
-
-      if (!prev.some(step => step.id === 'Complete')) {
-        updatedSteps.push({
-          id: 'Complete',
-          title: i18n.t('completion.processingComplete'),
-          description: i18n.t('completion.subtitlesReady'),
-          progress: 100,
-          isActive: false,
-          isCompleted: true
-        });
+        overallProgress = Math.max(current.progress, progress);
       }
 
-      return updatedSteps;
-    })
-  }
+      next[phase] = {
+        ...current,
+        progress: overallProgress,
+        subProgress,
+        latestLabel: event.label || current.latestLabel,
+        isActive: overallProgress < 100,
+        isCompleted: overallProgress >= 100,
+      };
 
-  // Cancel all progress steps and show cancelled state
-  const cancelAllProgressSteps = () => {
-    setProcessingSteps(prev => 
-      prev.map(step => ({
-        ...step,
-        isActive: false,
-        isCancelled: step.isActive && !step.isCompleted, // Mark active steps as cancelled
-        // Keep completed steps as completed, don't change them
-        isCompleted: step.isCompleted
-      }))
-    )
-  }
+      const order = getPhasesInOrder();
+      const currentIndex = order.indexOf(phase);
 
-  // Set up simplified event listener
-  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; isResolveMode?: boolean; hasPendingDownloads?: boolean; enableDiarize?: boolean; enableForcedAlignment?: boolean }) => {
-    // Update settings ref
+      // All previous phases are completed once a later phase begins receiving updates.
+      for (let i = 0; i < currentIndex; i++) {
+        const p = order[i];
+        if (next[p]) {
+          next[p] = { ...next[p], progress: Math.max(next[p].progress, 100), isActive: false, isCompleted: true };
+        }
+      }
+
+      // Future phases are still pending.
+      for (let i = currentIndex + 1; i < order.length; i++) {
+        const p = order[i];
+        if (next[p]) {
+          next[p] = { ...next[p], isActive: false, isCompleted: false };
+        }
+      }
+
+      return next;
+    });
+  }, [getPhasesInOrder]);
+
+  const clearProgressSteps = useCallback(() => {
+    setPhaseMap({
+      Prepare: defaultPhaseState(),
+      Analyze: defaultPhaseState(),
+      Transcribe: defaultPhaseState(),
+      Refine: defaultPhaseState(),
+      Finish: defaultPhaseState(),
+    });
+    setLivePreviewSegments([]);
+  }, []);
+
+  const completeAllProgressSteps = useCallback(() => {
+    setPhaseMap((prev) => {
+      const next: Record<Phase, PhaseState> = { ...prev } as Record<Phase, PhaseState>;
+      for (const p of PHASES) {
+        next[p] = { ...next[p], progress: 100, isActive: false, isCompleted: true };
+      }
+      return next;
+    });
+  }, []);
+
+  const cancelAllProgressSteps = useCallback(() => {
+    setPhaseMap((prev) => {
+      const next: Record<Phase, PhaseState> = { ...prev } as Record<Phase, PhaseState>;
+      for (const p of PHASES) {
+        if (next[p].isActive && !next[p].isCompleted) {
+          next[p] = { ...next[p], isActive: false, isCompleted: false, isCancelled: true };
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (listenersSetupRef.current) return;
+    listenersSetupRef.current = true;
+
+    const setup = async () => {
+      const unlistenProgress = await listen<{ progress: number; type?: string; label?: string }>('labeled-progress', (event) => {
+        updateProgressStep(event.payload);
+      });
+
+      const unlistenSegment = await listen<{ index: number; segment: Subtitle }>('new-segment', (event) => {
+        const { index, segment } = event.payload;
+        setLivePreviewSegments((prev) => {
+          const updated = [...prev];
+          if (updated.length <= index) {
+            updated.length = index + 1;
+          }
+          updated[index] = segment;
+          return updated;
+        });
+      });
+
+      const unlistenComplete = await listen('transcription-complete', () => {
+        completeAllProgressSteps();
+      });
+
+      unlistenersRef.current = [unlistenProgress, unlistenSegment, unlistenComplete];
+    };
+
+    setup();
+
+    return () => {
+      unlistenersRef.current.forEach((u) => u?.());
+      unlistenersRef.current = [];
+    };
+  }, [updateProgressStep, completeAllProgressSteps]);
+
+  const setupEventListeners = useCallback((settings: { targetLanguage: string; language: string; enableForcedAlignment?: boolean }) => {
     settingsRef.current = {
       targetLanguage: settings.targetLanguage,
       language: settings.language,
-      isResolveMode: settings.isResolveMode ?? false,
-      hasPendingDownloads: settings.hasPendingDownloads ?? false,
-      enableDiarize: settings.enableDiarize ?? false,
       enableForcedAlignment: settings.enableForcedAlignment ?? false,
     };
-    
-    const setup = async () => {
-      try {
-        // Single progress listener that directly updates steps array
-        await listen<{ progress: number, type?: string, label?: string }>('labeled-progress', (event: { payload: any }) => {
-          console.log('Received progress event:', JSON.stringify(event.payload, null, 2));
-          updateProgressStep(event.payload);
-        });
-        
-        // New segment listener for live preview
-        await listen<string>('new-segment', (event: { payload: any }) => {
-          console.log('Received new segment:', event.payload);
-          
-          // Check if this segment text already exists to prevent duplicates
-          const segmentText = event.payload.trim();
-          if (!segmentText) {
-            console.log('Skipping empty segment');
-            return;
-          }
-          
-          // Use the Set to track segments across all listener instances
-          if (seenSegmentsRef.current.has(segmentText)) {
-            console.log('Skipping duplicate segment (Set):', segmentText);
-            return;
-          }
-          
-          // Add to seen segments
-          seenSegmentsRef.current.add(segmentText);
-          console.log('Adding new segment:', segmentText);
-          
-          // Create a simple subtitle object from the text
-          const newSegment: Subtitle = {
-            id: livePreviewSegments.length + 1,
-            start: 0,
-            end: 0,
-            text: event.payload,
-            words: [], // Empty array for live preview
-            speaker_id: undefined
-          };
-          
-          setLivePreviewSegments(prev => {
-            console.log('Current segments count:', prev.length);
-            return [...prev, newSegment];
-          });
-        });
-        
-        // Clear live preview and seen segments when transcription completes
-        await listen('transcription-complete', () => {
-          console.log('Transcription complete, clearing live preview');
-          setLivePreviewSegments([]);
-          seenSegmentsRef.current.clear();
-        });
-        
-      } catch (error) {
-        console.error('Failed to set up progress listener:', error);
-      }
-    };
-    
-    setup();
-    
-    // Return cleanup function
-    return () => {
-      // Cleanup handled automatically by Tauri when component unmounts
-    };
+    return () => {};
   }, []);
+
+  const processingSteps = useMemo((): ProcessingStep[] => {
+    const order = getPhasesInOrder();
+    const targetLang = settingsRef.current.targetLanguage;
+    return order.map((phase) => {
+      const state = phaseMap[phase] ?? defaultPhaseState();
+      return {
+        id: phase,
+        title: phaseTitle(phase),
+        description: resolveLabel(
+          state.latestLabel ?? `progressSteps.${phase.toLowerCase()}`,
+          state.progress,
+          targetLang,
+        ),
+        progress: state.progress,
+        isActive: state.isActive,
+        isCompleted: state.isCompleted,
+        isCancelled: state.isCancelled,
+      };
+    });
+  }, [phaseMap, getPhasesInOrder]);
+
+  const currentPhaseInfo = useMemo(() => {
+    const active = processingSteps.find((s) => s.isActive);
+    if (active) return active;
+    const firstPending = processingSteps.find((s) => !s.isCompleted);
+    if (firstPending) return firstPending;
+    return processingSteps[processingSteps.length - 1];
+  }, [processingSteps]);
 
   return (
     <ProgressContext.Provider value={{
       processingSteps,
       livePreviewSegments,
+      currentPhase: currentPhaseInfo?.id ?? 'Prepare',
+      currentPhaseProgress: currentPhaseInfo?.progress ?? 0,
       clearProgressSteps,
       completeAllProgressSteps,
       cancelAllProgressSteps,

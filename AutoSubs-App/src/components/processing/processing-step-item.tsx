@@ -7,7 +7,6 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { CircleX, CircleCheck } from "lucide-react"
 import { CompletionStepItem } from "./completion-step-item"
-import { SegmentPreview } from "@/components/processing/segment-preview"
 import { TimelineInfo } from "@/types"
 
 export interface ProcessingStepProps {
@@ -22,7 +21,6 @@ export interface ProcessingStepProps {
     onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
     isSubtitleViewerOpen?: boolean;
-    livePreviewSegments?: any[];
     timelineInfo?: TimelineInfo;
     selectedIntegration?: "davinci" | "premiere" | "aftereffects";
 }
@@ -39,17 +37,15 @@ export function ProcessingStepItem({
     onAddToTimeline,
     onViewSubtitles,
     isSubtitleViewerOpen = false,
-    livePreviewSegments = [],
     timelineInfo,
     selectedIntegration
 }: ProcessingStepProps) {
-    // If this is the completion step, render the special completion component
     if (id === 'Complete' && onExportToFile && onAddToTimeline && timelineInfo) {
         return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
     }
 
     return (
-        <div className="flex w-full flex-col">
+        <div className="flex w-full flex-col gap-1.5">
             <Item variant="outline">
                 <ItemMedia>
                     {isCompleted ? (
@@ -68,17 +64,14 @@ export function ProcessingStepItem({
                 <ItemContent className="flex-none justify-end">
                     <span className="text-sm tabular-nums">{Math.round(progress)}%</span>
                 </ItemContent>
-                {/* Show live preview for Transcribe step */}
-                {id === 'Transcribe' && isActive && (
-                    <ItemContent className="w-full bg-muted/50 rounded-xl overflow-y-auto">
-                        <SegmentPreview 
-                            segments={livePreviewSegments} 
-                            isActive={isActive}
-                            placeholder={description}
-                        />
-                    </ItemContent>
-                )}
             </Item>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                    className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                    style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                />
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
         </div>
     )
 }

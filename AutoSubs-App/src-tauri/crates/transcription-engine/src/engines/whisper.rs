@@ -396,6 +396,7 @@ pub async fn run_transcription_pipeline(
         }
     }
 
+    let mut seg_index = 0usize;
     for (i, speech_segment) in speech_segments.iter().enumerate() {
         let original_samples = speech_segment.samples.clone();
 
@@ -493,7 +494,8 @@ pub async fn run_transcription_pipeline(
 
             // Emit new segment to callback
             if let Some(cb) = new_segment_callback {
-                cb(&segment);
+                cb(seg_index, &segment);
+                seg_index += 1;
             }
 
             // Emit progress update to callback

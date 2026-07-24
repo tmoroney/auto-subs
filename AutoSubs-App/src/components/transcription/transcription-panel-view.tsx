@@ -193,9 +193,12 @@ export function TranscriptionPanelView({
   const selectedTracks =
     selectedInputTracksByApp[selectedIntegration] || [];
   const selectedTrackCount = selectedTracks.length;
-  const hasProcessingSteps = processingSteps.length > 0;
+  const hasProcessingSteps = processingSteps.some(
+    (step) => step.isActive || step.isCompleted,
+  );
   const showProcessing = isProcessing || hasProcessingSteps;
-  const hasCompletedRun = !isProcessing && hasProcessingSteps;
+  const hasCompletedRun =
+    !isProcessing && processingSteps.some((step) => step.isCompleted);
 
   const startDisabled =
     isProcessing ||

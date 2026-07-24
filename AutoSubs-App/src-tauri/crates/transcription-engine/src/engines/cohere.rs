@@ -1,7 +1,7 @@
 //! Cohere speech recognition backend.
 
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
-use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
+use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
 use transcribe_rs::onnx::{
@@ -72,7 +72,14 @@ pub async fn transcribe_cohere(
         );
     }
 
+    if let Some(cb) = progress_callback {
+        cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
     let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || CohereEngine::load(model_path))?;
+    if let Some(cb) = progress_callback {
+        cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
+
     let supported_languages = engine.model.capabilities().languages;
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(
