@@ -48,11 +48,17 @@ export function LanguageSelector() {
                                     const supported = currentModel
                                         ? modelSupportsLanguage(currentModel, lang.value)
                                         : true
+                                    // Disable selecting the translation target as the
+                                    // source language — translating a language to itself
+                                    // is a no-op and almost always a mistake.
+                                    const isTargetLang = translate && lang.value === targetLanguage
                                     return (
                                     <CommandItem
                                         value={lang.label}
                                         key={lang.value}
+                                        disabled={isTargetLang}
                                         onSelect={() => {
+                                            if (isTargetLang) return
                                             updateSetting("language", lang.value);
                                         }}
                                         className={cn(
