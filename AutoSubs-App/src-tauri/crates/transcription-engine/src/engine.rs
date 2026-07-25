@@ -600,8 +600,13 @@ impl Engine {
             .as_deref()
             .map(|target| from_lang != "auto" && from_lang == target)
             .unwrap_or(false);
+
+        // For explicit source languages we can stream translation alongside ASR.
+        // When the source is "auto" we must wait for detection to finish so we
+        // don't send transcripts for a no-op translation.
+        let can_stream_translation = from_lang != "auto" && !source_matches_target;
         let translation_pipeline: Option<crate::translation_pipeline::TranslationPipeline> =
-            if !suppress_post_translation && translate_to.is_some() && !source_matches_target {
+            if !suppress_post_translation && translate_to.is_some() && can_stream_translation {
                 Some(crate::translation_pipeline::TranslationPipeline::new(
                     from_lang.clone(),
                     translate_to.clone().unwrap_or_default(),
@@ -671,7 +676,7 @@ impl Engine {
                 (translated, detected_lang)
             }
         } else {
-            crate::engines::run_engine(
+            let (segments, detected_lang) = crate::engines::run_engine(
                 engine_kind,
                 _model_path.as_path(),
                 speech_segments,
@@ -682,7 +687,38 @@ impl Engine {
                 cb.new_segment_callback.as_deref(),
                 engine_cancellation,
             )
-            .await?
+            .await?;
+
+            // When translation is on but we didn't stream it, decide after detection
+            // whether a translation pass is actually needed.
+            let detected_matches_target = translate_to
+                .as_deref()
+                .zip(detected_lang.as_deref())
+                .map(|(target, detected)| detected == target)
+                .unwrap_or(false);
+            let should_translate_post_asr = !suppress_post_translation
+                && translate_to.is_some()
+                && !source_matches_target
+                && !detected_matches_target;
+
+            let segments = if should_translate_post_asr {
+                let source_lang = detected_lang.as_deref().unwrap_or(&from_lang);
+                let target_lang = translate_to.as_deref().unwrap();
+                let texts: Vec<String> = segments.iter().map(|s| s.text.clone()).collect();
+                let translated_texts = crate::translate::translate_batch(texts, source_lang, target_lang)
+                    .await
+                    .map_err(|e| eyre::eyre!("{}", e))?;
+                let mut translated = segments.clone();
+                for (i, seg) in translated.iter_mut().enumerate() {
+                    seg.text = translated_texts.get(i).cloned().unwrap_or_default();
+                    crate::translate::regenerate_words_uniform(seg);
+                }
+                translated
+            } else {
+                segments
+            };
+
+            (segments, detected_lang)
         };
 
         // Choose effective language: detected if present, otherwise the user-provided from_lang
