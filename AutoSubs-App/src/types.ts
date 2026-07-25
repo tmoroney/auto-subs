@@ -53,10 +53,10 @@ export interface Subtitle {
 
 /**
  * Which pipeline stage last touched a segment. Mirrors the Rust `SegmentStage`.
- * The same segment index is emitted several times per run, so this distinguishes
- * new text from replaced text from refined word timings.
+ * The same segment index can be emitted twice per run, so this distinguishes
+ * new text from refined word timings.
  */
-export type SegmentStage = 'transcribe' | 'translate' | 'align';
+export type SegmentStage = 'transcribe' | 'align';
 
 /**
  * A segment in the live preview, before formatting has run. Unlike `Subtitle`

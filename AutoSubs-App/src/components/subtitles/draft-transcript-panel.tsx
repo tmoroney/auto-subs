@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWordReveal } from "@/hooks/use-word-reveal";
-import { useStageShimmer } from "@/hooks/use-stage-shimmer";
 import { useAlignmentPlayhead } from "@/hooks/use-alignment-playhead";
 import { DRAFT_EASE, SCROLL_MS, SETTLE_MS, draftEase } from "@/lib/draft-motion";
 import { FlipTimecode } from "@/components/subtitles/flip-timecode";
@@ -174,7 +173,6 @@ export function DraftTranscriptPanel({
     [tokenised],
   );
   const revealLimitFor = useWordReveal(wordCounts, isComplete);
-  const shimmering = useStageShimmer(present, "translate");
   const playhead = useAlignmentPlayhead(present, isComplete);
   const isAligning = playhead !== null;
   const playheadIndex = playhead?.index ?? null;
@@ -339,7 +337,6 @@ export function DraftTranscriptPanel({
                   }}
                   className={cn(
                     "animate-draft-rise flex flex-col gap-1 border-b px-3 py-2.5",
-                    shimmering.has(index) && "animate-draft-shimmer",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">

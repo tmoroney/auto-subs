@@ -167,12 +167,8 @@ async fn flush(
             map.insert(job.index, seg.clone());
         }
 
-        // Re-emitted on the same index with the translated text. The UI uses the
-        // `Translate` stage to crossfade the replacement rather than treating it
-        // as a brand-new segment.
-        if let Some(cb) = &submitter.new_segment_callback {
-            cb(job.index, &seg, SegmentStage::Translate);
-        }
+        // The translated text is intentionally not re-emitted for the live
+        // preview; the user sees it only in the final formatted output.
     }
 
     Ok(())

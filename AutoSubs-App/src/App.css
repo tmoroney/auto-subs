@@ -283,29 +283,6 @@
     animation: draft-rise 150ms var(--draft-ease) both;
 }
 
-@keyframes draft-shimmer {
-    from {
-        background-position: 200% 0;
-    }
-    to {
-        background-position: -200% 0;
-    }
-}
-
-/* A translucent band travelling across the card once. Purely decorative: it
-   signals "this block is being replaced" so the text swap does not just pop. */
-.animate-draft-shimmer {
-    background-image: linear-gradient(
-        90deg,
-        transparent 20%,
-        color-mix(in srgb, var(--color-primary, currentColor) 12%, transparent) 50%,
-        transparent 80%
-    );
-    background-size: 200% 100%;
-    background-repeat: no-repeat;
-    animation: draft-shimmer 400ms var(--draft-ease) both;
-}
-
 /* Draft -> final. Applied by removing the muted class, so the element
    transitions rather than swapping instantly. */
 .draft-settle {
@@ -360,14 +337,9 @@
 
 @media (prefers-reduced-motion: reduce) {
     .animate-draft-rise,
-    .animate-draft-shimmer,
     .animate-blur-scroll-out,
     .animate-blur-scroll-in {
         animation: none;
-    }
-
-    .animate-draft-shimmer {
-        background-image: none;
     }
 
     .draft-settle {

@@ -13,16 +13,14 @@ pub enum ProgressType {
 
 /// Which pipeline stage produced a segment update.
 ///
-/// The same segment index is emitted several times over a run — first when the
-/// ASR engine produces it, then again if it is translated, then again once its
-/// word timings are refined by forced alignment. The stage lets the UI tell
-/// "this is new text" apart from "this text was replaced" and "these timings
-/// were refined", which are three very different things to present.
+/// The same segment index can be emitted twice over a run — first when the
+/// ASR engine produces it, then again once its word timings are refined by
+/// forced alignment. The stage lets the UI tell "this is new text" apart from
+/// "these timings were refined".
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SegmentStage {
     Transcribe,
-    Translate,
     Align,
 }
 

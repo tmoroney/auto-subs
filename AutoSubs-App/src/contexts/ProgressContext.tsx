@@ -223,7 +223,6 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
       const unlistenSegment = await listen<{ index: number; segment: Subtitle; stage: SegmentStage }>('segment-updated', (event) => {
         const { index, segment, stage } = event.payload;
-        if (stage === 'translate') return;
         setLivePreviewSegments((prev) => {
           const updated = [...prev];
           if (updated.length <= index) {

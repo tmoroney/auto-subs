@@ -127,7 +127,6 @@ fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
 fn on_new_segment(_index: usize, segment: &Segment, stage: SegmentStage) {
     let prefix = match stage {
         SegmentStage::Transcribe => "",
-        SegmentStage::Translate => "~ ",
         SegmentStage::Align => "= ",
     };
     match &segment.speaker_id {

@@ -51,9 +51,6 @@ export const STAGGER_MS = 25;
 /** Rise: a new segment card arriving. Matches `.animate-draft-rise`. */
 export const RISE_MS = 150;
 
-/** Shimmer: one pass across a card whose text is being replaced. */
-export const SHIMMER_MS = 400;
-
 /** Settle: draft -> final contrast change. Matches `.draft-settle`. */
 export const SETTLE_MS = 200;
 
