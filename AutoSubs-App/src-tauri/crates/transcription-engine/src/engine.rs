@@ -641,21 +641,35 @@ impl Engine {
             // and use its ordered output as the authoritative segments.
             let mut translated = pipeline.finish().await?;
 
-            // The engine's returned vector has had overlapping boundaries clamped,
-            // but the translation pipeline snapshots segments before that clamping.
-            // Apply the clamped timings from the engine to the translated segments
-            // so the final transcript cannot contain overlapping intervals.
-            for (i, clamped) in _segments.iter().enumerate() {
-                if let Some(seg) = translated.get_mut(i) {
-                    seg.start = clamped.start;
-                    seg.end = clamped.end.max(clamped.start);
-                    crate::translate::regenerate_words_uniform(seg);
+            // With `from_lang = auto`, we couldn't know before detection whether
+            // the source already matches the target. If detection resolved to the
+            // target, the translation was a no-op: keep the engine's original
+            // segments so their ASR word timings survive instead of being replaced
+            // by the pipeline's uniformly regenerated timestamps.
+            let detected_matches_target = translate_to
+                .as_deref()
+                .zip(detected_lang.as_deref())
+                .map(|(target, detected)| detected == target)
+                .unwrap_or(false);
+            if detected_matches_target {
+                (_segments, detected_lang)
+            } else {
+                // The engine's returned vector has had overlapping boundaries clamped,
+                // but the translation pipeline snapshots segments before that clamping.
+                // Apply the clamped timings from the engine to the translated segments
+                // so the final transcript cannot contain overlapping intervals.
+                for (i, clamped) in _segments.iter().enumerate() {
+                    if let Some(seg) = translated.get_mut(i) {
+                        seg.start = clamped.start;
+                        seg.end = clamped.end.max(clamped.start);
+                        crate::translate::regenerate_words_uniform(seg);
+                    }
                 }
-            }
 
-            // Prefer the detected language from the engine; fall back to the
-            // user-specified source language.
-            (translated, detected_lang)
+                // Prefer the detected language from the engine; fall back to the
+                // user-specified source language.
+                (translated, detected_lang)
+            }
         } else {
             crate::engines::run_engine(
                 engine_kind,
