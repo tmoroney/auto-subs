@@ -11,15 +11,32 @@ pub enum ProgressType {
     Finish,
 }
 
+/// Which pipeline stage produced a segment update.
+///
+/// The same segment index is emitted several times over a run — first when the
+/// ASR engine produces it, then again if it is translated, then again once its
+/// word timings are refined by forced alignment. The stage lets the UI tell
+/// "this is new text" apart from "this text was replaced" and "these timings
+/// were refined", which are three very different things to present.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SegmentStage {
+    Transcribe,
+    Translate,
+    Align,
+}
+
 // Shared callback types
 pub type LabeledProgressFn = dyn Fn(i32, ProgressType, &str) + Send + Sync; // progress with type and label
-pub type NewSegmentFn = dyn Fn(usize, &Segment) + Send + Sync; // (index, segment) new segment notifications
+pub type NewSegmentFn = dyn Fn(usize, &Segment, SegmentStage) + Send + Sync; // (index, segment, stage) segment notifications
+pub type SpeakersIdentifiedFn = dyn Fn(usize) + Send + Sync; // number of distinct speakers found by diarization
 
 /// Owned callbacks shared between the pipeline and spawned worker tasks.
 #[derive(Clone)]
 pub struct Callbacks {
     pub progress: Option<Arc<LabeledProgressFn>>,
     pub new_segment_callback: Option<Arc<NewSegmentFn>>,
+    pub speakers_identified: Option<Arc<SpeakersIdentifiedFn>>,
     pub is_cancelled: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
 }
 
@@ -28,6 +45,7 @@ impl Default for Callbacks {
         Self {
             progress: None,
             new_segment_callback: None,
+            speakers_identified: None,
             is_cancelled: None,
         }
     }

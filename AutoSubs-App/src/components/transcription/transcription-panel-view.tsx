@@ -14,6 +14,7 @@ import type {
 } from "@/types";
 import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { TranscriptionHeader } from "./transcription-header";
+import { CompletionStepItem } from "@/components/processing/completion-step-item";
 import { ProcessingStepsList } from "./processing-steps-list";
 import { RunSummaryCard } from "./run-summary";
 import { CompactSettingsRow, SectionHeader } from "./section-row";
@@ -51,7 +52,6 @@ export interface TranscriptionPanelViewProps {
   transcriptDocuments: SubtitleDocumentListItem[];
   isLoadingTranscriptDocuments: boolean;
   onTranscriptDocumentsRefresh: () => Promise<void>;
-  livePreviewSegments: any[];
   isSubtitleViewerOpen?: boolean;
   timelineInfo: TimelineInfo;
   templates: TimelineInfo["templates"];
@@ -88,7 +88,6 @@ export function TranscriptionPanelView({
   transcriptDocuments,
   isLoadingTranscriptDocuments,
   onTranscriptDocumentsRefresh,
-  livePreviewSegments,
   isSubtitleViewerOpen = false,
   timelineInfo,
   templates,
@@ -239,18 +238,19 @@ export function TranscriptionPanelView({
             steps={processingSteps}
             isProcessing={isProcessing}
             containerRef={progressContainerRef}
-            livePreviewSegments={livePreviewSegments}
-            timelineInfo={timelineInfo}
-            selectedIntegration={selectedIntegration}
-            onExportToFile={onExportToFile}
-            onAddToTimeline={onAddToTimeline}
-            onViewSubtitles={onViewSubtitles}
-            isSubtitleViewerOpen={isSubtitleViewerOpen}
           />
         )}
 
         {hasCompletedRun ? (
-          <div className="flex-shrink-0 pt-3">
+          <div className="flex-shrink-0 pt-3 flex flex-col gap-2.5">
+            <CompletionStepItem
+              onExportToFile={onExportToFile}
+              onAddToTimeline={onAddToTimeline}
+              onViewSubtitles={onViewSubtitles}
+              isSubtitleViewerOpen={isSubtitleViewerOpen}
+              timelineInfo={timelineInfo}
+              selectedIntegration={selectedIntegration}
+            />
             <Button
               type="button"
               onClick={onStartNewTranscription}

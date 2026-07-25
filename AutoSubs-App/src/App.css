@@ -250,6 +250,132 @@
 }
 
 
+/* ---------------------------------------------------------------------------
+   Draft transcript motion primitives.
+
+   Four primitives, reused everywhere, rather than a bespoke animation per
+   pipeline step. The quality comes from the constraints, not the choreography:
+   one easing curve, short durations, and a 25ms stagger between siblings.
+
+   - Rise    : a new segment arriving
+   - Shimmer : a segment whose text is being replaced (translation)
+   - Settle  : draft -> final, muted to full contrast
+   - Roll    : handled in TS (tabular-nums digit swap)
+--------------------------------------------------------------------------- */
+
+:root {
+    /* The single easing curve. Do not introduce another. */
+    --draft-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes draft-rise {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-draft-rise {
+    animation: draft-rise 150ms var(--draft-ease) both;
+}
+
+@keyframes draft-shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+/* A translucent band travelling across the card once. Purely decorative: it
+   signals "this block is being replaced" so the text swap does not just pop. */
+.animate-draft-shimmer {
+    background-image: linear-gradient(
+        90deg,
+        transparent 20%,
+        color-mix(in srgb, var(--color-primary, currentColor) 12%, transparent) 50%,
+        transparent 80%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: draft-shimmer 400ms var(--draft-ease) both;
+}
+
+/* Draft -> final. Applied by removing the muted class, so the element
+   transitions rather than swapping instantly. */
+.draft-settle {
+    transition:
+        color 200ms var(--draft-ease),
+        opacity 200ms var(--draft-ease),
+        border-color 200ms var(--draft-ease);
+}
+
+/* Blur-scroll: covers the hand-off from the draft list to the final, formatted
+   one. Formatting is a global re-segmentation — words move between cues, so the
+   list is genuinely replaced wholesale rather than split card by card. The blur
+   is what makes that mass replacement acceptable instead of jarring, and it
+   also hides the scroll-anchoring jitter it would otherwise cause.
+
+   Deliberately *not* an animation of scrollTop across a long list: that stutters
+   in a webview, and a janky blur-scroll looks broken rather than magical. This
+   costs the same regardless of transcript length. */
+@keyframes blur-scroll-out {
+    from {
+        opacity: 1;
+        filter: blur(0);
+        transform: scaleY(1);
+    }
+    to {
+        opacity: 0.4;
+        filter: blur(3px);
+        transform: scaleY(0.98);
+    }
+}
+
+@keyframes blur-scroll-in {
+    from {
+        opacity: 0.4;
+        filter: blur(3px);
+        transform: scaleY(0.98);
+    }
+    to {
+        opacity: 1;
+        filter: blur(0);
+        transform: scaleY(1);
+    }
+}
+
+.animate-blur-scroll-out {
+    animation: blur-scroll-out 180ms var(--draft-ease) both;
+}
+
+.animate-blur-scroll-in {
+    animation: blur-scroll-in 180ms var(--draft-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-draft-rise,
+    .animate-draft-shimmer,
+    .animate-blur-scroll-out,
+    .animate-blur-scroll-in {
+        animation: none;
+    }
+
+    .animate-draft-shimmer {
+        background-image: none;
+    }
+
+    .draft-settle {
+        transition: none;
+    }
+}
+
+
 @keyframes burst {
     0% {
         transform: translate(-50%, -50%) scale(0.5);

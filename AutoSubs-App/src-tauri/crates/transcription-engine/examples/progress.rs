@@ -117,6 +117,7 @@ async fn main() -> Result<()> {
     let callbacks = Callbacks {
         progress: Some(Arc::new(on_progress)),
         new_segment_callback: None,
+        speakers_identified: None,
         is_cancelled: None,
     };
 

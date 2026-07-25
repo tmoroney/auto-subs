@@ -138,6 +138,7 @@ async fn prepare_speech_segments(
     audio_samples: &[i16],
     options: &crate::TranscribeOptions,
     progress: Option<&LabeledProgressFn>,
+    speakers_identified: Option<&crate::types::SpeakersIdentifiedFn>,
     is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
 ) -> eyre::Result<Vec<SpeechSegment>> {
     let speech_segments = if let Some(true) = options.enable_diarize {
@@ -172,13 +173,27 @@ async fn prepare_speech_segments(
         let diarize_progress_callback =
             progress.map(|_| &diarize_progress as &diarize::ProgressFn<'_>);
 
-        diarize::diarize(
+        let diarized = diarize::diarize(
             audio_samples,
             16000,
             &diarize_options,
             diarize_progress_callback,
             is_cancelled,
-        )?
+        )?;
+
+        // Report how many distinct speakers were actually found so the UI can say
+        // "3 speakers" instead of just "Identifying speakers". Unassigned segments
+        // ("?") are not a speaker and must not inflate the count.
+        if let Some(cb) = speakers_identified {
+            let distinct: std::collections::BTreeSet<&str> = diarized
+                .iter()
+                .filter_map(|segment| segment.speaker_id.as_deref())
+                .filter(|id| *id != "?")
+                .collect();
+            cb(distinct.len());
+        }
+
+        diarized
     } else if let Some(true) = options.enable_vad {
         let vad_model_path: PathBuf = if let Some(ref p) = cfg.vad_model_path {
             PathBuf::from(p)
@@ -274,6 +289,7 @@ fn align_segments(
     language: Option<&str>,
     user_offset: f64,
     progress: Option<&LabeledProgressFn>,
+    new_segment: Option<&crate::types::NewSegmentFn>,
     is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
 ) -> eyre::Result<()> {
     let mut aligner = crate::align::Aligner::load(aligner_dir)?;
@@ -291,9 +307,12 @@ fn align_segments(
         );
     }
 
-    for segment in segments
+    // Enumerate before filtering so the original segment index survives — the UI
+    // needs it to address the right card when the refined timings arrive.
+    for (index, segment) in segments
         .iter_mut()
-        .filter(|segment| !segment.text.trim().is_empty())
+        .enumerate()
+        .filter(|(_, segment)| !segment.text.trim().is_empty())
     {
         if is_cancelled.is_some_and(|cancelled| cancelled()) {
             eyre::bail!("Transcription cancelled");
@@ -319,6 +338,12 @@ fn align_segments(
                     previous_end = word.end;
                 }
                 segment.words = Some(words);
+                // Only emit when timings were genuinely refined. The fallback
+                // branches below keep the existing estimates, so emitting there
+                // would make the UI animate a change that did not happen.
+                if let Some(cb) = new_segment {
+                    cb(index, segment, crate::types::SegmentStage::Align);
+                }
             }
             Ok(_) => tracing::warn!(
                 segment_start = segment.start,
@@ -523,6 +548,7 @@ impl Engine {
             &original_samples,
             &options,
             cb.progress.as_deref(),
+            cb.speakers_identified.as_deref(),
             cb.is_cancelled.as_deref(),
         )
         .await?;
@@ -584,7 +610,7 @@ impl Engine {
         let (mut segments, detected_lang) = if let Some(pipeline) = translation_pipeline {
             let submitter = pipeline.submitter().clone();
             let next_index = Arc::new(AtomicUsize::new(0));
-            let submit_cb: Arc<NewSegmentFn> = Arc::new(move |_idx: usize, segment: &Segment| {
+            let submit_cb: Arc<NewSegmentFn> = Arc::new(move |_idx: usize, segment: &Segment, _stage: crate::types::SegmentStage| {
                 let idx = next_index.fetch_add(1, Ordering::SeqCst);
                 submitter.submit(idx, segment.clone());
             });
@@ -601,6 +627,11 @@ impl Engine {
                 engine_cancellation,
             )
             .await?;
+
+            // Drop the translation callback (and the sender clone it owns) before
+            // asking the pipeline to finish, or the channel never closes and
+            // finish() hangs indefinitely.
+            drop(submit_cb);
 
             // The pipeline may still be translating the final batch; finish it
             // and use its ordered output as the authoritative segments.
@@ -679,6 +710,7 @@ impl Engine {
                 Some(effective_lang),
                 user_offset,
                 cb.progress.as_deref(),
+                cb.new_segment_callback.as_deref(),
                 alignment_cancellation.as_deref(),
             )?;
         } else if enable_forced_alignment {

@@ -51,6 +51,23 @@ export interface Subtitle {
     speaker_id?: string;
 }
 
+/**
+ * Which pipeline stage last touched a segment. Mirrors the Rust `SegmentStage`.
+ * The same segment index is emitted several times per run, so this distinguishes
+ * new text from replaced text from refined word timings.
+ */
+export type SegmentStage = 'transcribe' | 'translate' | 'align';
+
+/**
+ * A segment in the live preview, before formatting has run. Unlike `Subtitle`
+ * these are not display-ready: they carry no id, may be far longer than the
+ * user's configured line length, and may still be untranslated.
+ */
+export type DraftSubtitle = Omit<Subtitle, 'id'> & {
+    id?: number;
+    stage?: SegmentStage;
+};
+
 export interface Sample {
     start: number;
     end: number;

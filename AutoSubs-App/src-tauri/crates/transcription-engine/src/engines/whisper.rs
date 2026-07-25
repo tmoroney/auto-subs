@@ -494,7 +494,7 @@ pub async fn run_transcription_pipeline(
 
             // Emit new segment to callback
             if let Some(cb) = new_segment_callback {
-                cb(seg_index, &segment);
+                cb(seg_index, &segment, crate::types::SegmentStage::Transcribe);
                 seg_index += 1;
             }
 

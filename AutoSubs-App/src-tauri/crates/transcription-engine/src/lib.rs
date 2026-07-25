@@ -14,7 +14,7 @@ pub mod formatting;
 // Re-exports (crate users only need these)
 pub use engine::{Engine, EngineConfig, ContentFormatting};
 pub use vad::get_segments;
-pub use types::{Callbacks, LabeledProgressFn, NewSegmentFn, TranscribeOptions, Segment, WordTimestamp, ProgressType};
+pub use types::{Callbacks, LabeledProgressFn, NewSegmentFn, SegmentStage, SpeakersIdentifiedFn, TranscribeOptions, Segment, WordTimestamp, ProgressType};
 pub use model_manager::ModelManager;
 pub use utils::{get_translate_languages, get_whisper_languages};
 pub use formatting::{PostProcessConfig, process_segments, TextCase, TextDensity};

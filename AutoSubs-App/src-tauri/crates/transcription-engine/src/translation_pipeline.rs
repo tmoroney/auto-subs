@@ -5,7 +5,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use tokio::time::{Duration, interval};
 
-use crate::types::{Callbacks, NewSegmentFn, Segment};
+use crate::types::{Callbacks, NewSegmentFn, Segment, SegmentStage};
 
 const BATCH_SIZE: usize = 5;
 const BATCH_TIMEOUT_MS: u64 = 1500;
@@ -17,7 +17,7 @@ struct TranslationJob {
 
 #[derive(Clone)]
 pub struct TranslationSubmitter {
-    sender: UnboundedSender<TranslationJob>,
+    sender: Option<UnboundedSender<TranslationJob>>,
     results: Arc<Mutex<BTreeMap<usize, Segment>>>,
     new_segment_callback: Option<Arc<NewSegmentFn>>,
     is_cancelled: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
@@ -30,11 +30,15 @@ impl TranslationSubmitter {
             map.insert(index, segment.clone());
         }
 
+        // Emitted as `Transcribe`: this is still the untranslated text, shown
+        // immediately so the user is not waiting on the translation round-trip.
         if let Some(cb) = &self.new_segment_callback {
-            cb(index, &segment);
+            cb(index, &segment, SegmentStage::Transcribe);
         }
 
-        let _ = self.sender.send(TranslationJob { index, segment });
+        if let Some(sender) = &self.sender {
+            let _ = sender.send(TranslationJob { index, segment });
+        }
     }
 }
 
@@ -52,13 +56,20 @@ impl TranslationPipeline {
         let (tx, rx) = unbounded_channel();
         let results = Arc::new(Mutex::new(BTreeMap::new()));
         let submitter = TranslationSubmitter {
-            sender: tx,
+            sender: Some(tx),
             results: Arc::clone(&results),
             new_segment_callback: callbacks.new_segment_callback,
             is_cancelled: callbacks.is_cancelled,
         };
 
-        let worker_submitter = submitter.clone();
+        // The worker must not own a sender clone, otherwise the channel can never
+        // close and finish() will wait forever.
+        let worker_submitter = TranslationSubmitter {
+            sender: None,
+            results: Arc::clone(&results),
+            new_segment_callback: submitter.new_segment_callback.clone(),
+            is_cancelled: submitter.is_cancelled.clone(),
+        };
         let handle = tokio::spawn(run_worker(
             rx,
             worker_submitter,
@@ -156,8 +167,11 @@ async fn flush(
             map.insert(job.index, seg.clone());
         }
 
+        // Re-emitted on the same index with the translated text. The UI uses the
+        // `Translate` stage to crossfade the replacement rather than treating it
+        // as a brand-new segment.
         if let Some(cb) = &submitter.new_segment_callback {
-            cb(job.index, &seg);
+            cb(job.index, &seg, SegmentStage::Translate);
         }
     }
 

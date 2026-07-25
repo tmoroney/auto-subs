@@ -1,6 +1,6 @@
 # Processing UI Redesign — Plan
 
-Status: in progress
+Status: phases 0–5 implemented; pending an end-to-end run on real media
 Branch: `devin/phase-based-pipeline`
 
 Follow-up to PR #708. That PR parallelised the pipeline (good) but replaced granular
@@ -103,10 +103,11 @@ Three layers:
 2. **Unset styling.** Draft segments: `text-muted-foreground`, dimmed timestamp, no
    card border. Finished: full contrast, solid border. Users infer "faint = still
    working" within seconds. Editing and search disabled while draft.
-3. **Turn the flaw into the payoff.** Do not hide that draft segments are too long —
-   when formatting runs, the long draft card visibly **splits** into the final
-   subtitle cards. This is the most satisfying honest moment available and it explains
-   what formatting did. The wrong draft is the setup; the split is the punchline.
+3. **Formatting reveal.** Originally planned as a visible per-card split. That is not
+   possible — formatting is a global re-segmentation (§11), so there is no parent→child
+   relationship to animate. Instead the final list swaps in under the blur-scroll (§8).
+   The draft-vs-final contrast is still communicated, just by the header state and the
+   muted→Settle transition rather than by a split.
 
 ## 6. Animation vocabulary
 
@@ -213,9 +214,9 @@ Implementation: blur ~3px + fade to ~40% opacity + slight `scaleY` over ~180ms, 
 `scrollTop = 0` instantly at the peak, reverse over ~180ms. Constant cost regardless
 of transcript length.
 
-Sequence it *after* the visible cards have split, not instead of. The split is the
-explanation; the blur-scroll is the transition. It also conveniently covers the
-scroll-anchoring jitter from off-screen reflow.
+This is now doing real work, not just flourish: because formatting is a global reflow
+(§11) the segment list is wholesale replaced, and the blur is what makes that
+replacement acceptable instead of jarring. It also covers the scroll-anchoring jitter.
 
 ## 9. Rejected ideas (do not revisit)
 
@@ -258,30 +259,54 @@ screenshot. Nice-to-have.
 Build this **before** any animation work. Every animation is a consumer of one of
 these events, so settling the contract first avoids writing the reducer twice.
 
-### Existing today
+### Final contract (implemented)
 
 | Event | Payload | Notes |
 | --- | --- | --- |
-| `labeled-progress` | `{ progress, type, label }` | `type` = 5 `ProgressType` variants; `label` is already granular (§4). Sufficient for the stepper — **no Rust change needed for degrouping**. |
-| `new-segment` | `{ index, segment }` | Full `Segment` incl. `speaker_id` and `words`. Sufficient for streaming. |
-| `transcription-complete` | — | |
+| `labeled-progress` | `{ progress, type, label }` | `type` = 5 `ProgressType` variants; `label` is already granular (§4). Sufficient for the stepper — no Rust change was needed for degrouping. |
+| `segment-updated` | `{ index, segment, stage }`, `stage ∈ transcribe \| translate \| align` | Replaces `new-segment`. One event, one reducer, for every per-segment change. |
+| `speakers-identified` | `{ count }` | Distinct non-`?` speaker ids from diarization. Drives the "3 speakers" stepper detail. |
+| `transcription-complete` | — | unchanged |
 
-### To add
+`NewSegmentFn` gained a `SegmentStage` argument rather than adding a second parallel
+callback, so there is exactly one path for segment updates. Only 3 invocation sites
+existed (`whisper.rs`, `onnx/mod.rs`, the translation pipeline submit closure); the
+other ~30 references just pass the fn through and were unaffected by the arity change.
 
-| Event | Payload | Unblocks |
-| --- | --- | --- |
-| `segment-updated` | `{ index, segment, stage }` where `stage ∈ transcribe \| translate \| align` | Alignment playhead (real word timings *during* the pass, not after), translation crossfade |
-| `segments-reflowed` | `{ segments: Segment[], provenance: number[] }` | Formatting split |
-| `speakers-identified` | `{ count }` | Data-rich stepper label ("Found 3 speakers") |
+Stage emission points:
+- `engines/*` → `Transcribe`
+- `TranslationSubmitter::submit` → `Transcribe` (untranslated text, shown immediately
+  so the user is not blocked on the translation round-trip)
+- `translation_pipeline::run_worker` → `Translate` (same index, replaced text)
+- `align_segments` → `Align`, **only in the branch where words were actually
+  refined**. The two fallback branches keep existing estimates, so emitting there
+  would make the UI animate a change that did not happen.
 
-**`provenance` is the important one.** It maps each new segment index to the draft
-segment index it came from. Formatting changes segment *count*, so index-based updates
-cannot express "draft card 4 became final cards 4, 5, 6". Without provenance the split
-animates as a mass replacement instead of a split, which is the whole payoff of §5.3.
+`align_segments` now enumerates before filtering, so the original segment index
+survives to address the right card.
 
-Prefer folding `new-segment` into `segment-updated` with `stage: "transcribe"` so the
-frontend has **one reducer** for all per-segment change, rather than three listeners
-with overlapping semantics.
+### Formatting is a global reflow, not a per-segment split — provenance abandoned
+
+Verified in `formatting.rs::process_segments`. It does **not** split segments
+individually. It flattens *every* segment into one flat token stream, then re-groups
+that stream into cues at speaker changes, pauses, sentence ends and duration caps.
+So a single cue can draw words from multiple draft segments, and one draft segment can
+contribute words to several cues — a many-to-many re-segmentation.
+
+`seg_idx` exists at line 343 but is used only to compute `segment_break` and is then
+discarded; `Tok` does not carry it. Emitting provenance would mean adding a `src_seg`
+field to `Tok` and threading it through `merge_continuations`,
+`split_no_space_tokens`, `split_into_cue_groups`, `wrap_group` and
+`segment_from_lines` — a real refactor of a delicate, well-tested pipeline.
+
+**Consequence: the "one draft card splits into three" animation is not achievable and
+was based on a wrong model of what formatting does.** A global re-segmentation cannot
+be rendered as a tidy split; it genuinely is a mass replacement.
+
+**Therefore: conceal the reflow with the blur-scroll** (§8) rather than trying to
+explain it. This was the original instinct and it was correct. `segments-reflowed`
+with provenance is dropped from scope; the frontend simply swaps to the final list
+under cover of the blur.
 
 **Dropped from scope:** emitting VAD speech regions. That existed to feed the
 horizontal strip, which is rejected (§9). "Found N speech regions" means nothing to a
@@ -290,7 +315,7 @@ different — that one is genuinely meaningful.
 
 ## 12. Implementation phases
 
-### Phase 0 — Progress model (do first)
+### Phase 0 — Progress model (done)
 - `ProgressContext.tsx`: delete the `PHASES` grouping, `PhaseState`, `subProgress`
   averaging and the "complete all previous phases" inference. Replace with a flat
   ordered list of granular steps keyed on `label`, each with its own progress and
@@ -298,12 +323,16 @@ different — that one is genuinely meaningful.
 - This is pure frontend. It is the foundation for the stepper and must land before
   Phase 1 touches the rendering.
 
-### Phase 0.5 — Emitters
-- Add `segment-updated`, `segments-reflowed` (with provenance) and
-  `speakers-identified` per §11.
-- Verify `Subtitle.id` survives formatting (§13) — if not, that is part of this phase.
+### Phase 0.5 — Emitters (done)
+- `NewSegmentFn` extended with `SegmentStage`; `new-segment` renamed to
+  `segment-updated`; `speakers-identified` added. See §11.
+- Fixed: model downloads previously emitted only the generic
+  `progressSteps.prepare.download`, which had no i18n key, so `resolveLabel` fell
+  through to a bare percentage — while `prepare.asr` / `.vad` / `.diarize` /
+  `.aligner` were defined and never emitted by anything. `ensure_hf_snapshot` and
+  `ensure_hf_flat` now take a `label`, and each caller passes its specific one.
 
-### Phase 1 — Structure (no animation, mostly deletion)
+### Phase 1 — Structure (done)
 - `processing-steps-list.tsx`: remove the duplicated rendering (`ActivePhaseVisualizer`
   + full list). Render a single vertical stepper off the Phase 0 step model.
 - Delete `active-phase-visualizer.tsx` (`WaveBars`, `SpeakerBlocks`, `WordTokens`,
@@ -315,22 +344,50 @@ different — that one is genuinely meaningful.
   disabled while draft.
 - Remove the character-scramble decrypt from `segment-preview.tsx`.
 
-### Phase 2 — Primitives
+### Phase 2 — Primitives (done)
 - Rise / Shimmer / Settle / Roll as shared utilities. One easing token, one stagger
   constant, `prefers-reduced-motion` guard.
 
-### Phase 3 — Reveal queue
-- `useRevealQueue` with backlog-aware pacing, fast-forward, instant-mode fallback.
+### Phase 3 — Reveal queue (done)
+- Backlog-aware pacing, fast-forward on completion, instant-mode fallback.
 - Wire segment streaming: card Rises in, words reveal at ~25ms, speaker chip.
+- **Deviation:** shipped as two hooks (`use-word-reveal.ts`, `use-alignment-playhead.ts`)
+  rather than one parameterised `useRevealQueue`. They share the constants in
+  `lib/draft-motion.ts` but almost nothing else: the reveal is a fixed-interval
+  cursor over text already in hand, the playhead is an rAF pass over a per-segment
+  schedule built from real word durations. A shared abstraction would have been a
+  parameter bag with two disjoint halves.
 
-### Phase 4 — Alignment playhead
-- Word-level highlight with compressed ratio timing, dwell floor, gap cap.
-- Gutter timestamp tracks the current word.
-- Follow-the-active-segment scrolling.
+### Phase 4 — Alignment playhead (done)
+- `use-alignment-playhead.ts`. Word-level highlight with compressed ratio timing,
+  dwell floor and gap cap. The per-segment budget is a rolling average of the
+  wall-clock interval between `align`-stage events, divided by the current backlog,
+  so the pass speeds up under load instead of falling behind; past
+  `INSTANT_MODE_BACKLOG` the queue is dropped to its newest entry.
+- State is only committed when the highlighted word changes, so the panel
+  re-renders per word (≥ `MIN_WORD_DWELL_MS`) rather than per frame. This is the
+  one thing that made the old decrypt effect a perf hazard.
+- Gutter timestamp tracks the current word, in the same monospace/tabular slot as
+  the segment start time, so it rolls without reflow.
+- Follow-the-active-segment scrolling: one instant jump to the top at the start of
+  the pass, then centre the active row. Bottom-following is suppressed while
+  aligning. `ownScrollTopRef` distinguishes our own scrolls from the user's, and
+  any manual scroll during the pass ends following permanently.
 
-### Phase 5 — Translation + formatting
-- Staggered viewport-local Shimmer + crossfade for translation.
-- Formatting split of visible cards, then blur-scroll to top.
+### Phase 5 — Translation + formatting (done)
+- Translation: per-segment Shimmer via `use-stage-shimmer.ts`. **Deviation from the
+  plan:** no viewport-local staggered pass. Translation is emitted per segment as
+  each round-trip returns, not as one whole-document event, so the stagger already
+  exists in the data. Manufacturing a second, synthetic stagger on top would be
+  animating our own schedule rather than the work — exactly the failure mode in §1.
+  The scroll policy still holds: translation never scrolls.
+- Formatting: `use-blur-swap.ts` + `blur-scroll-out` / `blur-scroll-in` in
+  `App.css`. The draft panel is held for one 180ms blur-out, the swap to
+  `SubtitleViewerPanel` happens at the peak, and the final list blurs back in. The
+  new panel mounts already at the top, so the "scroll to top" is free and no
+  `scrollTop` is animated across a long list.
+- Thin progress hairline along the top edge of the draft panel (§8), fed by the
+  active step's real progress.
 
 ## 13. Implementation hazards
 
@@ -338,9 +395,10 @@ different — that one is genuinely meaningful.
   height changes and the view jumps. Needs `overflow-anchor: auto` or manual
   `scrollTop` compensation — otherwise the "don't move the user" policy breaks exactly
   when it matters most.
-- **Card identity.** Formatting changes segment boundaries, so React keys must not be
-  array indices or the split animates as a mass replacement instead of a split.
-  Segments need stable IDs that survive reflow. `Subtitle.id` exists (`src/types.ts`)
-  — verify the backend preserves it across formatting.
+- **Card identity.** The Rust `Segment` (`crates/transcription-engine/src/types.rs`)
+  has **no `id` field** — only the frontend `Subtitle` does. During the draft phase,
+  keys must therefore come from the `new-segment` / `segment-updated` index. That is
+  safe because indices are stable until formatting, and formatting replaces the list
+  wholesale under the blur-scroll anyway.
 - **Backlog on fast hardware.** A small model on a good GPU can outrun any reveal.
   Instant-mode fallback is mandatory, not optional.

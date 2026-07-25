@@ -6,12 +6,12 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
-    Callbacks, ContentFormatting, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType,
+    Callbacks, ContentFormatting, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
     Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
 };
 
@@ -24,28 +24,59 @@ pub struct LabeledProgress {
     pub label: Option<String>,
 }
 
-impl From<(&i32, &Option<ProgressType>, &Option<String>)> for LabeledProgress {
-    fn from(
-        (progress, progress_type, label): (&i32, &Option<ProgressType>, &Option<String>),
-    ) -> Self {
-        Self {
-            progress: *progress,
-            progress_type: progress_type.as_ref().map(|t| format!("{:?}", t)),
-            label: label.clone(),
-        }
-    }
-}
-
 // Global cancellation state (public so main.rs can access it for exit handling)
 pub static SHOULD_CANCEL: Mutex<bool> = Mutex::new(false);
 
-// Latest progress value and type updated from callbacks
-static LATEST_PROGRESS: AtomicI32 = AtomicI32::new(0);
-static LATEST_PROGRESS_TYPE: Mutex<Option<ProgressType>> = Mutex::new(None);
-static LATEST_PROGRESS_LABEL: Mutex<Option<String>> = Mutex::new(None);
+/// Progress updates waiting to be emitted, oldest first.
+///
+/// Deliberately a queue rather than a single "latest value" slot. The emitter
+/// samples this on an interval, and a stage that reaches 100% then hands over to
+/// the next one inside a single interval would have its completion overwritten
+/// before it was ever sampled — leaving the UI showing a step stuck at 96%
+/// forever. Collapsing repeated updates *within* a stage but never *across*
+/// stages keeps the emit rate low while guaranteeing every stage's final value
+/// reaches the frontend.
+static PROGRESS_QUEUE: Mutex<Vec<(i32, ProgressType, String)>> = Mutex::new(Vec::new());
 // Tracks the last progress stage we emitted an info-level log for; used to
 // rate-limit logs to one line per stage transition.
 static LAST_LOGGED_PROGRESS_TYPE: Mutex<Option<ProgressType>> = Mutex::new(None);
+
+/// Record a progress update for the emitter task to pick up.
+fn report_progress(percent: i32, progress_type: ProgressType, label: &str) {
+    let Ok(mut queue) = PROGRESS_QUEUE.lock() else {
+        return;
+    };
+    match queue.last_mut() {
+        Some(last) if last.2 == label => {
+            last.0 = percent;
+            last.1 = progress_type;
+        }
+        _ => queue.push((percent, progress_type, label.to_string())),
+    }
+}
+
+/// Drain everything queued since the last flush and emit it in order.
+fn flush_progress_queue<R: Runtime>(app: &AppHandle<R>, last_emitted: &mut Option<(i32, String)>) {
+    let pending = match PROGRESS_QUEUE.lock() {
+        Ok(mut queue) => std::mem::take(&mut *queue),
+        Err(_) => return,
+    };
+    for (percent, progress_type, label) in pending {
+        let percent = percent.clamp(0, 100);
+        if last_emitted.as_ref() == Some(&(percent, label.clone())) {
+            continue;
+        }
+        let _ = app.emit(
+            "labeled-progress",
+            LabeledProgress {
+                progress: percent,
+                progress_type: Some(format!("{:?}", progress_type)),
+                label: Some(label.clone()),
+            },
+        );
+        *last_emitted = Some((percent, label));
+    }
+}
 
 static NORMALIZED_AUDIO_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -255,12 +286,8 @@ pub async fn transcribe_audio<R: Runtime>(
     }
 
     // Reset progress and cancellation state
-    LATEST_PROGRESS.store(0, Ordering::Relaxed);
-    if let Ok(mut progress_type_lock) = LATEST_PROGRESS_TYPE.lock() {
-        *progress_type_lock = None;
-    }
-    if let Ok(mut progress_label_lock) = LATEST_PROGRESS_LABEL.lock() {
-        *progress_label_lock = None;
+    if let Ok(mut queue) = PROGRESS_QUEUE.lock() {
+        queue.clear();
     }
     if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
         *should_cancel = false;
@@ -269,27 +296,15 @@ pub async fn transcribe_audio<R: Runtime>(
     let emit_app = app.clone();
     let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel::<()>();
     let emitter_handle = tokio::spawn(async move {
-        let mut last_progress = -1;
-        let mut last_progress_type: Option<ProgressType> = None;
-        let mut last_progress_label: Option<String> = None;
+        let mut last_emitted: Option<(i32, String)> = None;
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(250));
         loop {
             tokio::select! {
-                _ = interval.tick() => {
-                    let progress = LATEST_PROGRESS.load(Ordering::Relaxed).clamp(0, 100);
-                    let progress_type = LATEST_PROGRESS_TYPE.lock().unwrap().clone();
-                    let progress_label = LATEST_PROGRESS_LABEL.lock().unwrap().clone();
-
-                    if progress != last_progress || progress_type != last_progress_type || progress_label != last_progress_label {
-                        // Emit labeled progress with type and label
-                        let labeled_progress = LabeledProgress::from((&progress, &progress_type, &progress_label));
-                        let _ = emit_app.emit("labeled-progress", labeled_progress);
-                        last_progress = progress;
-                        last_progress_type = progress_type;
-                        last_progress_label = progress_label;
-                    }
-                }
+                _ = interval.tick() => flush_progress_queue(&emit_app, &mut last_emitted),
                 _ = &mut stop_rx => {
+                    // One last flush: the tail of the run (the formatting pass in
+                    // particular) is fast enough to start and finish between ticks.
+                    flush_progress_queue(&emit_app, &mut last_emitted);
                     break;
                 }
             }
@@ -297,13 +312,7 @@ pub async fn transcribe_audio<R: Runtime>(
     });
 
     // --- Audio Normalization (only task left in app before passing to crate) ---
-    LATEST_PROGRESS.store(0, Ordering::Relaxed);
-    if let Ok(mut lock) = LATEST_PROGRESS_TYPE.lock() {
-        *lock = Some(ProgressType::Prepare);
-    }
-    if let Ok(mut lock) = LATEST_PROGRESS_LABEL.lock() {
-        *lock = Some("progressSteps.prepare.normalize".to_string());
-    }
+    report_progress(0, ProgressType::Prepare, "progressSteps.prepare.normalize");
 
     let audio_path = if should_normalize(options.audio_path.clone().into()) {
         create_normalized_audio(app.clone(), options.audio_path.clone().into(), None)
@@ -317,10 +326,7 @@ pub async fn transcribe_audio<R: Runtime>(
         options.audio_path.clone().into()
     };
 
-    LATEST_PROGRESS.store(100, Ordering::Relaxed);
-    if let Ok(mut lock) = LATEST_PROGRESS_LABEL.lock() {
-        *lock = Some("progressSteps.prepare.normalize".to_string());
-    }
+    report_progress(100, ProgressType::Prepare, "progressSteps.prepare.normalize");
     tracing::debug!("normalized audio path: {}", audio_path.display());
 
     // Clone app handle for segment callback and wrap in Arc for thread-safe sharing
@@ -417,16 +423,25 @@ pub async fn transcribe_audio<R: Runtime>(
         // For now, we pass the enable_gpu option if the crate supports it in the future
 
         // Set up callbacks using whisper-diarize-rs built-in cancellation
-        let segment_callback: Arc<dyn Fn(usize, &WDSegment) + Send + Sync> = Arc::new(move |index: usize, segment: &WDSegment| {
-            tracing::trace!("new segment [{index}]: {}", segment.text);
+        let segment_callback: Arc<dyn Fn(usize, &WDSegment, SegmentStage) + Send + Sync> = Arc::new(move |index: usize, segment: &WDSegment, stage: SegmentStage| {
+            tracing::trace!("segment [{index}] ({stage:?}): {}", segment.text);
 
-            // Emit the full segment to the frontend so the live preview can
-            // show speaker labels and run the translation decrypt transition.
+            // One event for every per-segment change, tagged with the stage that
+            // produced it. The frontend needs to distinguish new text from
+            // replaced text from refined word timings — they are presented very
+            // differently even though the payload shape is identical.
+            //
+            // Converted to the app's `Segment` first: the engine's `WordTimestamp`
+            // names its text field `text`, while everything the frontend consumes
+            // (including the final transcript) uses `word`. Emitting the raw engine
+            // type would hand the live preview a different word shape from the
+            // finished one.
             let payload = serde_json::json!({
                 "index": index,
-                "segment": segment,
+                "segment": wd_to_app_segment(segment),
+                "stage": stage,
             });
-            let _ = segment_emit_app_clone.emit("new-segment", payload);
+            let _ = segment_emit_app_clone.emit("segment-updated", payload);
         });
 
         // Reset per-run stage log de-dup state.
@@ -445,14 +460,7 @@ pub async fn transcribe_audio<R: Runtime>(
                 }
                 tracing::trace!("{}: {}% - {:?}", label, percent, progress_type);
 
-                // Update global progress state
-                LATEST_PROGRESS.store(percent, Ordering::Relaxed);
-                if let Ok(mut progress_type_lock) = LATEST_PROGRESS_TYPE.lock() {
-                    *progress_type_lock = Some(progress_type.clone());
-                }
-                if let Ok(mut progress_label_lock) = LATEST_PROGRESS_LABEL.lock() {
-                    *progress_label_lock = Some(label.to_string());
-                }
+                report_progress(percent, progress_type, label);
         });
 
 
@@ -464,9 +472,16 @@ pub async fn transcribe_audio<R: Runtime>(
             }
         });
 
+        let speakers_app = app.clone();
+        let speakers_identified: Arc<dyn Fn(usize) + Send + Sync> = Arc::new(move |count: usize| {
+            tracing::info!("diarization identified {count} speaker(s)");
+            let _ = speakers_app.emit("speakers-identified", serde_json::json!({ "count": count }));
+        });
+
         let callbacks = Callbacks {
             progress: Some(progress_callback),
             new_segment_callback: Some(segment_callback),
+            speakers_identified: Some(speakers_identified),
             is_cancelled: Some(is_cancelled),
         };
 

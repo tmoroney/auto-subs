@@ -66,7 +66,8 @@ export function migrateCustomPrompt(value: string): string {
 export interface ProcessingStep {
   id?: string;
   title: string;
-  description: string;
+  /** Extra real-world detail discovered during the run, e.g. "3 speakers". */
+  detail?: string;
   progress: number;
   isActive: boolean;
   isCompleted: boolean;

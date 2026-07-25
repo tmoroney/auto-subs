@@ -1,38 +1,26 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ProcessingStepItem } from "@/components/processing/processing-step-item";
-import { ActivePhaseVisualizer } from "@/components/processing/active-phase-visualizer";
-import type { TimelineInfo } from "@/types";
 import type { ProcessingStep } from "./utils";
 
 interface ProcessingStepsListProps {
   steps: ProcessingStep[];
   isProcessing?: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
-  livePreviewSegments: any[];
-  timelineInfo: TimelineInfo;
-  selectedIntegration: "davinci" | "premiere" | "aftereffects";
-  onExportToFile: () => void;
-  onAddToTimeline: (
-    selectedOutputTrack: string,
-    selectedTemplate: string,
-    presetSettings?: Record<string, unknown>,
-  ) => Promise<void>;
-  onViewSubtitles?: () => void;
-  isSubtitleViewerOpen?: boolean;
 }
 
+/**
+ * Vertical stepper for the granular pipeline steps.
+ *
+ * This is the status surface: it says what is happening and how far along it is,
+ * and nothing more. It deliberately renders each fact exactly once — the
+ * previous version rendered the active step as a hero card *and* as a list row,
+ * so the same title and percentage appeared two or three times.
+ */
 export function ProcessingStepsList({
   steps,
   isProcessing = false,
   containerRef,
-  livePreviewSegments,
-  timelineInfo,
-  selectedIntegration,
-  onExportToFile,
-  onAddToTimeline,
-  onViewSubtitles,
-  isSubtitleViewerOpen = false,
 }: ProcessingStepsListProps) {
   const { t } = useTranslation();
 
@@ -40,9 +28,8 @@ export function ProcessingStepsList({
     isProcessing && steps.length === 0
       ? [
           {
-            id: "Prepare",
+            id: "prepare.normalize",
             title: t("progressSteps.prepare", "Preparing audio and models"),
-            description: t("progressSteps.processing", "Processing"),
             progress: 0,
             isActive: true,
             isCompleted: false,
@@ -50,10 +37,24 @@ export function ProcessingStepsList({
         ]
       : steps;
 
-  const currentStep =
-    visibleSteps.find((s) => s.isActive) ||
-    visibleSteps.find((s) => !s.isCompleted) ||
-    visibleSteps[visibleSteps.length - 1];
+  const allCompleted =
+    visibleSteps.length > 0 && visibleSteps.every((step) => step.isCompleted);
+  const isComplete = !isProcessing && allCompleted;
+
+  // Several Prepare steps run concurrently, so there can be more than one active
+  // step. The headline tracks the furthest one along the pipeline, which is what
+  // the user perceives as "where we are".
+  const lastActiveIndex = visibleSteps.reduce(
+    (acc, step, index) => (step.isActive ? index : acc),
+    -1,
+  );
+  const headlineIndex = isComplete
+    ? -1
+    : lastActiveIndex >= 0
+      ? lastActiveIndex
+      : visibleSteps.findIndex((step) => !step.isCompleted);
+  const headlineStep =
+    headlineIndex >= 0 ? visibleSteps[headlineIndex] : undefined;
 
   return (
     <div
@@ -64,38 +65,41 @@ export function ProcessingStepsList({
           "linear-gradient(to bottom, black 90%, transparent 100%)",
       }}
     >
-      <div ref={containerRef} className="w-full relative z-10 pb-20">
-        <div className="flex flex-col gap-4">
-          {currentStep && (
-            <ActivePhaseVisualizer
-              phase={currentStep.id || "Prepare"}
-              progress={currentStep.progress}
-              description={currentStep.description}
-              livePreviewSegments={livePreviewSegments}
-            />
-          )}
-
-          <div className="flex flex-col gap-3">
-            {visibleSteps.map((step) => (
-              <div key={step.id} className="w-full">
-                <ProcessingStepItem
-                  id={step.id}
-                  title={step.title}
-                  description={step.description}
-                  progress={step.progress}
-                  isActive={step.isActive}
-                  isCompleted={step.isCompleted}
-                  isCancelled={step.isCancelled}
-                  onExportToFile={onExportToFile}
-                  onAddToTimeline={onAddToTimeline}
-                  onViewSubtitles={onViewSubtitles}
-                  isSubtitleViewerOpen={isSubtitleViewerOpen}
-                  timelineInfo={timelineInfo}
-                  selectedIntegration={selectedIntegration}
-                />
-              </div>
-            ))}
+      <div ref={containerRef} className="w-full relative z-10 px-1.5 pt-1 pb-4">
+        {(headlineStep || isComplete) && (
+          <div className="mb-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {isComplete
+                ? t("progressSteps.complete", { defaultValue: "Complete" })
+                : t("progressSteps.stepCounter", {
+                    current: headlineIndex + 1,
+                    total: visibleSteps.length,
+                    defaultValue: `Step {{current}} of {{total}}`,
+                  })}
+            </p>
+            <h3 className="truncate text-base font-semibold">
+              {isComplete
+                ? t("progressSteps.transcriptReady", {
+                    defaultValue: "Transcript is ready",
+                  })
+                : headlineStep!.title}
+            </h3>
           </div>
+        )}
+
+        <div className="flex flex-col">
+          {visibleSteps.map((step, index) => (
+            <ProcessingStepItem
+              key={step.id ?? index}
+              title={step.title}
+              detail={step.detail}
+              progress={step.progress}
+              isActive={step.isActive}
+              isCompleted={step.isCompleted}
+              isCancelled={step.isCancelled}
+              isLast={index === visibleSteps.length - 1}
+            />
+          ))}
         </div>
       </div>
     </div>

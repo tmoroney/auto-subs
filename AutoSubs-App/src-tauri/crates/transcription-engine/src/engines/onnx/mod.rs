@@ -166,7 +166,7 @@ pub async fn run_onnx_pipeline<E: OnnxEngine>(
         };
 
         if let Some(cb) = new_segment {
-            cb(i, &segment);
+            cb(i, &segment, crate::types::SegmentStage::Transcribe);
         }
 
         push_segment_clamped(&mut segments, segment);

@@ -153,7 +153,6 @@ export function TranscriptionPanel({
   const setExportProgress = resolveSetExportProgress; // Fallback
   const {
     processingSteps,
-    livePreviewSegments,
     clearProgressSteps,
     completeAllProgressSteps,
     cancelAllProgressSteps,
@@ -228,6 +227,8 @@ export function TranscriptionPanel({
       targetLanguage,
       language,
       enableForcedAlignment: willUseForcedAlignment,
+      enableDiarize,
+      audioInputMode,
     });
 
     return cleanup;
@@ -236,6 +237,8 @@ export function TranscriptionPanel({
     targetLanguage,
     language,
     willUseForcedAlignment,
+    enableDiarize,
+    audioInputMode,
   ]);
 
   React.useEffect(() => {
@@ -349,6 +352,8 @@ export function TranscriptionPanel({
       targetLanguage,
       language,
       enableForcedAlignment: willUseForcedAlignment,
+      enableDiarize,
+      audioInputMode,
     });
 
     try {
@@ -436,6 +441,11 @@ export function TranscriptionPanel({
         return;
       }
 
+      // End the run explicitly. Nothing else does, and a run that is neither
+      // complete nor cancelled leaves the stepper mid-flight and pins the right
+      // panel to a draft transcript that will never finish.
+      cancelAllProgressSteps();
+
       // Distinguish export-stage failures (thrown by `getSourceAudio` via
       // `exportAudio`) from transcription-stage failures so the dialog title
       // accurately reflects where things went wrong.
@@ -521,7 +531,6 @@ export function TranscriptionPanel({
             isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
             onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
             isSubtitleViewerOpen={isSubtitleViewerOpen}
-            livePreviewSegments={livePreviewSegments}
             timelineInfo={timelineInfo}
             templates={isPremiereActive ? [] : resolveTemplates}
             templatesLoading={isPremiereActive ? false : resolveTemplatesLoading}

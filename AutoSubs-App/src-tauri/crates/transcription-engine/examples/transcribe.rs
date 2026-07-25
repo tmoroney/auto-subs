@@ -1,6 +1,6 @@
 use eyre::{Result, eyre};
 use std::sync::Arc;
-use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TranscribeOptions};
+use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, SegmentStage, TextCase, TranscribeOptions};
 
 struct CliArgs {
     audio_path: String,
@@ -124,10 +124,15 @@ fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
     println!("{prefix} {label}: {percent}%");
 }
 
-fn on_new_segment(_index: usize, segment: &Segment) {
+fn on_new_segment(_index: usize, segment: &Segment, stage: SegmentStage) {
+    let prefix = match stage {
+        SegmentStage::Transcribe => "",
+        SegmentStage::Translate => "~ ",
+        SegmentStage::Align => "= ",
+    };
     match &segment.speaker_id {
-        Some(speaker) => println!("[{speaker}] {}", segment.text),
-        None => println!("{}", segment.text),
+        Some(speaker) => println!("{prefix}[{speaker}] {}", segment.text),
+        None => println!("{prefix}{}", segment.text),
     }
 }
 
@@ -154,6 +159,9 @@ async fn main() -> Result<()> {
     };
 
     let callbacks = Callbacks {
+        speakers_identified: Some(Arc::new(|count: usize| {
+            println!("identified {count} speaker(s)");
+        })),
         progress: None, // Some(Arc::new(on_progress)),
         new_segment_callback: Some(Arc::new(on_new_segment)),
         is_cancelled: None,
