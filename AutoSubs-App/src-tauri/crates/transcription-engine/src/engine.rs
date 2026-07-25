@@ -596,8 +596,12 @@ impl Engine {
         // pipeline consumes segments as they are emitted by the ASR engine,
         // batches them, translates, and re-emits the translated text back to
         // the live preview using the same segment index.
+        let source_matches_target = translate_to
+            .as_deref()
+            .map(|target| from_lang != "auto" && from_lang == target)
+            .unwrap_or(false);
         let translation_pipeline: Option<crate::translation_pipeline::TranslationPipeline> =
-            if !suppress_post_translation && translate_to.is_some() {
+            if !suppress_post_translation && translate_to.is_some() && !source_matches_target {
                 Some(crate::translation_pipeline::TranslationPipeline::new(
                     from_lang.clone(),
                     translate_to.clone().unwrap_or_default(),
