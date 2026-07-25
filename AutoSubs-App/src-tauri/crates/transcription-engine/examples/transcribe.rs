@@ -1,5 +1,6 @@
 use eyre::{Result, eyre};
-use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase, TranscribeOptions};
+use std::sync::Arc;
+use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, SegmentStage, TextCase, TranscribeOptions};
 
 struct CliArgs {
     audio_path: String,
@@ -114,19 +115,23 @@ fn parse_args() -> Result<CliArgs> {
 #[allow(dead_code)]
 fn on_progress(percent: i32, progress_type: ProgressType, label: &str) {
     let prefix = match progress_type {
-        ProgressType::Download => "📥",
-        ProgressType::Diarize => "🗣️",
+        ProgressType::Prepare => "⚙️",
+        ProgressType::Analyze => "🔍",
         ProgressType::Transcribe => "🎵",
-        ProgressType::Align => "⏱️",
-        ProgressType::Translate => "🌍",
+        ProgressType::Refine => "✨",
+        ProgressType::Finish => "✅",
     };
     println!("{prefix} {label}: {percent}%");
 }
 
-fn on_new_segment(segment: &Segment) {
+fn on_new_segment(_index: usize, segment: &Segment, stage: SegmentStage) {
+    let prefix = match stage {
+        SegmentStage::Transcribe => "",
+        SegmentStage::Align => "= ",
+    };
     match &segment.speaker_id {
-        Some(speaker) => println!("[{speaker}] {}", segment.text),
-        None => println!("{}", segment.text),
+        Some(speaker) => println!("{prefix}[{speaker}] {}", segment.text),
+        None => println!("{prefix}{}", segment.text),
     }
 }
 
@@ -153,8 +158,11 @@ async fn main() -> Result<()> {
     };
 
     let callbacks = Callbacks {
-        progress: None, // Some(&on_progress),
-        new_segment_callback: Some(&on_new_segment),
+        speakers_identified: Some(Arc::new(|count: usize| {
+            println!("identified {count} speaker(s)");
+        })),
+        progress: None, // Some(Arc::new(on_progress)),
+        new_segment_callback: Some(Arc::new(on_new_segment)),
         is_cancelled: None,
     };
 

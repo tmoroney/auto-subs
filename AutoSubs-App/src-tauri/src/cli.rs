@@ -193,6 +193,11 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         remove_punctuation: Some(arg_flag(&m, "remove-punctuation")),
         censored_words: None,
         custom_prompt: arg_str(&m, "prompt"),
+        asr_model_path: None,
+        vad_model_path: None,
+        diarize_segment_path: None,
+        diarize_embedding_path: None,
+        aligner_model_dir: None,
     };
 
     let output = arg_str(&m, "output");
@@ -474,10 +479,11 @@ struct ProgressEvent {
 /// Map an engine `ProgressType` (Debug string) to a human stage name.
 fn stage_label(stage: &str) -> &'static str {
     match stage {
-        "Download" => "Downloading model",
-        "Diarize" => "Diarizing",
+        "Prepare" => "Preparing",
+        "Analyze" => "Analysing",
         "Transcribe" => "Transcribing",
-        "Translate" => "Translating",
+        "Refine" => "Refining",
+        "Finish" => "Finishing",
         _ => "Processing",
     }
 }

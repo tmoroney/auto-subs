@@ -51,6 +51,23 @@ export interface Subtitle {
     speaker_id?: string;
 }
 
+/**
+ * Which pipeline stage last touched a segment. Mirrors the Rust `SegmentStage`.
+ * The same segment index can be emitted twice per run, so this distinguishes
+ * new text from refined word timings.
+ */
+export type SegmentStage = 'transcribe' | 'translate' | 'align';
+
+/**
+ * A segment in the live preview, before formatting has run. Unlike `Subtitle`
+ * these are not display-ready: they carry no id, may be far longer than the
+ * user's configured line length, and may still be untranslated.
+ */
+export type DraftSubtitle = Omit<Subtitle, 'id'> & {
+    id?: number;
+    stage?: SegmentStage;
+};
+
 export interface Sample {
     start: number;
     end: number;
@@ -195,6 +212,27 @@ export interface TranscriptionOptions {
     removePunctuation: boolean,
     censoredWords: string[],
     customPrompt?: string,
+    // Pre-resolved model paths from ensure_models.
+    asrModelPath?: string,
+    vadModelPath?: string,
+    diarizeSegmentPath?: string,
+    diarizeEmbeddingPath?: string,
+    alignerModelDir?: string,
+}
+
+export interface EnsureModelsRequest {
+    model: string,
+    enable_vad: boolean,
+    enable_diarize: boolean,
+    enable_forced_alignment: boolean,
+}
+
+export interface EnsureModelsResponse {
+    asr_model_path: string,
+    vad_model_path?: string,
+    diarize_segment_path?: string,
+    diarize_embedding_path?: string,
+    aligner_dir?: string,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

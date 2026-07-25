@@ -1,84 +1,92 @@
-import {
-    Item,
-    ItemContent,
-    ItemMedia,
-    ItemTitle,
-} from "@/components/ui/item"
 import { Spinner } from "@/components/ui/spinner"
-import { CircleX, CircleCheck } from "lucide-react"
-import { CompletionStepItem } from "./completion-step-item"
-import { SegmentPreview } from "@/components/processing/segment-preview"
-import { TimelineInfo } from "@/types"
+import { CircleX, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export interface ProcessingStepProps {
     title: string;
-    description: string;
+    /** Extra real-world detail discovered during the run, e.g. "3 speakers". */
+    detail?: string;
     progress: number;
     isActive: boolean;
     isCompleted: boolean;
     isCancelled?: boolean;
-    id?: string;
-    onExportToFile?: () => void;
-    onAddToTimeline?: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
-    onViewSubtitles?: () => void;
-    isSubtitleViewerOpen?: boolean;
-    livePreviewSegments?: any[];
-    timelineInfo?: TimelineInfo;
-    selectedIntegration?: "davinci" | "premiere" | "aftereffects";
+    /** Hides the rail connector below the icon on the final row. */
+    isLast?: boolean;
 }
 
+/**
+ * A single row in the vertical processing stepper.
+ *
+ * Completed steps collapse to one line so the list stays short as the run
+ * progresses; only the active step gets a progress bar. Nothing here animates
+ * beyond the spinner — the status surface deliberately carries no motion, since
+ * all the real content lives in the transcript panel.
+ */
 export function ProcessingStepItem({
     title,
-    description,
+    detail,
     progress,
     isActive,
     isCompleted,
     isCancelled = false,
-    id,
-    onExportToFile,
-    onAddToTimeline,
-    onViewSubtitles,
-    isSubtitleViewerOpen = false,
-    livePreviewSegments = [],
-    timelineInfo,
-    selectedIntegration
+    isLast = false,
 }: ProcessingStepProps) {
-    // If this is the completion step, render the special completion component
-    if (id === 'Complete' && onExportToFile && onAddToTimeline && timelineInfo) {
-        return <CompletionStepItem onExportToFile={onExportToFile} onAddToTimeline={onAddToTimeline} onViewSubtitles={onViewSubtitles} isSubtitleViewerOpen={isSubtitleViewerOpen} timelineInfo={timelineInfo} selectedIntegration={selectedIntegration} />;
-    }
+    const isPending = !isActive && !isCompleted && !isCancelled
 
     return (
-        <div className="flex w-full flex-col">
-            <Item variant="outline">
-                <ItemMedia>
+        <div className="flex gap-2.5">
+            {/* Rail: status icon plus the connector down to the next step. */}
+            <div className="flex flex-col items-center">
+                <div className="flex size-6 shrink-0 items-center justify-center">
                     {isCompleted ? (
-                        <CircleCheck className="text-primary" />
+                        <div className="flex size-6 items-center justify-center rounded-full bg-primary/10">
+                            <Check className="size-3.5 text-primary" strokeWidth={3} />
+                        </div>
                     ) : isCancelled ? (
-                        <CircleX className="text-destructive" />
+                        <CircleX className="size-4.5 text-destructive" />
+                    ) : isActive ? (
+                        <Spinner className="size-4.5 text-primary" />
                     ) : (
-                        <Spinner className={isActive ? "text-primary" : "text-muted-foreground"} />
+                        <div className="size-2.5 rounded-full bg-muted-foreground/30" />
                     )}
-                </ItemMedia>
-                <ItemContent>
-                    <ItemTitle className={isCompleted || isCancelled ? "text-muted-foreground line-clamp-1" : "line-clamp-1"}>
+                </div>
+                {!isLast && <div className="w-px flex-1 bg-border" />}
+            </div>
+
+            <div className={cn("min-w-0 flex-1", isLast ? "pb-0" : "pb-3")}>
+                <div className="flex items-baseline justify-between gap-2">
+                    <span
+                        className={cn(
+                            "truncate text-base",
+                            isActive && "font-medium",
+                            (isCompleted || isCancelled) && "text-muted-foreground",
+                            isPending && "text-muted-foreground/60",
+                        )}
+                    >
                         {title}
-                    </ItemTitle>
-                </ItemContent>
-                <ItemContent className="flex-none justify-end">
-                    <span className="text-sm tabular-nums">{Math.round(progress)}%</span>
-                </ItemContent>
-                {/* Show live preview for Transcribe step */}
-                {id === 'Transcribe' && isActive && (
-                    <ItemContent className="w-full bg-muted/50 rounded-xl overflow-y-auto">
-                        <SegmentPreview 
-                            segments={livePreviewSegments} 
-                            isActive={isActive}
-                            placeholder={description}
+                    </span>
+                    {isActive && (
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                            {Math.round(progress)}%
+                        </span>
+                    )}
+                </div>
+
+                {/* Only the active step gets a bar. Completed steps showing a full
+                    bar was pure redundancy against the check icon. */}
+                {isActive && (
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                            className="h-full rounded-full bg-primary transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
                         />
-                    </ItemContent>
+                    </div>
                 )}
-            </Item>
+
+                {detail && (
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{detail}</p>
+                )}
+            </div>
         </div>
     )
 }

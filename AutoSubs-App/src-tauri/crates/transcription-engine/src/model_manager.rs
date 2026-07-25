@@ -105,7 +105,7 @@ impl ModelManager {
                 is_cancelled,
                 0.0,
                 70.0,
-                "progressSteps.download",
+                "progressSteps.prepare.asr",
             )
             .await?
         } else {
@@ -116,7 +116,7 @@ impl ModelManager {
                 is_cancelled,
                 0.0,
                 100.0,
-                "progressSteps.download",
+                "progressSteps.prepare.asr",
             )
             .await?
         };
@@ -160,7 +160,7 @@ impl ModelManager {
                         is_cancelled,
                         70.0,
                         20.0,
-                        "progressSteps.download",
+                        "progressSteps.prepare.asr",
                     )
                     .await
                 {
@@ -170,13 +170,13 @@ impl ModelManager {
                             "Warning: CoreML encoder download failed ({}). Proceeding without CoreML encoder.",
                             e
                         );
-                        if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
+                        if let Some(cb) = progress { cb(100, ProgressType::Prepare, "progressSteps.prepare.asr"); }
                         return Ok(model_path);
                     }
                 };
 
                 // Progress at 90% (download done, start extracting)
-                if let Some(cb) = progress { cb(90, ProgressType::Download, "progressSteps.download"); }
+                if let Some(cb) = progress { cb(90, ProgressType::Prepare, "progressSteps.prepare.asr"); }
 
                 // Extract to same directory as the cached zip
                 let extract_dir = coreml_zip_path
@@ -211,7 +211,7 @@ impl ModelManager {
                         count += 1;
                         if let Some(cb) = progress {
                             let pct = 90.0 + (count as f32 / total as f32) * 10.0;
-                            cb(pct as i32, ProgressType::Download, "progressSteps.download");
+                            cb(pct as i32, ProgressType::Prepare, "progressSteps.prepare.asr");
                         }
                     }
 
@@ -220,7 +220,7 @@ impl ModelManager {
                 }
 
                 // Final completion
-                if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
+                if let Some(cb) = progress { cb(100, ProgressType::Prepare, "progressSteps.prepare.asr"); }
             }
         }
 
@@ -250,10 +250,10 @@ impl ModelManager {
             }
             Source::Hf { repo, files } => {
                 if let Some((subdir, key)) = Self::flat_layout(entry) {
-                    self.ensure_hf_flat(subdir, &key, repo, files, progress, is_cancelled).await
+                    self.ensure_hf_flat(subdir, &key, repo, files, progress, is_cancelled, "progressSteps.prepare.asr").await
                 } else {
                     let paths: Vec<&str> = files.iter().map(|f| f.path()).collect();
-                    self.ensure_hf_snapshot(repo, &paths, progress, is_cancelled).await
+                    self.ensure_hf_snapshot(repo, &paths, progress, is_cancelled, "progressSteps.prepare.asr").await
                 }
             }
         }
@@ -298,6 +298,7 @@ impl ModelManager {
         required_files: &[&str],
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+        label: &str,
     ) -> Result<PathBuf> {
         // Early cancellation
         if let Some(is_cancelled) = is_cancelled {
@@ -331,7 +332,7 @@ impl ModelManager {
                     is_cancelled,
                     offset,
                     scale,
-                    "progressSteps.download",
+                    label,
                 )
                 .await?;
         }
@@ -344,7 +345,7 @@ impl ModelManager {
                     .with_context(|| format!("Model validation failed for '{f}' from '{repo_id}'"))?;
             }
             if let Some(cb) = progress {
-                cb(100, ProgressType::Download, "progressSteps.download");
+                cb(100, ProgressType::Prepare, label);
             }
             return Ok(snapshot_dir);
         }
@@ -365,6 +366,7 @@ impl ModelManager {
         files: &[FileSpec],
         progress: Option<&LabeledProgressFn>,
         is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+        label: &str,
     ) -> Result<PathBuf> {
         if let Some(is_cancelled) = is_cancelled {
             if is_cancelled() {
@@ -406,7 +408,7 @@ impl ModelManager {
             let offset = (idx as f32 / total) * 100.0;
             let scale = (1.0 / total) * 100.0;
             if let Some(cb) = progress {
-                cb(offset as i32, ProgressType::Download, "progressSteps.download");
+                cb(offset as i32, ProgressType::Prepare, label);
             }
 
             let repo = file.repo().unwrap_or(default_repo);
@@ -417,12 +419,12 @@ impl ModelManager {
             })?;
 
             if let Some(cb) = progress {
-                cb((offset + scale) as i32, ProgressType::Download, "progressSteps.download");
+                cb((offset + scale) as i32, ProgressType::Prepare, label);
             }
         }
 
         if let Some(cb) = progress {
-            cb(100, ProgressType::Download, "progressSteps.download");
+            cb(100, ProgressType::Prepare, label);
         }
 
         Ok(model_dir)
@@ -498,7 +500,7 @@ impl ModelManager {
         }
 
         if let Some(cb) = progress {
-            cb(0, ProgressType::Download, "progressSteps.download");
+            cb(0, ProgressType::Prepare, "progressSteps.prepare.vad");
         }
 
         match tokio::time::timeout(
@@ -526,7 +528,7 @@ impl ModelManager {
             .with_context(|| format!("Silero VAD model validation failed: {}", dest.display()))?;
 
         if let Some(cb) = progress {
-            cb(100, ProgressType::Download, "progressSteps.download");
+            cb(100, ProgressType::Prepare, "progressSteps.prepare.vad");
         }
         Ok(dest)
     }
@@ -562,18 +564,18 @@ impl ModelManager {
 
         // Segmentation model: 0..50% of the diarize download progress.
         let seg_path = self
-            .ensure_hub_model(&d.repo, seg_file, progress, is_cancelled, 0.0, 50.0, "progressSteps.download")
+            .ensure_hub_model(&d.repo, seg_file, progress, is_cancelled, 0.0, 50.0, "progressSteps.prepare.diarize")
             .await?;
 
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
         // Embedding model: 50..100%.
         let emb_path = self
-            .ensure_hub_model(&d.repo, emb_file, progress, is_cancelled, 50.0, 50.0, "progressSteps.download")
+            .ensure_hub_model(&d.repo, emb_file, progress, is_cancelled, 50.0, 50.0, "progressSteps.prepare.diarize")
             .await?;
 
         if !had_cached_diarize_bundle {
-            if let Some(cb) = progress { cb(100, ProgressType::Download, "progressSteps.download"); }
+            if let Some(cb) = progress { cb(100, ProgressType::Prepare, "progressSteps.prepare.diarize"); }
         }
         Ok((seg_path, emb_path))
     }
@@ -585,8 +587,14 @@ impl ModelManager {
     ) -> Result<PathBuf> {
         let aligner = manifest::aligner();
         let files: Vec<&str> = aligner.files.iter().map(FileSpec::path).collect();
-        self.ensure_hf_snapshot(&aligner.repo, &files, progress, is_cancelled)
-            .await
+        self.ensure_hf_snapshot(
+            &aligner.repo,
+            &files,
+            progress,
+            is_cancelled,
+            "progressSteps.prepare.aligner",
+        )
+        .await
     }
 
     pub fn delete_whisper_model(&self, model: &str) -> Result<()> {
@@ -963,11 +971,11 @@ impl ModelManager {
             validate_model_file(&path2)
                 .with_context(|| format!("Model validation failed for '{filename}' from '{repo_id}'"))?;
 
-            if let Some(cb) = progress { cb((offset + scale) as i32, ProgressType::Download, label); }
+            if let Some(cb) = progress { cb((offset + scale) as i32, ProgressType::Prepare, label); }
             return Ok(path2);
         }
 
-        if let Some(cb) = progress { cb((offset + scale) as i32, ProgressType::Download, label); }
+        if let Some(cb) = progress { cb((offset + scale) as i32, ProgressType::Prepare, label); }
         Ok(path)
     }
 
@@ -1041,7 +1049,7 @@ impl ModelManager {
                             } else {
                                 offset + (cur as f32 / tot as f32) * scale
                             };
-                            cb(pct as i32, ProgressType::Download, label);
+                            cb(pct as i32, ProgressType::Prepare, label);
                         }
                     }
                     if last_progress_at.elapsed().as_secs() > STALL_TIMEOUT_SECS {

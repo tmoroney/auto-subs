@@ -1,18 +1,54 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-// Progress types for the labeled progress callback
+// Unified pipeline phases for the labeled progress callback
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProgressType {
-    Download,
-    Diarize,
+    Prepare,
+    Analyze,
     Transcribe,
-    Align,
+    Refine,
+    Finish,
+}
+
+/// Which pipeline stage produced a segment update.
+///
+/// The same segment index can be emitted twice over a run — first when the
+/// ASR engine produces it, then again once its word timings are refined by
+/// forced alignment. The stage lets the UI tell "this is new text" apart from
+/// "these timings were refined".
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SegmentStage {
+    Transcribe,
     Translate,
+    Align,
 }
 
 // Shared callback types
 pub type LabeledProgressFn = dyn Fn(i32, ProgressType, &str) + Send + Sync; // progress with type and label
-pub type NewSegmentFn = dyn Fn(&Segment) + Send + Sync; // new segment notifications
+pub type NewSegmentFn = dyn Fn(usize, &Segment, SegmentStage) + Send + Sync; // (index, segment, stage) segment notifications
+pub type SpeakersIdentifiedFn = dyn Fn(usize) + Send + Sync; // number of distinct speakers found by diarization
+
+/// Owned callbacks shared between the pipeline and spawned worker tasks.
+#[derive(Clone)]
+pub struct Callbacks {
+    pub progress: Option<Arc<LabeledProgressFn>>,
+    pub new_segment_callback: Option<Arc<NewSegmentFn>>,
+    pub speakers_identified: Option<Arc<SpeakersIdentifiedFn>>,
+    pub is_cancelled: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
+}
+
+impl Default for Callbacks {
+    fn default() -> Self {
+        Self {
+            progress: None,
+            new_segment_callback: None,
+            speakers_identified: None,
+            is_cancelled: None,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct AdvancedTranscribe {

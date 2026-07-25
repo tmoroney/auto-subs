@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button"
 import React from "react"
 import { TranscriptionPanel } from "@/components/transcription/transcription-panel"
 import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel"
+import { DraftTranscriptPanel } from "@/components/subtitles/draft-transcript-panel"
+import { useBlurSwap } from "@/hooks/use-blur-swap"
+import { useProgress } from "@/contexts/ProgressContext"
 import { useTranslation } from "react-i18next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
@@ -67,6 +70,7 @@ function AppContentBody() {
   >([])
   const [hasLoadedTranscriptDocuments, setHasLoadedTranscriptDocuments] =
     React.useState(false)
+  const { processingSteps, isRunActive, livePreviewSegments } = useProgress()
   const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted)
   const tourCompleted = useSettingsStore((s) => s.tourCompleted)
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
@@ -77,6 +81,7 @@ function AppContentBody() {
   const mainContentRef = React.useRef<HTMLDivElement>(null)
   const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
   const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
+  const wasMobileRef = React.useRef(false)
 
   const loadTranscriptDocuments = React.useCallback(async () => {
     try {
@@ -194,9 +199,53 @@ function AppContentBody() {
     }
   }, [handleCloseSubtitleViewer, isMobile, showSubtitleViewer, subtitles.length])
 
+  // Reopen the subtitle viewer when the viewport grows past the mobile breakpoint.
+  React.useEffect(() => {
+    if (wasMobileRef.current && !isMobile) {
+      handleOpenSubtitleViewer()
+    }
+    wasMobileRef.current = isMobile
+  }, [isMobile, handleOpenSubtitleViewer])
+
   const handleTranscriptCreated = React.useCallback(async () => {
     await loadTranscriptDocuments()
   }, [loadTranscriptDocuments])
+
+  // While a run is in progress the right panel shows the live draft instead of
+  // the previous, unrelated transcript. Showing a stale transcript during
+  // processing was actively misleading — it looked like the result.
+  //
+  // Keyed on the run, not on "some step is active": steps hand over with a gap,
+  // and during that gap no step is active, which would blur the panel back to
+  // the old transcript and straight out again between every single step.
+  const isDraftMode = isRunActive
+
+  // The hairline tracks the running step. Between steps there is nothing to
+  // track, so hold the last value rather than letting it snap back to zero.
+  const activeStepProgress = processingSteps.find((step) => step.isActive)?.progress
+  const heldProgressRef = React.useRef(0)
+  if (!isDraftMode) heldProgressRef.current = 0
+  else if (activeStepProgress !== undefined) heldProgressRef.current = activeStepProgress
+
+  // Formatting re-segments the whole transcript, so the draft list is replaced
+  // wholesale rather than refined in place. Hold the draft for one blur-out,
+  // swap under cover of it, and blur back in on the final subtitles.
+  const { displayed: showDraftPanel, className: panelSwapClassName } =
+    useBlurSwap(isDraftMode)
+
+  // A run implies the user wants to watch it, so surface the panel if it is shut,
+  // but only when the viewport is wide enough to show both panels side-by-side.
+  React.useEffect(() => {
+    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+    if (
+      isDraftMode &&
+      !showSubtitleViewer &&
+      typeof window !== "undefined" &&
+      window.innerWidth >= minRequiredWidth
+    ) {
+      handleOpenSubtitleViewer()
+    }
+  }, [isDraftMode, showSubtitleViewer, handleOpenSubtitleViewer])
 
   const getMaxSubtitlePanelWidth = React.useCallback(() => {
     const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
@@ -296,10 +345,22 @@ function AppContentBody() {
                       onPointerLeave={() => setIsSubtitleViewerResizeHovered(false)}
                     />
                   )}
-                  <SubtitleViewerPanel
-                    isFullScreen={isMobile}
-                    onClose={handleCloseSubtitleViewer}
-                  />
+                  <div className={`h-full min-h-0 ${panelSwapClassName}`}>
+                    {showDraftPanel ? (
+                      <DraftTranscriptPanel
+                        segments={livePreviewSegments}
+                        isComplete={!isDraftMode}
+                        progress={heldProgressRef.current}
+                        isFullScreen={isMobile}
+                        onClose={handleCloseSubtitleViewer}
+                      />
+                    ) : (
+                      <SubtitleViewerPanel
+                        isFullScreen={isMobile}
+                        onClose={handleCloseSubtitleViewer}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>

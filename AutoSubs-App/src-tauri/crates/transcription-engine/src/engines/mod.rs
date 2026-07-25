@@ -8,7 +8,7 @@
 //! - **OmniAsr**: Facebook Omni-ASR 300M CTC via ORT (ONNX format)
 
 use crate::engine::EngineConfig;
-use crate::types::{LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions};
+use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use crate::manifest::Engine as ModelEngine;
 use eyre::{eyre, Result};
 use std::path::Path;
@@ -76,6 +76,9 @@ pub async fn run_engine(
             .await
         }
         ModelEngine::Whisper => {
+            if let Some(cb) = progress {
+                cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
+            }
             tracing::info!(
                 "Whisper: loading model context (model={}, use_gpu={:?})",
                 options.model,
@@ -95,6 +98,9 @@ pub async fn run_engine(
                 "Whisper: model context ready in {:.2}s",
                 ctx_start.elapsed().as_secs_f64()
             );
+            if let Some(cb) = progress {
+                cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
+            }
 
             crate::engines::whisper::run_transcription_pipeline(
                 ctx,

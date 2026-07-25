@@ -37,6 +37,11 @@ mod tests {
             remove_punctuation: None,
             censored_words: None,
             custom_prompt: None,
+            asr_model_path: None,
+            vad_model_path: None,
+            diarize_segment_path: None,
+            diarize_embedding_path: None,
+            aligner_model_dir: None,
         };
 
         let res = transcribe_audio(handle, options).await;
@@ -86,6 +91,11 @@ mod tests {
             remove_punctuation: None,
             censored_words: None,
             custom_prompt: None,
+            asr_model_path: None,
+            vad_model_path: None,
+            diarize_segment_path: None,
+            diarize_embedding_path: None,
+            aligner_model_dir: None,
         };
 
         let res = transcribe_audio(handle, options).await;

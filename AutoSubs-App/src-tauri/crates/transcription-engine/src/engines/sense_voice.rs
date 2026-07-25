@@ -2,7 +2,7 @@
 
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{
-    LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment, TranscribeOptions, WordTimestamp,
+    LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions, WordTimestamp,
 };
 use eyre::{eyre, Result};
 use std::path::Path;
@@ -125,7 +125,14 @@ pub async fn transcribe_sense_voice(
         eyre::bail!("Transcription cancelled");
     }
 
+    if let Some(cb) = progress_callback {
+        cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
     let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || SenseVoiceEngine::load(model_path))?;
+    if let Some(cb) = progress_callback {
+        cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
+    }
+
     let lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
     engine.params.language = Some(lang.clone());
     engine.detected_lang = if lang == "auto" { None } else { Some(lang) };

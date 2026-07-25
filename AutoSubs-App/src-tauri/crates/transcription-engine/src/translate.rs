@@ -1,6 +1,6 @@
 use reqwest;
 use serde_json::Value;
-use crate::types::{Segment, WordTimestamp, LabeledProgressFn, ProgressType};
+use crate::types::{Segment, WordTimestamp};
 use futures::stream::{self, StreamExt};
 use tokio::time::{sleep, Duration};
 
@@ -87,89 +87,52 @@ pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, 
     Err("translate_text failed after retries".into())
 }
 
-/// Translate a batch of segments in-place.
+/// Translate a collection of texts concurrently while preserving order.
 ///
-/// - Minimizes number of HTTP requests by batching multiple segments into a single request
-///   using a robust delimiter strategy.
-/// - Overwrites `segment.text` with the translated text.
-/// - Regenerates `segment.words` with evenly interpolated timestamps between `start` and `end`.
-pub async fn translate_segments(
-    segments: &mut [Segment],
+/// Empty strings are preserved as empty and not sent to the service.
+pub async fn translate_batch(
+    texts: Vec<String>,
     from: &str,
     to: &str,
-    progress: Option<&LabeledProgressFn>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Indices of non-empty segments to translate
-    let mut indices: Vec<usize> = Vec::new();
-    let mut inputs: Vec<String> = Vec::new();
-    for (i, seg) in segments.iter().enumerate() {
-        let t = seg.text.trim();
-        if !t.is_empty() {
-            indices.push(i);
-            inputs.push(t.to_string());
-        }
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    // Fast path: source and target are the same (and not auto) so no translation needed.
+    if from.eq_ignore_ascii_case(to) && !from.eq_ignore_ascii_case("auto") {
+        return Ok(texts);
     }
 
-    if inputs.is_empty() { return Ok(()); }
-
-    // Progress setup
-    let total = inputs.len();
-    let mut completed: usize = 0;
-    let start_label = "progressSteps.translate";
-    // Report start at 0%
-    if total > 0 {
-        if let Some(p) = progress { p(0, ProgressType::Translate, &start_label); }
+    let n = texts.len();
+    if n == 0 {
+        return Ok(Vec::new());
     }
 
-    // Translate concurrently with bounded concurrency; keep track of original order via enumerate index
     let concurrency: usize = 4;
-    let mut out: Vec<Option<String>> = vec![None; total];
-    let mut stream = stream::iter(inputs.into_iter().enumerate())
-        .map(|(k, txt)| async move { (k, translate_text(&txt, from, to).await) })
+    let mut out: Vec<Option<String>> = vec![None; n];
+
+    let mut stream = stream::iter(texts.into_iter().enumerate())
+        .map(|(i, txt)| async move {
+            if txt.trim().is_empty() {
+                (i, Ok(String::new()))
+            } else {
+                (i, translate_text(&txt, from, to).await)
+            }
+        })
         .buffer_unordered(concurrency);
 
-    while let Some((k, res)) = stream.next().await {
+    while let Some((i, res)) = stream.next().await {
         match res {
-            Ok(tr) => {
-                out[k] = Some(tr);
-            }
-            Err(e) => {
-                // Propagate the error rather than silently keeping the original text.
-                // Partial translation would leave some segments in the source language
-                // while the formatter uses the target-language profile, which corrupts
-                // spacing for any untranslated segments (e.g. Latin text with a CJK profile).
-                return Err(e);
-            }
-        }
-        completed += 1;
-        // Incremental progress
-        let percent = ((completed as f64) / (total as f64) * 100.0).round() as i32;
-        if let Some(p) = progress { p(percent.min(99), ProgressType::Translate, start_label); }
-    }
-
-    // Apply results back to segments
-    for (k, maybe_tr) in out.into_iter().enumerate() {
-        let seg_idx = indices[k];
-        if let Some(tr) = maybe_tr {
-            let seg = &mut segments[seg_idx];
-            seg.text = tr;
-            regenerate_words_uniform(seg);
+            Ok(tr) => out[i] = Some(tr),
+            Err(e) => return Err(e),
         }
     }
 
-    // Completion progress
-    if total > 0 {
-        if let Some(p) = progress { p(100, ProgressType::Translate, start_label); }
-    }
-
-    Ok(())
+    Ok(out.into_iter().map(|o| o.unwrap_or_default()).collect())
 }
 
 /// Regenerate `words` for a segment by splitting text on whitespace
 /// and interpolating timestamps uniformly between segment.start and segment.end.
 /// Words after the first are prefixed with a space so that the formatting layer
 /// can reconstruct the original spacing when rendering.
-fn regenerate_words_uniform(seg: &mut Segment) {
+pub fn regenerate_words_uniform(seg: &mut Segment) {
     // Split on Unicode whitespace; filter out empty tokens
     let tokens: Vec<&str> = seg
         .text
