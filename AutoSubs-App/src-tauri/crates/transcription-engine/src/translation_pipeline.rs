@@ -167,8 +167,11 @@ async fn flush(
             map.insert(job.index, seg.clone());
         }
 
-        // The translated text is intentionally not re-emitted for the live
-        // preview; the user sees it only in the final formatted output.
+        // Emit the translated segment so the live draft matures from the
+        // source text into the target language as each batch completes.
+        if let Some(cb) = &submitter.new_segment_callback {
+            cb(job.index, &seg, SegmentStage::Translate);
+        }
     }
 
     Ok(())

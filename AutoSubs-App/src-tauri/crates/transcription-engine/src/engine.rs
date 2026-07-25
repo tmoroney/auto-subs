@@ -713,6 +713,15 @@ impl Engine {
                     seg.text = translated_texts.get(i).cloned().unwrap_or_default();
                     crate::translate::regenerate_words_uniform(seg);
                 }
+
+                // Emit the translated segments so the live draft updates
+                // from the source language into the target language.
+                if let Some(ref cb) = cb.new_segment_callback {
+                    for (i, seg) in translated.iter().enumerate() {
+                        cb(i, seg, crate::types::SegmentStage::Translate);
+                    }
+                }
+
                 translated
             } else {
                 segments

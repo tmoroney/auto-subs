@@ -56,7 +56,7 @@ export interface Subtitle {
  * The same segment index can be emitted twice per run, so this distinguishes
  * new text from refined word timings.
  */
-export type SegmentStage = 'transcribe' | 'align';
+export type SegmentStage = 'transcribe' | 'translate' | 'align';
 
 /**
  * A segment in the live preview, before formatting has run. Unlike `Subtitle`

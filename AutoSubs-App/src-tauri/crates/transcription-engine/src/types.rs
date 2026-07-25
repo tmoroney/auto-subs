@@ -21,6 +21,7 @@ pub enum ProgressType {
 #[serde(rename_all = "lowercase")]
 pub enum SegmentStage {
     Transcribe,
+    Translate,
     Align,
 }
 
