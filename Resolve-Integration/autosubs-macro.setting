@@ -70,7 +70,7 @@
 					end
 				]],
 				ScaleWordTiming = [[
-					return function(comp, wordTiming)
+					return function(comp, wordTiming, force)
 						if not wordTiming or #wordTiming == 0 then
 							return wordTiming
 						end
@@ -80,7 +80,7 @@
 
 						local n = #wordTiming
 						local lastEndFrame = wordTiming[n].endFrame
-						if lastEndFrame <= maxEndFrame then
+						if lastEndFrame <= maxEndFrame and not force then
 							return wordTiming
 						end
 
@@ -99,7 +99,7 @@
 						-- Scale the remaining timing to fit the composition. Each word gets a
 						-- distinct, non-overlapping integer interval.
 						lastEndFrame = wordTiming[n].endFrame
-						local scale = maxEndFrame / lastEndFrame
+						local scale = math.min(maxEndFrame / lastEndFrame, 1)
 						local prevEnd = 0
 						for i, word in ipairs(wordTiming) do
 							local targetStart = math.floor(word.startFrame * scale)
@@ -677,6 +677,10 @@
 							charIndex = charIndex + length
 						end
 						
+						-- Normalize the marker-derived timing so duplicate or out-of-range marker
+						-- positions don't collapse highlight states onto the same frame.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming, true)
+
 						-- Apply word timing (update spline, store data, refresh highlight)
 						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
 
