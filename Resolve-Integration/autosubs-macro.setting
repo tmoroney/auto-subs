@@ -153,8 +153,11 @@
 						local animationMode = tool:GetInput("AnimationMode") or 2
 						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 
+						local prevReveal = -1
 						for _, word in ipairs(wordTiming) do
-							word.revealFrame = math.max(0, (word.startFrame or 0) - leadInFrames)
+							local target = math.max(0, (word.startFrame or 0) - leadInFrames)
+							word.revealFrame = math.max(target, prevReveal + 1)
+							prevReveal = word.revealFrame
 						end
 
 						return wordTiming
