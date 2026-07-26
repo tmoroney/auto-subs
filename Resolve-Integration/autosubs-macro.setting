@@ -142,6 +142,24 @@
 						return wordTiming
 					end
 				]],
+				ComputeRevealFrames = [[
+					return function(comp, tool, wordTiming)
+						if not wordTiming or #wordTiming == 0 then
+							return wordTiming
+						end
+
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local animationLength = tool:GetInput("AnimationLength") or 0
+						local animationMode = tool:GetInput("AnimationMode") or 2
+						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
+
+						for _, word in ipairs(wordTiming) do
+							word.revealFrame = math.max(0, (word.startFrame or 0) - leadInFrames)
+						end
+
+						return wordTiming
+					end
+				]],
 				Animations = {
 					-- Fade: Connect Opacity to stretcher with smooth ease-in/out
 					ApplyFade = [[
@@ -439,7 +457,8 @@
 					return function(comp, tool, wordTiming)
 						local keyframes = {}
 						for _, word in ipairs(wordTiming) do
-							keyframes[word.startIndex] = { word.startFrame, Flags = { StepIn = true } }
+							local revealFrame = word.revealFrame or word.startFrame
+							keyframes[word.startIndex] = { math.max(0, revealFrame), Flags = { StepIn = true } }
 						end
 						return keyframes
 					end
@@ -450,6 +469,10 @@
 							local _, count = s:gsub("[^\128-\191]", "")
 							return count
 						end
+
+						-- Derive the reveal frame (when the word begins appearing) from the
+						-- spoken start frame and the current animation lead-in.
+						wordTiming = loadstring(tool:GetData("ComputeRevealFrames"))()(comp, tool, wordTiming)
 
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 
@@ -591,6 +614,9 @@
 						-- Normalize timing to the composition end so every marker is visible and
 						-- editable without multiple words collapsing onto the same frame.
 						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming)
+						-- Compute reveal frames (spoken start minus animation lead-in) so markers
+						-- align with when the word actually becomes visible.
+						wordTiming = loadstring(tool:GetData("ComputeRevealFrames"))()(comp, tool, wordTiming)
 						tool:SetData("WordTiming", wordTiming)
 
 						-- Clear existing markers
@@ -600,8 +626,8 @@
 
 						local offset = comp:GetAttrs("COMPN_RenderStart")
 						for i, word in ipairs(wordTiming) do
-							if word.startFrame then
-								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
+							if word.revealFrame then
+								item:AddMarker(word.revealFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
 							end
 						end
 					end
@@ -620,6 +646,13 @@
 						local offset = comp:GetAttrs("COMPN_RenderStart")
 						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
 						local maxFrame = math.max(1, compositionEndFrame - 1)
+
+						-- Animation lead-in: the follower spline must start changing before the
+						-- spoken word starts, so the word is fully visible by the time it is spoken.
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local animationLength = tool:GetInput("AnimationLength") or 0
+						local animationMode = tool:GetInput("AnimationMode") or 2
+						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 
 						-- Collect marker positions from timeline
 						local markers = item:GetMarkers()
@@ -658,7 +691,9 @@
 							end
 
 							local length = utf8len(wordText)
-							local startFrame = markerFrames[i]
+							-- Markers denote when the word becomes visible; store the spoken start
+							-- time as the marker plus the animation lead-in.
+							local startFrame = math.min(markerFrames[i] + leadInFrames, maxFrame)
 							local endFrame
 						
 							if i < count then
@@ -840,7 +875,8 @@
 						local keyframes = {}
 						local keyframeIndex = 0
 						for i, word in ipairs(wordTiming) do
-							local rawStartFrame = word.startFrame + (i > 1 and transitionFrames or 0)
+							local revealFrame = word.revealFrame or word.startFrame
+							local rawStartFrame = revealFrame + (i > 1 and transitionFrames or 0)
 							local startFrame = math.min(rawStartFrame, maxFrame)
 							local styleArray = build_style_array(wordTiming, i, highlight, base, styleId)
 
@@ -848,10 +884,11 @@
 							keyframeIndex = keyframeIndex + 1
 
 							if i < #wordTiming then
-								-- Holds the style constant until just before the next word starts, so the
-								-- transition only occurs near the word boundary rather than fading from
-								-- the beginning of the current word all the way to the next
-								local holdFrame = math.min(word.endFrame - 1, maxFrame)
+								-- Holds the style constant until just before the next word is revealed,
+								-- so the transition only occurs near the word boundary rather than fading
+								-- from the beginning of the current word all the way to the next.
+								local nextReveal = wordTiming[i + 1].revealFrame or wordTiming[i + 1].startFrame
+								local holdFrame = math.min(math.min(word.endFrame - 1, nextReveal - 1), maxFrame)
 								if holdFrame >= startFrame then
 									keyframes[holdFrame] = make_keyframe(keyframeIndex, styleArray)
 									keyframeIndex = keyframeIndex + 1
