@@ -84,10 +84,21 @@
 							return wordTiming
 						end
 
-						-- Scale the timing to fit the composition. Each word gets a distinct,
-						-- non-overlapping integer interval where possible; when the clip is
-						-- too short, later words are clamped to the final frame instead of
-						-- being pushed past the composition end or producing inverted intervals.
+						-- More words than available frames: merge trailing words into the last
+						-- keepable interval so every remaining marker/highlight is on a
+						-- distinct, in-range frame.
+						if n > maxEndFrame then
+							local keep = math.max(1, maxEndFrame)
+							wordTiming[keep].endIndex = wordTiming[n].endIndex
+							for i = n, keep + 1, -1 do
+								table.remove(wordTiming, i)
+							end
+							n = keep
+						end
+
+						-- Scale the remaining timing to fit the composition. Each word gets a
+						-- distinct, non-overlapping integer interval.
+						lastEndFrame = wordTiming[n].endFrame
 						local scale = maxEndFrame / lastEndFrame
 						local prevEnd = 0
 						for i, word in ipairs(wordTiming) do
