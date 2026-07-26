@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
     Item,
@@ -6,7 +7,7 @@ import {
     ItemFooter,
     ItemTitle,
 } from "@/components/ui/item"
-import { Download, FileText, Plus, VolumeX } from "lucide-react"
+import { Check, Download, FileText, Loader2, Plus, VolumeX } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { ImportExportPopover } from "@/components/common/import-export-popover"
 import { TimelineInfo } from "@/types"
@@ -52,6 +53,22 @@ export function CompletionStepItem({
     const isAdobe = selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
     const hasSubtitles = subtitles.length > 0
 
+    const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false)
+    const [hasCompletedAdding, setHasCompletedAdding] = React.useState(false)
+
+    const handleAddToTimeline = async (
+        selectedOutputTrack: string,
+        selectedTemplate: string,
+        presetSettings?: Record<string, unknown>,
+    ) => {
+        setHasCompletedAdding(false)
+        setIsAddingToTimeline(true)
+        try {
+            await onAddToTimeline(selectedOutputTrack, selectedTemplate, presetSettings)
+        } finally {
+            setIsAddingToTimeline(false)
+        }
+    }
 
     return (
         <div className="flex w-full flex-col gap-2">
@@ -109,7 +126,8 @@ export function CompletionStepItem({
                                     templatesLoading={!isAdobe && resolveTemplatesLoading}
                                     templatesLoaded={isAdobe || resolveTemplatesLoaded}
                                     onLoadTemplates={isAdobe ? undefined : refreshResolveTemplates}
-                                    onAddToTimeline={onAddToTimeline}
+                                    onAddToTimeline={handleAddToTimeline}
+                                    onSuccess={() => setHasCompletedAdding(true)}
                                     selectedIntegration={selectedIntegration}
 
                                 >
@@ -117,9 +135,24 @@ export function CompletionStepItem({
                                         variant="outline"
                                         size="sm"
                                         className="flex items-center gap-2"
+                                        disabled={isAddingToTimeline}
                                     >
-                                        <Plus />
-                                        {t("completion.addToTimeline")}
+                                        {isAddingToTimeline ? (
+                                            <>
+                                                <Loader2 className="size-4 animate-spin" />
+                                                {t("addToTimeline.adding")}
+                                            </>
+                                        ) : hasCompletedAdding ? (
+                                            <>
+                                                <Check className="size-4" />
+                                                Added to Timeline
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Plus />
+                                                {t("completion.addToTimeline")}
+                                            </>
+                                        )}
                                     </Button>
                                 </AddToTimelineDialog>
                             )}

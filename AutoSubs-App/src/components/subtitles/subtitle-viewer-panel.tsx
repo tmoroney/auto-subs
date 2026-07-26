@@ -501,8 +501,10 @@ interface AddToTimelineFooterProps {
     selectedTemplate: string,
     presetSettings?: Record<string, unknown>,
   ) => Promise<void>;
+  onSuccess?: () => void;
   t: (key: string) => string;
   isAdding: boolean;
+  completed?: boolean;
   selectedIntegration?: "davinci" | "premiere" | "aftereffects";
 }
 
@@ -514,8 +516,10 @@ function AddToTimelineFooter({
   onLoadTemplates,
   layersIconRef,
   onAddToTimeline,
+  onSuccess,
   t,
   isAdding,
+  completed = false,
   selectedIntegration,
 }: AddToTimelineFooterProps) {
   return (
@@ -527,6 +531,7 @@ function AddToTimelineFooter({
         templatesLoaded={templatesLoaded}
         onLoadTemplates={onLoadTemplates}
         onAddToTimeline={onAddToTimeline}
+        onSuccess={onSuccess}
         isAdding={isAdding}
         selectedIntegration={selectedIntegration}
       >
@@ -547,6 +552,8 @@ function AddToTimelineFooter({
               <Loader2 className="size-4 animate-spin" />
               {t("addToTimeline.adding")}
             </>
+          ) : completed ? (
+            "Completed adding to timeline!"
           ) : (
             <>
               <PlusIcon ref={layersIconRef} className="size-4" />
@@ -573,6 +580,7 @@ export function SubtitleViewerPanel({
   const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
   const [showReformat, setShowReformat] = React.useState(false);
   const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false);
+  const [hasCompletedAdding, setHasCompletedAdding] = React.useState(false);
   const [isMacOs, setIsMacOs] = React.useState(true);
   const [transcriptDocuments, setTranscriptDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
   const [isLoadingTranscriptDocuments, setIsLoadingTranscriptDocuments] = React.useState(false);
@@ -639,6 +647,10 @@ export function SubtitleViewerPanel({
 
   const { t } = useTranslation();
   const hasSubtitles = subtitles.length > 0;
+
+  React.useEffect(() => {
+    setHasCompletedAdding(false);
+  }, [subtitles]);
 
   React.useEffect(() => {
     try {
@@ -853,8 +865,10 @@ export function SubtitleViewerPanel({
           onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
           layersIconRef={layersIconRef}
           onAddToTimeline={handleAddToTimeline}
+          onSuccess={() => setHasCompletedAdding(true)}
           t={t}
           isAdding={isAddingToTimeline}
+          completed={hasCompletedAdding}
           selectedIntegration={selectedIntegration as any}
         />
       )}

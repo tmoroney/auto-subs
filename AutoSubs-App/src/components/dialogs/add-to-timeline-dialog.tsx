@@ -55,6 +55,7 @@ interface AddToTimelineDialogProps {
         selectedTemplate: string,
         presetSettings?: Record<string, unknown>,
     ) => Promise<void>
+    onSuccess?: () => void
     isAdding?: boolean
     selectedIntegration?: "davinci" | "premiere" | "aftereffects"
 }
@@ -73,6 +74,7 @@ export function AddToTimelineDialog({
     templatesLoaded,
     onLoadTemplates,
     onAddToTimeline,
+    onSuccess,
     isAdding = false,
     selectedIntegration,
 }: AddToTimelineDialogProps) {
@@ -292,7 +294,7 @@ export function AddToTimelineDialog({
         // Run the operation in background
         onAddToTimeline(selection.outputTrack, templateName, presetSettings)
             .then(() => {
-                toast.success(t("addToTimeline.success"))
+                onSuccess?.()
             })
             .catch((err) => {
                 console.error("Failed to add to timeline:", err)
