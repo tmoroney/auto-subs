@@ -285,15 +285,36 @@ local function is_matching_title(title)
     return titleSet[title] == true
 end
 
+local function safe_list(list)
+    if type(list) == "table" then
+        return list
+    end
+    return {}
+end
+
+local function clip_name(clip)
+    if type(clip) ~= "table" or not clip.GetClipProperty then
+        return nil
+    end
+    local ok, props = pcall(clip.GetClipProperty, clip)
+    if not ok or type(props) ~= "table" then
+        return nil
+    end
+    return props["Clip Name"]
+end
+
 local function walk_media_pool(folder, onClip)
+    if type(folder) ~= "table" then
+        return
+    end
     -- Recurse into subfolders first
-    for _, subfolder in ipairs(folder:GetSubFolderList()) do
+    for _, subfolder in ipairs(safe_list(folder:GetSubFolderList())) do
         local stop = walk_media_pool(subfolder, onClip)
         if stop then return true end
     end
 
     -- Visit all clips in this folder
-    for _, clip in ipairs(folder:GetClipList()) do
+    for _, clip in ipairs(safe_list(folder:GetClipList())) do
         local stop = onClip(clip, folder)
         if stop then return true end
     end
@@ -318,7 +339,7 @@ local function resolve_template_name(templateName)
 end
 
 local function get_root_subfolder(rootFolder, folderName)
-    for _, subfolder in ipairs(rootFolder:GetSubFolderList()) do
+    for _, subfolder in ipairs(safe_list(rootFolder:GetSubFolderList())) do
         if subfolder:GetName() == folderName then
             return subfolder
         end
@@ -326,11 +347,26 @@ local function get_root_subfolder(rootFolder, folderName)
     return nil
 end
 
+local function is_animated_caption_match(clipName, templateName)
+    if clipName == templateName then
+        return true
+    end
+    -- Allow "AutoSubs Caption" to match any versioned template in the bin
+    -- (e.g. "AutoSubs Caption 2026-07-18" or an older build's version).
+    if templateName == ANIMATED_CAPTION or templateName == ANIMATED_CAPTION_DISPLAY_NAME then
+        if type(clipName) == "string" and clipName:sub(1, #ANIMATED_CAPTION_DISPLAY_NAME) == ANIMATED_CAPTION_DISPLAY_NAME then
+            return true
+        end
+    end
+    return false
+end
+
 local function find_template_item(folder, templateName)
     local template, sourceBin
     templateName = resolve_template_name(templateName)
     walk_media_pool(folder, function(clip, clipFolder)
-        if clip:GetClipProperty()["Clip Name"] == templateName then
+        local clipName = clip_name(clip)
+        if is_animated_caption_match(clipName, templateName) or clipName == templateName then
             template = clip
             sourceBin = clipFolder
             return true
@@ -342,9 +378,9 @@ end
 local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate)
     local obsoleteTemplates = {}
     local currentTemplateId = currentTemplate:GetUniqueId()
-    for _, clip in ipairs(autosubsFolder:GetClipList()) do
-        local clipName = clip:GetClipProperty()["Clip Name"]
-        if clip:GetUniqueId() ~= currentTemplateId and is_animated_caption(clipName) then
+    for _, clip in ipairs(safe_list(autosubsFolder:GetClipList())) do
+        local clipName = clip_name(clip)
+        if clip and clip:GetUniqueId() ~= currentTemplateId and is_animated_caption(clipName) then
             table.insert(obsoleteTemplates, clip)
         end
     end
@@ -410,7 +446,7 @@ local function ensure_default_template(rootFolder)
     end
 
     delete_obsolete_caption_templates(targetBin, template)
-    local remainingClips = sourceBin:GetClipList()
+    local remainingClips = safe_list(sourceBin:GetClipList())
     if #remainingClips > 0 then
         mediaPool:DeleteClips(remainingClips)
     end
@@ -418,19 +454,38 @@ local function ensure_default_template(rootFolder)
     return template
 end
 
+local function clip_type(clip)
+    if type(clip) ~= "table" or not clip.GetClipProperty then
+        return nil
+    end
+    local ok, props = pcall(clip.GetClipProperty, clip)
+    if not ok or type(props) ~= "table" then
+        return nil
+    end
+    return props["Type"]
+end
+
 -- Get a list of all Text+ templates in the media pool
 get_templates = function()
     local rootFolder = mediaPool:GetRootFolder()
     local t = {}
-    local hasDefault = ensure_default_template(rootFolder) ~= nil
+    local hasDefault = false
+    if type(rootFolder) == "table" then
+        hasDefault = ensure_default_template(rootFolder) ~= nil
+    end
 
     walk_media_pool(rootFolder, function(clip)
-        local props = clip:GetClipProperty()
-        local clipType = props["Type"]
+        local clipType = clip_type(clip)
+        local clipName = clip_name(clip)
+        if not clipName then
+            return
+        end
         if is_matching_title(clipType) then
-            local clipName = props["Clip Name"]
-            if not (hasDefault and clipName == ANIMATED_CAPTION_DISPLAY_NAME) then
-                local displayName = clipName == ANIMATED_CAPTION and ANIMATED_CAPTION_DISPLAY_NAME or clipName
+            -- Hide the raw versioned animated caption name behind the user-facing
+            -- display name, and treat any "AutoSubs Caption *" as the animated preset.
+            local isAnimated = is_animated_caption(clipName)
+            if not (hasDefault and isAnimated) then
+                local displayName = isAnimated and ANIMATED_CAPTION_DISPLAY_NAME or clipName
                 table.insert(t, { label = displayName, value = displayName })
             end
         end
@@ -1201,7 +1256,10 @@ local function sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, m
     return speakers
 end
 
-local function get_template(rootFolder, templateName)
+local function get_template(rootFolder, templateName, timeline)
+    if type(rootFolder) ~= "table" then
+        return nil, nil, "Resolve media pool is not available"
+    end
     if templateName == "" then
         templateName = ANIMATED_CAPTION
     end
@@ -1233,7 +1291,20 @@ local function get_template(rootFolder, templateName)
             "' in media pool (also tried 'Default Template' and '" .. ANIMATED_CAPTION .. "')"
     end
 
-    local template_frame_rate = templateItem:GetClipProperty()["FPS"]
+    local ok, template_frame_rate = pcall(function()
+        return templateItem:GetClipProperty()["FPS"]
+    end)
+    if (not ok or not template_frame_rate) and timeline then
+        local fpsOk, fps = pcall(function()
+            return timeline:GetSetting("timelineFrameRate")
+        end)
+        if fpsOk and fps then
+            template_frame_rate = fps
+        end
+    end
+    if not template_frame_rate then
+        template_frame_rate = 24
+    end
     -- Return resolvedName so callers detect the animated caption template even
     -- after a fallback (the isAnimated flag depends on it).
     return templateItem, template_frame_rate, nil, resolvedName
@@ -1556,7 +1627,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
     local rootFolder = mediaPool:GetRootFolder()
-    local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder, templateName)
+    local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder, templateName, timeline)
     if not templateItem then
         return make_error("Template not found", templateErr)
     end
@@ -1743,7 +1814,15 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
 
     local trackIndex = timeline:GetTrackCount("video")
-    local fps = templateItem:GetClipProperty()["FPS"]
+    local fpsOk, fps = pcall(function()
+        return templateItem:GetClipProperty()["FPS"]
+    end)
+    if not fpsOk or not fps then
+        local timelineFpsOk, timelineFps = pcall(function()
+            return timeline:GetSetting("timelineFrameRate")
+        end)
+        fps = (timelineFpsOk and timelineFps) and timelineFps or 24
+    end
 
     local appendOk, appended = pcall(function()
         return mediaPool:AppendToTimeline({ {
@@ -1856,7 +1935,14 @@ function StartPresetEdit(initialSettings)
     local ok, err = pcall(function()
         timeline:AddTrack("video")
         local trackIndex = timeline:GetTrackCount("video")
-        local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
+        local fpsVal = 24
+        local fpsOk, rawFps = pcall(function()
+            return templateItem:GetClipProperty()["FPS"]
+        end)
+        if fpsOk and rawFps then
+            fpsVal = tonumber(rawFps) or 24
+        end
+        local fps = fpsVal
         local position = timeline:GetStartFrame()
 
         local appended = mediaPool:AppendToTimeline({ {
