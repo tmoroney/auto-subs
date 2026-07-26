@@ -195,36 +195,212 @@ pub fn build_args(
     args
 }
 
+/// Expand the most common batch variables found in a `.bat`/`.cmd` shim so we
+/// can locate the underlying `ffmpeg.exe` without invoking `cmd /c`.
+#[cfg(target_os = "windows")]
+fn expand_batch_vars(shim_path: &std::path::Path, text: &str) -> String {
+    let shim_dir = shim_path
+        .parent()
+        .and_then(|p| p.to_str())
+        .unwrap_or("")
+        .trim_end_matches('\\');
+    let (shim_drive, shim_path_part) = if let Some(colon_pos) = shim_dir.find(':') {
+        (&shim_dir[..colon_pos + 1], &shim_dir[colon_pos + 1..])
+    } else {
+        ("", shim_dir)
+    };
+    let shim_dir_with_sep = if shim_dir.is_empty() {
+        "".to_string()
+    } else {
+        format!("{}\\", shim_dir)
+    };
+    let shim_path_part_with_sep = if shim_path_part.is_empty() {
+        "\\".to_string()
+    } else {
+        format!("{}\\", shim_path_part)
+    };
+
+    let mut expanded = text
+        .replace("%~dp0", &shim_dir_with_sep)
+        .replace("%~d0", shim_drive)
+        .replace("%~p0", &shim_path_part_with_sep);
+
+    // Replace %VAR% with environment variables; leave unknown ones untouched.
+    let mut result = String::with_capacity(expanded.len());
+    let mut chars = expanded.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            if chars.peek() == Some(&'%') {
+                chars.next(); // literal % from %%
+                result.push('%');
+                continue;
+            }
+            let mut var = String::new();
+            let mut closed = false;
+            for next in chars.by_ref() {
+                if next == '%' {
+                    closed = true;
+                    break;
+                }
+                var.push(next);
+            }
+            if closed {
+                if let Ok(val) = std::env::var(&var) {
+                    result.push_str(&val);
+                } else {
+                    result.push('%');
+                    result.push_str(&var);
+                    result.push('%');
+                }
+            } else {
+                result.push('%');
+                result.push_str(&var);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+/// On Windows a `.bat`/`.cmd` "ffmpeg" shim cannot be launched directly.
+/// Try to read the shim and extract the real `ffmpeg.exe` path it invokes.
+#[cfg(target_os = "windows")]
+fn resolve_batch_shim(shim_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let contents = std::fs::read_to_string(shim_path).ok()?;
+    let expanded = expand_batch_vars(shim_path, &contents);
+    let lower = expanded.to_lowercase();
+    let exe_marker = "ffmpeg.exe";
+    let mut search_start = 0usize;
+
+    while let Some(pos) = lower[search_start..].find(exe_marker) {
+        let abs_pos = search_start + pos;
+        let before = &expanded[..abs_pos + exe_marker.len()];
+        let candidate = if let Some(quote_pos) = before[..abs_pos].rfind('"') {
+            // Quoted path, keep the quote so trim_matches can remove it.
+            before[quote_pos..abs_pos + exe_marker.len()].trim().trim_matches('"').trim().to_string()
+        } else if let Some(ws_pos) = before[..abs_pos].rfind(|c: char| c.is_whitespace()) {
+            before[ws_pos + 1..abs_pos + exe_marker.len()].trim().to_string()
+        } else {
+            before[..abs_pos + exe_marker.len()].trim().to_string()
+        };
+
+        if candidate.is_empty() {
+            search_start = abs_pos + 1;
+            continue;
+        }
+
+        let candidate_path = std::path::PathBuf::from(&candidate);
+        let resolved = if candidate_path.is_absolute() {
+            candidate_path
+        } else {
+            shim_path
+                .parent()
+                .unwrap_or(shim_path)
+                .join(&candidate_path)
+        };
+
+        if resolved.exists() {
+            return Some(resolved);
+        }
+
+        search_start = abs_pos + 1;
+    }
+
+    None
+}
+
 pub async fn run_ffmpeg<R: Runtime>(
     app: &AppHandle<R>,
     args: &[String],
 ) -> Result<(bool, Option<i32>, Vec<u8>, Vec<u8>)> {
-    let sidecar_command = app.shell().sidecar("ffmpeg");
-    let result = match sidecar_command {
-        Ok(cmd) => match cmd.args(args.to_vec()).output().await {
+    // Try the bundled sidecar first. If it exists but is not a valid executable
+    // (e.g. Windows error 193, a shim file, or a quarantined binary), skip it.
+    if let Ok(cmd) = app.shell().sidecar("ffmpeg") {
+        match cmd.args(args.to_vec()).output().await {
             Ok(o) => {
                 let stderr_str = String::from_utf8_lossy(&o.stderr);
                 if !o.status.success() && stderr_str.contains("shim file") {
                     tracing::warn!("ffmpeg sidecar shim error, falling back to system ffmpeg");
-                    let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-                    (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
                 } else {
-                    (o.status.success(), o.status.code(), o.stdout, o.stderr)
+                    return Ok((o.status.success(), o.status.code(), o.stdout, o.stderr));
                 }
             }
-            Err(_) => {
-                tracing::warn!("ffmpeg sidecar unavailable, falling back to system ffmpeg");
-                let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-                (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
+            Err(e) => {
+                let os = e.raw_os_error();
+                tracing::warn!(
+                    "ffmpeg sidecar unavailable (kind={:?}, os={:?}), falling back to system ffmpeg",
+                    e.kind(),
+                    os
+                );
+                if os == Some(193) {
+                    tracing::warn!("ffmpeg sidecar is not a valid Win32 executable; skipping");
+                }
             }
-        },
-        Err(e) => {
-            tracing::warn!("ffmpeg sidecar init error: {}. Falling back to system ffmpeg", e);
-            let sys = TokioCommand::new("ffmpeg").args(args).output().await?;
-            (sys.status.success(), sys.status.code(), sys.stdout, sys.stderr)
         }
-    };
-    Ok(result)
+    } else {
+        tracing::warn!("ffmpeg sidecar not found; falling back to system ffmpeg");
+    }
+
+    // System ffmpeg fallback. Try to locate a working ffmpeg binary on PATH,
+    // resolving any `.bat`/`.cmd` shim to the underlying `.exe` so we never need
+    // to pass media paths through `cmd /c` shell parsing.
+    let mut errors: Vec<String> = Vec::new();
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(resolved) = which::which("ffmpeg") {
+            let ext = resolved
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            let exe_to_try: Option<std::path::PathBuf> = if ext == "bat" || ext == "cmd" {
+                resolve_batch_shim(&resolved).or_else(|| {
+                    let msg = format!(
+                        "{}: found {} shim on PATH but could not resolve underlying ffmpeg.exe",
+                        resolved.display(),
+                        ext
+                    );
+                    tracing::warn!("{}", msg);
+                    errors.push(msg);
+                    None
+                })
+            } else {
+                Some(resolved)
+            };
+
+            if let Some(exe) = exe_to_try {
+                let exe_str = exe.to_string_lossy().to_string();
+                match TokioCommand::new(&exe).args(args).output().await {
+                    Ok(out) => {
+                        return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+                    }
+                    Err(e) => {
+                        errors.push(format!("{}: {}", exe_str, e));
+                    }
+                }
+            }
+        } else {
+            errors.push("ffmpeg: not found on PATH".to_string());
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        match TokioCommand::new("ffmpeg").args(args).output().await {
+            Ok(out) => {
+                return Ok((out.status.success(), out.status.code(), out.stdout, out.stderr));
+            }
+            Err(e) => {
+                errors.push(format!("ffmpeg: {}", e));
+            }
+        }
+    }
+
+    bail!(
+        "No usable ffmpeg binary found. The bundled sidecar is unavailable and 'ffmpeg' is not on PATH. \
+         Errors: {}. Install ffmpeg (e.g. 'brew install ffmpeg', 'choco install ffmpeg', or 'apt install ffmpeg') and restart the app.",
+        errors.join("; ")
+    )
 }
 
 /// Converts audio/video files to mono 16kHz 16-bit PCM WAV using FFmpeg.
