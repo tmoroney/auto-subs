@@ -69,6 +69,100 @@
 						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
 					end
 				]],
+				ScaleWordTiming = [[
+					return function(comp, wordTiming, force)
+						if not wordTiming or #wordTiming == 0 then
+							return wordTiming
+						end
+
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxEndFrame = math.max(1, compositionEndFrame - 1)
+
+						local n = #wordTiming
+						local lastEndFrame = wordTiming[n].endFrame
+						if lastEndFrame <= maxEndFrame and not force then
+							return wordTiming
+						end
+
+						-- More words than available frames: merge trailing words into the last
+						-- keepable interval so every remaining marker/highlight is on a
+						-- distinct, in-range frame.
+						if n > maxEndFrame then
+							local keep = math.max(1, maxEndFrame)
+							wordTiming[keep].endIndex = wordTiming[n].endIndex
+							for i = n, keep + 1, -1 do
+								table.remove(wordTiming, i)
+							end
+							n = keep
+						end
+
+						-- Scale the remaining timing to fit the composition. Each word gets a
+						-- distinct, non-overlapping integer interval.
+						lastEndFrame = wordTiming[n].endFrame
+						local scale = math.min(maxEndFrame / lastEndFrame, 1)
+						local prevEnd = 0
+						for i, word in ipairs(wordTiming) do
+							local targetStart = math.floor(word.startFrame * scale)
+							local targetEnd = math.floor(word.endFrame * scale)
+							local startFrame = math.max(0, math.max(targetStart, prevEnd))
+							local endFrame = math.max(startFrame + 1, targetEnd)
+
+							if endFrame > maxEndFrame then
+								endFrame = maxEndFrame
+								if startFrame >= endFrame then
+									startFrame = math.max(0, endFrame - 1)
+								end
+							end
+
+							word.startFrame = startFrame
+							word.endFrame = endFrame
+							prevEnd = endFrame
+						end
+
+						-- Tighten the sequence: each word must start after the previous one,
+						-- end before the composition end, and stay in a valid interval.
+						for i = 2, n do
+							if wordTiming[i].startFrame <= wordTiming[i - 1].startFrame then
+								wordTiming[i].startFrame = wordTiming[i - 1].startFrame + 1
+							end
+							wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i].startFrame + 1)
+							if wordTiming[i].endFrame > maxEndFrame then
+								wordTiming[i].endFrame = maxEndFrame
+								if wordTiming[i].startFrame >= wordTiming[i].endFrame then
+									wordTiming[i].startFrame = math.max(0, wordTiming[i].endFrame - 1)
+								end
+							end
+							if wordTiming[i].endFrame < wordTiming[i - 1].endFrame then
+								wordTiming[i].endFrame = wordTiming[i - 1].endFrame
+							end
+						end
+
+						wordTiming[n].endFrame = maxEndFrame
+
+						return wordTiming
+					end
+				]],
+				ComputeRevealFrames = [[
+					return function(comp, tool, wordTiming)
+						if not wordTiming or #wordTiming == 0 then
+							return wordTiming
+						end
+
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local animationLength = tool:GetInput("AnimationLength") or 0
+						local animationMode = tool:GetInput("AnimationMode") or 2
+						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
+
+						local prevReveal = -1
+						for _, word in ipairs(wordTiming) do
+							local target = math.max(0, (word.startFrame or 0) - leadInFrames)
+							word.revealFrame = math.max(target, prevReveal + 1)
+							prevReveal = word.revealFrame
+						end
+
+						return wordTiming
+					end
+				]],
 				Animations = {
 					-- Fade: Connect Opacity to stretcher with smooth ease-in/out
 					ApplyFade = [[
@@ -328,6 +422,11 @@
 				]],
 				ApplyAnimationLevel = [[
 					return function(comp, tool)
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
 						-- Get current spline settings to be modified
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 						local settings = spline:SaveSettings()
@@ -343,9 +442,9 @@
 							-- Remove word timing keyframes
 							-- TODO: Investigate if easier to set Order type to Automatic
 							local text = tool:GetInput("Text")
-							if text and #text > 0 then
+							if text and utf8len(text) > 0 then
 								settings.Tools[spline.Name].KeyFrames = {
-									[#text] = { 0, Flags = { StepIn = true } },
+									[utf8len(text)] = { 0, Flags = { StepIn = true } },
 								}
 								spline:LoadSettings(settings)
 							end
@@ -359,19 +458,25 @@
 				]],
 				ConvertToDelayKeyframes = [[
 					return function(comp, tool, wordTiming)
-						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
-						local animationLength = tool:GetInput("AnimationLength") or 0
-						local animationMode = tool:GetInput("AnimationMode") or 2
-						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 						local keyframes = {}
 						for _, word in ipairs(wordTiming) do
-							keyframes[word.startIndex] = { math.max(0, word.startFrame - leadInFrames), Flags = { StepIn = true } }
+							local revealFrame = word.revealFrame or word.startFrame
+							keyframes[word.startIndex] = { math.max(0, revealFrame), Flags = { StepIn = true } }
 						end
 						return keyframes
 					end
 				]],
 				ApplyWordTiming = [[
 					return function(comp, tool, wordTiming)
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
+						-- Derive the reveal frame (when the word begins appearing) from the
+						-- spoken start frame and the current animation lead-in.
+						wordTiming = loadstring(tool:GetData("ComputeRevealFrames"))()(comp, tool, wordTiming)
+
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 
 						-- Get current spline data so we can modify the keyframes
@@ -380,10 +485,15 @@
 							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(comp, tool, wordTiming)
 							settings.Tools[spline.Name].KeyFrames = keyframes
 						else
+							-- Segment-level animation: reveal the entire text at once.
 							local text = tool:GetInput("Text")
-							settings.Tools[spline.Name].KeyFrames = {
-								[#text] = { 0, Flags = { StepIn = true } },
-							}
+							if text and utf8len(text) > 0 then
+								settings.Tools[spline.Name].KeyFrames = {
+									[utf8len(text)] = { 0, Flags = { StepIn = true } },
+								}
+							else
+								settings.Tools[spline.Name].KeyFrames = {}
+							end
 						end
 						-- Apply the modified settings back to the spline
 						spline:LoadSettings(settings)
@@ -450,9 +560,6 @@
 						local currentFrame = hasExistingWords and wordTiming[oldWordCount].endFrame or 0
 						local charIndex = 0
 
-						-- Used for clamping words to be within clip range
-						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
-
 						for i = 1, newWordCount do
 							local wordText = words[i]
 							-- Reconstruct spaces between words to match the combined subtitle text structure.
@@ -473,8 +580,8 @@
 								table.insert(wordTiming, {
 									["startIndex"] = charIndex,
 									["endIndex"] = charIndex + length - 1,
-									["startFrame"] = math.min(startFrame, compositionEndFrame - 1),
-									["endFrame"] = math.min(endFrame, compositionEndFrame - 1),
+									["startFrame"] = startFrame,
+									["endFrame"] = endFrame,
 								})
 								
 								currentFrame = endFrame
@@ -487,6 +594,10 @@
 							-- Advance the character playhead for the next word.
 							charIndex = charIndex + length
 						end
+
+						-- Scale the rebuilt timing to fit the composition end without collapsing
+						-- word boundaries, so markers and highlights remain in sync.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming)
 
 						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
 					end
@@ -503,6 +614,14 @@
 							return
 						end
 
+						-- Normalize timing to the composition end so every marker is visible and
+						-- editable without multiple words collapsing onto the same frame.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming)
+						-- Compute reveal frames (spoken start minus animation lead-in) so markers
+						-- align with when the word actually becomes visible.
+						wordTiming = loadstring(tool:GetData("ComputeRevealFrames"))()(comp, tool, wordTiming)
+						tool:SetData("WordTiming", wordTiming)
+
 						-- Clear existing markers
 						while item:DeleteMarkerByCustomData("AutoSubs") do end
 
@@ -510,8 +629,10 @@
 
 						local offset = comp:GetAttrs("COMPN_RenderStart")
 						for i, word in ipairs(wordTiming) do
-							if word.startFrame then
-								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
+							if word.revealFrame then
+								-- Store the spoken end frame in the marker note so marker edits can
+								-- preserve the original word interval across round-trips.
+								item:AddMarker(word.revealFrame + offset, "Blue", "Word " .. i, tostring(word.endFrame), 1, "AutoSubs")
 							end
 						end
 					end
@@ -528,18 +649,30 @@
 
 						-- Get comp offset
 						local offset = comp:GetAttrs("COMPN_RenderStart")
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxFrame = math.max(1, compositionEndFrame - 1)
 
-						-- Collect marker positions from timeline
+						-- Animation lead-in: the follower spline must start changing before the
+						-- spoken word starts, so the word is fully visible by the time it is spoken.
+						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
+						local animationLength = tool:GetInput("AnimationLength") or 0
+						local animationMode = tool:GetInput("AnimationMode") or 2
+						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
+
+						-- Collect marker positions from timeline; preserve the spoken end frame stored in the note.
 						local markers = item:GetMarkers()
 						local markerFrames = {}
 						for frame, markerInfo in pairs(markers) do
 							if markerInfo["customData"] == "AutoSubs" then
-								table.insert(markerFrames, frame - offset)
+								table.insert(markerFrames, {
+									frame = math.min(frame - offset, maxFrame),
+									storedEnd = tonumber(markerInfo["note"]) or nil,
+								})
 							end
 						end
 
 						-- Sort markers by frame number
-						table.sort(markerFrames)
+						table.sort(markerFrames, function(a, b) return a.frame < b.frame end)
 
 						-- Split text into words
 						local text = tool:GetInput("Text")
@@ -566,13 +699,20 @@
 							end
 
 							local length = utf8len(wordText)
-							local startFrame = markerFrames[i]
+							-- Markers denote when the word becomes visible; store the spoken start
+							-- time as the marker plus the animation lead-in. The note carries the
+							-- original spoken end frame so unchanged markers round-trip without
+							-- rewriting word intervals.
+							local marker = markerFrames[i]
+							local startFrame = math.min(marker.frame + leadInFrames, maxFrame)
 							local endFrame
 						
-							if i < count then
-								endFrame = markerFrames[i + 1]
+							if marker.storedEnd then
+								endFrame = marker.storedEnd
+							elseif i < count then
+								endFrame = markerFrames[i + 1].frame + leadInFrames
 							else
-								endFrame = startFrame
+								endFrame = maxFrame
 							end
 						
 							table.insert(wordTiming, {
@@ -585,6 +725,10 @@
 							charIndex = charIndex + length
 						end
 						
+						-- Normalize the marker-derived timing so duplicate or out-of-range marker
+						-- positions don't collapse highlight states onto the same frame.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming, true)
+
 						-- Apply word timing (update spline, store data, refresh highlight)
 						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
 
@@ -738,21 +882,30 @@
 						-- +1 required: styleId is 0-based but Lua arrays are 1-based
 						local styleKey = STYLES[styleId + 1]
 						local base = get_current_style(styleKey)
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxFrame = math.max(1, compositionEndFrame - 1)
+
 						local keyframes = {}
 						local keyframeIndex = 0
 						for i, word in ipairs(wordTiming) do
-							local startFrame = word.startFrame + (i > 1 and transitionFrames or 0)
+							local revealFrame = word.revealFrame or word.startFrame
+							local rawStartFrame = revealFrame + (i > 1 and transitionFrames or 0)
+							local startFrame = math.min(rawStartFrame, maxFrame)
 							local styleArray = build_style_array(wordTiming, i, highlight, base, styleId)
 
 							keyframes[startFrame] = make_keyframe(keyframeIndex, styleArray)
 							keyframeIndex = keyframeIndex + 1
 
 							if i < #wordTiming then
-								-- Holds the style constant until just before the next word starts, so the
-								-- transition only occurs near the word boundary rather than fading from
-								-- the beginning of the current word all the way to the next
-								keyframes[word.endFrame - 1] = make_keyframe(keyframeIndex, styleArray)
-								keyframeIndex = keyframeIndex + 1
+								-- Holds the style constant until just before the next word is revealed,
+								-- so the transition only occurs near the word boundary rather than fading
+								-- from the beginning of the current word all the way to the next.
+								local nextReveal = wordTiming[i + 1].revealFrame or wordTiming[i + 1].startFrame
+								local holdFrame = math.min(math.min(word.endFrame - 1, nextReveal - 1), maxFrame)
+								if holdFrame >= startFrame then
+									keyframes[holdFrame] = make_keyframe(keyframeIndex, styleArray)
+									keyframeIndex = keyframeIndex + 1
+								end
 							end
 						end
 
