@@ -78,63 +78,55 @@
 						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
 						local maxEndFrame = math.max(1, compositionEndFrame - 1)
 
-						local lastEndFrame = wordTiming[#wordTiming].endFrame
+						local n = #wordTiming
+						local lastEndFrame = wordTiming[n].endFrame
 						if lastEndFrame <= maxEndFrame then
 							return wordTiming
 						end
 
-						local n = #wordTiming
-
-						-- Impossible to fit all words with at least one frame each; spread them
-						-- evenly across the composition end as a last-resort fallback.
-						if maxEndFrame < n then
-							for i, word in ipairs(wordTiming) do
-								word.startFrame = math.floor((i - 1) * maxEndFrame / n)
-								word.endFrame = math.floor(i * maxEndFrame / n)
-								if word.endFrame <= word.startFrame then
-									word.endFrame = word.startFrame + 1
-								end
-							end
-							wordTiming[n].endFrame = maxEndFrame
-							for i = 2, n do
-								wordTiming[i].startFrame = math.max(wordTiming[i].startFrame, wordTiming[i - 1].startFrame + 1)
-								wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i - 1].endFrame, wordTiming[i].startFrame + 1)
-							end
-							wordTiming[n].endFrame = math.min(wordTiming[n].endFrame, maxEndFrame)
-							return wordTiming
-						end
-
-						-- Scale the timing to fit the composition while keeping each word's
-						-- start and end on distinct, monotonic frames. This prevents highlight
-						-- keyframes and timeline markers from collapsing onto the same frame.
+						-- Scale the timing to fit the composition. Each word gets a distinct,
+						-- non-overlapping integer interval where possible; when the clip is
+						-- too short, later words are clamped to the final frame instead of
+						-- being pushed past the composition end or producing inverted intervals.
 						local scale = maxEndFrame / lastEndFrame
 						local prevEnd = 0
 						for i, word in ipairs(wordTiming) do
 							local targetStart = math.floor(word.startFrame * scale)
 							local targetEnd = math.floor(word.endFrame * scale)
-							word.startFrame = math.max(0, math.max(targetStart, prevEnd))
-							word.endFrame = math.max(word.startFrame + 1, targetEnd)
-							prevEnd = word.endFrame
+							local startFrame = math.max(0, math.max(targetStart, prevEnd))
+							local endFrame = math.max(startFrame + 1, targetEnd)
+
+							if endFrame > maxEndFrame then
+								endFrame = maxEndFrame
+								if startFrame >= endFrame then
+									startFrame = math.max(0, endFrame - 1)
+								end
+							end
+
+							word.startFrame = startFrame
+							word.endFrame = endFrame
+							prevEnd = endFrame
 						end
 
-						-- If rounding pushed the sequence past the composition end, clamp from
-						-- the end backwards and then re-tighten the sequence.
-						if wordTiming[n].endFrame > maxEndFrame then
-							wordTiming[n].endFrame = maxEndFrame
-							if wordTiming[n].startFrame >= wordTiming[n].endFrame then
-								wordTiming[n].startFrame = math.max(0, wordTiming[n].endFrame - 1)
+						-- Tighten the sequence: each word must start after the previous one,
+						-- end before the composition end, and stay in a valid interval.
+						for i = 2, n do
+							if wordTiming[i].startFrame <= wordTiming[i - 1].startFrame then
+								wordTiming[i].startFrame = wordTiming[i - 1].startFrame + 1
 							end
-							for i = n - 1, 1, -1 do
-								wordTiming[i].endFrame = math.min(wordTiming[i].endFrame, wordTiming[i + 1].startFrame)
-								if wordTiming[i].endFrame <= wordTiming[i].startFrame then
+							wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i].startFrame + 1)
+							if wordTiming[i].endFrame > maxEndFrame then
+								wordTiming[i].endFrame = maxEndFrame
+								if wordTiming[i].startFrame >= wordTiming[i].endFrame then
 									wordTiming[i].startFrame = math.max(0, wordTiming[i].endFrame - 1)
 								end
 							end
-							for i = 2, n do
-								wordTiming[i].startFrame = math.max(wordTiming[i].startFrame, wordTiming[i - 1].startFrame + 1)
-								wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i].startFrame + 1, wordTiming[i - 1].endFrame)
+							if wordTiming[i].endFrame < wordTiming[i - 1].endFrame then
+								wordTiming[i].endFrame = wordTiming[i - 1].endFrame
 							end
 						end
+
+						wordTiming[n].endFrame = maxEndFrame
 
 						return wordTiming
 					end
