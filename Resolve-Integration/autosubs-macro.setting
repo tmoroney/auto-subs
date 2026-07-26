@@ -328,6 +328,11 @@
 				]],
 				ApplyAnimationLevel = [[
 					return function(comp, tool)
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
 						-- Get current spline settings to be modified
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 						local settings = spline:SaveSettings()
@@ -343,9 +348,9 @@
 							-- Remove word timing keyframes
 							-- TODO: Investigate if easier to set Order type to Automatic
 							local text = tool:GetInput("Text")
-							if text and #text > 0 then
+							if text and utf8len(text) > 0 then
 								settings.Tools[spline.Name].KeyFrames = {
-									[#text] = { 0, Flags = { StepIn = true } },
+									[utf8len(text)] = { 0, Flags = { StepIn = true } },
 								}
 								spline:LoadSettings(settings)
 							end
@@ -359,19 +364,20 @@
 				]],
 				ConvertToDelayKeyframes = [[
 					return function(comp, tool, wordTiming)
-						local fps = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 30
-						local animationLength = tool:GetInput("AnimationLength") or 0
-						local animationMode = tool:GetInput("AnimationMode") or 2
-						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 						local keyframes = {}
 						for _, word in ipairs(wordTiming) do
-							keyframes[word.startIndex] = { math.max(0, word.startFrame - leadInFrames), Flags = { StepIn = true } }
+							keyframes[word.startIndex] = { word.startFrame, Flags = { StepIn = true } }
 						end
 						return keyframes
 					end
 				]],
 				ApplyWordTiming = [[
 					return function(comp, tool, wordTiming)
+						local function utf8len(s)
+							local _, count = s:gsub("[^\128-\191]", "")
+							return count
+						end
+
 						local spline = comp:FindTool(tool:GetData("DelaySpline"))
 
 						-- Get current spline data so we can modify the keyframes
@@ -380,10 +386,15 @@
 							local keyframes = loadstring(tool:GetData("ConvertToDelayKeyframes"))()(comp, tool, wordTiming)
 							settings.Tools[spline.Name].KeyFrames = keyframes
 						else
+							-- Segment-level animation: reveal the entire text at once.
 							local text = tool:GetInput("Text")
-							settings.Tools[spline.Name].KeyFrames = {
-								[#text] = { 0, Flags = { StepIn = true } },
-							}
+							if text and utf8len(text) > 0 then
+								settings.Tools[spline.Name].KeyFrames = {
+									[utf8len(text)] = { 0, Flags = { StepIn = true } },
+								}
+							else
+								settings.Tools[spline.Name].KeyFrames = {}
+							end
 						end
 						-- Apply the modified settings back to the spline
 						spline:LoadSettings(settings)
@@ -473,8 +484,8 @@
 								table.insert(wordTiming, {
 									["startIndex"] = charIndex,
 									["endIndex"] = charIndex + length - 1,
-									["startFrame"] = math.min(startFrame, compositionEndFrame - 1),
-									["endFrame"] = math.min(endFrame, compositionEndFrame - 1),
+									["startFrame"] = startFrame,
+									["endFrame"] = endFrame,
 								})
 								
 								currentFrame = endFrame
@@ -486,6 +497,21 @@
 
 							-- Advance the character playhead for the next word.
 							charIndex = charIndex + length
+						end
+
+						-- If the rebuilt timing runs past the end of the composition, scale all word
+						-- timings so the last word still fits. This keeps markers, highlights and reveals
+						-- in sync when the caption is trimmed or extra words are added.
+						if #wordTiming > 0 then
+							local lastEndFrame = wordTiming[#wordTiming].endFrame
+							local maxEndFrame = math.max(1, compositionEndFrame - 1)
+							if lastEndFrame > maxEndFrame then
+								local scale = maxEndFrame / lastEndFrame
+								for _, word in ipairs(wordTiming) do
+									word.startFrame = math.floor(word.startFrame * scale)
+									word.endFrame = math.max(word.startFrame + 1, math.floor(word.endFrame * scale))
+								end
+							end
 						end
 
 						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
@@ -509,9 +535,12 @@
 						print("[AutoSubs] Generating markers for " .. #wordTiming .. " words.")
 
 						local offset = comp:GetAttrs("COMPN_RenderStart")
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxFrame = math.max(0, compositionEndFrame - 1)
 						for i, word in ipairs(wordTiming) do
 							if word.startFrame then
-								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
+								local markerFrame = math.min(word.startFrame, maxFrame) + offset
+								item:AddMarker(markerFrame, "Blue", "Word " .. i, "", 1, "AutoSubs")
 							end
 						end
 					end
@@ -528,13 +557,15 @@
 
 						-- Get comp offset
 						local offset = comp:GetAttrs("COMPN_RenderStart")
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxFrame = math.max(1, compositionEndFrame - 1)
 
 						-- Collect marker positions from timeline
 						local markers = item:GetMarkers()
 						local markerFrames = {}
 						for frame, markerInfo in pairs(markers) do
 							if markerInfo["customData"] == "AutoSubs" then
-								table.insert(markerFrames, frame - offset)
+								table.insert(markerFrames, math.min(frame - offset, maxFrame))
 							end
 						end
 
@@ -572,7 +603,7 @@
 							if i < count then
 								endFrame = markerFrames[i + 1]
 							else
-								endFrame = startFrame
+								endFrame = maxFrame
 							end
 						
 							table.insert(wordTiming, {
@@ -738,10 +769,14 @@
 						-- +1 required: styleId is 0-based but Lua arrays are 1-based
 						local styleKey = STYLES[styleId + 1]
 						local base = get_current_style(styleKey)
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxFrame = math.max(1, compositionEndFrame - 1)
+
 						local keyframes = {}
 						local keyframeIndex = 0
 						for i, word in ipairs(wordTiming) do
-							local startFrame = word.startFrame + (i > 1 and transitionFrames or 0)
+							local rawStartFrame = word.startFrame + (i > 1 and transitionFrames or 0)
+							local startFrame = math.min(rawStartFrame, maxFrame)
 							local styleArray = build_style_array(wordTiming, i, highlight, base, styleId)
 
 							keyframes[startFrame] = make_keyframe(keyframeIndex, styleArray)
@@ -751,8 +786,11 @@
 								-- Holds the style constant until just before the next word starts, so the
 								-- transition only occurs near the word boundary rather than fading from
 								-- the beginning of the current word all the way to the next
-								keyframes[word.endFrame - 1] = make_keyframe(keyframeIndex, styleArray)
-								keyframeIndex = keyframeIndex + 1
+								local holdFrame = math.min(word.endFrame - 1, maxFrame)
+								if holdFrame >= startFrame then
+									keyframes[holdFrame] = make_keyframe(keyframeIndex, styleArray)
+									keyframeIndex = keyframeIndex + 1
+								end
 							end
 						end
 
