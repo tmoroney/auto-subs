@@ -630,7 +630,9 @@
 						local offset = comp:GetAttrs("COMPN_RenderStart")
 						for i, word in ipairs(wordTiming) do
 							if word.revealFrame then
-								item:AddMarker(word.revealFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
+								-- Store the spoken end frame in the marker note so marker edits can
+								-- preserve the original word interval across round-trips.
+								item:AddMarker(word.revealFrame + offset, "Blue", "Word " .. i, tostring(word.endFrame), 1, "AutoSubs")
 							end
 						end
 					end
@@ -657,17 +659,20 @@
 						local animationMode = tool:GetInput("AnimationMode") or 2
 						local leadInFrames = animationMode == 1 and 0 or math.floor(animationLength * fps * 0.5 + 0.5)
 
-						-- Collect marker positions from timeline
+						-- Collect marker positions from timeline; preserve the spoken end frame stored in the note.
 						local markers = item:GetMarkers()
 						local markerFrames = {}
 						for frame, markerInfo in pairs(markers) do
 							if markerInfo["customData"] == "AutoSubs" then
-								table.insert(markerFrames, math.min(frame - offset, maxFrame))
+								table.insert(markerFrames, {
+									frame = math.min(frame - offset, maxFrame),
+									storedEnd = tonumber(markerInfo["note"]) or nil,
+								})
 							end
 						end
 
 						-- Sort markers by frame number
-						table.sort(markerFrames)
+						table.sort(markerFrames, function(a, b) return a.frame < b.frame end)
 
 						-- Split text into words
 						local text = tool:GetInput("Text")
@@ -695,12 +700,17 @@
 
 							local length = utf8len(wordText)
 							-- Markers denote when the word becomes visible; store the spoken start
-							-- time as the marker plus the animation lead-in.
-							local startFrame = math.min(markerFrames[i] + leadInFrames, maxFrame)
+							-- time as the marker plus the animation lead-in. The note carries the
+							-- original spoken end frame so unchanged markers round-trip without
+							-- rewriting word intervals.
+							local marker = markerFrames[i]
+							local startFrame = math.min(marker.frame + leadInFrames, maxFrame)
 							local endFrame
 						
-							if i < count then
-								endFrame = markerFrames[i + 1]
+							if marker.storedEnd then
+								endFrame = marker.storedEnd
+							elseif i < count then
+								endFrame = markerFrames[i + 1].frame + leadInFrames
 							else
 								endFrame = maxFrame
 							end
