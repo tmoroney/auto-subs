@@ -109,9 +109,11 @@ export function generateTranscriptTxt(
     .join("\n\n");
 }
 
+export type TranscriptSourceType = "standalone" | "premiere" | "aftereffects" | "resolve" | "unknown";
+
 export interface TranscriptMetadata {
   transcriptId: string;
-  sourceType: "standalone" | "resolve" | "unknown";
+  sourceType: TranscriptSourceType;
   displayName: string;
   createdAt: string;
   timelineId?: string;

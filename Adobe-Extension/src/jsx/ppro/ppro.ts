@@ -24,17 +24,52 @@ function AK_indexOf(arr: any[], item: any): number {
 // Premiere Pro's internal tick rate — all Time values from the API are in this unit.
 const TICKS_PER_SECOND = 254016000000;
 
-/** Extracts seconds from a Premiere Pro Time object (clip.start, clip.end, getInPointAsTime(), …). */
+/** Extracts seconds from a Premiere Pro Time object, a raw tick string, or a seconds string. */
 function getTimeSeconds(timeObj: any): number {
   if (!timeObj) return 0;
-  if (typeof timeObj.seconds !== "undefined") return parseFloat(timeObj.seconds) || 0;
-  return parseFloat(String(timeObj)) / TICKS_PER_SECOND || 0;
+
+  // Time objects expose ticks (string) and seconds (number/string). ticks is the
+  // authoritative raw value and avoids rounding/floating-point issues in .seconds.
+  if (timeObj.ticks !== undefined && timeObj.ticks !== null && timeObj.ticks !== "") {
+    var ticks = parseFloat(timeObj.ticks);
+    if (!isNaN(ticks)) return ticks / TICKS_PER_SECOND;
+  }
+
+  if (typeof timeObj.seconds !== "undefined" && timeObj.seconds !== null && timeObj.seconds !== "") {
+    var secs = parseFloat(timeObj.seconds);
+    if (!isNaN(secs)) return secs;
+  }
+
+  // Fallback: raw string/number. Premiere sometimes returns raw tick strings for
+  // legacy getters. A value whose magnitude exceeds 1e9 seconds (~31 years) is
+  // almost certainly a tick count and must be converted to seconds.
+  var raw = parseFloat(String(timeObj));
+  if (isNaN(raw)) return 0;
+  if (Math.abs(raw) > 1e9) return raw / TICKS_PER_SECOND;
+  return raw;
 }
 
-/** Returns the sequence In point in seconds, preferring the typed Time API over the legacy string one. */
+/** Returns the sequence's displayed starting time (zeroPoint) in seconds. */
+function getSequenceStartSeconds(sequence: any): number {
+  if (sequence.zeroPoint) {
+    var zeroTicks = parseFloat(sequence.zeroPoint);
+    if (!isNaN(zeroTicks)) return zeroTicks / TICKS_PER_SECOND;
+  }
+  return 0;
+}
+
+/** Returns the sequence In point in seconds relative to the first frame of the sequence. */
 function getSequenceInPointSeconds(sequence: any): number {
-  if (typeof sequence.getInPointAsTime === "function") return getTimeSeconds(sequence.getInPointAsTime());
-  return parseFloat(sequence.getInPoint()) || 0;
+  var inPointTime: any;
+  if (typeof sequence.getInPointAsTime === "function") {
+    inPointTime = sequence.getInPointAsTime();
+  } else {
+    inPointTime = sequence.getInPoint();
+  }
+  // getInPointAsTime/getInPoint return absolute timeline time (including the
+  // sequence zeroPoint), so subtract the start time to get the offset from the
+  // first exported sample back to the sequence start.
+  return getTimeSeconds(inPointTime) - getSequenceStartSeconds(sequence);
 }
 
 // ==============================================================================
@@ -113,7 +148,9 @@ export function getActiveSequenceInfo(): string {
 
     let durationSeconds = 0;
     try {
-      durationSeconds = getTimeSeconds(sequence.end);
+      // sequence.end is the absolute end time in ticks; duration is end minus start.
+      durationSeconds = getTimeSeconds(sequence.end) - getSequenceStartSeconds(sequence);
+      if (durationSeconds < 0) durationSeconds = 0;
     } catch (e) {
       log("Error reading sequence duration: " + e);
     }

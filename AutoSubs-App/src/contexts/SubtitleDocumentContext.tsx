@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { Subtitle, Speaker, Settings } from '@/types';
 import { useResolve } from '@/contexts/ResolveContext';
 import { useAdobe } from '@/contexts/AdobeContext';
-import { useIntegration } from '@/contexts/IntegrationContext';
+import { useIntegration, type Integration } from '@/contexts/IntegrationContext';
 import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
@@ -13,11 +13,29 @@ import {
   resolveSubtitleDocumentFilename,
   readSubtitleDocument,
   saveSubtitleDocument,
-  updateSubtitleDocument
+  updateSubtitleDocument,
+  type TranscriptSourceType,
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 import { loadFontForLanguage } from '@/lib/font-loader';
+
+function getTranscriptSourceType(
+  audioInputMode: "file" | "timeline",
+  integration: Integration | undefined
+): TranscriptSourceType {
+  if (audioInputMode === "file") return "standalone";
+  switch (integration) {
+    case "premiere":
+      return "premiere";
+    case "aftereffects":
+      return "aftereffects";
+    case "davinci":
+      return "resolve";
+    default:
+      return "unknown";
+  }
+}
 
 interface SubtitleDocumentContextType {
   subtitles: Subtitle[];
@@ -172,7 +190,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     // Rust backend during transcription, so no post-processing is needed here.
     const { segments, speakers } = await saveSubtitleDocument(transcript, filename, {
       metadata: {
-        sourceType: settings.audioInputMode === "file" ? 'standalone' : 'resolve',
+        sourceType: getTranscriptSourceType(settings.audioInputMode, selectedIntegration),
         displayName: settings.audioInputMode === "file"
           ? (fileInput?.split(/[/\\]/).pop()?.replace(/\.[^/.\\]+$/, '') || 'transcript')
           : timelineInfo?.name || 'transcript',
@@ -338,7 +356,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       // Users can apply formatting via the reformat flow after import.
       let { segments } = await saveSubtitleDocument(transcript, filename, {
         metadata: {
-          sourceType: settings.audioInputMode === "file" ? 'standalone' : 'resolve',
+          sourceType: getTranscriptSourceType(settings.audioInputMode, selectedIntegration),
           displayName: settings.audioInputMode === "file"
             ? (fileInput?.split(/[/\\]/).pop()?.replace(/\.[^/.\\]+$/, '') || 'transcript')
             : timelineInfo?.name || 'transcript',
