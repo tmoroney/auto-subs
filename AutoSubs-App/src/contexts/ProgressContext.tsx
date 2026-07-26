@@ -290,7 +290,11 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         if (!seen && index < lastSeenIndex) return null;
 
         const isCancelled = !runComplete && (state?.isCancelled ?? false);
-        const isCompleted = !isCancelled && (runComplete || (seen && (state?.progress ?? 0) >= 100));
+        // Export is a serial gate: once the pipeline has moved on to a later
+        // step we know the audio export is finished, even if the final 100%
+        // progress event was missed.
+        const isExportDone = id === 'prepare.export' && seen && lastSeenIndex > index;
+        const isCompleted = !isCancelled && (runComplete || (seen && (state?.progress ?? 0) >= 100) || isExportDone);
         const progress = isCompleted ? 100 : state?.progress ?? 0;
 
         return {
