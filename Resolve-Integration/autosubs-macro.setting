@@ -69,6 +69,76 @@
 						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
 					end
 				]],
+				ScaleWordTiming = [[
+					return function(comp, wordTiming)
+						if not wordTiming or #wordTiming == 0 then
+							return wordTiming
+						end
+
+						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
+						local maxEndFrame = math.max(1, compositionEndFrame - 1)
+
+						local lastEndFrame = wordTiming[#wordTiming].endFrame
+						if lastEndFrame <= maxEndFrame then
+							return wordTiming
+						end
+
+						local n = #wordTiming
+
+						-- Impossible to fit all words with at least one frame each; spread them
+						-- evenly across the composition end as a last-resort fallback.
+						if maxEndFrame < n then
+							for i, word in ipairs(wordTiming) do
+								word.startFrame = math.floor((i - 1) * maxEndFrame / n)
+								word.endFrame = math.floor(i * maxEndFrame / n)
+								if word.endFrame <= word.startFrame then
+									word.endFrame = word.startFrame + 1
+								end
+							end
+							wordTiming[n].endFrame = maxEndFrame
+							for i = 2, n do
+								wordTiming[i].startFrame = math.max(wordTiming[i].startFrame, wordTiming[i - 1].startFrame + 1)
+								wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i - 1].endFrame, wordTiming[i].startFrame + 1)
+							end
+							wordTiming[n].endFrame = math.min(wordTiming[n].endFrame, maxEndFrame)
+							return wordTiming
+						end
+
+						-- Scale the timing to fit the composition while keeping each word's
+						-- start and end on distinct, monotonic frames. This prevents highlight
+						-- keyframes and timeline markers from collapsing onto the same frame.
+						local scale = maxEndFrame / lastEndFrame
+						local prevEnd = 0
+						for i, word in ipairs(wordTiming) do
+							local targetStart = math.floor(word.startFrame * scale)
+							local targetEnd = math.floor(word.endFrame * scale)
+							word.startFrame = math.max(0, math.max(targetStart, prevEnd))
+							word.endFrame = math.max(word.startFrame + 1, targetEnd)
+							prevEnd = word.endFrame
+						end
+
+						-- If rounding pushed the sequence past the composition end, clamp from
+						-- the end backwards and then re-tighten the sequence.
+						if wordTiming[n].endFrame > maxEndFrame then
+							wordTiming[n].endFrame = maxEndFrame
+							if wordTiming[n].startFrame >= wordTiming[n].endFrame then
+								wordTiming[n].startFrame = math.max(0, wordTiming[n].endFrame - 1)
+							end
+							for i = n - 1, 1, -1 do
+								wordTiming[i].endFrame = math.min(wordTiming[i].endFrame, wordTiming[i + 1].startFrame)
+								if wordTiming[i].endFrame <= wordTiming[i].startFrame then
+									wordTiming[i].startFrame = math.max(0, wordTiming[i].endFrame - 1)
+								end
+							end
+							for i = 2, n do
+								wordTiming[i].startFrame = math.max(wordTiming[i].startFrame, wordTiming[i - 1].startFrame + 1)
+								wordTiming[i].endFrame = math.max(wordTiming[i].endFrame, wordTiming[i].startFrame + 1, wordTiming[i - 1].endFrame)
+							end
+						end
+
+						return wordTiming
+					end
+				]],
 				Animations = {
 					-- Fade: Connect Opacity to stretcher with smooth ease-in/out
 					ApplyFade = [[
@@ -461,9 +531,6 @@
 						local currentFrame = hasExistingWords and wordTiming[oldWordCount].endFrame or 0
 						local charIndex = 0
 
-						-- Used for clamping words to be within clip range
-						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
-
 						for i = 1, newWordCount do
 							local wordText = words[i]
 							-- Reconstruct spaces between words to match the combined subtitle text structure.
@@ -499,20 +566,9 @@
 							charIndex = charIndex + length
 						end
 
-						-- If the rebuilt timing runs past the end of the composition, scale all word
-						-- timings so the last word still fits. This keeps markers, highlights and reveals
-						-- in sync when the caption is trimmed or extra words are added.
-						if #wordTiming > 0 then
-							local lastEndFrame = wordTiming[#wordTiming].endFrame
-							local maxEndFrame = math.max(1, compositionEndFrame - 1)
-							if lastEndFrame > maxEndFrame then
-								local scale = maxEndFrame / lastEndFrame
-								for _, word in ipairs(wordTiming) do
-									word.startFrame = math.floor(word.startFrame * scale)
-									word.endFrame = math.max(word.startFrame + 1, math.floor(word.endFrame * scale))
-								end
-							end
-						end
+						-- Scale the rebuilt timing to fit the composition end without collapsing
+						-- word boundaries, so markers and highlights remain in sync.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming)
 
 						loadstring(tool:GetData("ApplyWordTiming"))()(comp, tool, wordTiming)
 					end
@@ -529,18 +585,20 @@
 							return
 						end
 
+						-- Normalize timing to the composition end so every marker is visible and
+						-- editable without multiple words collapsing onto the same frame.
+						wordTiming = loadstring(tool:GetData("ScaleWordTiming"))()(comp, wordTiming)
+						tool:SetData("WordTiming", wordTiming)
+
 						-- Clear existing markers
 						while item:DeleteMarkerByCustomData("AutoSubs") do end
 
 						print("[AutoSubs] Generating markers for " .. #wordTiming .. " words.")
 
 						local offset = comp:GetAttrs("COMPN_RenderStart")
-						local compositionEndFrame = comp:GetAttrs("COMPN_RenderEnd") or 1000
-						local maxFrame = math.max(0, compositionEndFrame - 1)
 						for i, word in ipairs(wordTiming) do
 							if word.startFrame then
-								local markerFrame = math.min(word.startFrame, maxFrame) + offset
-								item:AddMarker(markerFrame, "Blue", "Word " .. i, "", 1, "AutoSubs")
+								item:AddMarker(word.startFrame + offset, "Blue", "Word " .. i, "", 1, "AutoSubs")
 							end
 						end
 					end
