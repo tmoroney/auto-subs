@@ -9,10 +9,15 @@ pub fn get_segments(
 ) -> Result<Vec<SpeechSegment>> {
     // Convert entire integer buffer to f32 for VAD processing
     let mut samples = vec![0.0f32; int_samples.len()];
-    whisper_rs::convert_integer_to_float_audio(&int_samples, &mut samples)?;
+    whisper_rs::convert_integer_to_float_audio(int_samples, &mut samples)?;
 
-    let ctx = WhisperVadContextParams::new();
-    let mut vad = WhisperVadContext::new(vad_model, ctx)?;
+    // The VAD graph is tiny (a single-window Silero LSTM). Running it with
+    // multiple threads hits a known ggml threadpool race/deadlock on tiny
+    // graphs, especially on Windows, which can cause VAD to hang
+    // indefinitely on longer audio. Use a single thread to avoid the threadpool.
+    let mut ctx_params = WhisperVadContextParams::new();
+    ctx_params.set_n_threads(1);
+    let mut vad = WhisperVadContext::new(vad_model, ctx_params)?;
 
     let mut vadp = WhisperVadParams::new();
     // 500 ms aligns with common VAD defaults (Silero/pyannote). 200 ms was
