@@ -1,0 +1,632 @@
+{
+  "settings": {
+    "title": "Настройки",
+    "description": "Настройте параметры и предпочтения AutoSubs.",
+    "sections": {
+      "transcription": "Транскрибация",
+      "language": "Язык"
+    },
+    "gpu": {
+      "title": "Ускорение на GPU",
+      "description": "Использовать видеокарту для ускорения транскрибации"
+    },
+    "dtw": {
+      "title": "Динамическая трансформация времени",
+      "description": "Повысить точность таймингов отдельных слов"
+    },
+    "forcedAlignment": {
+      "title": "Принудительное выравнивание",
+      "description": "Дополнительный проход по таймингам (загрузка модели 317 МБ)",
+      "translationIncompatible": "Недоступно при переводе: переведённый текст не совпадает с произнесёнными словами",
+      "summary": "Принудительное выравнивание",
+      "downloadConfirmationTitle": "Загрузить модель принудительного выравнивания?",
+      "downloadConfirmationBody": "AutoSubs загрузит дополнительную модель принудительного выравнивания MMS ({{size}}). Атрибуция: {{attribution}}. Веса распространяются по лицензии CC BY-NC 4.0 для некоммерческого использования и не подпадают под лицензию MIT самого AutoSubs. Вы сами отвечаете за соблюдение условий лицензии модели.",
+      "downloadAndContinue": "Загрузить и продолжить"
+    },
+    "uiLanguage": {
+      "title": "Язык приложения",
+      "description": "Меняет язык меню и кнопок"
+    },
+    "restartOnboarding": "Пройти знакомство заново",
+    "openLogsFolder": "Открыть папку с логами",
+    "reset": {
+      "button": "Сбросить настройки",
+      "confirm": "Сбросить все настройки, включая параметры транскрибации? Это действие нельзя отменить.",
+      "confirmTitle": "Сброс настроек"
+    },
+    "support": {
+      "supportAutoSubs": "Поддержать AutoSubs",
+      "viewSource": "Внести вклад"
+    }
+  },
+  "common": {
+    "close": "Закрыть",
+    "cancel": "Отмена",
+    "back": "Назад",
+    "next": "Далее",
+    "apply": "Применить",
+    "add": "Добавить",
+    "done": "Готово",
+    "delete": "Удалить",
+    "generateSubtitles": "Создать",
+    "startNewTranscription": "Новая транскрибация",
+    "refresh": "Обновить подключение"
+  },
+  "update": {
+    "restartResolveServer": {
+      "title": "Обновление установлено",
+      "description": "AutoSubs перезапустился и отключился от Resolve. В DaVinci Resolve снова выберите Workspace → Scripts → AutoSubs, чтобы запустить обновлённый Lua-сервер."
+    }
+  },
+  "importExport": {
+    "button": "Экспорт / импорт",
+    "importTab": "Импорт",
+    "exportTab": "Экспорт",
+    "dropHere": "Перетащите файл сюда или нажмите для выбора",
+    "supportsSrt": "Поддерживаются файлы .srt",
+    "selected": "Выбрано:",
+    "importFile": "Импортировать файл",
+    "exportAsSrt": "Экспортировать в SRT",
+    "downloadFormat": "Скачать {{format}}",
+    "fileDialog": {
+      "subtitleFiles": "Файлы субтитров"
+    },
+    "exportFormats": {
+      "srt": {
+        "title": "Субтитры (.srt)",
+        "description": "Стандартный формат субтитров для YouTube, VLC и других приложений. Содержит тайминги."
+      },
+      "txt": {
+        "title": "Транскрипт (.txt)",
+        "description": "Экспорт в обычный текст для языковых моделей, с метками спикеров, если они есть."
+      }
+    }
+  },
+  "actionBar": {
+    "source": "Источник",
+    "options": "Параметры",
+    "subtitleStyle": "Стиль титров",
+    "subtitleStyleDescription": "Титры",
+    "model": "Модель",
+    "common": {
+      "auto": "Авто",
+      "off": "Выкл."
+    },
+    "mode": {
+      "fileInput": "Файл",
+      "timeline": "Таймлайн"
+    },
+    "format": {
+      "removePunctuationTitle": "Убрать пунктуацию",
+      "removePunctuationDescription": "Удаляет запятые, точки и другие знаки",
+      "textCaseTitle": "Регистр текста",
+      "textCaseDescription": "Изменить регистр субтитров",
+      "textCase": {
+        "normal": "Обычный",
+        "lowercase": "строчные",
+        "uppercase": "ПРОПИСНЫЕ",
+        "titleCase": "Каждое Слово С Заглавной"
+      },
+      "lineCountTitle": "Количество строк",
+      "lineCountDescription": "Максимум строк в субтитре",
+      "textDensityTitle": "Плотность текста",
+      "textDensityDescription": "Сколько текста на экране",
+      "textDensity": {
+        "single": "По одному слову",
+        "less": "Меньше",
+        "standard": "Стандартно",
+        "more": "Больше",
+        "custom": "Своя"
+      },
+      "customCharsTitle": "Максимум символов",
+      "customCharsDescription": "Символов в строке",
+      "customPromptButton": "Подсказка",
+      "customPromptTitle": "Термины и контекст",
+      "customPromptDescription": "Добавьте термины, имена или контекст, чтобы подсказать Whisper.",
+      "customPromptPlaceholder": "Например: OpenAI, DaVinci Resolve — урок по монтажу субтитров.",
+      "customPromptLanguageWarning": "Пишите на языке аудио: подсказка на другом языке может привести к ошибкам распознавания.",
+      "customPromptWhisperOnly": "Поддерживается только моделями Whisper."
+    },
+    "censor": {
+      "title": "Цензура слов",
+      "wordCount": "Слов: {{count}}",
+      "dialogTitle": "Цензура нежелательных слов",
+      "dialogDescription": "Включайте готовые списки или добавляйте свои слова для цензуры в субтитрах.",
+      "inputPlaceholder": "Добавить слово для цензуры",
+      "empty": "Список цензуры пока пуст.",
+      "lists": "Списки слов",
+      "listBuiltIn": "Встроенный",
+      "noLists": "Списки слов недоступны.",
+      "customSection": "Свои слова",
+      "customSectionDescription": "Введите отдельные слова для цензуры.",
+      "listWordCount": "Слов: {{count}}"
+    },
+    "speakers": {
+      "title": "Метки спикеров",
+      "description": "Определять разных говорящих",
+      "countTitle": "Количество спикеров",
+      "disabled": "Отключено"
+    },
+    "tracks": {
+      "exportRange": {
+        "entire": "Весь таймлайн",
+        "inout": "Точки In/Out"
+      },
+      "trackN": "Дорожка {{n}}",
+      "countSelected": "Выбрано дорожек: {{count}}",
+      "selectedLabel": "Выбрано: {{label}}",
+      "noneSelected": "Дорожки не выбраны",
+      "selectAll": "Выбрать все",
+      "clearAll": "Снять выделение",
+      "noneFound": "Аудиодорожки не найдены.",
+      "createTrack": "Таймлайн не найден"
+    },
+    "fileDrop": {
+      "aria": "Перетащите аудиофайл сюда или нажмите для выбора",
+      "prompt": "Перетащите файл или нажмите",
+      "supports": "Поддерживается большинство форматов"
+    },
+    "fileDialog": {
+      "mediaFiles": "Медиафайлы (поддерживаемые ffmpeg)"
+    },
+    "language": {
+      "title": "Язык",
+      "source": "Исходный",
+      "translate": "Перевести",
+      "searchSourcePlaceholder": "Поиск языков...",
+      "searchTargetPlaceholder": "Поиск языков перевода...",
+      "noLanguageFound": "Язык не найден.",
+      "nativeTranslation": "Встроенный перевод модели",
+      "googleTranslation": "Google Переводчик"
+    }
+  },
+  "speakerEditor": {
+    "title": "Редактирование спикеров",
+    "description": "Эти спикеры обнаружены в аудио.",
+    "name": "Имя спикера",
+    "namePlaceholder": "Введите имя спикера",
+    "outputTrack": "Дорожка вывода",
+    "style": "Индивидуальный стиль",
+    "colors": {
+      "none": "Нет",
+      "fill": "Заливка",
+      "outline": "Обводка"
+    }
+  },
+  "modelStatus": {
+    "cached": "Загружена",
+    "storage": "Место:",
+    "ram": "ОЗУ:",
+    "accuracy": "Точность",
+    "lightweight": "Лёгкая",
+    "downloadProgress": "{{progress}}%"
+  },
+  "models": {
+    "searchPlaceholder": "Поиск моделей...",
+    "noResults": "Модели не найдены.",
+    "filteredByLanguage": "Отфильтровано по языку",
+    "groups": {
+      "specialized": "Специализированные для выбранного языка",
+      "general": "Универсальные модели"
+    },
+    "filters": {
+      "weight": "Лёгкие",
+      "accuracy": "Точность",
+      "recommended": "Рекомендуемые",
+      "search": "Поиск",
+      "clear": "Сбросить фильтр"
+    },
+    "englishOnly": {
+      "title": "Модели только для английского",
+      "description": "Показывать специализированные английские модели с более высокой точностью."
+    },
+    "manage": {
+      "title": "Модели",
+      "description": "Удаляйте загруженные модели, чтобы освободить место на диске.",
+      "empty": "Загруженные модели не найдены",
+      "deleteModel": "Удалить модель",
+      "confirmTitle": "Вы уверены?",
+      "confirmBody": "Модель {{model}} будет удалена с устройства. Если она понадобится снова, её придётся загрузить заново."
+    },
+    "diarize": {
+      "label": "Модель диаризации спикеров",
+      "description": "Набор для распознавания говорящих",
+      "details": "Используется для диаризации и разметки спикеров.",
+      "badge": "Метки спикеров"
+    },
+    "aligner": {
+      "label": "Модель принудительного выравнивания MMS",
+      "description": "Набор для акустических таймингов слов",
+      "details": "Дополнительная модель, которая сопоставляет слова транскрипта с речью.",
+      "badge": "Тайминги слов",
+      "licenseRestriction": "CC BY-NC 4.0 · Некоммерческая",
+      "attribution": "Модель Meta MMS · конвертация MahmoudAshraf · ONNX-конвертация onnx-community",
+      "repository": "Репозиторий модели",
+      "licenseLink": "Лицензия модели"
+    },
+    "tiny": {
+      "label": "Whisper Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Самая быстрая транскрибация при минимуме памяти. Подходит для черновиков.",
+      "badge": "Многоязычная"
+    },
+    "tiny_en": {
+      "label": "Whisper Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Самая быстрая транскрибация английского при минимуме памяти. Подходит для черновиков.",
+      "badge": "Только английский"
+    },
+    "base": {
+      "label": "Whisper Base",
+      "description": "Быстрая",
+      "details": "Надёжная транскрибация с низким расходом памяти. Хороша для повседневных задач.",
+      "badge": "Многоязычная"
+    },
+    "base_en": {
+      "label": "Whisper Base",
+      "description": "Быстрая",
+      "details": "Надёжная транскрибация английского с низким расходом памяти. Хороша для повседневных задач.",
+      "badge": "Только английский"
+    },
+    "small": {
+      "label": "Whisper Small",
+      "description": "Сбалансированная",
+      "details": "Баланс скорости и точности при умеренном расходе памяти. Хорошо справляется с разными акцентами.",
+      "badge": "Многоязычная"
+    },
+    "small_en": {
+      "label": "Whisper Small",
+      "description": "Сбалансированная",
+      "details": "Баланс скорости и точности английского при умеренном расходе памяти. Справляется с разными акцентами.",
+      "badge": "Только английский"
+    },
+    "medium": {
+      "label": "Whisper Medium",
+      "description": "Точная",
+      "details": "Высокая точность при умеренной скорости и расходе памяти. Подходит для сложного аудио.",
+      "badge": "Многоязычная"
+    },
+    "medium_en": {
+      "label": "Whisper Medium",
+      "description": "Точная",
+      "details": "Высокая точность английского при умеренной скорости. Подходит для сложного аудио.",
+      "badge": "Только английский"
+    },
+    "large_v3_turbo": {
+      "label": "Whisper Large Turbo",
+      "description": "Быстрая и точная",
+      "details": "Отличная точность при большей скорости, чем у Large, и умеренном расходе памяти.",
+      "badge": "Многоязычная"
+    },
+    "large_v3": {
+      "label": "Whisper Large",
+      "description": "Наивысшая точность",
+      "details": "Наивысшая точность на сложном аудио, но медленнее и требует много памяти.",
+      "badge": "Многоязычная"
+    },
+    "parakeet": {
+      "label": "Parakeet",
+      "description": "Быстрая и точная",
+      "details": "Отличная точность и скорость для европейских языков.",
+      "badge": "Европейские"
+    },
+    "moonshine_tiny": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Очень быстрая локальная транскрибация английского при минимуме ресурсов. Подходит для работы в реальном времени.",
+      "badge": "Только английский"
+    },
+    "moonshine_tiny_ar": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация арабского при минимуме ресурсов.",
+      "badge": "Арабский"
+    },
+    "moonshine_tiny_zh": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация китайского при минимуме ресурсов.",
+      "badge": "Китайский"
+    },
+    "moonshine_tiny_ja": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация японского при минимуме ресурсов.",
+      "badge": "Японский"
+    },
+    "moonshine_tiny_ko": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация корейского при минимуме ресурсов.",
+      "badge": "Корейский"
+    },
+    "moonshine_tiny_uk": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация украинского при минимуме ресурсов.",
+      "badge": "Украинский"
+    },
+    "moonshine_tiny_vi": {
+      "label": "Moonshine Tiny",
+      "description": "Сверхбыстрая",
+      "details": "Быстрая локальная транскрибация вьетнамского при минимуме ресурсов.",
+      "badge": "Вьетнамский"
+    },
+    "moonshine_base": {
+      "label": "Moonshine Base",
+      "description": "Быстрая и точная",
+      "details": "Быстрая локальная транскрибация английского, точнее чем Moonshine Tiny.",
+      "badge": "Только английский"
+    },
+    "moonshine_base_es": {
+      "label": "Moonshine Base",
+      "description": "Быстрая и точная",
+      "details": "Быстрая локальная транскрибация испанского с хорошей точностью.",
+      "badge": "Испанский"
+    },
+    "sense_voice": {
+      "label": "SenseVoice",
+      "description": "Многоязычная (азиатские)",
+      "details": "Высокая точность для китайского, английского, японского, корейского и кантонского.",
+      "badge": "Многоязычная"
+    },
+    "canary": {
+      "label": "Canary",
+      "description": "Многоязычная (европейские)",
+      "details": "Высокая точность для 25 европейских языков (NVIDIA NeMo Canary).",
+      "badge": "Европейские"
+    },
+    "cohere": {
+      "label": "Cohere",
+      "description": "Многоязычная (большая)",
+      "details": "Большая многоязычная модель транскрибации от Cohere.",
+      "badge": "Многоязычная"
+    },
+    "omni_asr_1b_ctc": {
+      "label": "Omni-ASR",
+      "description": "Локальная многоязычная",
+      "details": "Более крупная и точная многоязычная модель для 1600+ языков. Выдаёт текст строчными буквами, без пунктуации и заглавных.",
+      "badge": "Многоязычная"
+    }
+  },
+  "completion": {
+    "processingComplete": "Обработка завершена",
+    "subtitlesReady": "Субтитры готовы к использованию!",
+    "noSpeechDetected": "Речь не обнаружена. Возможно, аудиофайл беззвучный или не содержит распознаваемой речи.",
+    "viewSubtitles": "Посмотреть субтитры",
+    "exportToFile": "Экспорт в файл",
+    "addToTimeline": "Добавить на таймлайн"
+  },
+  "progressSteps": {
+    "processing": "Обработка",
+    "stepCounter": "Шаг {{current}} из {{total}}",
+    "complete": "Готово",
+    "transcriptReady": "Транскрипт готов",
+    "prepare": "Подготовка аудио и моделей",
+    "prepare.export": "Экспорт аудио с таймлайна",
+    "prepare.normalize": "Нормализация аудио",
+    "prepare.download": "Загрузка моделей",
+    "prepare.asr": "Загрузка модели распознавания речи",
+    "prepare.vad": "Загрузка детектора речи",
+    "prepare.diarize": "Загрузка модели спикеров",
+    "prepare.aligner": "Загрузка модели выравнивания",
+    "analyze": "Анализ аудио",
+    "analyze.vad": "Поиск фрагментов с речью",
+    "analyze.diarize": "Определение спикеров",
+    "analyze.loading": "Загрузка модели в память",
+    "speakersFound_one": "{{count}} спикер",
+    "speakersFound_few": "{{count}} спикера",
+    "speakersFound_many": "{{count}} спикеров",
+    "speakersFound_other": "{{count}} спикеров",
+    "transcribe": "Речь в текст",
+    "refine": "Выравнивание таймингов слов",
+    "finish": "Форматирование субтитров"
+  },
+  "subtitles": {
+    "title": "Субтитры",
+    "draftTitle": "Черновой транскрипт",
+    "draftDescription": "Уточняется по мере завершения шагов",
+    "draftEmpty": "Прослушивание речи…",
+    "speakerLabel": "Спикер {{number}}",
+    "speakers": "Спикеры",
+    "reformat": "Переформатировать",
+    "waitingForSubtitles": "Ожидание субтитров...",
+    "searchPlaceholder": "Поиск по субтитрам...",
+    "searchAria": "Поиск по субтитрам",
+    "search": {
+      "caseMatch": "Учитывать регистр",
+      "wholeWord": "Слово целиком",
+      "replaceAll": "Заменить все",
+      "replaceWithPlaceholder": "Заменить на..."
+    },
+    "addToTimeline": "Добавить на таймлайн",
+    "loading": "Загрузка субтитров...",
+    "jumpToTimeline": "Перейти к месту на таймлайне",
+    "unknownSpeaker": "Неизвестный спикер",
+    "previousSubtitles": "История субтитров",
+    "empty": {
+      "noSubtitlesAvailable": "Здесь появятся субтитры после завершения транскрибации"
+    }
+  },
+  "gettingStarted": {
+    "title": "Добро пожаловать в AutoSubs",
+    "description": "Выберите язык, на котором вы говорите. Он будет использован для интерфейса (если доступен) и транскрибации.",
+    "selectLanguage": "Выберите язык",
+    "searchLanguage": "Поиск языков...",
+    "noLanguageFound": "Язык не найден.",
+    "resolveNote": {
+      "openResolve": "Откройте DaVinci Resolve и перейдите в:",
+      "workspace": "Workspace (верхнее меню)",
+      "scripts": "Scripts",
+      "autosubs": "AutoSubs"
+    },
+    "continue": "Начать"
+  },
+  "tour": {
+    "connection": {
+      "title": "Состояние подключения",
+      "description": "Показывает, подключён ли AutoSubs к DaVinci Resolve. Зелёный означает, что связь есть и таймлайн доступен."
+    },
+    "modeSwitcher": {
+      "title": "Режим ввода",
+      "description": "Переключайтесь между транскрибацией файла напрямую и извлечением аудио с таймлайна DaVinci Resolve."
+    },
+    "modelPicker": {
+      "title": "Модель ИИ",
+      "description": "Выберите модель распознавания речи. Модель с поддержкой вашего языка выбрана автоматически. Разные модели по-разному сочетают скорость и точность."
+    },
+    "audioInput": {
+      "title": "Источник аудио",
+      "description": "Выберите аудиодорожки на таймлайне Resolve или перетащите сюда медиафайл, чтобы транскрибировать его напрямую."
+    },
+    "controls": {
+      "title": "Параметры транскрибации",
+      "description": "Настройте язык, определение спикеров и форматирование текста, затем нажмите «Создать», чтобы начать."
+    },
+    "history": {
+      "title": "История субтитров",
+      "description": "Здесь можно открыть и найти сохранённые документы с субтитрами."
+    },
+    "skip": "Пропустить",
+    "next": "Далее",
+    "finish": "Начать"
+  },
+  "titlebar": {
+    "subtitleHistory": {
+      "title": "История субтитров",
+      "searchPlaceholder": "Поиск по истории субтитров...",
+      "loading": "Загрузка...",
+      "empty": "Документы с субтитрами не найдены.",
+      "no_results": "Ничего не найдено",
+      "delete_title": "Удалить документ с субтитрами?",
+      "delete_description": "Документ будет безвозвратно удалён из истории. Это действие нельзя отменить."
+    },
+    "status": {
+      "disconnected": "Нет подключения"
+    },
+    "update": {
+      "downloading": "Загрузка обновления",
+      "installing": "Установка обновления",
+      "restarting": "Перезапуск AutoSubs",
+      "installUpdateNow": "Установить и перезапустить",
+      "newVersionAvailable": "Доступно обновление"
+    },
+    "resolve": {
+      "productName": "DaVinci Resolve",
+      "description": "Интеграция через Workspace Scripts",
+      "tooltip": {
+        "connected": "Подключено",
+        "canGetAudio": "Можно добавлять субтитры.",
+        "cantConnect": "Не удаётся подключиться к таймлайну",
+        "openResolve": "Откройте DaVinci Resolve и перейдите в Workspace → Scripts → AutoSubs"
+      }
+    },
+    "premiere": {
+      "productName": "Premiere Pro",
+      "description": "Интеграция через расширение Adobe",
+      "tooltip": {
+        "connected": "Подключено",
+        "canGetAudio": "Можно добавлять субтитры.",
+        "disconnected": "Расширение отключено",
+        "openPremiere": "Откройте Premiere Pro для автоматического подключения."
+      }
+    },
+    "aftereffects": {
+      "productName": "After Effects",
+      "description": "Интеграция через расширение Adobe",
+      "tooltip": {
+        "connected": "Подключено",
+        "canGetAudio": "Можно добавлять субтитры.",
+        "disconnected": "Расширение отключено",
+        "openAfterEffects": "Откройте After Effects для автоматического подключения."
+      }
+    }
+  },
+  "theme": {
+    "toggle": "Переключить тему"
+  },
+  "addToTimeline": {
+    "steps": {
+      "outputTrack": {
+        "title": "Дорожка"
+      },
+      "template": {
+        "title": "Стиль",
+        "connectTo": "Подключитесь к {{integration}}, чтобы настраивать шаблоны"
+      },
+      "speakers": {
+        "title": "Спикеры"
+      }
+    },
+    "title": "Добавить на таймлайн",
+    "ready": {
+      "title": "Субтитры готовы",
+      "description": "Субтитры созданы и готовы к добавлению на таймлайн."
+    },
+    "adding": "Добавление...",
+    "success": "Добавлено на таймлайн",
+    "mode": {
+      "regular": "Обычные",
+      "animated": "Анимированные"
+    },
+    "conflict": {
+      "hasConflicts": "На этой дорожке есть конфликтующие клипы. Субтитры могут накладываться на существующее содержимое."
+    },
+    "preset": {
+      "new": "Новый пресет",
+      "builtIn": "Встроенный",
+      "custom": "Свой",
+      "preview": "Просмотр в Resolve",
+      "duplicate": "Дублировать",
+      "delete": "Удалить",
+      "export": "Экспорт JSON",
+      "copyJson": "Копировать JSON",
+      "copied": "Скопировано в буфер обмена",
+      "import": "Импорт файла",
+      "paste": "Вставить JSON",
+      "phase": {
+        "launchingTitle": "Открываем титр в Resolve…",
+        "launchingHint": "Мы добавим тестовый титр на временную дорожку.",
+        "editingTitle": "Перейдите в DaVinci Resolve",
+        "editingBody": "Титр добавлен на новую дорожку и открыт на странице Fusion. Настройте его в инспекторе и вернитесь сюда.",
+        "capturingTitle": "Считываем настройки из Resolve…",
+        "nameTitle": "Назовите пресет",
+        "nameHint": "Дайте короткое и понятное название."
+      },
+      "action": {
+        "cancel": "Отмена",
+        "save": "Сохранить пресет",
+        "back": "Назад",
+        "captureSettings": "Считать настройки"
+      },
+      "nameLabel": "Название пресета",
+      "namePlaceholder": "например: Жирный жёлтый, Стиль TikTok",
+      "descriptionLabel": "Описание",
+      "descriptionPlaceholder": "Необязательная заметка об этом пресете",
+      "confirmDeleteTitle": "Удалить пресет?",
+      "confirmDelete": "Пресет будет удалён из вашей библиотеки. Встроенные пресеты не затрагиваются.",
+      "confirmDeleteConfirm": "Удалить",
+      "importTitle": "Вставьте JSON пресета",
+      "importPlaceholder": "Вставьте сюда содержимое файла пресета…",
+      "importSubmit": "Импортировать пресет",
+      "errors": {
+        "invalidJson": "Это не похоже на корректный файл пресета.",
+        "captureFailed": "Не удалось считать настройки титра из Resolve.",
+        "nameRequired": "Введите название."
+      }
+    }
+  },
+  "replaceStrings": {
+    "title": "Поиск и замена слов",
+    "find": "Найти",
+    "findPlaceholder": "Что искать...",
+    "matchCase": "Учитывать регистр",
+    "replaceWith": "Заменить на",
+    "replacePlaceholder": "Текст замены...",
+    "occurrencesFound": "Найдено совпадений: {{count}}",
+    "occurrencePosition": "{{current}} из {{total}}",
+    "noOccurrencesFound": "Совпадений не найдено",
+    "replaceCurrent": "Заменить текущее",
+    "replaceAll": "Заменить все ({{count}})"
+  }
+}
