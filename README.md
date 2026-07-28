@@ -159,6 +159,14 @@ Cohere Transcribe (int4 ONNX). The highest-accuracy option for a focused set of 
 |---|---|---|---|---|
 | cohere | 2 GB | 4 GB | Arabic, German, Greek, English, Spanish, French, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Vietnamese, Chinese | ★★★★ |
 
+### GigaAM
+
+Sber's GigaAM v3 (int8 ONNX). A Conformer model trained on 700k hours of Russian speech — the most accurate option for Russian audio. The end-to-end CTC variant outputs punctuated, normalized text.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| gigaam-v3 | 225 MB | 2 GB | Russian, English | ★★★★ |
+
 ### Diarization & VAD
 
 In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription).

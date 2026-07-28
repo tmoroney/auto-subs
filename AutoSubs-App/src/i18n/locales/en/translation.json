@@ -382,6 +382,12 @@
       "details": "Large multilingual transcription model from Cohere.",
       "badge": "Multilingual"
     },
+    "gigaam_v3": {
+      "label": "GigaAM v3",
+      "description": "Best for Russian",
+      "details": "Trained on 700k hours of Russian speech, with punctuation and text normalization. The most accurate option for Russian.",
+      "badge": "Russian"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

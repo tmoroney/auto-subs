@@ -256,6 +256,21 @@
       "ui": { "size": "2GB", "ram": "4GB", "image": "moose.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
     },
     {
+      "id": "gigaam-v3",
+      "engine": "gigaam",
+      "quantization": "int8",
+      "_files_comment": "The GigaAM loader resolves model[.int8].onnx and vocab.txt inside the model dir, so the repo files are renamed on download. The e2e CTC variant is used because it emits punctuated, normalized text.",
+      "source": {
+        "type": "hf",
+        "repo": "istupakov/gigaam-v3-onnx",
+        "files": [
+          { "path": "v3_e2e_ctc.int8.onnx", "dest": "model.int8.onnx" },
+          { "path": "v3_e2e_ctc_vocab.txt", "dest": "vocab.txt" }
+        ]
+      },
+      "ui": { "size": "225MB", "ram": "2GB", "image": "owl.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] } }
+    },
+    {
       "id": "omni-asr-1b-ctc",
       "engine": "omni_asr",
       "quantization": "fp32",
