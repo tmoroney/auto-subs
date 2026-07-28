@@ -65,7 +65,7 @@ fn fixed_chunk_fallback(audio_samples: &[i16], chunk_seconds: f64) -> Vec<Speech
         let split = if target == total {
             total
         } else {
-            find_low_energy_split(audio_samples, start, target, search_window)
+            crate::utils::find_low_energy_split(audio_samples, start, target, search_window)
         };
 
         segments.push(SpeechSegment {
@@ -81,55 +81,6 @@ fn fixed_chunk_fallback(audio_samples: &[i16], chunk_seconds: f64) -> Vec<Speech
         start = split;
     }
     segments
-}
-
-/// Find a split point near `target` that falls inside a low-energy window.
-///
-/// Searches `[target.saturating_sub(search_window), target]` in 10 ms frames
-/// and returns the frame start with the lowest RMS energy. If the lowest
-/// energy is not significantly below the local average (no real silence found),
-/// it falls back to `target` to avoid arbitrarily long chunks.
-fn find_low_energy_split(
-    samples: &[i16],
-    start: usize,
-    target: usize,
-    search_window: usize,
-) -> usize {
-    const FRAME_SAMPLES: usize = 160; // 10 ms at 16 kHz
-
-    let end = target.min(samples.len());
-    let search_start = target.saturating_sub(search_window).max(start);
-    if search_start >= end || end.saturating_sub(search_start) < FRAME_SAMPLES {
-        return end;
-    }
-
-    let mut best_idx = end;
-    let mut best_energy = u64::MAX;
-    let mut total_energy: u64 = 0;
-    let mut frame_count = 0usize;
-
-    let mut frame = search_start;
-    while frame + FRAME_SAMPLES <= end {
-        let energy = samples[frame..frame + FRAME_SAMPLES]
-            .iter()
-            .map(|&s| (s as i32).saturating_mul(s as i32) as u64)
-            .sum();
-        total_energy += energy;
-        frame_count += 1;
-        if energy < best_energy {
-            best_energy = energy;
-            best_idx = frame;
-        }
-        frame += FRAME_SAMPLES;
-    }
-
-    // Accept the lowest-energy frame only if it is roughly an order of magnitude
-    // quieter than the average frame in the search window.
-    if frame_count > 0 && best_energy.saturating_mul(frame_count as u64).saturating_mul(10) < total_energy {
-        best_idx
-    } else {
-        end
-    }
 }
 
 async fn prepare_speech_segments(
