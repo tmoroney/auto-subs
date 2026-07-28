@@ -934,6 +934,7 @@ impl ModelManager {
                     // instead of burning the remaining attempts (each of which would
                     // just re-run cleanup and bail again at the cancellation guard).
                     if cancel_token.is_cancelled() {
+                        last_error = Some(eyre!("Model download cancelled"));
                         break;
                     }
                     if attempt < HUB_DOWNLOAD_MAX_RETRIES {
@@ -942,7 +943,10 @@ impl ModelManager {
                         // but abort the wait immediately if the user cancels.
                         let backoff = std::time::Duration::from_millis(500 * (1u64 << attempt));
                         tokio::select! {
-                            _ = cancel_token.cancelled() => break,
+                            _ = cancel_token.cancelled() => {
+                                last_error = Some(eyre!("Model download cancelled"));
+                                break;
+                            }
                             _ = tokio::time::sleep(backoff) => {}
                         }
                     }
