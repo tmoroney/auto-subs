@@ -810,20 +810,14 @@ export function SubtitleViewerPanel({
           className="z-20 flex items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          <ImportExportPopover
-            mode="import"
-            onImport={() => importSubtitles(useSettingsStore.getState(), null, "")}
-            hasSubtitles={subtitles.length > 0}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon"
-                title={t("importExport.importTab")}
-              >
-                <FileUp/>
-              </Button>
-            }
-          />
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t("importExport.importTab")}
+            onClick={() => importSubtitles(useSettingsStore.getState(), null, "")}
+          >
+            <FileUp/>
+          </Button>
           <Button
             type="button"
             variant="ghost"
