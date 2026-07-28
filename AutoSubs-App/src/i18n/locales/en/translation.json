@@ -375,7 +375,7 @@
     "canary": {
       "label": "Canary",
       "description": "Multilingual (European)",
-      "details": "High accuracy across 25 European languages (NVIDIA NeMo Canary).",
+      "details": "Understands context and supports translation, 25 languages.",
       "badge": "European"
     },
     "cohere": {
