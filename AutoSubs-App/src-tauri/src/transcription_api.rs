@@ -521,12 +521,12 @@ pub async fn transcribe_audio<R: Runtime>(
                         tracing::info!("transcription cancelled by user");
                         "Transcription cancelled".to_string()
                     } else {
-                        tracing::error!("transcription failed: {}", e);
-                        format!("Transcription failed: {}", e)
+                        tracing::error!("transcription failed: {:#}", e);
+                        format!("Transcription failed: {:#}", e)
                     }
                 } else {
-                    tracing::error!("transcription failed: {}", e);
-                    format!("Transcription failed: {}", e)
+                    tracing::error!("transcription failed: {:#}", e);
+                    format!("Transcription failed: {:#}", e)
                 }
             })?;
 

@@ -413,7 +413,40 @@ impl ModelManager {
 
             let repo = file.repo().unwrap_or(default_repo);
             let url = format!("{}/{}/resolve/main/{}", hf_endpoint, repo, file.path());
-            download_to(&dest, &url).await?;
+
+            // Retry with exponential backoff and resume support in `download_to`.
+            let mut last_error = None;
+            for attempt in 0..=HUB_DOWNLOAD_MAX_RETRIES {
+                match download_to(&dest, &url).await {
+                    Ok(()) => {
+                        last_error = None;
+                        break;
+                    }
+                    Err(e) => {
+                        // Log the error before taking ownership so the next reports include it.
+                        tracing::warn!(
+                            "Download attempt {} failed for {}: {}; {}",
+                            attempt + 1,
+                            dest.display(),
+                            e,
+                            if attempt < HUB_DOWNLOAD_MAX_RETRIES {
+                                "retrying after backoff"
+                            } else {
+                                "giving up"
+                            }
+                        );
+                        last_error = Some(e);
+                        if attempt < HUB_DOWNLOAD_MAX_RETRIES {
+                            let backoff = std::time::Duration::from_millis(500 * (1u64 << attempt));
+                            tokio::time::sleep(backoff).await;
+                        }
+                    }
+                }
+            }
+            if let Some(e) = last_error {
+                return Err(e);
+            }
+
             validate_model_file(&dest).with_context(|| {
                 format!("Model validation failed for '{}' from '{repo}'", file.dest())
             })?;
@@ -712,7 +745,9 @@ impl ModelManager {
                 }
 
                 if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                    if name.ends_with(".lock") || name.ends_with(".incomplete") || name.ends_with(".part") {
+                    // Preserve `.part` files (including hf-hub's `.sync.part`) so partial
+                    // downloads can resume across retries instead of restarting from 0.
+                    if name.ends_with(".lock") || name.ends_with(".incomplete") {
                         if let Err(e) = fs::remove_file(&path) {
                             // Log but don't fail - some files might be in use
                             tracing::warn!("Failed to remove {}: {}", path.display(), e);
@@ -936,6 +971,9 @@ impl ModelManager {
                     }
                     if attempt < HUB_DOWNLOAD_MAX_RETRIES {
                         self.cleanup_stale_locks().ok();
+                        // Give transient network blips a moment to clear before resuming.
+                        let backoff = std::time::Duration::from_millis(500 * (1u64 << attempt));
+                        tokio::time::sleep(backoff).await;
                     }
                 }
             }
@@ -1234,65 +1272,98 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
         .connect_timeout(std::time::Duration::from_secs(30))
         .build()
         .context("Failed to build HTTP client")?;
-    let mut resp = client.get(url).send().await.context("Failed to GET url")?;
-    if !resp.status().is_success() {
-        bail!("Failed to download '{}': status {}", url, resp.status());
-    }
-    // Stream to a `.part` temp file in the same directory, then atomically rename
-    // on success. This avoids leaving a partial file at the destination path if the
-    // transfer fails mid-stream — otherwise `list_cached_models` (which only checks
-    // existence for flat-layout models) would mark a half-downloaded model as cached.
-    // The temp file lives in the same directory as the destination, so `fs::rename`
-    // is atomic on the same filesystem across all platforms.
+
     let part_path = {
         let mut name = dest_path.file_name().map(|s| s.to_os_string()).unwrap_or_default();
         name.push(".part");
         dest_path.with_file_name(name)
     };
 
-    // Best-effort cleanup of any stale `.part` file from a previous failed attempt.
-    let _ = fs::remove_file(&part_path);
+    // If a previous attempt left a partial file, try to resume from where it stopped.
+    let existing = if part_path.exists() {
+        fs::metadata(&part_path).map(|m| m.len()).unwrap_or(0)
+    } else {
+        0
+    };
 
-    let stream_result: Result<()> = async {
-        let mut f = fs::File::create(&part_path).context("Failed to create temp download file")?;
-        while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
-            std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
-        }
-        f.sync_all().context("Failed to sync download file")?;
-        Ok(())
+    let mut req = client.get(url);
+    if existing > 0 {
+        req = req.header(reqwest::header::RANGE, format!("bytes={existing}-"));
     }
-    .await;
+    let mut resp = req.send().await.context("Failed to GET url")?;
 
-    match stream_result {
-        Ok(()) => {
-            // On POSIX, `fs::rename` atomically replaces an existing destination.
-            // On Windows, `fs::rename` fails if the destination already exists, which
-            // would block finalization when re-downloading a corrupt or partial
-            // flat-layout model file that `ensure_hf_flat` already detected at
-            // `dest_path` (validation failed → re-download → can't rename over the
-            // bad file). Retry once after removing a pre-existing destination so the
-            // fresh download replaces the corrupt one instead of stranding the user
-            // with a `.part` they can't finalize without manual cleanup.
-            if let Err(e) = fs::rename(&part_path, dest_path) {
-                if dest_path.exists() {
-                    let _ = fs::remove_file(dest_path);
-                    fs::rename(&part_path, dest_path).with_context(|| {
-                        format!("Failed to finalize download to {}", dest_path.display())
-                    })?;
-                } else {
-                    return Err(e).with_context(|| {
-                        format!("Failed to finalize download to {}", dest_path.display())
-                    });
-                }
+    // 416 means the range starts at or past the total size. If we know the total and
+    // already have that many bytes, the partial file is complete and just needs finalizing.
+    if resp.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
+        if let Some(total) = content_range_total(&resp) {
+            if existing >= total {
+                return move_part_to_dest(&part_path, dest_path);
             }
-            Ok(())
         }
-        Err(e) => {
-            // Remove the partial temp file so it isn't mistaken for a complete download.
-            let _ = fs::remove_file(&part_path);
-            Err(e)
+        // Otherwise restart from the beginning.
+        resp = client.get(url).send().await.context("Failed to GET url")?;
+    }
+
+    if !resp.status().is_success() {
+        bail!("Failed to download '{}': status {}", url, resp.status());
+    }
+
+    let truncate = if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+        // Server supports resume; append to the existing partial file.
+        false
+    } else {
+        // Server ignored the Range header (or we didn't send one): start fresh.
+        if existing > 0 {
+            tracing::warn!("Server did not honor Range header for {}; restarting download", url);
+        }
+        true
+    };
+
+    let mut f = if truncate {
+        fs::File::create(&part_path).context("Failed to create temp download file")?
+    } else {
+        fs::OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(&part_path)
+            .context("Failed to open partial download file")?
+    };
+
+    while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
+        std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+    }
+    f.sync_all().context("Failed to sync download file")?;
+
+    move_part_to_dest(&part_path, dest_path)
+}
+
+fn content_range_total(resp: &reqwest::Response) -> Option<u64> {
+    let value = resp.headers().get(reqwest::header::CONTENT_RANGE)?.to_str().ok()?;
+    value.rsplit('/').next()?.parse().ok()
+}
+
+fn move_part_to_dest(part_path: &Path, dest_path: &Path) -> Result<()> {
+    // On POSIX, `fs::rename` atomically replaces an existing destination.
+    // On Windows, `fs::rename` fails if the destination already exists, which
+    // would block finalization when re-downloading a corrupt or partial
+    // flat-layout model file that `ensure_hf_flat` already detected at
+    // `dest_path` (validation failed → re-download → can't rename over the
+    // bad file). Retry once after removing a pre-existing destination so the
+    // fresh download replaces the corrupt one instead of stranding the user
+    // with a `.part` they can't finalize without manual cleanup.
+    if let Err(e) = fs::rename(part_path, dest_path) {
+        if dest_path.exists() {
+            let _ = fs::remove_file(dest_path);
+            fs::rename(part_path, dest_path).with_context(|| {
+                format!("Failed to finalize download to {}", dest_path.display())
+            })?;
+        } else {
+            return Err(e).with_context(|| {
+                format!("Failed to finalize download to {}", dest_path.display())
+            });
         }
     }
+    Ok(())
 }
 
 #[cfg(test)]
