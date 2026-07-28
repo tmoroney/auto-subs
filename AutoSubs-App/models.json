@@ -268,7 +268,7 @@
           { "path": "v3_e2e_ctc_vocab.txt", "dest": "vocab.txt" }
         ]
       },
-      "ui": { "size": "225MB", "ram": "2GB", "image": "arctic-wolf.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] } }
+      "ui": { "size": "225MB", "ram": "2GB", "image": "arctic-wolf.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru"] } }
     },
     {
       "id": "gigaam-multilingual",
