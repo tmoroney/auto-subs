@@ -380,9 +380,9 @@
     },
     "gigaam_v3": {
       "label": "GigaAM v3",
-      "description": "Best for Russian",
-      "details": "Trained on 700k hours of Russian speech, with punctuation and text normalization. The most accurate option for Russian.",
-      "badge": "Russian"
+      "description": "俄语最佳",
+      "details": "基于 70 万小时俄语语音训练，支持标点和文本规范化。俄语的最准确选择。",
+      "badge": "俄语"
     },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
