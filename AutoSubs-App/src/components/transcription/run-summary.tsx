@@ -78,8 +78,13 @@ function useRunSummary(
       ? t(`actionBar.format.textCase.${textCase}`)
       : "";
 
+  // Forced alignment replaces DTW in the engine, so only one of them is ever
+  // really in play — don't advertise both.
+  const willUseForcedAlignment = enableForcedAlignment && !translate;
+  const willUseDtw = enableDTW && !willUseForcedAlignment;
+
   const gpuLabel = enableGpu ? t("settings.gpu.title") : "";
-  const dtwLabel = enableDTW ? t("settings.dtw.title") : "";
+  const dtwLabel = willUseDtw ? t("settings.dtw.title") : "";
   const punctuationLabel = removePunctuation
     ? t("actionBar.format.removePunctuationTitle")
     : "";
@@ -99,11 +104,11 @@ function useRunSummary(
   if (enableGpu) {
     summaryParts.push(gpuLabel);
   }
-  if (enableDTW) {
-    summaryParts.push(dtwLabel);
-  }
-  if (enableForcedAlignment && !translate) {
+  if (willUseForcedAlignment) {
     summaryParts.push(t("settings.forcedAlignment.summary"));
+  }
+  if (willUseDtw) {
+    summaryParts.push(dtwLabel);
   }
   if (textCase !== "none") {
     summaryParts.push(textCaseLabel);

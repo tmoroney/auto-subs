@@ -55,6 +55,40 @@ flowchart TD
 * **The Gotcha**: Because transcription and diarization run fully locally across multiple sub-crates, native C/C++ exceptions and ONNX load errors can easily crash the backend.
 * **The Rule**: All internal crate errors must bubble up explicitly as standard Rust `Result<T, String>` or `eyre::Result` types, which Tauri command handlers serialize into rejected JS promises so the React UI can gracefully display error dialogs.
 
+### 6. UI Copy & Translations (i18n)
+
+All user-facing strings live in `AutoSubs-App/src/i18n/locales/<lang>/translation.json` across **8 locales**: `de`, `en`, `es`, `fr`, `ja`, `ko`, `ru`, `zh`.
+
+* **Never add an English-only key.** Every new key must land in all 8 files in the same change, or the other locales silently fall back to the raw key. The same goes for deletions — when UI is removed, strip the orphaned keys from all 8.
+* **Length is a hard constraint, and it applies per language.** Settings rows use `ItemDescription` ([item.tsx](AutoSubs-App/src/components/ui/item.tsx)), which combines `text-balance` with `line-clamp-*`. Two failure modes follow:
+  * Past roughly **60 characters** the row wraps, and because of `text-balance` it does *not* fill the first line — it splits into two evenly-sized short lines, which looks broken rather than merely long.
+  * Past the `line-clamp` limit the text is silently truncated with an ellipsis, losing information entirely.
+* **Budget**: descriptions ≤ **60 characters**, titles ≤ **25 characters** — measured in *every* locale, not just English.
+* **Translate to fit, not literally.** `de`, `es`, `fr` and `ru` routinely run 20–30% longer than English, so a comfortable 50-char English string becomes a wrapping 65-char German one. Shorten the wording for those locales instead of preserving English sentence structure; a terser phrasing that fits beats a faithful one that wraps.
+* **No em dashes (`—`) or en dashes (`–`) in UI strings.** Use a comma, a period, or parentheses.
+* **Write for non-technical video editors.** Prefer the plain-language name over the technical one (the DTW toggle is labelled "Whisper Word Refinement", not "Dynamic Time Warping"). Jargon in a settings row is a bug.
+* **When one string references another feature, use that locale's own title** for it, not the English name.
+* **Edit all 8 files with a script**, not one at a time — it is the only reliable way to keep them in sync. Preserve the existing format: 2-space indent, `ensure_ascii=False`, trailing newline.
+
+Check the budget before considering the work done:
+
+```bash
+cd AutoSubs-App && python3 -c "
+import json, glob
+for f in sorted(glob.glob('src/i18n/locales/*/translation.json')):
+    lang = f.split('/')[-2]
+    def walk(o, p=''):
+        if isinstance(o, dict):
+            for k, v in o.items(): walk(v, f'{p}.{k}')
+        elif isinstance(o, str):
+            if len(o) > 60: print(f'{lang} {len(o):4} {p}')
+            if '—' in o or '–' in o: print(f'{lang} DASH {p}')
+    walk(json.load(open(f, encoding='utf-8')))
+"
+```
+
+Long-form strings (dialog bodies, error messages, onboarding) legitimately exceed 60 characters — the budget applies to compact UI: settings rows, toggle descriptions, buttons, badges, and menu items.
+
 ---
 
 ## ⚡ Development Cheatsheet

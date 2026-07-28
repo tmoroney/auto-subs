@@ -268,7 +268,7 @@
           { "path": "v3_e2e_ctc_vocab.txt", "dest": "vocab.txt" }
         ]
       },
-      "ui": { "size": "225MB", "ram": "2GB", "image": "owl.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] } }
+      "ui": { "size": "225MB", "ram": "2GB", "image": "arctic-wolf.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] } }
     },
     {
       "id": "gigaam-multilingual",
@@ -283,7 +283,7 @@
           { "path": "multilingual_vocab.txt", "dest": "vocab.txt" }
         ]
       },
-      "ui": { "size": "592MB", "ram": "3GB", "image": "globe.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"] } }
+      "ui": { "size": "592MB", "ram": "3GB", "image": "snow-leopard.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"] } }
     },
     {
       "id": "omni-asr-1b-ctc",

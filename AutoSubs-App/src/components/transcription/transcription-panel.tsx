@@ -12,8 +12,6 @@ import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { ResolveApiError } from "@/api/resolve-api";
-import { alignerModel } from "@/lib/models";
-import { ask } from "@tauri-apps/plugin-dialog";
 import SubSlateCard from "@/components/ui/SubSlateCard";
 import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } from "@/types";
 import type { SubtitleDocumentListItem } from "@/utils/file-utils";
@@ -92,8 +90,7 @@ export function TranscriptionPanel({
     })),
   );
   const updateSetting = useSettingsStore((s) => s.updateSetting);
-  const { modelsState, downloadedModelValues, checkDownloadedModels } =
-    useModels();
+  const { modelsState, checkDownloadedModels } = useModels();
   const {
     timelineInfo: resolveTimeline,
     templates: resolveTemplates,
@@ -217,9 +214,6 @@ export function TranscriptionPanel({
     }
   }, [processingSteps]);
 
-  const isAlignerModelDownloaded = downloadedModelValues.includes(
-    alignerModel.value,
-  );
   const willUseForcedAlignment = enableForcedAlignment && !translate;
 
   React.useEffect(() => {
@@ -334,22 +328,6 @@ export function TranscriptionPanel({
         message: tErr("errorDialog.sameLanguageSourceAndTarget.message", "Please choose a different source or target language before translating."),
       });
       return;
-    }
-
-    if (willUseForcedAlignment && !isAlignerModelDownloaded) {
-      const confirmed = await ask(
-        tErr("settings.forcedAlignment.downloadConfirmationBody", {
-          size: alignerModel.size,
-          attribution: alignerModel.license?.attribution,
-        }),
-        {
-          title: tErr("settings.forcedAlignment.downloadConfirmationTitle"),
-          kind: "warning",
-          okLabel: tErr("settings.forcedAlignment.downloadAndContinue"),
-          cancelLabel: tErr("common.cancel"),
-        },
-      );
-      if (!confirmed) return;
     }
 
     setIsProcessing(true);

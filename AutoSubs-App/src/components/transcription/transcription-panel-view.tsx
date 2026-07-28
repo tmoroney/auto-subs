@@ -320,15 +320,8 @@ export function TranscriptionPanelView({
 
                     <CompactSettingsRow
                       number={formatSectionNumber(3)}
-                      label={t("actionBar.options", "Options")}
-                      className="border-b"
-                    >
-                      <OptionsRow />
-                    </CompactSettingsRow>
-
-                    <CompactSettingsRow
-                      number={formatSectionNumber(4)}
                       label={t("actionBar.model", "Model")}
+                      className="border-b"
                     >
                       <ModelPicker
                         modelsState={modelsState}
@@ -342,6 +335,13 @@ export function TranscriptionPanelView({
                         isSmallScreen={isSmallScreen}
                         triggerClassName="h-10 rounded-lg px-3 py-0"
                       />
+                    </CompactSettingsRow>
+
+                    <CompactSettingsRow
+                      number={formatSectionNumber(4)}
+                      label={t("actionBar.options", "Options")}
+                    >
+                      <OptionsRow />
                     </CompactSettingsRow>
                   </Card>
 

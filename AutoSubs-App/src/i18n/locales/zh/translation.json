@@ -11,21 +11,28 @@
       "description": "利用 GPU 进行更快的转录"
     },
     "dtw": {
-      "title": "动态时间规整",
-      "description": "提高词级时间准确性"
+      "title": "Whisper 单词时间优化",
+      "description": "提升 Whisper 模型的单词级时间精度",
+      "supersededByAlignment": "启用强制对齐时不使用"
     },
     "forcedAlignment": {
       "title": "强制对齐",
-      "description": "执行额外的时间校准（需下载 317MB 模型）",
-      "translationIncompatible": "翻译时不可用，因为译文与音频中说出的词语不一致",
-      "summary": "强制对齐",
-      "downloadConfirmationTitle": "下载强制对齐模型？",
-      "downloadConfirmationBody": "AutoSubs 将下载可选的 {{size}} MMS 强制对齐模型。署名：{{attribution}}。模型权重采用 CC BY-NC 4.0 许可，仅限非商业用途，并独立于 AutoSubs 的 MIT 许可证。您有责任确保自己的使用方式符合模型许可证。",
-      "downloadAndContinue": "下载并继续"
+      "description": "额外时间校准，317MB，CC BY-NC（非商业）",
+      "translationIncompatible": "翻译时不可用（译文与音频不一致）",
+      "summary": "强制对齐"
     },
     "uiLanguage": {
       "title": "应用语言",
       "description": "更新菜单和按钮"
+    },
+    "cli": {
+      "title": "命令行工具",
+      "description": "安装 {{cmd}} 命令，以便从任何终端转录文件。",
+      "install": "安装",
+      "remove": "移除",
+      "available": "可用",
+      "notFound": "未找到",
+      "errorTitle": "命令行工具"
     },
     "restartOnboarding": "重新开始入门",
     "openLogsFolder": "打开日志文件夹",

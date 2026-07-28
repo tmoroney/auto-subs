@@ -11,21 +11,28 @@
       "description": "Utilise GPU for faster transcription"
     },
     "dtw": {
-      "title": "Dynamic Time Warping",
-      "description": "Improve word-level timing accuracy"
+      "title": "Whisper Word Refinement",
+      "description": "Improves word-level timing accuracy for Whisper models",
+      "supersededByAlignment": "Not used while Forced Alignment is on"
     },
     "forcedAlignment": {
       "title": "Forced Alignment",
-      "description": "Run an extra timing pass (317MB model download)",
-      "translationIncompatible": "Unavailable during translation because translated text does not match the spoken words",
-      "summary": "Forced alignment",
-      "downloadConfirmationTitle": "Download forced alignment model?",
-      "downloadConfirmationBody": "AutoSubs will download the optional {{size}} MMS forced-alignment model. Attribution: {{attribution}}. The weights are licensed under CC BY-NC 4.0 for noncommercial use and are separate from AutoSubs' MIT license. You are responsible for ensuring your use complies with the model license.",
-      "downloadAndContinue": "Download and continue"
+      "description": "Extra timing pass, 317MB, CC BY-NC (noncommercial)",
+      "translationIncompatible": "Unavailable while translating, text will not match audio",
+      "summary": "Forced alignment"
     },
     "uiLanguage": {
       "title": "App Language",
       "description": "Updates menus and buttons"
+    },
+    "cli": {
+      "title": "Command-line tool",
+      "description": "Install the {{cmd}} command so you can transcribe files from any terminal.",
+      "install": "Install",
+      "remove": "Remove",
+      "available": "Available",
+      "notFound": "Not found",
+      "errorTitle": "Command-line tool"
     },
     "restartOnboarding": "Restart Onboarding",
     "openLogsFolder": "Open Logs Folder",

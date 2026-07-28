@@ -11,21 +11,28 @@
       "description": "Usa la GPU para una transcripción más rápida"
     },
     "dtw": {
-      "title": "Warping de Tiempo Dinámico",
-      "description": "Mejora la precisión del tiempo a nivel de palabra"
+      "title": "Refinamiento de palabras de Whisper",
+      "description": "Mejora los tiempos por palabra en modelos Whisper",
+      "supersededByAlignment": "No se usa con la Alineación forzada activa"
     },
     "forcedAlignment": {
       "title": "Alineación forzada",
-      "description": "Ejecuta una pasada adicional de tiempos (descarga de modelo de 317 MB)",
-      "translationIncompatible": "No disponible durante la traducción porque el texto traducido no coincide con las palabras pronunciadas",
-      "summary": "Alineación forzada",
-      "downloadConfirmationTitle": "¿Descargar el modelo de alineación forzada?",
-      "downloadConfirmationBody": "AutoSubs descargará el modelo MMS opcional de alineación forzada de {{size}}. Atribución: {{attribution}}. Los pesos tienen licencia CC BY-NC 4.0 para uso no comercial y están separados de la licencia MIT de AutoSubs. Eres responsable de garantizar que tu uso cumpla la licencia del modelo.",
-      "downloadAndContinue": "Descargar y continuar"
+      "description": "Pasada extra de tiempos, 317 MB, CC BY-NC (no comercial)",
+      "translationIncompatible": "No disponible al traducir, el texto no coincide con el audio",
+      "summary": "Alineación forzada"
     },
     "uiLanguage": {
       "title": "Idioma de la aplicación",
       "description": "Actualiza menús y botones"
+    },
+    "cli": {
+      "title": "Herramienta de línea de comandos",
+      "description": "Instala el comando {{cmd}} para poder transcribir archivos desde cualquier terminal.",
+      "install": "Instalar",
+      "remove": "Quitar",
+      "available": "Disponible",
+      "notFound": "No encontrado",
+      "errorTitle": "Herramienta de línea de comandos"
     },
     "restartOnboarding": "Reiniciar integración",
     "openLogsFolder": "Abrir carpeta de registros",

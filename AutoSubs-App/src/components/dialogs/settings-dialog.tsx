@@ -30,6 +30,21 @@ import { uiLanguages } from "@/lib/languages";
 import { useRef } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 
+function highlightCommand(text: string, command = "autosubs") {
+  const parts = text.split(command);
+  return parts.reduce<React.ReactNode[]>((result, part, index) => {
+    if (index > 0) {
+      result.push(
+        <code key={index} className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+          {command}
+        </code>
+      );
+    }
+    result.push(part);
+    return result;
+  }, []);
+}
+
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +59,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
+  // Mirrors the backend gate: forced alignment only actually runs (and only
+  // then turns DTW off) when translation is off — see engine.rs `enable_dtw`.
+  const alignmentSupersedesDtw = enableForcedAlignment && !translate;
   const deleteIconRef = useRef<DeleteIconHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = React.useState<string>("");
@@ -301,6 +319,30 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 <Field>
                   <Item variant="outline" size="sm">
+                    <ItemMedia variant="icon" className="bg-blue-100 dark:bg-blue-900/30">
+                      <Clock className="size-4 text-blue-600 dark:text-blue-400" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{t("settings.dtw.title")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-2">
+                        {alignmentSupersedesDtw
+                          ? t("settings.dtw.supersededByAlignment")
+                          : t("settings.dtw.description")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        checked={enableDTW}
+                        disabled={alignmentSupersedesDtw}
+                        onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
+                        aria-label={t("settings.dtw.title")}
+                      />
+                    </ItemActions>
+                  </Item>
+                </Field>
+
+                <Field>
+                  <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
                       <Gauge className="size-4 text-yellow-600 dark:text-yellow-400" />
                     </ItemMedia>
@@ -314,26 +356,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Switch
                         checked={enableGpu}
                         onCheckedChange={(checked) => updateSetting("enableGpu", checked)}
-                      />
-                    </ItemActions>
-                  </Item>
-                </Field>
-
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-blue-100 dark:bg-blue-900/30">
-                      <Clock className="size-4 text-blue-600 dark:text-blue-400" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{t("settings.dtw.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-1">
-                        {t("settings.dtw.description")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        checked={enableDTW}
-                        onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
                       />
                     </ItemActions>
                   </Item>
@@ -358,9 +380,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <ItemTitle>{t("settings.cli.title", "Command-line tool")}</ItemTitle>
                         <ItemDescription className="text-xs leading-tight line-clamp-2">
                           {cliStatus.manageable
-                            ? t(
-                                "settings.cli.description",
-                                "Install the `autosubs` command so you can transcribe files from any terminal."
+                            ? highlightCommand(
+                                t(
+                                  "settings.cli.description",
+                                  "Install the {{cmd}} command so you can transcribe files from any terminal.",
+                                  { cmd: "autosubs" }
+                                )
                               )
                             : cliStatus.note ?? ""}
                         </ItemDescription>

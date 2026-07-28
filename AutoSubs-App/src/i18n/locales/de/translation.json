@@ -11,21 +11,28 @@
       "description": "GPU für schnellere Transkription verwenden"
     },
     "dtw": {
-      "title": "Dynamisches Time Warping",
-      "description": "Verbessert die Wort-Timing-Genauigkeit"
+      "title": "Whisper-Wortoptimierung",
+      "description": "Genauere Wort-Timings bei Whisper-Modellen",
+      "supersededByAlignment": "Nicht aktiv, solange Erzwungene Ausrichtung läuft"
     },
     "forcedAlignment": {
       "title": "Erzwungene Ausrichtung",
-      "description": "Zusätzlichen Timing-Durchlauf ausführen (317-MB-Modell-Download)",
-      "translationIncompatible": "Während der Übersetzung nicht verfügbar, da der übersetzte Text nicht den gesprochenen Wörtern entspricht",
-      "summary": "Erzwungene Ausrichtung",
-      "downloadConfirmationTitle": "Modell für erzwungene Ausrichtung herunterladen?",
-      "downloadConfirmationBody": "AutoSubs lädt das optionale MMS-Modell für erzwungene Ausrichtung ({{size}}) herunter. Namensnennung: {{attribution}}. Die Gewichte sind unter CC BY-NC 4.0 für nichtkommerzielle Nutzung lizenziert und von der MIT-Lizenz von AutoSubs getrennt. Du bist dafür verantwortlich, dass deine Nutzung der Modelllizenz entspricht.",
-      "downloadAndContinue": "Herunterladen und fortfahren"
+      "description": "Extra Timing-Durchlauf, 317 MB, CC BY-NC (nicht kommerziell)",
+      "translationIncompatible": "Beim Übersetzen nicht verfügbar, Text passt nicht zum Audio",
+      "summary": "Erzwungene Ausrichtung"
     },
     "uiLanguage": {
       "title": "App-Sprache",
       "description": "Aktualisiert Menüs und Buttons"
+    },
+    "cli": {
+      "title": "Befehlszeilentool",
+      "description": "Installiere den {{cmd}}-Befehl, damit du Dateien von jedem Terminal transkribieren kannst.",
+      "install": "Installieren",
+      "remove": "Entfernen",
+      "available": "Verfügbar",
+      "notFound": "Nicht gefunden",
+      "errorTitle": "Befehlszeilentool"
     },
     "restartOnboarding": "Onboarding neu starten",
     "openLogsFolder": "Logs-Ordner öffnen",

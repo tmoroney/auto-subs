@@ -11,21 +11,28 @@
       "description": "Utiliser le GPU pour une transcription plus rapide"
     },
     "dtw": {
-      "title": "Alignement temporel dynamique",
-      "description": "Améliorer la précision du minutage au niveau des mots"
+      "title": "Affinage des mots Whisper",
+      "description": "Améliore le minutage par mot des modèles Whisper",
+      "supersededByAlignment": "Inutilisé quand l’Alignement forcé est activé"
     },
     "forcedAlignment": {
       "title": "Alignement forcé",
-      "description": "Effectuer une passe de minutage supplémentaire (téléchargement d’un modèle de 317 Mo)",
-      "translationIncompatible": "Indisponible pendant la traduction, car le texte traduit ne correspond pas aux mots prononcés",
-      "summary": "Alignement forcé",
-      "downloadConfirmationTitle": "Télécharger le modèle d’alignement forcé ?",
-      "downloadConfirmationBody": "AutoSubs téléchargera le modèle MMS facultatif d’alignement forcé de {{size}}. Attribution : {{attribution}}. Les poids sont sous licence CC BY-NC 4.0 pour un usage non commercial et sont distincts de la licence MIT d’AutoSubs. Il vous incombe de vérifier que votre utilisation respecte la licence du modèle.",
-      "downloadAndContinue": "Télécharger et continuer"
+      "description": "Passe de minutage, 317 Mo, CC BY-NC (non commercial)",
+      "translationIncompatible": "Indisponible en traduction, le texte ne suit pas l’audio",
+      "summary": "Alignement forcé"
     },
     "uiLanguage": {
       "title": "Langue de l’application",
       "description": "Met à jour menus et boutons"
+    },
+    "cli": {
+      "title": "Outil en ligne de commande",
+      "description": "Installe la commande {{cmd}} pour pouvoir transcrire des fichiers depuis n'importe quel terminal.",
+      "install": "Installer",
+      "remove": "Supprimer",
+      "available": "Disponible",
+      "notFound": "Introuvable",
+      "errorTitle": "Outil en ligne de commande"
     },
     "restartOnboarding": "Redémarrer l'intégration",
     "openLogsFolder": "Ouvrir le dossier des logs",

@@ -532,7 +532,16 @@ impl Engine {
             resolve_native_target(engine_kind, &from_lang, translate_to.as_deref(), use_native);
 
         let mut engine_cfg = self.cfg.clone();
-        if enable_forced_alignment {
+        // DTW costs a chunk of memory and forces flash attention off, so only pay
+        // for it when something downstream actually consumes its word timings:
+        //   - Forced alignment recomputes word timings from the audio anyway.
+        //   - The post-translation pass throws the ASR words away and rebuilds
+        //     them uniformly (`regenerate_words_uniform`), so the precision is
+        //     wasted. Native translation is excluded: there the engine emits
+        //     target-language tokens directly and their DTW timings survive.
+        let post_translation_discards_word_timings =
+            translate_to.is_some() && native_target.is_none();
+        if enable_forced_alignment || post_translation_discards_word_timings {
             engine_cfg.enable_dtw = Some(false);
         }
 

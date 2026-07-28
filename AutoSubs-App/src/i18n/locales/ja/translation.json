@@ -411,17 +411,24 @@
   "settings": {
     "description": "AutoSubs の設定とオプションを構成します。",
     "dtw": {
-      "description": "単語レベルのタイミング精度を向上",
-      "title": "動的時間伸縮法"
+      "description": "Whisper モデルの単語単位のタイミング精度を向上",
+      "title": "Whisper 単語タイミング調整",
+      "supersededByAlignment": "強制アライメントが有効な間は使用されません"
     },
     "forcedAlignment": {
       "title": "強制アライメント",
-      "description": "追加のタイミング処理を実行（317MB のモデルをダウンロード）",
-      "translationIncompatible": "翻訳文は音声で話された単語と一致しないため、翻訳中は利用できません",
-      "summary": "強制アライメント",
-      "downloadConfirmationTitle": "強制アライメントモデルをダウンロードしますか？",
-      "downloadConfirmationBody": "AutoSubs はオプションの {{size}} MMS 強制アライメントモデルをダウンロードします。帰属表示：{{attribution}}。モデルの重みは非商用利用に限る CC BY-NC 4.0 でライセンスされ、AutoSubs の MIT ライセンスとは別です。モデルライセンスに準拠して利用する責任はユーザーにあります。",
-      "downloadAndContinue": "ダウンロードして続行"
+      "description": "追加のタイミング処理、317MB、CC BY-NC（非商用）",
+      "translationIncompatible": "翻訳中は利用できません（訳文が音声と一致しないため）",
+      "summary": "強制アライメント"
+    },
+    "cli": {
+      "title": "コマンドラインツール",
+      "description": "あらゆるターミナルからファイルを文字起こしできるように、{{cmd}} コマンドをインストールします。",
+      "install": "インストール",
+      "remove": "削除",
+      "available": "利用可能",
+      "notFound": "未検出",
+      "errorTitle": "コマンドラインツール"
     },
     "restartOnboarding": "オンボーディングを再開",
     "openLogsFolder": "ログフォルダを開く",
