@@ -5,6 +5,7 @@ export const uiLanguages = [
   { label: "Deutsch", value: "de" },
   { label: "日本語", value: "ja" },
   { label: "한국어", value: "ko" },
+  { label: "Русский", value: "ru" },
   { label: "中文", value: "zh" },
 ]
 
