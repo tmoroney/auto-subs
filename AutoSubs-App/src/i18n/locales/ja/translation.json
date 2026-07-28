@@ -193,23 +193,19 @@
     "ram": "RAM：",
     "storage": "ストレージ：",
     "accuracy": "精度",
-    "lightweight": "軽量",
-    "downloadProgress": "{{progress}}%"
+    "downloadProgress": "{{progress}}%",
+    "speed": "速度",
+    "ramShort": "RAM {{size}}",
+    "downloadShort": "{{size}} ダウンロード"
   },
   "models": {
     "searchPlaceholder": "モデルを検索...",
     "noResults": "モデルが見つかりません。",
-    "filteredByLanguage": "言語でモデルをフィルター",
-    "groups": {
-      "specialized": "選択言語に特化したモデル",
-      "general": "汎用モデル"
-    },
     "filters": {
-      "weight": "軽量",
       "accuracy": "精度",
       "recommended": "おすすめ",
       "search": "検索",
-      "clear": "フィルターをクリア"
+      "speed": "速度"
     },
     "base": {
       "badge": "多言語",
@@ -394,7 +390,9 @@
       "description": "On-device Multilingual",
       "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
-    }
+    },
+    "bestPick": "おすすめ",
+    "availableCount": "{{count}} 個のモデル"
   },
   "progressSteps": {
     "download": "モデルをダウンロード中",

@@ -204,23 +204,19 @@
     "storage": "Место:",
     "ram": "ОЗУ:",
     "accuracy": "Точность",
-    "lightweight": "Лёгкая",
-    "downloadProgress": "{{progress}}%"
+    "downloadProgress": "{{progress}}%",
+    "speed": "Скорость",
+    "ramShort": "{{size}} ОЗУ",
+    "downloadShort": "{{size}} загрузка"
   },
   "models": {
     "searchPlaceholder": "Поиск моделей...",
     "noResults": "Модели не найдены.",
-    "filteredByLanguage": "Отфильтровано по языку",
-    "groups": {
-      "specialized": "Специализированные для выбранного языка",
-      "general": "Универсальные модели"
-    },
     "filters": {
-      "weight": "Лёгкие",
       "accuracy": "Точность",
       "recommended": "Рекомендуемые",
       "search": "Поиск",
-      "clear": "Сбросить фильтр"
+      "speed": "Скорость"
     },
     "englishOnly": {
       "title": "Модели только для английского",
@@ -393,7 +389,9 @@
       "description": "Локальная многоязычная",
       "details": "Более крупная и точная многоязычная модель для 1600+ языков. Выдаёт текст строчными буквами, без пунктуации и заглавных.",
       "badge": "Многоязычная"
-    }
+    },
+    "bestPick": "Лучший выбор",
+    "availableCount": "Доступно моделей: {{count}}"
   },
   "completion": {
     "processingComplete": "Обработка завершена",

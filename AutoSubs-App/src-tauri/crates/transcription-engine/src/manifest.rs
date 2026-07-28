@@ -215,13 +215,30 @@ impl FileSpec {
     }
 }
 
+/// Display metadata for the model picker. The picker derives its entire sort
+/// order from these fields, so they are data rather than presentation: see the
+/// `_ui_comment` in `models.json` for what each one means.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Ui {
+    /// Download size, formatted for display (e.g. "700MB").
     pub size: String,
-    pub ram: String,
+    /// Peak memory at load. Optional because the auxiliary diarize/aligner
+    /// models have no picker row; every entry in `models` must set it, which
+    /// `model_ui_metadata_is_wellformed` enforces.
+    #[serde(rename = "ramMb", default)]
+    pub ram_mb: Option<u32>,
     pub image: String,
-    pub accuracy: u8,
-    pub weight: u8,
+    /// 1-5, 5 = best in class. Half steps (e.g. 2.5) are allowed to break ties
+    /// between models the whole-number scale can't separate.
+    pub accuracy: f32,
+    /// 1-5, 5 = fastest. Optional for the same reason as `ram_mb`.
+    #[serde(default)]
+    pub speed: Option<f32>,
+    /// Languages this model is a proven strong choice for. Absent means
+    /// "derive from `language_support`" — the frontend applies that default,
+    /// so an empty vec here is not the same as an explicit empty list.
+    #[serde(rename = "bestFor", default)]
+    pub best_for: Option<Vec<String>>,
     #[serde(rename = "languageSupport")]
     pub language_support: LanguageSupport,
 }
@@ -232,6 +249,19 @@ pub enum LanguageSupport {
     Multilingual,
     SingleLanguage { language: String },
     Restricted { languages: Vec<String> },
+}
+
+impl LanguageSupport {
+    /// Whether this model can transcribe `lang` at all (an ISO-639-1 code).
+    /// Mirrors `modelSupportsLanguage` in `src/lib/models.ts` for a concrete
+    /// language; auto-detection is a frontend concern and is not modelled here.
+    pub fn supports(&self, lang: &str) -> bool {
+        match self {
+            LanguageSupport::Multilingual => true,
+            LanguageSupport::SingleLanguage { language } => language == lang,
+            LanguageSupport::Restricted { languages } => languages.iter().any(|l| l == lang),
+        }
+    }
 }
 
 // ---- Lookups ----
@@ -351,7 +381,7 @@ mod tests {
         assert!(a.license.url.starts_with("https://"));
         assert!(!a.license.attribution.is_empty());
         assert_eq!(a.ui.size, "317MB");
-        assert!(!a.ui.ram.is_empty());
+        assert!(a.ui.ram_mb.is_some());
         assert!(!a.ui.image.is_empty());
         assert!(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -360,8 +390,54 @@ mod tests {
                 .is_file(),
             "aligner image must exist in public/"
         );
-        assert!((1..=4).contains(&a.ui.accuracy));
-        assert!((1..=4).contains(&a.ui.weight));
+        assert!((1.0f32..=5.0).contains(&a.ui.accuracy));
+    }
+
+    /// The picker's ordering is derived purely from `ui`, so a model missing
+    /// `ramMb`/`speed` — or claiming to be "best for" a language it cannot
+    /// transcribe — would sort wrongly at runtime with no other symptom.
+    /// Catch both at build time instead.
+    #[test]
+    fn model_ui_metadata_is_wellformed() {
+        // The meter draws five segments, so a rating has to land on a whole or
+        // half step to be represented exactly. 2.5 renders as a half segment;
+        // 2.6 would render identically to 2.5 while sorting differently.
+        let is_half_step = |v: f32| (v * 2.0).fract() == 0.0;
+
+        for e in &MANIFEST.models {
+            let ui = e
+                .ui
+                .as_ref()
+                .unwrap_or_else(|| panic!("{}: selectable models need a ui block", e.id));
+            assert!(
+                (1.0f32..=5.0).contains(&ui.accuracy) && is_half_step(ui.accuracy),
+                "{}: accuracy must be 1-5 in steps of 0.5 (got {})",
+                e.id,
+                ui.accuracy
+            );
+            let speed = ui.speed.unwrap_or_else(|| panic!("{}: missing speed", e.id));
+            assert!(
+                (1.0f32..=5.0).contains(&speed) && is_half_step(speed),
+                "{}: speed must be 1-5 in steps of 0.5 (got {})",
+                e.id,
+                speed
+            );
+            let ram = ui
+                .ram_mb
+                .unwrap_or_else(|| panic!("{}: missing ramMb", e.id));
+            assert!(ram > 0, "{}: ramMb must be > 0", e.id);
+
+            if let Some(best) = &ui.best_for {
+                for lang in best {
+                    assert!(
+                        ui.language_support.supports(lang),
+                        "{}: bestFor lists '{}', which languageSupport excludes",
+                        e.id,
+                        lang
+                    );
+                }
+            }
+        }
     }
 
     #[test]

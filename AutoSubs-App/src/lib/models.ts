@@ -15,10 +15,11 @@ import manifestData from "../../models.json";
 /** UI metadata block as stored per model in models.json. */
 interface ManifestUi {
   size: string;
-  ram: string;
+  ramMb?: number;
   image: string;
   accuracy: number;
-  weight: number;
+  speed?: number;
+  bestFor?: string[];
   languageSupport: Model["languageSupport"];
 }
 
@@ -55,6 +56,24 @@ function i18nBase(id: string): string {
   return id.replace(/[.-]/g, "_");
 }
 
+/**
+ * Languages a model is a proven strong choice for, when `models.json` doesn't
+ * say. A restricted or single-language model was trained on exactly the
+ * languages it accepts, so all of them qualify; a multilingual model makes no
+ * such claim and defaults to none, which makes it a fallback rather than a
+ * recommendation. Narrow the default by setting `bestFor` in the manifest.
+ */
+function defaultBestFor(support: Model["languageSupport"]): string[] {
+  switch (support.kind) {
+    case "single_language":
+      return [support.language];
+    case "restricted":
+      return support.languages;
+    default:
+      return [];
+  }
+}
+
 /** Build a UI `Model` from a manifest entry and its i18n key base. */
 function toModel(id: string, engine: string, ui: ManifestUi, keyBase: string): Model {
   return {
@@ -62,53 +81,64 @@ function toModel(id: string, engine: string, ui: ManifestUi, keyBase: string): M
     label: `models.${keyBase}.label`,
     description: `models.${keyBase}.description`,
     size: ui.size,
-    ram: ui.ram,
+    ramMb: ui.ramMb ?? 0,
     image: `/${ui.image}`,
     details: `models.${keyBase}.details`,
     badge: `models.${keyBase}.badge`,
     engine,
     languageSupport: ui.languageSupport,
     accuracy: ui.accuracy as Model["accuracy"],
-    weight: ui.weight as Model["weight"],
+    speed: (ui.speed ?? 1) as Model["speed"],
+    bestFor: ui.bestFor ?? defaultBestFor(ui.languageSupport),
     isDownloaded: false,
   };
 }
 
+/** How the picker's model list is ordered. */
+export type ModelSort = "recommended" | "accuracy" | "speed";
+
 /**
- * Predefined filter orders for models
- * Each array defines the optimal order for that filter type
+ * Order models for display. Every sort is derived from the manifest — there is
+ * no hand-maintained list to keep in step when a model is added.
+ *
+ * `recommended` reads as: the most accurate model wins; among equals, one
+ * proven on the selected language wins; then the faster one; then the one that
+ * costs less to run. That last tiebreak is why a 10GB model never outranks an
+ * equally good 2GB one, and why a fallback like omni-asr rises to the top for
+ * languages no specialist covers.
+ *
+ * `accuracy` and `speed` lead with the axis the user picked and fall back to
+ * the same reasoning, so the list stays sensible rather than becoming an
+ * arbitrary shuffle of everything sharing that score.
  */
-export const modelFilterOrders = {
-  weight: [
-    // 1GB RAM
-    "moonshine-tiny", "tiny", "tiny.en", "base", "base.en",
-    "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja",
-    "moonshine-tiny-ko", "moonshine-tiny-uk", "moonshine-tiny-vi",
-    "moonshine-base", "sense-voice",
-    // 2GB RAM
-    "small.en", "small", "parakeet", "gigaam-v3",
-    // 3-4GB RAM
-    "canary", "gigaam-multilingual", "cohere", "omni-asr-1b-ctc",
-    // 5-6GB RAM
-    "medium.en", "medium", "large-v3-turbo",
-    // 10GB RAM
-    "large-v3"
-  ],
-  accuracy: [
-    "cohere", "parakeet", "canary", "gigaam-v3", "gigaam-multilingual", "large-v3", "large-v3-turbo",
-    "moonshine-tiny-vi", "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "medium.en", "medium",
-    "sense-voice", "moonshine-base", "small.en", "small", "moonshine-tiny-uk",
-    "omni-asr-1b-ctc",
-    "tiny", "tiny.en", "base", "base.en", "moonshine-tiny"
-  ],
-  recommended: [
-    "parakeet", "canary", "sense-voice", "gigaam-v3", "gigaam-multilingual", "omni-asr-1b-ctc", "cohere", "large-v3-turbo", "large-v3",
-    "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "moonshine-tiny-uk", "moonshine-tiny-vi",
-    "moonshine-base", "small.en", "small",
-    "medium", "medium.en",
-    "tiny", "tiny.en", "base", "base.en", "moonshine-tiny"
-  ]
-};
+export function compareModels(a: Model, b: Model, language: string, sort: ModelSort = "recommended"): number {
+  const proven = (m: Model) => (language !== "auto" && m.bestFor.includes(language) ? 1 : 0);
+
+  const keys: Array<(m: Model) => number> =
+    sort === "speed"
+      ? [(m) => -m.speed, (m) => -proven(m), (m) => -m.accuracy, (m) => m.ramMb]
+      : sort === "accuracy"
+        ? [(m) => -m.accuracy, (m) => -proven(m), (m) => -m.speed, (m) => m.ramMb]
+        : [(m) => -m.accuracy, (m) => -proven(m), (m) => -m.speed, (m) => m.ramMb];
+
+  for (const key of keys) {
+    const diff = key(a) - key(b);
+    if (diff !== 0) return diff;
+  }
+  // Keep the order total so it can't drift with engine sort stability.
+  return a.value.localeCompare(b.value);
+}
+
+/** Models that can transcribe `language`, in display order. */
+export function sortedModelsForLanguage(
+  language: string,
+  sort: ModelSort = "recommended",
+  pool: Model[] = models,
+): Model[] {
+  return pool
+    .filter((m) => modelSupportsLanguage(m, language))
+    .sort((a, b) => compareModels(a, b, language, sort));
+}
 
 export const models: Model[] = manifest.models.map((m) =>
   toModel(m.id, m.engine, m.ui, i18nBase(m.id))
@@ -176,18 +206,9 @@ export function modelSupportsLanguage(model: Model, language: string): boolean {
 }
 
 /**
- * Get the first recommended model that supports the given language
+ * Get the first recommended model that supports the given language — the same
+ * model the picker shows at the top of its list.
  */
 export function getFirstRecommendedModelForLanguage(language: string): Model | null {
-  // Use the general recommended order for all languages
-  const order = modelFilterOrders.recommended
-  
-  for (const modelValue of order) {
-    const model = models.find(m => m.value === modelValue)
-    if (model && modelSupportsLanguage(model, language)) {
-      return model
-    }
-  }
-  
-  return null
+  return sortedModelsForLanguage(language)[0] ?? null
 }

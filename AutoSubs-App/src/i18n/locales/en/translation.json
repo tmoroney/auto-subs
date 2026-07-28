@@ -204,23 +204,19 @@
     "storage": "Storage:",
     "ram": "RAM:",
     "accuracy": "Accuracy",
-    "lightweight": "Lightweight",
-    "downloadProgress": "{{progress}}%"
+    "downloadProgress": "{{progress}}%",
+    "speed": "Speed",
+    "ramShort": "{{size}} RAM",
+    "downloadShort": "{{size}} download"
   },
   "models": {
     "searchPlaceholder": "Search models...",
     "noResults": "No models found.",
-    "filteredByLanguage": "Filtered by language",
-    "groups": {
-      "specialized": "Specialised for Selected Language",
-      "general": "General Models"
-    },
     "filters": {
-      "weight": "Lightweight",
       "accuracy": "Accuracy",
       "recommended": "Recommended",
       "search": "Search",
-      "clear": "Clear filter"
+      "speed": "Speed"
     },
     "englishOnly": {
       "title": "English-Only Models",
@@ -405,7 +401,9 @@
       "description": "On-device Multilingual",
       "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
-    }
+    },
+    "bestPick": "Best pick",
+    "availableCount": "{{count}} models available"
   },
   "completion": {
     "processingComplete": "Processing Complete",

@@ -194,22 +194,18 @@
     "storage": "저장 공간:",
     "accuracy": "정확도",
     "downloadProgress": "{{progress}}%",
-    "lightweight": "가벼움"
+    "speed": "속도",
+    "ramShort": "RAM {{size}}",
+    "downloadShort": "{{size}} 다운로드"
   },
   "models": {
     "searchPlaceholder": "모델 검색...",
     "noResults": "모델을 찾을 수 없습니다.",
-    "filteredByLanguage": "언어로 모델 필터링됨",
-    "groups": {
-      "general": "일반 모델",
-      "specialized": "선택한 언어에 특화됨"
-    },
     "filters": {
       "accuracy": "정확도",
-      "clear": "필터 지우기",
       "recommended": "추천",
       "search": "검색",
-      "weight": "가벼움"
+      "speed": "속도"
     },
     "base": {
       "badge": "다국어",
@@ -394,7 +390,9 @@
       "description": "On-device Multilingual",
       "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
-    }
+    },
+    "bestPick": "최적 선택",
+    "availableCount": "{{count}}개 모델 사용 가능"
   },
   "progressSteps": {
     "download": "모델 다운로드 중",

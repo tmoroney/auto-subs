@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed). The new transcribe-rs engines (canary/cohere/gigaam/sense_voice) are added in a later step alongside their engine wrappers.",
+  "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed).",
+  "_ui_comment": "The `ui` block drives the model picker, and the picker's ordering is derived from it entirely — there is no hand-maintained sort order anywhere. `accuracy` and `speed` are 1-5 (5 = best); they are the two meters shown per row. `ramMb` is peak memory at load and is a hard constraint, not a preference — a machine below it cannot run the model. `bestFor` lists the languages this model is a *proven strong* choice for, and it promotes the model within its accuracy tier. Omit `bestFor` to derive it from `languageSupport` (a restricted/single-language model is trained on exactly those languages, so its whole set qualifies); set it explicitly to narrow that default, as gigaam-multilingual does to drop `en`. An empty or absent list on a multilingual model means 'unproven, use as fallback' — that is what floats omni-asr to the top for languages nothing else covers well.",
   "models": [
     {
       "id": "parakeet",
@@ -17,77 +18,67 @@
           "config.json"
         ]
       },
-      "ui": {
-        "size": "700MB",
-        "ram": "2GB",
-        "image": "macaw.png",
-        "accuracy": 4,
-        "weight": 3,
-        "languageSupport": {
-          "kind": "restricted",
-          "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]
-        }
-      }
+      "ui": {"size": "700MB", "ramMb": 2048, "accuracy": 5, "speed": 5, "image": "macaw.png", "languageSupport": {"kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]}}
     },
     {
       "id": "tiny",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "tiny" },
-      "ui": { "size": "80MB", "ram": "1GB", "image": "hummingbird.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "80MB", "ramMb": 1024, "accuracy": 1, "speed": 5, "image": "hummingbird.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "tiny.en",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "tiny.en" },
-      "ui": { "size": "80MB", "ram": "1GB", "image": "hummingbird.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "80MB", "ramMb": 1024, "accuracy": 1, "speed": 5, "image": "hummingbird.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "base",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "base" },
-      "ui": { "size": "150MB", "ram": "1GB", "image": "otter.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "150MB", "ramMb": 1024, "accuracy": 1, "speed": 4, "image": "otter.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "base.en",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "base.en" },
-      "ui": { "size": "150MB", "ram": "1GB", "image": "otter.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "150MB", "ramMb": 1024, "accuracy": 1, "speed": 4, "image": "otter.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "small",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "small" },
-      "ui": { "size": "480MB", "ram": "2GB", "image": "fox.png", "accuracy": 2, "weight": 3, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "480MB", "ramMb": 2048, "accuracy": 3, "speed": 4, "image": "fox.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "small.en",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "small.en" },
-      "ui": { "size": "480MB", "ram": "2GB", "image": "fox.png", "accuracy": 2, "weight": 3, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "480MB", "ramMb": 2048, "accuracy": 3.5, "speed": 4, "image": "fox.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "medium",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "medium" },
-      "ui": { "size": "1.5GB", "ram": "5GB", "image": "bear.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "1.5GB", "ramMb": 5120, "accuracy": 4, "speed": 2, "image": "bear.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "medium.en",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "medium.en" },
-      "ui": { "size": "1.5GB", "ram": "5GB", "image": "bear.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "1.5GB", "ramMb": 5120, "accuracy": 5, "speed": 2, "image": "bear.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "large-v3-turbo",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "large-v3-turbo" },
-      "ui": { "size": "1.6GB", "ram": "6GB", "image": "phoenix.png", "accuracy": 3, "weight": 2, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "1.6GB", "ramMb": 6144, "accuracy": 5, "speed": 3, "bestFor": ["es", "it", "pt", "en", "pl", "ja", "de", "ru", "nl", "fr", "uk", "tr"], "image": "phoenix.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "large-v3",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "large-v3" },
-      "ui": { "size": "3.1GB", "ram": "10GB", "image": "elephant.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "3.1GB", "ramMb": 10240, "accuracy": 5, "speed": 1, "bestFor": ["es", "it", "ko", "pt", "en", "pl", "ca", "ja", "de", "ru", "nl", "fr", "id", "uk", "tr", "ms", "sv", "zh", "fi", "no"], "image": "elephant.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "moonshine-tiny",
@@ -102,7 +93,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "60MB", "ram": "1GB", "image": "bat.png", "accuracy": 1, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "60MB", "ramMb": 1024, "accuracy": 1, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "moonshine-tiny-ar",
@@ -117,7 +108,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ar" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 3, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "ar"}}
     },
     {
       "id": "moonshine-tiny-zh",
@@ -132,7 +123,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "zh" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 3, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "zh"}}
     },
     {
       "id": "moonshine-tiny-ja",
@@ -147,7 +138,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ja" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 3, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "ja"}}
     },
     {
       "id": "moonshine-tiny-ko",
@@ -162,7 +153,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "ko" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 3, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "ko"}}
     },
     {
       "id": "moonshine-tiny-uk",
@@ -177,7 +168,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "uk" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 2, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "uk"}}
     },
     {
       "id": "moonshine-tiny-vi",
@@ -192,7 +183,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "120MB", "ram": "1GB", "image": "bat.png", "accuracy": 3, "weight": 4, "languageSupport": { "kind": "single_language", "language": "vi" } }
+      "ui": {"size": "120MB", "ramMb": 1024, "accuracy": 3, "speed": 5, "image": "bat.png", "languageSupport": {"kind": "single_language", "language": "vi"}}
     },
     {
       "id": "moonshine-base",
@@ -207,7 +198,7 @@
           { "path": "onnx/merged/base/float/tokenizer.json", "dest": "tokenizer.json" }
         ]
       },
-      "ui": { "size": "200MB", "ram": "1GB", "image": "hedgehog.png", "accuracy": 2, "weight": 4, "languageSupport": { "kind": "single_language", "language": "en" } }
+      "ui": {"size": "200MB", "ramMb": 1024, "accuracy": 2, "speed": 5, "image": "hedgehog.png", "languageSupport": {"kind": "single_language", "language": "en"}}
     },
     {
       "id": "sense-voice",
@@ -218,7 +209,7 @@
         "repo": "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
         "files": ["model.int8.onnx", "tokens.txt"]
       },
-      "ui": { "size": "230MB", "ram": "1GB", "image": "panda.png", "accuracy": 3, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["zh", "en", "ja", "ko", "yue"] } }
+      "ui": {"size": "230MB", "ramMb": 1024, "accuracy": 4, "speed": 5, "bestFor": ["zh", "ja", "ko", "yue"], "image": "panda.png", "languageSupport": {"kind": "restricted", "languages": ["zh", "en", "ja", "ko", "yue"]}}
     },
     {
       "id": "canary",
@@ -235,7 +226,7 @@
           { "path": "nemo128.onnx", "repo": "istupakov/parakeet-tdt-0.6b-v3-onnx" }
         ]
       },
-      "ui": { "size": "1GB", "ram": "3GB", "image": "parrot.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"] } }
+      "ui": {"size": "1GB", "ramMb": 3072, "accuracy": 5, "speed": 4, "image": "parrot.png", "languageSupport": {"kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]}}
     },
     {
       "id": "cohere",
@@ -253,7 +244,7 @@
           "tokens.txt"
         ]
       },
-      "ui": { "size": "2GB", "ram": "4GB", "image": "moose.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"] } }
+      "ui": {"size": "2GB", "ramMb": 4096, "accuracy": 5, "speed": 2, "image": "moose.png", "languageSupport": {"kind": "restricted", "languages": ["ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh"]}}
     },
     {
       "id": "gigaam-v3",
@@ -268,7 +259,7 @@
           { "path": "v3_e2e_ctc_vocab.txt", "dest": "vocab.txt" }
         ]
       },
-      "ui": { "size": "225MB", "ram": "2GB", "image": "arctic-wolf.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru"] } }
+      "ui": {"size": "225MB", "ramMb": 2048, "accuracy": 5, "speed": 5, "image": "arctic-wolf.png", "languageSupport": {"kind": "restricted", "languages": ["ru"]}}
     },
     {
       "id": "gigaam-multilingual",
@@ -283,7 +274,7 @@
           { "path": "multilingual_vocab.txt", "dest": "vocab.txt" }
         ]
       },
-      "ui": { "size": "592MB", "ram": "3GB", "image": "snow-leopard.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"] } }
+      "ui": {"size": "592MB", "ramMb": 3072, "accuracy": 4, "speed": 4, "bestFor": ["ru", "kk", "ky", "uz"], "image": "snow-leopard.png", "languageSupport": {"kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"]}}
     },
     {
       "id": "omni-asr-1b-ctc",
@@ -294,7 +285,7 @@
         "repo": "csukuangfj2/sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-2026-02-05",
         "files": ["model.onnx", "model.weights", "tokens.txt"]
       },
-      "ui": { "size": "3.7GB", "ram": "4GB", "image": "lyrebird.png", "accuracy": 4, "weight": 1, "languageSupport": { "kind": "multilingual" } }
+      "ui": {"size": "3.7GB", "ramMb": 4096, "accuracy": 3.5, "speed": 2, "image": "lyrebird.png", "languageSupport": {"kind": "multilingual"}}
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
@@ -307,7 +298,7 @@
     "id": "speaker-diarize",
     "repo": "altunenes/speaker-diarization-community-1-onnx",
     "files": ["segmentation-community-1.onnx", "embedding_model.onnx"],
-    "ui": { "size": "40MB", "ram": "", "image": "diarize.png", "accuracy": 3, "weight": 3, "languageSupport": { "kind": "multilingual" } }
+    "ui": {"size": "40MB", "accuracy": 3, "image": "diarize.png", "languageSupport": {"kind": "multilingual"}}
   },
   "_aligner_comment": "Optional MMS forced-alignment model, downloaded separately under CC BY-NC 4.0.",
   "aligner": {
@@ -325,13 +316,6 @@
       "attribution": "Meta MMS forced-alignment model; upstream conversion by MahmoudAshraf; ONNX conversion by onnx-community",
       "commercialUse": false
     },
-    "ui": {
-      "size": "317MB",
-      "ram": "1GB",
-      "image": "diarize.png",
-      "accuracy": 4,
-      "weight": 1,
-      "languageSupport": { "kind": "multilingual" }
-    }
+    "ui": {"size": "317MB", "ramMb": 1024, "accuracy": 4, "image": "diarize.png", "languageSupport": {"kind": "multilingual"}}
   }
 }

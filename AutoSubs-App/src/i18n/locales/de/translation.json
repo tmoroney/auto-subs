@@ -200,23 +200,19 @@
     "storage": "Speicher:",
     "ram": "RAM:",
     "accuracy": "Genauigkeit",
-    "lightweight": "Leichtgewicht",
-    "downloadProgress": "{{progress}}%"
+    "downloadProgress": "{{progress}}%",
+    "speed": "Tempo",
+    "ramShort": "{{size}} RAM",
+    "downloadShort": "{{size}} Download"
   },
   "models": {
     "searchPlaceholder": "Modelle suchen...",
     "noResults": "Keine Modelle gefunden.",
-    "filteredByLanguage": "Modelle nach Sprache gefiltert",
-    "groups": {
-      "specialized": "Für die ausgewählte Sprache spezialisiert",
-      "general": "Allgemeine Modelle"
-    },
     "filters": {
-      "weight": "Leichtgewichtig",
       "accuracy": "Genauigkeit",
       "recommended": "Empfohlen",
       "search": "Suche",
-      "clear": "Filter löschen"
+      "speed": "Tempo"
     },
     "englishOnly": {
       "title": "Nur-Englisch-Modelle",
@@ -401,7 +397,9 @@
       "description": "On-device Multilingual",
       "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
-    }
+    },
+    "bestPick": "Beste Wahl",
+    "availableCount": "{{count}} Modelle verfügbar"
   },
   "completion": {
     "processingComplete": "Verarbeitung abgeschlossen",

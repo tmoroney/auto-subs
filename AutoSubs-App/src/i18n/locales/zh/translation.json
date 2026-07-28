@@ -200,23 +200,19 @@
     "storage": "存储：",
     "ram": "内存：",
     "accuracy": "准确性",
-    "lightweight": "轻量级",
-    "downloadProgress": "{{progress}}%"
+    "downloadProgress": "{{progress}}%",
+    "speed": "速度",
+    "ramShort": "内存 {{size}}",
+    "downloadShort": "{{size}} 下载"
   },
   "models": {
     "searchPlaceholder": "搜索模型...",
     "noResults": "未找到模型。",
-    "filteredByLanguage": "根据语言筛选模型",
-    "groups": {
-      "specialized": "针对所选语言优化",
-      "general": "通用模型"
-    },
     "filters": {
-      "weight": "轻量",
       "accuracy": "准确性",
       "recommended": "推荐",
       "search": "搜索",
-      "clear": "清除筛选"
+      "speed": "速度"
     },
     "englishOnly": {
       "title": "英语专用模型",
@@ -401,7 +397,9 @@
       "description": "On-device Multilingual",
       "details": "Larger and more accurate multilingual model for 1600+ languages. Outputs lowercase text without punctuation or capitalization.",
       "badge": "Multilingual"
-    }
+    },
+    "bestPick": "最佳选择",
+    "availableCount": "{{count}} 个可用模型"
   },
   "completion": {
     "processingComplete": "处理完成",

@@ -86,7 +86,8 @@ export interface Model {
     label: string
     description: string
     size: string
-    ram: string
+    /** Peak memory at load. A hard constraint: below this, the model won't run. */
+    ramMb: number
     image: string
     details: string
     badge: string
@@ -95,8 +96,14 @@ export interface Model {
     | { kind: "multilingual" }
     | { kind: "single_language"; language: string }
     | { kind: "restricted"; languages: string[] }
-    accuracy: 1 | 2 | 3 | 4 // 1 = Poor, 2 = Standard, 3 = Excellent, 4 = Best-in-class
-    weight: 1 | 2 | 3 | 4 // 1 = Very Heavy, 2 = Heavy, 3 = Standard, 4 = Lightweight
+    accuracy: number // 1-5 in steps of 0.5, 5 = best in class
+    speed: number // 1-5 in steps of 0.5, 5 = fastest
+    /**
+     * Languages this model is a proven strong choice for, which promote it
+     * within its accuracy tier. Resolved from the manifest — absent there means
+     * "every language it supports"; empty here means "fallback only".
+     */
+    bestFor: string[]
     isDownloaded: boolean
     repositoryUrl?: string
     license?: {

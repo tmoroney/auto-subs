@@ -1,20 +1,19 @@
-import { HardDrive, MemoryStick, Lightbulb, Feather, ListFilter, X, Star, ArrowDown } from "lucide-react"
+import { HardDrive, MemoryStick, Lightbulb, Feather } from "lucide-react"
 import { CircleCheckIcon } from "@/components/ui/icons/circle-check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
 import { Model } from "@/types"
-import { modelFilterOrders, modelSupportsLanguage } from "@/lib/models"
+import { sortedModelsForLanguage, type ModelSort } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
 
+/** Tick-only cached marker; the label lives in the tooltip to keep the row quiet. */
 function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
   const { t } = useTranslation()
   if (!isDownloaded) return null
@@ -22,7 +21,7 @@ function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex">
-          <CircleCheckIcon className="text-green-600 dark:text-green-400" size={14} />
+          <CircleCheckIcon className="text-green-600 dark:text-green-400" size={13} />
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -32,42 +31,44 @@ function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
   )
 }
 
-function FilterBadge({ children }: { children: React.ReactNode }) {
-  return (
-    <Badge variant="secondary" className="text-xs px-2 py-0.5">
-      <ArrowDown size={14} className="mr-1" />
-      {children}
-    </Badge>
-  )
-}
+/**
+ * Tags sit inline with the model name, so they are sized to the 12px name text
+ * rather than the Badge default (text-xs + py-0.5), which is 20px tall and
+ * stretches the row.
+ */
+const TAG_CLASS = "h-[15px] rounded px-1 py-0 text-[10px] font-medium leading-none"
 
 /**
- * Single trade-off spectrum between "lightweight" (low memory use) and
- * "accurate". Position is derived from accuracy vs. weight so that balanced
- * models (high accuracy AND low memory use, e.g. Parakeet) land in the middle.
+ * One rating on a 1-5 scale, drawn as filled segments. Two of these stacked
+ * (accuracy and speed) replace the old single "balance" meter: that one
+ * collapsed both into a derived position, which couldn't answer either of the
+ * questions users actually have — is this model good, and will it be slow.
  */
-function BalanceMeter({ accuracy, weight }: { accuracy: number; weight: number }) {
-  // accuracy: 1-4 (higher = more accurate)
-  // weight:   1-4 (higher = more lightweight / less memory)
-  // position: 0 (pure light) ... 6 (pure accurate)
-  const position = Math.max(0, Math.min(6, 3 + (accuracy - weight)))
-  const pct = (position / 6) * 100
-
+function RatingMeter({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center gap-1.5 w-[110px]">
-      <Feather size={11} className="text-sky-500 flex-shrink-0" aria-hidden />
-      <div className="relative flex-1 h-1 rounded-full bg-gradient-to-r from-sky-500/30 via-muted to-amber-500/30">
-        <div
-          className="absolute top-1/2 size-2.5 rounded-full border-2 border-background bg-foreground shadow-sm"
-          style={{ left: `${pct}%`, transform: "translate(-50%, -50%)" }}
-        />
-      </div>
-      <Lightbulb size={11} className="text-amber-500 flex-shrink-0" aria-hidden />
+    <div className="flex items-center gap-1.5 h-[12px]">
+      <span className="text-[11px] leading-none text-muted-foreground w-[50px]">{label}</span>
+      <span className="flex gap-[2px]" role="img" aria-label={`${label} ${value}/5`}>
+        {[1, 2, 3, 4, 5].map((segment) => {
+          // Ratings move in half steps, so a segment can be partly filled.
+          const fill = Math.max(0, Math.min(1, value - (segment - 1)))
+          return (
+            <span key={segment} className="h-[5px] w-[9px] rounded-[1px] bg-muted-foreground/25 overflow-hidden">
+              {fill > 0 && <span className="block h-full bg-primary" style={{ width: `${fill * 100}%` }} />}
+            </span>
+          )
+        })}
+      </span>
     </div>
   )
 }
 
-type FilterType = 'weight' | 'accuracy' | 'recommended' | null
+/** Human-readable RAM figure. Values are whole MB from the manifest. */
+function formatRam(ramMb: number): string {
+  return ramMb >= 1024 ? `${Math.round((ramMb / 1024) * 10) / 10}GB` : `${ramMb}MB`
+}
+
+const SORTS: ModelSort[] = ["recommended", "accuracy", "speed"]
 
 interface ModelPickerProps {
   modelsState: Model[]
@@ -97,43 +98,23 @@ export function ModelPicker({
   const { t } = useTranslation()
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [activeFilter, setActiveFilter] = React.useState<FilterType>('recommended')
+  const [activeSort, setActiveSort] = React.useState<ModelSort>('recommended')
 
+  // Ordering is derived from the manifest (accuracy, then proven-for-language,
+  // then speed, then footprint), so nothing here needs to know about specific
+  // models. Search narrows the result; it never reorders it.
   const filteredModels = React.useMemo(() => {
-    let models
+    const ordered = sortedModelsForLanguage(selectedLanguage, activeSort, modelsState)
 
-    // Use the shared modelSupportsLanguage helper, which now correctly
-    // handles "auto" by checking the engine's auto-detection capability.
-    models = modelsState.filter((model) => modelSupportsLanguage(model, selectedLanguage))
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return ordered
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      models = models.filter(model =>
-        t(model.label).toLowerCase().includes(query) ||
-        t(model.description).toLowerCase().includes(query) ||
-        t(model.badge).toLowerCase().includes(query)
-      )
-    }
-
-    // Apply sorting/filtering using predefined orders
-    if (activeFilter && modelFilterOrders[activeFilter]) {
-      const order = modelFilterOrders[activeFilter]
-
-      models.sort((a, b) => {
-        const aIndex = order.indexOf(a.value)
-        const bIndex = order.indexOf(b.value)
-        // If model not found in order array, put it at the end
-        if (aIndex === -1 && bIndex === -1) return 0
-        if (aIndex === -1) return 1
-        if (bIndex === -1) return -1
-
-        return aIndex - bIndex
-      })
-    }
-
-    return models
-  }, [modelsState, selectedLanguage, searchQuery, activeFilter, t])
+    return ordered.filter(model =>
+      t(model.label).toLowerCase().includes(query) ||
+      t(model.description).toLowerCase().includes(query) ||
+      t(model.badge).toLowerCase().includes(query)
+    )
+  }, [modelsState, selectedLanguage, searchQuery, activeSort, t])
 
   return (
     <TooltipProvider delayDuration={400}>
@@ -169,81 +150,38 @@ export function ModelPicker({
             <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0 overflow-hidden" align="center">
+        <PopoverContent className="w-96 p-0 overflow-hidden" align="center">
           <div className="relative">
             <Command className="max-h-[350px]">
-              <div className="relative">
-                <CommandInput
-                  placeholder={t("models.searchPlaceholder")}
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                  className="flex-1 border-0 focus:ring-0 pr-10"
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 absolute right-1 top-1"
-                    >
-                      <ListFilter size={14} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48" align="end">
-                    <DropdownMenuItem
-                      onClick={() => setActiveFilter(activeFilter === 'weight' ? null : 'weight')}
-                      className={`text-xs cursor-pointer ${activeFilter === 'weight' ? 'bg-accent' : ''}`}
-                    >
-                      <Feather size={12} className="mr-1 text-sky-500" />
-                      {t("models.filters.weight")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setActiveFilter(activeFilter === 'accuracy' ? null : 'accuracy')}
-                      className={`text-xs cursor-pointer ${activeFilter === 'accuracy' ? 'bg-accent' : ''}`}
-                    >
-                      <Lightbulb size={12} className="mr-1 text-amber-500" />
-                      {t("models.filters.accuracy")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setActiveFilter(activeFilter === 'recommended' ? null : 'recommended')}
-                      className={`text-xs cursor-pointer ${activeFilter === 'recommended' ? 'bg-accent' : ''}`}
-                    >
-                      <Star size={12} className="mr-1 text-purple-500" />
-                      {t("models.filters.recommended")}
-                    </DropdownMenuItem>
-                    {activeFilter && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setActiveFilter(null)}
-                          className="text-xs cursor-pointer text-muted-foreground"
-                        >
-                          <X size={12} className="mr-1" />
-                          {t("models.filters.clear")}
-                        </DropdownMenuItem>
-                      </>
+              <CommandInput
+                placeholder={t("models.searchPlaceholder")}
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+                className="flex-1 border-0 focus:ring-0"
+              />
+              {/* The sort changes the whole list order, so it stays visible
+                  rather than hiding behind an icon. */}
+              <div className="flex gap-1 px-2 py-1.5 border-b">
+                {SORTS.map((sort) => (
+                  <Button
+                    key={sort}
+                    variant="ghost"
+                    size="sm"
+                    aria-pressed={activeSort === sort}
+                    onClick={() => setActiveSort(sort)}
+                    className={cn(
+                      "h-6 px-2.5 text-[11px] font-normal rounded-md",
+                      activeSort === sort && "bg-accent text-accent-foreground",
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  >
+                    {t(`models.filters.${sort}`)}
+                  </Button>
+                ))}
               </div>
               <CommandList>
                 <CommandEmpty>{t("models.noResults")}</CommandEmpty>
                 {(() => {
-                  const isSpecific = selectedLanguage !== "auto"
-                  const specializedModels = isSpecific
-                    ? filteredModels.filter(m =>
-                        (m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage) ||
-                        (m.languageSupport.kind === "restricted" && m.languageSupport.languages.includes(selectedLanguage))
-                      )
-                    : []
-                  const otherModels = isSpecific
-                    ? filteredModels.filter(m =>
-                        !(m.languageSupport.kind === "single_language" && m.languageSupport.language === selectedLanguage) &&
-                        !(m.languageSupport.kind === "restricted" && m.languageSupport.languages.includes(selectedLanguage))
-                      )
-                    : filteredModels
-
-                  const renderItem = (model: Model) => {
+                  const renderItem = (model: Model, index: number) => {
                     const actualModelIndex = modelsState.findIndex(m => m.value === model.value)
                     return (
                       <CommandItem
@@ -253,17 +191,35 @@ export function ModelPicker({
                           onSelectModel(actualModelIndex)
                           onOpenChange(false)
                         }}
-                        className="flex items-center justify-between p-2 cursor-pointer"
+                        className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <img src={model.image} alt={t(model.label) + " icon"} className="size-8 object-contain rounded flex-shrink-0" />
                           <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-xs">{t(model.label)}</span>
+                            <div className="flex items-center gap-1.5 leading-none">
+                              <span className="font-medium text-xs leading-none">{t(model.label)}</span>
+                              {/* The top row earns a badge: the sort that put it
+                                  there is otherwise invisible. */}
+                              {index === 0 && activeSort === 'recommended' && !searchQuery && (
+                                <Badge className={cn(TAG_CLASS, "border-transparent shadow-none")}>
+                                  {t("models.bestPick")}
+                                </Badge>
+                              )}
+                              {model.languageSupport.kind === "single_language" && (
+                                <Badge variant="outline" className={cn(TAG_CLASS, "font-normal text-muted-foreground")}>
+                                  {t(model.badge)}
+                                </Badge>
+                              )}
                               <ModelCachedBadge isDownloaded={model.isDownloaded} />
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {t(model.badge)}
+                            {/* Facts about the user's machine, as plain text.
+                                "download" rather than "storage" so it can't be
+                                misread as memory. RAM leads so its value sits at
+                                the same x on every row; the download size is
+                                appended only while it still matters. */}
+                            <p className="text-[11px] text-muted-foreground mt-[3px] leading-none truncate">
+                              {t("modelStatus.ramShort", { size: formatRam(model.ramMb) })}
+                              {!model.isDownloaded && ` · ${t("modelStatus.downloadShort", { size: model.size })}`}
                             </p>
                           </div>
                         </div>
@@ -276,8 +232,9 @@ export function ModelPicker({
                           ) : (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div>
-                                  <BalanceMeter accuracy={model.accuracy} weight={model.weight} />
+                                <div className="flex flex-col gap-1">
+                                  <RatingMeter label={t("modelStatus.accuracy")} value={model.accuracy} />
+                                  <RatingMeter label={t("modelStatus.speed")} value={model.speed} />
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4 bg-slate-50 dark:bg-slate-950 text-foreground">
@@ -287,7 +244,7 @@ export function ModelPicker({
                                     <div className="flex items-center gap-1">
                                       <MemoryStick size={14} />
                                       <span>{t("modelStatus.ram")}</span>
-                                      <span className="font-medium">{model.ram}</span>
+                                      <span className="font-medium">{formatRam(model.ramMb)}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <HardDrive size={14} />
@@ -297,14 +254,14 @@ export function ModelPicker({
                                   </div>
                                   <div className="flex items-center gap-4 text-xs">
                                     <div className="flex items-center gap-1.5">
-                                      <Feather size={12} className="text-sky-500" />
-                                      <span>{t("modelStatus.lightweight")}</span>
-                                      <span className="font-medium">{model.weight}/4</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
                                       <Lightbulb size={12} className="text-amber-500" />
                                       <span>{t("modelStatus.accuracy")}</span>
-                                      <span className="font-medium">{model.accuracy}/4</span>
+                                      <span className="font-medium">{model.accuracy}/5</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <Feather size={12} className="text-sky-500" />
+                                      <span>{t("modelStatus.speed")}</span>
+                                      <span className="font-medium">{model.speed}/5</span>
                                     </div>
                                   </div>
                                 </div>
@@ -317,39 +274,18 @@ export function ModelPicker({
                   }
 
                   return (
-                    <>
-                      {specializedModels.length > 0 && (
-                        <CommandGroup heading={t("models.groups.specialized")}>
-                          {specializedModels.map(renderItem)}
-                        </CommandGroup>
-                      )}
-                      <CommandGroup heading={specializedModels.length > 0 ? t("models.groups.general") : undefined}>
-                        {otherModels.map(renderItem)}
-                      </CommandGroup>
-                    </>
+                    <CommandGroup>
+                      {filteredModels.map(renderItem)}
+                    </CommandGroup>
                   )
                 })()}
               </CommandList>
             </Command>
 
-            {/* Bottom Section */}
-            <div className="border-t bg-muted/30">
-              <div className="px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("models.filteredByLanguage")}
-                  </Label>
-                  {(activeFilter || searchQuery) && (
-                    <div className="flex items-center">
-                      {activeFilter && (
-                        <FilterBadge>
-                          {t(`models.filters.${activeFilter}`)}
-                        </FilterBadge>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="border-t bg-muted/30 px-3 py-2">
+              <span className="text-xs text-muted-foreground">
+                {t("models.availableCount", { count: filteredModels.length })}
+              </span>
             </div>
           </div>
         </PopoverContent>
