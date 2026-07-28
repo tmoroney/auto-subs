@@ -384,6 +384,12 @@
       "details": "基于 70 万小时俄语语音训练，支持标点和文本规范化。俄语的最准确选择。",
       "badge": "俄语"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "中亚语言与俄语",
+      "details": "在哈萨克语、吉尔吉斯语和乌兹别克语上具有开源模型的最佳质量，俄语表现也很强。输出不含标点的小写文本。",
+      "badge": "多语言"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

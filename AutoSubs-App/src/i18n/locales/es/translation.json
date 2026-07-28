@@ -384,6 +384,12 @@
       "details": "Entrenado con 700 000 horas de habla rusa, con puntuación y normalización de texto. La opción más precisa para el ruso.",
       "badge": "Ruso"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "Asia Central y ruso",
+      "details": "La mejor calidad abierta para kazajo, kirguís y uzbeko, y muy buena en ruso. Devuelve texto en minúsculas sin puntuación.",
+      "badge": "Multilingüe"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

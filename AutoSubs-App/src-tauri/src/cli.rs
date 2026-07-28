@@ -46,6 +46,7 @@ const MODELS: &[&str] = &[
     "parakeet",
     // GigaAM
     "gigaam-v3",
+    "gigaam-multilingual",
     // Omni-ASR
     "omni-asr-1b-ctc",
     // Moonshine

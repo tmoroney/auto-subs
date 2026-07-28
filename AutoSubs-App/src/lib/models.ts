@@ -88,21 +88,21 @@ export const modelFilterOrders = {
     // 2GB RAM
     "small.en", "small", "parakeet", "gigaam-v3",
     // 3-4GB RAM
-    "canary", "cohere", "omni-asr-1b-ctc",
+    "canary", "gigaam-multilingual", "cohere", "omni-asr-1b-ctc",
     // 5-6GB RAM
     "medium.en", "medium", "large-v3-turbo",
     // 10GB RAM
     "large-v3"
   ],
   accuracy: [
-    "cohere", "parakeet", "canary", "gigaam-v3", "large-v3", "large-v3-turbo",
+    "cohere", "parakeet", "canary", "gigaam-v3", "gigaam-multilingual", "large-v3", "large-v3-turbo",
     "moonshine-tiny-vi", "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "medium.en", "medium",
     "sense-voice", "moonshine-base", "small.en", "small", "moonshine-tiny-uk",
     "omni-asr-1b-ctc",
     "tiny", "tiny.en", "base", "base.en", "moonshine-tiny"
   ],
   recommended: [
-    "parakeet", "canary", "sense-voice", "gigaam-v3", "omni-asr-1b-ctc", "cohere", "large-v3-turbo", "large-v3",
+    "parakeet", "canary", "sense-voice", "gigaam-v3", "gigaam-multilingual", "omni-asr-1b-ctc", "cohere", "large-v3-turbo", "large-v3",
     "moonshine-tiny-ar", "moonshine-tiny-zh", "moonshine-tiny-ja", "moonshine-tiny-ko", "moonshine-tiny-uk", "moonshine-tiny-vi",
     "moonshine-base", "small.en", "small",
     "medium", "medium.en",
