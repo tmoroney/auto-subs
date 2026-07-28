@@ -74,18 +74,17 @@
     "selected": "Sélectionné :",
     "importFile": "Importer le fichier",
     "exportAsSrt": "Exporter en SRT",
-    "downloadFormat": "Télécharger {{format}}",
     "fileDialog": {
       "subtitleFiles": "Fichiers de sous-titres"
     },
     "exportFormats": {
       "srt": {
         "title": "Sous-titres (.srt)",
-        "description": "Format de sous-titres standard pour YouTube, VLC et autres. Inclut les horodatages."
+        "description": "Sous-titres avec horodatage pour lecteurs et plateformes."
       },
       "txt": {
         "title": "Transcription (.txt)",
-        "description": "Export texte brut pour les LLMs incluant les labels de speaker lorsqu’ils sont disponibles."
+        "description": "Texte brut avec étiquettes de locuteur pour LLM."
       }
     }
   },

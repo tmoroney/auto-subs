@@ -9,10 +9,9 @@ import {
 } from "@/components/ui/item"
 import { Check, Download, FileText, Loader2, Plus, VolumeX } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
-import { ImportExportPopover } from "@/components/common/import-export-popover"
+import { ExportPopover } from "@/components/common/export-popover"
 import { TimelineInfo } from "@/types"
 import { useResolve } from "@/contexts/ResolveContext"
-import { useSettingsStore } from "@/stores/settings-store"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslation } from "react-i18next"
@@ -45,7 +44,6 @@ export function CompletionStepItem({
         subtitles,
         speakers,
         exportSubtitlesAs,
-        importSubtitles,
     } = useSubtitleDocument()
 
     const isResolveConnected = Boolean(timelineInfo?.timelineId) && selectedIntegration === "davinci"
@@ -103,8 +101,7 @@ export function CompletionStepItem({
                                 </Button>
                             )}
                             {(!isResolveConnected || !isMobile) && (
-                                <ImportExportPopover
-                                    onImport={() => importSubtitles(useSettingsStore.getState(), null, "")}
+                                <ExportPopover
                                     onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
                                     hasSubtitles={hasSubtitles}
                                     trigger={

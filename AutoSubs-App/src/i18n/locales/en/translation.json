@@ -74,18 +74,17 @@
     "selected": "Selected:",
     "importFile": "Import File",
     "exportAsSrt": "Export as SRT",
-    "downloadFormat": "Download {{format}}",
     "fileDialog": {
       "subtitleFiles": "Subtitle Files"
     },
     "exportFormats": {
       "srt": {
         "title": "Subtitles (.srt)",
-        "description": "Standard subtitle format for apps like YouTube and VLC. Includes timestamps."
+        "description": "Timed subtitles for video players and platforms."
       },
       "txt": {
         "title": "Transcript (.txt)",
-        "description": "Plain text export for LLMs that includes speaker labels when available."
+        "description": "Plain text transcript with speaker labels for LLMs."
       }
     }
   },

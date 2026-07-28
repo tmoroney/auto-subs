@@ -74,7 +74,6 @@
     "selected": "已选择：",
     "importFile": "导入文件",
     "exportAsSrt": "导出为 SRT",
-    "downloadFormat": "下载 {{format}}",
     "fileDialog": {
       "subtitleFiles": "字幕文件"
     },

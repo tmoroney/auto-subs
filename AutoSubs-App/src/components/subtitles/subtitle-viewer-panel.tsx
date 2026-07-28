@@ -33,9 +33,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubtitleList } from "@/components/subtitles/subtitle-list";
 import { SpeakerSettings } from "@/components/common/speaker-settings";
 import {
-  ImportExportPopover,
+  ExportPopover,
   type ExportFormat,
-} from "@/components/common/import-export-popover";
+} from "@/components/common/export-popover";
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
 import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
@@ -574,8 +574,7 @@ function AddToTimelineFooter({
           </Button>
         </AddToTimelineDialog>
       )}
-      <ImportExportPopover
-        mode="export"
+      <ExportPopover
         onExport={onExport}
         hasSubtitles={hasSubtitles}
         trigger={

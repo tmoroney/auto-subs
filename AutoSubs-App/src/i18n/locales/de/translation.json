@@ -74,18 +74,17 @@
     "selected": "Ausgewählt:",
     "importFile": "Datei importieren",
     "exportAsSrt": "Als SRT exportieren",
-    "downloadFormat": "{{format}} herunterladen",
     "fileDialog": {
       "subtitleFiles": "Untertiteldateien"
     },
     "exportFormats": {
       "srt": {
         "title": "Untertitel (.srt)",
-        "description": "Standard-Untertitelformat für Apps wie YouTube und VLC. Enthält Zeitstempel."
+        "description": "Untertitel mit Zeitstempeln für Player und Plattformen."
       },
       "txt": {
         "title": "Transkript (.txt)",
-        "description": "Reiner Text-Export für LLMs, der Sprecherlabels enthält, wenn verfügbar."
+        "description": "Reiner Text mit Sprecherlabels für LLMs."
       }
     }
   },

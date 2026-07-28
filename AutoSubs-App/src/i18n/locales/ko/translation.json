@@ -124,7 +124,6 @@
   },
   "importExport": {
     "button": "내보내기 / 가져오기",
-    "downloadFormat": "{{format}} 다운로드",
     "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
     "exportAsSrt": "SRT로 내보내기",
     "exportFormats": {

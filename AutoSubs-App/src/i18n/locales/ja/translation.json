@@ -124,7 +124,6 @@
   },
   "importExport": {
     "button": "エクスポート / インポート",
-    "downloadFormat": "{{format}} をダウンロード",
     "dropHere": "ファイルをここにドロップするかクリックして選択",
     "exportAsSrt": "SRT としてエクスポート",
     "importFile": "ファイルをインポート",
