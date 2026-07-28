@@ -712,7 +712,9 @@ impl ModelManager {
                 }
 
                 if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                    if name.ends_with(".lock") || name.ends_with(".incomplete") || name.ends_with(".part") {
+                    // Preserve `.part` files (including hf-hub's `.sync.part`) so partial
+                    // downloads can resume across retries instead of restarting from 0.
+                    if name.ends_with(".lock") || name.ends_with(".incomplete") {
                         if let Err(e) = fs::remove_file(&path) {
                             // Log but don't fail - some files might be in use
                             tracing::warn!("Failed to remove {}: {}", path.display(), e);
@@ -932,10 +934,21 @@ impl ModelManager {
                     // instead of burning the remaining attempts (each of which would
                     // just re-run cleanup and bail again at the cancellation guard).
                     if cancel_token.is_cancelled() {
+                        last_error = Some(eyre!("Model download cancelled"));
                         break;
                     }
                     if attempt < HUB_DOWNLOAD_MAX_RETRIES {
                         self.cleanup_stale_locks().ok();
+                        // Give transient network blips a moment to clear before resuming,
+                        // but abort the wait immediately if the user cancels.
+                        let backoff = std::time::Duration::from_millis(500 * (1u64 << attempt));
+                        tokio::select! {
+                            _ = cancel_token.cancelled() => {
+                                last_error = Some(eyre!("Model download cancelled"));
+                                break;
+                            }
+                            _ = tokio::time::sleep(backoff) => {}
+                        }
                     }
                 }
             }
