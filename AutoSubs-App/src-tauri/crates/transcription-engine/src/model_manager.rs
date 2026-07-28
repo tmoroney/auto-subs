@@ -938,9 +938,13 @@ impl ModelManager {
                     }
                     if attempt < HUB_DOWNLOAD_MAX_RETRIES {
                         self.cleanup_stale_locks().ok();
-                        // Give transient network blips a moment to clear before resuming.
+                        // Give transient network blips a moment to clear before resuming,
+                        // but abort the wait immediately if the user cancels.
                         let backoff = std::time::Duration::from_millis(500 * (1u64 << attempt));
-                        tokio::time::sleep(backoff).await;
+                        tokio::select! {
+                            _ = cancel_token.cancelled() => break,
+                            _ = tokio::time::sleep(backoff) => {}
+                        }
                     }
                 }
             }
