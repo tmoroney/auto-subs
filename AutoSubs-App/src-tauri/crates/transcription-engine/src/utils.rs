@@ -82,14 +82,73 @@ pub fn cs_to_s(cs: i64) -> f64 {
     cs as f64 * 0.01
 }
 
+/// Find a split point near `target` that falls inside a low-energy window.
+///
+/// Searches `[target - search_window, target]` in 10 ms frames and returns the
+/// frame start with the lowest RMS energy. If the lowest energy is not
+/// significantly below the local average (no real silence found), it falls back
+/// to `target` to avoid arbitrarily long chunks.
+pub fn find_low_energy_split(
+    samples: &[i16],
+    start: usize,
+    target: usize,
+    search_window: usize,
+) -> usize {
+    const FRAME_SAMPLES: usize = 160; // 10 ms at 16 kHz
+
+    let end = target.min(samples.len());
+    let search_start = target.saturating_sub(search_window).max(start);
+    if search_start >= end || end.saturating_sub(search_start) < FRAME_SAMPLES {
+        return end;
+    }
+
+    let mut best_idx = end;
+    let mut best_energy = u64::MAX;
+    let mut total_energy: u64 = 0;
+    let mut frame_count = 0usize;
+
+    let mut frame = search_start;
+    while frame + FRAME_SAMPLES <= end {
+        let energy = samples[frame..frame + FRAME_SAMPLES]
+            .iter()
+            .map(|&s| (s as i32).saturating_mul(s as i32) as u64)
+            .sum();
+        total_energy += energy;
+        frame_count += 1;
+        if energy < best_energy {
+            best_energy = energy;
+            best_idx = frame;
+        }
+        frame += FRAME_SAMPLES;
+    }
+
+    // Accept the lowest-energy frame only if it is roughly an order of magnitude
+    // quieter than the average frame in the search window.
+    if frame_count > 0
+        && best_energy
+            .saturating_mul(frame_count as u64)
+            .saturating_mul(10)
+            < total_energy
+    {
+        best_idx
+    } else {
+        end
+    }
+}
+
 /// Split a speech segment into chunks no longer than `max_seconds` (at 16 kHz),
 /// preserving absolute timing and speaker id. Used by ONNX backends that process
 /// a whole clip per call (Moonshine, SenseVoice, Canary, Cohere) to bound memory.
+///
+/// Boundaries are nudged back onto the quietest frame within the last ~1 s of
+/// each chunk so a chunk edge does not cut through a word, which makes models
+/// emit half-words (or, for normalizing models, stray symbols).
 pub fn split_speech_segment(
     seg: &crate::types::SpeechSegment,
     max_seconds: f64,
 ) -> Vec<crate::types::SpeechSegment> {
     const SAMPLE_RATE: usize = 16000;
+    const SEARCH_WINDOW_SAMPLES: usize = SAMPLE_RATE; // look back up to 1 s for silence
     let max_samples = (max_seconds * SAMPLE_RATE as f64) as usize;
     if max_samples == 0 || seg.samples.len() <= max_samples {
         return vec![seg.clone()];
@@ -98,7 +157,12 @@ pub fn split_speech_segment(
     let mut out = Vec::new();
     let mut idx = 0usize;
     while idx < seg.samples.len() {
-        let end_idx = (idx + max_samples).min(seg.samples.len());
+        let target = (idx + max_samples).min(seg.samples.len());
+        let end_idx = if target == seg.samples.len() {
+            target
+        } else {
+            find_low_energy_split(&seg.samples, idx, target, SEARCH_WINDOW_SAMPLES)
+        };
         let start_s = idx as f64 / SAMPLE_RATE as f64;
         let end_s = end_idx as f64 / SAMPLE_RATE as f64;
         out.push(crate::types::SpeechSegment {
@@ -192,4 +256,62 @@ pub fn get_whisper_languages() -> Vec<&'static str> {
         "af", "oc", "ka", "be", "tg", "sd", "gu", "am", "yi", "lo", "uz", "fo", "ht", "ps", "tk", "nn", "mt",
         "sa", "lb", "my", "bo", "tl", "mg", "as", "tt", "haw", "ln", "ha", "ba", "jw", "su", "yue",
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::SpeechSegment;
+
+    /// 16 kHz buffer of loud samples with a silent 100 ms window centred on `quiet_at_seconds`.
+    fn samples_with_silence_at(duration_seconds: f64, quiet_at_seconds: f64) -> Vec<i16> {
+        let sr = 16000.0;
+        let total = (duration_seconds * sr) as usize;
+        let quiet_start = (quiet_at_seconds * sr) as usize;
+        let quiet_end = quiet_start + (0.1 * sr) as usize;
+        (0..total)
+            .map(|i| {
+                if i >= quiet_start && i < quiet_end {
+                    0
+                } else if i % 2 == 0 {
+                    8000
+                } else {
+                    -8000
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn split_lands_on_silence_instead_of_cutting_a_word() {
+        let seg = SpeechSegment {
+            start: 10.0,
+            end: 55.0,
+            samples: samples_with_silence_at(45.0, 29.5),
+            speaker_id: None,
+        };
+        let chunks = split_speech_segment(&seg, 30.0);
+        assert_eq!(chunks.len(), 2);
+        // Boundary moved back into the silent window rather than the hard 30 s mark.
+        assert!(
+            (chunks[0].end - (10.0 + 29.5)).abs() < 0.05,
+            "unexpected boundary: {}",
+            chunks[0].end
+        );
+        assert_eq!(chunks[1].start, chunks[0].end);
+        assert_eq!(chunks[1].end, seg.end);
+    }
+
+    #[test]
+    fn split_falls_back_to_the_hard_boundary_without_silence() {
+        let seg = SpeechSegment {
+            start: 0.0,
+            end: 45.0,
+            samples: samples_with_silence_at(45.0, 44.0),
+            speaker_id: None,
+        };
+        let chunks = split_speech_segment(&seg, 30.0);
+        assert_eq!(chunks.len(), 2);
+        assert!((chunks[0].end - 30.0).abs() < 1e-9, "unexpected boundary: {}", chunks[0].end);
+    }
 }
