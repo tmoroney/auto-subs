@@ -379,6 +379,7 @@ mod tests {
                         | Engine::SenseVoice
                         | Engine::Canary
                         | Engine::Cohere
+                        | Engine::Gigaam
                         | Engine::OmniAsr
                 ),
                 "model '{}' uses engine {:?} which has no wrapper yet",

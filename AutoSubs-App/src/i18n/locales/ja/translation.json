@@ -378,6 +378,12 @@
       "details": "Cohere の大型多言語文字起こしモデル。",
       "label": "Cohere"
     },
+    "gigaam_v3": {
+      "label": "GigaAM v3",
+      "description": "ロシア語に最適",
+      "details": "70万時間のロシア語音声で学習。句読点とテキスト正規化に対応した、ロシア語で最も高精度な選択肢。",
+      "badge": "ロシア語"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

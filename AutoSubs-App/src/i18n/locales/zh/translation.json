@@ -378,6 +378,12 @@
       "details": "Cohere 的大型多语言转录模型。",
       "badge": "多语言"
     },
+    "gigaam_v3": {
+      "label": "GigaAM v3",
+      "description": "俄语最佳",
+      "details": "基于 70 万小时俄语语音训练，支持标点和文本规范化。俄语的最准确选择。",
+      "badge": "俄语"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

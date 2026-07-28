@@ -378,6 +378,12 @@
       "details": "Cohere의 대형 다국어 자막 생성 모델.",
       "label": "Cohere"
     },
+    "gigaam_v3": {
+      "label": "GigaAM v3",
+      "description": "러시아어에 최적",
+      "details": "70만 시간의 러시아어 음성으로 학습. 문장 부호와 텍스트 정규화를 지원하는 러시아어에 가장 정확한 모델.",
+      "badge": "러시아어"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

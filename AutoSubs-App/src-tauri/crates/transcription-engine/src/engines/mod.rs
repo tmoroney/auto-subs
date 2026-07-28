@@ -5,6 +5,7 @@
 //! - **Parakeet**: NVIDIA's NeMo Parakeet model via transcribe-rs (ONNX format)
 //! - **Moonshine**: Useful Sensors' Moonshine via transcribe-rs (ONNX format)
 //! - **SenseVoice**: FunAudioLLM SenseVoice via transcribe-rs (ONNX format)
+//! - **GigaAM**: Sber's Russian GigaAM v3 CTC via transcribe-rs (ONNX format)
 //! - **OmniAsr**: Facebook Omni-ASR 300M CTC via ORT (ONNX format)
 
 use crate::engine::EngineConfig;
@@ -18,6 +19,7 @@ pub mod whisper;
 pub mod onnx;
 pub mod canary;
 pub mod cohere;
+pub mod gigaam;
 pub mod moonshine;
 pub mod omni_asr;
 pub mod parakeet;
@@ -28,6 +30,7 @@ pub use whisper::{create_context, run_transcription_pipeline, SHOULD_CANCEL};
 
 pub use canary::transcribe_canary;
 pub use cohere::transcribe_cohere;
+pub use gigaam::transcribe_gigaam;
 pub use moonshine::transcribe_moonshine;
 pub use parakeet::transcribe_parakeet;
 pub use omni_asr::transcribe_omni_asr;
@@ -149,6 +152,18 @@ pub async fn run_engine(
             )
             .await
         }
+        ModelEngine::Gigaam => {
+            crate::engines::gigaam::transcribe_gigaam(
+                model_path,
+                speech_segments,
+                options,
+                use_gpu,
+                progress,
+                new_segment_callback,
+                abort_callback,
+            )
+            .await
+        }
         ModelEngine::OmniAsr => {
             crate::engines::omni_asr::transcribe_omni_asr(
                 model_path,
@@ -161,10 +176,5 @@ pub async fn run_engine(
             )
             .await
         }
-        other => Err(eyre!(
-            "Transcription engine {:?} (model '{}') is not yet supported",
-            other,
-            options.model
-        )),
     }
 }

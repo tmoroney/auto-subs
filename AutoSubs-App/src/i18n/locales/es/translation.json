@@ -378,6 +378,12 @@
       "details": "Modelo grande de transcripción multilingüe de Cohere.",
       "badge": "Multilingüe"
     },
+    "gigaam_v3": {
+      "label": "GigaAM v3",
+      "description": "Ideal para ruso",
+      "details": "Entrenado con 700 000 horas de habla rusa, con puntuación y normalización de texto. La opción más precisa para el ruso.",
+      "badge": "Ruso"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",
