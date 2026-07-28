@@ -388,6 +388,12 @@
       "details": "Trained on 700k hours of Russian speech, with punctuation and text normalization. The most accurate option for Russian.",
       "badge": "Russian"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "Central Asian & Russian",
+      "details": "Best open quality for Kazakh, Kyrgyz and Uzbek, and strong on Russian. Outputs lowercase text without punctuation.",
+      "badge": "Multilingual"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

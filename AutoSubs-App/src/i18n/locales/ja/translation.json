@@ -384,6 +384,12 @@
       "details": "70万時間のロシア語音声で学習。句読点とテキスト正規化に対応した、ロシア語で最も高精度な選択肢。",
       "badge": "ロシア語"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "中央アジア言語・ロシア語",
+      "details": "カザフ語、キルギス語、ウズベク語でオープンモデル最高水準の精度、ロシア語にも強い。句読点なしの小文字テキストを出力します。",
+      "badge": "多言語"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

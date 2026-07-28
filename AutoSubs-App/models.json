@@ -271,6 +271,21 @@
       "ui": { "size": "225MB", "ram": "2GB", "image": "owl.png", "accuracy": 4, "weight": 3, "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] } }
     },
     {
+      "id": "gigaam-multilingual",
+      "engine": "gigaam",
+      "quantization": "int8",
+      "_files_comment": "Same loader layout as gigaam-v3. The 600M variant is used because it beats the 220M one on every published language; unlike v3 this family only has a character-wise CTC head, so the output has no punctuation.",
+      "source": {
+        "type": "hf",
+        "repo": "istupakov/gigaam-multilingual-large-ctc-onnx",
+        "files": [
+          { "path": "multilingual_large_ctc.int8.onnx", "dest": "model.int8.onnx" },
+          { "path": "multilingual_vocab.txt", "dest": "vocab.txt" }
+        ]
+      },
+      "ui": { "size": "592MB", "ram": "3GB", "image": "globe.png", "accuracy": 4, "weight": 2, "languageSupport": { "kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"] } }
+    },
+    {
       "id": "omni-asr-1b-ctc",
       "engine": "omni_asr",
       "quantization": "fp32",

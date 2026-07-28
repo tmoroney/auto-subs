@@ -384,6 +384,12 @@
       "details": "70만 시간의 러시아어 음성으로 학습. 문장 부호와 텍스트 정규화를 지원하는 러시아어에 가장 정확한 모델.",
       "badge": "러시아어"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "중앙아시아 언어 및 러시아어",
+      "details": "카자흐어, 키르기스어, 우즈베크어에서 최고 수준의 오픈 모델 정확도를 제공하며 러시아어에도 강합니다. 문장 부호 없는 소문자 텍스트를 출력합니다.",
+      "badge": "다국어"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

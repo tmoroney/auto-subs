@@ -384,6 +384,12 @@
       "details": "Trainiert mit 700.000 Stunden russischer Sprache, mit Zeichensetzung und Textnormalisierung. Die genaueste Option für Russisch.",
       "badge": "Russisch"
     },
+    "gigaam_multilingual": {
+      "label": "GigaAM Multilingual",
+      "description": "Zentralasiatisch & Russisch",
+      "details": "Beste offene Qualität für Kasachisch, Kirgisisch und Usbekisch, stark auch bei Russisch. Gibt Kleinbuchstaben ohne Zeichensetzung aus.",
+      "badge": "Mehrsprachig"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

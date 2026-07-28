@@ -167,6 +167,12 @@ Sber's GigaAM v3 (int8 ONNX). A Conformer model trained on 700k hours of Russian
 |---|---|---|---|---|
 | gigaam-v3 | 225 MB | 2 GB | Russian, English | ★★★★ |
 
+GigaAM Multilingual (600M, int8 ONNX) covers Central Asian languages that the other models handle poorly — Whisper large v3 scores 58–110% WER on Kazakh, Kyrgyz and Uzbek. It uses a character-wise CTC head, so unlike GigaAM v3 its output has no punctuation or capitalization.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| gigaam-multilingual | 592 MB | 3 GB | Russian, Kazakh, Kyrgyz, Uzbek, English | ★★★★ |
+
 ### Diarization & VAD
 
 In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription).
