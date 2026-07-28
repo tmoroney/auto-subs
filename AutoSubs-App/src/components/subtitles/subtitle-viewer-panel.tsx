@@ -2,6 +2,7 @@ import * as React from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   Download,
+  FileUp,
   History,
   Loader2,
   Repeat2,
@@ -31,7 +32,10 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubtitleList } from "@/components/subtitles/subtitle-list";
 import { SpeakerSettings } from "@/components/common/speaker-settings";
-import { ImportExportPopover } from "@/components/common/import-export-popover";
+import {
+  ImportExportPopover,
+  type ExportFormat,
+} from "@/components/common/import-export-popover";
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
 import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
@@ -490,6 +494,7 @@ function SubtitleContent({
 }
 
 interface AddToTimelineFooterProps {
+  isConnected: boolean;
   timelineInfo: ReturnType<typeof useResolve>["timelineInfo"];
   templates: Template[];
   templatesLoading: boolean;
@@ -501,6 +506,8 @@ interface AddToTimelineFooterProps {
     selectedTemplate: string,
     presetSettings?: Record<string, unknown>,
   ) => Promise<void>;
+  onExport: (format: ExportFormat) => Promise<void>;
+  hasSubtitles: boolean;
   onSuccess?: () => void;
   t: (key: string) => string;
   isAdding: boolean;
@@ -509,6 +516,7 @@ interface AddToTimelineFooterProps {
 }
 
 function AddToTimelineFooter({
+  isConnected,
   timelineInfo,
   templates,
   templatesLoading,
@@ -516,6 +524,8 @@ function AddToTimelineFooter({
   onLoadTemplates,
   layersIconRef,
   onAddToTimeline,
+  onExport,
+  hasSubtitles,
   onSuccess,
   t,
   isAdding,
@@ -524,44 +534,68 @@ function AddToTimelineFooter({
 }: AddToTimelineFooterProps) {
   return (
     <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
-      <AddToTimelineDialog
-        timelineInfo={timelineInfo}
-        templates={templates}
-        templatesLoading={templatesLoading}
-        templatesLoaded={templatesLoaded}
-        onLoadTemplates={onLoadTemplates}
-        onAddToTimeline={onAddToTimeline}
-        onSuccess={onSuccess}
-        isAdding={isAdding}
-        selectedIntegration={selectedIntegration}
-      >
-        <Button
-          variant="secondary"
-          size="default"
-          disabled={isAdding}
-          className="w-full"
-          onMouseEnter={() =>
-            !isAdding && layersIconRef.current?.startAnimation?.()
-          }
-          onMouseLeave={() =>
-            !isAdding && layersIconRef.current?.stopAnimation?.()
-          }
+      {isConnected && (
+        <AddToTimelineDialog
+          timelineInfo={timelineInfo}
+          templates={templates}
+          templatesLoading={templatesLoading}
+          templatesLoaded={templatesLoaded}
+          onLoadTemplates={onLoadTemplates}
+          onAddToTimeline={onAddToTimeline}
+          onSuccess={onSuccess}
+          isAdding={isAdding}
+          selectedIntegration={selectedIntegration}
         >
-          {isAdding ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              {t("addToTimeline.adding")}
-            </>
-          ) : completed ? (
-            "Completed adding to timeline!"
+          <Button
+            variant="secondary"
+            size="default"
+            disabled={isAdding}
+            className="w-full"
+            onMouseEnter={() =>
+              !isAdding && layersIconRef.current?.startAnimation?.()
+            }
+            onMouseLeave={() =>
+              !isAdding && layersIconRef.current?.stopAnimation?.()
+            }
+          >
+            {isAdding ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {t("addToTimeline.adding")}
+              </>
+            ) : completed ? (
+              "Completed adding to timeline!"
+            ) : (
+              <>
+                <PlusIcon ref={layersIconRef} className="size-4" />
+                {t("subtitles.addToTimeline")}
+              </>
+            )}
+          </Button>
+        </AddToTimelineDialog>
+      )}
+      <ImportExportPopover
+        mode="export"
+        onExport={onExport}
+        hasSubtitles={hasSubtitles}
+        trigger={
+          isConnected ? (
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              title={t("importExport.exportTab")}
+            >
+              <Download />
+            </Button>
           ) : (
-            <>
-              <PlusIcon ref={layersIconRef} className="size-4" />
-              {t("subtitles.addToTimeline")}
-            </>
-          )}
-        </Button>
-      </AddToTimelineDialog>
+            <Button variant="secondary" size="default" className="w-full">
+              <Download className="size-4" />
+              {t("importExport.exportTab")}
+            </Button>
+          )
+        }
+      />
     </div>
   );
 }
@@ -777,17 +811,16 @@ export function SubtitleViewerPanel({
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
           <ImportExportPopover
+            mode="import"
             onImport={() => importSubtitles(useSettingsStore.getState(), null, "")}
-            onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
             hasSubtitles={subtitles.length > 0}
-            defaultTab={subtitles.length > 0 ? "export" : "import"}
             trigger={
               <Button
                 variant="ghost"
                 size="icon"
-                title={t("importExport.button")}
+                title={t("importExport.importTab")}
               >
-                <Download/>
+                <FileUp/>
               </Button>
             }
           />
@@ -856,8 +889,11 @@ export function SubtitleViewerPanel({
         loadTranscriptDocuments={loadTranscriptDocuments}
       />
 
-      {isIntegrationConnected && subtitles.length > 0 && (
+      {subtitles.length > 0 && (
         <AddToTimelineFooter
+          isConnected={isIntegrationConnected}
+          onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
+          hasSubtitles={subtitles.length > 0}
           timelineInfo={timelineInfo}
           templates={isAdobeActive ? [] : resolveTemplates}
           templatesLoading={!isAdobeActive && resolveTemplatesLoading}
