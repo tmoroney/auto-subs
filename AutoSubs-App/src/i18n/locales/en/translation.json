@@ -587,8 +587,8 @@
     "adding": "Sending...",
     "success": "Sent to timeline",
     "mode": {
-      "regular": "Regular",
-      "animated": "Animated"
+      "regular": "Regular Template",
+      "animated": "Animated Template"
     },
     "conflict": {
       "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."

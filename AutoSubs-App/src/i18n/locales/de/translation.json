@@ -566,8 +566,8 @@
     "adding": "Wird gesendet...",
     "success": "Zur Timeline gesendet",
     "mode": {
-      "regular": "Normal",
-      "animated": "Animiert"
+      "regular": "Normale Vorlage",
+      "animated": "Animierte Vorlage"
     },
     "conflict": {
       "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."

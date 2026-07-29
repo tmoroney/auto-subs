@@ -569,8 +569,8 @@
     "adding": "送信中...",
     "success": "タイムラインに送信されました",
     "mode": {
-      "regular": "通常",
-      "animated": "アニメーション"
+      "regular": "通常テンプレート",
+      "animated": "アニメーションテンプレート"
     },
     "preset": {
       "new": "新規プリセット",

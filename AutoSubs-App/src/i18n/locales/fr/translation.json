@@ -566,8 +566,8 @@
     "adding": "Envoi en cours...",
     "success": "Envoyé à la timeline",
     "mode": {
-      "regular": "Normal",
-      "animated": "Animé"
+      "regular": "Modèle normal",
+      "animated": "Modèle animé"
     },
     "conflict": {
       "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existent."

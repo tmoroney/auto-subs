@@ -569,8 +569,8 @@
       "description": "자막이 생성되어 타임라인에 전송할 준비가 되었습니다."
     },
     "mode": {
-      "regular": "일반",
-      "animated": "애니메이션"
+      "regular": "일반 템플릿",
+      "animated": "애니메이션 템플릿"
     },
     "preset": {
       "new": "새 프리셋",

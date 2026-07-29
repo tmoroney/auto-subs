@@ -566,8 +566,8 @@
     "adding": "Enviando...",
     "success": "Enviado a la línea de tiempo",
     "mode": {
-      "regular": "Normal",
-      "animated": "Animado"
+      "regular": "Plantilla normal",
+      "animated": "Plantilla animada"
     },
     "conflict": {
       "hasConflicts": "Esta pista tiene clips en conflicto. Los subtítulos pueden superponerse con el contenido existente."

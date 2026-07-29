@@ -569,8 +569,8 @@
     "adding": "正在发送...",
     "success": "已发送到时间线",
     "mode": {
-      "regular": "常规",
-      "animated": "动画"
+      "regular": "常规模板",
+      "animated": "动画模板"
     },
     "preset": {
       "new": "新建预设",

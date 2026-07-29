@@ -610,7 +610,7 @@ function OutputSheet(props: OutputSheetProps) {
 
         {!isAdobe && (
           <section ref={trackRef} className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="pl-1 text-xs text-muted-foreground">
               {t("output.track.label")}
             </Label>
             <Select
@@ -631,7 +631,7 @@ function OutputSheet(props: OutputSheetProps) {
             {props.conflictInfo?.hasConflicts && (
               <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                <span>{t("addToTimeline.conflict.hasConflicts")}</span>
+                <span className="pl-1">{t("addToTimeline.conflict.hasConflicts")}</span>
               </div>
             )}
           </section>
@@ -639,7 +639,7 @@ function OutputSheet(props: OutputSheetProps) {
 
         {speakers.length > 1 && (
           <section ref={speakersRef} className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="pl-1 text-xs text-muted-foreground">
               {t("output.speakers.label", { count: speakers.length })}
             </Label>
             <SpeakerChips
@@ -653,10 +653,7 @@ function OutputSheet(props: OutputSheetProps) {
         {/* Style last: it is the only section that grows, so it owns the
             page scroll instead of fighting a nested one. */}
         {!isAdobe && (
-          <section ref={styleRef} className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              {t("output.style.label")}
-            </Label>
+          <section ref={styleRef} className="space-y-4">
             <CaptionTemplateSelectionContent
               mode={props.captionMode}
               onModeChange={props.onCaptionModeChange}

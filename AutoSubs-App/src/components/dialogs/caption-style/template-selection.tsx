@@ -3,6 +3,7 @@ import { Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useIntegration } from "@/contexts/IntegrationContext"
 import { CaptionPreset, Template } from "@/types"
+import { Label } from "@/components/ui/label"
 import {
     AnimatedPresetPicker,
 } from "@/components/dialogs/caption-style/animated-preset-picker"
@@ -129,11 +130,11 @@ export function CaptionTemplateSelectionContent({
     // One list, grouped — rather than a mode switch the user has to understand
     // before they can browse. Picking an item implies its mode.
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             <section className="space-y-1.5">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Label className="pl-1 text-xs text-muted-foreground">
                     {t("addToTimeline.mode.regular")}
-                </h4>
+                </Label>
                 {templatesLoading && (
                     <div className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground">
                         <Loader2 className="size-3.5 animate-spin" />
@@ -173,9 +174,9 @@ export function CaptionTemplateSelectionContent({
 
             {hasAnimatedTemplate && (
                 <section className="space-y-1.5">
-                    <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Label className="pl-1 text-xs text-muted-foreground">
                         {t("addToTimeline.mode.animated")}
-                    </h4>
+                    </Label>
                     <AnimatedPresetPicker
                         presets={animatedPresets}
                         selectedPresetId={mode === "animated" ? presetId : ""}
