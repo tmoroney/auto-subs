@@ -14,7 +14,6 @@ import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { ResolveApiError } from "@/api/resolve-api";
 import SubSlateCard from "@/components/ui/SubSlateCard";
 import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } from "@/types";
-import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { getActiveCensorWords } from "@/censor/merge";
 import { TranscriptionPanelView } from "./transcription-panel-view";
 import { describeError } from "./utils";
@@ -22,24 +21,17 @@ import { describeError } from "./utils";
 interface TranscriptionPanelProps {
   onViewSubtitles?: () => void;
   onTranscriptCreated?: () => void | Promise<void>;
-  transcriptDocuments?: SubtitleDocumentListItem[];
-  isLoadingTranscriptDocuments?: boolean;
-  onTranscriptDocumentsRefresh?: () => Promise<void>;
   isSubtitleViewerOpen?: boolean;
 }
 
 export function TranscriptionPanel({
   onViewSubtitles,
   onTranscriptCreated,
-  transcriptDocuments = [],
-  isLoadingTranscriptDocuments = false,
-  onTranscriptDocumentsRefresh = async () => {},
   isSubtitleViewerOpen = false,
 }: TranscriptionPanelProps = {}) {
   const {
     subtitles,
     speakers,
-    currentSubtitleDocumentFilename,
     processTranscriptionResults,
     exportSubtitlesAs,
     loadSubtitles,
@@ -93,12 +85,7 @@ export function TranscriptionPanel({
   const { modelsState, checkDownloadedModels } = useModels();
   const {
     timelineInfo: resolveTimeline,
-    templates: resolveTemplates,
-    templatesLoading: resolveTemplatesLoading,
-    templatesLoaded: resolveTemplatesLoaded,
-    refreshTemplates: refreshResolveTemplates,
     refresh: refreshResolve,
-    pushToTimeline: resolvePush,
     cancelExport: resolveCancelExport,
     isExporting: resolveIsExporting,
     exportProgress: resolveExportProgress,
@@ -111,7 +98,6 @@ export function TranscriptionPanel({
   const {
     timelineInfo: premiereTimeline,
     refresh: refreshPremiere,
-    pushToTimeline: premierePush,
     isExporting: premiereIsExporting,
     exportProgress: premiereExportProgress,
     getSourceAudio: premiereGetSourceAudio,
@@ -126,14 +112,6 @@ export function TranscriptionPanel({
   const getSourceAudio = isPremiereActive
     ? premiereGetSourceAudio
     : resolveGetSourceAudio;
-  const pushToTimeline = isPremiereActive
-    ? (
-        filename?: string,
-        _selectedTemplate?: string,
-        _selectedOutputTrack?: string,
-        _presetSettings?: Record<string, unknown>,
-      ) => premierePush(filename)
-    : resolvePush;
   const cancelRequestedRef = resolveCancelRequestedRef;
   const isExporting = isPremiereActive
     ? premiereIsExporting
@@ -255,36 +233,6 @@ export function TranscriptionPanel({
       await exportSubtitlesAs("srt", subtitles, speakers);
     } catch (error) {
       console.error("Export failed:", error);
-    }
-  };
-
-  const handleAddToTimeline = async (
-    selectedOutputTrack: string,
-    selectedTemplate: string,
-    presetSettings?: Record<string, unknown>,
-  ) => {
-    try {
-      if (!currentSubtitleDocumentFilename) {
-        console.error("No active subtitle document to add to timeline");
-        return;
-      }
-
-      await pushToTimeline(
-        currentSubtitleDocumentFilename,
-        selectedTemplate,
-        selectedOutputTrack,
-        presetSettings,
-      );
-    } catch (error) {
-      console.error("Failed to add to timeline:", error);
-      const { title, message, detail } = describeError(
-        error,
-        tErr(
-          "errorDialog.addToTimelineFailed",
-          "Couldn't add subtitles to timeline",
-        ),
-      );
-      showError({ title, message, detail });
     }
   };
 
@@ -511,19 +459,9 @@ export function TranscriptionPanel({
             processingSteps={processingSteps}
             progressContainerRef={progressContainerRef}
             onExportToFile={handleExportToFile}
-            onAddToTimeline={handleAddToTimeline}
             onViewSubtitles={onViewSubtitles}
-            transcriptDocuments={transcriptDocuments}
-            isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
-            onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
             isSubtitleViewerOpen={isSubtitleViewerOpen}
             timelineInfo={timelineInfo}
-            templates={isPremiereActive ? [] : resolveTemplates}
-            templatesLoading={isPremiereActive ? false : resolveTemplatesLoading}
-            templatesLoaded={isPremiereActive ? true : resolveTemplatesLoaded}
-            onLoadTemplates={
-              isPremiereActive ? undefined : refreshResolveTemplates
-            }
             selectedFile={fileInput}
             onSelectedFileChange={handleSelectedFileChange}
             onStart={handleStartTranscription}

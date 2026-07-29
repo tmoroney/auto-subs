@@ -15,6 +15,7 @@ import {
   saveSubtitleDocument,
   updateSubtitleDocument,
   type TranscriptSourceType,
+  type TranscriptMetadata,
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
@@ -42,6 +43,12 @@ interface SubtitleDocumentContextType {
   speakers: Speaker[];
   markIn: number;
   currentSubtitleDocumentFilename: string | null;
+  /**
+   * Human-meaningful name of what was transcribed — the source audio filename
+   * in standalone mode, the timeline name otherwise. Null when unknown, in
+   * which case callers should fall back to the document filename.
+   */
+  currentSubtitleDocumentSourceName: string | null;
   setSubtitles: (subtitles: Subtitle[]) => void;
   setSpeakers: (speakers: Speaker[]) => void;
   setCurrentSubtitleDocumentFilename: (filename: string | null) => void;
@@ -62,6 +69,15 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [markIn, setMarkIn] = useState(0);
   const [currentSubtitleDocumentFilename, setCurrentSubtitleDocumentFilename] = useState<string | null>(null);
+  const [currentSubtitleDocumentSourceName, setCurrentSubtitleDocumentSourceName] = useState<string | null>(null);
+
+  // Prefer the source audio file's name; fall back to the timeline it came
+  // from, then whatever display name was stored with the document.
+  const sourceNameFrom = (metadata?: Partial<TranscriptMetadata> | null) =>
+    metadata?.sourceFileName?.trim() ||
+    metadata?.timelineName?.trim() ||
+    metadata?.displayName?.trim() ||
+    null;
 
   // Debounce subtitle file writes to prevent concurrent read-parse-stringify-write
   // cycles from accumulating in the V8 heap when the user types quickly.
@@ -82,6 +98,13 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       if (transcript) {
         console.log("Transcript loaded:", transcript);
         setCurrentSubtitleDocumentFilename(filename);
+        setCurrentSubtitleDocumentSourceName(
+          sourceNameFrom(transcript.metadata) ??
+            sourceNameFrom({
+              sourceFileName: transcript.sourceFileName,
+              timelineName: transcript.timelineName,
+            }),
+        );
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
@@ -89,12 +112,14 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       } else {
         console.warn("No transcript found for:", filename);
         setCurrentSubtitleDocumentFilename(null);
+        setCurrentSubtitleDocumentSourceName(null);
         setSubtitles([]);
         setSpeakers([]);
       }
     } else {
       console.log("No matching transcript found");
       setCurrentSubtitleDocumentFilename(null);
+      setCurrentSubtitleDocumentSourceName(null);
       setSubtitles([]);
       setSpeakers([]);
     }
@@ -184,6 +209,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     )
 
     setCurrentSubtitleDocumentFilename(filename);
+    setCurrentSubtitleDocumentSourceName(
+      settings.audioInputMode === "file"
+        ? fileInput?.split(/[/\\]/).pop() || null
+        : timelineInfo?.name || null,
+    );
 
     // Save transcript to JSON file.
     // Content formatting (case, punctuation, censoring) is already applied by the
@@ -227,6 +257,9 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     }
 
     setCurrentSubtitleDocumentFilename(filename);
+    setCurrentSubtitleDocumentSourceName(
+      sourceNameFrom(transcript.metadata) ?? currentSubtitleDocumentSourceName,
+    );
     const originalSegments: Subtitle[] = transcript.originalSegments || transcript.segments || [];
 
     // Single Rust call applies BOTH structural splitting and content formatting
@@ -381,6 +414,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         }
       });
       setCurrentSubtitleDocumentFilename(filename)
+      setCurrentSubtitleDocumentSourceName(
+        settings.audioInputMode === "file"
+          ? fileInput?.split(/[/\\]/).pop() || null
+          : timelineInfo?.name || null,
+      )
       setSubtitles(segments)
     } catch (error) {
       console.error('Failed to open file', error);
@@ -395,6 +433,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       speakers,
       markIn,
       currentSubtitleDocumentFilename,
+      currentSubtitleDocumentSourceName,
       setSubtitles,
       setSpeakers,
       setCurrentSubtitleDocumentFilename,

@@ -57,7 +57,8 @@
     "delete": "删除",
     "generateSubtitles": "生成",
     "startNewTranscription": "开始新转录",
-    "refresh": "刷新连接"
+    "refresh": "刷新连接",
+    "edit": "编辑"
   },
   "update": {
     "restartResolveServer": {
@@ -440,6 +441,12 @@
     "previousSubtitles": "字幕历史",
     "empty": {
       "noSubtitlesAvailable": "转录完成后，字幕将显示在这里"
+    },
+    "status": {
+      "count_one": "{{count}} 条字幕",
+      "count_other": "{{count}} 条字幕",
+      "matches_one": "{{count}} 个匹配",
+      "matches_other": "{{count}} 个匹配"
     }
   },
   "gettingStarted": {
@@ -621,5 +628,32 @@
     "noOccurrencesFound": "未找到匹配项",
     "replaceCurrent": "替换当前项",
     "replaceAll": "全部替换（{{count}}）"
+  },
+  "output": {
+    "track": {
+      "label": "输出轨道",
+      "placeholder": "选择轨道",
+      "none": "无轨道"
+    },
+    "style": {
+      "label": "字幕样式",
+      "loading": "正在加载模板...",
+      "noTemplates": "未找到模板。"
+    },
+    "speakers": {
+      "label_one": "{{count}} 位说话人",
+      "label_other": "{{count}} 位说话人"
+    },
+    "speakerCount_one": "{{count}} 位说话人",
+    "speakerCount_other": "{{count}} 位说话人",
+    "notConnected": "连接 DaVinci Resolve 后即可将字幕发送到时间线。",
+    "noSubtitles": "没有可发送的字幕",
+    "chooseTrack": "选择输出轨道",
+    "reviewAndSend": "检查并发送",
+    "errors": {
+      "notConnected": "未连接编辑软件。请连接 DaVinci Resolve、Adobe Premiere Pro 或 After Effects 以自定义模板。",
+      "timedOut": "连接超时。请确认剪辑软件正在运行，然后重试。"
+    },
+    "sentAgain": "已发送 · 再次发送"
   }
 }

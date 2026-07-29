@@ -85,8 +85,7 @@ export function SettingsDropdown() {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-sm"
-                className="rounded-sm"
+                size="icon"
                 aria-label={t("settings.title", "Settings")}
               >
                 <SettingsIcon />

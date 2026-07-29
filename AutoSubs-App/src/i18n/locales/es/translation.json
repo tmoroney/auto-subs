@@ -57,7 +57,8 @@
     "delete": "Eliminar",
     "generateSubtitles": "Generar",
     "startNewTranscription": "Iniciar nueva transcripción",
-    "refresh": "Actualizar conexión"
+    "refresh": "Actualizar conexión",
+    "edit": "Editar"
   },
   "update": {
     "restartResolveServer": {
@@ -440,6 +441,12 @@
     "previousSubtitles": "Historial de subtítulos",
     "empty": {
       "noSubtitlesAvailable": "Tus subtítulos aparecerán aquí cuando termine la transcripción"
+    },
+    "status": {
+      "count_one": "{{count}} subtítulo",
+      "count_other": "{{count}} subtítulos",
+      "matches_one": "{{count}} coincidencia",
+      "matches_other": "{{count}} coincidencias"
     }
   },
   "gettingStarted": {
@@ -621,5 +628,32 @@
     "noOccurrencesFound": "No se encontraron coincidencias",
     "replaceCurrent": "Reemplazar actual",
     "replaceAll": "Reemplazar todo ({{count}})"
+  },
+  "output": {
+    "track": {
+      "label": "Pista de salida",
+      "placeholder": "Elige una pista",
+      "none": "Sin pista"
+    },
+    "style": {
+      "label": "Estilo de subtítulos",
+      "loading": "Cargando plantillas...",
+      "noTemplates": "No se encontraron plantillas."
+    },
+    "speakers": {
+      "label_one": "{{count}} hablante",
+      "label_other": "{{count}} hablantes"
+    },
+    "speakerCount_one": "{{count}} hablante",
+    "speakerCount_other": "{{count}} hablantes",
+    "notConnected": "Conecta DaVinci Resolve para enviar subtítulos a una línea de tiempo.",
+    "noSubtitles": "No hay subtítulos que enviar",
+    "chooseTrack": "Elige una pista de salida",
+    "reviewAndSend": "Revisar y enviar",
+    "errors": {
+      "notConnected": "Ningún editor conectado. Conecta DaVinci Resolve, Adobe Premiere Pro o After Effects para personalizar plantillas.",
+      "timedOut": "Se agotó el tiempo de conexión. Asegúrate de que tu software de edición esté abierto e inténtalo de nuevo."
+    },
+    "sentAgain": "Enviado · Enviar de nuevo"
   }
 }

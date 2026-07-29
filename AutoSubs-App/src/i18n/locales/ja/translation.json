@@ -106,7 +106,8 @@
     "generateSubtitles": "生成",
     "startNewTranscription": "新しい文字起こしを開始",
     "next": "次へ",
-    "refresh": "接続を更新"
+    "refresh": "接続を更新",
+    "edit": "編集"
   },
   "update": {
     "restartResolveServer": {
@@ -483,7 +484,13 @@
     "speakers": "話者",
     "title": "字幕",
     "unknownSpeaker": "不明な話者",
-    "previousSubtitles": "字幕履歴"
+    "previousSubtitles": "字幕履歴",
+    "status": {
+      "count_one": "字幕 {{count}} 件",
+      "count_other": "字幕 {{count}} 件",
+      "matches_one": "{{count}} 件一致",
+      "matches_other": "{{count}} 件一致"
+    }
   },
   "theme": {
     "toggle": "テーマを切り替え"
@@ -621,5 +628,32 @@
     "noOccurrencesFound": "一致が見つかりません",
     "replaceCurrent": "現在を置換",
     "replaceAll": "すべて置換 ({{count}})"
+  },
+  "output": {
+    "track": {
+      "label": "出力トラック",
+      "placeholder": "トラックを選択",
+      "none": "トラックなし"
+    },
+    "style": {
+      "label": "字幕スタイル",
+      "loading": "テンプレートを読み込み中...",
+      "noTemplates": "テンプレートが見つかりません。"
+    },
+    "speakers": {
+      "label_one": "話者 {{count}} 人",
+      "label_other": "話者 {{count}} 人"
+    },
+    "speakerCount_one": "話者 {{count}} 人",
+    "speakerCount_other": "話者 {{count}} 人",
+    "notConnected": "タイムラインに字幕を送るには DaVinci Resolve に接続してください。",
+    "noSubtitles": "送信する字幕がありません",
+    "chooseTrack": "出力トラックを選択",
+    "reviewAndSend": "確認して送信",
+    "errors": {
+      "notConnected": "エディターが接続されていません。テンプレートをカスタマイズするには DaVinci Resolve、Adobe Premiere Pro、または After Effects に接続してください。",
+      "timedOut": "接続がタイムアウトしました。編集ソフトが起動しているか確認して、もう一度お試しください。"
+    },
+    "sentAgain": "送信済み · もう一度送信"
   }
 }

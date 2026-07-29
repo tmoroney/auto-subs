@@ -57,7 +57,8 @@
     "delete": "Supprimer",
     "generateSubtitles": "Générer",
     "startNewTranscription": "Démarrer une nouvelle transcription",
-    "refresh": "Actualiser la connexion"
+    "refresh": "Actualiser la connexion",
+    "edit": "Modifier"
   },
   "update": {
     "restartResolveServer": {
@@ -440,6 +441,12 @@
     "previousSubtitles": "Historique des sous-titres",
     "empty": {
       "noSubtitlesAvailable": "Vos sous-titres apparaîtront ici une fois la transcription terminée"
+    },
+    "status": {
+      "count_one": "{{count}} sous-titre",
+      "count_other": "{{count}} sous-titres",
+      "matches_one": "{{count}} résultat",
+      "matches_other": "{{count}} résultats"
     }
   },
   "gettingStarted": {
@@ -621,5 +628,32 @@
     "noOccurrencesFound": "Aucune occurrence trouvée",
     "replaceCurrent": "Remplacer l’actuelle",
     "replaceAll": "Tout remplacer ({{count}})"
+  },
+  "output": {
+    "track": {
+      "label": "Piste de sortie",
+      "placeholder": "Choisir une piste",
+      "none": "Aucune piste"
+    },
+    "style": {
+      "label": "Style de sous-titres",
+      "loading": "Chargement des modèles...",
+      "noTemplates": "Aucun modèle trouvé."
+    },
+    "speakers": {
+      "label_one": "{{count}} intervenant",
+      "label_other": "{{count}} intervenants"
+    },
+    "speakerCount_one": "{{count}} intervenant",
+    "speakerCount_other": "{{count}} intervenants",
+    "notConnected": "Connectez DaVinci Resolve pour envoyer les sous-titres vers une timeline.",
+    "noSubtitles": "Aucun sous-titre à envoyer",
+    "chooseTrack": "Choisir une piste de sortie",
+    "reviewAndSend": "Vérifier et envoyer",
+    "errors": {
+      "notConnected": "Aucun éditeur connecté. Connectez DaVinci Resolve, Adobe Premiere Pro ou After Effects pour personnaliser les modèles.",
+      "timedOut": "Délai de connexion dépassé. Vérifiez que votre logiciel de montage est ouvert et réessayez."
+    },
+    "sentAgain": "Envoyé · Renvoyer"
   }
 }

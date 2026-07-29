@@ -187,6 +187,12 @@ export interface CaptionPreset {
     createdAt: string;
     updatedAt: string;
     macroSettings: Record<string, unknown>;
+    /**
+     * Filename of this preset's preview thumbnail, relative to the app data
+     * `caption-previews/` directory. Absent until a preview has been captured,
+     * in which case the picker shows a placeholder.
+     */
+    previewImage?: string;
 }
 
 // A named list of censored words that can be toggled on/off as a group.

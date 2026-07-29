@@ -25,10 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Check,
   ClipboardPaste,
   Download,
   Ellipsis,
@@ -37,7 +36,6 @@ import {
   Play,
   Plus,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CaptionPreset } from "@/types";
@@ -46,6 +44,7 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { downloadDir } from "@tauri-apps/api/path";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PresetThumbnail } from "@/components/dialogs/caption-style/preset-thumbnail";
 
 interface AnimatedPresetPickerProps {
   presets: CaptionPreset[];
@@ -56,26 +55,62 @@ interface AnimatedPresetPickerProps {
   onDelete: (id: string) => Promise<void> | void;
   onExportJson: (id: string) => string;
   onDuplicate: (preset: CaptionPreset) => Promise<void> | void;
+  onImportJson?: (json: string) => Promise<CaptionPreset>;
   previewLoadingId?: string | null;
+  onRequestCreate?: () => void;
 }
 
-interface AnimatedPresetActionsProps {
-  onRequestCreate: () => void;
-  onImportJson: (json: string) => Promise<CaptionPreset>;
-  className?: string;
-}
-
-export function AnimatedPresetActions({
-  onRequestCreate,
+/**
+ * Full-width animated caption preset list with an overflow menu per preset.
+ */
+export function AnimatedPresetPicker({
+  presets,
+  selectedPresetId,
+  onSelect,
+  onRequestEdit,
+  onRequestPreview,
+  onDelete,
+  onExportJson,
+  onDuplicate,
   onImportJson,
-  className,
-}: AnimatedPresetActionsProps) {
+  previewLoadingId,
+  onRequestCreate,
+}: AnimatedPresetPickerProps) {
   const { t } = useTranslation();
+  const [pendingDelete, setPendingDelete] =
+    React.useState<CaptionPreset | null>(null);
   const [pasteOpen, setPasteOpen] = React.useState(false);
   const [pasteValue, setPasteValue] = React.useState("");
   const [pasteError, setPasteError] = React.useState<string | null>(null);
 
+  async function handleExport(preset: CaptionPreset) {
+    try {
+      const json = onExportJson(preset.id);
+      const defaultPath = `${await downloadDir()}/${slug(preset.name)}.autosubs-preset.json`;
+      const target = await save({
+        defaultPath,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!target) return;
+      await writeTextFile(target, json);
+      toast.success(t("addToTimeline.preset.export"));
+    } catch (err: any) {
+      toast.error(err?.message ?? "Export failed");
+    }
+  }
+
+  async function handleCopyJson(preset: CaptionPreset) {
+    try {
+      const json = JSON.stringify(preset, null, 2);
+      await navigator.clipboard.writeText(json);
+      toast.success(t("addToTimeline.preset.copied"));
+    } catch (err: any) {
+      toast.error(err?.message ?? "Copy failed");
+    }
+  }
+
   async function handleImportFromFile() {
+    if (!onImportJson) return;
     const file = await open({
       multiple: false,
       directory: false,
@@ -92,6 +127,7 @@ export function AnimatedPresetActions({
   }
 
   async function handlePasteImport() {
+    if (!onImportJson) return;
     setPasteError(null);
     try {
       await onImportJson(pasteValue);
@@ -107,44 +143,65 @@ export function AnimatedPresetActions({
 
   return (
     <>
-      <div
-        className={cn(
-          "grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:shrink-0 sm:items-center sm:gap-1",
-          className,
+      <div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
+        {presets.map((preset) => (
+          <PresetCard
+            key={preset.id}
+            preset={preset}
+            selected={selectedPresetId === preset.id}
+            onSelect={() => onSelect(preset.id)}
+            onPreview={
+              onRequestPreview ? () => onRequestPreview(preset) : undefined
+            }
+            isPreviewLoading={previewLoadingId === preset.id}
+            onEdit={() => onRequestEdit(preset)}
+            onDuplicate={() => onDuplicate(preset)}
+            onExport={() => handleExport(preset)}
+            onCopyJson={() => handleCopyJson(preset)}
+            onRequestDelete={() => setPendingDelete(preset)}
+          />
+        ))}
+        {onRequestCreate && (
+          <NewPresetCard
+            onCreate={onRequestCreate}
+            onImportFromFile={handleImportFromFile}
+            onPasteImport={() => setPasteOpen(true)}
+            canImport={!!onImportJson}
+          />
         )}
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full text-sm font-semibold sm:w-auto"
-            >
-              <Upload className="size-4" />
-              {t("importExport.importTab")}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setPasteOpen(true)}>
-              <ClipboardPaste />
-              {t("addToTimeline.preset.paste")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleImportFromFile}>
-              <FileUp />
-              {t("addToTimeline.preset.import")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          type="button"
-          className="w-full text-sm font-semibold sm:w-auto"
-          onClick={onRequestCreate}
-        >
-          <Plus className="size-4" />
-          {t("addToTimeline.preset.new", "New Preset")}
-        </Button>
       </div>
 
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("addToTimeline.preset.confirmDeleteTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("addToTimeline.preset.confirmDelete")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("addToTimeline.preset.action.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingDelete) await onDelete(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              {t("addToTimeline.preset.confirmDeleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Paste JSON import */}
       <Dialog
         open={pasteOpen}
         onOpenChange={(o) => {
@@ -194,108 +251,6 @@ export function AnimatedPresetActions({
   );
 }
 
-/**
- * Full-width animated caption preset list with an overflow menu per preset.
- */
-export function AnimatedPresetPicker({
-  presets,
-  selectedPresetId,
-  onSelect,
-  onRequestEdit,
-  onRequestPreview,
-  onDelete,
-  onExportJson,
-  onDuplicate,
-  previewLoadingId,
-}: AnimatedPresetPickerProps) {
-  const { t } = useTranslation();
-  const [pendingDelete, setPendingDelete] =
-    React.useState<CaptionPreset | null>(null);
-
-  async function handleExport(preset: CaptionPreset) {
-    try {
-      const json = onExportJson(preset.id);
-      const defaultPath = `${await downloadDir()}/${slug(preset.name)}.autosubs-preset.json`;
-      const target = await save({
-        defaultPath,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (!target) return;
-      await writeTextFile(target, json);
-      toast.success(t("addToTimeline.preset.export"));
-    } catch (err: any) {
-      toast.error(err?.message ?? "Export failed");
-    }
-  }
-
-  async function handleCopyJson(preset: CaptionPreset) {
-    try {
-      const json = JSON.stringify(preset, null, 2);
-      await navigator.clipboard.writeText(json);
-      toast.success(t("addToTimeline.preset.copied"));
-    } catch (err: any) {
-      toast.error(err?.message ?? "Copy failed");
-    }
-  }
-
-  return (
-    <>
-      <ScrollArea className="h-[296px] w-full">
-        <div className="space-y-2 pr-3 pb-4">
-          {presets.map((preset) => (
-            <PresetCard
-              key={preset.id}
-              preset={preset}
-              selected={selectedPresetId === preset.id}
-              onSelect={() => onSelect(preset.id)}
-              onPreview={
-                onRequestPreview ? () => onRequestPreview(preset) : undefined
-              }
-              isPreviewLoading={previewLoadingId === preset.id}
-              onEdit={() => onRequestEdit(preset)}
-              onDuplicate={() => onDuplicate(preset)}
-              onExport={() => handleExport(preset)}
-              onCopyJson={() => handleCopyJson(preset)}
-              onRequestDelete={() => setPendingDelete(preset)}
-            />
-          ))}
-        </div>
-      </ScrollArea>
-
-      {/* Delete confirmation */}
-      <AlertDialog
-        open={!!pendingDelete}
-        onOpenChange={(o) => !o && setPendingDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("addToTimeline.preset.confirmDeleteTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("addToTimeline.preset.confirmDelete")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("addToTimeline.preset.action.cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (pendingDelete) await onDelete(pendingDelete.id);
-                setPendingDelete(null);
-              }}
-            >
-              {t("addToTimeline.preset.confirmDeleteConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-    </>
-  );
-}
-
 interface PresetCardProps {
   preset: CaptionPreset;
   selected: boolean;
@@ -324,7 +279,7 @@ function PresetCard({
   const { t } = useTranslation();
 
   return (
-    <div
+    <Card
       role="button"
       tabIndex={0}
       aria-label={preset.name}
@@ -336,99 +291,60 @@ function PresetCard({
           onSelect();
         }
       }}
+      title={preset.description || preset.name}
       className={cn(
-        "group relative flex min-h-[72px] cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected
-          ? "border-primary bg-primary/5"
-          : "border-border bg-background hover:bg-muted/50",
+        "group cursor-pointer overflow-hidden p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "border-primary ring-1 ring-primary",
       )}
     >
-      <div
-        className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border",
-          selected
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-muted-foreground/30 bg-background",
-        )}
-      >
-        {selected && <Check className="size-3" />}
-      </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-semibold leading-tight text-foreground">
-            {preset.name}
-          </span>
-          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {preset.builtIn
-              ? t("addToTimeline.preset.builtIn")
-              : t("addToTimeline.preset.custom")}
-          </span>
-        </div>
-        {preset.description && (
-          <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-            {preset.description}
-          </p>
-        )}
-      </div>
-
-      <div className="ml-auto flex shrink-0 items-center gap-1">
-        {onPreview && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview();
-            }}
-            disabled={isPreviewLoading}
-          >
-            {isPreviewLoading ? (
-              <div className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Play className="size-3" />
-            )}
-            {t("addToTimeline.preset.preview")}
-          </Button>
-        )}
-        {!preset.builtIn && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-          >
-            <Pencil className="size-3" />
-          </Button>
-        )}
+      <PresetThumbnail
+        preset={preset}
+        selected={selected}
+        className="aspect-video h-auto w-full rounded-none border-0"
+      />
+      <div className="flex items-center gap-1 px-2 py-1.5 pl-3">
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+          {preset.name}
+        </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-6"
+              className="size-6 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
               onClick={(e) => e.stopPropagation()}
+              aria-label={t("common.edit", "Edit")}
             >
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            {onPreview && (
+              <DropdownMenuItem
+                onClick={onPreview}
+                disabled={isPreviewLoading}
+              >
+                <Play />
+                {t("addToTimeline.preset.preview")}
+              </DropdownMenuItem>
+            )}
+            {!preset.builtIn && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil />
+                {t("common.edit", "Edit")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={onDuplicate}>
-              <Plus className="size-3.5" />
+              <Plus />
               {t("addToTimeline.preset.duplicate")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onExport}>
-              <Download className="size-3.5" />
+              <Download />
               {t("addToTimeline.preset.export")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onCopyJson}>
-              <ClipboardPaste className="size-3.5" />
+              <ClipboardPaste />
               {t("addToTimeline.preset.copyJson")}
             </DropdownMenuItem>
             {!preset.builtIn && (
@@ -438,7 +354,7 @@ function PresetCard({
                   onClick={onRequestDelete}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="size-3.5" />
+                  <Trash2 />
                   {t("addToTimeline.preset.delete")}
                 </DropdownMenuItem>
               </>
@@ -446,7 +362,80 @@ function PresetCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </Card>
+  );
+}
+
+interface NewPresetCardProps {
+  onCreate: () => void;
+  onImportFromFile: () => void;
+  onPasteImport: () => void;
+  canImport: boolean;
+}
+
+function NewPresetCard({
+  onCreate,
+  onImportFromFile,
+  onPasteImport,
+  canImport,
+}: NewPresetCardProps) {
+  const { t } = useTranslation();
+
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      aria-label={t("addToTimeline.preset.new", "New Preset")}
+      onClick={onCreate}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onCreate();
+        }
+      }}
+      className="group cursor-pointer overflow-hidden border-dashed p-0 text-muted-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <div className="flex aspect-video h-auto w-full items-center justify-center bg-muted/30">
+        <Plus className="size-6 group-hover:text-foreground" />
+      </div>
+      <div className="flex items-center gap-1 px-2 py-1.5 pl-3">
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+          {t("addToTimeline.preset.new", "New Preset")}
+        </span>
+        {canImport && (
+          <div className="flex items-center gap-0.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPasteImport();
+              }}
+              aria-label={t("addToTimeline.preset.paste")}
+              title={t("addToTimeline.preset.paste")}
+            >
+              <ClipboardPaste />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                onImportFromFile();
+              }}
+              aria-label={t("addToTimeline.preset.import")}
+              title={t("addToTimeline.preset.import")}
+            >
+              <FileUp />
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

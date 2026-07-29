@@ -1,14 +1,9 @@
 import * as React from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import {
-  Download,
   FileUp,
   History,
-  Loader2,
   Repeat2,
-  Send,
-  Type,
-  Users,
   X,
   Search,
   CornerDownRight,
@@ -25,36 +20,30 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubtitleList } from "@/components/subtitles/subtitle-list";
-import { SpeakerSettings } from "@/components/common/speaker-settings";
-import {
-  ExportPopover,
-  type ExportFormat,
-} from "@/components/common/export-popover";
-import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog";
-import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
+import { type ExportFormat } from "@/components/common/export-popover";
+import { OutputPanel } from "@/components/subtitles/output-panel";
+import { TranscriptStatusRow } from "@/components/subtitles/transcript-status-row";
 import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useOutputPanelStore } from "@/stores/output-panel-store";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
-import { Speaker, Template, Track } from "@/types";
+import { useErrorDialog } from "@/contexts/ErrorDialogContext";
+import { describeError } from "@/components/transcription/utils";
 import { useTranslation } from "react-i18next";
-import { Forward } from "lucide-react";
-import { listSubtitleDocuments, type SubtitleDocumentListItem } from "@/utils/file-utils";
+import { type SubtitleDocumentListItem } from "@/utils/file-utils";
 
 interface SubtitleViewerPanelProps {
   isOpen?: boolean;
   isFullScreen?: boolean;
   onClose?: () => void;
+  transcriptDocuments: SubtitleDocumentListItem[];
+  isLoadingTranscriptDocuments: boolean;
+  onTranscriptDocumentsRefresh: () => Promise<void>;
 }
 
 interface SearchActionButtonProps {
@@ -240,178 +229,6 @@ function SearchSection({
   );
 }
 
-interface SpeakersPopoverProps {
-  open: boolean;
-  speakers: Speaker[];
-  disabled?: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSpeakerChange: (index: number, speaker: Speaker) => void;
-  t: (key: string) => string;
-  tracks?: Track[];
-}
-
-function SpeakersPopover({
-  open,
-  speakers,
-  disabled = false,
-  onOpenChange,
-  onSpeakerChange,
-  t,
-  tracks,
-}: SpeakersPopoverProps) {
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) onOpenChange(true);
-        else onOpenChange(false);
-      }}
-    >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="shadow-none"
-              title={t("subtitles.speakers")}
-              disabled={disabled}
-            >
-              <Users className="size-4 mr-0.5" />
-              {t("subtitles.speakers")}
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-      </Tooltip>
-      <PopoverContent
-        align="center"
-        className="w-[340px] pb-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <div className="pb-3">
-          <h4 className="font-medium text-sm">{t("speakerEditor.title")}</h4>
-          <p className="text-xs text-muted-foreground">
-            {t("speakerEditor.description")}
-          </p>
-        </div>
-        <ScrollArea className="max-h-[400px] pr-4 -mr-4">
-          <div className="space-y-3 pb-4">
-            {speakers.length === 0 && (
-              <p className="text-xs text-muted-foreground py-4 text-center">
-                {t("subtitles.empty.noSubtitlesAvailable")}
-              </p>
-            )}
-            {speakers.map((speaker, index) => (
-              <div key={index} className="border rounded-md p-3 bg-card">
-                <SpeakerSettings
-                  speaker={speaker}
-                  onSpeakerChange={(updated) => onSpeakerChange(index, updated)}
-                  tracks={tracks}
-                />
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-interface ReformatPopoverProps {
-  open: boolean;
-  subtitleCount: number;
-  onOpenChange: (open: boolean) => void;
-  onApply: () => Promise<void>;
-  t: (key: string) => string;
-}
-
-function ReformatPopover({
-  open,
-  subtitleCount,
-  onOpenChange,
-  onApply,
-  t,
-}: ReformatPopoverProps) {
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="shadow-none"
-              title={t("subtitles.reformat")}
-            >
-              <Type className="size-4 mr-0.5" />
-              {t("subtitles.reformat")}
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-      </Tooltip>
-      <PopoverContent
-        align="center"
-        className="w-80 p-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <TextFormattingPanel
-          showActions
-          onCancel={() => onOpenChange(false)}
-          onApply={onApply}
-          applyDisabled={subtitleCount === 0}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-interface SubtitleToolbarProps {
-  subtitlesLength: number;
-  speakers: Speaker[];
-  showSpeakerEditor: boolean;
-  showReformat: boolean;
-  onSpeakerEditorOpenChange: (open: boolean) => void;
-  onSpeakerChange: (index: number, speaker: Speaker) => void;
-  onReformatOpenChange: (open: boolean) => void;
-  onApplyReformat: () => Promise<void>;
-  t: (key: string) => string;
-  tracks?: Track[];
-}
-
-function SubtitleToolbar({
-  subtitlesLength,
-  speakers,
-  showSpeakerEditor,
-  showReformat,
-  onSpeakerEditorOpenChange,
-  onSpeakerChange,
-  onReformatOpenChange,
-  onApplyReformat,
-  t,
-  tracks,
-}: SubtitleToolbarProps) {
-  return (
-    <div className="shrink-0 px-3 pb-3 pt-2 flex items-center gap-2 relative z-20 border-b overflow-x-auto">
-      <div className="grid w-full grid-cols-2 gap-1">
-        <ReformatPopover
-          open={showReformat}
-          subtitleCount={subtitlesLength}
-          onOpenChange={onReformatOpenChange}
-          onApply={onApplyReformat}
-          t={t}
-        />
-        <SpeakersPopover
-          open={showSpeakerEditor}
-          speakers={speakers}
-          disabled={speakers.length === 0}
-          onOpenChange={onSpeakerEditorOpenChange}
-          onSpeakerChange={onSpeakerChange}
-          t={t}
-          tracks={tracks}
-        />
-      </div>
-    </div>
-  );
-}
-
 interface SubtitleContentProps {
   subtitlesLength: number;
   searchQuery: string;
@@ -420,10 +237,11 @@ interface SubtitleContentProps {
   selectedIndex: number | null;
   onSelectedIndexChange: (index: number | null) => void;
   onJumpToTime: (seconds: number) => Promise<void>;
+  onMatchCountChange: (count: number) => void;
   t: (key: string) => string;
   transcriptDocuments: SubtitleDocumentListItem[];
   isLoadingTranscriptDocuments: boolean;
-  loadTranscriptDocuments: () => Promise<void>;
+  onTranscriptDocumentsRefresh: () => Promise<void>;
 }
 
 function SubtitleContent({
@@ -434,12 +252,12 @@ function SubtitleContent({
   selectedIndex,
   onSelectedIndexChange,
   onJumpToTime,
+  onMatchCountChange,
   t,
   transcriptDocuments,
   isLoadingTranscriptDocuments,
-  loadTranscriptDocuments,
+  onTranscriptDocumentsRefresh,
 }: SubtitleContentProps) {
-  const hasLoadedTranscripts = React.useRef(false);
   const contentClassName =
     subtitlesLength > 0
       ? "flex-1 overflow-y-auto min-h-0 px-0 relative z-0"
@@ -455,6 +273,7 @@ function SubtitleContent({
           selectedIndex={selectedIndex}
           onSelectedIndexChange={onSelectedIndexChange}
           onJumpToTime={onJumpToTime}
+          onMatchCountChange={onMatchCountChange}
           itemClassName="hover:bg-muted dark:hover:bg-slate-900 transition-colors"
         />
       ) : (
@@ -466,7 +285,7 @@ function SubtitleContent({
             subtitleDocuments={transcriptDocuments}
             isLoading={isLoadingTranscriptDocuments}
             onTranscriptOpen={() => {}}
-            onRefresh={loadTranscriptDocuments}
+            onRefresh={onTranscriptDocumentsRefresh}
             align="center"
             side="top"
             trigger={
@@ -475,12 +294,6 @@ function SubtitleContent({
                 variant="outline"
                 size="sm"
                 className="mt-4"
-                onClick={() => {
-                  if (!hasLoadedTranscripts.current) {
-                    hasLoadedTranscripts.current = true;
-                    loadTranscriptDocuments();
-                  }
-                }}
                 aria-label={t("subtitles.previousSubtitles")}
               >
                 <History className="size-4" />
@@ -494,108 +307,13 @@ function SubtitleContent({
   );
 }
 
-interface AddToTimelineFooterProps {
-  isConnected: boolean;
-  timelineInfo: ReturnType<typeof useResolve>["timelineInfo"];
-  templates: Template[];
-  templatesLoading: boolean;
-  templatesLoaded: boolean;
-  onLoadTemplates?: () => Promise<Template[]>;
-  onAddToTimeline: (
-    selectedOutputTrack: string,
-    selectedTemplate: string,
-    presetSettings?: Record<string, unknown>,
-  ) => Promise<void>;
-  onExport: (format: ExportFormat) => Promise<void>;
-  hasSubtitles: boolean;
-  onSuccess?: () => void;
-  t: (key: string) => string;
-  isAdding: boolean;
-  completed?: boolean;
-  selectedIntegration?: "davinci" | "premiere" | "aftereffects";
-}
-
-function AddToTimelineFooter({
-  isConnected,
-  timelineInfo,
-  templates,
-  templatesLoading,
-  templatesLoaded,
-  onLoadTemplates,
-  onAddToTimeline,
-  onExport,
-  hasSubtitles,
-  onSuccess,
-  t,
-  isAdding,
-  completed = false,
-  selectedIntegration,
-}: AddToTimelineFooterProps) {
-  return (
-    <div className="shrink-0 p-3 flex justify-end gap-2 border-t shadow-2xl">
-      {isConnected && (
-        <AddToTimelineDialog
-          timelineInfo={timelineInfo}
-          templates={templates}
-          templatesLoading={templatesLoading}
-          templatesLoaded={templatesLoaded}
-          onLoadTemplates={onLoadTemplates}
-          onAddToTimeline={onAddToTimeline}
-          onSuccess={onSuccess}
-          isAdding={isAdding}
-          selectedIntegration={selectedIntegration}
-        >
-          <Button
-            variant="secondary"
-            size="default"
-            disabled={isAdding}
-            className="w-full"
-          >
-            {isAdding ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {t("addToTimeline.adding")}
-              </>
-            ) : completed ? (
-              "Completed adding to timeline!"
-            ) : (
-              <>
-                <Send className="size-4" />
-                {t("subtitles.addToTimeline")}
-              </>
-            )}
-          </Button>
-        </AddToTimelineDialog>
-      )}
-      <ExportPopover
-        onExport={onExport}
-        hasSubtitles={hasSubtitles}
-        trigger={
-          isConnected ? (
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              title={t("importExport.exportTab")}
-            >
-              <Download />
-            </Button>
-          ) : (
-            <Button variant="secondary" size="default" className="w-full">
-              <Download className="size-4" />
-              {t("importExport.exportTab")}
-            </Button>
-          )
-        }
-      />
-    </div>
-  );
-}
-
 export function SubtitleViewerPanel({
   isOpen = true,
   isFullScreen = false,
   onClose,
+  transcriptDocuments,
+  isLoadingTranscriptDocuments,
+  onTranscriptDocumentsRefresh,
 }: SubtitleViewerPanelProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [searchCaseSensitive, setSearchCaseSensitive] = React.useState(false);
@@ -603,25 +321,23 @@ export function SubtitleViewerPanel({
   const [showReplace, setShowReplace] = React.useState(false);
   const [replaceValue, setReplaceValue] = React.useState("");
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
-  const [showSpeakerEditor, setShowSpeakerEditor] = React.useState(false);
   const [showReformat, setShowReformat] = React.useState(false);
+  const [matchCount, setMatchCount] = React.useState(0);
   const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false);
-  const [hasCompletedAdding, setHasCompletedAdding] = React.useState(false);
+  const [justSent, setJustSent] = React.useState(false);
   const [isMacOs, setIsMacOs] = React.useState(true);
-  const [transcriptDocuments, setTranscriptDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
-  const [isLoadingTranscriptDocuments, setIsLoadingTranscriptDocuments] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const {
     subtitles,
     currentSubtitleDocumentFilename,
+    currentSubtitleDocumentSourceName,
     updateSubtitles,
     flushPendingSubtitleSave,
     exportSubtitlesAs,
     importSubtitles,
     reformatSubtitles,
     speakers,
-    updateSpeakers,
   } = useSubtitleDocument();
 
   const {
@@ -647,6 +363,9 @@ export function SubtitleViewerPanel({
 
   const timelineInfo = isAdobeActive ? adobeTimeline : resolveTimeline;
 
+  const outputExpanded = useOutputPanelStore((s) => s.expanded);
+  const closeOutputPanel = useOutputPanelStore((s) => s.close);
+
   const pushToTimeline = isAdobeActive
     ? (
         filename?: string,
@@ -659,6 +378,7 @@ export function SubtitleViewerPanel({
   const jumpToTime = isAdobeActive ? adobeJumpToTime : resolveJumpToTime;
 
   const { seekToTime: seekAudioPreview } = useAudioPreview();
+  const { showError } = useErrorDialog();
 
   // When a timestamp is clicked, jump the connected timeline AND seek the
   // local audio preview (if one is loaded) to the same position.
@@ -674,7 +394,7 @@ export function SubtitleViewerPanel({
   const hasSubtitles = subtitles.length > 0;
 
   React.useEffect(() => {
-    setHasCompletedAdding(false);
+    setJustSent(false);
   }, [subtitles]);
 
   React.useEffect(() => {
@@ -685,11 +405,21 @@ export function SubtitleViewerPanel({
     }
   }, []);
 
+  // Reopening the viewer should always land on the transcript, never on a
+  // sheet left expanded from a previous session.
+  React.useEffect(() => closeOutputPanel, [closeOutputPanel]);
+
   React.useEffect(() => {
     if (!isOpen || !onClose) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // Escape backs out of the output sheet first; only a second press
+        // closes the whole panel.
+        if (useOutputPanelStore.getState().expanded) {
+          closeOutputPanel();
+          return;
+        }
         onClose();
       }
     };
@@ -698,19 +428,9 @@ export function SubtitleViewerPanel({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOutputPanel]);
 
-  const loadTranscriptDocuments = React.useCallback(async () => {
-    setIsLoadingTranscriptDocuments(true);
-    try {
-      const documents = await listSubtitleDocuments();
-      setTranscriptDocuments(documents);
-    } catch (error) {
-      console.error("Failed to load transcript documents:", error);
-    } finally {
-      setIsLoadingTranscriptDocuments(false);
-    }
-  }, []);
+  
 
   const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -728,13 +448,7 @@ export function SubtitleViewerPanel({
     ? Boolean(adobeTimeline?.timelineId)
     : Boolean(resolveTimeline?.timelineId);
   const shellClassName = "flex h-full min-h-0 flex-col overflow-hidden";
-  const headerClassName = "shrink-0 p-3 pb-0";
-
-  function handleSpeakerChange(index: number, updated: Speaker) {
-    const next = [...speakers];
-    next[index] = updated;
-    updateSpeakers(next);
-  }
+  const headerClassName = "shrink-0 p-3 pt-0 pb-2";
 
   const handleReplaceAll = () => {
     const re = buildFindRegExp();
@@ -775,40 +489,77 @@ export function SubtitleViewerPanel({
         selectedOutputTrack,
         presetSettings,
       );
+      setJustSent(true);
     } catch (error) {
       console.error("Failed to add to timeline:", error);
-      throw error;
+      const { title, message, detail } = describeError(
+        error,
+        t("errorDialog.addToTimelineFailed", "Couldn't add subtitles to timeline"),
+      );
+      showError({ title, message, detail });
     } finally {
       setIsAddingToTimeline(false);
     }
   };
+
+  const handleExport = React.useCallback(
+    async (format: ExportFormat) => {
+      await exportSubtitlesAs(format, subtitles, speakers);
+    },
+    [exportSubtitlesAs, subtitles, speakers],
+  );
 
   if (!isOpen) return null;
 
   return (
     <div className={shellClassName}>
       <div
-        className="flex shrink-0 items-center justify-between px-3 pt-2"
+        className={`flex h-12 shrink-0 items-center justify-between gap-3 pr-2 ${isFullScreen && isMacOs ? "pl-24" : "pl-4"}`}
         data-tauri-drag-region={isMacOs ? true : undefined}
       >
-        <h2
-          className={`font-semibold select-none ${isFullScreen && isMacOs ? "pl-20" : "pl-1"}`}
-          data-tauri-drag-region={isMacOs ? true : undefined}
+        <div
+          className="min-w-0"
+          data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          {t("subtitles.title")}
-        </h2>
+          <h2 className="font-semibold select-none">
+            {t("subtitles.title")}
+          </h2>
+        </div>
         <div
           className="z-20 flex items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            title={t("importExport.importTab")}
-            onClick={() => importSubtitles(useSettingsStore.getState(), null, "")}
-          >
-            <FileUp/>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => importSubtitles(useSettingsStore.getState(), null, "")}
+              >
+                <FileUp />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("importExport.importTab")}
+            </TooltipContent>
+          </Tooltip>
+          <TranscriptHistoryPopover
+            subtitleDocuments={transcriptDocuments}
+            isLoading={isLoadingTranscriptDocuments}
+            onTranscriptOpen={() => {}}
+            onRefresh={onTranscriptDocumentsRefresh}
+            tooltipLabel={t("subtitles.previousSubtitles")}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("subtitles.previousSubtitles")}
+              >
+                <History />
+              </Button>
+            }
+          />
           <Button
             type="button"
             variant="ghost"
@@ -816,82 +567,81 @@ export function SubtitleViewerPanel({
             onClick={onClose}
             disabled={!onClose}
           >
-            <X/>
+            <X />
           </Button>
         </div>
       </div>
 
-      {hasSubtitles ? (
-        <SearchSection
-          headerClassName={headerClassName}
-          t={t}
-          searchQuery={searchQuery}
-          replaceValue={replaceValue}
-          searchCaseSensitive={searchCaseSensitive}
-          searchWholeWord={searchWholeWord}
-          showReplace={showReplace}
-          canReplace={canReplace}
-          searchInputRef={searchInputRef}
-          onSearchQueryChange={setSearchQuery}
-          onReplaceValueChange={setReplaceValue}
-          onToggleCaseSensitive={() =>
-            setSearchCaseSensitive((value) => !value)
-          }
-          onToggleWholeWord={() => setSearchWholeWord((value) => !value)}
-          onToggleReplace={() => setShowReplace((value) => !value)}
-          onReplaceAll={handleReplaceAll}
-          searchPlaceholder={t("subtitles.searchPlaceholder")}
-          searchAriaLabel={t("subtitles.searchAria")}
-        />
-      ) : null}
+      {/* Transcript region. The output sheet takes this space when expanded so
+          it gets the full panel height instead of a dialog's worth. */}
+      {!outputExpanded && (
+        <>
+          {hasSubtitles && (
+            <SearchSection
+              headerClassName={headerClassName}
+              t={t}
+              searchQuery={searchQuery}
+              replaceValue={replaceValue}
+              searchCaseSensitive={searchCaseSensitive}
+              searchWholeWord={searchWholeWord}
+              showReplace={showReplace}
+              canReplace={canReplace}
+              searchInputRef={searchInputRef}
+              onSearchQueryChange={setSearchQuery}
+              onReplaceValueChange={setReplaceValue}
+              onToggleCaseSensitive={() =>
+                setSearchCaseSensitive((value) => !value)
+              }
+              onToggleWholeWord={() => setSearchWholeWord((value) => !value)}
+              onToggleReplace={() => setShowReplace((value) => !value)}
+              onReplaceAll={handleReplaceAll}
+              searchPlaceholder={t("subtitles.searchPlaceholder")}
+              searchAriaLabel={t("subtitles.searchAria")}
+            />
+          )}
 
-      {hasSubtitles && (
-        <SubtitleToolbar
-          subtitlesLength={subtitles.length}
-          speakers={speakers}
-          showSpeakerEditor={showSpeakerEditor}
-          showReformat={showReformat}
-          onSpeakerEditorOpenChange={setShowSpeakerEditor}
-          onSpeakerChange={handleSpeakerChange}
-          onReformatOpenChange={setShowReformat}
-          onApplyReformat={handleApplyReformat}
-          t={t}
-          tracks={timelineInfo?.outputTracks}
-        />
+          {hasSubtitles && (
+            <TranscriptStatusRow
+              sourceName={currentSubtitleDocumentSourceName}
+              documentName={currentSubtitleDocumentFilename}
+              subtitleCount={subtitles.length}
+              matchCount={searchQuery.trim() ? matchCount : null}
+              showReformat={showReformat}
+              onReformatOpenChange={setShowReformat}
+              onApplyReformat={handleApplyReformat}
+            />
+          )}
+
+          <SubtitleContent
+            subtitlesLength={subtitles.length}
+            searchQuery={searchQuery}
+            searchCaseSensitive={searchCaseSensitive}
+            searchWholeWord={searchWholeWord}
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
+            onJumpToTime={handleJumpToTime}
+            onMatchCountChange={setMatchCount}
+            t={t}
+            transcriptDocuments={transcriptDocuments}
+            isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
+            onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
+          />
+        </>
       )}
 
-      <SubtitleContent
-        subtitlesLength={subtitles.length}
-        searchQuery={searchQuery}
-        searchCaseSensitive={searchCaseSensitive}
-        searchWholeWord={searchWholeWord}
-        selectedIndex={selectedIndex}
-        onSelectedIndexChange={setSelectedIndex}
-        onJumpToTime={handleJumpToTime}
-        t={t}
-        transcriptDocuments={transcriptDocuments}
-        isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
-        loadTranscriptDocuments={loadTranscriptDocuments}
+      <OutputPanel
+        timelineInfo={timelineInfo}
+        isConnected={isIntegrationConnected}
+        selectedIntegration={selectedIntegration as any}
+        templates={isAdobeActive ? [] : resolveTemplates}
+        templatesLoading={!isAdobeActive && resolveTemplatesLoading}
+        templatesLoaded={isAdobeActive || resolveTemplatesLoaded}
+        onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
+        onAddToTimeline={handleAddToTimeline}
+        onExport={handleExport}
+        isAdding={isAddingToTimeline}
+        justSent={justSent}
       />
-
-      {subtitles.length > 0 && (
-        <AddToTimelineFooter
-          isConnected={isIntegrationConnected}
-          onExport={(format) => exportSubtitlesAs(format, subtitles, speakers)}
-          hasSubtitles={subtitles.length > 0}
-          timelineInfo={timelineInfo}
-          templates={isAdobeActive ? [] : resolveTemplates}
-          templatesLoading={!isAdobeActive && resolveTemplatesLoading}
-          templatesLoaded={isAdobeActive || resolveTemplatesLoaded}
-          onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
-          onAddToTimeline={handleAddToTimeline}
-          onSuccess={() => setHasCompletedAdding(true)}
-          t={t}
-          isAdding={isAddingToTimeline}
-          completed={hasCompletedAdding}
-          selectedIntegration={selectedIntegration as any}
-        />
-      )}
     </div>
   );
 }

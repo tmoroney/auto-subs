@@ -1,6 +1,6 @@
 import * as React from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileText, History, Palette, RotateCcw } from "lucide-react";
+import { PanelRight, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
@@ -11,24 +11,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { IntegrationStatus } from "@/components/layout/integration-status";
-import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
-import { CaptionTemplateSelectionDialog } from "@/components/dialogs/caption-style/template-selection";
 import { useUpdateStatus } from "@/hooks/use-update-status";
-import type { TimelineInfo } from "@/types";
-import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { SettingsDropdown } from "./settings-dropdown";
 
 interface TranscriptionHeaderProps {
-  transcriptDocuments: SubtitleDocumentListItem[];
-  isLoadingTranscriptDocuments: boolean;
-  onTranscriptDocumentsRefresh: () => Promise<void>;
   onViewSubtitles?: () => void;
   isSubtitleViewerOpen?: boolean;
-  templates: TimelineInfo["templates"];
-  templatesLoading: boolean;
-  templatesLoaded: boolean;
-  onLoadTemplates?: () => Promise<TimelineInfo["templates"]>;
-  timelineInfo?: TimelineInfo;
 }
 
 function UpdateStatusIndicator({
@@ -108,19 +96,10 @@ function UpdateStatusIndicator({
 }
 
 export function TranscriptionHeader({
-  transcriptDocuments,
-  isLoadingTranscriptDocuments,
-  onTranscriptDocumentsRefresh,
   onViewSubtitles,
   isSubtitleViewerOpen = false,
-  templates,
-  templatesLoading,
-  templatesLoaded,
-  onLoadTemplates,
-  timelineInfo,
 }: TranscriptionHeaderProps) {
   const { t } = useTranslation();
-  const [styleDialogOpen, setStyleDialogOpen] = React.useState(false);
   const [isMacOs, setIsMacOs] = React.useState(true);
   const { phase, percentage, version } = useUpdateStatus();
 
@@ -142,7 +121,7 @@ export function TranscriptionHeader({
   return (
     <>
       <div
-        className={`flex h-12 shrink-0 items-center justify-between gap-3 border-b mb-2 pr-4 ${isMacOs ? "pl-20" : "pl-4"}`}
+        className={`flex h-12 shrink-0 items-center justify-between gap-3 border-b mb-2 pr-2 ${isMacOs ? "pl-20" : "pl-4"}`}
         data-tauri-drag-region={isMacOs ? true : undefined}
       >
         <div
@@ -163,40 +142,6 @@ export function TranscriptionHeader({
           className="flex shrink-0 items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="rounded-sm"
-                onClick={() => setStyleDialogOpen(true)}
-              >
-                <Palette />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t("actionBar.subtitleStyle", "Caption Style")}
-            </TooltipContent>
-          </Tooltip>
-          <TranscriptHistoryPopover
-            subtitleDocuments={transcriptDocuments}
-            isLoading={isLoadingTranscriptDocuments}
-            onTranscriptOpen={() => onViewSubtitles?.()}
-            onRefresh={onTranscriptDocumentsRefresh}
-            tooltipLabel={t("titlebar.subtitleHistory.title", "History")}
-            trigger={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="rounded-sm"
-                aria-label={t("titlebar.subtitleHistory.title", "History")}
-              >
-                <History />
-              </Button>
-            }
-          />
           <SettingsDropdown />
           {onViewSubtitles && !isSubtitleViewerOpen && (
             <Tooltip>
@@ -204,12 +149,11 @@ export function TranscriptionHeader({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
-                  className="rounded-sm"
+                  size="icon"
                   aria-label={t("completion.viewSubtitles", "View Subtitles")}
                   onClick={onViewSubtitles}
                 >
-                  <FileText />
+                  <PanelRight />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -219,16 +163,6 @@ export function TranscriptionHeader({
           )}
         </div>
       </div>
-
-      <CaptionTemplateSelectionDialog
-        open={styleDialogOpen}
-        onOpenChange={setStyleDialogOpen}
-        templates={templates}
-        templatesLoading={templatesLoading}
-        templatesLoaded={templatesLoaded}
-        onLoadTemplates={onLoadTemplates}
-        timelineInfo={timelineInfo}
-      />
     </>
   );
 }

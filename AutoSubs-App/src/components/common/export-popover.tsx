@@ -52,6 +52,10 @@ export const ExportPopover = React.forwardRef<HTMLButtonElement, ExportPopoverPr
             }
         };
 
+        if (!hasSubtitles) {
+            return null;
+        }
+
         return (
             <Popover open={isOpen} onOpenChange={setIsOpen}>
                 <PopoverTrigger asChild>

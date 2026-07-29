@@ -24,6 +24,8 @@ interface SubtitleListProps {
     selectedIndex?: number | null;
     onSelectedIndexChange?: (index: number | null) => void;
     onJumpToTime?: (seconds: number) => Promise<void>;
+    /** Reports how many subtitles survive the active search filter. */
+    onMatchCountChange?: (count: number) => void;
 }
 
 const SubtitleList = ({
@@ -37,6 +39,7 @@ const SubtitleList = ({
     selectedIndex: controlledSelectedIndex,
     onSelectedIndexChange,
     onJumpToTime,
+    onMatchCountChange,
 }: SubtitleListProps) => {
     const { t } = useTranslation();
     const { subtitles, updateSubtitles, speakers, updateSpeakers } = useSubtitleDocument();
@@ -116,6 +119,10 @@ const SubtitleList = ({
                 return matchesQuery(subtitle.text ?? "", query) || speakerMatch;
             });
     }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
+
+    useEffect(() => {
+        onMatchCountChange?.(filteredSubtitleItems.length);
+    }, [filteredSubtitleItems.length, onMatchCountChange]);
 
     const rowVirtualizer = useVirtualizer({
         count: filteredSubtitleItems.length,

@@ -57,7 +57,8 @@
     "delete": "Delete",
     "generateSubtitles": "Generate",
     "startNewTranscription": "Start new transcription",
-    "refresh": "Refresh connection"
+    "refresh": "Refresh connection",
+    "edit": "Edit"
   },
   "update": {
     "restartResolveServer": {
@@ -460,6 +461,12 @@
     "previousSubtitles": "Subtitle History",
     "empty": {
       "noSubtitlesAvailable": "Your subtitles will appear here when finished transcribing"
+    },
+    "status": {
+      "count_one": "{{count}} subtitle",
+      "count_other": "{{count}} subtitles",
+      "matches_one": "{{count}} match",
+      "matches_other": "{{count}} matches"
     }
   },
   "gettingStarted": {
@@ -642,5 +649,32 @@
     "noOccurrencesFound": "No occurrences found",
     "replaceCurrent": "Replace Current",
     "replaceAll": "Replace All ({{count}})"
+  },
+  "output": {
+    "track": {
+      "label": "Output track",
+      "placeholder": "Choose a track",
+      "none": "No track"
+    },
+    "style": {
+      "label": "Caption style",
+      "loading": "Loading templates...",
+      "noTemplates": "No templates found."
+    },
+    "speakers": {
+      "label_one": "{{count}} speaker",
+      "label_other": "{{count}} speakers"
+    },
+    "speakerCount_one": "{{count}} speaker",
+    "speakerCount_other": "{{count}} speakers",
+    "notConnected": "Connect DaVinci Resolve to send subtitles to a timeline.",
+    "noSubtitles": "No subtitles to send",
+    "chooseTrack": "Choose an output track",
+    "reviewAndSend": "Review & Send",
+    "errors": {
+      "notConnected": "No editor connected. Connect to DaVinci Resolve, Adobe Premiere Pro, or After Effects to customise templates.",
+      "timedOut": "Connection timed out. Ensure your editing software is running and try again."
+    },
+    "sentAgain": "Sent · Send again"
   }
 }

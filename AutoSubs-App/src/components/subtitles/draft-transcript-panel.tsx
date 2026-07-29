@@ -243,12 +243,12 @@ export function DraftTranscriptPanel({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div
-        className="flex shrink-0 items-center justify-between px-3 pt-2"
+        className={`relative flex h-12 shrink-0 items-center justify-between gap-3 border-b pr-2 ${isFullScreen && isMacOs ? "pl-20" : "pl-4"}`}
         data-tauri-drag-region={isMacOs ? true : undefined}
       >
         <div
-          className={cn("select-none", isFullScreen && isMacOs ? "pl-20" : "pl-1")}
-          data-tauri-drag-region={isMacOs ? true : undefined}
+          className="min-w-0 select-none"
+          data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
           <h2
             className="flex items-center gap-2 font-semibold"
@@ -260,9 +260,6 @@ export function DraftTranscriptPanel({
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
           </h2>
-          <p className="text-xs text-muted-foreground">
-            {t("subtitles.draftDescription", "Improving as each step completes")}
-          </p>
         </div>
         <div
           className="z-20 flex items-center"
@@ -278,19 +275,17 @@ export function DraftTranscriptPanel({
             <X />
           </Button>
         </div>
-      </div>
-
-      {/* `--border` already carries its own alpha, so an opacity modifier
-          (`bg-border/40`) produces an invalid `hsl(... / .2 / .4)` and silently
-          falls back to currentColor. Use the token as-is. */}
-      <div className="mt-2 h-px w-full shrink-0 bg-border">
-        <div
-          className="h-full bg-primary/60"
-          style={{
-            width: `${Math.max(0, Math.min(100, progress ?? 0))}%`,
-            transition: `width ${SETTLE_MS}ms ${DRAFT_EASE}`,
-          }}
-        />
+        
+        {/* Progress bar below the border */}
+        <div className="absolute bottom-[-6px] left-0 right-0 h-1.5 w-full bg-border">
+          <div
+            className="h-full bg-primary"
+            style={{
+              width: `${Math.max(0, Math.min(100, progress ?? 0))}%`,
+              transition: `width ${SETTLE_MS}ms ${DRAFT_EASE}`,
+            }}
+          />
+        </div>
       </div>
 
       <div

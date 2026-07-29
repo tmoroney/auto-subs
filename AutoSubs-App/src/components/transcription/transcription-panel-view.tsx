@@ -12,7 +12,6 @@ import type {
   TimelineInfo,
   Track,
 } from "@/types";
-import type { SubtitleDocumentListItem } from "@/utils/file-utils";
 import { TranscriptionHeader } from "./transcription-header";
 import { CompletionStepItem } from "@/components/processing/completion-step-item";
 import { ProcessingStepsList } from "./processing-steps-list";
@@ -43,21 +42,9 @@ export interface TranscriptionPanelViewProps {
   processingSteps: ProcessingStep[];
   progressContainerRef: React.RefObject<HTMLDivElement>;
   onExportToFile: () => void;
-  onAddToTimeline: (
-    selectedOutputTrack: string,
-    selectedTemplate: string,
-    presetSettings?: Record<string, unknown>,
-  ) => Promise<void>;
   onViewSubtitles?: () => void;
-  transcriptDocuments: SubtitleDocumentListItem[];
-  isLoadingTranscriptDocuments: boolean;
-  onTranscriptDocumentsRefresh: () => Promise<void>;
   isSubtitleViewerOpen?: boolean;
   timelineInfo: TimelineInfo;
-  templates: TimelineInfo["templates"];
-  templatesLoading: boolean;
-  templatesLoaded: boolean;
-  onLoadTemplates?: () => Promise<TimelineInfo["templates"]>;
   selectedFile?: string | null;
   onSelectedFileChange?: (file: string | null) => void;
   onStart?: () => void;
@@ -83,17 +70,9 @@ export function TranscriptionPanelView({
   processingSteps,
   progressContainerRef,
   onExportToFile,
-  onAddToTimeline,
   onViewSubtitles,
-  transcriptDocuments,
-  isLoadingTranscriptDocuments,
-  onTranscriptDocumentsRefresh,
   isSubtitleViewerOpen = false,
   timelineInfo,
-  templates,
-  templatesLoading,
-  templatesLoaded,
-  onLoadTemplates,
   selectedFile: selectedFileProp,
   onSelectedFileChange,
   onStart,
@@ -220,16 +199,8 @@ export function TranscriptionPanelView({
   return (
     <div className="h-full flex flex-col relative">
       <TranscriptionHeader
-        transcriptDocuments={transcriptDocuments}
-        isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
-        onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
         onViewSubtitles={onViewSubtitles}
         isSubtitleViewerOpen={isSubtitleViewerOpen}
-        templates={templates}
-        templatesLoading={templatesLoading}
-        templatesLoaded={templatesLoaded}
-        onLoadTemplates={onLoadTemplates}
-        timelineInfo={timelineInfo}
       />
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
@@ -245,7 +216,6 @@ export function TranscriptionPanelView({
           <div className="flex-shrink-0 pt-3 flex flex-col gap-2.5">
             <CompletionStepItem
               onExportToFile={onExportToFile}
-              onAddToTimeline={onAddToTimeline}
               onViewSubtitles={onViewSubtitles}
               isSubtitleViewerOpen={isSubtitleViewerOpen}
               timelineInfo={timelineInfo}

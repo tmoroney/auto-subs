@@ -143,11 +143,6 @@ function AppContentBody() {
   }, [isSubtitleViewerClosing, showSubtitleViewer])
 
   const handleOpenSubtitleViewer = React.useCallback(() => {
-    if (isMobile && subtitles.length === 0) {
-      handleCloseSubtitleViewer()
-      return
-    }
-
     if (
       showSubtitleViewer &&
       isSubtitleViewerExpanded &&
@@ -192,12 +187,6 @@ function AppContentBody() {
       }
     }
   }, [])
-
-  React.useEffect(() => {
-    if (isMobile && showSubtitleViewer && subtitles.length === 0) {
-      handleCloseSubtitleViewer()
-    }
-  }, [handleCloseSubtitleViewer, isMobile, showSubtitleViewer, subtitles.length])
 
   // Reopen the subtitle viewer when the viewport grows past the mobile breakpoint.
   React.useEffect(() => {
@@ -315,9 +304,6 @@ function AppContentBody() {
                 <TranscriptionPanel
                   onViewSubtitles={handleOpenSubtitleViewer}
                   onTranscriptCreated={handleTranscriptCreated}
-                  transcriptDocuments={transcriptDocuments}
-                  isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
-                  onTranscriptDocumentsRefresh={loadTranscriptDocuments}
                   isSubtitleViewerOpen={
                     showSubtitleViewer && !isSubtitleViewerClosing
                   }
@@ -358,6 +344,9 @@ function AppContentBody() {
                       <SubtitleViewerPanel
                         isFullScreen={isMobile}
                         onClose={handleCloseSubtitleViewer}
+                        transcriptDocuments={transcriptDocuments}
+                        isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
+                        onTranscriptDocumentsRefresh={loadTranscriptDocuments}
                       />
                     )}
                   </div>

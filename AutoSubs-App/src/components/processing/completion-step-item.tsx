@@ -1,4 +1,3 @@
-import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
     Item,
@@ -7,18 +6,16 @@ import {
     ItemFooter,
     ItemTitle,
 } from "@/components/ui/item"
-import { Check, Download, FileText, Loader2, Send, VolumeX } from "lucide-react"
-import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
+import { Download, FileText, Send, VolumeX } from "lucide-react"
 import { ExportPopover } from "@/components/common/export-popover"
 import { TimelineInfo } from "@/types"
-import { useResolve } from "@/contexts/ResolveContext"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
+import { useOutputPanelStore } from "@/stores/output-panel-store"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslation } from "react-i18next"
 
 export interface CompletionStepProps {
     onExportToFile: () => void;
-    onAddToTimeline: (selectedOutputTrack: string, selectedTemplate: string, presetSettings?: Record<string, unknown>) => Promise<void>;
     onViewSubtitles?: () => void;
     isSubtitleViewerOpen?: boolean;
     timelineInfo: TimelineInfo;
@@ -26,7 +23,6 @@ export interface CompletionStepProps {
 }
 
 export function CompletionStepItem({
-    onAddToTimeline,
     onViewSubtitles,
     isSubtitleViewerOpen = false,
     timelineInfo,
@@ -34,12 +30,7 @@ export function CompletionStepItem({
 }: CompletionStepProps) {
     const { t } = useTranslation()
     const isMobile = useIsMobile()
-    const {
-        templates: resolveTemplates,
-        templatesLoading: resolveTemplatesLoading,
-        templatesLoaded: resolveTemplatesLoaded,
-        refreshTemplates: refreshResolveTemplates,
-    } = useResolve()
+    const openOutputPanel = useOutputPanelStore((s) => s.open)
     const {
         subtitles,
         speakers,
@@ -48,24 +39,14 @@ export function CompletionStepItem({
 
     const isResolveConnected = Boolean(timelineInfo?.timelineId) && selectedIntegration === "davinci"
     const isAdobeConnected = Boolean(timelineInfo?.timelineId) && (selectedIntegration === "premiere" || selectedIntegration === "aftereffects")
-    const isAdobe = selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
     const hasSubtitles = subtitles.length > 0
 
-    const [isAddingToTimeline, setIsAddingToTimeline] = React.useState(false)
-    const [hasCompletedAdding, setHasCompletedAdding] = React.useState(false)
-
-    const handleAddToTimeline = async (
-        selectedOutputTrack: string,
-        selectedTemplate: string,
-        presetSettings?: Record<string, unknown>,
-    ) => {
-        setHasCompletedAdding(false)
-        setIsAddingToTimeline(true)
-        try {
-            await onAddToTimeline(selectedOutputTrack, selectedTemplate, presetSettings)
-        } finally {
-            setIsAddingToTimeline(false)
-        }
+    // Sending happens in the viewer's output sheet, where the settings are
+    // visible. This button navigates there rather than committing, so it is
+    // labelled for what it actually does.
+    function handleReviewAndSend() {
+        openOutputPanel()
+        onViewSubtitles?.()
     }
 
     return (
@@ -117,41 +98,15 @@ export function CompletionStepItem({
                                 />
                             )}
                             {(isResolveConnected || isAdobeConnected) && (
-                                <AddToTimelineDialog
-                                    timelineInfo={timelineInfo}
-                                    templates={isAdobe ? [] : resolveTemplates}
-                                    templatesLoading={!isAdobe && resolveTemplatesLoading}
-                                    templatesLoaded={isAdobe || resolveTemplatesLoaded}
-                                    onLoadTemplates={isAdobe ? undefined : refreshResolveTemplates}
-                                    onAddToTimeline={handleAddToTimeline}
-                                    onSuccess={() => setHasCompletedAdding(true)}
-                                    selectedIntegration={selectedIntegration}
-
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                    onClick={handleReviewAndSend}
                                 >
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex items-center gap-2"
-                                        disabled={isAddingToTimeline}
-                                    >
-                                        {isAddingToTimeline ? (
-                                            <>
-                                                <Loader2 className="size-4 animate-spin" />
-                                                {t("addToTimeline.adding")}
-                                            </>
-                                        ) : hasCompletedAdding ? (
-                                            <>
-                                                <Check className="size-4" />
-                                                Added to Timeline
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Send />
-                                                {t("completion.addToTimeline")}
-                                            </>
-                                        )}
-                                    </Button>
-                                </AddToTimelineDialog>
+                                    <Send />
+                                    {t("output.reviewAndSend")}
+                                </Button>
                             )}
                         </div>
                     </ItemFooter>
