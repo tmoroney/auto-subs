@@ -71,13 +71,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const [currentSubtitleDocumentFilename, setCurrentSubtitleDocumentFilename] = useState<string | null>(null);
   const [currentSubtitleDocumentSourceName, setCurrentSubtitleDocumentSourceName] = useState<string | null>(null);
 
-  // Prefer the source audio file's name; fall back to the timeline it came
-  // from, then whatever display name was stored with the document.
+  // Prefer the source audio file's name, else the timeline it came from.
+  // Deliberately excludes `displayName`, which falls back to the generated
+  // document filename and would surface an id like `example__tr_2026…`.
   const sourceNameFrom = (metadata?: Partial<TranscriptMetadata> | null) =>
-    metadata?.sourceFileName?.trim() ||
-    metadata?.timelineName?.trim() ||
-    metadata?.displayName?.trim() ||
-    null;
+    metadata?.sourceFileName?.trim() || metadata?.timelineName?.trim() || null;
 
   // Debounce subtitle file writes to prevent concurrent read-parse-stringify-write
   // cycles from accumulating in the V8 heap when the user types quickly.

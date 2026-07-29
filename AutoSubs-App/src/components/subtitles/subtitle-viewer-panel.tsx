@@ -111,6 +111,14 @@ function SearchSection({
   searchAriaLabel,
 }: SearchSectionProps) {
   const showClearButton = Boolean(searchQuery);
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+  // Case-sensitivity and whole-word only mean something once there is a query,
+  // so they stay out of the resting state. Replace is deliberately excluded —
+  // it opens find-and-replace rather than modifying the query, and this is its
+  // only entry point, so hiding it would bury the feature.
+  const showQueryModifiers =
+    isSearchFocused || Boolean(searchQuery) || searchCaseSensitive || searchWholeWord;
 
   const searchActions = [
     showClearButton ? (
@@ -129,6 +137,7 @@ function SearchSection({
         tooltip={searchAriaLabel}
       />
     ) : null,
+    showQueryModifiers ? (
     <SearchActionButton
       key="case-sensitive"
       button={
@@ -144,7 +153,9 @@ function SearchSection({
       }
       tooltip={t("subtitles.search.caseMatch")}
       useAddon
-    />,
+    />
+    ) : null,
+    showQueryModifiers ? (
     <SearchActionButton
       key="whole-word"
       button={
@@ -160,7 +171,8 @@ function SearchSection({
       }
       tooltip={t("subtitles.search.wholeWord")}
       useAddon
-    />,
+    />
+    ) : null,
     <SearchActionButton
       key="replace-toggle"
       button={
@@ -180,7 +192,16 @@ function SearchSection({
   ].filter(Boolean);
 
   const searchInput = (
-    <InputGroup className="rounded-xl overflow-hidden border-slate-200 dark:border-slate-800 bg-background/50">
+    <InputGroup
+      className="rounded-xl overflow-hidden border-slate-200 dark:border-slate-800 bg-background/50"
+      onFocus={() => setIsSearchFocused(true)}
+      onBlur={(e) => {
+        // Focus moving to one of the group's own buttons must not collapse it.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setIsSearchFocused(false);
+        }
+      }}
+    >
       <InputGroupAddon align="inline-start" className="text-muted-foreground pr-1">
         <Search className="size-4" />
       </InputGroupAddon>
@@ -448,7 +469,7 @@ export function SubtitleViewerPanel({
     ? Boolean(adobeTimeline?.timelineId)
     : Boolean(resolveTimeline?.timelineId);
   const shellClassName = "flex h-full min-h-0 flex-col overflow-hidden";
-  const headerClassName = "shrink-0 p-3 pt-0 pb-2";
+  const headerClassName = "shrink-0 p-3 pt-0 pb-1";
 
   const handleReplaceAll = () => {
     const re = buildFindRegExp();
@@ -603,7 +624,6 @@ export function SubtitleViewerPanel({
           {hasSubtitles && (
             <TranscriptStatusRow
               sourceName={currentSubtitleDocumentSourceName}
-              documentName={currentSubtitleDocumentFilename}
               subtitleCount={subtitles.length}
               matchCount={searchQuery.trim() ? matchCount : null}
               showReformat={showReformat}
