@@ -407,7 +407,7 @@
     "noSpeechDetected": "Keine Sprache erkannt. Die Audiodatei enthält möglicherweise keine erkennbare Sprache.",
     "viewSubtitles": "Untertitel anzeigen",
     "exportToFile": "In Datei exportieren",
-    "addToTimeline": "Zur Timeline hinzufügen"
+    "addToTimeline": "Zur Timeline senden"
   },
   "progressSteps": {
     "download": "Modell wird geladen",
@@ -433,7 +433,7 @@
       "replaceAll": "Alle ersetzen",
       "replaceWithPlaceholder": "Ersetzen durch..."
     },
-    "addToTimeline": "Zur Timeline hinzufügen",
+    "addToTimeline": "Zur Timeline senden",
     "loading": "Untertitel werden geladen...",
     "jumpToTimeline": "Zu diesem Punkt in der Timeline springen",
     "unknownSpeaker": "Unbekannter Sprecher",
@@ -551,13 +551,13 @@
         "title": "Sprecher"
       }
     },
-    "title": "Zur Timeline hinzufügen",
+    "title": "Zur Timeline senden",
     "ready": {
       "title": "Untertitel bereit",
-      "description": "Deine Untertitel wurden generiert und können nun zur Timeline hinzugefügt werden."
+      "description": "Deine Untertitel wurden generiert und können nun zur Timeline gesendet werden."
     },
-    "adding": "Wird hinzugefügt...",
-    "success": "Zur Timeline hinzugefügt",
+    "adding": "Wird gesendet...",
+    "success": "Zur Timeline gesendet",
     "mode": {
       "regular": "Normal",
       "animated": "Animiert"

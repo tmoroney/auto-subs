@@ -7,7 +7,7 @@ import {
     ItemFooter,
     ItemTitle,
 } from "@/components/ui/item"
-import { Check, Download, FileText, Loader2, Plus, VolumeX } from "lucide-react"
+import { Check, Download, FileText, Loader2, Send, VolumeX } from "lucide-react"
 import { AddToTimelineDialog } from "@/components/dialogs/add-to-timeline-dialog"
 import { ExportPopover } from "@/components/common/export-popover"
 import { TimelineInfo } from "@/types"
@@ -146,7 +146,7 @@ export function CompletionStepItem({
                                             </>
                                         ) : (
                                             <>
-                                                <Plus />
+                                                <Send />
                                                 {t("completion.addToTimeline")}
                                             </>
                                         )}

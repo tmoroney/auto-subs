@@ -411,7 +411,7 @@
     "noSpeechDetected": "No speech detected. The audio file may be silent or contain no recognizable speech.",
     "viewSubtitles": "View Subtitles",
     "exportToFile": "Export to File",
-    "addToTimeline": "Add to Timeline"
+    "addToTimeline": "Send to Timeline"
   },
   "progressSteps": {
     "processing": "Processing",
@@ -453,7 +453,7 @@
       "replaceAll": "Replace all",
       "replaceWithPlaceholder": "Replace with..."
     },
-    "addToTimeline": "Add to Timeline",
+    "addToTimeline": "Send to Timeline",
     "loading": "Loading subtitles...",
     "jumpToTimeline": "Jump to point on timeline",
     "unknownSpeaker": "Unknown Speaker",
@@ -572,13 +572,13 @@
         "title": "Speakers"
       }
     },
-    "title": "Add to Timeline",
+    "title": "Send to Timeline",
     "ready": {
       "title": "Subtitles Ready",
-      "description": "Your subtitles have been generated and are ready to be added to the timeline."
+      "description": "Your subtitles have been generated and are ready to be sent to the timeline."
     },
-    "adding": "Adding...",
-    "success": "Added to timeline",
+    "adding": "Sending...",
+    "success": "Sent to timeline",
     "mode": {
       "regular": "Regular",
       "animated": "Animated"

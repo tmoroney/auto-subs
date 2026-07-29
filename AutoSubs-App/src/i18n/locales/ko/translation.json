@@ -120,7 +120,7 @@
     "noSpeechDetected": "음성이 감지되지 않았습니다. 오디오 파일이 무음이거나 인식 가능한 음성이 포함되어 있지 않을 수 있습니다.",
     "viewSubtitles": "자막 보기",
     "exportToFile": "파일로 내보내기",
-    "addToTimeline": "타임라인에 추가"
+    "addToTimeline": "타임라인으로 전송"
   },
   "importExport": {
     "button": "내보내기 / 가져오기",
@@ -464,7 +464,7 @@
     "title": "화자 편집"
   },
   "subtitles": {
-    "addToTimeline": "타임라인에 추가",
+    "addToTimeline": "타임라인으로 전송",
     "empty": {
       "noSubtitlesAvailable": "전사가 완료되면 여기에 자막이 표시됩니다"
     },
@@ -509,7 +509,7 @@
       "productName": "DaVinci Resolve",
       "description": "워크스페이스 스크립트 통합",
       "tooltip": {
-        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
+        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 전송할 수 있습니다.",
         "cantConnect": "타임라인에 연결할 수 없습니다",
         "connected": "연결됨",
         "openResolve": "DaVinci Resolve를 열고 작업 공간 → 스크립트 → AutoSubs로 이동하세요"
@@ -520,7 +520,7 @@
       "description": "Adobe 확장 프로그램 통합",
       "tooltip": {
         "connected": "연결됨",
-        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 추가할 수 있습니다.",
+        "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 전송할 수 있습니다.",
         "disconnected": "확장 프로그램 연결 끊김",
         "openPremiere": "자동으로 연결하려면 Premiere Pro를 여십시오."
       }
@@ -554,12 +554,12 @@
     "conflict": {
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
     },
-    "adding": "추가하는 중...",
-    "success": "타임라인에 추가됨",
-    "title": "타임라인에 추가",
+    "adding": "전송 중...",
+    "success": "타임라인으로 전송됨",
+    "title": "타임라인으로 전송",
     "ready": {
       "title": "자막 준비 완료",
-      "description": "자막이 생성되어 타임라인에 추가할 준비가 되었습니다."
+      "description": "자막이 생성되어 타임라인에 전송할 준비가 되었습니다."
     },
     "mode": {
       "regular": "일반",

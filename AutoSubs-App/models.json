@@ -72,7 +72,7 @@
       "id": "large-v3-turbo",
       "engine": "whisper",
       "source": { "type": "whisper-ggml", "model": "large-v3-turbo" },
-      "ui": {"size": "1.6GB", "ramMb": 6144, "accuracy": 5, "speed": 3, "bestFor": ["es", "it", "pt", "en", "pl", "ja", "de", "ru", "nl", "fr", "uk", "tr"], "image": "phoenix.png", "languageSupport": {"kind": "multilingual"}}
+      "ui": {"size": "1.6GB", "ramMb": 6144, "accuracy": 4.5, "speed": 3, "bestFor": ["es", "it", "pt", "en", "pl", "ja", "de", "ru", "nl", "fr", "uk", "tr"], "image": "phoenix.png", "languageSupport": {"kind": "multilingual"}}
     },
     {
       "id": "large-v3",

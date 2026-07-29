@@ -6,7 +6,7 @@ import { useIntegration, type Integration } from '@/contexts/IntegrationContext'
 import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { downloadDir } from '@tauri-apps/api/path';
+import { downloadDir, basename } from '@tauri-apps/api/path';
 import {
   generateSubtitleDocumentFilename,
   generateTranscriptTxt,
@@ -265,7 +265,19 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         throw new Error('No subtitles available to export');
       }
 
-      const defaultPath = format === 'srt' ? 'subtitles.srt' : 'transcript.txt';
+      // Use transcript name as base filename if available, otherwise fall back to default
+      let baseName = 'subtitles';
+      if (currentSubtitleDocumentFilename) {
+        try {
+          const filename = await basename(currentSubtitleDocumentFilename);
+          // Remove the file extension
+          baseName = filename.replace(/\.[^/.]+$/, '');
+        } catch (error) {
+          console.warn('Failed to extract filename from path, using default:', error);
+        }
+      }
+      
+      const defaultPath = format === 'srt' ? `${baseName}.srt` : `${baseName}.txt`;
       const filters = format === 'srt'
         ? [{ name: 'SRT Files', extensions: ['srt'] }]
         : [{ name: 'Text Files', extensions: ['txt'] }];

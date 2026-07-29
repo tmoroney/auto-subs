@@ -407,7 +407,7 @@
     "noSpeechDetected": "No se detectó voz. El archivo de audio puede estar en silencio o no contener voz reconocible.",
     "viewSubtitles": "Ver subtítulos",
     "exportToFile": "Exportar a archivo",
-    "addToTimeline": "Añadir a la línea de tiempo"
+    "addToTimeline": "Enviar a la línea de tiempo"
   },
   "progressSteps": {
     "download": "Descargando modelo",
@@ -433,7 +433,7 @@
       "replaceAll": "Reemplazar todo",
       "replaceWithPlaceholder": "Reemplazar con..."
     },
-    "addToTimeline": "Añadir a la línea de tiempo",
+    "addToTimeline": "Enviar a la línea de tiempo",
     "loading": "Cargando subtítulos...",
     "jumpToTimeline": "Saltar a este punto en la línea de tiempo",
     "unknownSpeaker": "Hablante desconocido",
@@ -551,13 +551,13 @@
         "title": "Hablantes"
       }
     },
-    "title": "Añadir a la línea de tiempo",
+    "title": "Enviar a la línea de tiempo",
     "ready": {
       "title": "Subtítulos listos",
-      "description": "Tus subtítulos han sido generados y están listos para ser añadidos a la línea de tiempo."
+      "description": "Tus subtítulos han sido generados y están listos para ser enviados a la línea de tiempo."
     },
-    "adding": "Añadiendo...",
-    "success": "Añadido a la línea de tiempo",
+    "adding": "Enviando...",
+    "success": "Enviado a la línea de tiempo",
     "mode": {
       "regular": "Normal",
       "animated": "Animado"

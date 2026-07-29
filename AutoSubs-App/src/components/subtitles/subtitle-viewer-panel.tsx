@@ -6,6 +6,7 @@ import {
   History,
   Loader2,
   Repeat2,
+  Send,
   Type,
   Users,
   X,
@@ -47,7 +48,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 import { Speaker, Template, Track } from "@/types";
 import { useTranslation } from "react-i18next";
-import { PlusIcon, type PlusIconHandle } from "../ui/plus";
+import { Forward } from "lucide-react";
 import { listSubtitleDocuments, type SubtitleDocumentListItem } from "@/utils/file-utils";
 
 interface SubtitleViewerPanelProps {
@@ -500,7 +501,6 @@ interface AddToTimelineFooterProps {
   templatesLoading: boolean;
   templatesLoaded: boolean;
   onLoadTemplates?: () => Promise<Template[]>;
-  layersIconRef: React.RefObject<PlusIconHandle>;
   onAddToTimeline: (
     selectedOutputTrack: string,
     selectedTemplate: string,
@@ -522,7 +522,6 @@ function AddToTimelineFooter({
   templatesLoading,
   templatesLoaded,
   onLoadTemplates,
-  layersIconRef,
   onAddToTimeline,
   onExport,
   hasSubtitles,
@@ -551,12 +550,6 @@ function AddToTimelineFooter({
             size="default"
             disabled={isAdding}
             className="w-full"
-            onMouseEnter={() =>
-              !isAdding && layersIconRef.current?.startAnimation?.()
-            }
-            onMouseLeave={() =>
-              !isAdding && layersIconRef.current?.stopAnimation?.()
-            }
           >
             {isAdding ? (
               <>
@@ -567,7 +560,7 @@ function AddToTimelineFooter({
               "Completed adding to timeline!"
             ) : (
               <>
-                <PlusIcon ref={layersIconRef} className="size-4" />
+                <Send className="size-4" />
                 {t("subtitles.addToTimeline")}
               </>
             )}
@@ -618,7 +611,6 @@ export function SubtitleViewerPanel({
   const [transcriptDocuments, setTranscriptDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
   const [isLoadingTranscriptDocuments, setIsLoadingTranscriptDocuments] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
-  const layersIconRef = React.useRef<PlusIconHandle>(null);
 
   const {
     subtitles,
@@ -892,7 +884,6 @@ export function SubtitleViewerPanel({
           templatesLoading={!isAdobeActive && resolveTemplatesLoading}
           templatesLoaded={isAdobeActive || resolveTemplatesLoaded}
           onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
-          layersIconRef={layersIconRef}
           onAddToTimeline={handleAddToTimeline}
           onSuccess={() => setHasCompletedAdding(true)}
           t={t}

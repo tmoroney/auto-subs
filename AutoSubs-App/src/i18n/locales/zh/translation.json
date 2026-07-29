@@ -407,7 +407,7 @@
     "noSpeechDetected": "未检测到语音。音频文件可能为静音或不包含可识别的语音。",
     "viewSubtitles": "查看字幕",
     "exportToFile": "导出到文件",
-    "addToTimeline": "添加到时间线"
+    "addToTimeline": "发送到时间线"
   },
   "progressSteps": {
     "download": "正在下载模型",
@@ -432,7 +432,7 @@
       "replaceAll": "全部替换",
       "replaceWithPlaceholder": "替换为..."
     },
-    "addToTimeline": "添加到时间线",
+    "addToTimeline": "发送到时间线",
     "loading": "正在加载字幕...",
     "waitingForSubtitles": "正在等待字幕...",
     "jumpToTimeline": "跳转到时间线上的点",
@@ -510,7 +510,7 @@
       "description": "工作区脚本集成",
       "tooltip": {
         "connected": "已连接",
-        "canGetAudio": "您可以从时间线获取音频，并将字幕添加回时间线。",
+        "canGetAudio": "您可以从时间线获取音频，并将字幕发送回时间线。",
         "cantConnect": "无法连接到时间线",
         "openResolve": "打开 DaVinci Resolve，然后前往 Workspace → Scripts → AutoSubs"
       }
@@ -520,7 +520,7 @@
       "description": "Adobe 扩展集成",
       "tooltip": {
         "connected": "已连接",
-        "canGetAudio": "你可以从时间线获取音频并添加字幕。",
+        "canGetAudio": "你可以从时间线获取音频并发送字幕。",
         "disconnected": "扩展已断开",
         "openPremiere": "打开 Premiere Pro 即可自动连接。"
       }
@@ -554,13 +554,13 @@
     "conflict": {
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
     },
-    "title": "添加到时间线",
+    "title": "发送到时间线",
     "ready": {
       "title": "字幕已就绪",
-      "description": "您的字幕已生成，可以添加到时间线中。"
+      "description": "您的字幕已生成，可以发送到时间线中。"
     },
-    "adding": "正在添加...",
-    "success": "已添加到时间线",
+    "adding": "正在发送...",
+    "success": "已发送到时间线",
     "mode": {
       "regular": "常规",
       "animated": "动画"

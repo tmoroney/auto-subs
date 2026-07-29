@@ -120,7 +120,7 @@
     "noSpeechDetected": "音声が検出されませんでした。オーディオファイルが無音か、認識可能な音声が含まれていない可能性があります。",
     "viewSubtitles": "字幕を表示",
     "exportToFile": "ファイルに書き出し",
-    "addToTimeline": "タイムラインに追加"
+    "addToTimeline": "タイムラインに送信"
   },
   "importExport": {
     "button": "エクスポート / インポート",
@@ -464,7 +464,7 @@
     "title": "話者を編集"
   },
   "subtitles": {
-    "addToTimeline": "タイムラインに追加",
+    "addToTimeline": "タイムラインに送信",
     "reformat": "再フォーマット",
     "empty": {
       "noSubtitlesAvailable": "文字起こしが完了すると、ここに字幕が表示されます"
@@ -509,7 +509,7 @@
       "productName": "DaVinci Resolve",
       "description": "ワークスペーススクリプト連携",
       "tooltip": {
-        "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
+        "canGetAudio": "タイムラインから音声を取得し、字幕を送信できます。",
         "cantConnect": "タイムラインに接続できません",
         "connected": "接続済み",
         "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください"
@@ -520,7 +520,7 @@
       "description": "Adobe拡張機能連携",
       "tooltip": {
         "connected": "接続済み",
-        "canGetAudio": "タイムラインから音声を取得し、字幕を追加できます。",
+        "canGetAudio": "タイムラインから音声を取得し、字幕を送信できます。",
         "disconnected": "拡張機能が切断されました",
         "openPremiere": "Premiere Proを開くと自動的に接続されます。"
       }
@@ -554,13 +554,13 @@
     "conflict": {
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
     },
-    "title": "タイムラインに追加",
+    "title": "タイムラインに送信",
     "ready": {
       "title": "字幕の準備完了",
-      "description": "字幕が生成されました。タイムラインに追加する準備ができています。"
+      "description": "字幕が生成されました。タイムラインに送信する準備ができています。"
     },
-    "adding": "追加中...",
-    "success": "タイムラインに追加されました",
+    "adding": "送信中...",
+    "success": "タイムラインに送信されました",
     "mode": {
       "regular": "通常",
       "animated": "アニメーション"

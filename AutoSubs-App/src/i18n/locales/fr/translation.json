@@ -407,7 +407,7 @@
     "noSpeechDetected": "Aucune parole détectée. Le fichier audio peut être silencieux ou ne contenir aucune parole reconnaissable.",
     "viewSubtitles": "Voir les sous-titres",
     "exportToFile": "Exporter vers un fichier",
-    "addToTimeline": "Ajouter à la timeline"
+    "addToTimeline": "Envoyer à la timeline"
   },
   "progressSteps": {
     "download": "Téléchargement du modèle",
@@ -433,7 +433,7 @@
       "replaceAll": "Tout remplacer",
       "replaceWithPlaceholder": "Remplacer par..."
     },
-    "addToTimeline": "Ajouter à la timeline",
+    "addToTimeline": "Envoyer à la timeline",
     "loading": "Chargement des sous-titres...",
     "jumpToTimeline": "Aller à ce point sur la timeline",
     "unknownSpeaker": "Intervenant inconnu",
@@ -510,7 +510,7 @@
       "description": "Intégration des scripts de l'espace de travail",
       "tooltip": {
         "connected": "Connecté",
-        "canGetAudio": "Vous pouvez récupérer l’audio depuis la timeline et y réajouter des sous-titres.",
+        "canGetAudio": "Vous pouvez récupérer l’audio depuis la timeline et y réenvoier des sous-titres.",
         "cantConnect": "Impossible de se connecter à la timeline",
         "openResolve": "Ouvrez DaVinci Resolve et allez dans Espace de travail → Scripts → AutoSubs"
       }
@@ -520,7 +520,7 @@
       "description": "Intégration de l'extension Adobe",
       "tooltip": {
         "connected": "Connecté",
-        "canGetAudio": "Vous pouvez récupérer l'audio de la timeline et y ajouter des sous-titres.",
+        "canGetAudio": "Vous pouvez récupérer l'audio de la timeline et y envoier des sous-titres.",
         "disconnected": "Extension déconnectée",
         "openPremiere": "Ouvrez Premiere Pro pour vous connecter automatiquement."
       }
@@ -551,13 +551,13 @@
         "title": "Intervenants"
       }
     },
-    "title": "Ajouter à la timeline",
+    "title": "Envoyer à la timeline",
     "ready": {
       "title": "Sous-titres prêts",
-      "description": "Vos sous-titres ont été générés et sont prêts à être ajoutés à la timeline."
+      "description": "Vos sous-titres ont été générés et sont prêts à être envoiés à la timeline."
     },
-    "adding": "Ajout en cours...",
-    "success": "Ajouté à la timeline",
+    "adding": "Envoi en cours...",
+    "success": "Envoyé à la timeline",
     "mode": {
       "regular": "Normal",
       "animated": "Animé"
