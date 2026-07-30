@@ -183,6 +183,8 @@
       "searchSourcePlaceholder": "Поиск языков...",
       "searchTargetPlaceholder": "Поиск языков перевода...",
       "noLanguageFound": "Язык не найден.",
+      "notListedHint": "Omni-ASR поддерживает более 1600 языков.",
+      "useOmniAsr": "Использовать Авто с Omni-ASR",
       "nativeTranslation": "Встроенный перевод модели",
       "googleTranslation": "Google Переводчик"
     }

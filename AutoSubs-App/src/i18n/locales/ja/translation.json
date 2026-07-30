@@ -60,6 +60,8 @@
     "language": {
       "title": "言語",
       "noLanguageFound": "言語が見つかりません。",
+      "notListedHint": "Omni-ASRは1600以上の言語に対応しています。",
+      "useOmniAsr": "自動 + Omni-ASR を使用",
       "searchSourcePlaceholder": "言語を検索...",
       "searchTargetPlaceholder": "ターゲット言語を検索...",
       "source": "ソース",

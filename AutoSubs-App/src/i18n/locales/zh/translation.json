@@ -181,6 +181,8 @@
       "searchSourcePlaceholder": "搜索语言...",
       "searchTargetPlaceholder": "搜索目标语言...",
       "noLanguageFound": "未找到语言。",
+      "notListedHint": "Omni-ASR 支持 1600 多种语言。",
+      "useOmniAsr": "使用自动模式 + Omni-ASR",
       "nativeTranslation": "模型原生翻译",
       "googleTranslation": "Google翻译"
     }
