@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Globe, Languages, Check, Cpu, Cloud } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSettingsStore } from "@/stores/settings-store"
@@ -19,6 +20,12 @@ export function LanguageSelector() {
     const updateSetting = useSettingsStore((s) => s.updateSetting)
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
     const currentModel = models[model]
+    // Omni-ASR handles 1600+ languages beyond the source list, so an unlisted
+    // language is a cue to fall back to it in auto-detect mode.
+    const omniAsrIndex = React.useMemo(
+        () => models.findIndex((m) => m.value === "omni-asr-1b-ctc"),
+        []
+    )
     const sourceInputRef = React.useRef<HTMLInputElement>(null)
     const translateInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -40,7 +47,31 @@ export function LanguageSelector() {
                 <Command className="max-h-[240px] rounded-b-none">
                     <CommandInput ref={sourceInputRef} placeholder={t("actionBar.language.searchSourcePlaceholder")} />
                     <CommandList>
-                        <CommandEmpty>{t("actionBar.language.noLanguageFound")}</CommandEmpty>
+                        <CommandEmpty>
+                            <div className="px-4 py-3 text-center">
+                                <p className="text-sm text-muted-foreground">
+                                    {t("actionBar.language.noLanguageFound")}
+                                </p>
+                                {omniAsrIndex !== -1 && (
+                                    <>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            {t("actionBar.language.notListedHint")}
+                                        </p>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="mt-2"
+                                            onClick={() => {
+                                                updateSetting("language", "auto")
+                                                updateSetting("model", omniAsrIndex)
+                                            }}
+                                        >
+                                            {t("actionBar.language.useOmniAsr")}
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        </CommandEmpty>
                         <CommandGroup>
                             {languages
                                 .slice()

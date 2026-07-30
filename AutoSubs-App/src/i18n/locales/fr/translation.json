@@ -181,6 +181,8 @@
       "searchSourcePlaceholder": "Rechercher des langues...",
       "searchTargetPlaceholder": "Rechercher des langues cibles...",
       "noLanguageFound": "Aucune langue trouvée.",
+      "notListedHint": "Omni-ASR prend en charge plus de 1600 langues.",
+      "useOmniAsr": "Utiliser Auto avec Omni-ASR",
       "nativeTranslation": "Traduction native du modèle",
       "googleTranslation": "Google Translate"
     }
