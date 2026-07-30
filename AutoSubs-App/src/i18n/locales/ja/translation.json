@@ -638,7 +638,11 @@
     "style": {
       "label": "字幕スタイル",
       "loading": "テンプレートを読み込み中...",
-      "noTemplates": "テンプレートが見つかりません。"
+      "noTemplates": "テンプレートが見つかりません。",
+      "groups": {
+        "resolve": "Resolve テンプレート",
+        "autosubs": "AutoSubs スタイル"
+      }
     },
     "speakers": {
       "label_one": "話者 {{count}} 人",
@@ -654,6 +658,7 @@
       "notConnected": "エディターが接続されていません。テンプレートをカスタマイズするには DaVinci Resolve、Adobe Premiere Pro、または After Effects に接続してください。",
       "timedOut": "接続がタイムアウトしました。編集ソフトが起動しているか確認して、もう一度お試しください。"
     },
-    "sentAgain": "送信済み · もう一度送信"
+    "sentAgain": "送信済み · もう一度送信",
+    "title": "出力設定"
   }
 }

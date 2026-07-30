@@ -638,7 +638,11 @@
     "style": {
       "label": "자막 스타일",
       "loading": "템플릿 불러오는 중...",
-      "noTemplates": "템플릿을 찾을 수 없습니다."
+      "noTemplates": "템플릿을 찾을 수 없습니다.",
+      "groups": {
+        "resolve": "Resolve 템플릿",
+        "autosubs": "AutoSubs 스타일"
+      }
     },
     "speakers": {
       "label_one": "화자 {{count}}명",
@@ -654,6 +658,7 @@
       "notConnected": "연결된 편집기가 없습니다. 템플릿을 사용자화하려면 DaVinci Resolve, Adobe Premiere Pro 또는 After Effects에 연결하세요.",
       "timedOut": "연결 시간이 초과되었습니다. 편집 소프트웨어가 실행 중인지 확인한 후 다시 시도하세요."
     },
-    "sentAgain": "보냄 · 다시 보내기"
+    "sentAgain": "보냄 · 다시 보내기",
+    "title": "출력 설정"
   }
 }

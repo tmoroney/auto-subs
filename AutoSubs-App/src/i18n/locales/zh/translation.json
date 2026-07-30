@@ -638,7 +638,11 @@
     "style": {
       "label": "字幕样式",
       "loading": "正在加载模板...",
-      "noTemplates": "未找到模板。"
+      "noTemplates": "未找到模板。",
+      "groups": {
+        "resolve": "Resolve 模板",
+        "autosubs": "AutoSubs 样式"
+      }
     },
     "speakers": {
       "label_one": "{{count}} 位说话人",
@@ -654,6 +658,7 @@
       "notConnected": "未连接编辑软件。请连接 DaVinci Resolve、Adobe Premiere Pro 或 After Effects 以自定义模板。",
       "timedOut": "连接超时。请确认剪辑软件正在运行，然后重试。"
     },
-    "sentAgain": "已发送 · 再次发送"
+    "sentAgain": "已发送 · 再次发送",
+    "title": "输出设置"
   }
 }

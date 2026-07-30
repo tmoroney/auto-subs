@@ -133,7 +133,7 @@ export function CaptionTemplateSelectionContent({
         <div className="space-y-4">
             <section className="space-y-1.5">
                 <Label className="pl-1 text-xs text-muted-foreground">
-                    {t("addToTimeline.mode.regular")}
+                    {t("output.style.groups.resolve")}
                 </Label>
                 {templatesLoading && (
                     <div className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground">
@@ -175,7 +175,7 @@ export function CaptionTemplateSelectionContent({
             {hasAnimatedTemplate && (
                 <section className="space-y-1.5">
                     <Label className="pl-1 text-xs text-muted-foreground">
-                        {t("addToTimeline.mode.animated")}
+                        {t("output.style.groups.autosubs")}
                     </Label>
                     <AnimatedPresetPicker
                         presets={animatedPresets}

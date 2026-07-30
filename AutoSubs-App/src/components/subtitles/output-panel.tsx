@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
   Download,
   Loader,
@@ -34,6 +35,7 @@ import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
+  OUTPUT_SHEET_ANIMATION_MS,
   useOutputPanelStore,
   type OutputSection,
 } from "@/stores/output-panel-store";
@@ -58,6 +60,13 @@ interface OutputPanelProps {
   isAdding: boolean;
   /** True once a send has completed for the current transcript. */
   justSent: boolean;
+  /**
+   * The transcript region. It is passed in rather than rendered as a sibling
+   * so the sheet can sit on top of it as a real overlay — that keeps the
+   * transcript mounted, so it is already there the instant the sheet starts
+   * animating away, and the two can never fight over the same flex space.
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -83,6 +92,7 @@ export function OutputPanel({
   onExport,
   isAdding,
   justSent,
+  children,
 }: OutputPanelProps) {
   const { t } = useTranslation();
   const isAdobe =
@@ -117,17 +127,36 @@ export function OutputPanel({
     exportPreset,
   } = usePresets();
 
-  const { expanded, focusSection, open, close, toggle, clearFocusSection } =
-    useOutputPanelStore(
-      useShallow((s) => ({
-        expanded: s.expanded,
-        focusSection: s.focusSection,
-        open: s.open,
-        close: s.close,
-        toggle: s.toggle,
-        clearFocusSection: s.clearFocusSection,
-      })),
-    );
+  const {
+    expanded,
+    closing,
+    focusSection,
+    open,
+    requestClose,
+    finishClose,
+    toggle,
+    clearFocusSection,
+  } = useOutputPanelStore(
+    useShallow((s) => ({
+      expanded: s.expanded,
+      closing: s.closing,
+      focusSection: s.focusSection,
+      open: s.open,
+      requestClose: s.requestClose,
+      finishClose: s.finishClose,
+      toggle: s.toggle,
+      clearFocusSection: s.clearFocusSection,
+    })),
+  );
+
+  // Tear the sheet down only after its exit animation has run. `expanded`
+  // stays true throughout, which is what keeps the transcript from popping in
+  // behind the sheet mid-slide.
+  React.useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(finishClose, OUTPUT_SHEET_ANIMATION_MS);
+    return () => clearTimeout(timer);
+  }, [closing, finishClose]);
 
   const [createSession, setCreateSession] = React.useState<CreatePresetSession>({
     kind: "closed",
@@ -323,7 +352,7 @@ export function OutputPanel({
     const presetSettings =
       captionMode === "animated" ? getPreset(presetId)?.macroSettings : undefined;
 
-    close();
+    requestClose();
     onAddToTimeline(selectedOutputTrack, templateName, presetSettings).catch((err) => {
       console.error("Failed to add to timeline:", err);
     });
@@ -363,12 +392,16 @@ export function OutputPanel({
 
   return (
     <>
-      {expanded && (
-        <OutputSheet
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {children}
+        {expanded && (
+          <OutputSheet
+            closing={closing}
           isConnected={isConnected}
           isAdobe={isAdobe}
           focusSection={focusSection}
           onFocusHandled={clearFocusSection}
+          onBack={handleToggle}
           outputTracks={outputTracks}
           selectedOutputTrack={selectedOutputTrack}
           onOutputTrackChange={(value) => updateSetting("selectedOutputTrack", value)}
@@ -412,7 +445,8 @@ export function OutputPanel({
           speakers={speakers}
           onSpeakerChange={handleSpeakerChange}
         />
-      )}
+        )}
+      </div>
 
       {/* Summary + primary action. Hidden while a preset edit owns the screen
           so its own Cancel/Save buttons are the only way out. */}
@@ -420,7 +454,7 @@ export function OutputPanel({
         <div className="shrink-0 border-t bg-card">
           {/* Without an editor there is nothing to summarise; the row is only
               kept so an expanded sheet still has a way to collapse. */}
-          {(isConnected || expanded) && (
+          {isConnected && (!expanded || closing) && (
             <div className="px-3 pt-3">
               <button
                 type="button"
@@ -504,8 +538,11 @@ export function OutputPanel({
 interface OutputSheetProps {
   isConnected: boolean;
   isAdobe: boolean;
+  closing: boolean;
   focusSection: OutputSection | null;
   onFocusHandled: () => void;
+  /** Collapses the sheet and returns to the transcript. */
+  onBack: () => void;
   outputTracks: TimelineInfo["outputTracks"];
   selectedOutputTrack: string;
   onOutputTrackChange: (value: string) => void;
@@ -539,6 +576,7 @@ interface OutputSheetProps {
 function OutputSheet(props: OutputSheetProps) {
   const { t } = useTranslation();
   const {
+    closing,
     isConnected,
     isAdobe,
     focusSection,
@@ -568,7 +606,7 @@ function OutputSheet(props: OutputSheetProps) {
   // The preset editor needs the whole sheet — it has its own action buttons.
   if (createSession.kind !== "closed") {
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+      <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-3 pb-3">
         <CaptionTemplateSelectionContent
           mode="animated"
           onModeChange={() => {}}
@@ -600,8 +638,33 @@ function OutputSheet(props: OutputSheetProps) {
   }
 
   return (
-    <ScrollArea className="min-h-0 flex-1">
-      <div className="space-y-4 px-4 pb-4 pt-1">
+    // A distinct surface, not a silent replacement of the transcript: the
+    // header names where you are and how to get back, and the slide-up ties
+    // the sheet to the pill that opened it.
+    <div
+      className={cn(
+        "absolute inset-0 z-10 flex flex-col bg-background duration-200",
+        closing
+          ? "animate-out fade-out slide-out-to-bottom-2"
+          : "animate-in fade-in slide-in-from-bottom-2",
+      )}
+    >
+      {/* A plain back link rather than a bordered bar: a full-width strip
+          implies something at each end, which is what made a lone button look
+          unbalanced. It sits outside the section spacing so it reads as
+          attached to the content below rather than as an abandoned row. */}
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="px-4 pb-4 pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            className="-ml-1.5 mb-2 h-7 gap-1 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={props.onBack}
+          >
+            <ChevronLeft className="size-4" />
+            {t("common.back")}
+          </Button>
+          <div className="space-y-4">
         {!isConnected && (
           <p className="px-1 text-xs text-muted-foreground">
             {t("output.notConnected")}
@@ -680,7 +743,9 @@ function OutputSheet(props: OutputSheetProps) {
           </section>
         )}
 
-      </div>
-    </ScrollArea>
+          </div>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

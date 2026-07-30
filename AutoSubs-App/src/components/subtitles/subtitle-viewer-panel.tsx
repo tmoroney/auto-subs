@@ -384,8 +384,12 @@ export function SubtitleViewerPanel({
 
   const timelineInfo = isAdobeActive ? adobeTimeline : resolveTimeline;
 
-  const outputExpanded = useOutputPanelStore((s) => s.expanded);
-  const closeOutputPanel = useOutputPanelStore((s) => s.close);
+  // The store keeps `expanded` true through the sheet's exit animation, but
+  // the viewer's chrome — title, document actions, header rule — should revert
+  // as soon as the close starts, otherwise it reads as lag.
+  const outputActive = useOutputPanelStore((s) => s.expanded && !s.closing);
+  const requestCloseOutputPanel = useOutputPanelStore((s) => s.requestClose);
+  const resetOutputPanel = useOutputPanelStore((s) => s.reset);
 
   const pushToTimeline = isAdobeActive
     ? (
@@ -428,7 +432,7 @@ export function SubtitleViewerPanel({
 
   // Reopening the viewer should always land on the transcript, never on a
   // sheet left expanded from a previous session.
-  React.useEffect(() => closeOutputPanel, [closeOutputPanel]);
+  React.useEffect(() => resetOutputPanel, [resetOutputPanel]);
 
   React.useEffect(() => {
     if (!isOpen || !onClose) return;
@@ -438,7 +442,7 @@ export function SubtitleViewerPanel({
         // Escape backs out of the output sheet first; only a second press
         // closes the whole panel.
         if (useOutputPanelStore.getState().expanded) {
-          closeOutputPanel();
+          requestCloseOutputPanel();
           return;
         }
         onClose();
@@ -449,7 +453,7 @@ export function SubtitleViewerPanel({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose, closeOutputPanel]);
+  }, [isOpen, onClose, requestCloseOutputPanel]);
 
   
 
@@ -535,52 +539,63 @@ export function SubtitleViewerPanel({
   return (
     <div className={shellClassName}>
       <div
-        className={`flex h-12 shrink-0 items-center justify-between gap-3 pr-2 ${isFullScreen && isMacOs ? "pl-24" : "pl-4"}`}
+        className={`flex h-12 shrink-0 items-center justify-between gap-3 border-b pr-2 transition-colors duration-150 ${outputActive ? "border-border" : "border-transparent"} ${isFullScreen && isMacOs ? "pl-24" : "pl-4"}`}
         data-tauri-drag-region={isMacOs ? true : undefined}
       >
-        <div
-          className="min-w-0"
-          data-tauri-drag-region={isMacOs ? "false" : undefined}
-        >
-          <h2 className="font-semibold select-none">
-            {t("subtitles.title")}
+        <div className="min-w-0">
+          {/* The drag attribute has to be on the element the pointer actually
+              lands on, so it belongs on the heading itself — a mousedown on
+              the text hits the h2, not its wrapper. */}
+          <h2
+            className="font-semibold select-none truncate"
+            data-tauri-drag-region={isMacOs ? true : undefined}
+          >
+            {outputActive ? t("output.title") : t("subtitles.title")}
           </h2>
         </div>
         <div
           className="z-20 flex items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => importSubtitles(useSettingsStore.getState(), null, "")}
-              >
-                <FileUp />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t("importExport.importTab")}
-            </TooltipContent>
-          </Tooltip>
-          <TranscriptHistoryPopover
-            subtitleDocuments={transcriptDocuments}
-            isLoading={isLoadingTranscriptDocuments}
-            onTranscriptOpen={() => {}}
-            onRefresh={onTranscriptDocumentsRefresh}
-            tooltipLabel={t("subtitles.previousSubtitles")}
-            trigger={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t("subtitles.previousSubtitles")}
-              >
-                <History />
-              </Button>
-            }
-          />
+          {/* Document actions belong to the transcript, so they go away while
+              the output sheet is up. That leaves only the panel close here,
+              which reinforces that the sheet is a different mode — and stops
+              these being clicked in a context where they don't apply. */}
+          {!outputActive && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => importSubtitles(useSettingsStore.getState(), null, "")}
+                  >
+                    <FileUp />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("importExport.importTab")}
+                </TooltipContent>
+              </Tooltip>
+              <TranscriptHistoryPopover
+                subtitleDocuments={transcriptDocuments}
+                isLoading={isLoadingTranscriptDocuments}
+                onTranscriptOpen={() => {}}
+                onRefresh={onTranscriptDocumentsRefresh}
+                tooltipLabel={t("subtitles.previousSubtitles")}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("subtitles.previousSubtitles")}
+                  >
+                    <History />
+                  </Button>
+                }
+              />
+            </>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -593,62 +608,9 @@ export function SubtitleViewerPanel({
         </div>
       </div>
 
-      {/* Transcript region. The output sheet takes this space when expanded so
-          it gets the full panel height instead of a dialog's worth. */}
-      {!outputExpanded && (
-        <>
-          {hasSubtitles && (
-            <SearchSection
-              headerClassName={headerClassName}
-              t={t}
-              searchQuery={searchQuery}
-              replaceValue={replaceValue}
-              searchCaseSensitive={searchCaseSensitive}
-              searchWholeWord={searchWholeWord}
-              showReplace={showReplace}
-              canReplace={canReplace}
-              searchInputRef={searchInputRef}
-              onSearchQueryChange={setSearchQuery}
-              onReplaceValueChange={setReplaceValue}
-              onToggleCaseSensitive={() =>
-                setSearchCaseSensitive((value) => !value)
-              }
-              onToggleWholeWord={() => setSearchWholeWord((value) => !value)}
-              onToggleReplace={() => setShowReplace((value) => !value)}
-              onReplaceAll={handleReplaceAll}
-              searchPlaceholder={t("subtitles.searchPlaceholder")}
-              searchAriaLabel={t("subtitles.searchAria")}
-            />
-          )}
-
-          {hasSubtitles && (
-            <TranscriptStatusRow
-              sourceName={currentSubtitleDocumentSourceName}
-              subtitleCount={subtitles.length}
-              matchCount={searchQuery.trim() ? matchCount : null}
-              showReformat={showReformat}
-              onReformatOpenChange={setShowReformat}
-              onApplyReformat={handleApplyReformat}
-            />
-          )}
-
-          <SubtitleContent
-            subtitlesLength={subtitles.length}
-            searchQuery={searchQuery}
-            searchCaseSensitive={searchCaseSensitive}
-            searchWholeWord={searchWholeWord}
-            selectedIndex={selectedIndex}
-            onSelectedIndexChange={setSelectedIndex}
-            onJumpToTime={handleJumpToTime}
-            onMatchCountChange={setMatchCount}
-            t={t}
-            transcriptDocuments={transcriptDocuments}
-            isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
-            onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
-          />
-        </>
-      )}
-
+      {/* The transcript is handed to OutputPanel so the settings sheet can
+          overlay it rather than replace it — it stays mounted (keeping scroll
+          position) and is already on screen as the sheet animates away. */}
       <OutputPanel
         timelineInfo={timelineInfo}
         isConnected={isIntegrationConnected}
@@ -661,7 +623,57 @@ export function SubtitleViewerPanel({
         onExport={handleExport}
         isAdding={isAddingToTimeline}
         justSent={justSent}
-      />
+      >
+        {hasSubtitles && (
+          <SearchSection
+            headerClassName={headerClassName}
+            t={t}
+            searchQuery={searchQuery}
+            replaceValue={replaceValue}
+            searchCaseSensitive={searchCaseSensitive}
+            searchWholeWord={searchWholeWord}
+            showReplace={showReplace}
+            canReplace={canReplace}
+            searchInputRef={searchInputRef}
+            onSearchQueryChange={setSearchQuery}
+            onReplaceValueChange={setReplaceValue}
+            onToggleCaseSensitive={() =>
+              setSearchCaseSensitive((value) => !value)
+            }
+            onToggleWholeWord={() => setSearchWholeWord((value) => !value)}
+            onToggleReplace={() => setShowReplace((value) => !value)}
+            onReplaceAll={handleReplaceAll}
+            searchPlaceholder={t("subtitles.searchPlaceholder")}
+            searchAriaLabel={t("subtitles.searchAria")}
+          />
+        )}
+
+        {hasSubtitles && (
+          <TranscriptStatusRow
+            sourceName={currentSubtitleDocumentSourceName}
+            subtitleCount={subtitles.length}
+            matchCount={searchQuery.trim() ? matchCount : null}
+            showReformat={showReformat}
+            onReformatOpenChange={setShowReformat}
+            onApplyReformat={handleApplyReformat}
+          />
+        )}
+
+        <SubtitleContent
+          subtitlesLength={subtitles.length}
+          searchQuery={searchQuery}
+          searchCaseSensitive={searchCaseSensitive}
+          searchWholeWord={searchWholeWord}
+          selectedIndex={selectedIndex}
+          onSelectedIndexChange={setSelectedIndex}
+          onJumpToTime={handleJumpToTime}
+          onMatchCountChange={setMatchCount}
+          t={t}
+          transcriptDocuments={transcriptDocuments}
+          isLoadingTranscriptDocuments={isLoadingTranscriptDocuments}
+          onTranscriptDocumentsRefresh={onTranscriptDocumentsRefresh}
+        />
+      </OutputPanel>
     </div>
   );
 }

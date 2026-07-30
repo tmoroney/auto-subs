@@ -659,7 +659,11 @@
     "style": {
       "label": "Caption style",
       "loading": "Loading templates...",
-      "noTemplates": "No templates found."
+      "noTemplates": "No templates found.",
+      "groups": {
+        "resolve": "Resolve Templates",
+        "autosubs": "AutoSubs Styles"
+      }
     },
     "speakers": {
       "label_one": "{{count}} speaker",
@@ -675,6 +679,7 @@
       "notConnected": "No editor connected. Connect to DaVinci Resolve, Adobe Premiere Pro, or After Effects to customise templates.",
       "timedOut": "Connection timed out. Ensure your editing software is running and try again."
     },
-    "sentAgain": "Sent · Send again"
+    "sentAgain": "Sent · Send again",
+    "title": "Output settings"
   }
 }

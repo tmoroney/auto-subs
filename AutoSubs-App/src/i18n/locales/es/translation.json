@@ -638,7 +638,11 @@
     "style": {
       "label": "Estilo de subtítulos",
       "loading": "Cargando plantillas...",
-      "noTemplates": "No se encontraron plantillas."
+      "noTemplates": "No se encontraron plantillas.",
+      "groups": {
+        "resolve": "Plantillas de Resolve",
+        "autosubs": "Estilos de AutoSubs"
+      }
     },
     "speakers": {
       "label_one": "{{count}} hablante",
@@ -654,6 +658,7 @@
       "notConnected": "Ningún editor conectado. Conecta DaVinci Resolve, Adobe Premiere Pro o After Effects para personalizar plantillas.",
       "timedOut": "Se agotó el tiempo de conexión. Asegúrate de que tu software de edición esté abierto e inténtalo de nuevo."
     },
-    "sentAgain": "Enviado · Enviar de nuevo"
+    "sentAgain": "Enviado · Enviar de nuevo",
+    "title": "Ajustes de salida"
   }
 }

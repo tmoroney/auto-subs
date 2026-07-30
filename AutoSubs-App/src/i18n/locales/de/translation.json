@@ -638,7 +638,11 @@
     "style": {
       "label": "Untertitel-Stil",
       "loading": "Vorlagen werden geladen...",
-      "noTemplates": "Keine Vorlagen gefunden."
+      "noTemplates": "Keine Vorlagen gefunden.",
+      "groups": {
+        "resolve": "Resolve-Vorlagen",
+        "autosubs": "AutoSubs-Stile"
+      }
     },
     "speakers": {
       "label_one": "{{count}} Sprecher",
@@ -654,6 +658,7 @@
       "notConnected": "Kein Editor verbunden. Verbinde DaVinci Resolve, Adobe Premiere Pro oder After Effects, um Vorlagen anzupassen.",
       "timedOut": "Zeitüberschreitung. Stelle sicher, dass deine Schnittsoftware läuft, und versuche es erneut."
     },
-    "sentAgain": "Gesendet · Erneut senden"
+    "sentAgain": "Gesendet · Erneut senden",
+    "title": "Ausgabe-Einstellungen"
   }
 }

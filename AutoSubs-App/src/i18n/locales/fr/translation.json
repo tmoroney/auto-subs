@@ -638,7 +638,11 @@
     "style": {
       "label": "Style de sous-titres",
       "loading": "Chargement des modèles...",
-      "noTemplates": "Aucun modèle trouvé."
+      "noTemplates": "Aucun modèle trouvé.",
+      "groups": {
+        "resolve": "Modèles Resolve",
+        "autosubs": "Styles AutoSubs"
+      }
     },
     "speakers": {
       "label_one": "{{count}} intervenant",
@@ -654,6 +658,7 @@
       "notConnected": "Aucun éditeur connecté. Connectez DaVinci Resolve, Adobe Premiere Pro ou After Effects pour personnaliser les modèles.",
       "timedOut": "Délai de connexion dépassé. Vérifiez que votre logiciel de montage est ouvert et réessayez."
     },
-    "sentAgain": "Envoyé · Renvoyer"
+    "sentAgain": "Envoyé · Renvoyer",
+    "title": "Paramètres de sortie"
   }
 }
