@@ -81,10 +81,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleUsageToggle = React.useCallback(
     (checked: boolean) => {
-      updateSetting("shareUsageData", checked);
-      // Opting out forgets the install id and any counters, so re-enabling
-      // later starts fresh rather than resuming the previous identity.
-      void setUsageConsent(checked);
+      // Persist to the authoritative backend state first: only reflect the
+      // answer in the UI once it actually took effect, so a failed opt-out
+      // never shows sharing as off while the backend still permits it. Opting
+      // out also forgets the install id and counters, so re-enabling later
+      // starts fresh rather than resuming the previous identity.
+      void setUsageConsent(checked)
+        .then(() => updateSetting("shareUsageData", checked))
+        .catch((error) => console.warn("[telemetry] failed to store consent:", error));
     },
     [updateSetting],
   );

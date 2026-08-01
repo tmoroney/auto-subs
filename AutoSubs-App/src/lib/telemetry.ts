@@ -131,13 +131,11 @@ export async function pendingUsageSummary(
 
 /**
  * Persist the user's answer. Opting out also forgets the install id and every
- * counter, in one atomic step on the backend.
+ * counter, in one atomic step on the backend. Throws if the backend refuses,
+ * so an opt-out is never shown as done while the backend still permits sending;
+ * callers should keep the UI on the previous answer when this rejects.
  */
 export async function setUsageConsent(consented: boolean): Promise<void> {
   if (!(await isTelemetryBuild())) return;
-  try {
-    await invoke("telemetry_set_consent", { consented });
-  } catch (error) {
-    console.warn("[telemetry] failed to store consent:", error);
-  }
+  await invoke("telemetry_set_consent", { consented });
 }

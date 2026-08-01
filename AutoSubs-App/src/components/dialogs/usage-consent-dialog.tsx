@@ -31,8 +31,13 @@ export function UsageConsentDialog({ open }: UsageConsentDialogProps) {
   const { t } = useTranslation();
 
   const answer = (shared: boolean) => {
+    // The dialog only ever moves consent up from "not asked", so a failed
+    // backend write fails closed (backend stays not-consented) and is safe to
+    // ignore; record the answer either way so the prompt is not shown again.
     updateSetting("shareUsageData", shared);
-    void setUsageConsent(shared);
+    void setUsageConsent(shared).catch((error) =>
+      console.warn("[telemetry] failed to store consent:", error),
+    );
   };
 
   return (
