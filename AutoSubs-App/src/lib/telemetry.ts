@@ -13,6 +13,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { platform } from "@tauri-apps/plugin-os";
 
 import type { Integration } from "@/contexts/IntegrationContext";
+import { useSettingsStore } from "@/stores/settings-store";
+
+/**
+ * Consent is read from the store at the moment it is needed rather than passed
+ * in by the caller: every path here awaits something first, and a user who opts
+ * out during that await has opted out of the pending work too.
+ */
+const hasConsented = () => useSettingsStore.getState().shareUsageData === true;
 
 export interface UsageRun {
   /** Model id, e.g. `whisper-large-v3`. */
@@ -64,11 +72,8 @@ export async function resolveGpuBackend(enableGpu: boolean): Promise<string> {
 }
 
 /** Fold a finished run into the local counters. Never throws. */
-export async function recordUsageRun(
-  consented: boolean,
-  run: UsageRun,
-): Promise<void> {
-  if (!consented || !(await isTelemetryBuild())) return;
+export async function recordUsageRun(run: UsageRun): Promise<void> {
+  if (!(await isTelemetryBuild()) || !hasConsented()) return;
   try {
     await invoke("telemetry_record_run", {
       run: {
@@ -92,17 +97,28 @@ export async function recordUsageRun(
   }
 }
 
+let inFlight: Promise<void> | null = null;
+
 /**
  * Send the pending summary if a reporting period has elapsed. Called once per
  * launch; the backend decides whether anything is actually due.
  */
-export async function flushUsage(consented: boolean, uiLanguage: string): Promise<void> {
-  if (!consented || !(await isTelemetryBuild())) return;
-  try {
-    await invoke("telemetry_flush", { uiLanguage });
-  } catch (error) {
-    console.warn("[telemetry] flush failed:", error);
-  }
+export async function flushUsage(uiLanguage: string): Promise<void> {
+  // Overlapping flushes would each snapshot the counters and then subtract
+  // their own snapshot, so a run recorded between the two is lost. One at a
+  // time; a skipped attempt costs nothing because the next launch retries.
+  if (inFlight) return inFlight;
+  if (!(await isTelemetryBuild()) || !hasConsented()) return;
+  inFlight = (async () => {
+    try {
+      await invoke("telemetry_flush", { uiLanguage });
+    } catch (error) {
+      console.warn("[telemetry] flush failed:", error);
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
 }
 
 /** Exactly what would be sent right now, for the "see what's shared" preview. */

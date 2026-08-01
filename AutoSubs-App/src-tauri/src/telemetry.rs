@@ -393,7 +393,7 @@ pub async fn telemetry_flush<R: Runtime>(
     };
 
     let version = app.package_info().version.to_string();
-    let (body, sent) = {
+    let (body, sent, install_id) = {
         let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
         let state = load_state(&app)?;
         if !is_due(&state, &version) {
@@ -401,7 +401,7 @@ pub async fn telemetry_flush<R: Runtime>(
         }
         let body = serde_json::to_string(&build_summary(&state, &version, &ui_language))
             .map_err(|e| format!("serialize summary: {e}"))?;
-        (body, state.pending.clone())
+        (body, state.pending.clone(), state.install_id.clone())
     };
 
     let response = reqwest::Client::new()
@@ -426,6 +426,12 @@ pub async fn telemetry_flush<R: Runtime>(
 
     let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
     let mut state = load_state(&app)?;
+    // Consent may have been withdrawn while the request was in flight, in which
+    // case `telemetry_reset` deleted the state and `load_state` just minted a
+    // fresh identity. Writing here would resurrect what the user asked to drop.
+    if state.install_id != install_id {
+        return Ok(accepted);
+    }
     state.pending.subtract(&sent);
     state.period_start = Utc::now();
     state.last_sent = Some(Utc::now());

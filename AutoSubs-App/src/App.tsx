@@ -149,7 +149,7 @@ function AppContentBody() {
   // One send attempt per launch; the backend decides whether a period is due.
   React.useEffect(() => {
     if (!isHydrated) return
-    void flushUsage(shareUsageData === true, uiLanguage)
+    void flushUsage(uiLanguage)
   }, [isHydrated, shareUsageData, uiLanguage])
 
   const handleCloseSubtitleViewer = React.useCallback(() => {

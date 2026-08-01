@@ -288,9 +288,7 @@ export function TranscriptionPanel({
     // Anonymous usage counters. Only ever called while the user has opted in,
     // and only ever with the fixed set of fields below — see PRIVACY.md.
     const recordRun = async (failed: boolean, audioSeconds: number) => {
-      // Consent is read now, not when the run started: a user who opts out
-      // mid-transcription has opted out of this run too.
-      await recordUsageRun(useSettingsStore.getState().shareUsageData === true, {
+      await recordUsageRun({
         engine: modelsState[model]?.value ?? "unknown",
         language,
         integration: audioInputMode === "file" ? "standalone" : selectedIntegration,
