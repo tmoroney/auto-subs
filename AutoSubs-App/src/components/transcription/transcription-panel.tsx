@@ -59,7 +59,6 @@ export function TranscriptionPanel({
     transcriptionsCompleted,
     subSlateMilestoneShown,
     selectedTemplate,
-    shareUsageData,
   } = useSettingsStore(
     useShallow((s) => ({
       selectedInputTracksByApp: s.selectedInputTracksByApp,
@@ -83,7 +82,6 @@ export function TranscriptionPanel({
       transcriptionsCompleted: s.transcriptionsCompleted,
       subSlateMilestoneShown: s.subSlateMilestoneShown,
       selectedTemplate: s.selectedTemplate,
-      shareUsageData: s.shareUsageData,
     })),
   );
   const updateSetting = useSettingsStore((s) => s.updateSetting);
@@ -290,7 +288,9 @@ export function TranscriptionPanel({
     // Anonymous usage counters. Only ever called while the user has opted in,
     // and only ever with the fixed set of fields below — see PRIVACY.md.
     const recordRun = async (failed: boolean, audioSeconds: number) => {
-      await recordUsageRun(shareUsageData === true, {
+      // Consent is read now, not when the run started: a user who opts out
+      // mid-transcription has opted out of this run too.
+      await recordUsageRun(useSettingsStore.getState().shareUsageData === true, {
         engine: modelsState[model]?.value ?? "unknown",
         language,
         integration: audioInputMode === "file" ? "standalone" : selectedIntegration,

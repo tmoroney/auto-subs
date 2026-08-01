@@ -56,7 +56,7 @@ pub fn is_available() -> bool {
 
 // ─── On-disk state ────────────────────────────────────────────────────────
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct Counters {
     runs: u32,
     runs_failed: u32,
@@ -74,6 +74,43 @@ struct Counters {
     languages: BTreeMap<String, u32>,
     integrations: BTreeMap<String, u32>,
     gpu_backends: BTreeMap<String, u32>,
+}
+
+impl Counters {
+    /// Remove an already-reported snapshot, leaving anything recorded since it
+    /// was taken. Clearing outright would lose a run that finished while the
+    /// summary was in flight.
+    fn subtract(&mut self, sent: &Counters) {
+        self.runs = self.runs.saturating_sub(sent.runs);
+        self.runs_failed = self.runs_failed.saturating_sub(sent.runs_failed);
+        self.runs_diarize = self.runs_diarize.saturating_sub(sent.runs_diarize);
+        self.runs_translate = self.runs_translate.saturating_sub(sent.runs_translate);
+        self.runs_forced_alignment = self
+            .runs_forced_alignment
+            .saturating_sub(sent.runs_forced_alignment);
+        self.runs_dtw = self.runs_dtw.saturating_sub(sent.runs_dtw);
+        self.runs_censor = self.runs_censor.saturating_sub(sent.runs_censor);
+        self.runs_custom_template = self
+            .runs_custom_template
+            .saturating_sub(sent.runs_custom_template);
+        self.runs_file_input = self.runs_file_input.saturating_sub(sent.runs_file_input);
+        self.audio_seconds = self.audio_seconds.saturating_sub(sent.audio_seconds);
+        for (tally, sent) in [
+            (&mut self.engines, &sent.engines),
+            (&mut self.languages, &sent.languages),
+            (&mut self.integrations, &sent.integrations),
+            (&mut self.gpu_backends, &sent.gpu_backends),
+        ] {
+            for (name, count) in sent {
+                if let Some(remaining) = tally.get_mut(name) {
+                    *remaining = remaining.saturating_sub(*count);
+                    if *remaining == 0 {
+                        tally.remove(name);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -356,14 +393,15 @@ pub async fn telemetry_flush<R: Runtime>(
     };
 
     let version = app.package_info().version.to_string();
-    let body = {
+    let (body, sent) = {
         let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
         let state = load_state(&app)?;
         if !is_due(&state, &version) {
             return Ok(false);
         }
-        serde_json::to_string(&build_summary(&state, &version, &ui_language))
-            .map_err(|e| format!("serialize summary: {e}"))?
+        let body = serde_json::to_string(&build_summary(&state, &version, &ui_language))
+            .map_err(|e| format!("serialize summary: {e}"))?;
+        (body, state.pending.clone())
     };
 
     let response = reqwest::Client::new()
@@ -388,7 +426,7 @@ pub async fn telemetry_flush<R: Runtime>(
 
     let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
     let mut state = load_state(&app)?;
-    state.pending = Counters::default();
+    state.pending.subtract(&sent);
     state.period_start = Utc::now();
     state.last_sent = Some(Utc::now());
     state.last_sent_version = Some(version);
@@ -485,6 +523,37 @@ mod tests {
         updated.last_sent_version = Some("3.8.0".into());
         assert!(is_due(&updated, "3.9.0"));
         assert!(!is_due(&updated, "3.8.0"));
+    }
+
+    #[test]
+    fn clearing_a_sent_summary_keeps_runs_recorded_while_it_was_in_flight() {
+        let mut sent = Counters { runs: 2, runs_diarize: 1, audio_seconds: 60, ..Default::default() };
+        bump(&mut sent.engines, "whisper".into());
+        bump(&mut sent.engines, "whisper".into());
+
+        let mut pending = Counters { runs: 3, runs_diarize: 1, audio_seconds: 90, ..Default::default() };
+        bump(&mut pending.engines, "whisper".into());
+        bump(&mut pending.engines, "whisper".into());
+        bump(&mut pending.engines, "parakeet".into());
+
+        pending.subtract(&sent);
+        assert_eq!(pending.runs, 1);
+        assert_eq!(pending.runs_diarize, 0);
+        assert_eq!(pending.audio_seconds, 30);
+        // Fully reported tallies are dropped rather than left at zero.
+        assert_eq!(pending.engines.get("whisper"), None);
+        assert_eq!(pending.engines.get("parakeet"), Some(&1));
+    }
+
+    #[test]
+    fn a_first_report_waits_the_full_period_rather_than_firing_on_day_one() {
+        let mut fresh = state_with(
+            Counters { runs: 1, ..Default::default() },
+            Utc::now() - Duration::days(2),
+        );
+        fresh.last_sent = None;
+        fresh.last_sent_version = None;
+        assert!(!is_due(&fresh, "3.9.0"));
     }
 
     #[test]

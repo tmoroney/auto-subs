@@ -40,8 +40,36 @@ function status(code: number): Response {
   return new Response(null, { status: code });
 }
 
+/**
+ * Reads the body without ever buffering more than `max` bytes: `content-length`
+ * is client-supplied and absent entirely on a chunked request, so the stream is
+ * capped as it arrives rather than measured afterwards. Returns null if the
+ * body is too large.
+ */
+async function readCappedBody(request: Request, max: number): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > max) return null;
+  if (!request.body) return "";
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > max) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/health") {
@@ -56,12 +84,8 @@ export default {
     const { success } = await env.RATE_LIMITER.limit({ key: ip });
     if (!success) return status(429);
 
-    const declaredLength = Number(request.headers.get("content-length") ?? "0");
-    if (declaredLength > MAX_BODY_BYTES) return status(413);
-
-    const body = await request.text();
-    // content-length is client-supplied, so re-check the body we actually got.
-    if (body.length > MAX_BODY_BYTES) return status(413);
+    const body = await readCappedBody(request, MAX_BODY_BYTES);
+    if (body === null) return status(413);
 
     const version = request.headers.get(VERSION_HEADER);
     const signature = request.headers.get(SIGNATURE_HEADER);
@@ -96,6 +120,12 @@ export default {
       return status(202);
     }
 
+    // Claim the period *before* the write. KV is eventually consistent, so two
+    // simultaneous replays can still both slip through; awaiting the put narrows
+    // the window to KV's propagation delay rather than leaving it open for the
+    // rest of the request.
+    await env.DEDUPE.put(dedupeKey, "1", { expirationTtl: minInterval });
+
     env.USAGE.writeDataPoint({
       // One index per data point; the install id keeps Analytics Engine's
       // sampling coherent per install rather than per request.
@@ -127,10 +157,6 @@ export default {
         summary.period_days,
       ],
     });
-
-    // The cooldown is not worth failing the request over, and the client has
-    // already been told the summary landed.
-    ctx.waitUntil(env.DEDUPE.put(dedupeKey, "1", { expirationTtl: minInterval }));
 
     return status(204);
   },
