@@ -662,5 +662,26 @@
     },
     "sentAgain": "보냄 · 다시 보내기",
     "title": "출력 설정"
+  },
+  "usageStats": {
+    "section": "개인정보",
+    "privacyPolicy": "수집 항목",
+    "setting": {
+      "title": "익명 사용 통계",
+      "description": "사용한 기능만 공유하며 콘텐츠는 보내지 않습니다"
+    },
+    "preview": {
+      "actual": "전송되는 내용 보기",
+      "example": "전송 내용 예시"
+    },
+    "consent": {
+      "title": "AutoSubs 개선에 참여",
+      "description": "AutoSubs는 일주일에 한 번 사용한 기능의 익명 요약을 보낼 수 있습니다. 무엇을 개선할지 알 수 있는 유일한 방법입니다.",
+      "shared": "사용한 기능, 앱 버전, 운영체제",
+      "notShared": "오디오, 대본, 파일 이름과 경로는 제외",
+      "changeLater": "설정에서 언제든지 변경할 수 있습니다.",
+      "accept": "공유하기",
+      "decline": "괜찮습니다"
+    }
   }
 }

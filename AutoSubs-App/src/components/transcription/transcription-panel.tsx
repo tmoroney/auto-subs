@@ -15,6 +15,7 @@ import { ResolveApiError } from "@/api/resolve-api";
 import SubSlateCard from "@/components/ui/SubSlateCard";
 import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } from "@/types";
 import { getActiveCensorWords } from "@/censor/merge";
+import { recordUsageRun, resolveGpuBackend } from "@/lib/telemetry";
 import { TranscriptionPanelView } from "./transcription-panel-view";
 import { describeError } from "./utils";
 
@@ -57,6 +58,7 @@ export function TranscriptionPanel({
     customPrompt,
     transcriptionsCompleted,
     subSlateMilestoneShown,
+    selectedTemplate,
   } = useSettingsStore(
     useShallow((s) => ({
       selectedInputTracksByApp: s.selectedInputTracksByApp,
@@ -79,6 +81,7 @@ export function TranscriptionPanel({
       customPrompt: s.customPrompt,
       transcriptionsCompleted: s.transcriptionsCompleted,
       subSlateMilestoneShown: s.subSlateMilestoneShown,
+      selectedTemplate: s.selectedTemplate,
     })),
   );
   const updateSetting = useSettingsStore((s) => s.updateSetting);
@@ -282,6 +285,26 @@ export function TranscriptionPanel({
     setTranscriptionProgress(0);
     clearProgressSteps();
 
+    // Anonymous usage counters. Only ever called while the user has opted in,
+    // and only ever with the fixed set of fields below — see PRIVACY.md.
+    const recordRun = async (failed: boolean, audioSeconds: number) => {
+      await recordUsageRun({
+        engine: modelsState[model]?.value ?? "unknown",
+        language,
+        integration: audioInputMode === "file" ? "standalone" : selectedIntegration,
+        gpuBackend: await resolveGpuBackend(enableGpu),
+        failed,
+        diarize: enableDiarize,
+        translate,
+        forcedAlignment: willUseForcedAlignment,
+        dtw: enableDTW && !willUseForcedAlignment,
+        censor: enableCensor,
+        customTemplate: selectedTemplate?.value !== "Default Template",
+        fileInput: audioInputMode === "file",
+        audioSeconds,
+      });
+    };
+
     setupEventListeners({
       targetLanguage,
       language,
@@ -359,6 +382,9 @@ export function TranscriptionPanel({
       await onTranscriptCreated?.();
       onViewSubtitles?.();
 
+      const segments = (transcript as { segments?: Array<{ end?: number }> })?.segments;
+      await recordRun(false, segments?.[segments.length - 1]?.end ?? 0);
+
       const nextCount = (transcriptionsCompleted ?? 0) + 1;
       updateSetting("transcriptionsCompleted", nextCount);
       if (nextCount >= 10 && !subSlateMilestoneShown) {
@@ -374,6 +400,8 @@ export function TranscriptionPanel({
       if (isCancellation) {
         return;
       }
+
+      await recordRun(true, 0);
 
       // End the run explicitly. Nothing else does, and a run that is neither
       // complete nor cancelled leaves the stepper mid-flight and pins the right

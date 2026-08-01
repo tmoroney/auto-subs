@@ -127,6 +127,8 @@ export interface Settings {
     tourCompleted: boolean;
     lastSeenVersion: string;
     showEnglishOnlyModels: boolean;
+    /** Anonymous usage stats opt-in. `null` means the user has not been asked yet. */
+    shareUsageData: boolean | null;
 
     // Survey notification settings
     timesDismissedSurvey: number;

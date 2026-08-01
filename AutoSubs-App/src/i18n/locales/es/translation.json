@@ -662,5 +662,26 @@
     },
     "sentAgain": "Enviado · Enviar de nuevo",
     "title": "Ajustes de salida"
+  },
+  "usageStats": {
+    "section": "Privacidad",
+    "privacyPolicy": "Qué recopilamos",
+    "setting": {
+      "title": "Estadísticas anónimas",
+      "description": "Comparte qué funciones usas, nunca tu contenido"
+    },
+    "preview": {
+      "actual": "Ver exactamente qué se envía",
+      "example": "Ejemplo de lo que se envía"
+    },
+    "consent": {
+      "title": "Ayuda a mejorar AutoSubs",
+      "description": "Una vez por semana, AutoSubs puede enviar un resumen anónimo de las funciones que has usado. Es la única forma de saber qué conviene mejorar.",
+      "shared": "Funciones usadas, versión de la app, sistema",
+      "notShared": "Nunca audio, transcripciones, nombres ni rutas",
+      "changeLater": "Puedes cambiarlo cuando quieras en Ajustes.",
+      "accept": "Compartir",
+      "decline": "No, gracias"
+    }
   }
 }

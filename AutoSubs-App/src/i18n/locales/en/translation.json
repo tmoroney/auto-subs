@@ -683,5 +683,26 @@
     },
     "sentAgain": "Sent · Send again",
     "title": "Output settings"
+  },
+  "usageStats": {
+    "section": "Privacy",
+    "privacyPolicy": "What we collect",
+    "setting": {
+      "title": "Anonymous Usage Stats",
+      "description": "Share which features you use, never your content"
+    },
+    "preview": {
+      "actual": "See exactly what's shared",
+      "example": "Example of what's shared"
+    },
+    "consent": {
+      "title": "Help improve AutoSubs",
+      "description": "Once a week, AutoSubs can send an anonymous summary of which features you used. It is the only way to know what is worth improving.",
+      "shared": "Feature usage, app version, operating system",
+      "notShared": "Never audio, transcripts, file names or paths",
+      "changeLater": "You can change this any time in Settings.",
+      "accept": "Share anonymous stats",
+      "decline": "No thanks"
+    }
   }
 }

@@ -662,5 +662,26 @@
     },
     "sentAgain": "送信済み · もう一度送信",
     "title": "出力設定"
+  },
+  "usageStats": {
+    "section": "プライバシー",
+    "privacyPolicy": "収集する情報",
+    "setting": {
+      "title": "匿名の利用統計",
+      "description": "使用した機能のみを共有し、内容は送信しません"
+    },
+    "preview": {
+      "actual": "送信される内容を確認",
+      "example": "送信内容の例"
+    },
+    "consent": {
+      "title": "AutoSubs の改善に協力",
+      "description": "AutoSubs は週に一度、使用した機能の匿名の概要を送信できます。改善すべき点を知る唯一の方法です。",
+      "shared": "使用した機能、アプリのバージョン、OS",
+      "notShared": "音声、文字起こし、ファイル名やパスは送信しません",
+      "changeLater": "設定でいつでも変更できます。",
+      "accept": "共有する",
+      "decline": "共有しない"
+    }
   }
 }

@@ -1,6 +1,6 @@
 # AutoSubs
 
-Local-first AI subtitles. No cloud, no subscription, no data leaving your machine.
+Local-first AI subtitles. No cloud, no subscription, no account. Your media never leaves your machine ([privacy](PRIVACY.md)).
 
 Use it as a standalone app, or connect to **DaVinci Resolve**, **Adobe Premiere Pro**, and **After Effects**.
 
@@ -80,6 +80,7 @@ For command-line usage, see the **[CLI Guide](CLI.md)** with complete reference,
 
 ## Documentation
 
+- **[Privacy](PRIVACY.md)** - What the app sends, and the opt-in anonymous usage stats
 - **[CLI Guide](CLI.md)** - Command-line interface reference
 - **[Contributing Guide](CONTRIBUTING.md)** - Development setup and contribution workflow
 - **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
