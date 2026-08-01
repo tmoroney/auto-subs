@@ -71,7 +71,7 @@ export const ExportPopover = React.forwardRef<HTMLButtonElement, ExportPopoverPr
                             <Button
                                 key={format}
                                 variant="outline"
-                                className="h-auto w-full justify-start border px-4 py-3 hover:border-primary hover:bg-primary/10 bg-card"
+                                className="h-auto w-full justify-start border px-4 py-3 hover:border-primary hover:bg-primary/10 shadow-none"
                                 onClick={() => handleExport(format)}
                                 aria-label={t(ariaLabelKey)}
                                 type="button"

@@ -282,7 +282,7 @@ export function ModelPicker({
               </CommandList>
             </Command>
 
-            <div className="border-t bg-muted/30 px-3 py-2">
+            <div className="border-t bg-muted/30 px-3 pb-1 pt-0.5">
               <span className="text-xs text-muted-foreground">
                 {t("models.availableCount", { count: filteredModels.length })}
               </span>
