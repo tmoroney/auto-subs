@@ -662,5 +662,26 @@
     },
     "sentAgain": "已发送 · 再次发送",
     "title": "输出设置"
+  },
+  "usageStats": {
+    "section": "隐私",
+    "privacyPolicy": "收集的内容",
+    "setting": {
+      "title": "匿名使用统计",
+      "description": "仅分享使用的功能，不包含任何内容"
+    },
+    "preview": {
+      "actual": "查看将要发送的内容",
+      "example": "发送内容示例"
+    },
+    "consent": {
+      "title": "帮助改进 AutoSubs",
+      "description": "AutoSubs 每周可发送一次所用功能的匿名汇总，这是了解需要改进之处的唯一方式。",
+      "shared": "使用的功能、应用版本、操作系统",
+      "notShared": "绝不包含音频、字幕文本、文件名或路径",
+      "changeLater": "你可以随时在设置中更改。",
+      "accept": "同意分享",
+      "decline": "不用了"
+    }
   }
 }

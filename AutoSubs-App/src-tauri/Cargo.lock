@@ -301,10 +301,12 @@ dependencies = [
  "dirs 5.0.1",
  "eyre",
  "futures-util",
+ "hmac",
  "once_cell",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-cli",
@@ -326,6 +328,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "transcription-engine",
+ "uuid",
  "which 6.0.3",
  "winreg 0.55.0",
 ]
@@ -1131,6 +1134,7 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
+ "subtle",
 ]
 
 [[package]]
@@ -2110,6 +2114,15 @@ dependencies = [
  "tokio",
  "ureq",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "hmac"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
+dependencies = [
+ "digest",
 ]
 
 [[package]]

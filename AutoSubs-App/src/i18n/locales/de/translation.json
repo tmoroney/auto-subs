@@ -662,5 +662,26 @@
     },
     "sentAgain": "Gesendet · Erneut senden",
     "title": "Ausgabe-Einstellungen"
+  },
+  "usageStats": {
+    "section": "Datenschutz",
+    "privacyPolicy": "Was erfasst wird",
+    "setting": {
+      "title": "Anonyme Nutzungsdaten",
+      "description": "Teilt genutzte Funktionen, nie deine Inhalte"
+    },
+    "preview": {
+      "actual": "Genau ansehen, was gesendet wird",
+      "example": "Beispiel der gesendeten Daten"
+    },
+    "consent": {
+      "title": "AutoSubs verbessern",
+      "description": "Einmal pro Woche kann AutoSubs eine anonyme Zusammenfassung der genutzten Funktionen senden. Nur so lässt sich erkennen, was verbessert werden sollte.",
+      "shared": "Genutzte Funktionen, App-Version, Betriebssystem",
+      "notShared": "Nie Audio, Transkripte, Dateinamen oder Pfade",
+      "changeLater": "Du kannst das jederzeit in den Einstellungen ändern.",
+      "accept": "Anonym teilen",
+      "decline": "Nein danke"
+    }
   }
 }

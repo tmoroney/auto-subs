@@ -32,6 +32,7 @@ mod logging;
 mod resolve_bridge;
 mod adobe_bridge;
 mod cli;
+mod telemetry;
 #[cfg(target_os = "macos")]
 
 // Include integration-like tests that need crate visibility
@@ -555,7 +556,12 @@ fn main() {
             audio_preprocess::extract_audio_peaks,
             cli::cli_command_status,
             cli::install_cli_command,
-            cli::uninstall_cli_command
+            cli::uninstall_cli_command,
+            telemetry::telemetry_available,
+            telemetry::telemetry_record_run,
+            telemetry::telemetry_pending_summary,
+            telemetry::telemetry_flush,
+            telemetry::telemetry_reset
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")

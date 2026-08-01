@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Gauge, Clock, GraduationCap, Terminal, ChevronDown } from "lucide-react";
+import { AudioLines, BarChart3, Gauge, Clock, GraduationCap, Terminal, ChevronDown } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -29,6 +29,12 @@ import { initI18n, normalizeUiLanguage } from "@/i18n";
 import { uiLanguages } from "@/lib/languages";
 import { useRef } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { isTelemetryBuild, resetUsageData } from "@/lib/telemetry";
+import {
+  PRIVACY_DOC_URL,
+  UsageSummaryPreview,
+} from "@/components/dialogs/usage-summary-preview";
 
 function highlightCommand(text: string, command = "autosubs") {
   const parts = text.split(command);
@@ -56,6 +62,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const enableDTW = useSettingsStore((s) => s.enableDTW);
   const enableForcedAlignment = useSettingsStore((s) => s.enableForcedAlignment);
   const translate = useSettingsStore((s) => s.translate);
+  const shareUsageData = useSettingsStore((s) => s.shareUsageData);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
@@ -66,6 +73,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = React.useState<string>("");
   const [canScrollDown, setCanScrollDown] = React.useState(false);
+  const [telemetryBuild, setTelemetryBuild] = React.useState(false);
+
+  React.useEffect(() => {
+    void isTelemetryBuild().then(setTelemetryBuild);
+  }, []);
+
+  const handleUsageToggle = React.useCallback(
+    (checked: boolean) => {
+      updateSetting("shareUsageData", checked);
+      // Opting out forgets the install id and any counters, so re-enabling
+      // later starts fresh rather than resuming the previous identity.
+      if (!checked) void resetUsageData();
+    },
+    [updateSetting],
+  );
 
   const updateScrollHint = React.useCallback(() => {
     const el = scrollRef.current;
@@ -362,6 +384,50 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </Field>
               </FieldGroup>
             </div>
+
+            {/* Anonymous usage stats — hidden entirely in builds without a
+                telemetry endpoint compiled in (any build from source). */}
+            {telemetryBuild && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("usageStats.section", "Privacy")}
+                </h4>
+
+                <FieldGroup className="gap-3">
+                  <Field>
+                    <Item variant="outline" size="sm">
+                      <ItemMedia variant="icon" className="bg-sky-100 dark:bg-sky-900/30">
+                        <BarChart3 className="size-4 text-sky-600 dark:text-sky-400" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>{t("usageStats.setting.title")}</ItemTitle>
+                        <ItemDescription className="text-xs leading-tight line-clamp-2">
+                          {t("usageStats.setting.description")}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <Switch
+                          checked={shareUsageData === true}
+                          onCheckedChange={handleUsageToggle}
+                          aria-label={t("usageStats.setting.title")}
+                        />
+                      </ItemActions>
+                    </Item>
+                  </Field>
+                </FieldGroup>
+
+                <UsageSummaryPreview />
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => void openExternal(PRIVACY_DOC_URL)}
+                >
+                  {t("usageStats.privacyPolicy")}
+                </Button>
+              </div>
+            )}
 
             {/* Command-line tool */}
             {cliStatus && (

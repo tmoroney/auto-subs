@@ -179,6 +179,12 @@ jobs:
         echo 'CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3' >> "$GITHUB_ENV"
 
     - name: Build Tauri
+      # Telemetry is compiled in only here. Absent these, `option_env!` yields
+      # None and the build never reports anything (see src/telemetry.rs).
+      env:
+        AUTOSUBS_TELEMETRY_URL: ${{ secrets.AUTOSUBS_TELEMETRY_URL }}
+        AUTOSUBS_TELEMETRY_KEY: ${{ secrets.AUTOSUBS_TELEMETRY_KEY }}
+        AUTOSUBS_BUILD_CHANNEL: release
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
@@ -336,6 +342,10 @@ jobs:
           npm ci --prefix AutoSubs-App
 
       - name: Build Tauri (Linux x86_64)
+        env:
+          AUTOSUBS_TELEMETRY_URL: ${{ secrets.AUTOSUBS_TELEMETRY_URL }}
+          AUTOSUBS_TELEMETRY_KEY: ${{ secrets.AUTOSUBS_TELEMETRY_KEY }}
+          AUTOSUBS_BUILD_CHANNEL: release
         run: |
           cd AutoSubs-App
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"

@@ -662,5 +662,26 @@
     },
     "sentAgain": "Envoyé · Renvoyer",
     "title": "Paramètres de sortie"
+  },
+  "usageStats": {
+    "section": "Confidentialité",
+    "privacyPolicy": "Données collectées",
+    "setting": {
+      "title": "Statistiques anonymes",
+      "description": "Partage les fonctions utilisées, jamais vos contenus"
+    },
+    "preview": {
+      "actual": "Voir exactement ce qui est envoyé",
+      "example": "Exemple de ce qui est envoyé"
+    },
+    "consent": {
+      "title": "Aidez à améliorer AutoSubs",
+      "description": "Une fois par semaine, AutoSubs peut envoyer un résumé anonyme des fonctions utilisées. C'est le seul moyen de savoir quoi améliorer.",
+      "shared": "Fonctions utilisées, version, système",
+      "notShared": "Jamais l'audio, les transcriptions ni les chemins",
+      "changeLater": "Modifiable à tout moment dans les Réglages.",
+      "accept": "Partager",
+      "decline": "Non merci"
+    }
   }
 }

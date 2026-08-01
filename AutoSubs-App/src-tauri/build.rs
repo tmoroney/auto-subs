@@ -1,6 +1,13 @@
 fn main() {
     tauri_build::build();
 
+    // Telemetry configuration is read with `option_env!` (see src/telemetry.rs).
+    // Without these, a changed key would not force a rebuild and a release could
+    // ship with the previous release's key baked in.
+    println!("cargo:rerun-if-env-changed=AUTOSUBS_TELEMETRY_URL");
+    println!("cargo:rerun-if-env-changed=AUTOSUBS_TELEMETRY_KEY");
+    println!("cargo:rerun-if-env-changed=AUTOSUBS_BUILD_CHANNEL");
+
     // Ensure the final link step has correct macOS SDK and platform version flags.
     // This addresses undefined symbol errors like ___isPlatformVersionAtLeast on newer SDKs
     // when rustc invokes clang without passing -platform_version/-syslibroot consistently.
