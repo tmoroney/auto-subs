@@ -115,6 +115,12 @@ impl Counters {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct State {
+    /// The authoritative record of consent. The UI toggle writes it through
+    /// [`telemetry_set_consent`]; every other command re-reads it under the
+    /// same lock, so opting out mid-transcription cannot lose a race with a
+    /// run that is about to be recorded.
+    #[serde(default)]
+    consented: bool,
     install_id: String,
     /// Start of the period the pending counters cover.
     period_start: DateTime<Utc>,
@@ -126,6 +132,7 @@ struct State {
 impl State {
     fn new() -> Self {
         Self {
+            consented: false,
             install_id: uuid::Uuid::new_v4().to_string(),
             period_start: Utc::now(),
             last_sent: None,
@@ -153,6 +160,14 @@ fn load_state<R: Runtime>(app: &AppHandle<R>) -> Result<State, String> {
         Ok(raw) => Ok(serde_json::from_str(&raw).unwrap_or_else(|_| State::new())),
         Err(_) => Ok(State::new()),
     }
+}
+
+fn remove_state<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    let path = state_path(app)?;
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| format!("remove {}: {e}", path.display()))?;
+    }
+    Ok(())
 }
 
 fn save_state<R: Runtime>(app: &AppHandle<R>, state: &State) -> Result<(), String> {
@@ -251,6 +266,9 @@ pub fn telemetry_record_run<R: Runtime>(app: AppHandle<R>, run: RunRecord) -> Re
     }
     let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
     let mut state = load_state(&app)?;
+    if !state.consented {
+        return Ok(());
+    }
     let c = &mut state.pending;
 
     c.runs = c.runs.saturating_add(1);
@@ -347,7 +365,7 @@ pub fn telemetry_pending_summary<R: Runtime>(
     }
     let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
     let state = load_state(&app)?;
-    if state.pending.runs == 0 {
+    if !state.consented || state.pending.runs == 0 {
         return Ok(None);
     }
     let version = app.package_info().version.to_string();
@@ -396,7 +414,7 @@ pub async fn telemetry_flush<R: Runtime>(
     let (body, sent, install_id) = {
         let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
         let state = load_state(&app)?;
-        if !is_due(&state, &version) {
+        if !state.consented || !is_due(&state, &version) {
             return Ok(false);
         }
         let body = serde_json::to_string(&build_summary(&state, &version, &ui_language))
@@ -427,9 +445,9 @@ pub async fn telemetry_flush<R: Runtime>(
     let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
     let mut state = load_state(&app)?;
     // Consent may have been withdrawn while the request was in flight, in which
-    // case `telemetry_reset` deleted the state and `load_state` just minted a
-    // fresh identity. Writing here would resurrect what the user asked to drop.
-    if state.install_id != install_id {
+    // case the state was deleted and `load_state` just minted a fresh identity.
+    // Writing here would resurrect what the user asked to drop.
+    if !state.consented || state.install_id != install_id {
         return Ok(accepted);
     }
     state.pending.subtract(&sent);
@@ -440,17 +458,26 @@ pub async fn telemetry_flush<R: Runtime>(
     Ok(accepted)
 }
 
-/// Drop every counter and the install id. Called when consent is withdrawn, so
-/// re-enabling later looks like a brand new install rather than resuming an
-/// identity the user asked to stop sharing.
+/// Record the user's answer. Opting out drops every counter and the install id
+/// in the same locked step, so re-enabling later looks like a brand new install
+/// rather than resuming an identity the user asked to stop sharing.
 #[tauri::command]
-pub fn telemetry_reset<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
-    let path = state_path(&app)?;
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| format!("remove {}: {e}", path.display()))?;
+pub fn telemetry_set_consent<R: Runtime>(app: AppHandle<R>, consented: bool) -> Result<(), String> {
+    if !is_available() {
+        return Ok(());
     }
-    Ok(())
+    let _guard = STATE_LOCK.lock().map_err(|_| "telemetry state lock poisoned")?;
+    if !consented {
+        return remove_state(&app);
+    }
+    let mut state = load_state(&app)?;
+    if state.consented {
+        return Ok(());
+    }
+    state.consented = true;
+    // Counters only ever start once consent exists, so the period starts here.
+    state.period_start = Utc::now();
+    save_state(&app, &state)
 }
 
 /// Whether the build can report. The consent prompt and the settings toggle are
@@ -466,6 +493,7 @@ mod tests {
 
     fn state_with(pending: Counters, period_start: DateTime<Utc>) -> State {
         State {
+            consented: true,
             install_id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301".into(),
             period_start,
             last_sent: None,

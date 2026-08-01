@@ -30,7 +30,7 @@ import { uiLanguages } from "@/lib/languages";
 import { useRef } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { isTelemetryBuild, resetUsageData } from "@/lib/telemetry";
+import { isTelemetryBuild, setUsageConsent } from "@/lib/telemetry";
 import {
   PRIVACY_DOC_URL,
   UsageSummaryPreview,
@@ -84,7 +84,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       updateSetting("shareUsageData", checked);
       // Opting out forgets the install id and any counters, so re-enabling
       // later starts fresh rather than resuming the previous identity.
-      if (!checked) void resetUsageData();
+      void setUsageConsent(checked);
     },
     [updateSetting],
   );

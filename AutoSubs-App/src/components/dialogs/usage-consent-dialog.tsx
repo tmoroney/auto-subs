@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PRIVACY_DOC_URL, UsageSummaryPreview } from "@/components/dialogs/usage-summary-preview";
+import { setUsageConsent } from "@/lib/telemetry";
 import { useSettingsStore } from "@/stores/settings-store";
 
 interface UsageConsentDialogProps {
@@ -29,7 +30,10 @@ export function UsageConsentDialog({ open }: UsageConsentDialogProps) {
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const { t } = useTranslation();
 
-  const answer = (shared: boolean) => updateSetting("shareUsageData", shared);
+  const answer = (shared: boolean) => {
+    updateSetting("shareUsageData", shared);
+    void setUsageConsent(shared);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) answer(false); }}>

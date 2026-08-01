@@ -4,23 +4,17 @@
  * The backend owns storage, batching and sending (see
  * `src-tauri/src/telemetry.rs`); this module only decides *whether* to talk to
  * it. Two gates must both be open: the build has an endpoint compiled in
- * (`isTelemetryBuild`), and the user has opted in (`shareUsageData === true`).
- * Runs are not recorded while opted out, so opting in later never uploads
- * anything from before consent was given.
+ * (`isTelemetryBuild`), and the user has opted in. Consent itself lives in the
+ * backend state file, written by `setUsageConsent` and re-read under the state
+ * lock by every other command, so a toggle flipped mid-run cannot race a record
+ * or a send. Runs are not recorded while opted out, so opting in later never
+ * uploads anything from before consent was given.
  */
 
 import { invoke } from "@tauri-apps/api/core";
 import { platform } from "@tauri-apps/plugin-os";
 
 import type { Integration } from "@/contexts/IntegrationContext";
-import { useSettingsStore } from "@/stores/settings-store";
-
-/**
- * Consent is read from the store at the moment it is needed rather than passed
- * in by the caller: every path here awaits something first, and a user who opts
- * out during that await has opted out of the pending work too.
- */
-const hasConsented = () => useSettingsStore.getState().shareUsageData === true;
 
 export interface UsageRun {
   /** Model id, e.g. `whisper-large-v3`. */
@@ -73,7 +67,7 @@ export async function resolveGpuBackend(enableGpu: boolean): Promise<string> {
 
 /** Fold a finished run into the local counters. Never throws. */
 export async function recordUsageRun(run: UsageRun): Promise<void> {
-  if (!(await isTelemetryBuild()) || !hasConsented()) return;
+  if (!(await isTelemetryBuild())) return;
   try {
     await invoke("telemetry_record_run", {
       run: {
@@ -108,7 +102,7 @@ export async function flushUsage(uiLanguage: string): Promise<void> {
   // their own snapshot, so a run recorded between the two is lost. One at a
   // time; a skipped attempt costs nothing because the next launch retries.
   if (inFlight) return inFlight;
-  if (!(await isTelemetryBuild()) || !hasConsented()) return;
+  if (!(await isTelemetryBuild())) return;
   inFlight = (async () => {
     try {
       await invoke("telemetry_flush", { uiLanguage });
@@ -135,11 +129,15 @@ export async function pendingUsageSummary(
   }
 }
 
-/** Forget the install id and every counter. Used when consent is withdrawn. */
-export async function resetUsageData(): Promise<void> {
+/**
+ * Persist the user's answer. Opting out also forgets the install id and every
+ * counter, in one atomic step on the backend.
+ */
+export async function setUsageConsent(consented: boolean): Promise<void> {
+  if (!(await isTelemetryBuild())) return;
   try {
-    await invoke("telemetry_reset");
+    await invoke("telemetry_set_consent", { consented });
   } catch (error) {
-    console.warn("[telemetry] failed to reset local data:", error);
+    console.warn("[telemetry] failed to store consent:", error);
   }
 }

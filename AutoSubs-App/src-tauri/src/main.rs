@@ -561,7 +561,7 @@ fn main() {
             telemetry::telemetry_record_run,
             telemetry::telemetry_pending_summary,
             telemetry::telemetry_flush,
-            telemetry::telemetry_reset
+            telemetry::telemetry_set_consent
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")
