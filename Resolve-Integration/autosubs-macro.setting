@@ -198,7 +198,6 @@
 							end
 
 							ctx.animSpline:SetKeyFrames(keyframes, true)
-							print("Applied Fade animation (mode: " .. ctx.mode .. ")")
 						end
 					]],
 					ResetFade = [[
@@ -254,10 +253,8 @@
 								end
 							end
 							local propX = ctx.level == 0 and "Line" or "Word"
-							print(propX)
 							applyStretchedKeyframes(propX .. "SizeX")
 							applyStretchedKeyframes(propX .. "SizeY")
-							print("Applied PopIn animation (mode: " .. ctx.mode .. ")")
 						end
 					]],
 					ResetPopIn = [[
@@ -317,7 +314,6 @@
 									end
 								end
 							end
-							print("Applied SlideUp animation (mode: " .. ctx.mode .. ")")
 						end
 					]],
 					ResetSlideUp = [[

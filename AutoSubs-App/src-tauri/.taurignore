@@ -1,0 +1,2 @@
+# Don't restart the app when editing Resolve Lua / bundled resources
+resources/
