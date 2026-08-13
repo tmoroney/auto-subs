@@ -1332,13 +1332,31 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
     return trackIndex, subtitles, nil
 end
 
-local function get_speaker_from_id(speakers, id)
-    local speakerIndex = tonumber(id)
-    if speakerIndex == nil then
+local function get_speaker_id_base(subtitles)
+    for _, subtitle in ipairs(subtitles or {}) do
+        if tostring(subtitle.speaker_id) == "0" then
+            return 0
+        end
+    end
+    return 1
+end
+
+local function get_speaker_from_id(speakers, id, speakerIdBase)
+    local numericId = tonumber(id)
+    if numericId == nil then
         return nil
     end
 
+    -- Lua arrays are 1-based, while diarizers may emit either 0-based or
+    -- 1-based speaker IDs. Detect the transcript's base once and translate it.
+    local speakerIndex = numericId - (speakerIdBase or 1) + 1
     local speaker = speakers[speakerIndex]
+    if speaker ~= nil then
+        return speaker
+    end
+
+    -- Preserve compatibility with mixed or legacy transcript data.
+    speaker = speakers[numericId + 1] or speakers[numericId]
     if speaker ~= nil then
         return speaker
     end
@@ -1347,7 +1365,7 @@ local function get_speaker_from_id(speakers, id)
 end
 
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-                               template_frame_rate, timelineStart)
+                               template_frame_rate, timelineStart, speakerIdBase)
     local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
@@ -1377,7 +1395,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
 
         local itemTrack = trackIndex
         if speakersExist then
-            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIdBase)
             if speaker and speaker.track ~= nil and speaker.track ~= "" then
                 itemTrack = speaker.track
             end
@@ -1427,7 +1445,8 @@ end
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
+local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings,
+                                   speakerIdBase)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     local failed = 0
     local noFusionComp = 0
@@ -1484,7 +1503,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 end
 
                 if speakersExist then
-                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIdBase)
                     if speaker then
                         set_speaker_styling(speaker, styleTool, isAnimated, comp)
                     end
@@ -1544,6 +1563,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     if not subtitles or #subtitles == 0 then
         return make_error("Failed to add subtitles", "Transcript has no segments")
     end
+    local speakerIdBase = get_speaker_id_base(subtitles)
 
     local speakersExist = false
     if speakers and #speakers > 0 then
@@ -1570,7 +1590,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-        template_frame_rate, timelineStart)
+        template_frame_rate, timelineStart, speakerIdBase)
 
     -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
     -- silently return an empty table. Re-lock them afterwards.
@@ -1627,7 +1647,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
-        presetSettings)
+        presetSettings, speakerIdBase)
 
     -- Force timeline refresh by jumping to the first subtitle
     if subtitles and #subtitles > 0 then
