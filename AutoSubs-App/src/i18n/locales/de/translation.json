@@ -661,6 +661,15 @@
       "timedOut": "Zeitüberschreitung. Stelle sicher, dass deine Schnittsoftware läuft, und versuche es erneut."
     },
     "sentAgain": "Gesendet · Erneut senden",
-    "title": "Ausgabe-Einstellungen"
+    "title": "Ausgabe-Einstellungen",
+    "batchStyle": {
+      "applyAll": "Timeline-Stile ändern",
+      "applySpeaker": "Diesen Sprecher ändern",
+      "updating": "Stile werden aktualisiert...",
+      "success": "{{count}} Untertitelclips aktualisiert",
+      "noMatches": "Keine passenden AutoSubs-Clips gefunden",
+      "description": "Aktuelle Stile auf vorhandene Untertitel anwenden.",
+      "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen"
+    }
   }
 }

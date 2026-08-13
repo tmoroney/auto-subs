@@ -682,6 +682,15 @@
       "timedOut": "Connection timed out. Ensure your editing software is running and try again."
     },
     "sentAgain": "Sent · Send again",
-    "title": "Output settings"
+    "title": "Output settings",
+    "batchStyle": {
+      "applyAll": "Update timeline styles",
+      "applySpeaker": "Update this speaker",
+      "updating": "Updating styles...",
+      "success": "Updated {{count}} caption clips",
+      "noMatches": "No matching AutoSubs clips found",
+      "description": "Apply current styles to existing caption clips.",
+      "partial": "Updated {{updated}} clips, {{failed}} failed"
+    }
   }
 }
