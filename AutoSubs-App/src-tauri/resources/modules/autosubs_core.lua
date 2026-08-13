@@ -1051,18 +1051,20 @@ local function sanitize_track_index(timeline, trackIndex, markIn, markOut)
     return tonumber(trackIndex)
 end
 
-local function set_speaker_styling(speaker, tool, isAnimated)
-    -- Return early if no custom color set for speaker
-    if not speaker.color or speaker.color == "" then return end
+local function set_speaker_styling(speaker, tool, isAnimated, comp)
+    -- "None" means the caption should keep its preset/template styling.
+    if not speaker or speaker.style == "None" or not speaker.color or speaker.color == "" then return end
 
     local styleId = STYLE_INDEX[speaker.style]
+    if not isAnimated and styleId == nil then return end
 
     -- Convert hex color to rgb
     local color = hex_to_rgb(speaker.color)
     if color == nil then return end
 
     -- Update color for that style e.g. Fill or Outline
-    for key, value in ipairs(color) do
+    for _, key in ipairs({ "Red", "Green", "Blue" }) do
+        local value = color[key]
         if isAnimated then
             tool:SetInput(speaker.style .. "Color" .. key, value)
         else
@@ -1073,6 +1075,10 @@ local function set_speaker_styling(speaker, tool, isAnimated)
     -- Ensure the selected style is enabled
     if isAnimated then
         tool:SetInput(speaker.style .. "Enabled", 1)
+        local updater = tool:GetData("UpdateStyleColor")
+        if comp and updater and updater ~= "" then
+            loadstring(updater)()(comp, tool, speaker.style)
+        end
     else
         tool:SetInput("Enabled" .. styleId, 1)
     end
@@ -1156,6 +1162,13 @@ local function load_subtitle_data(filePath)
         return nil, err or "Could not parse subtitle JSON"
     end
     return data
+end
+
+local function get_transcript_id(data, filePath)
+    return data["transcriptId"]
+        or (data["metadata"] and data["metadata"]["transcriptId"])
+        or data["filename"]
+        or filePath
 end
 
 local function get_mark_in_out(timeline, data)
@@ -1326,22 +1339,143 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
     return trackIndex, subtitles, nil
 end
 
-local function get_speaker_from_id(speakers, id)
-    local speakerIndex = tonumber(id)
-    if speakerIndex == nil then
-        return nil
+local function normalize_speaker_id(id)
+    if id == nil then return nil end
+    local normalized = tostring(id):match("^%s*(.-)%s*$")
+    if normalized == "" or normalized == "?" then return nil end
+
+    local withoutPrefix = normalized:match("^Speaker%s+(.+)$")
+    if withoutPrefix then
+        normalized = withoutPrefix:match("^%s*(.-)%s*$")
+    end
+    return normalized
+end
+
+local function build_speaker_index_by_id(subtitles)
+    local speakerIndexById = {}
+    local nextIndex = 1
+    for _, subtitle in ipairs(subtitles or {}) do
+        local speakerId = normalize_speaker_id(subtitle.speaker_id)
+        if speakerId and speakerIndexById[speakerId] == nil then
+            speakerIndexById[speakerId] = nextIndex
+            nextIndex = nextIndex + 1
+        end
+    end
+    return speakerIndexById
+end
+
+local function get_speaker_from_id(speakers, id, speakerIndexById)
+    local normalizedId = normalize_speaker_id(id)
+    if normalizedId == nil then return nil end
+
+    -- Rust builds the speakers array in first-appearance order while preserving
+    -- the engine's raw IDs on segments. Mirror that ordering instead of treating
+    -- numeric IDs as array positions.
+    local speakerIndex = speakerIndexById and speakerIndexById[normalizedId]
+    if speakerIndex and speakers[speakerIndex] ~= nil then
+        return speakers[speakerIndex]
     end
 
-    local speaker = speakers[speakerIndex]
-    if speaker ~= nil then
-        return speaker
+    -- Preserve compatibility with legacy documents that predate aggregation.
+    local numericId = tonumber(normalizedId)
+    if numericId == nil then return nil end
+    return speakers[numericId + 1] or speakers[numericId]
+end
+
+local function tag_subtitle_tool(tool, transcriptId, segmentIndex, speakerId)
+    tool:SetData("AutoSubsTranscriptId", tostring(transcriptId))
+    tool:SetData("AutoSubsSegmentIndex", segmentIndex)
+    tool:SetData("AutoSubsSpeakerId", speakerId ~= nil and tostring(speakerId) or "")
+end
+
+local function find_subtitle_clips(timeline, transcriptId, subtitles, targetSpeakerId)
+    local matches = {}
+    local stats = { scanned = 0, failed = 0, migrated = 0 }
+    local expectedByFrame = {}
+    local timelineStart = timeline:GetStartFrame()
+    local frameRate = tonumber(timeline:GetSetting("timelineFrameRate"))
+
+    -- Legacy animated captions do not have hidden tags. Index the current
+    -- transcript by start frame so matching clips can be tagged on first use.
+    if frameRate then
+        for index, subtitle in ipairs(subtitles or {}) do
+            if subtitle.start ~= nil then
+                local frame = math.floor(timelineStart + to_frames(subtitle.start, frameRate) + 0.5)
+                expectedByFrame[frame] = { index = index, subtitle = subtitle }
+            end
+        end
     end
 
-    return nil
+    local wantedTranscript = tostring(transcriptId)
+    local wantedSpeaker = targetSpeakerId ~= nil and tostring(targetSpeakerId) or nil
+    local trackCount = timeline:GetTrackCount("video")
+
+    for trackIndex = 1, trackCount do
+        local items = timeline:GetItemListInTrack("video", trackIndex) or {}
+        for _, timelineItem in ipairs(items) do
+            stats.scanned = stats.scanned + 1
+            local ok, err = pcall(function()
+                local compCount = timelineItem:GetFusionCompCount()
+                if not compCount or compCount < 1 then return end
+
+                local comp = timelineItem:GetFusionCompByIndex(1)
+                if not comp then return end
+
+                local autosubsTool = comp:FindTool("AutoSubs")
+                local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
+                local styleTool = autosubsTool or template
+                if not styleTool then return end
+
+                local taggedTranscript = styleTool:GetData("AutoSubsTranscriptId")
+                local segmentIndex = tonumber(styleTool:GetData("AutoSubsSegmentIndex"))
+                local speakerId = styleTool:GetData("AutoSubsSpeakerId")
+
+                -- Migrate legacy AutoSubs Caption clips conservatively: require
+                -- the named macro, matching start frame, and matching text.
+                if (taggedTranscript == nil or taggedTranscript == "") and autosubsTool and template then
+                    local itemFrame = math.floor(tonumber(timelineItem:GetStart()) + 0.5)
+                    local expected = expectedByFrame[itemFrame]
+                        or expectedByFrame[itemFrame - 1]
+                        or expectedByFrame[itemFrame + 1]
+                    if expected then
+                        local currentText = template:GetInput("Text")
+                        if tostring(currentText) == tostring(expected.subtitle.text) then
+                            segmentIndex = expected.index
+                            speakerId = expected.subtitle.speaker_id
+                            tag_subtitle_tool(styleTool, transcriptId, segmentIndex, speakerId)
+                            taggedTranscript = wantedTranscript
+                            stats.migrated = stats.migrated + 1
+                        end
+                    end
+                end
+
+                if tostring(taggedTranscript) ~= wantedTranscript then return end
+                if wantedSpeaker and tostring(speakerId) ~= wantedSpeaker then return end
+
+                table.insert(matches, {
+                    timelineItem = timelineItem,
+                    comp = comp,
+                    styleTool = styleTool,
+                    template = template,
+                    isAnimated = autosubsTool ~= nil,
+                    segmentIndex = segmentIndex,
+                    speakerId = speakerId,
+                    trackIndex = trackIndex
+                })
+            end)
+            if not ok then
+                stats.failed = stats.failed + 1
+                print("[AutoSubs] Failed to inspect timeline clip for batch styling: " .. tostring(err))
+            end
+        end
+    end
+
+    stats.matched = #matches
+    return matches, stats
 end
 
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-                               template_frame_rate, timelineStart)
+                               template_frame_rate, timelineStart, speakerIndexById)
     local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
@@ -1371,7 +1505,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
 
         local itemTrack = trackIndex
         if speakersExist then
-            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
             if speaker and speaker.track ~= nil and speaker.track ~= "" then
                 itemTrack = speaker.track
             end
@@ -1421,7 +1555,8 @@ end
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
+local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings,
+                                   speakerIndexById, transcriptId)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     local failed = 0
     local noFusionComp = 0
@@ -1439,10 +1574,12 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
+                local styleTool = template
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
                     local autosubsTool = comp:FindTool("AutoSubs")
+                    styleTool = autosubsTool
                     autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
                     template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
 
@@ -1475,10 +1612,14 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                     template:SetInput("StyledText", subtitleText)
                 end
 
+                -- Hidden Fusion tool data lets later batch operations identify
+                -- the transcript segment without changing visible clip names.
+                tag_subtitle_tool(styleTool, transcriptId, i, subtitle.speaker_id)
+
                 if speakersExist then
-                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
                     if speaker then
-                        set_speaker_styling(speaker, template, isAnimated)
+                        set_speaker_styling(speaker, styleTool, isAnimated, comp)
                     end
                 end
 
@@ -1536,6 +1677,8 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     if not subtitles or #subtitles == 0 then
         return make_error("Failed to add subtitles", "Transcript has no segments")
     end
+    local speakerIndexById = build_speaker_index_by_id(subtitles)
+    local transcriptId = get_transcript_id(data, filePath)
 
     local speakersExist = false
     if speakers and #speakers > 0 then
@@ -1562,7 +1705,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-        template_frame_rate, timelineStart)
+        template_frame_rate, timelineStart, speakerIndexById)
 
     -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
     -- silently return an empty table. Re-lock them afterwards.
@@ -1619,7 +1762,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
-        presetSettings)
+        presetSettings, speakerIndexById, transcriptId)
 
     -- Force timeline refresh by jumping to the first subtitle
     if subtitles and #subtitles > 0 then
@@ -1657,6 +1800,100 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
         return make_error("Failed to add subtitles", err)
     end
     return result
+end
+
+function BatchApplyStyle(filePath, targetSpeakerId, presetSettings)
+    refresh_project()
+
+    local data, loadErr = load_subtitle_data(filePath)
+    if not data then
+        return make_error("Failed to load subtitle file", loadErr)
+    end
+
+    local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return make_error("Failed to apply caption styles", "No active timeline in Resolve")
+    end
+
+    local subtitles = data["segments"] or {}
+    if #subtitles == 0 then
+        return make_error("Failed to apply caption styles", "Transcript has no segments")
+    end
+
+    local speakers = data["speakers"] or {}
+    local speakerIndexById = build_speaker_index_by_id(subtitles)
+    local transcriptId = get_transcript_id(data, filePath)
+    local matches, discovery = find_subtitle_clips(
+        timeline,
+        transcriptId,
+        subtitles,
+        targetSpeakerId
+    )
+
+    local fontSwap = nil
+    if presetSettings ~= nil and next(presetSettings) ~= nil and font_fallback then
+        presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
+    end
+
+    local updated = 0
+    local skipped = 0
+    local failed = 0
+    local firstError = nil
+
+    for _, match in ipairs(matches) do
+        local ok, err = pcall(function()
+            local didUpdate = false
+
+            if match.isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil then
+                local setter = match.styleTool:GetData("SetInputValues")
+                if not setter or setter == "" then
+                    error("AutoSubs caption is missing its SetInputValues helper")
+                end
+                loadstring(setter)()(match.comp, match.styleTool, presetSettings)
+                didUpdate = true
+            end
+
+            local speaker = get_speaker_from_id(speakers, match.speakerId, speakerIndexById)
+            if speaker and speaker.style ~= "None" and speaker.color and speaker.color ~= "" then
+                set_speaker_styling(speaker, match.styleTool, match.isAnimated, match.comp)
+                didUpdate = true
+            end
+
+            if didUpdate then
+                updated = updated + 1
+            else
+                skipped = skipped + 1
+            end
+        end)
+
+        if not ok then
+            failed = failed + 1
+            if firstError == nil then firstError = tostring(err) end
+        end
+    end
+
+    if #matches > 0 and failed == #matches then
+        return {
+            error = "Failed to apply caption styles",
+            detail = firstError,
+            matched = #matches,
+            failed = failed
+        }
+    end
+
+    return {
+        ok = true,
+        matched = #matches,
+        updated = updated,
+        skipped = skipped,
+        failed = failed,
+        scanned = discovery.scanned,
+        inspectionFailed = discovery.failed,
+        migrated = discovery.migrated,
+        warning = failed > 0 and ("Failed to update " .. failed .. " caption clips") or nil,
+        detail = firstError,
+        fontSwap = fontSwap
+    }
 end
 
 local function extract_frame(comp, exportDir)
@@ -2153,6 +2390,14 @@ function StartServer()
                                     message = "Job completed",
                                     result = result
                                 })
+                            elseif data.func == "BatchApplyStyle" then
+                                print("[AutoSubs Server] Applying styles to existing captions...")
+                                local result = BatchApplyStyle(
+                                    data.filePath,
+                                    data.targetSpeakerId,
+                                    data.presetSettings
+                                )
+                                body = safe_json(result)
                             elseif data.func == "GeneratePreview" then
                                 print("[AutoSubs Server] Generating preview...")
                                 local previewResult = GeneratePreview(data.speaker, data.templateName,

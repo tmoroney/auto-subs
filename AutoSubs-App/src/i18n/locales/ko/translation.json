@@ -661,6 +661,16 @@
       "timedOut": "연결 시간이 초과되었습니다. 편집 소프트웨어가 실행 중인지 확인한 후 다시 시도하세요."
     },
     "sentAgain": "보냄 · 다시 보내기",
-    "title": "출력 설정"
+    "title": "출력 설정",
+    "batchStyle": {
+      "applyAll": "타임라인 스타일 업데이트",
+      "applySpeaker": "이 화자 업데이트",
+      "updating": "스타일 업데이트 중...",
+      "success": "자막 클립 {{count}}개 업데이트됨",
+      "noMatches": "일치하는 AutoSubs 클립이 없습니다",
+      "description": "현재 스타일을 기존 자막에 적용합니다.",
+      "partial": "{{updated}}개 업데이트, {{failed}}개 실패",
+      "failed": "타임라인 스타일을 업데이트하지 못했습니다"
+    }
   }
 }

@@ -173,6 +173,20 @@ export interface AddSubtitlesResult {
   } | false;
 }
 
+export interface BatchApplyStyleResult {
+  ok: boolean;
+  matched: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  scanned: number;
+  inspectionFailed: number;
+  migrated: number;
+  warning?: string;
+  detail?: string;
+  fontSwap?: FontSwapInfo | null;
+}
+
 export interface GeneratePreviewResult {
   path: string;
   fontSwap?: FontSwapInfo | null;
@@ -212,6 +226,22 @@ export async function addSubtitlesToTimeline(
   if (data && typeof data === 'object' && data.result) {
     throwIfError(data.result, 'AddSubtitles');
   }
+  return data;
+}
+
+export async function applyStylesToTimeline(
+  filename: string,
+  targetSpeakerId?: string,
+  presetSettings?: Record<string, unknown>,
+): Promise<BatchApplyStyleResult> {
+  const filePath = await getSubtitleDocumentPath(filename);
+  const data = await callResolve({
+    func: 'BatchApplyStyle',
+    filePath,
+    targetSpeakerId,
+    presetSettings,
+  });
+  throwIfError(data, 'BatchApplyStyle');
   return data;
 }
 

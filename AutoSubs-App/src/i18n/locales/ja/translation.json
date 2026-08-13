@@ -661,6 +661,16 @@
       "timedOut": "接続がタイムアウトしました。編集ソフトが起動しているか確認して、もう一度お試しください。"
     },
     "sentAgain": "送信済み · もう一度送信",
-    "title": "出力設定"
+    "title": "出力設定",
+    "batchStyle": {
+      "applyAll": "タイムラインのスタイルを更新",
+      "applySpeaker": "この話者を更新",
+      "updating": "スタイルを更新中...",
+      "success": "字幕クリップ{{count}}件を更新しました",
+      "noMatches": "一致するAutoSubsクリップがありません",
+      "description": "現在のスタイルを既存の字幕に適用します。",
+      "partial": "{{updated}}件更新、{{failed}}件失敗",
+      "failed": "タイムラインのスタイルを更新できませんでした"
+    }
   }
 }

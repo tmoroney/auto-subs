@@ -661,6 +661,16 @@
       "timedOut": "Se agotó el tiempo de conexión. Asegúrate de que tu software de edición esté abierto e inténtalo de nuevo."
     },
     "sentAgain": "Enviado · Enviar de nuevo",
-    "title": "Ajustes de salida"
+    "title": "Ajustes de salida",
+    "batchStyle": {
+      "applyAll": "Actualizar estilos",
+      "applySpeaker": "Actualizar este hablante",
+      "updating": "Actualizando estilos...",
+      "success": "Se actualizaron {{count}} clips",
+      "noMatches": "No se encontraron clips de AutoSubs",
+      "description": "Aplicar estilos actuales a los subtítulos existentes.",
+      "partial": "{{updated}} actualizados, {{failed}} con error",
+      "failed": "No se pudieron actualizar los estilos"
+    }
   }
 }
