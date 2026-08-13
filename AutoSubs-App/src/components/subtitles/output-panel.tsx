@@ -534,12 +534,12 @@ export function OutputPanel({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 p-3">
+          <div className="flex flex-wrap justify-end gap-2 p-3">
             {isConnected && !isAdobe && expanded && !closing && (
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="min-w-44 flex-[1_1_11rem]"
                 disabled={
                   isApplyingStyles ||
                   !hasSubtitles ||
@@ -561,7 +561,7 @@ export function OutputPanel({
               <Button
                 type="button"
                 variant="secondary"
-                className="flex-1"
+                className="min-w-36 flex-[1_1_9rem]"
                 disabled={actionDisabled}
                 onClick={handlePrimaryAction}
               >
