@@ -1370,6 +1370,92 @@ local function tag_subtitle_tool(tool, transcriptId, segmentIndex, speakerId)
     tool:SetData("AutoSubsSpeakerId", speakerId ~= nil and tostring(speakerId) or "")
 end
 
+local function find_subtitle_clips(timeline, transcriptId, subtitles, targetSpeakerId)
+    local matches = {}
+    local stats = { scanned = 0, failed = 0, migrated = 0 }
+    local expectedByFrame = {}
+    local timelineStart = timeline:GetStartFrame()
+    local frameRate = tonumber(timeline:GetSetting("timelineFrameRate"))
+
+    -- Legacy animated captions do not have hidden tags. Index the current
+    -- transcript by start frame so matching clips can be tagged on first use.
+    if frameRate then
+        for index, subtitle in ipairs(subtitles or {}) do
+            if subtitle.start ~= nil then
+                local frame = math.floor(timelineStart + to_frames(subtitle.start, frameRate) + 0.5)
+                expectedByFrame[frame] = { index = index, subtitle = subtitle }
+            end
+        end
+    end
+
+    local wantedTranscript = tostring(transcriptId)
+    local wantedSpeaker = targetSpeakerId ~= nil and tostring(targetSpeakerId) or nil
+    local trackCount = timeline:GetTrackCount("video")
+
+    for trackIndex = 1, trackCount do
+        local items = timeline:GetItemListInTrack("video", trackIndex) or {}
+        for _, timelineItem in ipairs(items) do
+            stats.scanned = stats.scanned + 1
+            local ok, err = pcall(function()
+                local compCount = timelineItem:GetFusionCompCount()
+                if not compCount or compCount < 1 then return end
+
+                local comp = timelineItem:GetFusionCompByIndex(1)
+                if not comp then return end
+
+                local autosubsTool = comp:FindTool("AutoSubs")
+                local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
+                local styleTool = autosubsTool or template
+                if not styleTool then return end
+
+                local taggedTranscript = styleTool:GetData("AutoSubsTranscriptId")
+                local segmentIndex = tonumber(styleTool:GetData("AutoSubsSegmentIndex"))
+                local speakerId = styleTool:GetData("AutoSubsSpeakerId")
+
+                -- Migrate legacy AutoSubs Caption clips conservatively: require
+                -- the named macro, matching start frame, and matching text.
+                if (taggedTranscript == nil or taggedTranscript == "") and autosubsTool and template then
+                    local itemFrame = math.floor(tonumber(timelineItem:GetStart()) + 0.5)
+                    local expected = expectedByFrame[itemFrame]
+                        or expectedByFrame[itemFrame - 1]
+                        or expectedByFrame[itemFrame + 1]
+                    if expected then
+                        local currentText = template:GetInput("Text")
+                        if tostring(currentText) == tostring(expected.subtitle.text) then
+                            segmentIndex = expected.index
+                            speakerId = expected.subtitle.speaker_id
+                            tag_subtitle_tool(styleTool, transcriptId, segmentIndex, speakerId)
+                            taggedTranscript = wantedTranscript
+                            stats.migrated = stats.migrated + 1
+                        end
+                    end
+                end
+
+                if tostring(taggedTranscript) ~= wantedTranscript then return end
+                if wantedSpeaker and tostring(speakerId) ~= wantedSpeaker then return end
+
+                table.insert(matches, {
+                    timelineItem = timelineItem,
+                    comp = comp,
+                    styleTool = styleTool,
+                    template = template,
+                    isAnimated = autosubsTool ~= nil,
+                    segmentIndex = segmentIndex,
+                    speakerId = speakerId,
+                    trackIndex = trackIndex
+                })
+            end)
+            if not ok then
+                stats.failed = stats.failed + 1
+                print("[AutoSubs] Failed to inspect timeline clip for batch styling: " .. tostring(err))
+            end
+        end
+    end
+
+    stats.matched = #matches
+    return matches, stats
+end
+
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
                                template_frame_rate, timelineStart, speakerIdBase)
     local joinThreshold = frame_rate
