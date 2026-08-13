@@ -1364,6 +1364,12 @@ local function get_speaker_from_id(speakers, id, speakerIdBase)
     return nil
 end
 
+local function tag_subtitle_tool(tool, transcriptId, segmentIndex, speakerId)
+    tool:SetData("AutoSubsTranscriptId", tostring(transcriptId))
+    tool:SetData("AutoSubsSegmentIndex", segmentIndex)
+    tool:SetData("AutoSubsSpeakerId", speakerId ~= nil and tostring(speakerId) or "")
+end
+
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
                                template_frame_rate, timelineStart, speakerIdBase)
     local joinThreshold = frame_rate
@@ -1446,7 +1452,7 @@ end
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings,
-                                   speakerIdBase)
+                                   speakerIdBase, transcriptId)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     local failed = 0
     local noFusionComp = 0
@@ -1501,6 +1507,10 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 else
                     template:SetInput("StyledText", subtitleText)
                 end
+
+                -- Hidden Fusion tool data lets later batch operations identify
+                -- the transcript segment without changing visible clip names.
+                tag_subtitle_tool(styleTool, transcriptId, i, subtitle.speaker_id)
 
                 if speakersExist then
                     local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIdBase)
@@ -1564,6 +1574,10 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
         return make_error("Failed to add subtitles", "Transcript has no segments")
     end
     local speakerIdBase = get_speaker_id_base(subtitles)
+    local transcriptId = data["transcriptId"]
+        or (data["metadata"] and data["metadata"]["transcriptId"])
+        or data["filename"]
+        or filePath
 
     local speakersExist = false
     if speakers and #speakers > 0 then
@@ -1647,7 +1661,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
-        presetSettings, speakerIdBase)
+        presetSettings, speakerIdBase, transcriptId)
 
     -- Force timeline refresh by jumping to the first subtitle
     if subtitles and #subtitles > 0 then
