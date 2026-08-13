@@ -669,7 +669,8 @@
       "success": "字幕クリップ{{count}}件を更新しました",
       "noMatches": "一致するAutoSubsクリップがありません",
       "description": "現在のスタイルを既存の字幕に適用します。",
-      "partial": "{{updated}}件更新、{{failed}}件失敗"
+      "partial": "{{updated}}件更新、{{failed}}件失敗",
+      "failed": "タイムラインのスタイルを更新できませんでした"
     }
   }
 }

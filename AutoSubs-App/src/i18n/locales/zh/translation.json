@@ -669,7 +669,8 @@
       "success": "已更新 {{count}} 个字幕片段",
       "noMatches": "未找到匹配的 AutoSubs 片段",
       "description": "将当前样式应用到现有字幕片段。",
-      "partial": "已更新 {{updated}} 个，失败 {{failed}} 个"
+      "partial": "已更新 {{updated}} 个，失败 {{failed}} 个",
+      "failed": "无法更新时间线样式"
     }
   }
 }

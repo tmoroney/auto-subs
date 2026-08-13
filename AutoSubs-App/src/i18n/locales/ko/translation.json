@@ -669,7 +669,8 @@
       "success": "자막 클립 {{count}}개 업데이트됨",
       "noMatches": "일치하는 AutoSubs 클립이 없습니다",
       "description": "현재 스타일을 기존 자막에 적용합니다.",
-      "partial": "{{updated}}개 업데이트, {{failed}}개 실패"
+      "partial": "{{updated}}개 업데이트, {{failed}}개 실패",
+      "failed": "타임라인 스타일을 업데이트하지 못했습니다"
     }
   }
 }

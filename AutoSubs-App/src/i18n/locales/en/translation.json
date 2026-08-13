@@ -690,7 +690,8 @@
       "success": "Updated {{count}} caption clips",
       "noMatches": "No matching AutoSubs clips found",
       "description": "Apply current styles to existing caption clips.",
-      "partial": "Updated {{updated}} clips, {{failed}} failed"
+      "partial": "Updated {{updated}} clips, {{failed}} failed",
+      "failed": "Couldn't update timeline styles"
     }
   }
 }

@@ -669,7 +669,8 @@
       "success": "{{count}} Untertitelclips aktualisiert",
       "noMatches": "Keine passenden AutoSubs-Clips gefunden",
       "description": "Aktuelle Stile auf vorhandene Untertitel anwenden.",
-      "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen"
+      "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen",
+      "failed": "Timeline-Stile konnten nicht geändert werden"
     }
   }
 }

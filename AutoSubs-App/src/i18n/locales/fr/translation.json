@@ -669,7 +669,8 @@
       "success": "{{count}} clips de sous-titres actualisés",
       "noMatches": "Aucun clip AutoSubs correspondant",
       "description": "Appliquer les styles aux sous-titres existants.",
-      "partial": "{{updated}} actualisés, {{failed}} en échec"
+      "partial": "{{updated}} actualisés, {{failed}} en échec",
+      "failed": "Impossible d’actualiser les styles"
     }
   }
 }
