@@ -1164,6 +1164,13 @@ local function load_subtitle_data(filePath)
     return data
 end
 
+local function get_transcript_id(data, filePath)
+    return data["transcriptId"]
+        or (data["metadata"] and data["metadata"]["transcriptId"])
+        or data["filename"]
+        or filePath
+end
+
 local function get_mark_in_out(timeline, data)
     local timelineStart = timeline:GetStartFrame()
     local timelineEnd = timeline:GetEndFrame()
@@ -1660,10 +1667,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
         return make_error("Failed to add subtitles", "Transcript has no segments")
     end
     local speakerIdBase = get_speaker_id_base(subtitles)
-    local transcriptId = data["transcriptId"]
-        or (data["metadata"] and data["metadata"]["transcriptId"])
-        or data["filename"]
-        or filePath
+    local transcriptId = get_transcript_id(data, filePath)
 
     local speakersExist = false
     if speakers and #speakers > 0 then
@@ -1785,6 +1789,100 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
         return make_error("Failed to add subtitles", err)
     end
     return result
+end
+
+function BatchApplyStyle(filePath, targetSpeakerId, presetSettings)
+    refresh_project()
+
+    local data, loadErr = load_subtitle_data(filePath)
+    if not data then
+        return make_error("Failed to load subtitle file", loadErr)
+    end
+
+    local timeline = project:GetCurrentTimeline()
+    if not timeline then
+        return make_error("Failed to apply caption styles", "No active timeline in Resolve")
+    end
+
+    local subtitles = data["segments"] or {}
+    if #subtitles == 0 then
+        return make_error("Failed to apply caption styles", "Transcript has no segments")
+    end
+
+    local speakers = data["speakers"] or {}
+    local speakerIdBase = get_speaker_id_base(subtitles)
+    local transcriptId = get_transcript_id(data, filePath)
+    local matches, discovery = find_subtitle_clips(
+        timeline,
+        transcriptId,
+        subtitles,
+        targetSpeakerId
+    )
+
+    local fontSwap = nil
+    if presetSettings ~= nil and next(presetSettings) ~= nil and font_fallback then
+        presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
+    end
+
+    local updated = 0
+    local skipped = 0
+    local failed = 0
+    local firstError = nil
+
+    for _, match in ipairs(matches) do
+        local ok, err = pcall(function()
+            local didUpdate = false
+
+            if match.isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil then
+                local setter = match.styleTool:GetData("SetInputValues")
+                if not setter or setter == "" then
+                    error("AutoSubs caption is missing its SetInputValues helper")
+                end
+                loadstring(setter)()(match.comp, match.styleTool, presetSettings)
+                didUpdate = true
+            end
+
+            local speaker = get_speaker_from_id(speakers, match.speakerId, speakerIdBase)
+            if speaker and speaker.style ~= "None" and speaker.color and speaker.color ~= "" then
+                set_speaker_styling(speaker, match.styleTool, match.isAnimated, match.comp)
+                didUpdate = true
+            end
+
+            if didUpdate then
+                updated = updated + 1
+            else
+                skipped = skipped + 1
+            end
+        end)
+
+        if not ok then
+            failed = failed + 1
+            if firstError == nil then firstError = tostring(err) end
+        end
+    end
+
+    if #matches > 0 and failed == #matches then
+        return {
+            error = "Failed to apply caption styles",
+            detail = firstError,
+            matched = #matches,
+            failed = failed
+        }
+    end
+
+    return {
+        ok = true,
+        matched = #matches,
+        updated = updated,
+        skipped = skipped,
+        failed = failed,
+        scanned = discovery.scanned,
+        inspectionFailed = discovery.failed,
+        migrated = discovery.migrated,
+        warning = failed > 0 and ("Failed to update " .. failed .. " caption clips") or nil,
+        detail = firstError,
+        fontSwap = fontSwap
+    }
 end
 
 local function extract_frame(comp, exportDir)
@@ -2281,6 +2379,14 @@ function StartServer()
                                     message = "Job completed",
                                     result = result
                                 })
+                            elseif data.func == "BatchApplyStyle" then
+                                print("[AutoSubs Server] Applying styles to existing captions...")
+                                local result = BatchApplyStyle(
+                                    data.filePath,
+                                    data.targetSpeakerId,
+                                    data.presetSettings
+                                )
+                                body = safe_json(result)
                             elseif data.func == "GeneratePreview" then
                                 print("[AutoSubs Server] Generating preview...")
                                 local previewResult = GeneratePreview(data.speaker, data.templateName,
