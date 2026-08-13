@@ -1339,36 +1339,47 @@ local function apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode
     return trackIndex, subtitles, nil
 end
 
-local function get_speaker_id_base(subtitles)
-    for _, subtitle in ipairs(subtitles or {}) do
-        if tostring(subtitle.speaker_id) == "0" then
-            return 0
-        end
+local function normalize_speaker_id(id)
+    if id == nil then return nil end
+    local normalized = tostring(id):match("^%s*(.-)%s*$")
+    if normalized == "" or normalized == "?" then return nil end
+
+    local withoutPrefix = normalized:match("^Speaker%s+(.+)$")
+    if withoutPrefix then
+        normalized = withoutPrefix:match("^%s*(.-)%s*$")
     end
-    return 1
+    return normalized
 end
 
-local function get_speaker_from_id(speakers, id, speakerIdBase)
-    local numericId = tonumber(id)
-    if numericId == nil then
-        return nil
+local function build_speaker_index_by_id(subtitles)
+    local speakerIndexById = {}
+    local nextIndex = 1
+    for _, subtitle in ipairs(subtitles or {}) do
+        local speakerId = normalize_speaker_id(subtitle.speaker_id)
+        if speakerId and speakerIndexById[speakerId] == nil then
+            speakerIndexById[speakerId] = nextIndex
+            nextIndex = nextIndex + 1
+        end
+    end
+    return speakerIndexById
+end
+
+local function get_speaker_from_id(speakers, id, speakerIndexById)
+    local normalizedId = normalize_speaker_id(id)
+    if normalizedId == nil then return nil end
+
+    -- Rust builds the speakers array in first-appearance order while preserving
+    -- the engine's raw IDs on segments. Mirror that ordering instead of treating
+    -- numeric IDs as array positions.
+    local speakerIndex = speakerIndexById and speakerIndexById[normalizedId]
+    if speakerIndex and speakers[speakerIndex] ~= nil then
+        return speakers[speakerIndex]
     end
 
-    -- Lua arrays are 1-based, while diarizers may emit either 0-based or
-    -- 1-based speaker IDs. Detect the transcript's base once and translate it.
-    local speakerIndex = numericId - (speakerIdBase or 1) + 1
-    local speaker = speakers[speakerIndex]
-    if speaker ~= nil then
-        return speaker
-    end
-
-    -- Preserve compatibility with mixed or legacy transcript data.
-    speaker = speakers[numericId + 1] or speakers[numericId]
-    if speaker ~= nil then
-        return speaker
-    end
-
-    return nil
+    -- Preserve compatibility with legacy documents that predate aggregation.
+    local numericId = tonumber(normalizedId)
+    if numericId == nil then return nil end
+    return speakers[numericId + 1] or speakers[numericId]
 end
 
 local function tag_subtitle_tool(tool, transcriptId, segmentIndex, speakerId)
@@ -1464,7 +1475,7 @@ local function find_subtitle_clips(timeline, transcriptId, subtitles, targetSpea
 end
 
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-                               template_frame_rate, timelineStart, speakerIdBase)
+                               template_frame_rate, timelineStart, speakerIndexById)
     local joinThreshold = frame_rate
     local clipList = {}
     for i, subtitle in ipairs(subtitles) do
@@ -1494,7 +1505,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
 
         local itemTrack = trackIndex
         if speakersExist then
-            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIdBase)
+            local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
             if speaker and speaker.track ~= nil and speaker.track ~= "" then
                 itemTrack = speaker.track
             end
@@ -1545,7 +1556,7 @@ end
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings,
-                                   speakerIdBase, transcriptId)
+                                   speakerIndexById, transcriptId)
     local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
     local failed = 0
     local noFusionComp = 0
@@ -1606,7 +1617,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 tag_subtitle_tool(styleTool, transcriptId, i, subtitle.speaker_id)
 
                 if speakersExist then
-                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIdBase)
+                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
                     if speaker then
                         set_speaker_styling(speaker, styleTool, isAnimated, comp)
                     end
@@ -1666,7 +1677,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     if not subtitles or #subtitles == 0 then
         return make_error("Failed to add subtitles", "Transcript has no segments")
     end
-    local speakerIdBase = get_speaker_id_base(subtitles)
+    local speakerIndexById = build_speaker_index_by_id(subtitles)
     local transcriptId = get_transcript_id(data, filePath)
 
     local speakersExist = false
@@ -1694,7 +1705,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-        template_frame_rate, timelineStart, speakerIdBase)
+        template_frame_rate, timelineStart, speakerIndexById)
 
     -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
     -- silently return an empty table. Re-lock them afterwards.
@@ -1751,7 +1762,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     end
 
     local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
-        presetSettings, speakerIdBase, transcriptId)
+        presetSettings, speakerIndexById, transcriptId)
 
     -- Force timeline refresh by jumping to the first subtitle
     if subtitles and #subtitles > 0 then
@@ -1810,7 +1821,7 @@ function BatchApplyStyle(filePath, targetSpeakerId, presetSettings)
     end
 
     local speakers = data["speakers"] or {}
-    local speakerIdBase = get_speaker_id_base(subtitles)
+    local speakerIndexById = build_speaker_index_by_id(subtitles)
     local transcriptId = get_transcript_id(data, filePath)
     local matches, discovery = find_subtitle_clips(
         timeline,
@@ -1842,7 +1853,7 @@ function BatchApplyStyle(filePath, targetSpeakerId, presetSettings)
                 didUpdate = true
             end
 
-            local speaker = get_speaker_from_id(speakers, match.speakerId, speakerIdBase)
+            local speaker = get_speaker_from_id(speakers, match.speakerId, speakerIndexById)
             if speaker and speaker.style ~= "None" and speaker.color and speaker.color ~= "" then
                 set_speaker_styling(speaker, match.styleTool, match.isAnimated, match.comp)
                 didUpdate = true
