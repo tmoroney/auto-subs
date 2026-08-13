@@ -1351,15 +1351,20 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
                 i, tostring(subtitle["start"]), tostring(subtitle["end"])))
             goto continue
         end
-        local start_frame = to_frames(subtitle["start"], frame_rate)
-        local end_frame = to_frames(subtitle["end"], frame_rate)
+        -- Resolve 21 AppendToTimeline rejects non-integer frame values and
+        -- returns nil for the whole batch. Snap to nearest timeline frame.
+        local start_frame = math.floor(to_frames(subtitle["start"], frame_rate) + 0.5)
+        local end_frame = math.floor(to_frames(subtitle["end"], frame_rate) + 0.5)
+        if end_frame <= start_frame then
+            end_frame = start_frame + 1
+        end
         local timeline_pos = timelineStart + start_frame
         local clip_timeline_duration = end_frame - start_frame
 
         if i < #subtitles then
             local nextSub = subtitles[i + 1]
             if nextSub and nextSub["start"] ~= nil then
-                local next_start = timelineStart + to_frames(nextSub["start"], frame_rate)
+                local next_start = timelineStart + math.floor(to_frames(nextSub["start"], frame_rate) + 0.5)
                 local frames_between = next_start - (timeline_pos + clip_timeline_duration)
                 if frames_between < joinThreshold then
                     clip_timeline_duration = clip_timeline_duration + frames_between + 1
@@ -1367,7 +1372,8 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
             end
         end
 
-        local duration = (clip_timeline_duration / frame_rate) * template_frame_rate
+        -- endFrame is template-relative source frames, not timeline frames.
+        local duration = math.max(1, math.floor((clip_timeline_duration / frame_rate) * template_frame_rate + 0.5))
 
         local itemTrack = trackIndex
         if speakersExist then
@@ -1382,7 +1388,7 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
             mediaType = 1,
             startFrame = 0,
             endFrame = duration,
-            recordFrame = timeline_pos,
+            recordFrame = math.floor(timeline_pos + 0.5),
             trackIndex = itemTrack
         }
 
