@@ -1749,13 +1749,13 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
 
     local trackIndex = timeline:GetTrackCount("video")
-    local fps = templateItem:GetClipProperty()["FPS"]
+    local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
 
     local appendOk, appended = pcall(function()
         return mediaPool:AppendToTimeline({ {
             mediaPoolItem = templateItem,
             startFrame = 0,
-            endFrame = fps * 5, -- set preview to 5 seconds long
+            endFrame = math.floor(fps * 5), -- 5-second preview clip
             recordFrame = timeline:GetStartFrame(),
             trackIndex = trackIndex
         } })
