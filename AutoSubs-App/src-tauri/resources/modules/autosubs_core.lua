@@ -1051,18 +1051,20 @@ local function sanitize_track_index(timeline, trackIndex, markIn, markOut)
     return tonumber(trackIndex)
 end
 
-local function set_speaker_styling(speaker, tool, isAnimated)
-    -- Return early if no custom color set for speaker
-    if not speaker.color or speaker.color == "" then return end
+local function set_speaker_styling(speaker, tool, isAnimated, comp)
+    -- "None" means the caption should keep its preset/template styling.
+    if not speaker or speaker.style == "None" or not speaker.color or speaker.color == "" then return end
 
     local styleId = STYLE_INDEX[speaker.style]
+    if not isAnimated and styleId == nil then return end
 
     -- Convert hex color to rgb
     local color = hex_to_rgb(speaker.color)
     if color == nil then return end
 
     -- Update color for that style e.g. Fill or Outline
-    for key, value in ipairs(color) do
+    for _, key in ipairs({ "Red", "Green", "Blue" }) do
+        local value = color[key]
         if isAnimated then
             tool:SetInput(speaker.style .. "Color" .. key, value)
         else
@@ -1073,6 +1075,10 @@ local function set_speaker_styling(speaker, tool, isAnimated)
     -- Ensure the selected style is enabled
     if isAnimated then
         tool:SetInput(speaker.style .. "Enabled", 1)
+        local updater = tool:GetData("UpdateStyleColor")
+        if comp and updater and updater ~= "" then
+            loadstring(updater)()(comp, tool, speaker.style)
+        end
     else
         tool:SetInput("Enabled" .. styleId, 1)
     end
@@ -1439,10 +1445,12 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
+                local styleTool = template
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
                     local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
                     local autosubsTool = comp:FindTool("AutoSubs")
+                    styleTool = autosubsTool
                     autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
                     template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
 
@@ -1478,7 +1486,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 if speakersExist then
                     local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
                     if speaker then
-                        set_speaker_styling(speaker, template, isAnimated)
+                        set_speaker_styling(speaker, styleTool, isAnimated, comp)
                     end
                 end
 
