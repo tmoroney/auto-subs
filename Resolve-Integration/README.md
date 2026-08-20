@@ -159,7 +159,11 @@ For parameters and return shapes, the Lua handlers in `autosubs_core.lua` are th
 
 The macro is a Fusion template stored as a `.setting` file. It renders animated captions with per-word highlighting using Text+, StyledTextFollower, KeyStretcherMod, BezierSpline, and XYPath tools.
 
-Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), and word-timing highlight updates (`UpdateHighlight`).
+Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), word-timing highlight updates (`UpdateHighlight`), and text wrap (`UpdateWrap`).
+
+### Text wrap (Resolve 20+)
+
+The Style tab exposes **Wrap to Text Box** and **Box Width**. These map onto native Text+ Layout inputs (`LayoutType`, `Wrap`, `LayoutWidth`) because the macro hides the Layout tab. Wrap is off by default so existing captions keep a single line. Requires DaVinci Resolve 20 or later; on older versions the controls are harmless no-ops.
 
 ### Recommended Development Extension
 

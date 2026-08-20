@@ -46,7 +46,9 @@
 					"ShadowColorGreen",
 					"ShadowColorBlue",
 					"HighlightStyle",
-					"HighlightEnabled"
+					"HighlightEnabled",
+					"WrapEnabled",
+					"WrapBoxWidth"
 				},
 				GetInputValues = [[
 					return function(tool)
@@ -64,9 +66,13 @@
 							tool:SetInput(key, value)
 						end
 
-						-- Update animation and highlight
+						-- Update animation, highlight, and wrap
 						loadstring(tool:GetData("SetAnimations"))()(comp, tool)
 						loadstring(tool:GetData("UpdateHighlight"))()(comp, tool)
+						local updateWrap = tool:GetData("UpdateWrap")
+						if updateWrap then
+							loadstring(updateWrap)()(comp, tool)
+						end
 					end
 				]],
 				ScaleWordTiming = [[
@@ -1005,6 +1011,35 @@
 						end
 					end
 				]],
+				-- Maps Style-tab wrap controls onto native Text+ Layout inputs.
+				-- Custom IDs (WrapEnabled / WrapBoxWidth) are required: Width and
+				-- Height already mean the image format on this tool, and Wrap is a
+				-- native Text+ input. LayoutType 0 = Point, 1 = Text Box (Resolve 20+).
+				UpdateWrap = [[
+					return function(comp, tool)
+						local template = comp:FindTool("Template")
+						if not template then return end
+
+						local enabled = tool:GetInput("WrapEnabled") == 1
+						local width = tool:GetInput("WrapBoxWidth")
+						if type(width) ~= "number" then
+							width = 0.8
+						end
+
+						local function set(name, value)
+							pcall(function() template:SetInput(name, value) end)
+						end
+
+						if enabled then
+							set("LayoutType", 1)
+							set("Wrap", 1)
+							set("LayoutWidth", width)
+						else
+							set("LayoutType", 0)
+							set("Wrap", 0)
+						end
+					end
+				]],
 			},
 			Tools = ordered() {
 				Template = TextPlus {
@@ -1636,6 +1671,58 @@
 							INP_External = false,
 							INP_Passive = false,
 						},
+						WrapLabel = {
+							LINKS_Name = "Wrap",
+							INP_Integer = false,
+							LBLC_DropDownButton = true,
+							LBLC_NumInputs = 2,
+							INP_SplineType = "Default",
+							INP_Default = 1,
+							LINKID_DataType = "Number",
+							INP_Passive = true,
+							INPID_InputControl = "LabelControl",
+						},
+						WrapEnabled = {
+							LINKS_Name = "Wrap to Text Box",
+							INP_MaxAllowed = 1,
+							INP_Integer = false,
+							INPID_InputControl = "CheckboxControl",
+							CBC_TriState = false,
+							INP_SplineType = "Default",
+							INP_MaxScale = 1,
+							INP_Default = 0,
+							LINKID_DataType = "Number",
+							INP_MinScale = 0,
+							INP_External = false,
+							INP_Passive = false,
+							INP_MinAllowed = 0,
+							INPS_ExecuteOnChange = [[
+								local func = tool:GetData("UpdateWrap")
+								if func then
+									loadstring(func)()(comp, tool)
+								end
+							]],
+						},
+						WrapBoxWidth = {
+							LINKID_DataType = "Number",
+							INPID_InputControl = "SliderControl",
+							INP_Default = 0.8,
+							INP_Integer = false,
+							INP_MinScale = 0.2,
+							INP_MaxScale = 1,
+							INP_MinAllowed = 0.05,
+							INP_MaxAllowed = 2,
+							INP_SplineType = "Default",
+							INP_External = false,
+							INP_Passive = false,
+							LINKS_Name = "Box Width",
+							INPS_ExecuteOnChange = [[
+								local func = tool:GetData("UpdateWrap")
+								if func then
+									loadstring(func)()(comp, tool)
+								end
+							]],
+						},
 					}
 				},
 				Follower1 = StyledTextFollower {
@@ -2120,6 +2207,27 @@
 					SourceOp = "Template",
 					Source = "UpdateShadowColor",
 					Page = "Style",
+				},
+				WrapLabel = InstanceInput {
+					SourceOp = "Template",
+					Source = "WrapLabel",
+					Page = "Style",
+				},
+				WrapEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "WrapEnabled",
+					Page = "Style",
+					Default = 0,
+				},
+				WrapBoxWidth = InstanceInput {
+					SourceOp = "Template",
+					Source = "WrapBoxWidth",
+					Page = "Style",
+					Default = 0.8,
+					MinAllowed = 0.05,
+					MaxAllowed = 2,
+					MinScale = 0.2,
+					MaxScale = 1,
 				}
 				-- Multiple InstanceInputs can point to the same source control.
 				-- Use distinct instance names only when exposing the same control in different
