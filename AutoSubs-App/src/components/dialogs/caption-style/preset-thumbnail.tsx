@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { CAPTION_PREVIEW_DIR, previewSrc } from "@/lib/caption-previews";
 
 /**
- * Directory (under the app data dir) holding one thumbnail per animated
+ * Directory (under the app local data dir) holding one thumbnail per animated
  * preset. Previews are captured when a preset is saved and named after the
  * preset id, so deleting a preset can delete its image by convention.
  */

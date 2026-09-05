@@ -1988,7 +1988,7 @@ function CapturePresetSettings(exportDir)
     teardown_preset_edit_session()
 
     if not ok then
-        return { settings = {}, error = "Failed to capture preset settings: " .. tostring(err) }
+        return { error = "Failed to capture preset settings: " .. tostring(err) }
     end
 
     dump(settings)

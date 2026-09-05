@@ -335,7 +335,7 @@ export function OutputPanel({
           await setPresetPreview(id, file);
         } catch (err) {
           console.warn("Could not store preset preview:", err);
-      }
+        }
       }
       updateSetting("captionMode", "animated");
       setCreateSession({ kind: "closed" });

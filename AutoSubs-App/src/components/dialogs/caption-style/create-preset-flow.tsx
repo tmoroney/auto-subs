@@ -13,10 +13,10 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import {
-  cancelPresetEdit,
-  capturePresetSettings,
-  ensureCaptionPreviewDir,
-  startPresetEdit,
+    cancelPresetEdit,
+    capturePresetSettings,
+    ensureCaptionPreviewDir,
+    startPresetEdit,
 } from "@/api/resolve-api"
 
 export type CreatePresetSubmit = (args: {
