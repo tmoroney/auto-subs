@@ -32,8 +32,8 @@ import {
   Download,
   Ellipsis,
   FileUp,
+  Image as ImageIcon,
   Pencil,
-  Play,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -325,7 +325,7 @@ function PresetCard({
                 onClick={onPreview}
                 disabled={isPreviewLoading}
               >
-                <Play />
+                <ImageIcon />
                 {t("addToTimeline.preset.preview")}
               </DropdownMenuItem>
             )}

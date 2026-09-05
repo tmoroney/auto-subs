@@ -13,22 +13,24 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import {
-    cancelPresetEdit,
-    capturePresetSettings,
-    startPresetEdit,
+  cancelPresetEdit,
+  capturePresetSettings,
+  ensureCaptionPreviewDir,
+  startPresetEdit,
 } from "@/api/resolve-api"
 
 export type CreatePresetSubmit = (args: {
     name: string
     description?: string
     macroSettings: Record<string, unknown>
+    previewPath?: string
 }) => Promise<void> | void
 
 type Phase =
     | { kind: "launching" }
     | { kind: "editing" }
     | { kind: "capturing" }
-    | { kind: "naming"; settings: Record<string, unknown> }
+    | { kind: "naming"; settings: Record<string, unknown>; previewPath?: string }
 
 interface CreatePresetFlowProps {
     // Optional starting settings when editing an existing user preset.
@@ -115,7 +117,13 @@ export function CreatePresetFlow({
     async function handleCapture() {
         setPhase({ kind: "capturing" })
         setError(null)
-        const result = await capturePresetSettings()
+        let exportDir: string | undefined
+        try {
+            exportDir = await ensureCaptionPreviewDir()
+        } catch {
+            exportDir = undefined
+        }
+        const result = await capturePresetSettings(exportDir)
         // `CapturePresetSettings` tears down the session itself on both the
         // success and error paths.
         hasActiveSessionRef.current = false
@@ -124,7 +132,11 @@ export function CreatePresetFlow({
             setPhase({ kind: "editing" })
             return
         }
-        setPhase({ kind: "naming", settings: result.settings })
+        setPhase({
+            kind: "naming",
+            settings: result.settings,
+            previewPath: result.previewPath,
+        })
     }
 
     async function handleBackToEditing() {
@@ -147,6 +159,7 @@ export function CreatePresetFlow({
                 name: trimmed,
                 description: description.trim() || undefined,
                 macroSettings: phase.settings,
+                previewPath: phase.previewPath,
             })
         } finally {
             setIsSaving(false)

@@ -578,7 +578,7 @@
       "new": "新建预设",
       "builtIn": "内置",
       "custom": "自定义",
-      "preview": "在 Resolve 中预览",
+      "preview": "生成预览",
       "duplicate": "复制",
       "delete": "删除",
       "export": "导出 JSON",
@@ -615,7 +615,8 @@
         "invalidJson": "这看起来不像是一个有效的预设文件。",
         "captureFailed": "无法从 Resolve 读取字幕设置。",
         "nameRequired": "请输入名称。"
-      }
+      },
+      "previewFailed": "无法生成预览"
     }
   },
   "replaceStrings": {

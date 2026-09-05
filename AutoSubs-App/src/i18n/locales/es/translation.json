@@ -578,7 +578,7 @@
       "new": "Nuevo preajuste",
       "builtIn": "Integrado",
       "custom": "Personalizado",
-      "preview": "Vista previa en Resolve",
+      "preview": "Generar vista previa",
       "duplicate": "Duplicar",
       "delete": "Eliminar",
       "export": "Exportar JSON",
@@ -615,7 +615,8 @@
         "invalidJson": "Eso no parece un archivo de preajuste válido.",
         "captureFailed": "No se pudieron leer los ajustes del subtítulo desde Resolve.",
         "nameRequired": "Por favor introduce un nombre."
-      }
+      },
+      "previewFailed": "No se pudo generar la vista previa"
     }
   },
   "replaceStrings": {

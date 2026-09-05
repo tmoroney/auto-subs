@@ -578,7 +578,7 @@
       "new": "Nouveau préréglage",
       "builtIn": "Intégré",
       "custom": "Personnalisé",
-      "preview": "Aperçu dans Resolve",
+      "preview": "Générer l’aperçu",
       "duplicate": "Dupliquer",
       "delete": "Supprimer",
       "export": "Exporter JSON",
@@ -615,7 +615,8 @@
         "invalidJson": "Cela ne ressemble pas à un fichier de préréglage valide.",
         "captureFailed": "Impossible de lire les paramètres du sous-titre depuis Resolve.",
         "nameRequired": "Veuillez entrer un nom."
-      }
+      },
+      "previewFailed": "Aperçu impossible"
     }
   },
   "replaceStrings": {

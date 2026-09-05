@@ -1,16 +1,15 @@
 import * as React from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { appDataDir, join } from "@tauri-apps/api/path";
 import { Check, Image as ImageIcon } from "lucide-react";
 import { CaptionPreset } from "@/types";
 import { cn } from "@/lib/utils";
+import { CAPTION_PREVIEW_DIR, previewSrc } from "@/lib/caption-previews";
 
 /**
  * Directory (under the app data dir) holding one thumbnail per animated
  * preset. Previews are captured when a preset is saved and named after the
  * preset id, so deleting a preset can delete its image by convention.
  */
-export const CAPTION_PREVIEW_DIR = "caption-previews";
+export { CAPTION_PREVIEW_DIR };
 
 /**
  * Preview thumbnail for an animated caption preset. Falls back to a
@@ -37,10 +36,12 @@ export function PresetThumbnail({
     setSrc(null);
     if (!preset.previewImage) return;
 
-    appDataDir()
-      .then((dir) => join(dir, CAPTION_PREVIEW_DIR, preset.previewImage!))
+    previewSrc(
+      preset.previewImage,
+      preset.previewUpdatedAt ?? preset.updatedAt,
+    )
       .then((path) => {
-        if (!cancelled) setSrc(convertFileSrc(path));
+        if (!cancelled) setSrc(path);
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -49,7 +50,7 @@ export function PresetThumbnail({
     return () => {
       cancelled = true;
     };
-  }, [preset.previewImage]);
+  }, [preset.previewImage, preset.previewUpdatedAt, preset.updatedAt]);
 
   const showImage = Boolean(src) && !failed;
 

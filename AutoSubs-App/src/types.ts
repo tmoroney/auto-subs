@@ -193,6 +193,7 @@ export interface CaptionPreset {
      * in which case the picker shows a placeholder.
      */
     previewImage?: string;
+    previewUpdatedAt?: string;
 }
 
 // A named list of censored words that can be toggled on/off as a group.

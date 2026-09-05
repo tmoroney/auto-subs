@@ -12,6 +12,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { toast } from "sonner";
+import { copyFile } from "@tauri-apps/plugin-fs";
+import { join } from "@tauri-apps/api/path";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,7 +32,13 @@ import {
   type CreatePresetSession,
   type CreatePresetSubmit,
 } from "@/components/dialogs/caption-style/template-selection";
-import { cancelPresetEdit, checkTrackConflicts, type ConflictInfo } from "@/api/resolve-api";
+import {
+  cancelPresetEdit,
+  checkTrackConflicts,
+  ensureCaptionPreviewDir,
+  generatePreview,
+  type ConflictInfo,
+} from "@/api/resolve-api";
 import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -42,6 +50,7 @@ import {
 import { ExportPopover, type ExportFormat } from "@/components/common/export-popover";
 import type { Speaker, Template, TimelineInfo } from "@/types";
 import { cn } from "@/lib/utils";
+import { storePresetPreview } from "@/lib/caption-previews";
 
 interface OutputPanelProps {
   timelineInfo?: TimelineInfo;
@@ -125,6 +134,7 @@ export function OutputPanel({
     deletePreset,
     importPreset,
     exportPreset,
+    setPresetPreview,
   } = usePresets();
 
   const {
@@ -164,6 +174,7 @@ export function OutputPanel({
   const [conflictInfo, setConflictInfo] = React.useState<ConflictInfo | null>(null);
   const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null);
   const [loadingTimedOut, setLoadingTimedOut] = React.useState(false);
+  const [previewLoadingId, setPreviewLoadingId] = React.useState<string | null>(null);
 
   const outputTracks = timelineInfo?.outputTracks ?? [];
   const hasSubtitles = subtitles.length > 0;
@@ -306,14 +317,25 @@ export function OutputPanel({
     name,
     description,
     macroSettings,
+    previewPath,
   }) => {
     try {
+      let id: string;
       if (createSession.kind === "edit") {
-        await updatePreset(createSession.presetId, { name, description, macroSettings });
-        updateSetting("presetId", createSession.presetId);
+        id = createSession.presetId;
+        await updatePreset(id, { name, description, macroSettings });
       } else {
         const created = await createPreset(name, macroSettings, description);
-        updateSetting("presetId", created.id);
+        id = created.id;
+      }
+      updateSetting("presetId", id);
+      if (previewPath) {
+        try {
+          const file = await storePresetPreview(id, previewPath);
+          await setPresetPreview(id, file);
+        } catch (err) {
+          console.warn("Could not store preset preview:", err);
+      }
       }
       updateSetting("captionMode", "animated");
       setCreateSession({ kind: "closed" });
@@ -330,7 +352,38 @@ export function OutputPanel({
       preset.macroSettings,
       preset.description,
     );
+    if (preset.previewImage) {
+      try {
+        const dir = await ensureCaptionPreviewDir();
+        await copyFile(
+          await join(dir, preset.previewImage),
+          await join(dir, `${copy.id}.png`),
+        );
+        await setPresetPreview(copy.id, `${copy.id}.png`);
+      } catch (err) {
+        console.warn("Could not copy preset preview:", err);
+      }
+    }
     updateSetting("presetId", copy.id);
+  }
+
+  async function handleGeneratePreview(preset: ReturnType<typeof usePresets>["presets"][number]) {
+    setPreviewLoadingId(preset.id);
+    try {
+      const dir = await ensureCaptionPreviewDir();
+      const result = await generatePreview(
+        ANIMATED_CAPTION_TEMPLATE,
+        dir,
+        preset.macroSettings,
+      );
+      const file = await storePresetPreview(preset.id, result.path);
+      await setPresetPreview(preset.id, file);
+    } catch (err: any) {
+      toast.error(t("addToTimeline.preset.previewFailed"));
+      console.warn("Could not generate preset preview:", err);
+    } finally {
+      setPreviewLoadingId(null);
+    }
   }
 
   function handleSpeakerChange(index: number, updated: Speaker) {
@@ -442,6 +495,8 @@ export function OutputPanel({
           }}
           onExportPreset={exportPreset}
           hasAnimatedTemplate={hasAnimatedTemplate}
+          onRequestPreview={handleGeneratePreview}
+          previewLoadingId={previewLoadingId}
           speakers={speakers}
           onSpeakerChange={handleSpeakerChange}
         />
@@ -569,6 +624,8 @@ interface OutputSheetProps {
   onImportPreset: (json: string) => Promise<any>;
   onExportPreset: (id: string) => string;
   hasAnimatedTemplate: boolean;
+  onRequestPreview?: (preset: ReturnType<typeof usePresets>["presets"][number]) => void;
+  previewLoadingId?: string | null;
   speakers: Speaker[];
   onSpeakerChange: (index: number, speaker: Speaker) => void;
 }
@@ -632,6 +689,8 @@ function OutputSheet(props: OutputSheetProps) {
           onImportPreset={props.onImportPreset}
           onExportPreset={props.onExportPreset}
           hasAnimatedTemplate={props.hasAnimatedTemplate}
+          onRequestPreview={props.onRequestPreview}
+          previewLoadingId={props.previewLoadingId}
         />
       </div>
     );
@@ -739,6 +798,8 @@ function OutputSheet(props: OutputSheetProps) {
               onImportPreset={props.onImportPreset}
               onExportPreset={props.onExportPreset}
               hasAnimatedTemplate={props.hasAnimatedTemplate}
+              onRequestPreview={props.onRequestPreview}
+              previewLoadingId={props.previewLoadingId}
             />
           </section>
         )}
