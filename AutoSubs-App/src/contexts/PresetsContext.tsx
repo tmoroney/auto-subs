@@ -186,16 +186,9 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
     }
 
     async function setPresetPreview(id: string, filename: string) {
-        const updatedAt = nowIso();
-        const nextUserPresets = userPresets.map((preset) =>
-            preset.id === id ? { ...preset, updatedAt } : preset,
-        );
-        if (nextUserPresets.some((preset, index) => preset !== userPresets[index])) {
-            await persist(nextUserPresets);
-        }
         await persistPreviewImages({
             ...previewImages,
-            [id]: { file: filename, updatedAt },
+            [id]: { file: filename, updatedAt: nowIso() },
         });
     }
 
