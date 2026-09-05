@@ -1,253 +1,81 @@
-# W2 — Community preset sharing & in-app gallery
+# Community caption style store
 
-> **Goal:** Let users share the caption presets they build with the AutoSubs macro, and browse + install other people's presets directly inside the app — with **no backend to run or pay for**.
+> **Status:** P0 + P1 implemented (this PR). P2–P5 pending.
 >
-> **Status:** Spec / handoff. No code written yet.
->
-> **Approach (decided):** GitHub-repo-backed gallery. Presets are JSON files + preview images in a public repo; an `index.json` is generated and served via CDN; the app fetches it, shows a browsable gallery, and installs with one click. Contributions happen via pull request (moderation = PR review).
+> **Decisions (2026-09-05):** presets live in a `community-presets/` folder in this repo (not a separate repo); the app fetches `index.json` from jsDelivr pinned to `@main`; submissions go through a GitHub issue form that a bot converts to a PR; **built-in presets move into `community-presets/` too** so they are rendered, validated and indexed the same way as community ones (the app ships a snapshot of the index for offline first-run).
 
----
+Revised 2026-09-05 from the original 2026-06-13 spec. The core approach is unchanged (GitHub-repo-backed, no server, PR/issue moderation, jsDelivr CDN, reuse `importPreset`). Section 1 records what had drifted in the codebase since the original spec.
 
-## 1. Current state
+## 1. What the original plan got wrong / what changed
 
-Presets are modeled by `CaptionPreset` in [`AutoSubs-App/src/types.ts`](../AutoSubs-App/src/types.ts) (lines 148–157):
+| Old plan says | Reality today |
+|---|---|
+| UI wired in `add-to-timeline-dialog.tsx` | File is gone. Picker is mounted from `caption-style/template-selection.tsx:175-190`; creation flow is `caption-style/create-preset-flow.tsx`. |
+| Picker has `onRequestPreview` / preview per card | Prop still exists on `AnimatedPresetPicker` but `template-selection.tsx` doesn't pass it. `generatePreview()` (`resolve-api.ts:234`) has **zero call sites**. |
+| `CaptionPreset` needs `previewUrl` etc. | `previewImage?: string` already exists (`types.ts:195`) and `PresetThumbnail` renders it from `appData/caption-previews/<file>` — but **nothing ever writes it**. Local presets show a placeholder icon today. |
+| "Add `GetMacroVersion`" | Still absent. But `modules/caption_template_version.lua` (date string, used in `autosubs_core.lua:169`) already exists and can be the compat version. |
+| `SetInputValues` should ignore unknown keys | Still calls `tool:SetInput(key, value)` unguarded (`autosubs-macro.setting:61-70`). |
+| "Confirm CSP allowlist" | CSP is `null`. The real gate is `src-tauri/capabilities/default.json`: `http:default` scope (`:14-44`) allows HF, tauri.app, Google Docs only; `opener` scope (`:165-170`) allows only `github.com/tmoroney/auto-subs/**`. |
+| Preview: "mid-animation frame, 640×360" | `GeneratePreview` (`autosubs_core.lua:1662-1711`) already renders a single PNG at `floor(GlobalEnd/2)` via a Fusion Saver, at comp native size. **It ignores `presetSettings`** (never calls `SetInputValues`, only font fallback + speaker style) so it can't produce a preset-specific thumbnail yet. |
+| Implicit: works everywhere | Adobe extension has no animated caption presets at all (AE creates plain text layers). Store is **Resolve-only**; hide it when `selectedIntegration !== "davinci"`. |
 
-```ts
-export interface CaptionPreset {
-  id: string;            // "builtin:<slug>" for shipped, uuid for user presets
-  name: string;
-  description?: string;
-  builtIn: boolean;
-  version: number;       // schema version (starts at 1)
-  createdAt: string;
-  updatedAt: string;
-  macroSettings: Record<string, unknown>;  // opaque dict round-tripped through the macro
-}
-```
-
-State management is in [`AutoSubs-App/src/contexts/PresetsContext.tsx`](../AutoSubs-App/src/contexts/PresetsContext.tsx):
-- Built-ins from [`built-in-presets.ts`](../AutoSubs-App/src/presets/built-in-presets.ts), user presets persisted to a Tauri store (`autosubs-presets.json`).
-- **Already has `importPreset(json)` and `exportPreset(id)`** — `importPreset` validates the wrapper shape and generates a fresh id (lines 36–64, 154–158). This is exactly the install primitive the gallery needs.
-
-The UI lives in [`AutoSubs-App/src/components/dialogs/caption-style/animated-preset-picker.tsx`](../AutoSubs-App/src/components/dialogs/caption-style/animated-preset-picker.tsx):
-- `AnimatedPresetActions` — the Import (paste / from file) + "New Preset" buttons.
-- `AnimatedPresetPicker` — the scrollable list of `PresetCard`s with per-preset overflow actions (export, copy JSON, edit, duplicate, delete).
-- Consumed by [`add-to-timeline-dialog.tsx`](../AutoSubs-App/src/components/dialogs/add-to-timeline-dialog.tsx).
-
-**Gaps:** no remote browsing, no thumbnails/previews in the picker, no way to publish a preset, and no compatibility metadata (macro version, fonts).
-
-**Networking note:** Per [`AGENTS.md`](../AGENTS.md), the Tauri webview HTTP plugin has quirks against Resolve specifically — but that's only for the loopback bridge. Fetching a static `index.json` from a CDN is a normal cross-origin GET; use `@tauri-apps/plugin-http` (already a dependency) or `fetch`. Confirm CSP/allowlist in `tauri.conf.json` permits the CDN host.
-
----
-
-## 2. Architecture (no backend)
-
-```mermaid
-flowchart TD
-  contributor[Contributor] -->|PR: preset.json + preview.png| repo[(community-presets repo / folder)]
-  repo -->|CI builds| index[index.json + assets]
-  index -->|jsDelivr CDN| app[AutoSubs app]
-  app -->|browse + 1-click install| store[(local presets store)]
-  app -->|Submit preset: export + render preview| pr[Pre-filled GitHub PR]
-  pr --> contributor
-```
-
-### Where do the presets live?
-
-Two options — recommend **(A)** for simplicity, switchable later:
-
-- **(A) Folder in the existing repo:** `community-presets/` at repo root. Lowest friction, single PR target, presets versioned with the app.
-- **(B) Dedicated repo** (e.g. `auto-subs-presets`): cleaner separation, independent contribution cadence, doesn't bloat the app repo history with images.
-
-Either way the layout is the same:
+## 2. Recommended architecture (unchanged core, refined)
 
 ```
-community-presets/
-  presets/
-    <slug>/
-      preset.json     # the CaptionPreset payload (see §3)
-      preview.png     # rendered thumbnail (see §5)
-      meta.json       # author, tags, dates, minMacroVersion (see §3)
-  index.json          # GENERATED — flat list the app fetches
-  scripts/
-    build-index.mjs   # scans presets/, validates, emits index.json
+Contributor ──(in-app "Share")──▶ GitHub issue form (prefilled JSON + drag-in PNG)
+      └─ GitHub Action parses issue ──▶ opens PR into community-presets/presets/<slug>/
+Maintainer merges ──▶ Action rebuilds community-presets/index.json
+App ──▶ https://cdn.jsdelivr.net/gh/tmoroney/auto-subs@main/community-presets/index.json
 ```
 
-### Serving
+**Keep option A (folder in this repo)** — it means the existing `opener` allowlist already covers the submission URL and there's one CI surface. Move to a dedicated repo only if images bloat history.
 
-Use **jsDelivr** for CDN caching and to avoid `raw.githubusercontent.com` rate limits:
-`https://cdn.jsdelivr.net/gh/<owner>/<repo>@<ref>/community-presets/index.json`
+Layout (same as old plan): `community-presets/presets/<slug>/{preset.json,meta.json,preview.png}`, generated `index.json`, `scripts/build-index.mjs`.
 
-Pin to a tag/branch for stability; `@latest` or a `main` ref for "live." Preview images load via the same CDN base.
+## 3. Work breakdown (ordered by dependency)
 
----
+### P0 — prerequisites in the Resolve layer (needed for thumbnails + safety) — DONE
+1. **`GeneratePreview` honours `presetSettings`**: for the animated template it applies the macro's `SetInputValues(presetSettings)` (after font fallback) before rendering. `speaker` is optional.
+2. **Uniform thumbnails**: `extract_frame` inserts a `Resize` (640 px wide, height keeps the comp aspect) between `MediaOut` and the `Saver`, and renders the midpoint frame `(GlobalStart+GlobalEnd)/2`.
+3. **`SetInputValues` ignores unknown keys**: only keys present in `InputKeys` are applied, so a preset from a newer macro degrades gracefully. (Macro change ⇒ `caption-bin.drb` must be regenerated in Resolve via *AutoSubs - Update Caption Template*.)
+4. **Compat version**: `GetVersion` now also returns `captionTemplateVersion` (the `caption_template_version.lua` date string, lexically comparable). Community presets will carry `minTemplateVersion`.
 
-## 3. Data shapes
+### P1 — capture previews for *local* presets — DONE
+- `CapturePresetSettings(exportDir)` renders the preview from the live edit session **before** tearing it down, so the thumbnail is exactly what the user saw in Fusion. Returns `{ settings, previewPath }`.
+- Preview PNGs live in `$APPLOCALDATA/caption-previews/<presetId>.png` (created by the Rust command `ensure_caption_preview_dir`; `$APPLOCALDATA/**` is added to the asset-protocol scope). Filenames are tracked in the presets store under `previewImages: Record<presetId, filename>` so built-ins and imported presets can have thumbnails too.
+- Picker overflow menu gains **Generate preview** (calls `GeneratePreview` with the preset's `macroSettings`) for presets without one, e.g. built-ins and imports. Deleting a preset removes its PNG.
 
-### `preset.json` (extends the exported preset)
+### P2 — store data layer (`src/api/community-presets.ts`)
+- `fetchCommunityIndex()` via `@tauri-apps/plugin-http` `fetch` (pattern: `whats-new-dialog.tsx:98-117` already fetches GitHub from the frontend). Cache to Tauri store `autosubs-community-cache.json` with TTL (e.g. 6h); serve cache first, refresh in background.
+- `installCommunityPreset(entry)` → GET `presetUrl` → existing `importPreset(json)` → then download `preview.png` into `caption-previews/<newId>.png` and set `previewImage` so installed presets keep their thumbnail.
+- Add `https://cdn.jsdelivr.net/**` to `http:default` scope in `capabilities/default.json`.
+- Extend `CaptionPreset` with optional `author`, `tags`, `source: 'community'`, `minTemplateVersion`, `communitySlug` (for "already installed" detection + future update checks). Export `parseImportedPreset` pass-through for these.
 
-The existing `exportPreset` strips `id`/timestamps/`builtIn` and emits `{ name, description, version, macroSettings }`. Add publishing/compat fields:
+### P3 — store UI
+- `caption-style/community-preset-gallery.tsx` (Dialog): grid of cards (preview, name, author, tags), search + tag chips, Install / Installed state, gated "Requires newer AutoSubs" when `minTemplateVersion > current`, offline/empty states.
+- "Browse Community" button in `AnimatedPresetActions`; mount dialog from `template-selection.tsx`; only when integration is DaVinci.
+- i18n: all 8 locales, ≤25/≤60 char budgets (AGENTS.md).
 
-```jsonc
-{
-  "name": "Neon Pop",
-  "description": "Bright pop-in with cyan highlight.",
-  "version": 1,                    // preset schema version (existing)
-  "minMacroVersion": 1,            // NEW: lowest macro version this preset targets
-  "macroSettings": { /* ... */ }
-}
-```
+### P4 — "Share to community" (submission)
+- Overflow-menu item on user `PresetCard`s. Flow: ensure preview exists (P1) → build `preset.json` + `meta.json` → open `https://github.com/tmoroney/auto-subs/issues/new?template=community-preset.yml&title=...&preset=<urlencoded json>` via opener (already allowlisted). Issue forms accept prefilled field values via query params; the user drags the PNG into the body (images can't be prefilled). Copy the PNG path to clipboard / reveal it in Finder to make that one step easy.
+- Fallback: "Save bundle to folder".
 
-### `meta.json` (gallery metadata, kept out of the installed preset)
+### P5 — repo + CI
+- `.github/ISSUE_TEMPLATE/community-preset.yml` (fields: name, description, tags, preset JSON, preview image).
+- Action `community-preset-submission.yml`: on issue labelled `preset-submission`, parse body, download image, validate (JSON schema, PNG ≤ 300 KB, 640×360), open PR with the folder. Maintainer review = merge.
+- Action `community-index.yml`: on push to `main` touching `community-presets/presets/**`, run `build-index.mjs`, commit `index.json`. jsDelivr serves within minutes; purge URL `https://purge.jsdelivr.net/gh/...` can be hit from CI for instant refresh.
+- `community-presets/CONTRIBUTING.md`, JSON schema for `preset.json` (validated in CI and reused client-side).
 
-```jsonc
-{
-  "slug": "neon-pop",
-  "author": "github-handle",
-  "tags": ["pop-in", "neon", "gaming"],
-  "createdAt": "2026-06-13T00:00:00.000Z",
-  "previewFonts": ["Futura"]       // fonts the preview used (for the missing-font notice)
-}
-```
+## 4. Safety / moderation
+Presets are inert input values — the macro only does `tool:SetInput`. With P0.2 in place a malformed key can't error out. Review is about taste + preview honesty. Font names are strings; `font_fallback.lua` already substitutes missing fonts and `ResolveContext.tsx:145-158` surfaces the warning, so nothing new is needed there beyond showing `fonts: [...]` on the card.
 
-### `index.json` (generated, fetched by app)
+## 5. Effort estimate
+- P0+P1: ~1 session (Lua + one React flow). Independently valuable (local thumbnails).
+- P2+P3: ~1 session.
+- P4+P5: ~1 session (mostly YAML/Node scripting, testable without Resolve).
 
-```jsonc
-{
-  "schema": 1,
-  "generatedAt": "…",
-  "presets": [
-    {
-      "slug": "neon-pop",
-      "name": "Neon Pop",
-      "description": "…",
-      "author": "github-handle",
-      "tags": ["pop-in", "neon"],
-      "minMacroVersion": 1,
-      "previewUrl": "presets/neon-pop/preview.png",  // resolved against CDN base
-      "presetUrl": "presets/neon-pop/preset.json"
-    }
-  ]
-}
-```
-
-### `CaptionPreset` changes ([`types.ts`](../AutoSubs-App/src/types.ts))
-
-Add optional fields (keep backward compatible — `parseImportedPreset` already tolerates missing optionals):
-
-```ts
-export interface CaptionPreset {
-  // ...existing...
-  minMacroVersion?: number;
-  author?: string;
-  tags?: string[];
-  source?: 'user' | 'community';   // provenance for UI badges
-}
-```
-
----
-
-## 4. App-side implementation
-
-### 4.1 Data layer — community fetch + install (PresetsContext or a sibling hook)
-
-Add to [`PresetsContext.tsx`](../AutoSubs-App/src/contexts/PresetsContext.tsx) (or a new `useCommunityPresets` hook to keep the context lean):
-
-- `fetchCommunityIndex(): Promise<CommunityPresetMeta[]>` — GET the CDN `index.json`, cache in-memory + optionally on disk (Tauri store) with a TTL so the gallery opens instantly and refreshes in the background.
-- `installCommunityPreset(meta): Promise<CaptionPreset>` — GET `presetUrl`, then reuse the **existing** `importPreset(json)` so all validation/id-generation is shared. Tag the result `source: 'community'`, carry `author`/`tags`.
-- Dedupe: if a preset with the same `name` + identical `macroSettings` hash already exists, prompt instead of silently duplicating.
-
-`parseImportedPreset` (lines 36–64) should be extended to accept and pass through `minMacroVersion`, `author`, `tags` (still defaulting safely when absent).
-
-### 4.2 Compatibility handling (important for portability)
-
-Presets reference fonts that may not exist on another machine (built-ins already use `Chalkboard`, `Menlo`, `Futura`) and `macroSettings` keys tied to a macro version.
-
-- **Macro version gate:** if `meta.minMacroVersion > currentMacroVersion`, show "Update AutoSubs to use this preset" and disable install (or install with a warning). Define `currentMacroVersion` somewhere central (e.g. exported constant; ideally surfaced by the macro itself via a new `GetMacroVersion` so it can't drift).
-- **Unknown keys:** `SetInputValues` (macro side, W1) iterates the dict and `tool:SetInput(key, value)`. Make it **ignore keys the macro doesn't expose** (wrap each set in `pcall`, or check against `InputKeys`) so a newer preset applied to an older macro degrades gracefully instead of erroring.
-- **Missing fonts:** on apply, compare the preset's `Font` against the installed font list (there's already font handling in the app / `font_fallback.lua`). If absent, toast a non-blocking notice: "Font 'X' isn't installed; using a fallback." Don't block install.
-
-### 4.3 UI — Browse gallery
-
-In [`animated-preset-picker.tsx`](../AutoSubs-App/src/components/dialogs/caption-style/animated-preset-picker.tsx) / [`add-to-timeline-dialog.tsx`](../AutoSubs-App/src/components/dialogs/add-to-timeline-dialog.tsx):
-
-- Add a **"Browse Community"** action next to Import / New in `AnimatedPresetActions` (icon: `Globe`/`Store` from lucide).
-- New component `community-preset-gallery.tsx` (a `Dialog`):
-  - Grid of cards: `preview.png` thumbnail, name, author, tags.
-  - Search box + tag filter chips (client-side over `index.json`).
-  - "Install" button per card → `installCommunityPreset` → toast + select it.
-  - Loading / empty / offline states (reuse the app's existing patterns; W3-adjacent `harden` polish later).
-- **Thumbnails make or break browsing** — ensure `preview.png` is always present (CI rejects presets without one, §6).
-
-### 4.4 UI — Submit a preset
-
-Add to each `PresetCard`'s overflow menu (next to Export / Copy JSON): **"Share to community…"**. Flow:
-
-1. Render a preview via the existing preview path (`GeneratePreview` in [`resolve-api.ts`](../AutoSubs-App/src/api/resolve-api.ts) — the picker already wires `onRequestPreview`/`previewLoadingId`). Save the PNG locally.
-2. Build the contribution bundle: `preset.json` (export payload + `minMacroVersion`), `meta.json` (prefill author from a saved GitHub handle setting), and the preview.
-3. **Open a pre-filled GitHub PR/issue** in the browser via `@tauri-apps/plugin-opener` (already a dep). Easiest robust path: a GitHub *issue* with a "preset submission" template (paste JSON + attach preview), which a maintainer/CI converts to a PR — avoids requiring the user to fork/commit. Alternatively a `new file` deep link. Document the chosen path in `community-presets/CONTRIBUTING.md`.
-4. Also offer "Save bundle to folder" as a fallback for users who prefer to PR manually.
-
-> Keep the bar low: most users won't open a PR. The issue-template route + maintainer/CI promotion is the most user-friendly no-backend option.
-
----
-
-## 5. Preview generation
-
-- Reuse `GeneratePreview` (renders a single subtitle frame). For the gallery, a **mid-animation** frame (e.g. a frame where pop-in is ~70% and a word is highlighted) is more representative than a static end frame — consider a `previewFrame` param.
-- For CI/repo previews, contributors submit the PNG produced by the in-app "Share" flow, so previews are consistent and authentic. CI just validates dimensions/size, it does **not** render (no Resolve in CI).
-- Standardize preview size (e.g. 640×360, transparent or dark bg) and document it.
-
----
-
-## 6. The community repo + CI
-
-- `community-presets/scripts/build-index.mjs`: scan `presets/*/`, validate each (`preset.json` parses, has `name`/`version`/`macroSettings`; `preview.png` exists and is within size limits; `meta.json` has `slug`/`author`), then emit `index.json`. Fail the build on any invalid entry.
-- GitHub Action: on PR, run validation; on merge to `main`, rebuild `index.json` and commit (or build to a `gh-pages`/release artifact). jsDelivr picks it up.
-- `community-presets/CONTRIBUTING.md`: how to add a preset (use in-app Share, or manual: drop a folder + run `build-index`), naming, tag conventions, preview requirements.
-- A PR template + issue template for submissions.
-
-**Safety:** presets are **data only** (input values), not executable Lua, so installing one cannot run code — the macro just calls `tool:SetInput`. The main review concerns are quality, taste, naming, and that the preview matches the settings. This keeps moderation light.
-
----
-
-## 7. Files to create / modify
-
-**Create**
-- `community-presets/**` (presets folder, `build-index.mjs`, CONTRIBUTING, templates, GitHub Action) — or a separate repo
-- `AutoSubs-App/src/components/dialogs/caption-style/community-preset-gallery.tsx`
-- `AutoSubs-App/src/api/community-presets.ts` (fetch index / preset, CDN base config) — or fold into PresetsContext
-
-**Modify**
-- `AutoSubs-App/src/types.ts` — extend `CaptionPreset` (§3)
-- `AutoSubs-App/src/contexts/PresetsContext.tsx` — `fetchCommunityIndex`, `installCommunityPreset`, pass-through new fields in `parseImportedPreset`
-- `AutoSubs-App/src/components/dialogs/caption-style/animated-preset-picker.tsx` — "Browse Community" + "Share to community" actions
-- `AutoSubs-App/src/components/dialogs/add-to-timeline-dialog.tsx` — wire the gallery dialog
-- `AutoSubs-App/src/api/resolve-api.ts` — optional `previewFrame` param for `GeneratePreview`
-- `AutoSubs-App/src-tauri/tauri.conf.json` — CSP/allowlist for the CDN host; opener allowlist for github.com
-- i18n locale files — strings for gallery/submit (the picker uses `react-i18next`)
-- macro side (coordinate w/ W1): `SetInputValues` ignores unknown keys; add `GetMacroVersion`
-
----
-
-## 8. Verification
-
-- [ ] `build-index.mjs` produces valid `index.json` and rejects malformed presets / missing previews.
-- [ ] App fetches `index.json` from the CDN; gallery renders thumbnails; search + tag filter work; offline shows a graceful state.
-- [ ] Install a community preset → appears in the user list, selectable, applies on the timeline.
-- [ ] Apply a preset whose font isn't installed → non-blocking fallback notice, still works.
-- [ ] Apply a preset with `minMacroVersion` higher than current → gated with a clear message.
-- [ ] Apply a preset containing an unknown `macroSettings` key → no error (gracefully ignored).
-- [ ] "Share to community" renders a preview, builds the bundle, and opens the correct pre-filled GitHub URL.
-- [ ] `tsc && vite build` passes; existing import/export still round-trips.
-
----
-
-## 9. Risks & considerations
-
-- **CDN/rate limits** — jsDelivr + caching mitigates; cache `index.json` locally with TTL so the gallery isn't network-blocked.
-- **Contribution friction** — opening a PR is a lot to ask; the issue-template + maintainer/CI promotion path keeps it accessible. Track whether submissions actually come in.
-- **Preview authenticity** — require previews from the in-app Share flow so they reflect real macro output, not hand-made mockups.
-- **Font/version drift** — handled via §4.2; revisit once the macro versioning constant exists.
-- **Repo bloat from images** — if it becomes an issue, move to a dedicated repo (option B) or Git LFS.
-- **Spam/abuse** — low risk since presets are inert data; PR review + a CODEOWNERS gate is enough.
+## 6. Decisions (settled)
+1. Folder in `auto-subs` — yes.
+2. CDN ref — `@main` (presets are data; no need to wait for a release).
+3. Submission — issue form → bot PR.
+4. Built-in presets — move into `community-presets/` (with `builtIn: true` in `meta.json`); the app bundles a generated snapshot of `index.json` + previews so first run works offline, and `built-in-presets.ts` becomes generated from that folder.

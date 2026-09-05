@@ -476,7 +476,7 @@ function GetTemplates()
 end
 
 function GetVersion()
-    return { version = VERSION }
+    return { version = VERSION, captionTemplateVersion = CAPTION_TEMPLATE_VERSION }
 end
 
 -- Get a list of possible output tracks for subtitles
@@ -1678,12 +1678,29 @@ local function extract_frame(comp, exportDir)
         settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
         mySaver:LoadSettings(settings)
 
-        -- Set the input for the Saver tool to the MediaOut tool
+        -- Set the input for the Saver tool to the resized MediaOut tool
         local mediaOut = comp:FindToolByID("MediaOut")
-        mySaver:SetInput("Input", mediaOut)
+        local compWidth, compHeight = 1920, 1080
+        pcall(function()
+            local width = tonumber(comp:GetPrefs("Comp.FrameFormat.Width"))
+            local height = tonumber(comp:GetPrefs("Comp.FrameFormat.Height"))
+            if width and width > 0 then compWidth = width end
+            if height and height > 0 then compHeight = height end
+        end)
+
+        local resize = comp:AddTool("Resize")
+        if resize then
+            resize:SetInput("Width", 640)
+            resize:SetInput("Height", math.floor(640 * compHeight / compWidth + 0.5))
+            resize:SetInput("Input", mediaOut)
+            mySaver:SetInput("Input", resize)
+        else
+            mySaver:SetInput("Input", mediaOut)
+        end
 
         -- Get the middle frame of the clip (best representative)
-        local frameIndex = math.floor(comp:GetAttrs().COMPN_GlobalEnd / 2)
+        local attrs = comp:GetAttrs() or {}
+        local frameIndex = math.floor(((attrs.COMPN_GlobalStart or 0) + attrs.COMPN_GlobalEnd) / 2)
 
         -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
         local success = comp:Render({
@@ -1702,7 +1719,7 @@ local function extract_frame(comp, exportDir)
             print("Failed to save frame " .. frameIndex)
         end
     else
-        print("Saver tool 'MySaver' not found in the composition.")
+        print("Saver tool not found in the composition.")
     end
 
     -- Unlock the composition after changes are complete [15, 20]
@@ -1772,10 +1789,41 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
         if timelineItem:GetFusionCompCount() > 0 then
             local comp = timelineItem:GetFusionCompByIndex(1)
             local tool = comp:FindToolByID("TextPlus")
-            tool:SetInput("StyledText", "Subtitle Example Text")
-            set_speaker_styling(speaker, tool)
-            if fontSwap and fontSwap.to then
-                pcall(function() tool:SetInput("Font", fontSwap.to) end)
+            if isAnimated then
+                local autosubsTool = comp:FindTool("AutoSubs")
+                local template = comp:FindTool("Template") or tool
+                if autosubsTool then
+                    if presetSettings and next(presetSettings) ~= nil then
+                        local applyOk, applyErr = pcall(function()
+                            local setter = autosubsTool:GetData("SetInputValues")
+                            if setter and setter ~= "" then
+                                loadstring(setter)()(comp, autosubsTool, presetSettings)
+                            end
+                        end)
+                        if not applyOk then
+                            print("Preview preset apply failed: " .. tostring(applyErr))
+                        end
+                    end
+                    template:SetInput("Text", "Subtitle Example Text")
+                    local clsTool = comp:FindTool("CharacterLevelStyling1")
+                    if clsTool then
+                        pcall(clsTool.SetInput, clsTool, "Text", "Subtitle Example Text")
+                    end
+                    if speaker then
+                        set_speaker_styling(speaker, autosubsTool, true)
+                    end
+                    if fontSwap and fontSwap.to then
+                        pcall(function() autosubsTool:SetInput("Font", fontSwap.to) end)
+                    end
+                end
+            else
+                tool:SetInput("StyledText", "Subtitle Example Text")
+                if speaker then
+                    set_speaker_styling(speaker, tool)
+                end
+                if fontSwap and fontSwap.to then
+                    pcall(function() tool:SetInput("Font", fontSwap.to) end)
+                end
             end
             outputPath = extract_frame(comp, exportDir)
         end
@@ -1807,7 +1855,8 @@ end
 --
 -- The three endpoints below form a mini state machine driven from the app:
 --   StartPresetEdit  -> drops a caption clip on a temp track, opens Fusion.
---   CapturePresetSettings -> reads tool inputs, tears down the temp track.
+--   CapturePresetSettings -> reads tool inputs, renders a preview, and tears down
+--   the temp track.
 --   CancelPresetEdit -> tears down without reading.
 -- ---------------------------------------------------------------------------
 
@@ -1904,7 +1953,7 @@ function StartPresetEdit(initialSettings)
     return { ok = true }
 end
 
-function CapturePresetSettings()
+function CapturePresetSettings(exportDir)
     if presetEditSession == nil then
         return { error = "No preset edit in progress" }
     end
@@ -1924,16 +1973,26 @@ function CapturePresetSettings()
         settings = loadstring(getter)()(tool)
     end)
 
+    local previewPath
+    if ok and type(exportDir) == "string" and exportDir ~= "" then
+        local previewOk, previewErr = pcall(function()
+            previewPath = extract_frame(presetEditSession.comp, exportDir)
+        end)
+        if not previewOk then
+            print("Preset preview render failed: " .. tostring(previewErr))
+        end
+    end
+
     -- Always tear down, even on failure, so the user isn't left with a
     -- stranded preview clip on their timeline.
     teardown_preset_edit_session()
 
     if not ok then
-        return { error = "Failed to capture preset settings: " .. tostring(err) }
+        return { settings = {}, error = "Failed to capture preset settings: " .. tostring(err) }
     end
 
     dump(settings)
-    return { settings = settings or {} }
+    return { settings = settings or {}, previewPath = previewPath }
 end
 
 function CancelPresetEdit()
@@ -2164,7 +2223,7 @@ function StartServer()
                                 body = safe_json(result)
                             elseif data.func == "CapturePresetSettings" then
                                 print("[AutoSubs Server] Capturing caption preset settings...")
-                                local result = CapturePresetSettings()
+                                local result = CapturePresetSettings(data.exportDir)
                                 body = safe_json(result)
                             elseif data.func == "CancelPresetEdit" then
                                 print("[AutoSubs Server] Cancelling caption preset edit...")

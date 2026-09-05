@@ -58,11 +58,19 @@
 						return settings
 					end
 				]],
-				SetInputValues = [[
-					return function(comp, tool, settings)
-						for key, value in pairs(settings) do
-							tool:SetInput(key, value)
-						end
+					SetInputValues = [[
+						return function(comp, tool, settings)
+							local allowed = {}
+							local keys = tool:GetData("InputKeys")
+							for _, key in ipairs(keys) do
+								allowed[key] = true
+							end
+
+							for key, value in pairs(settings) do
+								if allowed[key] then
+									tool:SetInput(key, value)
+								end
+							end
 
 						-- Update animation and highlight
 						loadstring(tool:GetData("SetAnimations"))()(comp, tool)
