@@ -47,7 +47,7 @@ export function SpeakerChips({
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="w-[320px]"
+            className="w-[300px] p-3 pt-1.5"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <SpeakerSettings
