@@ -131,10 +131,15 @@ local function sleep(n)
     end
 end
 
--- Load external libraries
+-- Load external libraries. These are required lazily in Init(), so the language
+-- server would otherwise infer them as `nil` here and flag every later use.
+---@type any
 local socket = nil
+---@type any
 local json = nil
+---@type any
 local luaresolve = nil
+---@type any
 local font_fallback = nil
 
 -- Function to read a JSON file. Returns the decoded table on success, or
@@ -253,6 +258,9 @@ function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
     local frames = to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
+    if not luaresolve then
+        error("Resolve timecode library is not available")
+    end
     local timecode = luaresolve:timecode_from_frame_auto(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -1451,10 +1459,7 @@ end
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
-    if speakersExist then
-        print("SPEAKER EXISTS")
-    end
-    local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
+    local startTime = os.clock()
     local failed = 0
     local noFusionComp = 0
     local firstError = nil
@@ -1471,6 +1476,10 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
+
+                -- Lock the composition to prevent redraws during bulk updates
+                comp:Lock()
+
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
@@ -1518,6 +1527,9 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                     end
                 end
 
+                -- Unlock after all modifications are complete
+                comp:Unlock()
+
                 timelineItem:SetClipColor("Green") -- Visualise updated clips
             end
         end)
@@ -1537,6 +1549,8 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
         print(string.format("[AutoSubs] Failed to place %d of %d subtitles. First error: %s",
             failed, #timelineItems, tostring(firstError)))
     end
+
+    print(string.format("[AutoSubs] Applied subtitle text to %d clips in %.3f seconds.", #timelineItems, os.clock() - startTime))
 
     return { failed = failed, total = #timelineItems, firstError = firstError, noFusionComp = noFusionComp }
 end
