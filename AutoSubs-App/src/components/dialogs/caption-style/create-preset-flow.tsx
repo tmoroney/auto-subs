@@ -120,10 +120,14 @@ export function CreatePresetFlow({
         let exportDir: string | undefined
         try {
             exportDir = await ensureCaptionPreviewDir()
-        } catch {
+        } catch (e) {
+            console.warn("Preset preview directory unavailable:", e)
             exportDir = undefined
         }
         const result = await capturePresetSettings(exportDir)
+        if (result.previewError) {
+            console.warn("Preset preview render failed:", result.previewError)
+        }
         // `CapturePresetSettings` tears down the session itself on both the
         // success and error paths.
         hasActiveSessionRef.current = false

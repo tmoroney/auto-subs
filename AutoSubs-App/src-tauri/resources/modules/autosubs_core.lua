@@ -1476,10 +1476,6 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-
-                -- Lock the composition to prevent redraws during bulk updates
-                comp:Lock()
-
                 local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
                 if isAnimated then
                     local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
@@ -1526,9 +1522,6 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                         set_speaker_styling(template, speaker)
                     end
                 end
-
-                -- Unlock after all modifications are complete
-                comp:Unlock()
 
                 timelineItem:SetClipColor("Green") -- Visualise updated clips
             end
@@ -1715,72 +1708,38 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     return result
 end
 
+-- Render a single representative frame of `comp` to a PNG in `exportDir` and
+-- return its path. Pulls the image straight off the MediaOut input with
+-- Output:GetValue() instead of adding Saver/Resize tools and calling
+-- comp:Render(), so the live composition is never modified.
 local function extract_frame(comp, exportDir)
-    -- Lock the composition to prevent redraws and pop-ups during scripting [15, 16]
-    comp:Lock()
-
-    -- Access the Saver tool by its name (assuming it exists in the comp)
-    local mySaver = comp:AddTool("Saver")
-
-    local outputPath = ""
-
-    if mySaver ~= nil then
-        -- Set the output filename for the Saver tool [6, 7]
-        -- Make sure to provide a full path and desired image format extension
-        local name = mySaver.Name
-        local settings = mySaver:SaveSettings()
-        settings.Tools[name].Inputs.Clip.Value["Filename"] = join_path(exportDir, "subtitle-preview-0.png")
-        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
-        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
-        mySaver:LoadSettings(settings)
-
-        -- Set the input for the Saver tool to the resized MediaOut tool
-        local mediaOut = comp:FindToolByID("MediaOut")
-        local compWidth, compHeight = 1920, 1080
-        pcall(function()
-            local width = tonumber(comp:GetPrefs("Comp.FrameFormat.Width"))
-            local height = tonumber(comp:GetPrefs("Comp.FrameFormat.Height"))
-            if width and width > 0 then compWidth = width end
-            if height and height > 0 then compHeight = height end
-        end)
-
-        local resize = comp:AddTool("Resize")
-        if resize then
-            resize:SetInput("Width", 640)
-            resize:SetInput("Height", math.floor(640 * compHeight / compWidth + 0.5))
-            resize:SetInput("Input", mediaOut)
-            mySaver:SetInput("Input", resize)
-        else
-            mySaver:SetInput("Input", mediaOut)
-        end
-
-        -- Get the middle frame of the clip (best representative)
-        local attrs = comp:GetAttrs() or {}
-        local frameIndex = math.floor(((attrs.COMPN_GlobalStart or 0) + attrs.COMPN_GlobalEnd) / 2)
-
-        -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
-        local success = comp:Render({
-            Start = frameIndex, -- Start rendering at this frame
-            End = frameIndex,   -- End rendering at this frame (same in this case)
-            Tool = mySaver,     -- Render up to this specific Saver tool [13]
-            Wait = true         -- Wait for the render to complete before continuing the script [19]
-        })
-
-        local outputFilename = "subtitle-preview-" .. frameIndex .. ".png"
-        outputPath = join_path(exportDir, outputFilename)
-
-        if success then
-            print("Frame " .. frameIndex .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
-        else
-            print("Failed to save frame " .. frameIndex)
-        end
-    else
-        print("Saver tool not found in the composition.")
+    local mediaOut = comp:FindToolByID("MediaOut")
+    if not mediaOut then
+        error("MediaOut tool not found in the composition")
+    end
+    local source = mediaOut.Input and mediaOut.Input:GetConnectedOutput()
+    if not source then
+        error("MediaOut has no connected input")
     end
 
-    -- Unlock the composition after changes are complete [15, 20]
-    comp:Unlock()
+    -- Middle frame of the clip: intro animations have finished by then.
+    local attrs = comp:GetAttrs() or {}
+    local globalStart = attrs.COMPN_GlobalStart or 0
+    local globalEnd = attrs.COMPN_GlobalEnd or globalStart
+    local frameIndex = math.floor((globalStart + globalEnd) / 2)
 
+    local img = source:GetValue(frameIndex)
+    if not img then
+        error("Failed to render preview frame " .. tostring(frameIndex))
+    end
+
+    local outputPath = join_path(exportDir, string.format("subtitle-preview-%d-%d.png", os.time(), frameIndex))
+    local saved = img:SaveAs(outputPath)
+    if saved == false then
+        error("Failed to write preview image to " .. outputPath)
+    end
+
+    print("[AutoSubs] Preview frame " .. frameIndex .. " saved to " .. outputPath)
     return outputPath
 end
 
@@ -1849,11 +1808,12 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
                 local autosubsTool = comp:FindTool("AutoSubs")
                 local template = comp:FindTool("Template") or tool
                 if autosubsTool then
-                    if presetSettings and next(presetSettings) ~= nil then
+                    local clipSettings = preset_with_speaker(presetSettings, speaker)
+                    if next(clipSettings) ~= nil then
                         local applyOk, applyErr = pcall(function()
                             local setter = autosubsTool:GetData("SetInputValues")
                             if setter and setter ~= "" then
-                                loadstring(setter)()(comp, autosubsTool, presetSettings)
+                                loadstring(setter)()(comp, autosubsTool, clipSettings)
                             end
                         end)
                         if not applyOk then
@@ -1865,18 +1825,13 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
                     if clsTool then
                         pcall(clsTool.SetInput, clsTool, "Text", "Subtitle Example Text")
                     end
-                    if speaker then
-                        set_speaker_styling(speaker, autosubsTool, true)
-                    end
                     if fontSwap and fontSwap.to then
                         pcall(function() autosubsTool:SetInput("Font", fontSwap.to) end)
                     end
                 end
             else
                 tool:SetInput("StyledText", "Subtitle Example Text")
-                if speaker then
-                    set_speaker_styling(speaker, tool)
-                end
+                set_speaker_styling(tool, speaker)
                 if fontSwap and fontSwap.to then
                     pcall(function() tool:SetInput("Font", fontSwap.to) end)
                 end
@@ -2029,13 +1984,14 @@ function CapturePresetSettings(exportDir)
         settings = loadstring(getter)()(tool)
     end)
 
-    local previewPath
+    local previewPath, previewError
     if ok and type(exportDir) == "string" and exportDir ~= "" then
         local previewOk, previewErr = pcall(function()
             previewPath = extract_frame(presetEditSession.comp, exportDir)
         end)
         if not previewOk then
-            print("Preset preview render failed: " .. tostring(previewErr))
+            previewError = tostring(previewErr)
+            print("[AutoSubs] Preset preview render failed: " .. previewError)
         end
     end
 
@@ -2048,7 +2004,7 @@ function CapturePresetSettings(exportDir)
     end
 
     dump(settings)
-    return { settings = settings or {}, previewPath = previewPath }
+    return { settings = settings or {}, previewPath = previewPath, previewError = previewError }
 end
 
 function CancelPresetEdit()

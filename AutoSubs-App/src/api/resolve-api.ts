@@ -265,6 +265,7 @@ export async function startPresetEdit(
 export async function capturePresetSettings(exportDir?: string): Promise<{
   settings?: Record<string, unknown>;
   previewPath?: string;
+  previewError?: string;
   error?: string;
 }> {
   return callResolve({ func: 'CapturePresetSettings', exportDir });
