@@ -57,7 +57,10 @@ export function PresetThumbnail({
   return (
     <div
       className={cn(
-        "relative flex h-9 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted",
+        // Previews render with a transparent background, so they sit on a dark
+        // neutral in both themes: captions are designed to overlay footage, and
+        // light-filled text is invisible against a light card.
+        "relative flex h-9 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-neutral-800",
         selected ? "border-primary" : "border-border",
         className,
       )}
@@ -74,7 +77,7 @@ export function PresetThumbnail({
           onError={() => setFailed(true)}
         />
       ) : (
-        <ImageIcon className="size-4 text-muted-foreground/50" />
+        <ImageIcon className="size-4 text-white/40" />
       )}
 
       {selected && (
