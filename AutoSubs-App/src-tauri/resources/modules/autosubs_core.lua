@@ -1708,38 +1708,112 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     return result
 end
 
--- Render a single representative frame of `comp` to a PNG in `exportDir` and
--- return its path. Pulls the image straight off the MediaOut input with
--- Output:GetValue() instead of adding Saver/Resize tools and calling
--- comp:Render(), so the live composition is never modified.
+-- Export a representative frame of the preview comp to a PNG in `exportDir`
+-- and return its path. Resolve 21 crashes when the long-running server calls
+-- Composition:Render directly, so rendering runs in a short-lived comp script.
 local function extract_frame(comp, exportDir)
+    local function debug_log(message)
+        pcall(function()
+            local file = io.open("/tmp/autosubs_extract_frame.log", "a")
+            if file then
+                file:write(os.date("%H:%M:%S") .. " " .. tostring(message) .. "\n")
+                file:close()
+            end
+        end)
+    end
+
+    debug_log("enter")
     local mediaOut = comp:FindToolByID("MediaOut")
     if not mediaOut then
         error("MediaOut tool not found in the composition")
     end
-    local source = mediaOut.Input and mediaOut.Input:GetConnectedOutput()
-    if not source then
-        error("MediaOut has no connected input")
-    end
 
-    -- Middle frame of the clip: intro animations have finished by then.
     local attrs = comp:GetAttrs() or {}
     local globalStart = attrs.COMPN_GlobalStart or 0
     local globalEnd = attrs.COMPN_GlobalEnd or globalStart
     local frameIndex = math.floor((globalStart + globalEnd) / 2)
+    local originalRenderStart = attrs.COMPN_RenderStart
+    local originalRenderEnd = attrs.COMPN_RenderEnd
+    local saver
+    local outputPath = join_path(exportDir, "subtitle-preview-" .. frameIndex .. ".png")
 
-    local img = source:GetValue(frameIndex)
-    if not img then
-        error("Failed to render preview frame " .. tostring(frameIndex))
+    local ok, err = pcall(function()
+        debug_log("waiting for graph to become idle")
+        local stableChecks = 0
+        local idleDeadline = os.time() + 15
+        while stableChecks < 20 and os.time() < idleDeadline do
+            if comp:IsRendering() then
+                stableChecks = 0
+            else
+                stableChecks = stableChecks + 1
+            end
+            bmd.wait(0.1)
+        end
+        if stableChecks < 20 then
+            error("Fusion composition did not become idle before preview render")
+        end
+        debug_log("graph idle for two seconds")
+        comp:SetAttrs({COMPN_RenderStart = frameIndex, COMPN_RenderEnd = frameIndex})
+        local verifiedAttrs = comp:GetAttrs() or {}
+        if tonumber(verifiedAttrs.COMPN_RenderStart) ~= frameIndex or
+            tonumber(verifiedAttrs.COMPN_RenderEnd) ~= frameIndex then
+            error("Could not set the one-frame render range")
+        end
+
+        debug_log("one-frame range verified")
+        if next(comp:GetToolList(false, "Saver") or {}) then
+            error("Preview composition already contains a Saver tool")
+        end
+
+        saver = comp:AddTool("Saver")
+        if not saver then
+            error("Could not add a Saver tool to the composition")
+        end
+
+        local name = saver.Name
+        local settings = saver:SaveSettings()
+        settings.Tools[name].Inputs.Clip.Value["Filename"] = join_path(exportDir, "subtitle-preview-0.png")
+        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
+        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
+        saver:LoadSettings(settings)
+        saver:SetInput("PNGFormat.Depth", 1)
+        saver.Input = mediaOut.Output
+
+        comp:SetData("AutoSubsPreviewFrame", frameIndex)
+        comp:SetData("AutoSubsPreviewRenderStatus", "pending")
+        comp:SetData("AutoSubsPreviewRenderError", "")
+        debug_log("launching render helper for frame " .. frameIndex)
+        comp:RunScript(join_path(resources_path, "modules/render_preview.lua"))
+
+        local deadline = os.time() + 15
+        local status = comp:GetData("AutoSubsPreviewRenderStatus")
+        while status == "pending" and os.time() < deadline do
+            bmd.wait(0.1)
+            status = comp:GetData("AutoSubsPreviewRenderStatus")
+        end
+        debug_log("render helper status " .. tostring(status))
+        if status ~= "success" then
+            local renderError = comp:GetData("AutoSubsPreviewRenderError")
+            error("Saver render failed for frame " .. frameIndex .. ": " .. tostring(renderError))
+        end
+    end)
+
+    if saver then
+        pcall(function() saver:Delete() end)
     end
-
-    local outputPath = join_path(exportDir, string.format("subtitle-preview-%d-%d.png", os.time(), frameIndex))
-    local saved = img:SaveAs(outputPath)
-    if saved == false then
-        error("Failed to write preview image to " .. outputPath)
+    debug_log("temporary Saver removed")
+    if originalRenderStart ~= nil and originalRenderEnd ~= nil then
+        pcall(function()
+            comp:SetAttrs({
+                COMPN_RenderStart = originalRenderStart,
+                COMPN_RenderEnd = originalRenderEnd,
+            })
+        end)
     end
-
-    print("[AutoSubs] Preview frame " .. frameIndex .. " saved to " .. outputPath)
+    if not ok then
+        print("[AutoSubs] extract_frame failed: " .. tostring(err))
+        return ""
+    end
     return outputPath
 end
 
@@ -1808,6 +1882,27 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
                 local autosubsTool = comp:FindTool("AutoSubs")
                 local template = comp:FindTool("Template") or tool
                 if autosubsTool then
+                    -- The animated macro animates each word in using the
+                    -- WordTiming table, applied to keyframes by its
+                    -- ExecuteOnChange callback when Text is updated. Without
+                    -- it the preview renders with no words visible.
+                    local previewText = "Subtitle Example Text"
+                    local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 24
+                    local wordTiming = to_word_timing({
+                        { word = "Subtitle", start = 0.0, ["end"] = 0.7 },
+                        { word = " Example", start = 0.8, ["end"] = 1.5 },
+                        { word = " Text",    start = 1.6, ["end"] = 2.3 },
+                    }, framerate, 0)
+                    autosubsTool:SetData("WordTiming", wordTiming) -- applied to keyframes when text is updated
+                    template:SetInput("Text", previewText)
+
+                    -- Sync CharacterLevelStyling1.Text so the Follower1 -> CLS
+                    -- binding chain re-evaluates (ExecuteOnChange can be skipped).
+                    local clsTool = comp:FindTool("CharacterLevelStyling1")
+                    if clsTool then
+                        pcall(clsTool.SetInput, clsTool, "Text", previewText)
+                    end
+
                     local clipSettings = preset_with_speaker(presetSettings, speaker)
                     if next(clipSettings) ~= nil then
                         local applyOk, applyErr = pcall(function()
@@ -1819,11 +1914,6 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
                         if not applyOk then
                             print("Preview preset apply failed: " .. tostring(applyErr))
                         end
-                    end
-                    template:SetInput("Text", "Subtitle Example Text")
-                    local clsTool = comp:FindTool("CharacterLevelStyling1")
-                    if clsTool then
-                        pcall(clsTool.SetInput, clsTool, "Text", "Subtitle Example Text")
                     end
                     if fontSwap and fontSwap.to then
                         pcall(function() autosubsTool:SetInput("Font", fontSwap.to) end)

@@ -66,7 +66,11 @@ export function PresetThumbnail({
         <img
           src={src!}
           alt=""
-          className="size-full object-cover"
+          // `absolute inset-0` rather than `size-full`: the container sizes
+          // itself from `aspect-video`, which leaves its height indefinite, so
+          // a percentage height on the image falls back to the image's
+          // intrinsic height and overflows the (centred, clipped) box.
+          className="absolute inset-0 size-full object-cover"
           onError={() => setFailed(true)}
         />
       ) : (
