@@ -12,7 +12,7 @@ type PreviewImageRecord = { file: string; updatedAt: string };
 type PreviewImages = Record<string, PreviewImageRecord>;
 
 interface PresetsContextType {
-    presets: CaptionPreset[];          // merged, built-ins first
+    presets: CaptionPreset[];          // merged, user presets first
     userPresets: CaptionPreset[];
     isHydrated: boolean;
     getPreset: (id: string) => CaptionPreset | undefined;
@@ -124,7 +124,7 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
     }
 
     const presets = useMemo<CaptionPreset[]>(
-        () => [...BUILT_IN_PRESETS, ...userPresets].map((preset) => {
+        () => [...userPresets, ...BUILT_IN_PRESETS].map((preset) => {
             const preview = previewImages[preset.id];
             return preview
                 ? { ...preset, previewImage: preview.file, previewUpdatedAt: preview.updatedAt }

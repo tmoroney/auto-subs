@@ -2,11 +2,10 @@ import * as React from "react";
 import {
   AlertTriangle,
   Check,
-  ChevronDown,
   ChevronLeft,
-  ChevronUp,
   Download,
   Loader,
+  Pencil,
   Send,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -536,11 +535,7 @@ export function OutputPanel({
                   {isConnected ? summaryParts.join(" · ") : t("output.notConnected")}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
-                  {expanded ? (
-                    <ChevronDown className="size-3.5" />
-                  ) : (
-                    <ChevronUp className="size-3.5" />
-                  )}
+                  <Pencil className="size-3.5" />
                 </span>
               </button>
             </div>
