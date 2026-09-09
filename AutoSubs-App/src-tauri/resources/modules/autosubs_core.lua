@@ -1708,13 +1708,37 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     return result
 end
 
+-- Wide-character-safe existence check: io.open cannot open paths with
+-- non-ASCII characters on Windows, but _wfopen can.
+local function preview_file_exists(path)
+    local f
+    if ffi.os == "Windows" then
+        f = ffi.C._wfopen(to_wide_string(path), to_wide_string("rb"))
+    else
+        f = io.open(path, "rb")
+    end
+    if f ~= nil then
+        if ffi.os == "Windows" then
+            ffi.C.fclose(f)
+        else
+            f:close()
+        end
+        return true
+    end
+    return false
+end
+
 -- Export a representative frame of the preview comp to a PNG in `exportDir`
--- and return its path. Resolve 21 crashes when the long-running server calls
--- Composition:Render directly, so rendering runs in a short-lived comp script.
+-- and return its path, or "" plus an error message when the render fails so
+-- callers can tell a failed render apart from a comp with nothing to render.
+-- Resolve 21 crashes when the long-running server calls Composition:Render
+-- directly, so rendering runs in a short-lived comp script.
 local function extract_frame(comp, exportDir)
     local function debug_log(message)
+        -- Log next to the rendered previews inside the app-private data
+        -- directory rather than a predictable world-writable /tmp path.
         pcall(function()
-            local file = io.open("/tmp/autosubs_extract_frame.log", "a")
+            local file = io.open(join_path(exportDir, "preview-render.log"), "a")
             if file then
                 file:write(os.date("%H:%M:%S") .. " " .. tostring(message) .. "\n")
                 file:close()
@@ -1772,7 +1796,10 @@ local function extract_frame(comp, exportDir)
 
         local name = saver.Name
         local settings = saver:SaveSettings()
-        settings.Tools[name].Inputs.Clip.Value["Filename"] = join_path(exportDir, "subtitle-preview-0.png")
+        -- The digit run before the extension is the Saver's frame-number
+        -- field: rendering frameIndex substitutes it in place, so the written
+        -- file lands exactly at outputPath.
+        settings.Tools[name].Inputs.Clip.Value["Filename"] = outputPath
         settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
         settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
         saver:LoadSettings(settings)
@@ -1796,6 +1823,9 @@ local function extract_frame(comp, exportDir)
             local renderError = comp:GetData("AutoSubsPreviewRenderError")
             error("Saver render failed for frame " .. frameIndex .. ": " .. tostring(renderError))
         end
+        if not preview_file_exists(outputPath) then
+            error("Saver render produced no image at " .. outputPath)
+        end
     end)
 
     if saver then
@@ -1812,7 +1842,7 @@ local function extract_frame(comp, exportDir)
     end
     if not ok then
         print("[AutoSubs] extract_frame failed: " .. tostring(err))
-        return ""
+        return "", tostring(err)
     end
     return outputPath
 end
@@ -1873,7 +1903,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
     end
 
-    local outputPath = nil
+    local outputPath, outputErr = nil, nil
     local success, err = pcall(function()
         if timelineItem:GetFusionCompCount() > 0 then
             local comp = timelineItem:GetFusionCompByIndex(1)
@@ -1926,7 +1956,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
                     pcall(function() tool:SetInput("Font", fontSwap.to) end)
                 end
             end
-            outputPath = extract_frame(comp, exportDir)
+            outputPath, outputErr = extract_frame(comp, exportDir)
         end
     end)
 
@@ -1939,7 +1969,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
     if not outputPath or outputPath == "" then
         return make_error("Failed to generate preview",
-            "Template has no Fusion composition to render from")
+            outputErr or "Template has no Fusion composition to render from")
     end
 
     return { path = outputPath, fontSwap = fontSwap }
@@ -2076,11 +2106,16 @@ function CapturePresetSettings(exportDir)
 
     local previewPath, previewError
     if ok and type(exportDir) == "string" and exportDir ~= "" then
+        local frameErr
         local previewOk, previewErr = pcall(function()
-            previewPath = extract_frame(presetEditSession.comp, exportDir)
+            previewPath, frameErr = extract_frame(presetEditSession.comp, exportDir)
         end)
         if not previewOk then
             previewError = tostring(previewErr)
+        elseif not previewPath or previewPath == "" then
+            previewError = frameErr or "Preset preview render produced no image"
+        end
+        if previewError then
             print("[AutoSubs] Preset preview render failed: " .. previewError)
         end
     end
