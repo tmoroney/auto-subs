@@ -81,7 +81,7 @@ export function PresetThumbnail({
       )}
 
       {selected && (
-        <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+        <span className="absolute bottom-2 right-2 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
           <Check className="size-2.5" />
         </span>
       )}

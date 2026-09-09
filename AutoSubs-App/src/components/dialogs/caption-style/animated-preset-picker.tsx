@@ -293,7 +293,7 @@ function PresetCard({
       }}
       title={preset.description || preset.name}
       className={cn(
-        "group cursor-pointer overflow-hidden p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group relative cursor-pointer overflow-hidden p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected && "border-primary ring-1 ring-primary",
       )}
     >
@@ -302,8 +302,8 @@ function PresetCard({
         selected={selected}
         className="aspect-video h-auto w-full rounded-none border-0"
       />
-      <div className="flex items-center gap-1 px-2 py-1.5 pl-3">
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+      <div className="absolute inset-x-0 top-0 flex items-center gap-1 bg-gradient-to-b from-black/70 via-black/30 to-transparent px-2 pb-6 pl-3 pt-1.5">
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
           {preset.name}
         </span>
         <DropdownMenu>
@@ -312,7 +312,7 @@ function PresetCard({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-6 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              className="size-6 text-white/80 opacity-60 transition-opacity hover:bg-white/15 hover:text-white focus-visible:opacity-100 data-[state=open]:opacity-100 group-hover:opacity-100"
               onClick={(e) => e.stopPropagation()}
               aria-label={t("common.edit", "Edit")}
             >
@@ -393,12 +393,12 @@ function NewPresetCard({
           onCreate();
         }
       }}
-      className="group cursor-pointer overflow-hidden border-dashed p-0 text-muted-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative cursor-pointer overflow-hidden border-dashed p-0 text-muted-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex aspect-video h-auto w-full items-center justify-center bg-muted/30">
         <Plus className="size-6 group-hover:text-foreground" />
       </div>
-      <div className="flex items-center gap-1 px-2 py-1.5 pl-3">
+      <div className="absolute inset-x-0 top-0 flex items-center gap-1 px-2 py-1.5 pl-3">
         <span className="min-w-0 flex-1 truncate text-xs font-semibold">
           {t("addToTimeline.preset.new", "New Preset")}
         </span>
