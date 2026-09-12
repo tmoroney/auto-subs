@@ -30,3 +30,4 @@ AutoSubs-App/package-lock.json
 node_modules/
 /Adobe-Extension/dist
 /Adobe-Extension/archive
+.codemaps/
