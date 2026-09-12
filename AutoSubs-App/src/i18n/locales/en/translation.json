@@ -599,7 +599,7 @@
       "new": "New preset",
       "builtIn": "Built-in",
       "custom": "Custom",
-      "preview": "Preview in Resolve",
+      "preview": "Generate preview",
       "duplicate": "Duplicate",
       "delete": "Delete",
       "export": "Export JSON",
@@ -636,7 +636,8 @@
         "invalidJson": "That doesn’t look like a valid preset file.",
         "captureFailed": "Couldn’t read the caption settings from Resolve.",
         "nameRequired": "Please enter a name."
-      }
+      },
+      "previewFailed": "Could not render preview"
     }
   },
   "replaceStrings": {

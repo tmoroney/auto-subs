@@ -131,10 +131,15 @@ local function sleep(n)
     end
 end
 
--- Load external libraries
+-- Load external libraries. These are required lazily in Init(), so the language
+-- server would otherwise infer them as `nil` here and flag every later use.
+---@type any
 local socket = nil
+---@type any
 local json = nil
+---@type any
 local luaresolve = nil
+---@type any
 local font_fallback = nil
 
 -- Function to read a JSON file. Returns the decoded table on success, or
@@ -217,7 +222,7 @@ local currentExportJob = {
     trackStates = nil,
     clipBoundaries = nil,
     -- Captured before ExportAudio, restored by restore_user_state() in AddSubtitles.
-    savedMarks = nil       -- raw GetMarkInOut() dict (relative frame values)
+    savedMarks = nil -- raw GetMarkInOut() dict (relative frame values)
 }
 
 -- Helper that wraps a Resolve-facing operation in pcall and returns a
@@ -253,6 +258,9 @@ function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
     local frameRate = timeline:GetSetting("timelineFrameRate")
     local frames = to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
+    if not luaresolve then
+        error("Resolve timecode library is not available")
+    end
     local timecode = luaresolve:timecode_from_frame_auto(frames, frameRate)
     timeline:SetCurrentTimecode(timecode)
 end
@@ -476,7 +484,7 @@ function GetTemplates()
 end
 
 function GetVersion()
-    return { version = VERSION }
+    return { version = VERSION, captionTemplateVersion = CAPTION_TEMPLATE_VERSION }
 end
 
 -- Get a list of possible output tracks for subtitles
@@ -984,7 +992,8 @@ function ExportAudio(outputDir, inputTracks, exportRange)
 
         -- Fallback so a missing or empty job list doesn't crash the server.
         if not jobInfo then
-            print("[AutoSubs] GetRenderJobList did not return job info for PID " .. tostring(pid) .. ", using configured render settings")
+            print("[AutoSubs] GetRenderJobList did not return job info for PID " ..
+            tostring(pid) .. ", using configured render settings")
             jobInfo = {
                 TargetDir = outputDir,
                 OutputFilename = exportName .. ".wav",
@@ -1049,33 +1058,6 @@ local function sanitize_track_index(timeline, trackIndex, markIn, markOut)
     end
 
     return tonumber(trackIndex)
-end
-
-local function set_speaker_styling(speaker, tool, isAnimated)
-    -- Return early if no custom color set for speaker
-    if not speaker.color or speaker.color == "" then return end
-
-    local styleId = STYLE_INDEX[speaker.style]
-
-    -- Convert hex color to rgb
-    local color = hex_to_rgb(speaker.color)
-    if color == nil then return end
-
-    -- Update color for that style e.g. Fill or Outline
-    for key, value in ipairs(color) do
-        if isAnimated then
-            tool:SetInput(speaker.style .. "Color" .. key, value)
-        else
-            tool:SetInput(key .. styleId, value)
-        end
-    end
-
-    -- Ensure the selected style is enabled
-    if isAnimated then
-        tool:SetInput(speaker.style .. "Enabled", 1)
-    else
-        tool:SetInput("Enabled" .. styleId, 1)
-    end
 end
 
 -- Check for existing clips on a track that would conflict with new subtitles
@@ -1148,6 +1130,12 @@ function CheckTrackConflicts(filePath, trackIndex)
         },
         totalConflicts = #conflictingClips
     }
+end
+
+-- UTF-8 aware character count
+local function utf8len(s)
+    local _, count = s:gsub("[^\128-\191]", "")
+    return count
 end
 
 local function load_subtitle_data(filePath)
@@ -1393,10 +1381,59 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     return clipList
 end
 
--- UTF-8 aware character count
-local function utf8len(s)
-    local _, count = s:gsub("[^\128-\191]", "")
-    return count
+-- RGB channel names matching hex_to_rgb()'s return keys and TextPlus inputs.
+local RGB_CHANNELS = { "Red", "Green", "Blue" }
+
+-- Apply a speaker's style/color to a basic (non-animated) TextPlus template.
+-- `hex_to_rgb` returns a map keyed by channel name, so we must iterate
+-- RGB_CHANNELS — `ipairs(color)` is always empty.
+local function set_speaker_styling(tool, speaker)
+    if not speaker or not tool then return end
+    if not speaker.color or speaker.color == "" then return end
+    if not speaker.style or speaker.style == "None" then return end
+
+    local styleId = STYLE_INDEX[speaker.style]
+    if not styleId then return end
+
+    local color = hex_to_rgb(speaker.color)
+    if color == nil then return end
+
+    for _, channel in ipairs(RGB_CHANNELS) do
+        local value = color[channel]
+        if value ~= nil then
+            -- Stock TextPlus: Red1 / Green1 / Blue1 / Enabled1
+            tool:SetInput(channel .. styleId, value)
+        end
+    end
+
+    tool:SetInput("Enabled" .. styleId, 1)
+end
+
+-- Shallow-copy a preset table and overlay this clip's speaker color so each
+-- subtitle can diverge without mutating the caller's shared presetSettings.
+local function preset_with_speaker(presetSettings, speaker)
+    local out = {}
+    if type(presetSettings) == "table" then
+        for k, v in pairs(presetSettings) do
+            out[k] = v
+        end
+    end
+
+    if not speaker or not speaker.color or not speaker.style or speaker.style == "None" then
+        return out
+    end
+
+    local color = hex_to_rgb(speaker.color)
+    if not color then
+        return out
+    end
+
+    out[speaker.style .. "Enabled"] = 1
+    for _, channel in ipairs(RGB_CHANNELS) do
+        out[speaker.style .. "Color" .. channel] = color[channel]
+    end
+
+    return out
 end
 
 local function to_word_timing(transcript_words, frameRate, segmentStart)
@@ -1422,7 +1459,7 @@ end
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings)
-    local hasPresetSettings = isAnimated and presetSettings ~= nil and next(presetSettings) ~= nil
+    local startTime = os.clock()
     local failed = 0
     local noFusionComp = 0
     local firstError = nil
@@ -1434,7 +1471,8 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             local fusionCompCount = timelineItem:GetFusionCompCount()
             if not fusionCompCount then
                 noFusionComp = noFusionComp + 1
-                error("template clip has no Fusion composition (GetFusionCompCount returned nil) — your DaVinci Resolve version may be incompatible")
+                error(
+                "template clip has no Fusion composition (GetFusionCompCount returned nil) — your DaVinci Resolve version may be incompatible")
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
@@ -1455,15 +1493,21 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                         pcall(clsTool.SetInput, clsTool, "Text", subtitleText)
                     end
 
-                    -- Apply caption preset settings via the macro's built-in helper
-                    -- so inspector values captured during a preset edit are faithfully
-                    -- reproduced here. Swallow errors for forward-compat with future
-                    -- macro versions that may gain/lose fields.
-                    if hasPresetSettings then
+                    -- Merge per-speaker styling into the preset so each clip gets its
+                    -- own color and the caller's shared preset table is not mutated.
+                    -- A missing preset is fine: we start from an empty table and apply
+                    -- only the speaker values for the animated macro.
+                    local clipSettings = presetSettings
+                    if speakersExist then
+                        local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+                        clipSettings = preset_with_speaker(presetSettings, speaker)
+                    end
+
+                    if clipSettings and next(clipSettings) ~= nil then
                         local applyOk, applyErr = pcall(function()
                             local setter = autosubsTool:GetData("SetInputValues")
                             if setter and setter ~= "" then
-                                loadstring(setter)()(comp, autosubsTool, presetSettings)
+                                loadstring(setter)()(comp, autosubsTool, clipSettings)
                             end
                         end)
                         if not applyOk then
@@ -1473,12 +1517,9 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                     end
                 else
                     template:SetInput("StyledText", subtitleText)
-                end
-
-                if speakersExist then
-                    local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
-                    if speaker then
-                        set_speaker_styling(speaker, template, isAnimated)
+                    if speakersExist then
+                        local speaker = get_speaker_from_id(speakers, subtitle.speaker_id)
+                        set_speaker_styling(template, speaker)
                     end
                 end
 
@@ -1493,13 +1534,16 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
     end
 
     if noFusionComp > 0 then
-        print(string.format("[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). This usually means your DaVinci Resolve version is incompatible with the AutoSubs Caption template.",
+        print(string.format(
+            "[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). This usually means your DaVinci Resolve version is incompatible with the AutoSubs Caption template.",
             noFusionComp, #timelineItems))
     end
     if failed > 0 then
         print(string.format("[AutoSubs] Failed to place %d of %d subtitles. First error: %s",
             failed, #timelineItems, tostring(firstError)))
     end
+
+    print(string.format("[AutoSubs] Applied subtitle text to %d clips in %.3f seconds.", #timelineItems, os.clock() - startTime))
 
     return { failed = failed, total = #timelineItems, firstError = firstError, noFusionComp = noFusionComp }
 end
@@ -1516,138 +1560,143 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     local result
     local ok, err = pcall(function()
         result = (function()
-    local data, loadErr = load_subtitle_data(filePath)
-    if not data then
-        return make_error("Failed to load subtitle file", loadErr)
-    end
-
-    ---@type { mark_in: integer, mark_out: integer, segments: table, speakers: table }
-    data = data
-
-    local timeline = project:GetCurrentTimeline()
-    if not timeline then
-        return make_error("Failed to add subtitles", "No active timeline in Resolve")
-    end
-    local timelineStart = timeline:GetStartFrame()
-    local markIn, markOut = get_mark_in_out(timeline, data)
-    local subtitles = data["segments"]
-    local speakers = data["speakers"]
-
-    if not subtitles or #subtitles == 0 then
-        return make_error("Failed to add subtitles", "Transcript has no segments")
-    end
-
-    local speakersExist = false
-    if speakers and #speakers > 0 then
-        speakersExist = true
-    end
-
-    trackIndex = sanitize_track_index(timeline, trackIndex, markIn, markOut)
-
-    local frame_rate = timeline:GetSetting("timelineFrameRate")
-
-    local earlyResult = nil
-    trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode, frame_rate,
-        timelineStart)
-    if earlyResult then
-        return earlyResult
-    end
-
-    speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
-
-    local rootFolder = mediaPool:GetRootFolder()
-    local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder, templateName)
-    if not templateItem then
-        return make_error("Template not found", templateErr)
-    end
-
-    local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-        template_frame_rate, timelineStart)
-
-    -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
-    -- silently return an empty table. Re-lock them afterwards.
-    local lockedTracks = {}
-    if timeline.GetIsTrackLocked and timeline.SetTrackLock then
-        local trackSet = {}
-        for _, clip in ipairs(clipList) do
-            trackSet[clip.trackIndex] = true
-        end
-        for ti in pairs(trackSet) do
-            local isLocked = false
-            pcall(function()
-                isLocked = timeline:GetIsTrackLocked("video", ti) or false
-            end)
-            if isLocked then
-                pcall(timeline.SetTrackLock, timeline, "video", ti, false)
-                lockedTracks[ti] = true
-                print("[AutoSubs] Temporarily unlocked video track " .. ti .. " for placement")
+            local data, loadErr = load_subtitle_data(filePath)
+            if not data then
+                return make_error("Failed to load subtitle file", loadErr)
             end
-        end
-    end
 
-    local appendOk, timelineItems = pcall(function()
-        return mediaPool:AppendToTimeline(clipList)
-    end)
+            ---@type { mark_in: integer, mark_out: integer, segments: table, speakers: table }
+            data = data
 
-    for ti in pairs(lockedTracks) do
-        pcall(timeline.SetTrackLock, timeline, "video", ti, true)
-        print("[AutoSubs] Re-locked video track " .. ti)
-    end
+            local timeline = project:GetCurrentTimeline()
+            if not timeline then
+                return make_error("Failed to add subtitles", "No active timeline in Resolve")
+            end
+            local timelineStart = timeline:GetStartFrame()
+            local markIn, markOut = get_mark_in_out(timeline, data)
+            local subtitles = data["segments"]
+            local speakers = data["speakers"]
 
-    if not appendOk then
-        return make_error("Failed to add subtitles to timeline", timelineItems)
-    end
-    if type(timelineItems) ~= "table" or #timelineItems == 0 then
-        return make_error("Failed to add subtitles to timeline",
-            "Resolve did not return any timeline items from AppendToTimeline. " ..
-            "This can happen if the template clip is invalid/corrupt or the target " ..
-            "track index is out of range. Try re-importing the template or choosing " ..
-            "a different track.")
-    end
+            if not subtitles or #subtitles == 0 then
+                return make_error("Failed to add subtitles", "Transcript has no segments")
+            end
 
-    -- Use the resolved template name so a fallback to ANIMATED_CAPTION still
-    -- enables the animated-text path.
-    local isAnimated = is_animated_caption(resolvedTemplateName)
+            local speakersExist = false
+            if speakers and #speakers > 0 then
+                speakersExist = true
+            end
 
-    -- Auto-swap the caption Font for non-Latin transcript languages when the
-    -- user is still on the macro's default font. Uses the transcript JSON's
-    -- `language` field so older transcripts in a different language still get
-    -- the right font even if the app's current language setting has moved on.
-    local fontSwap = nil
-    if isAnimated and font_fallback then
-        presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
-    end
+            trackIndex = sanitize_track_index(timeline, trackIndex, markIn, markOut)
 
-    local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
-        presetSettings)
+            local frame_rate = timeline:GetSetting("timelineFrameRate")
 
-    -- Force timeline refresh by jumping to the first subtitle
-    if subtitles and #subtitles > 0 then
-        JumpToTime(subtitles[1].start)
-    end
+            local earlyResult = nil
+            trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode,
+                frame_rate,
+                timelineStart)
+            if earlyResult then
+                return earlyResult
+            end
 
-    -- If some (but not all) clips failed to receive text/styling, still report
-    -- success but include a warning summary so the UI can mention it.
-    if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
-        local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
-        if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
-            warning = warning .. string.format(" (%d had no Fusion composition — your Resolve version may be incompatible)", applyStats.noFusionComp)
-        end
-        return {
-            ok = true,
-            fontSwap = fontSwap,
-            warning = warning,
-            detail = applyStats.firstError
-        }
-    elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
-        local short = string.format("Failed to place all %d subtitles", applyStats.total)
-        if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
-            short = short .. " — template clips had no Fusion composition. Check that your DaVinci Resolve version supports the AutoSubs Caption template."
-        end
-        return make_error(short, applyStats.firstError)
-    end
+            speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
-    return { ok = true, fontSwap = fontSwap }
+            local rootFolder = mediaPool:GetRootFolder()
+            local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder,
+                templateName)
+            if not templateItem then
+                return make_error("Template not found", templateErr)
+            end
+
+            local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
+                template_frame_rate, timelineStart)
+
+            -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
+            -- silently return an empty table. Re-lock them afterwards.
+            local lockedTracks = {}
+            if timeline.GetIsTrackLocked and timeline.SetTrackLock then
+                local trackSet = {}
+                for _, clip in ipairs(clipList) do
+                    trackSet[clip.trackIndex] = true
+                end
+                for ti in pairs(trackSet) do
+                    local isLocked = false
+                    pcall(function()
+                        isLocked = timeline:GetIsTrackLocked("video", ti) or false
+                    end)
+                    if isLocked then
+                        pcall(timeline.SetTrackLock, timeline, "video", ti, false)
+                        lockedTracks[ti] = true
+                        print("[AutoSubs] Temporarily unlocked video track " .. ti .. " for placement")
+                    end
+                end
+            end
+
+            local appendOk, timelineItems = pcall(function()
+                return mediaPool:AppendToTimeline(clipList)
+            end)
+
+            for ti in pairs(lockedTracks) do
+                pcall(timeline.SetTrackLock, timeline, "video", ti, true)
+                print("[AutoSubs] Re-locked video track " .. ti)
+            end
+
+            if not appendOk then
+                return make_error("Failed to add subtitles to timeline", timelineItems)
+            end
+            if type(timelineItems) ~= "table" or #timelineItems == 0 then
+                return make_error("Failed to add subtitles to timeline",
+                    "Resolve did not return any timeline items from AppendToTimeline. " ..
+                    "This can happen if the template clip is invalid/corrupt or the target " ..
+                    "track index is out of range. Try re-importing the template or choosing " ..
+                    "a different track.")
+            end
+
+            -- Use the resolved template name so a fallback to ANIMATED_CAPTION still
+            -- enables the animated-text path.
+            local isAnimated = is_animated_caption(resolvedTemplateName)
+
+            -- Auto-swap the caption Font for non-Latin transcript languages when the
+            -- user is still on the macro's default font. Uses the transcript JSON's
+            -- `language` field so older transcripts in a different language still get
+            -- the right font even if the app's current language setting has moved on.
+            local fontSwap = nil
+            if isAnimated and font_fallback then
+                presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
+            end
+
+            local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
+                presetSettings)
+
+            -- Force timeline refresh by jumping to the first subtitle
+            if subtitles and #subtitles > 0 then
+                JumpToTime(subtitles[1].start)
+            end
+
+            -- If some (but not all) clips failed to receive text/styling, still report
+            -- success but include a warning summary so the UI can mention it.
+            if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
+                local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
+                if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
+                    warning = warning ..
+                    string.format(" (%d had no Fusion composition — your Resolve version may be incompatible)",
+                        applyStats.noFusionComp)
+                end
+                return {
+                    ok = true,
+                    fontSwap = fontSwap,
+                    warning = warning,
+                    detail = applyStats.firstError
+                }
+            elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
+                local short = string.format("Failed to place all %d subtitles", applyStats.total)
+                if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
+                    short = short ..
+                    " — template clips had no Fusion composition. Check that your DaVinci Resolve version supports the AutoSubs Caption template."
+                end
+                return make_error(short, applyStats.firstError)
+            end
+
+            return { ok = true, fontSwap = fontSwap }
         end)() -- end of inner placement function
     end)
 
@@ -1659,55 +1708,142 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
     return result
 end
 
-local function extract_frame(comp, exportDir)
-    -- Lock the composition to prevent redraws and pop-ups during scripting [15, 16]
-    comp:Lock()
-
-    -- Access the Saver tool by its name (assuming it exists in the comp)
-    local mySaver = comp:AddTool("Saver")
-
-    local outputPath = ""
-
-    if mySaver ~= nil then
-        -- Set the output filename for the Saver tool [6, 7]
-        -- Make sure to provide a full path and desired image format extension
-        local name = mySaver.Name
-        local settings = mySaver:SaveSettings()
-        settings.Tools[name].Inputs.Clip.Value["Filename"] = join_path(exportDir, "subtitle-preview-0.png")
-        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
-        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
-        mySaver:LoadSettings(settings)
-
-        -- Set the input for the Saver tool to the MediaOut tool
-        local mediaOut = comp:FindToolByID("MediaOut")
-        mySaver:SetInput("Input", mediaOut)
-
-        -- Get the middle frame of the clip (best representative)
-        local frameIndex = math.floor(comp:GetAttrs().COMPN_GlobalEnd / 2)
-
-        -- Trigger the render for only the specified frame through the Saver tool [1, 13, 14]
-        local success = comp:Render({
-            Start = frameIndex, -- Start rendering at this frame
-            End = frameIndex,   -- End rendering at this frame (same in this case)
-            Tool = mySaver,     -- Render up to this specific Saver tool [13]
-            Wait = true         -- Wait for the render to complete before continuing the script [19]
-        })
-
-        local outputFilename = "subtitle-preview-" .. frameIndex .. ".png"
-        outputPath = join_path(exportDir, outputFilename)
-
-        if success then
-            print("Frame " .. frameIndex .. " successfully saved by " .. mySaver.Name .. " to " .. outputPath)
-        else
-            print("Failed to save frame " .. frameIndex)
-        end
+-- Wide-character-safe existence check: io.open cannot open paths with
+-- non-ASCII characters on Windows, but _wfopen can.
+local function preview_file_exists(path)
+    local f
+    if ffi.os == "Windows" then
+        f = ffi.C._wfopen(to_wide_string(path), to_wide_string("rb"))
     else
-        print("Saver tool 'MySaver' not found in the composition.")
+        f = io.open(path, "rb")
+    end
+    if f ~= nil then
+        if ffi.os == "Windows" then
+            ffi.C.fclose(f)
+        else
+            f:close()
+        end
+        return true
+    end
+    return false
+end
+
+-- Export a representative frame of the preview comp to a PNG in `exportDir`
+-- and return its path, or "" plus an error message when the render fails so
+-- callers can tell a failed render apart from a comp with nothing to render.
+-- Resolve 21 crashes when the long-running server calls Composition:Render
+-- directly, so rendering runs in a short-lived comp script.
+local function extract_frame(comp, exportDir)
+    local function debug_log(message)
+        -- Log next to the rendered previews inside the app-private data
+        -- directory rather than a predictable world-writable /tmp path.
+        pcall(function()
+            local file = io.open(join_path(exportDir, "preview-render.log"), "a")
+            if file then
+                file:write(os.date("%H:%M:%S") .. " " .. tostring(message) .. "\n")
+                file:close()
+            end
+        end)
     end
 
-    -- Unlock the composition after changes are complete [15, 20]
-    comp:Unlock()
+    debug_log("enter")
+    local mediaOut = comp:FindToolByID("MediaOut")
+    if not mediaOut then
+        error("MediaOut tool not found in the composition")
+    end
 
+    local attrs = comp:GetAttrs() or {}
+    local globalStart = attrs.COMPN_GlobalStart or 0
+    local globalEnd = attrs.COMPN_GlobalEnd or globalStart
+    local frameIndex = math.floor((globalStart + globalEnd) / 2)
+    local originalRenderStart = attrs.COMPN_RenderStart
+    local originalRenderEnd = attrs.COMPN_RenderEnd
+    local saver
+    local outputPath = join_path(exportDir, "subtitle-preview-" .. frameIndex .. ".png")
+
+    local ok, err = pcall(function()
+        debug_log("waiting for graph to become idle")
+        local stableChecks = 0
+        local idleDeadline = os.time() + 15
+        while stableChecks < 20 and os.time() < idleDeadline do
+            if comp:IsRendering() then
+                stableChecks = 0
+            else
+                stableChecks = stableChecks + 1
+            end
+            bmd.wait(0.1)
+        end
+        if stableChecks < 20 then
+            error("Fusion composition did not become idle before preview render")
+        end
+        debug_log("graph idle for two seconds")
+        comp:SetAttrs({COMPN_RenderStart = frameIndex, COMPN_RenderEnd = frameIndex})
+        local verifiedAttrs = comp:GetAttrs() or {}
+        if tonumber(verifiedAttrs.COMPN_RenderStart) ~= frameIndex or
+            tonumber(verifiedAttrs.COMPN_RenderEnd) ~= frameIndex then
+            error("Could not set the one-frame render range")
+        end
+
+        debug_log("one-frame range verified")
+        if next(comp:GetToolList(false, "Saver") or {}) then
+            error("Preview composition already contains a Saver tool")
+        end
+
+        saver = comp:AddTool("Saver")
+        if not saver then
+            error("Could not add a Saver tool to the composition")
+        end
+
+        local name = saver.Name
+        local settings = saver:SaveSettings()
+        -- The digit run before the extension is the Saver's frame-number
+        -- field: rendering frameIndex substitutes it in place, so the written
+        -- file lands exactly at outputPath.
+        settings.Tools[name].Inputs.Clip.Value["Filename"] = outputPath
+        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
+        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
+        saver:LoadSettings(settings)
+        saver:SetInput("PNGFormat.Depth", 1)
+        saver.Input = mediaOut.Output
+
+        comp:SetData("AutoSubsPreviewFrame", frameIndex)
+        comp:SetData("AutoSubsPreviewRenderStatus", "pending")
+        comp:SetData("AutoSubsPreviewRenderError", "")
+        debug_log("launching render helper for frame " .. frameIndex)
+        comp:RunScript(join_path(resources_path, "modules/render_preview.lua"))
+
+        local deadline = os.time() + 15
+        local status = comp:GetData("AutoSubsPreviewRenderStatus")
+        while status == "pending" and os.time() < deadline do
+            bmd.wait(0.1)
+            status = comp:GetData("AutoSubsPreviewRenderStatus")
+        end
+        debug_log("render helper status " .. tostring(status))
+        if status ~= "success" then
+            local renderError = comp:GetData("AutoSubsPreviewRenderError")
+            error("Saver render failed for frame " .. frameIndex .. ": " .. tostring(renderError))
+        end
+        if not preview_file_exists(outputPath) then
+            error("Saver render produced no image at " .. outputPath)
+        end
+    end)
+
+    if saver then
+        pcall(function() saver:Delete() end)
+    end
+    debug_log("temporary Saver removed")
+    if originalRenderStart ~= nil and originalRenderEnd ~= nil then
+        pcall(function()
+            comp:SetAttrs({
+                COMPN_RenderStart = originalRenderStart,
+                COMPN_RenderEnd = originalRenderEnd,
+            })
+        end)
+    end
+    if not ok then
+        print("[AutoSubs] extract_frame failed: " .. tostring(err))
+        return "", tostring(err)
+    end
     return outputPath
 end
 
@@ -1767,17 +1903,60 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
     end
 
-    local outputPath = nil
+    local outputPath, outputErr = nil, nil
     local success, err = pcall(function()
         if timelineItem:GetFusionCompCount() > 0 then
             local comp = timelineItem:GetFusionCompByIndex(1)
             local tool = comp:FindToolByID("TextPlus")
-            tool:SetInput("StyledText", "Subtitle Example Text")
-            set_speaker_styling(speaker, tool)
-            if fontSwap and fontSwap.to then
-                pcall(function() tool:SetInput("Font", fontSwap.to) end)
+            if isAnimated then
+                local autosubsTool = comp:FindTool("AutoSubs")
+                local template = comp:FindTool("Template") or tool
+                if autosubsTool then
+                    -- The animated macro animates each word in using the
+                    -- WordTiming table, applied to keyframes by its
+                    -- ExecuteOnChange callback when Text is updated. Without
+                    -- it the preview renders with no words visible.
+                    local previewText = "Subtitle Example Text"
+                    local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 24
+                    local wordTiming = to_word_timing({
+                        { word = "Subtitle", start = 0.0, ["end"] = 0.7 },
+                        { word = " Example", start = 0.8, ["end"] = 1.5 },
+                        { word = " Text",    start = 1.6, ["end"] = 2.3 },
+                    }, framerate, 0)
+                    autosubsTool:SetData("WordTiming", wordTiming) -- applied to keyframes when text is updated
+                    template:SetInput("Text", previewText)
+
+                    -- Sync CharacterLevelStyling1.Text so the Follower1 -> CLS
+                    -- binding chain re-evaluates (ExecuteOnChange can be skipped).
+                    local clsTool = comp:FindTool("CharacterLevelStyling1")
+                    if clsTool then
+                        pcall(clsTool.SetInput, clsTool, "Text", previewText)
+                    end
+
+                    local clipSettings = preset_with_speaker(presetSettings, speaker)
+                    if next(clipSettings) ~= nil then
+                        local applyOk, applyErr = pcall(function()
+                            local setter = autosubsTool:GetData("SetInputValues")
+                            if setter and setter ~= "" then
+                                loadstring(setter)()(comp, autosubsTool, clipSettings)
+                            end
+                        end)
+                        if not applyOk then
+                            print("Preview preset apply failed: " .. tostring(applyErr))
+                        end
+                    end
+                    if fontSwap and fontSwap.to then
+                        pcall(function() autosubsTool:SetInput("Font", fontSwap.to) end)
+                    end
+                end
+            else
+                tool:SetInput("StyledText", "Subtitle Example Text")
+                set_speaker_styling(tool, speaker)
+                if fontSwap and fontSwap.to then
+                    pcall(function() tool:SetInput("Font", fontSwap.to) end)
+                end
             end
-            outputPath = extract_frame(comp, exportDir)
+            outputPath, outputErr = extract_frame(comp, exportDir)
         end
     end)
 
@@ -1790,7 +1969,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
     if not outputPath or outputPath == "" then
         return make_error("Failed to generate preview",
-            "Template has no Fusion composition to render from")
+            outputErr or "Template has no Fusion composition to render from")
     end
 
     return { path = outputPath, fontSwap = fontSwap }
@@ -1807,7 +1986,8 @@ end
 --
 -- The three endpoints below form a mini state machine driven from the app:
 --   StartPresetEdit  -> drops a caption clip on a temp track, opens Fusion.
---   CapturePresetSettings -> reads tool inputs, tears down the temp track.
+--   CapturePresetSettings -> reads tool inputs, renders a preview, and tears down
+--   the temp track.
 --   CancelPresetEdit -> tears down without reading.
 -- ---------------------------------------------------------------------------
 
@@ -1904,7 +2084,7 @@ function StartPresetEdit(initialSettings)
     return { ok = true }
 end
 
-function CapturePresetSettings()
+function CapturePresetSettings(exportDir)
     if presetEditSession == nil then
         return { error = "No preset edit in progress" }
     end
@@ -1924,6 +2104,22 @@ function CapturePresetSettings()
         settings = loadstring(getter)()(tool)
     end)
 
+    local previewPath, previewError
+    if ok and type(exportDir) == "string" and exportDir ~= "" then
+        local frameErr
+        local previewOk, previewErr = pcall(function()
+            previewPath, frameErr = extract_frame(presetEditSession.comp, exportDir)
+        end)
+        if not previewOk then
+            previewError = tostring(previewErr)
+        elseif not previewPath or previewPath == "" then
+            previewError = frameErr or "Preset preview render produced no image"
+        end
+        if previewError then
+            print("[AutoSubs] Preset preview render failed: " .. previewError)
+        end
+    end
+
     -- Always tear down, even on failure, so the user isn't left with a
     -- stranded preview clip on their timeline.
     teardown_preset_edit_session()
@@ -1933,7 +2129,7 @@ function CapturePresetSettings()
     end
 
     dump(settings)
-    return { settings = settings or {} }
+    return { settings = settings or {}, previewPath = previewPath, previewError = previewError }
 end
 
 function CancelPresetEdit()
@@ -2164,7 +2360,7 @@ function StartServer()
                                 body = safe_json(result)
                             elseif data.func == "CapturePresetSettings" then
                                 print("[AutoSubs Server] Capturing caption preset settings...")
-                                local result = CapturePresetSettings()
+                                local result = CapturePresetSettings(data.exportDir)
                                 body = safe_json(result)
                             elseif data.func == "CancelPresetEdit" then
                                 print("[AutoSubs Server] Cancelling caption preset edit...")
@@ -2289,7 +2485,8 @@ function StartServer()
         -- Intentionally keep ljsocket and libavutil cached: they call ffi.cdef and
         -- their API is stable, so reloading them risks redefinition errors.
 
-        local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE, false)
+        local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE,
+            false)
         if not ok then
             print("[AutoSubs Server] New server initialization failed:", init_err)
             print("[AutoSubs Server] Restarting previous server...")

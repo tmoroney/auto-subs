@@ -55,6 +55,8 @@ interface CaptionTemplateSelectionContentProps {
     onDuplicatePreset: (preset: CaptionPreset) => Promise<void> | void
     onImportPreset: (json: string) => Promise<CaptionPreset>
     onExportPreset: (id: string) => string
+    onRequestPreview?: (preset: CaptionPreset) => void
+    previewLoadingId?: string | null
     hasAnimatedTemplate: boolean
 }
 
@@ -82,6 +84,8 @@ export function CaptionTemplateSelectionContent({
     onDuplicatePreset,
     onImportPreset,
     onExportPreset,
+    onRequestPreview,
+    previewLoadingId,
     hasAnimatedTemplate,
 }: CaptionTemplateSelectionContentProps) {
     const { t } = useTranslation()
@@ -186,6 +190,10 @@ export function CaptionTemplateSelectionContent({
                         onExportJson={onExportPreset}
                         onDuplicate={onDuplicatePreset}
                         onImportJson={onImportPreset}
+                        onRequestPreview={
+                            selectedIntegration === "davinci" ? onRequestPreview : undefined
+                        }
+                        previewLoadingId={previewLoadingId}
                         onRequestCreate={onRequestCreate}
                     />
                 </section>

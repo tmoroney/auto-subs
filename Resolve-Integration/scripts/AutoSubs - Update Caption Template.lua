@@ -37,6 +37,8 @@ local AUTOSUBS_BIN = "AutoSubs"
 local BASIC_TEMPLATE = "Basic Template"
 local TEMPLATE_VERSION = os.date("%Y-%m-%d")
 local VERSIONED_CAPTION = ANIMATED_CAPTION .. " " .. TEMPLATE_VERSION
+local VERSION_DATA_KEY = "AutoSubs.TemplateVersion"
+local TOKEN_DATA_KEY = "AutoSubs.UpdateToken"
 
 local sep = package.config:sub(1, 1) -- '\\' on Windows, '/' elsewhere
 local function join_path(dir, ...)
@@ -114,6 +116,46 @@ local function find_clip_by_name(folder, name)
         end
     end
     return nil
+end
+
+-- AppendToTimeline fails *silently* when the target slot on the track is already
+-- occupied: it still returns a truthy timelineItem, but that handle is dead and
+-- every method on it returns no value at all. Appending onto a dedicated track
+-- added just for this guarantees a free slot, and validating the handle turns any
+-- remaining failure into a real error instead of a corrupt export.
+local function append_on_temp_track(mediaPoolItem)
+    local trackIndex = timeline:GetTrackCount("video") + 1
+    if not timeline:AddTrack("video") then
+        return nil, "Failed to add a temporary video track"
+    end
+
+    local appended = mediaPool:AppendToTimeline({ {
+        mediaPoolItem = mediaPoolItem,
+        mediaType = 1,
+        startFrame = 0,
+        recordFrame = timeline:GetStartFrame(),
+        trackIndex = trackIndex,
+    } })
+
+    local clip = appended and appended[1]
+    local compCount = clip and clip:GetFusionCompCount()
+    if not clip or compCount ~= 1 then
+        timeline:DeleteTrack("video", trackIndex)
+        return nil, string.format(
+            "Failed to append to the temporary track (clip=%s, fusionCompCount=%s)",
+            tostring(clip ~= nil), tostring(compCount)
+        )
+    end
+
+    return { clip = clip, trackIndex = trackIndex }
+end
+
+local function remove_temp_track(temp)
+    if not temp then
+        return true
+    end
+    timeline:DeleteClips({ temp.clip })
+    return timeline:DeleteTrack("video", temp.trackIndex)
 end
 
 local function rollback_media_pool_changes(originalBin, updatedBin)
@@ -209,28 +251,54 @@ local function step_move_basic_template(originalBin, updatedBin)
     return true
 end
 
+-- Getting the right comp needs both APIs, because each one can only do half the
+-- job:
+--   * The Resolve API (timelineItem:GetFusionCompByIndex) reliably identifies the
+--     appended clip's comp and round-trips SetData/GetData, but Paste on that
+--     object always returns false and adds nothing.
+--   * The Fusion API (fu:GetCurrentComp) can Paste, but "current" is whatever comp
+--     was last active. Appending does not change it, and a long-running session
+--     accumulates hundreds of open comps, so it is effectively arbitrary.
+-- So: stamp a one-off token through the Resolve API, make the comp active, then
+-- refuse to paste unless the active comp reports that same token back.
+local function resolve_active_comp(clip)
+    local rComp = clip:GetFusionCompByIndex(1)
+    if not rComp then
+        return nil, "Failed to get the appended clip's Fusion comp"
+    end
+
+    local token = string.format("%s-%d-%d", TEMPLATE_VERSION, os.time(), math.random(1e6))
+    rComp:SetData(TOKEN_DATA_KEY, token)
+    if rComp:GetData(TOKEN_DATA_KEY) ~= token then
+        return nil, "Could not stamp the appended clip's Fusion comp"
+    end
+
+    local names = clip:GetFusionCompNameList() or {}
+    if names[1] then
+        clip:LoadFusionCompByName(names[1])
+    end
+    resolve:OpenPage("fusion")
+
+    local comp = fu:GetCurrentComp()
+    if not comp or comp:GetData(TOKEN_DATA_KEY) ~= token then
+        return nil, "The active Fusion comp is not the appended clip's comp; refusing to paste"
+    end
+    return comp
+end
+
 local function step_update_caption_template(template)
     print("[4/7] Updating caption template on timeline…")
 
-    local clipInfo = {
-        mediaPoolItem = template,
-        mediaType = 1,
-        startFrame = 0,
-        recordFrame = timeline:GetStartFrame(),
-        trackIndex = 2,
-    }
-
-    local appended = mediaPool:AppendToTimeline({ clipInfo })
-    if not appended or not appended[1] then
-        return nil, "Failed to append template to timeline"
+    local temp, appendErr = append_on_temp_track(template)
+    if not temp then
+        return nil, appendErr
     end
-    local clip = appended[1]
-    print("  Appended template to timeline")
+    print("  Appended template to temporary video track " .. temp.trackIndex)
 
-    -- Appending activates the clip's Fusion comp automatically
-    local comp = fu:GetCurrentComp()
+    local comp, compErr = resolve_active_comp(temp.clip)
     if not comp then
-        return nil, "Failed to get current Fusion comp"
+        remove_temp_track(temp)
+        return nil, compErr
     end
 
     local oldTool = comp:FindTool("AutoSubs")
@@ -241,13 +309,18 @@ local function step_update_caption_template(template)
 
     local settings = bmd.readfile(PATHS.macro)
     if not settings then
+        remove_temp_track(temp)
         return nil, "Failed to read macro: " .. PATHS.macro
     end
-    comp:Paste(settings)
+    if not comp:Paste(settings) then
+        remove_temp_track(temp)
+        return nil, "Fusion rejected the macro paste"
+    end
 
     local autoSubs = comp:FindTool("AutoSubs")
     local mediaOut = comp:FindTool("MediaOut1")
     if not autoSubs or not mediaOut then
+        remove_temp_track(temp)
         return nil, string.format(
             "Missing tools after paste (AutoSubs=%s, MediaOut1=%s)",
             tostring(autoSubs ~= nil),
@@ -256,32 +329,79 @@ local function step_update_caption_template(template)
     end
 
     mediaOut:ConnectInput("Input", autoSubs)
+
+    -- Stamp the comp so the dragged clip can be verified before it is exported,
+    -- and confirm through the Resolve API that the edit really landed on the
+    -- timeline clip rather than on some other comp that matched by accident.
+    comp:SetData(VERSION_DATA_KEY, TEMPLATE_VERSION)
+    local landed = temp.clip:GetFusionCompByIndex(1)
+    if not landed or landed:GetData(VERSION_DATA_KEY) ~= TEMPLATE_VERSION then
+        remove_temp_track(temp)
+        return nil, "The pasted macro did not land on the timeline clip's comp"
+    end
+
+    resolve:OpenPage("edit")
     print("  Macro pasted and connected to MediaOut1")
-    return clip
+    return temp
 end
 
-local function step_wait_for_user_drag(updatedBin)
-    print("[5/7] Waiting for you to drag the updated caption into \"" .. updatedBin:GetName() .. "\"…")
+local function step_wait_for_user_drag(updatedBin, temp)
+    print(string.format(
+        "[5/7] Waiting for you to drag the updated caption from video track %d into \"%s\"…",
+        temp.trackIndex, updatedBin:GetName()))
 
     if not mediaPool:SetCurrentFolder(updatedBin) then
         return nil, "Failed to select new caption bin"
     end
 
-    local initialClipCount = #updatedBin:GetClipList()
+    -- Track ids rather than a count: GetClipList() order is not guaranteed, so
+    -- the newest clip is not necessarily the last one.
+    local known = {}
+    for _, clip in ipairs(updatedBin:GetClipList()) do
+        known[clip:GetUniqueId()] = true
+    end
 
     while true do
-        local clips = updatedBin:GetClipList()
-        if #clips > initialClipCount then
-            local newTemplate = clips[#clips]
-            print("  Received: " .. newTemplate:GetClipProperty()["Clip Name"])
-            return newTemplate
+        for _, clip in ipairs(updatedBin:GetClipList()) do
+            if not known[clip:GetUniqueId()] then
+                print("  Received: " .. clip:GetClipProperty()["Clip Name"])
+                return clip
+            end
         end
         sleep(0.2)
     end
 end
 
+-- The dragged clip is whatever the user picked, so confirm it really carries the
+-- freshly pasted macro before it is promoted into the repo.
+local function verify_dragged_template(newTemplate)
+    local temp, appendErr = append_on_temp_track(newTemplate)
+    if not temp then
+        return nil, "Verification failed: " .. tostring(appendErr)
+    end
+
+    local comp = temp.clip:GetFusionCompByIndex(1)
+    local version = comp and comp:GetData(VERSION_DATA_KEY)
+    remove_temp_track(temp)
+
+    if version ~= TEMPLATE_VERSION then
+        return nil, string.format(
+            "The dragged clip does not contain the updated macro (expected version %s, found %s). " ..
+            "Drag the caption clip that this script placed on the timeline, not an older one.",
+            TEMPLATE_VERSION, tostring(version)
+        )
+    end
+    return true
+end
+
 local function step_version_and_export(updatedBin, newTemplate)
     print("[6/7] Versioning and exporting caption bin…")
+
+    local verified, verifyErr = verify_dragged_template(newTemplate)
+    if not verified then
+        return nil, verifyErr
+    end
+    print("  Verified macro version " .. TEMPLATE_VERSION)
 
     newTemplate:SetName(VERSIONED_CAPTION)
     print("  Renamed template → " .. VERSIONED_CAPTION)
@@ -353,11 +473,11 @@ local function step_version_and_export(updatedBin, newTemplate)
     return true
 end
 
-local function step_cleanup(originalBin, clip)
+local function step_cleanup(originalBin, temp)
     print("[7/7] Deleting the original caption bin…")
 
-    if clip and not timeline:DeleteClips({ clip }) then
-        return nil, "Failed to delete temporary timeline clip"
+    if not remove_temp_track(temp) then
+        return nil, "Failed to remove the temporary video track"
     end
 
     if not mediaPool:DeleteFolders({ originalBin }) then
@@ -396,23 +516,25 @@ if not ok then
     return abort(moveErr)
 end
 
-local clip, updateErr = step_update_caption_template(template)
-if not clip then
+local temp, updateErr = step_update_caption_template(template)
+if not temp then
     rollback_media_pool_changes(originalBin, updatedBin)
     return abort(updateErr)
 end
 
-local newTemplate, dragErr = step_wait_for_user_drag(updatedBin)
+local newTemplate, dragErr = step_wait_for_user_drag(updatedBin, temp)
 if not newTemplate then
+    remove_temp_track(temp)
     return abort(dragErr)
 end
 
 ok, err = step_version_and_export(updatedBin, newTemplate)
 if not ok then
+    remove_temp_track(temp)
     return abort(err)
 end
 
-ok, err = step_cleanup(originalBin, clip)
+ok, err = step_cleanup(originalBin, temp)
 if not ok then
     return abort(err)
 end

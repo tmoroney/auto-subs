@@ -232,10 +232,10 @@ export async function getRenderJobStatus() {
 }
 
 export async function generatePreview(
-  speaker: Speaker,
   templateName: string,
   exportPath: string,
   presetSettings?: Record<string, unknown>,
+  speaker?: Speaker,
   language?: string,
 ): Promise<GeneratePreviewResult> {
   const data = await callResolve({
@@ -262,11 +262,17 @@ export async function startPresetEdit(
 
 // Reads the AutoSubs tool's current input values via the macro's GetInputValues
 // helper, then tears down the preset-edit clip/track.
-export async function capturePresetSettings(): Promise<{
+export async function capturePresetSettings(exportDir?: string): Promise<{
   settings?: Record<string, unknown>;
+  previewPath?: string;
+  previewError?: string;
   error?: string;
 }> {
-  return callResolve({ func: 'CapturePresetSettings' });
+  return callResolve({ func: 'CapturePresetSettings', exportDir });
+}
+
+export async function ensureCaptionPreviewDir(): Promise<string> {
+  return invoke<string>('ensure_caption_preview_dir');
 }
 
 // Tears down the preset-edit clip/track without capturing. Safe to call with

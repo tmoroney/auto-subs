@@ -1,0 +1,13 @@
+{
+  "runtime.version": "LuaJIT",
+  "diagnostics.globals": [
+    "Resolve",
+    "Fusion",
+    "bmd",
+    "ffi",
+    "app",
+    "comp",
+    "tool",
+    "composition"
+  ]
+}

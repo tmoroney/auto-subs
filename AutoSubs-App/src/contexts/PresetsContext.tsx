@@ -2,18 +2,24 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { load, Store } from '@tauri-apps/plugin-store';
 import { CaptionPreset } from '@/types';
 import { BUILT_IN_PRESETS, DEFAULT_PRESET_ID, isBuiltInPresetId } from '@/presets/built-in-presets';
+import { deletePresetPreview } from '@/lib/caption-previews';
 
 const STORE_FILE = 'autosubs-presets.json';
 const STORE_KEY = 'userPresets';
+const PREVIEW_IMAGES_KEY = 'previewImages';
+
+type PreviewImageRecord = { file: string; updatedAt: string };
+type PreviewImages = Record<string, PreviewImageRecord>;
 
 interface PresetsContextType {
-    presets: CaptionPreset[];          // merged, built-ins first
+    presets: CaptionPreset[];          // merged, user presets first
     userPresets: CaptionPreset[];
     isHydrated: boolean;
     getPreset: (id: string) => CaptionPreset | undefined;
     createPreset: (name: string, macroSettings: Record<string, unknown>, description?: string) => Promise<CaptionPreset>;
     updatePreset: (id: string, patch: Partial<Pick<CaptionPreset, 'name' | 'description' | 'macroSettings'>>) => Promise<void>;
     deletePreset: (id: string) => Promise<void>;
+    setPresetPreview: (id: string, filename: string) => Promise<void>;
     importPreset: (json: string) => Promise<CaptionPreset>;
     exportPreset: (id: string) => string;
 }
@@ -66,6 +72,7 @@ function parseImportedPreset(json: string): CaptionPreset {
 export function PresetsProvider({ children }: { children: React.ReactNode }) {
     const [store, setStore] = useState<Store | null>(null);
     const [userPresets, setUserPresets] = useState<CaptionPreset[]>([]);
+    const [previewImages, setPreviewImages] = useState<PreviewImages>({});
     const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
@@ -76,10 +83,14 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
                 if (cancelled) return;
                 setStore(loaded);
                 const stored = await loaded.get<CaptionPreset[]>(STORE_KEY);
+                const storedPreviews = await loaded.get<PreviewImages>(PREVIEW_IMAGES_KEY);
                 if (cancelled) return;
                 if (Array.isArray(stored)) {
                     // Defensive: strip any accidental built-ins the user might have tried to overwrite
                     setUserPresets(stored.filter((p) => p && !p.builtIn && !isBuiltInPresetId(p.id)));
+                }
+                if (storedPreviews && typeof storedPreviews === 'object') {
+                    setPreviewImages(storedPreviews);
                 }
             } catch (err) {
                 console.error('Failed to load presets store:', err);
@@ -101,9 +112,25 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    async function persistPreviewImages(next: PreviewImages) {
+        setPreviewImages(next);
+        if (!store) return;
+        try {
+            await store.set(PREVIEW_IMAGES_KEY, next);
+            await store.save();
+        } catch (err) {
+            console.error('Failed to persist preset previews:', err);
+        }
+    }
+
     const presets = useMemo<CaptionPreset[]>(
-        () => [...BUILT_IN_PRESETS, ...userPresets],
-        [userPresets],
+        () => [...userPresets, ...BUILT_IN_PRESETS].map((preset) => {
+            const preview = previewImages[preset.id];
+            return preview
+                ? { ...preset, previewImage: preview.file, previewUpdatedAt: preview.updatedAt }
+                : preset;
+        }),
+        [userPresets, previewImages],
     );
 
     const getPreset = (id: string) => presets.find((p) => p.id === id);
@@ -148,7 +175,21 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
 
     async function deletePreset(id: string) {
         if (isBuiltInPresetId(id)) return;
+        const preview = previewImages[id];
         await persist(userPresets.filter((p) => p.id !== id));
+        if (preview) {
+            await deletePresetPreview(preview.file);
+            const next = { ...previewImages };
+            delete next[id];
+            await persistPreviewImages(next);
+        }
+    }
+
+    async function setPresetPreview(id: string, filename: string) {
+        await persistPreviewImages({
+            ...previewImages,
+            [id]: { file: filename, updatedAt: nowIso() },
+        });
     }
 
     async function importPreset(json: string): Promise<CaptionPreset> {
@@ -175,6 +216,7 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
                 createPreset,
                 updatePreset,
                 deletePreset,
+                setPresetPreview,
                 importPreset,
                 exportPreset,
             }}

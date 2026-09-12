@@ -578,7 +578,7 @@
       "new": "Neue Voreinstellung",
       "builtIn": "Integriert",
       "custom": "Benutzerdefiniert",
-      "preview": "Vorschau in Resolve",
+      "preview": "Vorschau erstellen",
       "duplicate": "Duplizieren",
       "delete": "Löschen",
       "export": "JSON exportieren",
@@ -615,7 +615,8 @@
         "invalidJson": "Das sieht nicht nach einer gültigen Voreinstellungsdatei aus.",
         "captureFailed": "Untertitel-Einstellungen konnten nicht aus Resolve gelesen werden.",
         "nameRequired": "Bitte gib einen Namen ein."
-      }
+      },
+      "previewFailed": "Vorschau fehlgeschlagen"
     }
   },
   "replaceStrings": {

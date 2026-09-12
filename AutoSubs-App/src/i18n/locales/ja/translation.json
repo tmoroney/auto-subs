@@ -578,7 +578,7 @@
       "new": "新規プリセット",
       "builtIn": "組み込み",
       "custom": "カスタム",
-      "preview": "Resolveでプレビュー",
+      "preview": "プレビューを生成",
       "duplicate": "複製",
       "delete": "削除",
       "export": "JSONをエクスポート",
@@ -615,7 +615,8 @@
         "invalidJson": "有効なプリセットファイルのように見えません。",
         "captureFailed": "Resolveから字幕設定を読み取れませんでした。",
         "nameRequired": "名前を入力してください。"
-      }
+      },
+      "previewFailed": "プレビューを作成できません"
     }
   },
   "replaceStrings": {

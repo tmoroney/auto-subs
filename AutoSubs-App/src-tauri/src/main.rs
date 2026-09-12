@@ -285,6 +285,18 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
     builder.build()
 }
 
+#[tauri::command]
+fn ensure_caption_preview_dir(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("caption-previews");
+
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
 fn main() {
     // Inject system proxy env vars before any thread or HTTP client is created so
     // that both ureq (hf-hub) and reqwest pick up the Windows system proxy set by
@@ -550,6 +562,7 @@ fn main() {
             logging::open_log_dir,
             resolve_bridge::resolve_bridge,
             resolve_bridge::get_resolve_server_version,
+            ensure_caption_preview_dir,
             adobe_bridge::send_to_adobe,
             trigger_install_update,
             audio_preprocess::extract_audio_peaks,

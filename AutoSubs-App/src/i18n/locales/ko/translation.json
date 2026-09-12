@@ -578,7 +578,7 @@
       "new": "새 프리셋",
       "builtIn": "내장됨",
       "custom": "사용자 정의",
-      "preview": "Resolve에서 미리보기",
+      "preview": "미리보기 생성",
       "duplicate": "복제",
       "delete": "삭제",
       "export": "JSON 내보내기",
@@ -615,7 +615,8 @@
         "invalidJson": "유효한 프리셋 파일처럼 보이지 않습니다.",
         "captureFailed": "Resolve에서 자막 설정을 읽을 수 없습니다.",
         "nameRequired": "이름을 입력하세요."
-      }
+      },
+      "previewFailed": "미리보기를 만들 수 없음"
     }
   },
   "replaceStrings": {

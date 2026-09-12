@@ -16,6 +16,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
+          "$APPLOCALDATA/caption-previews/**",
           "$DESKTOP/**",
           "$DOCUMENT/**",
           "$DOWNLOAD/**",
