@@ -1,0 +1,3 @@
+.wrangler/
+# Local secrets for `wrangler dev` (signing keys). Never commit.
+.dev.vars

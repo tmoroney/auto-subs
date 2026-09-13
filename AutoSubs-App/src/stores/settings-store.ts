@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tourCompleted: false,
   lastSeenVersion: "",
   showEnglishOnlyModels: false,
+  shareUsageData: null,
 
   // Survey notification settings
   timesDismissedSurvey: 0,
@@ -136,6 +137,9 @@ export const useSettingsStore = create<SettingsStore>()(
           timesDismissedSurvey: state.timesDismissedSurvey,
           lastSurveyDate: state.lastSurveyDate,
           lastSeenVersion: state.lastSeenVersion,
+          // A privacy choice is the user's, not a preference to be reset —
+          // clearing it would silently re-prompt or, worse, re-enable sharing.
+          shareUsageData: state.shareUsageData,
         })),
 
       setHydrated: () => set({ isHydrated: true }),

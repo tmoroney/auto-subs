@@ -1,0 +1,34 @@
+name = "autosubs-telemetry"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+# Keep the endpoint off the public workers.dev hostname once a custom domain is
+# configured; until then `wrangler deploy` publishes to <name>.<subdomain>.workers.dev.
+workers_dev = true
+
+[vars]
+# Minimum gap between two accepted submissions from the same install. The app
+# reports weekly, so six days leaves slack for clock drift without letting an
+# install report twice in a period.
+MIN_INTERVAL_SECONDS = "518400"
+
+# Time-series storage for the summaries. Free tier: 100k data points written and
+# 10k read queries per day; one accepted submission is exactly one data point.
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "autosubs_usage"
+
+# Per-install cooldowns only — no payload data is stored here. Create with:
+#   npx wrangler kv namespace create DEDUPE
+# then paste the returned id below.
+[[kv_namespaces]]
+binding = "DEDUPE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Per-IP limiter. Cloudflare counts these per edge location, so the effective
+# global limit is higher than the number below — it is a flood brake, not a
+# precise quota, and the per-install cooldown is what actually bounds ingest.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

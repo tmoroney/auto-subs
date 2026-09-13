@@ -60,10 +60,13 @@ transcription-engine = { path = "crates/transcription-engine", default-features 
 # Core utilities
 eyre = "0.6"
 tempfile = "3.9.0"
-chrono = "0.4.38"
+chrono = { version = "0.4.38", features = ["serde"] }
 which = "6.0"
 dirs = "5.0"
 once_cell = "1.19.0"
+uuid = { version = "1", features = ["v4"] }
+hmac = "0.12"
+sha2 = "0.10"
 
 # Logging
 tracing = "0.1.41"

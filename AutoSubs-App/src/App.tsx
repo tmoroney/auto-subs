@@ -13,6 +13,8 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
+import { UsageConsentDialog } from "@/components/dialogs/usage-consent-dialog"
+import { flushUsage, isTelemetryBuild } from "@/lib/telemetry"
 import { useSettingsStore } from "@/stores/settings-store"
 import { getVersion } from "@tauri-apps/api/app"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
@@ -75,6 +77,10 @@ function AppContentBody() {
   const tourCompleted = useSettingsStore((s) => s.tourCompleted)
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
   const isHydrated = useSettingsStore((s) => s.isHydrated)
+  const shareUsageData = useSettingsStore((s) => s.shareUsageData)
+  const transcriptionsCompleted = useSettingsStore((s) => s.transcriptionsCompleted)
+  const uiLanguage = useSettingsStore((s) => s.uiLanguage)
+  const [telemetryBuild, setTelemetryBuild] = React.useState(false)
   const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
@@ -124,6 +130,27 @@ function AppContentBody() {
     onboardingCompleted &&
     tourCompleted === false &&
     !showWhatsNew
+
+  // Asked only after the app has actually been used once, so the first thing a
+  // new user sees is subtitles rather than a consent prompt.
+  const showUsageConsent =
+    isHydrated &&
+    telemetryBuild &&
+    onboardingCompleted &&
+    shareUsageData === null &&
+    transcriptionsCompleted >= 1 &&
+    !showWhatsNew &&
+    !showTour
+
+  React.useEffect(() => {
+    void isTelemetryBuild().then(setTelemetryBuild)
+  }, [])
+
+  // One send attempt per launch; the backend decides whether a period is due.
+  React.useEffect(() => {
+    if (!isHydrated) return
+    void flushUsage(uiLanguage)
+  }, [isHydrated, shareUsageData, uiLanguage])
 
   const handleCloseSubtitleViewer = React.useCallback(() => {
     if (!showSubtitleViewer || isSubtitleViewerClosing) return
@@ -358,6 +385,7 @@ function AppContentBody() {
           {showGettingStarted && <GettingStartedOverlay />}
           {showWhatsNew && <WhatsNewDialog />}
           {showTour && <OnboardingTour />}
+          {showUsageConsent && <UsageConsentDialog open />}
       </div>
     </TooltipProvider>
   )
