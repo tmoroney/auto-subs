@@ -6,6 +6,7 @@ import {
   Download,
   Loader,
   Pencil,
+  RefreshCw,
   Send,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ import {
   type CreatePresetSubmit,
 } from "@/components/dialogs/caption-style/template-selection";
 import {
+  applyStylesToTimeline,
   cancelPresetEdit,
   checkTrackConflicts,
   ensureCaptionPreviewDir,
@@ -174,6 +176,7 @@ export function OutputPanel({
   const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null);
   const [loadingTimedOut, setLoadingTimedOut] = React.useState(false);
   const [previewLoadingId, setPreviewLoadingId] = React.useState<string | null>(null);
+  const [isApplyingStyles, setIsApplyingStyles] = React.useState(false);
 
   const outputTracks = timelineInfo?.outputTracks ?? [];
   const hasSubtitles = subtitles.length > 0;
@@ -410,6 +413,42 @@ export function OutputPanel({
     });
   }
 
+  async function handleApplyStyles() {
+    if (!currentSubtitleDocumentFilename) return;
+
+    const presetSettings =
+      captionMode === "animated" ? getPreset(presetId)?.macroSettings : undefined;
+
+    setIsApplyingStyles(true);
+    try {
+      const result = await applyStylesToTimeline(
+        currentSubtitleDocumentFilename,
+        undefined,
+        presetSettings,
+      );
+
+      if (result.matched === 0) {
+        toast.warning(t("output.batchStyle.noMatches"));
+      } else if (result.failed > 0) {
+        toast.warning(
+          t("output.batchStyle.partial", {
+            updated: result.updated,
+            failed: result.failed,
+          }),
+        );
+      } else {
+        toast.success(
+          t("output.batchStyle.success", { count: result.updated }),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update timeline styles:", err);
+      toast.error(t("output.batchStyle.failed"));
+    } finally {
+      setIsApplyingStyles(false);
+    }
+  }
+
   const actionDisabled = isAdding || !hasSubtitles;
 
   let actionLabel: React.ReactNode;
@@ -541,12 +580,34 @@ export function OutputPanel({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 p-3">
+          <div className="flex flex-wrap justify-end gap-2 p-3">
+            {isConnected && !isAdobe && expanded && !closing && (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-44 flex-[1_1_11rem]"
+                disabled={
+                  isApplyingStyles ||
+                  !hasSubtitles ||
+                  !currentSubtitleDocumentFilename
+                }
+                onClick={handleApplyStyles}
+              >
+                {isApplyingStyles ? (
+                  <Loader className="size-4 animate-spin will-change-transform" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                {isApplyingStyles
+                  ? t("output.batchStyle.updating")
+                  : t("output.batchStyle.applyAll")}
+              </Button>
+            )}
             {isConnected && (
               <Button
                 type="button"
                 variant="secondary"
-                className="w-full"
+                className="min-w-36 flex-[1_1_9rem]"
                 disabled={actionDisabled}
                 onClick={handlePrimaryAction}
               >
