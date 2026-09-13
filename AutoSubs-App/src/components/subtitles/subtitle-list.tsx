@@ -419,6 +419,9 @@ const SubtitleList = ({
                                                 ref={inlineEditorRef}
                                                 contentEditable
                                                 suppressContentEditableWarning
+                                                autoCapitalize="off"
+                                                autoCorrect="off"
+                                                spellCheck={false}
                                                 onInput={(e) => {
                                                     const nextText = (e.currentTarget.innerText ?? "").replace(/\r\n/g, "\n");
                                                     setDraftText(nextText);
