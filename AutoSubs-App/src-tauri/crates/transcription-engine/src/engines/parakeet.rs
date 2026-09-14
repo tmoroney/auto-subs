@@ -49,6 +49,7 @@ impl OnnxEngine for ParakeetEngine {
     const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
     fn load(model_path: &Path) -> Result<Self> {
+        validate_config(model_path)?;
         let model = ParakeetModel::load(model_path, &Quantization::Int8)
             .map_err(|e| eyre!("Failed to load Parakeet model: {}", e))?;
 
@@ -74,6 +75,22 @@ impl OnnxEngine for ParakeetEngine {
     fn detected_lang(&self) -> Option<String> {
         None
     }
+}
+
+fn validate_config(model_path: &Path) -> Result<()> {
+    let bytes = match std::fs::read(model_path.join("config.json")) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    let config: serde_json::Value = serde_json::from_slice(&bytes)?;
+    eyre::ensure!(
+        config["model_type"] == "nemo-conformer-tdt"
+            && config["features_size"] == 128
+            && config["subsampling_factor"] == 8,
+        "Incompatible Parakeet model config: expected NeMo TDT, 128 features and 8x subsampling"
+    );
+    Ok(())
 }
 
 pub async fn transcribe_parakeet(

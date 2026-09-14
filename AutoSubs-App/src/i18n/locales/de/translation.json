@@ -402,7 +402,13 @@
       "badge": "Multilingual"
     },
     "bestPick": "Beste Wahl",
-    "availableCount": "{{count}} Modelle verfügbar"
+    "availableCount": "{{count}} Modelle verfügbar",
+    "orukeet": {
+      "label": "Orukeet",
+      "description": "Lokal, 25 europäische Sprachen",
+      "details": "Orukeet von Oruk. Modellgewichte unter CC BY-SA 4.0.",
+      "badge": "CC BY-SA 4.0"
+    }
   },
   "completion": {
     "processingComplete": "Verarbeitung abgeschlossen",

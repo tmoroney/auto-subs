@@ -269,7 +269,7 @@ impl ModelManager {
         let Source::Hf { files, .. } = &entry.source else {
             return None;
         };
-        let needs_flatten = files.iter().any(|f| f.is_renamed() || f.repo().is_some());
+        let needs_flatten = files.iter().any(|f| f.is_renamed() || f.repo().is_some() || f.revision() != "main");
         if !needs_flatten {
             return None;
         }
@@ -412,7 +412,7 @@ impl ModelManager {
             }
 
             let repo = file.repo().unwrap_or(default_repo);
-            let url = format!("{}/{}/resolve/main/{}", hf_endpoint, repo, file.path());
+            let url = format!("{}/{}/resolve/{}/{}", hf_endpoint, repo, file.revision(), file.path());
             download_to(&dest, &url).await?;
             validate_model_file(&dest).with_context(|| {
                 format!("Model validation failed for '{}' from '{repo}'", file.dest())
@@ -1311,6 +1311,14 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pinned_files_use_revision_aware_downloader_even_without_renaming() {
+        let mut entry = manifest::get("orukeet").unwrap().clone();
+        let Source::Hf { files, .. } = &mut entry.source else { panic!("expected HF") };
+        *files = vec![serde_json::from_str(r#"{"path":"config.json","revision":"abc123"}"#).unwrap()];
+        assert!(ModelManager::flat_layout(&entry).is_some());
+    }
 
     /// Regression test for the "stuck at 0% forever" bug: a download attempt for a file
     /// that doesn't exist must return an error promptly, not hang indefinitely.

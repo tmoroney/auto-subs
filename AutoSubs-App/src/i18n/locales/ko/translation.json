@@ -395,7 +395,13 @@
       "badge": "Multilingual"
     },
     "bestPick": "최적 선택",
-    "availableCount": "{{count}}개 모델 사용 가능"
+    "availableCount": "{{count}}개 모델 사용 가능",
+    "orukeet": {
+      "label": "Orukeet",
+      "description": "로컬 처리, 유럽 25개 언어",
+      "details": "Oruk의 Orukeet. 모델 가중치 라이선스: CC BY-SA 4.0.",
+      "badge": "CC BY-SA 4.0"
+    }
   },
   "progressSteps": {
     "download": "모델 다운로드 중",

@@ -96,8 +96,8 @@ export interface Model {
     | { kind: "multilingual" }
     | { kind: "single_language"; language: string }
     | { kind: "restricted"; languages: string[] }
-    accuracy: number // 1-5 in steps of 0.5, 5 = best in class
-    speed: number // 1-5 in steps of 0.5, 5 = fastest
+    accuracy: number | null // 1-5, or null when not rated
+    speed: number | null // 1-5, or null when not rated
     /**
      * Languages this model is a proven strong choice for, which promote it
      * within its accuracy tier. Resolved from the manifest — absent there means

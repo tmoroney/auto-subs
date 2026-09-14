@@ -406,7 +406,13 @@
       "badge": "Multilingual"
     },
     "bestPick": "Best pick",
-    "availableCount": "{{count}} models available"
+    "availableCount": "{{count}} models available",
+    "orukeet": {
+      "label": "Orukeet",
+      "description": "Local, 25 European languages",
+      "details": "Orukeet by Oruk. Weights licensed under CC BY-SA 4.0.",
+      "badge": "CC BY-SA 4.0"
+    }
   },
   "completion": {
     "processingComplete": "Processing Complete",

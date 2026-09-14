@@ -394,7 +394,13 @@
       "badge": "Многоязычная"
     },
     "bestPick": "Лучший выбор",
-    "availableCount": "Доступно моделей: {{count}}"
+    "availableCount": "Доступно моделей: {{count}}",
+    "orukeet": {
+      "label": "Orukeet",
+      "description": "Локально, 25 европейских языков",
+      "details": "Orukeet от Oruk. Веса модели: CC BY-SA 4.0.",
+      "badge": "CC BY-SA 4.0"
+    }
   },
   "completion": {
     "processingComplete": "Обработка завершена",
