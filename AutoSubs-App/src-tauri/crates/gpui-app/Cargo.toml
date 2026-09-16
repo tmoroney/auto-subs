@@ -1,0 +1,37 @@
+[package]
+name = "gpui-app"
+version = "0.1.0"
+edition = "2024"
+description = "GPUI front-end spike for AutoSubs"
+publish = false
+
+[dependencies]
+# gpui-pre: Longbridge's crates.io snapshots of Zed's gpui (crates.io `gpui` is stale).
+gpui = { package = "gpui-pre", version = "0.3.4" }
+gpui_platform = { package = "gpui-pre-platform", version = "0.3.4", features = ["font-kit"] }
+gpui-base = "0.6.1"
+gpui-kit-assets = "0.6.1"
+transcription-engine = { path = "../transcription-engine", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+futures = "0.3"
+dirs = "5.0"
+which = "6.0"
+eyre = "0.6"
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+intl_pluralrules = "7"
+unic-langid = "0.9"
+sys-locale = "0.3"
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+default = ["mac-aarch"]
+# Dev tool: scripted UI walkthrough that saves Metal-rendered PNGs of each step.
+# AUTOSUBS_SCREENSHOT_DIR=/tmp/shots cargo run -p gpui-app --features screenshot
+screenshot = ["dep:image", "gpui/test-support", "gpui_platform/test-support"]
+mac-aarch = ["transcription-engine/mac-aarch"]
+mac-x86_64 = ["transcription-engine/mac-x86_64"]
+windows = ["transcription-engine/windows"]
+linux = ["transcription-engine/linux"]

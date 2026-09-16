@@ -2,6 +2,7 @@
 members = [
   ".",
   "crates/diarize",
+  "crates/gpui-app",
   "crates/transcription-engine",
 ]
 resolver = "2"
