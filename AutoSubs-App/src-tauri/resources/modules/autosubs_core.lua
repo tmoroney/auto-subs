@@ -171,10 +171,11 @@ local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
-local ANIMATED_CAPTION_DISPLAY_NAME = "AutoSubs Caption"
 local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
-local ANIMATED_CAPTION = ANIMATED_CAPTION_DISPLAY_NAME .. " " .. CAPTION_TEMPLATE_VERSION
-local AUTOSUBS_BIN = "AutoSubs"
+local caption_style = require("caption_style")
+local ANIMATED_CAPTION_DISPLAY_NAME = caption_style.DISPLAY_NAME
+local ANIMATED_CAPTION = caption_style.versioned_name(CAPTION_TEMPLATE_VERSION)
+local AUTOSUBS_BIN = caption_style.BIN_NAME
 local MEDIA_POOL_UNAVAILABLE = "Resolve media pool is not available"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
@@ -194,12 +195,6 @@ local function refresh_project()
     end
 end
 
-local STYLE_INDEX = {
-    Fill = 1,
-    Outline = 2,
-    Shadow = 3,
-    Background = 4
-}
 
 -- Global state for an active caption-preset edit session.
 -- Populated by OpenPresetEdit, consumed/cleared by SavePresetEdit or
@@ -233,20 +228,6 @@ local currentExportJob = {
 -- "something went wrong".
 local function make_error(short, detail)
     return { error = short, detail = tostring(detail or "") }
-end
-
--- Convert hex color to RGB (Davinci Resolve uses 0-1 range)
-local function hex_to_rgb(hex)
-    local r, g, b = hex:match("^#?(%x%x)(%x%x)(%x%x)$")
-    if r then
-        return {
-            Red = tonumber(r, 16) / 255,
-            Green = tonumber(g, 16) / 255,
-            Blue = tonumber(b, 16) / 255
-        }
-    else
-        return nil
-    end
 end
 
 -- Convert seconds to frames based on the timeline frame rate
@@ -365,12 +346,6 @@ local get_template_item
 local get_video_tracks
 local get_audio_tracks
 
-local function is_animated_caption(templateName)
-    return type(templateName) == "string" and
-        (templateName == ANIMATED_CAPTION_DISPLAY_NAME or
-            templateName:sub(1, #ANIMATED_CAPTION_DISPLAY_NAME + 1) == ANIMATED_CAPTION_DISPLAY_NAME .. " ")
-end
-
 local function resolve_template_name(templateName)
     if templateName == ANIMATED_CAPTION_DISPLAY_NAME then
         return ANIMATED_CAPTION
@@ -393,10 +368,10 @@ local function find_template_item(folder, templateName)
     -- The bundled animated template is versioned ("AutoSubs Caption <date>"),
     -- so an older caption-bin.drb or a version skew between builds must still
     -- match. Any other name is compared exactly.
-    local wantsAnimated = is_animated_caption(templateName)
+    local wantsAnimated = caption_style.is_autosubs_template(templateName)
     walk_media_pool(folder, function(clip, clipFolder)
         local clipName = clip_property(clip, "Clip Name")
-        if clipName == templateName or (wantsAnimated and is_animated_caption(clipName)) then
+        if clipName == templateName or (wantsAnimated and caption_style.is_autosubs_template(clipName)) then
             template = clip
             sourceBin = clipFolder
             return true
@@ -416,7 +391,7 @@ local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate
     end
     for _, clip in ipairs(safe_list(call_api(autosubsFolder, "GetClipList"))) do
         local clipName = clip_property(clip, "Clip Name")
-        if call_api(clip, "GetUniqueId") ~= currentTemplateId and is_animated_caption(clipName) then
+        if call_api(clip, "GetUniqueId") ~= currentTemplateId and caption_style.is_autosubs_template(clipName) then
             table.insert(obsoleteTemplates, clip)
         end
     end
@@ -507,7 +482,7 @@ get_templates = function()
         end
         -- Any versioned "AutoSubs Caption <version>" clip (and legacy
         -- unversioned copies) collapse into a single user-facing entry.
-        if is_animated_caption(clipName) then
+        if caption_style.is_autosubs_template(clipName) then
             hasAnimated = true
         else
             table.insert(t, { label = clipName, value = clipName })
@@ -1211,12 +1186,6 @@ function CheckTrackConflicts(req)
     }
 end
 
--- UTF-8 aware character count
-local function utf8len(s)
-    local _, count = s:gsub("[^\128-\191]", "")
-    return count
-end
-
 local function load_subtitle_data(filePath)
     local data, err = read_json_file(filePath)
     if type(data) ~= "table" then
@@ -1607,79 +1576,6 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
     return clipList
 end
 
--- RGB channel names matching hex_to_rgb()'s return keys and TextPlus inputs.
-local RGB_CHANNELS = { "Red", "Green", "Blue" }
-
--- Apply a speaker's style/color to a basic (non-animated) TextPlus template.
--- `hex_to_rgb` returns a map keyed by channel name, so we must iterate
--- RGB_CHANNELS — `ipairs(color)` is always empty.
-local function set_speaker_styling(tool, speaker)
-    if not speaker or not tool then return end
-    if not speaker.color or speaker.color == "" then return end
-    if not speaker.style or speaker.style == "None" then return end
-
-    local styleId = STYLE_INDEX[speaker.style]
-    if not styleId then return end
-
-    local color = hex_to_rgb(speaker.color)
-    if color == nil then return end
-
-    for _, channel in ipairs(RGB_CHANNELS) do
-        local value = color[channel]
-        if value ~= nil then
-            -- Stock TextPlus: Red1 / Green1 / Blue1 / Enabled1
-            tool:SetInput(channel .. styleId, value)
-        end
-    end
-
-    tool:SetInput("Enabled" .. styleId, 1)
-end
-
--- Shallow-copy a preset table and overlay this clip's speaker color so each
--- subtitle can diverge without mutating the caller's shared presetSettings.
-local function preset_with_speaker(presetSettings, speaker)
-    local out = {}
-    if type(presetSettings) == "table" then
-        for k, v in pairs(presetSettings) do
-            out[k] = v
-        end
-    end
-
-    if not speaker or not speaker.color or not speaker.style or speaker.style == "None" then
-        return out
-    end
-
-    local color = hex_to_rgb(speaker.color)
-    if not color then
-        return out
-    end
-
-    out[speaker.style .. "Enabled"] = 1
-    for _, channel in ipairs(RGB_CHANNELS) do
-        out[speaker.style .. "Color" .. channel] = color[channel]
-    end
-
-    return out
-end
-
-local function to_word_timing(transcript_words, frameRate, segmentStart)
-    local result = {}
-    local startIndex = 0
-
-    for _, word in ipairs(transcript_words) do
-        local endIndex = startIndex + utf8len(word.word) - 1
-        table.insert(result, {
-            startIndex = startIndex,
-            endIndex   = endIndex,
-            startFrame = math.floor((word.start - segmentStart) * frameRate),
-            endFrame   = math.floor((word["end"] - segmentStart) * frameRate),
-        })
-        startIndex = endIndex + 1
-    end
-
-    return result
-end
-
 -- Applies subtitle text + styling to each appended timeline item. Instead of
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
@@ -1703,54 +1599,18 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
-                local template = comp:FindTool("Template") or comp:FindToolByID("TextPlus")
-                local styleTool = template
-                if isAnimated then
-                    local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate"))
-                    local wordTiming = to_word_timing(subtitle.words, framerate, subtitle.start)
-                    local autosubsTool = comp:FindTool("AutoSubs")
-                    styleTool = autosubsTool
-                    autosubsTool:SetData("WordTiming", wordTiming) -- Will be applied to keyframes when text is updated
-                    template:SetInput("Text", subtitleText)        -- AutoSubs Macro uses custom text input
-
-                    -- Sync CharacterLevelStyling1.Text so the Follower1 -> CLS
-                    -- binding chain re-evaluates with the correct text on playback.
-                    -- The macro's ExecuteOnChange also does this, but setting it
-                    -- here covers cases where Fusion skips that callback.
-                    local clsTool = comp:FindTool("CharacterLevelStyling1")
-                    if clsTool then
-                        pcall(clsTool.SetInput, clsTool, "Text", subtitleText)
-                    end
-
-                    -- Merge per-speaker styling into the preset so each clip gets its
-                    -- own color and the caller's shared preset table is not mutated.
-                    -- A missing preset is fine: we start from an empty table and apply
-                    -- only the speaker values for the animated macro.
-                    local clipSettings = presetSettings
-                    if speakersExist then
-                        local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
-                        clipSettings = preset_with_speaker(presetSettings, speaker)
-                    end
-
-                    if clipSettings and next(clipSettings) ~= nil then
-                        local applyOk, applyErr = pcall(function()
-                            local setter = autosubsTool:GetData("SetInputValues")
-                            if setter and setter ~= "" then
-                                loadstring(setter)()(comp, autosubsTool, clipSettings)
-                            end
-                        end)
-                        if not applyOk then
-                            -- Re-raise so it's counted as a per-clip failure.
-                            error("preset apply failed: " .. tostring(applyErr))
-                        end
-                    end
-                else
-                    template:SetInput("StyledText", subtitleText)
-                    if speakersExist then
-                        local speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
-                        set_speaker_styling(template, speaker)
-                    end
+                local speaker = nil
+                if speakersExist then
+                    speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
                 end
+
+                local styleTool = caption_style.apply(comp, {
+                    text = subtitleText,
+                    words = subtitle.words,
+                    start = subtitle.start,
+                    settings = presetSettings,
+                    speaker = speaker,
+                })
 
                 -- Hidden Fusion tool data lets later batch operations identify
                 -- the transcript segment without changing visible clip names.
@@ -1890,7 +1750,7 @@ function AddSubtitles(req)
 
             -- Use the resolved template name so a fallback to ANIMATED_CAPTION still
             -- enables the animated-text path.
-            local isAnimated = is_animated_caption(resolvedTemplateName)
+            local isAnimated = caption_style.is_autosubs_template(resolvedTemplateName)
 
             -- Auto-swap the caption Font for non-Latin transcript languages when the
             -- user is still on the macro's default font. Uses the transcript JSON's
@@ -2011,18 +1871,13 @@ function BatchApplyStyle(req)
             local speaker = get_speaker_from_id(speakers, match.speakerId, speakerIndexById)
 
             if match.isAnimated then
-                local clipSettings = preset_with_speaker(presetSettings, speaker)
+                local clipSettings = caption_style.with_speaker(presetSettings, speaker)
                 if next(clipSettings) ~= nil then
-                    local setter = match.styleTool:GetData("SetInputValues")
-                    if not setter or setter == "" then
-                        error("AutoSubs caption is missing its SetInputValues helper")
-                    end
-                    loadstring(setter)()(match.comp, match.styleTool, clipSettings)
+                    caption_style.write(match.comp, match.styleTool, clipSettings)
                     didUpdate = true
                 end
-            elseif speaker and speaker.style ~= "None" and speaker.color and speaker.color ~= "" then
-                set_speaker_styling(match.styleTool, speaker)
-                didUpdate = true
+            else
+                didUpdate = caption_style.apply_speaker_to_textplus(match.styleTool, speaker)
             end
 
             if didUpdate then
@@ -2236,7 +2091,7 @@ function GeneratePreview(req)
     end
     local timelineItem = appended[1]
 
-    local isAnimated = is_animated_caption(templateName)
+    local isAnimated = caption_style.is_autosubs_template(templateName)
     local fontSwap = nil
     if isAnimated and font_fallback then
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
@@ -2246,55 +2101,27 @@ function GeneratePreview(req)
     local success, err = pcall(function()
         if timelineItem:GetFusionCompCount() > 0 then
             local comp = timelineItem:GetFusionCompByIndex(1)
-            local tool = comp:FindToolByID("TextPlus")
-            if isAnimated then
-                local autosubsTool = comp:FindTool("AutoSubs")
-                local template = comp:FindTool("Template") or tool
-                if autosubsTool then
-                    -- The animated macro animates each word in using the
-                    -- WordTiming table, applied to keyframes by its
-                    -- ExecuteOnChange callback when Text is updated. Without
-                    -- it the preview renders with no words visible.
-                    local previewText = "Subtitle Example Text"
-                    local framerate = tonumber(comp:GetPrefs("Comp.FrameFormat.Rate")) or 24
-                    local wordTiming = to_word_timing({
-                        { word = "Subtitle", start = 0.0, ["end"] = 0.7 },
-                        { word = " Example", start = 0.8, ["end"] = 1.5 },
-                        { word = " Text",    start = 1.6, ["end"] = 2.3 },
-                    }, framerate, 0)
-                    autosubsTool:SetData("WordTiming", wordTiming) -- applied to keyframes when text is updated
-                    template:SetInput("Text", previewText)
 
-                    -- Sync CharacterLevelStyling1.Text so the Follower1 -> CLS
-                    -- binding chain re-evaluates (ExecuteOnChange can be skipped).
-                    local clsTool = comp:FindTool("CharacterLevelStyling1")
-                    if clsTool then
-                        pcall(clsTool.SetInput, clsTool, "Text", previewText)
-                    end
+            -- A still frame cannot show the animation, so the preview text is
+            -- given word timings that put it mid-reveal rather than blank.
+            local previewWords = {
+                { word = "Subtitle", start = 0.0, ["end"] = 0.7 },
+                { word = " Example", start = 0.8, ["end"] = 1.5 },
+                { word = " Text",    start = 1.6, ["end"] = 2.3 },
+            }
 
-                    local clipSettings = preset_with_speaker(presetSettings, speaker)
-                    if next(clipSettings) ~= nil then
-                        local applyOk, applyErr = pcall(function()
-                            local setter = autosubsTool:GetData("SetInputValues")
-                            if setter and setter ~= "" then
-                                loadstring(setter)()(comp, autosubsTool, clipSettings)
-                            end
-                        end)
-                        if not applyOk then
-                            print("Preview preset apply failed: " .. tostring(applyErr))
-                        end
-                    end
-                    if fontSwap and fontSwap.to then
-                        pcall(function() autosubsTool:SetInput("Font", fontSwap.to) end)
-                    end
-                end
-            else
-                tool:SetInput("StyledText", "Subtitle Example Text")
-                set_speaker_styling(tool, speaker)
-                if fontSwap and fontSwap.to then
-                    pcall(function() tool:SetInput("Font", fontSwap.to) end)
-                end
+            local styleTool = caption_style.apply(comp, {
+                text = "Subtitle Example Text",
+                words = previewWords,
+                start = 0,
+                settings = presetSettings,
+                speaker = speaker,
+            })
+
+            if fontSwap and fontSwap.to then
+                pcall(function() styleTool:SetInput("Font", fontSwap.to) end)
             end
+
             outputPath, outputErr = extract_frame(comp, exportDir)
         end
     end)
