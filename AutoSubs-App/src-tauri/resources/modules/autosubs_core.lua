@@ -175,6 +175,7 @@ local ANIMATED_CAPTION_DISPLAY_NAME = "AutoSubs Caption"
 local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
 local ANIMATED_CAPTION = ANIMATED_CAPTION_DISPLAY_NAME .. " " .. CAPTION_TEMPLATE_VERSION
 local AUTOSUBS_BIN = "AutoSubs"
+local MEDIA_POOL_UNAVAILABLE = "Resolve media pool is not available"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
 
@@ -407,6 +408,12 @@ end
 local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate)
     local obsoleteTemplates = {}
     local currentTemplateId = call_api(currentTemplate, "GetUniqueId")
+    if currentTemplateId == nil then
+        -- Without a reliable id for the template we just imported, a cleanup
+        -- pass could delete that very clip. Leave the bin untouched instead.
+        print("Skipping obsolete caption template cleanup: current template has no unique id")
+        return
+    end
     for _, clip in ipairs(safe_list(call_api(autosubsFolder, "GetClipList"))) do
         local clipName = clip_property(clip, "Clip Name")
         if call_api(clip, "GetUniqueId") ~= currentTemplateId and is_animated_caption(clipName) then
@@ -1275,7 +1282,7 @@ end
 
 local function get_template(rootFolder, templateName, timeline)
     if not is_api_object(rootFolder) then
-        return nil, nil, "Resolve media pool is not available"
+        return nil, nil, MEDIA_POOL_UNAVAILABLE
     end
     if templateName == "" then
         templateName = ANIMATED_CAPTION
@@ -1823,7 +1830,7 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
 
             speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
-            local rootFolder = mediaPool:GetRootFolder()
+            local rootFolder = call_api(mediaPool, "GetRootFolder")
             local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder,
                 templateName, timeline)
             if not templateItem then
@@ -2175,7 +2182,10 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     if not timeline then
         return make_error("Failed to generate preview", "No active timeline in Resolve")
     end
-    local rootFolder = mediaPool:GetRootFolder()
+    local rootFolder = call_api(mediaPool, "GetRootFolder")
+    if not rootFolder then
+        return make_error("Failed to generate preview", MEDIA_POOL_UNAVAILABLE)
+    end
 
     -- Resolve the template item
     local templateItem = get_template_item(rootFolder, templateName)
@@ -2341,7 +2351,10 @@ function StartPresetEdit(initialSettings)
         return { error = "No active timeline" }
     end
 
-    local rootFolder = mediaPool:GetRootFolder()
+    local rootFolder = call_api(mediaPool, "GetRootFolder")
+    if not rootFolder then
+        return { error = MEDIA_POOL_UNAVAILABLE }
+    end
     local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     if not templateItem then
         -- Template missing — trigger auto-import and retry
