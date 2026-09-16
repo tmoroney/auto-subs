@@ -68,7 +68,16 @@ end
 
 --- Which kind of caption a comp holds: "autosubs" for the bundled macro,
 --- "textplus" for anything else.
-function caption_style.kind_of(comp)
+---
+--- The macro's read and write helpers are Lua source carried in the comp's own
+--- tool data, so this cannot rest on the tool name alone: a third-party title
+--- out of the user's media pool could call its root tool "AutoSubs" and have
+--- that data compiled and run. Callers name the media pool template the clip
+--- came from, and only the bundled caption reaches the helper path.
+function caption_style.kind_of(comp, templateName)
+    if not caption_style.is_autosubs_template(templateName) then
+        return "textplus"
+    end
     if comp and comp:FindTool(AUTOSUBS_TOOL) then
         return "autosubs"
     end
@@ -162,6 +171,8 @@ end
     Put text and styling into a caption comp, whichever kind it is.
 
     opts:
+      templateName - the media pool template this clip came from, which is what
+                 decides whether the bundled macro's helpers may be run
       text     - the caption's text (optional; nil leaves the text alone)
       words    - transcript words, for the per-word highlight (autosubs only)
       start    - the segment's start in seconds, which word times are relative to
@@ -172,7 +183,7 @@ end
     tag so later batch operations can find it again.
 ]]
 function caption_style.apply(comp, opts)
-    local kind = caption_style.kind_of(comp)
+    local kind = caption_style.kind_of(comp, opts.templateName)
 
     if kind == "textplus" then
         local tool = comp:FindTool("Template") or comp:FindToolByID("TextPlus")

@@ -30,6 +30,8 @@ export interface TimelineInfo {
     inputTracks: Track[];
     outputTracks: Track[];
     projectName: string;
+    /** Resolve's unique project id. Empty on hosts that do not report one. */
+    projectId?: string;
 }
 
 // Subtitle Interfaces
@@ -125,6 +127,7 @@ export interface Settings {
     onboardingCompleted: boolean;
     lastSeenVersion: string;
     showEnglishOnlyModels: boolean;
+    subtitlePanelWidth: number;
 
     // Survey notification settings
     timesDismissedSurvey: number;

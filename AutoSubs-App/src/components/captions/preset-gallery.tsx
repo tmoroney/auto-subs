@@ -279,6 +279,11 @@ function PresetCard({
       aria-busy={isRendering}
       onClick={onSelect}
       onKeyDown={(e) => {
+        // Only the card itself. The card holds its own buttons (Edit, and the
+        // menu), and a key press on one of those bubbles up here: without this
+        // guard, preventDefault would swallow the button's own activation and
+        // select the preset instead of opening it.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect();

@@ -33,6 +33,7 @@ const EMPTY_TIMELINE_INFO: TimelineInfo = {
   inputTracks: [],
   outputTracks: [],
   projectName: "",
+  projectId: "",
 };
 
 /**
@@ -40,8 +41,14 @@ const EMPTY_TIMELINE_INFO: TimelineInfo = {
  * valid for the project it was read from. Keying the cache this way is what
  * stops a template added mid session (or a project switch) from being invisible
  * until the app restarts.
+ *
+ * The key is the project's unique id where Resolve reports one: two distinct
+ * projects can carry the same display name, and keying on the name alone would
+ * serve one project's templates to the other. The name is only a fallback for
+ * hosts that report no id.
  */
-const templatesCacheKey = (info: TimelineInfo) => info.projectName || "";
+const templatesCacheKey = (info: TimelineInfo) =>
+  info.projectId ? `id:${info.projectId}` : `name:${info.projectName || ""}`;
 
 const ResolveContext = createContext<ResolveContextType | null>(null);
 

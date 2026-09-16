@@ -512,6 +512,13 @@ function GetTimelineInfo()
             timelineId = timeline:GetUniqueId(),
             timelineStart = timeline:GetStartFrame() / timeline:GetSetting("timelineFrameRate"),
             projectName = project:GetName(),
+            -- Two projects can share a name, so anything caching per project
+            -- needs the id. Older Resolve builds have no GetUniqueId on
+            -- Project, hence the pcall and the empty-string fallback.
+            projectId = (function()
+                local ok, id = pcall(project.GetUniqueId, project)
+                return (ok and type(id) == "string") and id or ""
+            end)(),
         }
     end)
     if not success then
@@ -1580,10 +1587,11 @@ end
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
--- The caption kind is read from each comp by caption_style.apply, so this does
--- not need to be told which template was used.
+-- templateName names the media pool clip these items were appended from:
+-- caption_style.apply needs it to tell the bundled macro from a user's own
+-- title before running any helper the comp carries.
 local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, presetSettings,
-                                   speakerIndexById, transcriptId)
+                                   speakerIndexById, transcriptId, templateName)
     local startTime = os.clock()
     local failed = 0
     local noFusionComp = 0
@@ -1607,6 +1615,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
                 end
 
                 local styleTool = caption_style.apply(comp, {
+                    templateName = templateName,
                     text = subtitleText,
                     words = subtitle.words,
                     start = subtitle.start,
@@ -1764,7 +1773,7 @@ function AddSubtitles(req)
             end
 
             local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist,
-                presetSettings, speakerIndexById, transcriptId)
+                presetSettings, speakerIndexById, transcriptId, resolvedTemplateName)
 
             -- Force timeline refresh by jumping to the first subtitle
             if subtitles and #subtitles > 0 then
@@ -2113,6 +2122,7 @@ function GeneratePreview(req)
             }
 
             local styleTool = caption_style.apply(comp, {
+                templateName = templateName,
                 text = "Subtitle Example Text",
                 words = previewWords,
                 start = 0,
@@ -2159,25 +2169,79 @@ end
 --
 -- The clip stays on the timeline for the whole session so the user can tweak
 -- its controls and watch the animation play, and so saving is read-plus-render
--- rather than append-render-delete. The page is left alone: the Inspector
--- exposes the macro's controls on the edit page, so there is no need to drag
--- the user over to Fusion.
+-- rather than append-render-delete. Opening parks the playhead on the clip and
+-- switches to the Fusion page, which is where the macro's inspector -- the
+-- editing UI for a caption's look -- is guaranteed to be showing the preview
+-- clip rather than whatever the user had selected before.
 -- ---------------------------------------------------------------------------
 
 -- Name given to the temporary track, so teardown can find it again by identity.
 local PRESET_EDIT_TRACK_NAME = "AutoSubs Preview"
 
--- Find the preview track by name. A stored index goes stale the moment the
--- user adds or removes a video track mid session, and deleting by a stale
--- index would delete one of their tracks.
+-- Stamped on the preview clip as a marker. The track name on its own is not
+-- proof of ownership -- a user is free to have a track called "AutoSubs
+-- Preview" -- and cleanup deletes whole tracks, so every clip has to say it is
+-- ours before anything is removed.
+local PRESET_EDIT_MARKER = "AutoSubsPresetEdit"
+
+local function mark_preset_edit_item(timelineItem)
+    pcall(function()
+        timelineItem:AddMarker(0, "Blue", PRESET_EDIT_TRACK_NAME,
+            "Temporary AutoSubs preset preview clip", 1, PRESET_EDIT_MARKER)
+    end)
+end
+
+local function is_preset_edit_item(item)
+    if not item then return false end
+    local ok, marker = pcall(item.GetMarkerByCustomData, item, PRESET_EDIT_MARKER)
+    return ok and type(marker) == "table" and next(marker) ~= nil
+end
+
+-- A track is ours only if everything on it is a clip we stamped. An empty
+-- track cannot prove anything, so it counts as the user's.
+local function preset_edit_track_is_ours(timeline, index)
+    local ok, items = pcall(timeline.GetItemListInTrack, timeline, "video", index)
+    if not ok or type(items) ~= "table" or #items == 0 then return false end
+    for _, item in ipairs(items) do
+        if not is_preset_edit_item(item) then return false end
+    end
+    return true
+end
+
+-- Find the preview track by name and ownership. A stored index goes stale the
+-- moment the user adds or removes a video track mid session, and deleting by a
+-- stale index would delete one of their tracks. A same-named track of theirs is
+-- left alone, as is an empty one: a stray empty track beats deleting their work.
 local function find_preset_edit_track(timeline)
     if not timeline then return nil end
     local ok, count = pcall(timeline.GetTrackCount, timeline, "video")
     if not ok or type(count) ~= "number" then return nil end
     for index = count, 1, -1 do
         local named, name = pcall(timeline.GetTrackName, timeline, "video", index)
-        if named and name == PRESET_EDIT_TRACK_NAME then
+        if named and name == PRESET_EDIT_TRACK_NAME and preset_edit_track_is_ours(timeline, index) then
             return index
+        end
+    end
+    return nil
+end
+
+-- Which video track holds this item. Resolve hands back a fresh proxy on each
+-- call, so fall back to the unique id when identity comparison comes up empty.
+local function track_index_of_item(timeline, target)
+    if not (timeline and target) then return nil end
+    local okId, targetId = pcall(target.GetUniqueId, target)
+    local ok, count = pcall(timeline.GetTrackCount, timeline, "video")
+    if not ok or type(count) ~= "number" then return nil end
+    for index = count, 1, -1 do
+        local listed, items = pcall(timeline.GetItemListInTrack, timeline, "video", index)
+        if listed and type(items) == "table" then
+            for _, item in ipairs(items) do
+                if item == target then return index end
+                if okId and targetId then
+                    local gotId, id = pcall(item.GetUniqueId, item)
+                    if gotId and id == targetId then return index end
+                end
+            end
         end
     end
     return nil
@@ -2204,11 +2268,21 @@ local function teardown_preset_edit_session()
         end
     end
 
+    -- The track has to be identified before the clip goes: once it is empty
+    -- nothing on it can show it was ours.
+    local trackIndex = nil
     if timeline and session and session.timelineItem then
+        local candidate = track_index_of_item(timeline, session.timelineItem)
+        -- Only the track our preview clip has to itself. The user may have
+        -- dropped clips of their own on it mid session.
+        if candidate and preset_edit_track_is_ours(timeline, candidate) then
+            trackIndex = candidate
+        end
         pcall(function() timeline:DeleteClips({ session.timelineItem }) end)
+    elseif timeline then
+        trackIndex = find_preset_edit_track(timeline)
     end
 
-    local trackIndex = timeline and find_preset_edit_track(timeline)
     if timeline and trackIndex then
         pcall(function() timeline:DeleteTrack("video", trackIndex) end)
     end
@@ -2217,7 +2291,8 @@ local function teardown_preset_edit_session()
 end
 
 -- Remove a preview track left behind by a crash, a server restart or a hot
--- reload: the session only ever lived in memory, so nothing else would.
+-- reload: the session only ever lived in memory, so nothing else would. Only
+-- a track carrying nothing but our own stamped clips is touched.
 local function sweep_orphan_preset_edit_track(timeline)
     if presetEditSession ~= nil then return end
     local trackIndex = find_preset_edit_track(timeline)
@@ -2282,6 +2357,10 @@ function OpenPresetEdit(req)
             error("Failed to append preview clip to timeline")
         end
 
+        -- Stamp it before anything else can go wrong: cleanup will not remove a
+        -- track it cannot see an owned clip on.
+        mark_preset_edit_item(timelineItem)
+
         -- Park the playhead at the middle of the preview clip: the animation
         -- has settled by then, so the caption reads as it will on export, and
         -- the clip's controls are what the Inspector shows.
@@ -2304,15 +2383,16 @@ function OpenPresetEdit(req)
         local tool = comp and comp:FindTool("AutoSubs")
 
         -- Seed with the preset's current look so editing starts from it
-        -- rather than from the macro defaults.
+        -- rather than from the macro defaults. caption_style owns reading and
+        -- writing the macro's inputs, here as everywhere else.
         if tool and initialSettings ~= nil and next(initialSettings) ~= nil then
-            pcall(function()
-                local setter = tool:GetData("SetInputValues")
-                if setter and setter ~= "" then
-                    loadstring(setter)()(comp, tool, initialSettings)
-                end
-            end)
+            pcall(caption_style.write, comp, tool, initialSettings)
         end
+
+        -- The macro's inspector is the editing UI, so hand the user the page
+        -- that shows it for this clip. On the edit page the Inspector would
+        -- keep showing whatever they had selected before.
+        pcall(function() resolve:OpenPage("fusion") end)
 
         presetEditSession = {
             timelineId = timeline:GetUniqueId(),
@@ -2346,11 +2426,7 @@ function SavePresetEdit(req)
 
     local settings = nil
     local ok, err = pcall(function()
-        local getter = tool:GetData("GetInputValues")
-        if not getter or getter == "" then
-            error("Macro is missing GetInputValues helper")
-        end
-        settings = loadstring(getter)()(tool)
+        settings = caption_style.read(tool)
     end)
 
     -- Always close, even on failure, so the user is never left with a stray
