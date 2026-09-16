@@ -172,9 +172,19 @@ pub struct FileEntry {
     /// HF repo to fetch from, overriding the entry's source repo.
     #[serde(default)]
     pub repo: Option<String>,
+    /// Immutable HF revision; omitted entries keep the existing main branch.
+    #[serde(default)]
+    pub revision: Option<String>,
 }
 
 impl FileSpec {
+    pub fn revision(&self) -> &str {
+        match self {
+            FileSpec::Plain(_) => "main",
+            FileSpec::Detailed(f) => f.revision.as_deref().unwrap_or("main"),
+        }
+    }
+
     /// Repo-relative path to download.
     pub fn path(&self) -> &str {
         match self {
@@ -215,6 +225,34 @@ impl FileSpec {
     }
 }
 
+#[cfg(test)]
+mod orukeet_tests {
+    use super::*;
+
+    #[test]
+    fn pinned_orukeet_uses_flat_parakeet_layout_without_invented_ratings() {
+        let model = MANIFEST.get("orukeet").unwrap();
+        assert_eq!(model.engine, Engine::Parakeet);
+        assert_eq!(model.quantization, Some(Quant::Int8));
+        let Source::Hf { repo, files } = &model.source else { panic!("expected HF") };
+        assert_eq!(repo, "oruk/orukeet");
+        for file in files {
+            assert!(file.is_renamed());
+            assert_eq!(file.revision(), "1751fce6ecde442f14543cf1804800c49b3e415c");
+        }
+        for required in ["config.json", "encoder-model.int8.onnx", "decoder_joint-model.int8.onnx", "nemo128.onnx", "vocab.txt", "LICENSE-WEIGHTS.txt", "NOTICE.txt", "LICENSE-PREPROCESSOR.txt", "LICENSE-CONVERTER.txt"] {
+            assert!(files.iter().any(|f| f.dest() == required));
+        }
+        let ui = model.ui.as_ref().unwrap();
+        assert!(ui.accuracy.is_none() && ui.speed.is_none());
+        assert_eq!(ui.best_for.as_deref(), Some([].as_slice()));
+        let old: FileSpec = serde_json::from_str(r#""config.json""#).unwrap();
+        let renamed: FileSpec = serde_json::from_str(r#"{"path":"onnx/config.json","dest":"config.json"}"#).unwrap();
+        assert_eq!(old.revision(), "main");
+        assert_eq!(renamed.revision(), "main");
+    }
+}
+
 /// Display metadata for the model picker. The picker derives its entire sort
 /// order from these fields, so they are data rather than presentation: see the
 /// `_ui_comment` in `models.json` for what each one means.
@@ -229,9 +267,11 @@ pub struct Ui {
     pub ram_mb: Option<u32>,
     pub image: String,
     /// 1-5, 5 = best in class. Half steps (e.g. 2.5) are allowed to break ties
-    /// between models the whole-number scale can't separate.
-    pub accuracy: f32,
-    /// 1-5, 5 = fastest. Optional for the same reason as `ram_mb`.
+    /// between models the whole-number scale can't separate. None omits the
+    /// meter when no broad rating has been established.
+    #[serde(default)]
+    pub accuracy: Option<f32>,
+    /// 1-5, 5 = fastest. None omits the meter for unrated models.
     #[serde(default)]
     pub speed: Option<f32>,
     /// Languages this model is a proven strong choice for. Absent means
@@ -390,7 +430,7 @@ mod tests {
                 .is_file(),
             "aligner image must exist in public/"
         );
-        assert!((1.0f32..=5.0).contains(&a.ui.accuracy));
+        assert!((1.0f32..=5.0).contains(&a.ui.accuracy.unwrap()));
     }
 
     /// The picker's ordering is derived purely from `ui`, so a model missing
@@ -409,19 +449,14 @@ mod tests {
                 .ui
                 .as_ref()
                 .unwrap_or_else(|| panic!("{}: selectable models need a ui block", e.id));
-            assert!(
-                (1.0f32..=5.0).contains(&ui.accuracy) && is_half_step(ui.accuracy),
-                "{}: accuracy must be 1-5 in steps of 0.5 (got {})",
-                e.id,
-                ui.accuracy
-            );
-            let speed = ui.speed.unwrap_or_else(|| panic!("{}: missing speed", e.id));
-            assert!(
-                (1.0f32..=5.0).contains(&speed) && is_half_step(speed),
-                "{}: speed must be 1-5 in steps of 0.5 (got {})",
-                e.id,
-                speed
-            );
+            for rating in [ui.accuracy, ui.speed].into_iter().flatten() {
+                assert!((1.0f32..=5.0).contains(&rating) && is_half_step(rating),
+                    "{}: ratings must be 1-5 in steps of 0.5", e.id);
+            }
+            if ui.accuracy.is_none() || ui.speed.is_none() {
+                assert_eq!(ui.best_for.as_deref(), Some([].as_slice()),
+                    "{}: unrated models must not claim a bestFor language", e.id);
+            }
             let ram = ui
                 .ram_mb
                 .unwrap_or_else(|| panic!("{}: missing ramMb", e.id));

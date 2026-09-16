@@ -17,8 +17,8 @@ interface ManifestUi {
   size: string;
   ramMb?: number;
   image: string;
-  accuracy: number;
-  speed?: number;
+  accuracy?: number | null;
+  speed?: number | null;
   bestFor?: string[];
   languageSupport: Model["languageSupport"];
 }
@@ -87,8 +87,8 @@ function toModel(id: string, engine: string, ui: ManifestUi, keyBase: string): M
     badge: `models.${keyBase}.badge`,
     engine,
     languageSupport: ui.languageSupport,
-    accuracy: ui.accuracy as Model["accuracy"],
-    speed: (ui.speed ?? 1) as Model["speed"],
+    accuracy: ui.accuracy ?? null,
+    speed: ui.speed ?? null,
     bestFor: ui.bestFor ?? defaultBestFor(ui.languageSupport),
     isDownloaded: false,
   };
@@ -116,10 +116,10 @@ export function compareModels(a: Model, b: Model, language: string, sort: ModelS
 
   const keys: Array<(m: Model) => number> =
     sort === "speed"
-      ? [(m) => -m.speed, (m) => -proven(m), (m) => -m.accuracy, (m) => m.ramMb]
+      ? [(m) => -(m.speed ?? 0), (m) => -proven(m), (m) => -(m.accuracy ?? 0), (m) => m.ramMb]
       : sort === "accuracy"
-        ? [(m) => -m.accuracy, (m) => -proven(m), (m) => -m.speed, (m) => m.ramMb]
-        : [(m) => -m.accuracy, (m) => -proven(m), (m) => -m.speed, (m) => m.ramMb];
+        ? [(m) => -(m.accuracy ?? 0), (m) => -proven(m), (m) => -(m.speed ?? 0), (m) => m.ramMb]
+        : [(m) => -(m.accuracy ?? 0), (m) => -proven(m), (m) => -(m.speed ?? 0), (m) => m.ramMb];
 
   for (const key of keys) {
     const diff = key(a) - key(b);

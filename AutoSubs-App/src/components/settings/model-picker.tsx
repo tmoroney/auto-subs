@@ -232,8 +232,9 @@ export function ModelPicker({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="flex flex-col gap-1">
-                                  <RatingMeter label={t("modelStatus.accuracy")} value={model.accuracy} />
-                                  <RatingMeter label={t("modelStatus.speed")} value={model.speed} />
+                                  {model.accuracy == null && model.speed == null && <span className="text-xs text-muted-foreground">{model.size}</span>}
+                                  {model.accuracy != null && (<RatingMeter label={t("modelStatus.accuracy")} value={model.accuracy} />)}
+                                  {model.speed != null && (<RatingMeter label={t("modelStatus.speed")} value={model.speed} />)}
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4 bg-slate-50 dark:bg-slate-950 text-foreground">
@@ -252,16 +253,20 @@ export function ModelPicker({
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-4 text-xs">
+                                    {model.accuracy != null && (
                                     <div className="flex items-center gap-1.5">
                                       <Lightbulb size={12} className="text-amber-500" />
                                       <span>{t("modelStatus.accuracy")}</span>
                                       <span className="font-medium">{model.accuracy}/5</span>
                                     </div>
+                                    )}
+                                    {model.speed != null && (
                                     <div className="flex items-center gap-1.5">
                                       <Feather size={12} className="text-sky-500" />
                                       <span>{t("modelStatus.speed")}</span>
                                       <span className="font-medium">{model.speed}/5</span>
                                     </div>
+                                    )}
                                   </div>
                                 </div>
                               </TooltipContent>

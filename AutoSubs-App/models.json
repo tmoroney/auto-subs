@@ -1,8 +1,102 @@
 {
   "schemaVersion": 1,
   "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed).",
-  "_ui_comment": "The `ui` block drives the model picker, and the picker's ordering is derived from it entirely — there is no hand-maintained sort order anywhere. `accuracy` and `speed` are 1-5 (5 = best); they are the two meters shown per row. `ramMb` is peak memory at load and is a hard constraint, not a preference — a machine below it cannot run the model. `bestFor` lists the languages this model is a *proven strong* choice for, and it promotes the model within its accuracy tier. Omit `bestFor` to derive it from `languageSupport` (a restricted/single-language model is trained on exactly those languages, so its whole set qualifies); set it explicitly to narrow that default, as gigaam-multilingual does to drop `en`. An empty or absent list on a multilingual model means 'unproven, use as fallback' — that is what floats omni-asr to the top for languages nothing else covers well.",
+  "_ui_comment": "The `ui` block drives the model picker, and the picker's ordering is derived from it entirely — there is no hand-maintained sort order anywhere. `accuracy` and `speed` are 1-5 (5 = best), or null when unrated; they are the two meters shown per row. `ramMb` is peak memory at load and is a hard constraint, not a preference — a machine below it cannot run the model. `bestFor` lists the languages this model is a *proven strong* choice for, and it promotes the model within its accuracy tier. Omit `bestFor` to derive it from `languageSupport` (a restricted/single-language model is trained on exactly those languages, so its whole set qualifies); set it explicitly to narrow that default, as gigaam-multilingual does to drop `en`. An empty or absent list on a multilingual model means 'unproven, use as fallback' — that is what floats omni-asr to the top for languages nothing else covers well.",
   "models": [
+    {
+      "id": "orukeet",
+      "engine": "parakeet",
+      "quantization": "int8",
+      "source": {
+        "type": "hf",
+        "repo": "oruk/orukeet",
+        "files": [
+          {
+            "path": "onnx/combined-v0.1.0-int8/config.json",
+            "dest": "config.json",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/encoder-model.int8.onnx",
+            "dest": "encoder-model.int8.onnx",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/decoder_joint-model.int8.onnx",
+            "dest": "decoder_joint-model.int8.onnx",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/nemo128.onnx",
+            "dest": "nemo128.onnx",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/vocab.txt",
+            "dest": "vocab.txt",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/LICENSE-WEIGHTS",
+            "dest": "LICENSE-WEIGHTS.txt",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/NOTICE.md",
+            "dest": "NOTICE.txt",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/LICENSE-PREPROCESSOR.txt",
+            "dest": "LICENSE-PREPROCESSOR.txt",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          },
+          {
+            "path": "onnx/combined-v0.1.0-int8/LICENSE-CONVERTER.txt",
+            "dest": "LICENSE-CONVERTER.txt",
+            "revision": "1751fce6ecde442f14543cf1804800c49b3e415c"
+          }
+        ]
+      },
+      "ui": {
+        "size": "672MB",
+        "ramMb": 4096,
+        "accuracy": null,
+        "speed": null,
+        "bestFor": [],
+        "image": "macaw.png",
+        "languageSupport": {
+          "kind": "restricted",
+          "languages": [
+            "bg",
+            "hr",
+            "cs",
+            "da",
+            "nl",
+            "en",
+            "et",
+            "fi",
+            "fr",
+            "de",
+            "el",
+            "hu",
+            "it",
+            "lv",
+            "lt",
+            "mt",
+            "pl",
+            "pt",
+            "ro",
+            "sk",
+            "sl",
+            "es",
+            "sv",
+            "ru",
+            "uk"
+          ]
+        }
+      }
+    },
     {
       "id": "parakeet",
       "engine": "parakeet",

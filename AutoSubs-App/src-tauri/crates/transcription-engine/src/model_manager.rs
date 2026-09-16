@@ -266,26 +266,42 @@ impl ModelManager {
     /// different repo. Moonshine keeps its historical `moonshine/<variant>` path;
     /// everything else is keyed by `<engine>/<id>`.
     fn flat_layout(entry: &ModelEntry) -> Option<(&'static str, String)> {
-        let Source::Hf { files, .. } = &entry.source else {
+        let Source::Hf { repo, files } = &entry.source else {
             return None;
         };
-        let needs_flatten = files.iter().any(|f| f.is_renamed() || f.repo().is_some());
+        let needs_flatten = files.iter().any(|f| f.is_renamed() || f.repo().is_some() || f.revision() != "main");
         if !needs_flatten {
             return None;
         }
-        match entry.engine {
+        let (subdir, mut key) = match entry.engine {
             MEngine::Moonshine => {
                 let variant = entry.moonshine_variant.clone().unwrap_or_else(|| entry.id.clone());
-                Some(("moonshine", variant))
+                ("moonshine", variant)
             }
-            MEngine::Canary => Some(("canary", entry.id.clone())),
-            MEngine::Gigaam => Some(("gigaam", entry.id.clone())),
-            MEngine::Cohere => Some(("cohere", entry.id.clone())),
-            MEngine::SenseVoice => Some(("sense_voice", entry.id.clone())),
-            MEngine::Parakeet => Some(("parakeet", entry.id.clone())),
-            MEngine::OmniAsr => Some(("omni_asr", entry.id.clone())),
-            MEngine::Whisper => Some(("whisper", entry.id.clone())),
+            MEngine::Canary => ("canary", entry.id.clone()),
+            MEngine::Gigaam => ("gigaam", entry.id.clone()),
+            MEngine::Cohere => ("cohere", entry.id.clone()),
+            MEngine::SenseVoice => ("sense_voice", entry.id.clone()),
+            MEngine::Parakeet => ("parakeet", entry.id.clone()),
+            MEngine::OmniAsr => ("omni_asr", entry.id.clone()),
+            MEngine::Whisper => ("whisper", entry.id.clone()),
+        };
+        if files.iter().any(|file| file.revision() != "main") {
+            use sha2::{Digest, Sha256};
+            // Readiness, download and deletion all resolve through this key.
+            // Pin or file-layout changes therefore cannot reuse stale weights.
+            // Existing unpinned models retain their historical cache paths.
+            let mut digest = Sha256::new();
+            for file in files {
+                for value in [file.repo().unwrap_or(repo), file.path(), file.dest(), file.revision()] {
+                    digest.update((value.len() as u64).to_le_bytes());
+                    digest.update(value.as_bytes());
+                }
+            }
+            key.push('-');
+            key.push_str(&format!("{:x}", digest.finalize()));
         }
+        Some((subdir, key))
     }
 
     /// Download a set of repo-relative files from a HF repo into the hf-hub
@@ -412,7 +428,7 @@ impl ModelManager {
             }
 
             let repo = file.repo().unwrap_or(default_repo);
-            let url = format!("{}/{}/resolve/main/{}", hf_endpoint, repo, file.path());
+            let url = format!("{}/{}/resolve/{}/{}", hf_endpoint, repo, file.revision(), file.path());
             download_to(&dest, &url).await?;
             validate_model_file(&dest).with_context(|| {
                 format!("Model validation failed for '{}' from '{repo}'", file.dest())
@@ -1311,6 +1327,36 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pinned_files_use_revision_aware_downloader_even_without_renaming() {
+        let mut entry = manifest::get("orukeet").unwrap().clone();
+        let Source::Hf { files, .. } = &mut entry.source else { panic!("expected HF") };
+        *files = vec![serde_json::from_str(r#"{"path":"config.json","revision":"abc123"}"#).unwrap()];
+        assert!(ModelManager::flat_layout(&entry).is_some());
+    }
+
+    #[test]
+    fn pin_and_file_changes_invalidate_cache_without_changing_legacy_paths() {
+        let original = manifest::get("orukeet").unwrap();
+        let key = ModelManager::flat_layout(original).unwrap();
+        assert_eq!(key, ModelManager::flat_layout(&original.clone()).unwrap());
+        for field in ["revision", "path", "dest", "repo"] {
+            let mut changed = original.clone();
+            let Source::Hf { files, .. } = &mut changed.source else { panic!("expected HF") };
+            let FileSpec::Detailed(file) = &mut files[0] else { panic!("expected detailed file") };
+            match field {
+                "revision" => file.revision = Some("different-pin".into()),
+                "path" => file.path = "new/config.json".into(),
+                "dest" => file.dest = Some("other.json".into()),
+                "repo" => file.repo = Some("other/model".into()),
+                _ => unreachable!(),
+            }
+            assert_ne!(key, ModelManager::flat_layout(&changed).unwrap(), "{field}");
+        }
+        assert!(ModelManager::flat_layout(manifest::get("parakeet").unwrap()).is_none());
+        assert_eq!(ModelManager::flat_layout(manifest::get("moonshine-tiny").unwrap()), Some(("moonshine", "tiny".into())));
+    }
 
     /// Regression test for the "stuck at 0% forever" bug: a download attempt for a file
     /// that doesn't exist must return an error promptly, not hang indefinitely.

@@ -402,7 +402,13 @@
       "badge": "Multilingual"
     },
     "bestPick": "最佳选择",
-    "availableCount": "{{count}} 个可用模型"
+    "availableCount": "{{count}} 个可用模型",
+    "orukeet": {
+      "label": "Orukeet",
+      "description": "本地处理，支持25种欧洲语言",
+      "details": "Oruk 出品的 Orukeet。模型权重采用 CC BY-SA 4.0 许可。",
+      "badge": "CC BY-SA 4.0"
+    }
   },
   "completion": {
     "processingComplete": "处理完成",
