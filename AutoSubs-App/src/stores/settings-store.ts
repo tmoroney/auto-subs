@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   onboardingCompleted: false,
   lastSeenVersion: "",
   showEnglishOnlyModels: false,
+  subtitlePanelWidth: 400,
 
   // Survey notification settings
   timesDismissedSurvey: 0,

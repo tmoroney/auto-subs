@@ -63,7 +63,18 @@ function AppContentBody() {
     React.useState(false)
   const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
     React.useState(false)
-  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(340)
+  // Settings are hydrated before this mounts (SettingsProvider gates on it),
+  // so the persisted panel width is already in the store. Clamp it against the
+  // restored window size in case the stored width no longer fits.
+  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(() =>
+    Math.max(
+      MIN_SUBTITLE_PANEL_WIDTH,
+      Math.min(
+        useSettingsStore.getState().subtitlePanelWidth,
+        window.innerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
+      ),
+    ),
+  )
   const [transcriptDocuments, setTranscriptDocuments] = React.useState<
     SubtitleDocumentListItem[]
   >([])
@@ -73,6 +84,7 @@ function AppContentBody() {
   const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted)
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
   const isHydrated = useSettingsStore((s) => s.isHydrated)
+  const updateSetting = useSettingsStore((s) => s.updateSetting)
   const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
@@ -244,19 +256,21 @@ function AppContentBody() {
 
     const startX = event.clientX
     const startWidth = subtitlePanelWidth
+    let latestWidth = startWidth
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const nextWidth = startWidth + startX - moveEvent.clientX
-      setSubtitlePanelWidth(
-        Math.min(
-          getMaxSubtitlePanelWidth(),
-          Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
-        ),
+      latestWidth = Math.min(
+        getMaxSubtitlePanelWidth(),
+        Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
       )
+      setSubtitlePanelWidth(latestWidth)
     }
 
     const handlePointerUp = () => {
       setIsSubtitleViewerResizing(false)
+      // Persist the user's chosen width once per drag, not per pointermove.
+      updateSetting("subtitlePanelWidth", latestWidth)
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
       window.removeEventListener("pointercancel", handlePointerUp)
@@ -265,7 +279,7 @@ function AppContentBody() {
     window.addEventListener("pointermove", handlePointerMove)
     window.addEventListener("pointerup", handlePointerUp)
     window.addEventListener("pointercancel", handlePointerUp)
-  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth])
+  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth, updateSetting])
 
   // Adjust subtitle panel width when window is resized
   React.useEffect(() => {
