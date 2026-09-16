@@ -70,6 +70,16 @@ export function PresetGallery({
   const [pasteValue, setPasteValue] = React.useState("");
   const [pasteError, setPasteError] = React.useState<string | null>(null);
 
+  // Newest first, so a preset the user just made or imported is the first card
+  // they see. Built-ins are the fallback library rather than the user's own
+  // work, so they sit underneath no matter when they were created.
+  const ordered = React.useMemo(() => {
+    return [...presets.presets].sort((a, b) => {
+      if (a.builtIn !== b.builtIn) return a.builtIn ? 1 : -1;
+      return createdMs(b) - createdMs(a);
+    });
+  }, [presets.presets]);
+
   async function handleExport(preset: CaptionPreset) {
     try {
       const json = presets.exportJson(preset.id);
@@ -125,7 +135,7 @@ export function PresetGallery({
   return (
     <>
       <div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-        {presets.presets.map((preset) => (
+        {ordered.map((preset) => (
           <PresetCard
             key={preset.id}
             preset={preset}
@@ -302,6 +312,25 @@ function PresetCard({
         <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
           {preset.name}
         </span>
+        {/* Built-ins are read-only, so there is nothing to edit in place;
+            Duplicate in the menu gives the user their own copy to change. */}
+        {!preset.builtIn && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 text-white/80 opacity-60 transition-opacity hover:bg-white/15 hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            disabled={!isConnected}
+            title={isConnected ? undefined : t("captions.preset.needsResolve")}
+            aria-label={t("common.edit", "Edit")}
+          >
+            <Pencil />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -310,24 +339,12 @@ function PresetCard({
               size="icon"
               className="size-6 text-white/80 opacity-60 transition-opacity hover:bg-white/15 hover:text-white focus-visible:opacity-100 data-[state=open]:opacity-100 group-hover:opacity-100"
               onClick={(e) => e.stopPropagation()}
-              aria-label={t("common.edit", "Edit")}
+              aria-label={t("captions.preset.moreActions", "More actions")}
             >
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            {/* Built-ins are read-only, so there is nothing to edit in place;
-                Duplicate below gives the user their own copy to change. */}
-            {!preset.builtIn && (
-              <DropdownMenuItem
-                onClick={onEdit}
-                disabled={!isConnected}
-                title={isConnected ? undefined : t("captions.preset.needsResolve")}
-              >
-                <Pencil />
-                {t("common.edit", "Edit")}
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem
               onClick={onRenderPreview}
               disabled={isRendering || !isConnected}
@@ -444,6 +461,16 @@ function NewPresetCard({
       </div>
     </Card>
   );
+}
+
+/**
+ * Creation time in milliseconds. Presets imported from an older file, or from
+ * someone else's hand-edited JSON, can be missing a usable `createdAt`; those
+ * sort as oldest rather than scattering the order with NaN comparisons.
+ */
+function createdMs(preset: CaptionPreset): number {
+  const ms = Date.parse(preset.createdAt ?? "");
+  return Number.isNaN(ms) ? 0 : ms;
 }
 
 function slug(s: string): string {

@@ -286,8 +286,9 @@ export interface PresetEditSaveResult {
 
 /**
  * Opens a caption for editing in Resolve: adds a temporary video track, drops
- * an AutoSubs Caption clip on it, seeds it with `initialSettings` and opens the
- * Fusion page on it.
+ * an AutoSubs Caption clip on it, seeds it with `initialSettings` and parks the
+ * playhead over the middle of the clip. Resolve stays on whichever page the
+ * user was on; the inspector shows the macro's controls either way.
  *
  * The clip stays on the timeline until `savePresetEdit` or `cancelPresetEdit`,
  * so the user can tweak the macro's inspector for as long as they like and

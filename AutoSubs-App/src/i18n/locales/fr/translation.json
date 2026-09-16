@@ -550,30 +550,15 @@
       "label": "Style de sous-titres",
       "autosubs": {
         "name": "Sous-titres AutoSubs",
-        "description": "Animation mot à mot, enregistrée en préréglage.",
+        "description": "Animation mot à mot avec des contrôles simples.",
         "unavailable": "Absent du chutier de ce projet."
       },
       "resolve": {
         "name": "Titre Resolve",
-        "description": "Un titre Text+ de votre projet."
+        "description": "Un titre Text+ du chutier de ce projet."
       },
       "refresh": "Actualiser la liste",
-      "unavailable": "Style indisponible",
-      "difference": {
-        "trigger": "Quelle différence ?",
-        "rows": {
-          "animation": {
-            "label": "Animation",
-            "autosubs": "Mot à mot",
-            "resolve": "Aucune"
-          },
-          "availability": {
-            "label": "Disponible dans",
-            "autosubs": "Tout projet",
-            "resolve": "Ce projet uniquement"
-          }
-        }
-      }
+      "unavailable": "Style indisponible"
     },
     "speakers": {
       "label_one": "{{count}} intervenant",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "Nouveau préréglage",
+      "moreActions": "Plus d'actions",
       "preview": "Générer l’aperçu",
       "duplicate": "Dupliquer",
       "delete": "Supprimer",
@@ -617,7 +603,7 @@
         "openingTitle": "Ouverture du sous-titre dans Resolve...",
         "savingTitle": "Enregistrement depuis Resolve...",
         "editingTitle": "Modifier le sous-titre dans Resolve",
-        "editingBody": "Le sous-titre est ouvert sur la page Fusion. Modifiez-le dans l'inspecteur et regardez-le tourner, puis revenez enregistrer.",
+        "editingBody": "Le sous-titre est sur votre timeline, la tête de lecture dessus. Modifiez-le dans l'inspecteur et regardez-le tourner, puis revenez enregistrer.",
         "savingBody": "Lecture de vos réglages et création de l'aperçu."
       },
       "action": {

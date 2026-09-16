@@ -550,30 +550,15 @@
       "label": "Estilo de subtítulos",
       "autosubs": {
         "name": "Subtítulos AutoSubs",
-        "description": "Animación palabra por palabra, guardada como ajuste.",
+        "description": "Animación palabra por palabra con controles simples.",
         "unavailable": "No está en el pool de medios del proyecto."
       },
       "resolve": {
         "name": "Título de Resolve",
-        "description": "Un título Text+ de tu proyecto."
+        "description": "Un título Text+ del pool de medios de este proyecto."
       },
       "refresh": "Actualizar lista",
-      "unavailable": "Estilo no disponible",
-      "difference": {
-        "trigger": "¿Cuál es la diferencia?",
-        "rows": {
-          "animation": {
-            "label": "Animación",
-            "autosubs": "Palabra a palabra",
-            "resolve": "Ninguna"
-          },
-          "availability": {
-            "label": "Disponible en",
-            "autosubs": "Cualquier proyecto",
-            "resolve": "Solo este proyecto"
-          }
-        }
-      }
+      "unavailable": "Estilo no disponible"
     },
     "speakers": {
       "label_one": "{{count}} hablante",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "Nuevo preajuste",
+      "moreActions": "Más acciones",
       "preview": "Generar vista previa",
       "duplicate": "Duplicar",
       "delete": "Eliminar",
@@ -617,7 +603,7 @@
         "openingTitle": "Abriendo el subtítulo en Resolve...",
         "savingTitle": "Guardando desde Resolve...",
         "editingTitle": "Edita el subtítulo en Resolve",
-        "editingBody": "El subtítulo está abierto en la página Fusion. Cámbialo con el inspector y míralo en marcha, luego vuelve y guarda.",
+        "editingBody": "El subtítulo está en tu línea de tiempo con el cabezal encima. Cámbialo con el inspector y míralo en marcha, luego vuelve y guarda.",
         "savingBody": "Leyendo tus ajustes y generando la vista previa."
       },
       "action": {

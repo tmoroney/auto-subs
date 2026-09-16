@@ -550,30 +550,15 @@
       "label": "字幕スタイル",
       "autosubs": {
         "name": "AutoSubs キャプション",
-        "description": "単語ごとのアニメーション。プリセットとして保存。",
+        "description": "単語ごとのアニメーションと使いやすいスタイル設定。",
         "unavailable": "このプロジェクトのメディアプールにありません。"
       },
       "resolve": {
         "name": "Resolve タイトル",
-        "description": "プロジェクト内の Text+ タイトル。"
+        "description": "このプロジェクトのメディアプール内の Text+ タイトル。"
       },
       "refresh": "リストを更新",
-      "unavailable": "スタイルが見つかりません",
-      "difference": {
-        "trigger": "違いは？",
-        "rows": {
-          "animation": {
-            "label": "アニメーション",
-            "autosubs": "単語ごと",
-            "resolve": "なし"
-          },
-          "availability": {
-            "label": "使える範囲",
-            "autosubs": "すべてのプロジェクト",
-            "resolve": "開いているプロジェクト"
-          }
-        }
-      }
+      "unavailable": "スタイルが見つかりません"
     },
     "speakers": {
       "label_one": "話者 {{count}} 人",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "新規プリセット",
+      "moreActions": "その他の操作",
       "preview": "プレビューを生成",
       "duplicate": "複製",
       "delete": "削除",
@@ -617,7 +603,7 @@
         "openingTitle": "Resolve でキャプションを開いています...",
         "savingTitle": "Resolve から保存しています...",
         "editingTitle": "Resolve でキャプションを編集",
-        "editingBody": "キャプションは Fusion ページで開いています。インスペクタで調整して再生を確認し、戻って保存してください。",
+        "editingBody": "キャプションはタイムライン上にあり、再生ヘッドが重なっています。インスペクタで調整して再生を確認し、戻って保存してください。",
         "savingBody": "設定を読み取り、プレビューを作成しています。"
       },
       "action": {

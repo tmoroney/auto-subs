@@ -2153,13 +2153,15 @@ end
 -- the app.
 --
 -- The three endpoints below are one per user action:
---   OpenPresetEdit   -> drops a caption clip on a temp track, opens Fusion.
+--   OpenPresetEdit   -> drops a caption clip on a temp track, parks on it.
 --   SavePresetEdit   -> reads tool inputs, renders the thumbnail, closes.
 --   CancelPresetEdit -> closes without reading.
 --
--- The clip stays on the timeline for the whole session so the user can edit in
--- Fusion and watch the animation play, and so saving is read-plus-render
--- rather than append-render-delete.
+-- The clip stays on the timeline for the whole session so the user can tweak
+-- its controls and watch the animation play, and so saving is read-plus-render
+-- rather than append-render-delete. The page is left alone: the Inspector
+-- exposes the macro's controls on the edit page, so there is no need to drag
+-- the user over to Fusion.
 -- ---------------------------------------------------------------------------
 
 -- Name given to the temporary track, so teardown can find it again by identity.
@@ -2181,8 +2183,9 @@ local function find_preset_edit_track(timeline)
     return nil
 end
 
--- Remove the temp clip + track, if any, and return to the edit page. Safe to
--- call without an active session.
+-- Remove the temp clip + track, if any, and return to the edit page in case
+-- the user wandered off to Fusion mid session. Safe to call without an active
+-- session.
 local function teardown_preset_edit_session()
     local session = presetEditSession
     presetEditSession = nil
@@ -2279,9 +2282,24 @@ function OpenPresetEdit(req)
             error("Failed to append preview clip to timeline")
         end
 
-        -- Park the playhead over the clip and open it in Fusion, which is
-        -- where the caption is actually edited.
-        timeline:SetCurrentTimecode(timeline:GetStartTimecode())
+        -- Park the playhead at the middle of the preview clip: the animation
+        -- has settled by then, so the caption reads as it will on export, and
+        -- the clip's controls are what the Inspector shows.
+        local parked = false
+        if luaresolve then
+            local clipStart = timelineItem:GetStart()
+            local clipEnd = timelineItem:GetEnd()
+            local frameRate = tonumber(timeline:GetSetting("timelineFrameRate")) or fps
+            if clipStart and clipEnd and clipEnd > clipStart then
+                local centreFrame = math.floor((clipStart + clipEnd) / 2)
+                local timecode = luaresolve:timecode_from_frame_auto(centreFrame, frameRate)
+                parked = timeline:SetCurrentTimecode(timecode) and true or false
+            end
+        end
+        if not parked then
+            timeline:SetCurrentTimecode(timeline:GetStartTimecode())
+        end
+
         local comp = timelineItem:GetFusionCompByIndex(1)
         local tool = comp and comp:FindTool("AutoSubs")
 
@@ -2302,8 +2320,6 @@ function OpenPresetEdit(req)
             comp = comp,
             tool = tool,
         }
-
-        pcall(function() resolve:OpenPage("fusion") end)
     end)
 
     if not ok then
@@ -2338,9 +2354,10 @@ function SavePresetEdit(req)
     end)
 
     -- Always close, even on failure, so the user is never left with a stray
-    -- preview clip. This has to happen before the thumbnail render: the
-    -- session comp is open in the Fusion page, where the viewer keeps it busy,
-    -- so extract_frame's idle wait could never settle.
+    -- preview clip. This has to happen before the thumbnail render: while the
+    -- session clip is still on the timeline a viewer can keep its comp busy
+    -- (certainly so if the user opened it in Fusion), and extract_frame's idle
+    -- wait would never settle.
     teardown_preset_edit_session()
 
     if not ok then

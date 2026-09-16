@@ -408,38 +408,43 @@ export function OutputPanel({
                   : t("captions.batchStyle.applyAll")}
               </Button>
             )}
-            {isConnected && (
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-w-36 flex-[1_1_9rem]"
-                disabled={actionDisabled}
-                onClick={handlePrimaryAction}
-              >
-                {actionLabel}
-              </Button>
-            )}
-            <ExportPopover
-              onExport={onExport}
-              hasSubtitles={hasSubtitles}
-              trigger={
-                isConnected ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0"
-                    title={t("importExport.exportTab")}
-                  >
-                    <Download />
-                  </Button>
-                ) : (
-                  <Button variant="secondary" size="default" className="w-full">
-                    <Download className="size-4" />
-                    {t("importExport.exportTab")}
-                  </Button>
-                )
-              }
-            />
+            {/* Send and export are one unit: the wrap boundary falls before
+                this group, so the export icon can never end up alone on its
+                own line. */}
+            <div className="flex flex-[1_1_12rem] justify-end gap-2">
+              {isConnected && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-w-36 flex-1"
+                  disabled={actionDisabled}
+                  onClick={handlePrimaryAction}
+                >
+                  {actionLabel}
+                </Button>
+              )}
+              <ExportPopover
+                onExport={onExport}
+                hasSubtitles={hasSubtitles}
+                trigger={
+                  isConnected ? (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      title={t("importExport.exportTab")}
+                    >
+                      <Download />
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" size="default" className="w-full">
+                      <Download className="size-4" />
+                      {t("importExport.exportTab")}
+                    </Button>
+                  )
+                }
+              />
+            </div>
           </div>
         </div>
       )}

@@ -550,30 +550,15 @@
       "label": "자막 스타일",
       "autosubs": {
         "name": "AutoSubs 자막",
-        "description": "단어별 애니메이션, 프리셋으로 저장됩니다.",
+        "description": "단어별 애니메이션과 간편한 스타일 컨트롤.",
         "unavailable": "이 프로젝트의 미디어 풀에 없습니다."
       },
       "resolve": {
         "name": "Resolve 타이틀",
-        "description": "프로젝트에 있는 Text+ 타이틀입니다."
+        "description": "이 프로젝트 미디어 풀의 Text+ 타이틀."
       },
       "refresh": "목록 새로고침",
-      "unavailable": "스타일 없음",
-      "difference": {
-        "trigger": "무엇이 다른가요?",
-        "rows": {
-          "animation": {
-            "label": "애니메이션",
-            "autosubs": "단어별",
-            "resolve": "없음"
-          },
-          "availability": {
-            "label": "사용 범위",
-            "autosubs": "모든 프로젝트",
-            "resolve": "현재 프로젝트"
-          }
-        }
-      }
+      "unavailable": "스타일 없음"
     },
     "speakers": {
       "label_one": "화자 {{count}}명",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "새 프리셋",
+      "moreActions": "기타 작업",
       "preview": "미리보기 생성",
       "duplicate": "복제",
       "delete": "삭제",
@@ -617,7 +603,7 @@
         "openingTitle": "Resolve에서 자막을 여는 중...",
         "savingTitle": "Resolve에서 저장하는 중...",
         "editingTitle": "Resolve에서 자막 편집",
-        "editingBody": "자막이 Fusion 페이지에 열려 있습니다. 인스펙터로 수정하고 재생을 확인한 뒤 돌아와 저장하세요.",
+        "editingBody": "자막이 타임라인에 있고 재생 헤드가 그 위에 있습니다. 인스펙터로 수정하고 재생을 확인한 뒤 돌아와 저장하세요.",
         "savingBody": "설정을 읽고 미리보기를 만드는 중입니다."
       },
       "action": {

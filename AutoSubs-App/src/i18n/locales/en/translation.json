@@ -570,30 +570,15 @@
       "label": "Caption style",
       "autosubs": {
         "name": "AutoSubs Captions",
-        "description": "Word by word animation, saved as presets.",
+        "description": "Word by word animation with simple styling controls.",
         "unavailable": "Not found in this project's media pool."
       },
       "resolve": {
         "name": "Resolve Title",
-        "description": "A Text+ title from your project."
+        "description": "A Text+ title from this project's media pool."
       },
       "refresh": "Refresh list",
-      "unavailable": "Style unavailable",
-      "difference": {
-        "trigger": "What is the difference?",
-        "rows": {
-          "animation": {
-            "label": "Animation",
-            "autosubs": "Word by word",
-            "resolve": "None"
-          },
-          "availability": {
-            "label": "Available in",
-            "autosubs": "Any project",
-            "resolve": "The open project"
-          }
-        }
-      }
+      "unavailable": "Style unavailable"
     },
     "speakers": {
       "label_one": "{{count}} speaker",
@@ -625,6 +610,7 @@
     },
     "preset": {
       "new": "New preset",
+      "moreActions": "More actions",
       "preview": "Generate preview",
       "duplicate": "Duplicate",
       "delete": "Delete",
@@ -637,7 +623,7 @@
         "openingTitle": "Opening the caption in Resolve...",
         "savingTitle": "Saving from Resolve...",
         "editingTitle": "Edit the caption in Resolve",
-        "editingBody": "The caption is open on the Fusion page. Change it with the inspector and watch it play, then come back and save.",
+        "editingBody": "The caption is on your timeline with the playhead over it. Change it with the inspector and watch it play, then come back and save.",
         "savingBody": "Reading your settings and rendering the preview."
       },
       "action": {

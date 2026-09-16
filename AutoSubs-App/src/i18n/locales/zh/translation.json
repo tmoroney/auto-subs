@@ -550,30 +550,15 @@
       "label": "字幕样式",
       "autosubs": {
         "name": "AutoSubs 字幕",
-        "description": "逐字动画，可保存为预设。",
+        "description": "逐字动画，带简单易用的样式控件。",
         "unavailable": "此项目的媒体池中没有该模板。"
       },
       "resolve": {
         "name": "Resolve 标题",
-        "description": "项目中的 Text+ 标题。"
+        "description": "此项目媒体池中的 Text+ 标题。"
       },
       "refresh": "刷新列表",
-      "unavailable": "样式不可用",
-      "difference": {
-        "trigger": "有什么区别？",
-        "rows": {
-          "animation": {
-            "label": "动画",
-            "autosubs": "逐字",
-            "resolve": "无"
-          },
-          "availability": {
-            "label": "可用范围",
-            "autosubs": "任意项目",
-            "resolve": "当前项目"
-          }
-        }
-      }
+      "unavailable": "样式不可用"
     },
     "speakers": {
       "label_one": "{{count}} 位说话人",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "新建预设",
+      "moreActions": "更多操作",
       "preview": "生成预览",
       "duplicate": "复制",
       "delete": "删除",
@@ -617,7 +603,7 @@
         "openingTitle": "正在 Resolve 中打开字幕...",
         "savingTitle": "正在从 Resolve 保存...",
         "editingTitle": "在 Resolve 中编辑字幕",
-        "editingBody": "字幕已在 Fusion 页面打开。用检查器调整并查看播放效果，然后回到这里保存。",
+        "editingBody": "字幕已放在你的时间线上，播放头停在它上面。用检查器调整并查看播放效果，然后回到这里保存。",
         "savingBody": "正在读取设置并生成预览。"
       },
       "action": {

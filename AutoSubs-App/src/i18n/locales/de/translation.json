@@ -550,30 +550,15 @@
       "label": "Untertitel-Stil",
       "autosubs": {
         "name": "AutoSubs Untertitel",
-        "description": "Wort für Wort animiert, als Vorlage gespeichert.",
+        "description": "Wort für Wort animiert, mit einfachen Styling-Reglern.",
         "unavailable": "Nicht im Medienpool dieses Projekts."
       },
       "resolve": {
         "name": "Resolve Titel",
-        "description": "Ein Text+ Titel aus deinem Projekt."
+        "description": "Ein Text+ Titel aus dem Medienpool dieses Projekts."
       },
       "refresh": "Liste aktualisieren",
-      "unavailable": "Stil nicht verfügbar",
-      "difference": {
-        "trigger": "Wo ist der Unterschied?",
-        "rows": {
-          "animation": {
-            "label": "Animation",
-            "autosubs": "Wort für Wort",
-            "resolve": "Keine"
-          },
-          "availability": {
-            "label": "Verfügbar in",
-            "autosubs": "Jedem Projekt",
-            "resolve": "Nur diesem Projekt"
-          }
-        }
-      }
+      "unavailable": "Stil nicht verfügbar"
     },
     "speakers": {
       "label_one": "{{count}} Sprecher",
@@ -605,6 +590,7 @@
     },
     "preset": {
       "new": "Neue Voreinstellung",
+      "moreActions": "Weitere Aktionen",
       "preview": "Vorschau erstellen",
       "duplicate": "Duplizieren",
       "delete": "Löschen",
@@ -617,7 +603,7 @@
         "openingTitle": "Untertitel wird in Resolve geöffnet...",
         "savingTitle": "Wird aus Resolve gespeichert...",
         "editingTitle": "Untertitel in Resolve bearbeiten",
-        "editingBody": "Der Untertitel ist auf der Fusion-Seite geöffnet. Ändere ihn im Inspektor und sieh ihn dir an, dann komm zurück und speichere.",
+        "editingBody": "Der Untertitel liegt in deiner Timeline, der Abspielkopf steht darauf. Ändere ihn im Inspektor und sieh ihn dir an, dann komm zurück und speichere.",
         "savingBody": "Einstellungen werden gelesen und die Vorschau erstellt."
       },
       "action": {
