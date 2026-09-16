@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getSubtitleDocumentPath, getAudioExportDir } from '@/utils/file-utils';
-import { Speaker, Template } from '@/types';
+import { Speaker, Template, TimelineInfo } from '@/types';
 
 /**
  * Error thrown when the AutoSubs Lua server (inside Resolve) reports a failure
@@ -128,10 +128,7 @@ export async function getTimelineInfo() {
   if (!data.timelineId) {
     throw new Error('No timeline detected in Resolve.');
   }
-  return {
-    ...data,
-    templates: [],
-  };
+  return data as TimelineInfo;
 }
 
 export async function getTemplates(): Promise<Template[]> {
@@ -263,7 +260,7 @@ export async function getRenderJobStatus() {
 
 export async function generatePreview(
   templateName: string,
-  exportPath: string,
+  exportDir: string,
   presetSettings?: Record<string, unknown>,
   speaker?: Speaker,
   language?: string,
@@ -272,7 +269,7 @@ export async function generatePreview(
     func: 'GeneratePreview',
     speaker,
     templateName,
-    exportPath,
+    exportDir,
     presetSettings,
     language,
   });

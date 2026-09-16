@@ -27,7 +27,6 @@ export interface Track {
 export interface TimelineInfo {
     name: string;
     timelineId: string;
-    templates: Template[];
     inputTracks: Track[];
     outputTracks: Track[];
     projectName: string;
@@ -167,11 +166,6 @@ export interface Settings {
     // AutoSubs Caption settings
     presetId: string;
     captionMode: "regular" | "animated";
-
-    // Animation settings
-    animationType: string;
-    highlightType: string;
-    highlightColor: string;
 }
 
 // Caption preset for the custom AutoSubs animated caption macro.

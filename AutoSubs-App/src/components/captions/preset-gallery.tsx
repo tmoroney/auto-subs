@@ -44,9 +44,9 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { downloadDir } from "@tauri-apps/api/path";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PresetThumbnail } from "@/components/dialogs/caption-style/preset-thumbnail";
+import { PresetThumbnail } from "@/components/captions/preset-thumbnail";
 
-interface AnimatedPresetPickerProps {
+interface PresetGalleryProps {
   presets: CaptionPreset[];
   selectedPresetId: string;
   onSelect: (id: string) => void;
@@ -63,7 +63,7 @@ interface AnimatedPresetPickerProps {
 /**
  * Full-width animated caption preset list with an overflow menu per preset.
  */
-export function AnimatedPresetPicker({
+export function PresetGallery({
   presets,
   selectedPresetId,
   onSelect,
@@ -75,7 +75,7 @@ export function AnimatedPresetPicker({
   onImportJson,
   previewLoadingId,
   onRequestCreate,
-}: AnimatedPresetPickerProps) {
+}: PresetGalleryProps) {
   const { t } = useTranslation();
   const [pendingDelete, setPendingDelete] =
     React.useState<CaptionPreset | null>(null);
@@ -93,7 +93,7 @@ export function AnimatedPresetPicker({
       });
       if (!target) return;
       await writeTextFile(target, json);
-      toast.success(t("addToTimeline.preset.export"));
+      toast.success(t("captions.preset.export"));
     } catch (err: any) {
       toast.error(err?.message ?? "Export failed");
     }
@@ -103,7 +103,7 @@ export function AnimatedPresetPicker({
     try {
       const json = JSON.stringify(preset, null, 2);
       await navigator.clipboard.writeText(json);
-      toast.success(t("addToTimeline.preset.copied"));
+      toast.success(t("captions.preset.copied"));
     } catch (err: any) {
       toast.error(err?.message ?? "Copy failed");
     }
@@ -120,9 +120,9 @@ export function AnimatedPresetPicker({
     try {
       const json = await readTextFile(file as string);
       await onImportJson(json);
-      toast.success(t("addToTimeline.preset.import"));
+      toast.success(t("captions.preset.import"));
     } catch (err: any) {
-      toast.error(err?.message ?? t("addToTimeline.preset.errors.invalidJson"));
+      toast.error(err?.message ?? t("captions.preset.errors.invalidJson"));
     }
   }
 
@@ -133,10 +133,10 @@ export function AnimatedPresetPicker({
       await onImportJson(pasteValue);
       setPasteOpen(false);
       setPasteValue("");
-      toast.success(t("addToTimeline.preset.import"));
+      toast.success(t("captions.preset.import"));
     } catch (err: any) {
       setPasteError(
-        err?.message ?? t("addToTimeline.preset.errors.invalidJson"),
+        err?.message ?? t("captions.preset.errors.invalidJson"),
       );
     }
   }
@@ -179,15 +179,15 @@ export function AnimatedPresetPicker({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("addToTimeline.preset.confirmDeleteTitle")}
+              {t("captions.preset.confirmDeleteTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("addToTimeline.preset.confirmDelete")}
+              {t("captions.preset.confirmDelete")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>
-              {t("addToTimeline.preset.action.cancel")}
+              {t("captions.preset.action.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
@@ -195,7 +195,7 @@ export function AnimatedPresetPicker({
                 setPendingDelete(null);
               }}
             >
-              {t("addToTimeline.preset.confirmDeleteConfirm")}
+              {t("captions.preset.confirmDeleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -214,15 +214,15 @@ export function AnimatedPresetPicker({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("addToTimeline.preset.importTitle")}</DialogTitle>
+            <DialogTitle>{t("captions.preset.importTitle")}</DialogTitle>
             <DialogDescription>
-              {t("addToTimeline.preset.paste")}
+              {t("captions.preset.paste")}
             </DialogDescription>
           </DialogHeader>
           <Textarea
             value={pasteValue}
             onChange={(e) => setPasteValue(e.target.value)}
-            placeholder={t("addToTimeline.preset.importPlaceholder")}
+            placeholder={t("captions.preset.importPlaceholder")}
             rows={8}
             className="font-mono text-xs"
           />
@@ -235,14 +235,14 @@ export function AnimatedPresetPicker({
               variant="outline"
               onClick={() => setPasteOpen(false)}
             >
-              {t("addToTimeline.preset.action.cancel")}
+              {t("captions.preset.action.cancel")}
             </Button>
             <Button
               type="button"
               onClick={handlePasteImport}
               disabled={!pasteValue.trim()}
             >
-              {t("addToTimeline.preset.importSubmit")}
+              {t("captions.preset.importSubmit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -326,7 +326,7 @@ function PresetCard({
                 disabled={isPreviewLoading}
               >
                 <ImageIcon />
-                {t("addToTimeline.preset.preview")}
+                {t("captions.preset.preview")}
               </DropdownMenuItem>
             )}
             {!preset.builtIn && (
@@ -337,15 +337,15 @@ function PresetCard({
             )}
             <DropdownMenuItem onClick={onDuplicate}>
               <Plus />
-              {t("addToTimeline.preset.duplicate")}
+              {t("captions.preset.duplicate")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onExport}>
               <Download />
-              {t("addToTimeline.preset.export")}
+              {t("captions.preset.export")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onCopyJson}>
               <ClipboardPaste />
-              {t("addToTimeline.preset.copyJson")}
+              {t("captions.preset.copyJson")}
             </DropdownMenuItem>
             {!preset.builtIn && (
               <>
@@ -355,7 +355,7 @@ function PresetCard({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 />
-                  {t("addToTimeline.preset.delete")}
+                  {t("captions.preset.delete")}
                 </DropdownMenuItem>
               </>
             )}
@@ -385,7 +385,7 @@ function NewPresetCard({
     <Card
       role="button"
       tabIndex={0}
-      aria-label={t("addToTimeline.preset.new", "New Preset")}
+      aria-label={t("captions.preset.new", "New Preset")}
       onClick={onCreate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -400,7 +400,7 @@ function NewPresetCard({
       </div>
       <div className="absolute inset-x-0 top-0 flex items-center gap-1 px-2 py-1.5 pl-3">
         <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-          {t("addToTimeline.preset.new", "New Preset")}
+          {t("captions.preset.new", "New Preset")}
         </span>
         {canImport && (
           <div className="flex items-center gap-0.5">
@@ -413,8 +413,8 @@ function NewPresetCard({
                 e.stopPropagation();
                 onPasteImport();
               }}
-              aria-label={t("addToTimeline.preset.paste")}
-              title={t("addToTimeline.preset.paste")}
+              aria-label={t("captions.preset.paste")}
+              title={t("captions.preset.paste")}
             >
               <ClipboardPaste />
             </Button>
@@ -427,8 +427,8 @@ function NewPresetCard({
                 e.stopPropagation();
                 onImportFromFile();
               }}
-              aria-label={t("addToTimeline.preset.import")}
-              title={t("addToTimeline.preset.import")}
+              aria-label={t("captions.preset.import")}
+              title={t("captions.preset.import")}
             >
               <FileUp />
             </Button>

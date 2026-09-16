@@ -938,7 +938,11 @@ end
 
 -- Export audio from selected tracks
 -- inputTracks is a table of track indices to export
-function ExportAudio(outputDir, inputTracks, exportRange)
+-- Request handlers below take the decoded request table, so a field renamed on
+-- the TypeScript side is a nil value here rather than a silently shifted
+-- positional argument.
+function ExportAudio(req)
+    local outputDir, inputTracks, exportRange = req.outputDir, req.inputTracks, req.exportRange
     -- Check if another export is already in progress
     if project:IsRenderingInProgress() then
         return {
@@ -1136,7 +1140,8 @@ end
 
 -- Check for existing clips on a track that would conflict with new subtitles
 -- Returns conflict info: { hasConflicts, conflictingClips: [{start, end, name}], trackName }
-function CheckTrackConflicts(filePath, trackIndex)
+function CheckTrackConflicts(req)
+    local filePath, trackIndex = req.filePath, req.trackIndex
     local timeline = project:GetCurrentTimeline()
     if not timeline then
         return { hasConflicts = false, error = "No active timeline" }
@@ -1780,7 +1785,9 @@ end
 -- conflictMode: "replace" (delete existing), "skip" (write around conflicts), "new_track" (use new track), nil (default/old behavior)
 -- presetSettings: optional opaque table of AutoSubs Caption macro input values
 -- (captured via StartPresetEdit/CapturePresetSettings). Ignored for non-animated templates.
-function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSettings)
+function AddSubtitles(req)
+    local filePath, trackIndex, templateName = req.filePath, req.trackIndex, req.templateName
+    local conflictMode, presetSettings = req.conflictMode, req.presetSettings
     refresh_project()
     resolve:OpenPage("edit")
 
@@ -1958,7 +1965,8 @@ local function preview_file_exists(path)
     return false
 end
 
-function BatchApplyStyle(filePath, targetSpeakerId, presetSettings)
+function BatchApplyStyle(req)
+    local filePath, targetSpeakerId, presetSettings = req.filePath, req.targetSpeakerId, req.presetSettings
     refresh_project()
 
     local data, loadErr = load_subtitle_data(filePath)
@@ -2176,7 +2184,9 @@ end
 -- place example subtitle on timeline with theme and export frame
 -- `language` (optional): ISO code of the transcript this preview represents,
 -- used for language-aware font fallback on the AutoSubs Caption macro.
-function GeneratePreview(speaker, templateName, presetSettings, exportDir, language)
+function GeneratePreview(req)
+    local speaker, templateName = req.speaker, req.templateName
+    local presetSettings, exportDir, language = req.presetSettings, req.exportDir, req.language
     refresh_project()
     local timeline = project:GetCurrentTimeline()
     if not timeline then
@@ -2339,7 +2349,8 @@ local function teardown_preset_edit_session()
     presetEditSession = nil
 end
 
-function StartPresetEdit(initialSettings)
+function StartPresetEdit(req)
+    local initialSettings = req and req.initialSettings
     -- Never stack sessions. Callers are expected to finalise or cancel first.
     if presetEditSession ~= nil then
         return { error = "A preset edit is already in progress" }
@@ -2416,7 +2427,8 @@ function StartPresetEdit(initialSettings)
     return { ok = true }
 end
 
-function CapturePresetSettings(exportDir)
+function CapturePresetSettings(req)
+    local exportDir = req and req.exportDir
     if presetEditSession == nil then
         return { error = "No preset edit in progress" }
     end
@@ -2451,7 +2463,11 @@ function CapturePresetSettings(exportDir)
     -- trying to render the live edit-session comp.
     local previewPath, previewError
     if type(exportDir) == "string" and exportDir ~= "" then
-        local previewOk, result = pcall(GeneratePreview, nil, ANIMATED_CAPTION, settings, exportDir, nil)
+        local previewOk, result = pcall(GeneratePreview, {
+            templateName = ANIMATED_CAPTION,
+            presetSettings = settings,
+            exportDir = exportDir,
+        })
         if previewOk and type(result) == "table" and result.path then
             previewPath = result.path
         elseif previewOk and type(result) == "table" then
@@ -2546,6 +2562,50 @@ local function create_response(body)
     local response = header .. body
     return response
 end
+
+-- ---------------------------------------------------------------------------
+-- Request handlers
+--
+-- One entry per exposed function. Each takes the decoded request table and
+-- returns the response value; a handler that stops or reloads the server
+-- returns a control table as its second result. Adding a function means adding
+-- an entry here and a wrapper in `src/api/resolve-api.ts`, and nothing else.
+-- ---------------------------------------------------------------------------
+local handlers = {
+    GetTimelineInfo = function() return GetTimelineInfo() end,
+    GetTemplates = function() return GetTemplates() end,
+    GetVersion = function() return GetVersion() end,
+    GetExportProgress = function() return GetExportProgress() end,
+    CancelExport = function() return CancelExport() end,
+    ExportAudio = function(req) return ExportAudio(req) end,
+    CheckTrackConflicts = function(req) return CheckTrackConflicts(req) end,
+    BatchApplyStyle = function(req) return BatchApplyStyle(req) end,
+    GeneratePreview = function(req) return GeneratePreview(req) end,
+    StartPresetEdit = function(req) return StartPresetEdit(req) end,
+    CapturePresetSettings = function(req) return CapturePresetSettings(req) end,
+    CancelPresetEdit = function() return CancelPresetEdit() end,
+
+    JumpToTime = function(req)
+        JumpToTime(req.seconds)
+        return { message = "Jumped to time" }
+    end,
+
+    AddSubtitles = function(req)
+        -- Kept nested under `result` for backwards compatibility with the
+        -- frontend wrapper, which unwraps both levels when checking for errors.
+        return { message = "Job completed", result = AddSubtitles(req) }
+    end,
+
+    Ping = function() return { message = "Pong" } end,
+
+    ReloadServer = function()
+        return { message = "Reloading server" }, { quit = true, reload = true }
+    end,
+
+    Exit = function()
+        return { message = "Server shutting down" }, { quit = true }
+    end,
+}
 
 function StartServer()
     -- Set up server socket configuration
@@ -2649,84 +2709,17 @@ function StartServer()
                     -- success already defined above
                     success, err = pcall(function()
                         if data ~= nil then
-                            if data.func == "GetTimelineInfo" then
-                                print("[AutoSubs Server] Retrieving Timeline Info...")
-                                local timelineInfo = GetTimelineInfo()
-                                body = safe_json(timelineInfo)
-                            elseif data.func == "GetTemplates" then
-                                print("[AutoSubs Server] Retrieving Templates...")
-                                local templates = GetTemplates()
-                                body = safe_json(templates)
-                            elseif data.func == "JumpToTime" then
-                                print("[AutoSubs Server] Jumping to time...")
-                                JumpToTime(data.seconds)
-                                body = safe_json({
-                                    message = "Jumped to time"
-                                })
-                            elseif data.func == "ExportAudio" then
-                                print("[AutoSubs Server] Exporting audio...")
-                                local audioInfo = ExportAudio(data.outputDir, data.inputTracks, data.exportRange)
-                                body = safe_json(audioInfo)
-                            elseif data.func == "GetExportProgress" then
-                                print("[AutoSubs Server] Getting export progress...")
-                                local progressInfo = GetExportProgress()
-                                body = safe_json(progressInfo)
-                            elseif data.func == "CancelExport" then
-                                print("[AutoSubs Server] Cancelling export...")
-                                local cancelResult = CancelExport()
-                                body = safe_json(cancelResult)
-                            elseif data.func == "CheckTrackConflicts" then
-                                print("[AutoSubs Server] Checking track conflicts...")
-                                local conflictInfo = CheckTrackConflicts(data.filePath, data.trackIndex)
-                                body = safe_json(conflictInfo)
-                            elseif data.func == "AddSubtitles" then
-                                print("[AutoSubs Server] Adding subtitles to timeline...")
-                                local result = AddSubtitles(data.filePath, data.trackIndex, data.templateName,
-                                    data.conflictMode, data.presetSettings)
-                                body = safe_json({
-                                    message = "Job completed",
-                                    result = result
-                                })
-                            elseif data.func == "BatchApplyStyle" then
-                                print("[AutoSubs Server] Applying styles to existing captions...")
-                                local result = BatchApplyStyle(
-                                    data.filePath,
-                                    data.targetSpeakerId,
-                                    data.presetSettings
-                                )
-                                body = safe_json(result)
-                            elseif data.func == "GeneratePreview" then
-                                print("[AutoSubs Server] Generating preview...")
-                                local previewResult = GeneratePreview(data.speaker, data.templateName,
-                                    data.presetSettings, data.exportPath, data.language)
-                                body = safe_json(previewResult)
-                            elseif data.func == "StartPresetEdit" then
-                                print("[AutoSubs Server] Starting caption preset edit...")
-                                local result = StartPresetEdit(data.initialSettings)
-                                body = safe_json(result)
-                            elseif data.func == "CapturePresetSettings" then
-                                print("[AutoSubs Server] Capturing caption preset settings...")
-                                local result = CapturePresetSettings(data.exportDir)
-                                body = safe_json(result)
-                            elseif data.func == "CancelPresetEdit" then
-                                print("[AutoSubs Server] Cancelling caption preset edit...")
-                                local result = CancelPresetEdit()
-                                body = safe_json(result)
-                            elseif data.func == "GetVersion" then
-                                print("[AutoSubs Server] Getting version...")
-                                body = safe_json(GetVersion())
-                            elseif data.func == "ReloadServer" then
-                                print("[AutoSubs Server] Reload requested by client...")
-                                body = safe_json({ message = "Reloading server" })
-                                quitServer = true
-                                shouldReload = true
-                            elseif data.func == "Exit" then
-                                body = safe_json({ message = "Server shutting down" })
-                                quitServer = true
-                            elseif data.func == "Ping" then
-                                body = safe_json({ message = "Pong" })
+                            local handler = handlers[data.func]
+                            if handler then
+                                print("[AutoSubs Server] " .. tostring(data.func))
+                                local result, control = handler(data)
+                                body = safe_json(result == nil and { message = "OK" } or result)
+                                if control then
+                                    quitServer = control.quit or quitServer
+                                    shouldReload = control.reload or shouldReload
+                                end
                             else
-                                print("Invalid function name")
+                                print("Invalid function name: " .. tostring(data.func))
                             end
                         else
                             -- Fallback: if JSON parse failed, detect Exit command by substring

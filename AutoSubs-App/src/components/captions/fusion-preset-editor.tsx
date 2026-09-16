@@ -32,7 +32,7 @@ type Phase =
     | { kind: "capturing" }
     | { kind: "naming"; settings: Record<string, unknown>; previewPath?: string }
 
-interface CreatePresetFlowProps {
+interface FusionPresetEditorProps {
     // Optional starting settings when editing an existing user preset.
     // `undefined` means "create a new preset from macro defaults".
     initialSettings?: Record<string, unknown>
@@ -54,14 +54,14 @@ interface CreatePresetFlowProps {
  * The flow owns calling `cancelPresetEdit` whenever the user bails out so we
  * never leave an orphan track behind.
  */
-export function CreatePresetFlow({
+export function FusionPresetEditor({
     initialSettings,
     initialName,
     initialDescription,
     submitLabel,
     onSubmit,
     onExit,
-}: CreatePresetFlowProps) {
+}: FusionPresetEditorProps) {
     const { t } = useTranslation()
     const [phase, setPhase] = React.useState<Phase>({ kind: "launching" })
     const [error, setError] = React.useState<string | null>(null)
@@ -132,7 +132,7 @@ export function CreatePresetFlow({
         // success and error paths.
         hasActiveSessionRef.current = false
         if (result.error || !result.settings) {
-            setError(result.error ?? t("addToTimeline.preset.errors.captureFailed"))
+            setError(result.error ?? t("captions.preset.errors.captureFailed"))
             setPhase({ kind: "editing" })
             return
         }
@@ -154,7 +154,7 @@ export function CreatePresetFlow({
         if (phase.kind !== "naming") return
         const trimmed = name.trim()
         if (!trimmed) {
-            setError(t("addToTimeline.preset.errors.nameRequired"))
+            setError(t("captions.preset.errors.nameRequired"))
             return
         }
         setIsSaving(true)
@@ -182,24 +182,24 @@ export function CreatePresetFlow({
             {phase.kind === "launching" && (
                 <PhaseCard
                     icon={<Sparkles className="size-6 text-primary animate-pulse" />}
-                    title={t("addToTimeline.preset.phase.launchingTitle")}
-                    body={t("addToTimeline.preset.phase.launchingHint")}
+                    title={t("captions.preset.phase.launchingTitle")}
+                    body={t("captions.preset.phase.launchingHint")}
                 />
             )}
 
             {phase.kind === "capturing" && (
                 <PhaseCard
                     icon={<Sparkles className="size-6 text-primary animate-pulse" />}
-                    title={t("addToTimeline.preset.phase.capturingTitle")}
-                    body={t("addToTimeline.preset.phase.launchingHint")}
+                    title={t("captions.preset.phase.capturingTitle")}
+                    body={t("captions.preset.phase.launchingHint")}
                 />
             )}
 
             {phase.kind === "editing" && (
                 <PhaseCard
                     icon={<MonitorPlay className="size-6 text-primary" />}
-                    title={t("addToTimeline.preset.phase.editingTitle")}
-                    body={t("addToTimeline.preset.phase.editingBody")}
+                    title={t("captions.preset.phase.editingTitle")}
+                    body={t("captions.preset.phase.editingBody")}
                 />
             )}
 
@@ -207,22 +207,22 @@ export function CreatePresetFlow({
                 <div className="space-y-3">
                     <div>
                         <h3 className="text-sm font-medium">
-                            {t("addToTimeline.preset.phase.nameTitle")}
+                            {t("captions.preset.phase.nameTitle")}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            {t("addToTimeline.preset.phase.nameHint")}
+                            {t("captions.preset.phase.nameHint")}
                         </p>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs" htmlFor="preset-name-input">
-                            {t("addToTimeline.preset.nameLabel")}
+                            {t("captions.preset.nameLabel")}
                         </Label>
                         <Input
                             id="preset-name-input"
                             autoFocus
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder={t("addToTimeline.preset.namePlaceholder")}
+                            placeholder={t("captions.preset.namePlaceholder")}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSave()
                             }}
@@ -230,13 +230,13 @@ export function CreatePresetFlow({
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs" htmlFor="preset-desc-input">
-                            {t("addToTimeline.preset.descriptionLabel")}
+                            {t("captions.preset.descriptionLabel")}
                         </Label>
                         <Textarea
                             id="preset-desc-input"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder={t("addToTimeline.preset.descriptionPlaceholder")}
+                            placeholder={t("captions.preset.descriptionPlaceholder")}
                             rows={2}
                         />
                     </div>
@@ -253,7 +253,7 @@ export function CreatePresetFlow({
                         disabled={isSaving}
                     >
                         <ChevronLeft className="size-4" />
-                        {t("addToTimeline.preset.action.back")}
+                        {t("captions.preset.action.back")}
                     </Button>
                 ) : (
                     <Button
@@ -263,13 +263,13 @@ export function CreatePresetFlow({
                         onClick={handleCancel}
                         disabled={phase.kind === "capturing"}
                     >
-                        {t("addToTimeline.preset.action.cancel")}
+                        {t("captions.preset.action.cancel")}
                     </Button>
                 )}
 
                 {phase.kind === "editing" && (
                     <Button type="button" onClick={handleCapture}>
-                        {t("addToTimeline.preset.action.captureSettings")}
+                        {t("captions.preset.action.captureSettings")}
                         <ArrowRight className="size-4" />
                     </Button>
                 )}
@@ -279,7 +279,7 @@ export function CreatePresetFlow({
                         {isSaving && (
                             <div className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         )}
-                        {submitLabel ?? t("addToTimeline.preset.action.save")}
+                        {submitLabel ?? t("captions.preset.action.save")}
                     </Button>
                 )}
             </div>

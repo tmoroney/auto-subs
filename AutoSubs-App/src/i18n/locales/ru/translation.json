@@ -535,29 +535,65 @@
   "theme": {
     "toggle": "Переключить тему"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "Дорожка"
+  "replaceStrings": {
+    "title": "Поиск и замена слов",
+    "find": "Найти",
+    "findPlaceholder": "Что искать...",
+    "matchCase": "Учитывать регистр",
+    "replaceWith": "Заменить на",
+    "replacePlaceholder": "Текст замены...",
+    "occurrencesFound": "Найдено совпадений: {{count}}",
+    "occurrencePosition": "{{current}} из {{total}}",
+    "noOccurrencesFound": "Совпадений не найдено",
+    "replaceCurrent": "Заменить текущее",
+    "replaceAll": "Заменить все ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "Выходная дорожка",
+      "placeholder": "Выберите дорожку",
+      "none": "Нет дорожки"
+    },
+    "style": {
+      "loading": "Загрузка шаблонов...",
+      "noTemplates": "Шаблоны не найдены.",
+      "label": "Стиль субтитров",
+      "autosubs": {
+        "name": "Субтитры AutoSubs",
+        "description": "Анимация по словам, сохраняется в пресет."
       },
-      "template": {
-        "title": "Стиль",
-        "connectTo": "Подключитесь к {{integration}}, чтобы настраивать шаблоны"
-      },
-      "speakers": {
-        "title": "Спикеры"
+      "resolve": {
+        "name": "Титр Resolve",
+        "description": "Титр Text+ из вашего проекта."
       }
     },
-    "title": "Отправить на таймлайн",
-    "ready": {
-      "title": "Субтитры готовы",
-      "description": "Субтитры созданы и готовы к отправлению на таймлайн."
+    "speakers": {
+      "label_one": "{{count}} говорящий",
+      "label_other": "{{count}} говорящих"
     },
-    "adding": "Отправка...",
-    "success": "Отправлено на таймлайн",
-    "mode": {
-      "regular": "Обычный шаблон",
-      "animated": "Анимированный шаблон"
+    "notConnected": "Подключите DaVinci Resolve, чтобы отправлять субтитры на таймлайн.",
+    "noSubtitles": "Нет субтитров для отправки",
+    "chooseTrack": "Выберите выходную дорожку",
+    "reviewAndSend": "Проверить и отправить",
+    "errors": {
+      "notConnected": "Редактор не подключён. Подключите DaVinci Resolve, Adobe Premiere Pro или After Effects, чтобы настраивать шаблоны.",
+      "timedOut": "Время ожидания истекло. Убедитесь, что программа монтажа запущена, и повторите попытку."
+    },
+    "sentAgain": "Отправлено · Отправить снова",
+    "title": "Настройки вывода",
+    "batchStyle": {
+      "applyAll": "Обновить стили таймлайна",
+      "applySpeaker": "Обновить этого спикера",
+      "updating": "Обновление стилей...",
+      "success": "Обновлено клипов: {{count}}",
+      "noMatches": "Подходящие клипы AutoSubs не найдены",
+      "description": "Применить текущие стили к готовым субтитрам.",
+      "partial": "Обновлено: {{updated}}, ошибок: {{failed}}",
+      "failed": "Не удалось обновить стили таймлайна"
+    },
+    "send": {
+      "adding": "Отправка...",
+      "success": "Отправлено на таймлайн"
     },
     "conflict": {
       "hasConflicts": "На этой дорожке есть конфликтующие клипы. Субтитры могут накладываться на существующее содержимое."
@@ -605,61 +641,6 @@
         "nameRequired": "Введите название."
       },
       "previewFailed": "Не удалось создать предпросмотр"
-    }
-  },
-  "replaceStrings": {
-    "title": "Поиск и замена слов",
-    "find": "Найти",
-    "findPlaceholder": "Что искать...",
-    "matchCase": "Учитывать регистр",
-    "replaceWith": "Заменить на",
-    "replacePlaceholder": "Текст замены...",
-    "occurrencesFound": "Найдено совпадений: {{count}}",
-    "occurrencePosition": "{{current}} из {{total}}",
-    "noOccurrencesFound": "Совпадений не найдено",
-    "replaceCurrent": "Заменить текущее",
-    "replaceAll": "Заменить все ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "Выходная дорожка",
-      "placeholder": "Выберите дорожку",
-      "none": "Нет дорожки"
-    },
-    "style": {
-      "label": "Стиль субтитров",
-      "loading": "Загрузка шаблонов...",
-      "noTemplates": "Шаблоны не найдены.",
-      "groups": {
-        "resolve": "Шаблоны Resolve",
-        "autosubs": "Стили AutoSubs"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} говорящий",
-      "label_other": "{{count}} говорящих"
-    },
-    "speakerCount_one": "{{count}} говорящий",
-    "speakerCount_other": "{{count}} говорящих",
-    "notConnected": "Подключите DaVinci Resolve, чтобы отправлять субтитры на таймлайн.",
-    "noSubtitles": "Нет субтитров для отправки",
-    "chooseTrack": "Выберите выходную дорожку",
-    "reviewAndSend": "Проверить и отправить",
-    "errors": {
-      "notConnected": "Редактор не подключён. Подключите DaVinci Resolve, Adobe Premiere Pro или After Effects, чтобы настраивать шаблоны.",
-      "timedOut": "Время ожидания истекло. Убедитесь, что программа монтажа запущена, и повторите попытку."
-    },
-    "sentAgain": "Отправлено · Отправить снова",
-    "title": "Настройки вывода",
-    "batchStyle": {
-      "applyAll": "Обновить стили таймлайна",
-      "applySpeaker": "Обновить этого спикера",
-      "updating": "Обновление стилей...",
-      "success": "Обновлено клипов: {{count}}",
-      "noMatches": "Подходящие клипы AutoSubs не найдены",
-      "description": "Применить текущие стили к готовым субтитрам.",
-      "partial": "Обновлено: {{updated}}, ошибок: {{failed}}",
-      "failed": "Не удалось обновить стили таймлайна"
     }
   }
 }

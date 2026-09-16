@@ -525,28 +525,65 @@
   "theme": {
     "toggle": "Cambiar tema"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "Pista"
+  "replaceStrings": {
+    "title": "Buscar/Reemplazar palabras",
+    "find": "Buscar",
+    "findPlaceholder": "Texto a buscar...",
+    "matchCase": "Coincidir mayúsculas/minúsculas",
+    "replaceWith": "Reemplazar con",
+    "replacePlaceholder": "Texto de reemplazo...",
+    "occurrencesFound": "{{count}} coincidencia encontrada",
+    "occurrencePosition": "{{current}} de {{total}}",
+    "noOccurrencesFound": "No se encontraron coincidencias",
+    "replaceCurrent": "Reemplazar actual",
+    "replaceAll": "Reemplazar todo ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "Pista de salida",
+      "placeholder": "Elige una pista",
+      "none": "Sin pista"
+    },
+    "style": {
+      "loading": "Cargando plantillas...",
+      "noTemplates": "No se encontraron plantillas.",
+      "label": "Estilo de subtítulos",
+      "autosubs": {
+        "name": "Subtítulos AutoSubs",
+        "description": "Animación palabra por palabra, guardada como ajuste."
       },
-      "template": {
-        "title": "Estilo"
-      },
-      "speakers": {
-        "title": "Hablantes"
+      "resolve": {
+        "name": "Título de Resolve",
+        "description": "Un título Text+ de tu proyecto."
       }
     },
-    "title": "Enviar a la línea de tiempo",
-    "ready": {
-      "title": "Subtítulos listos",
-      "description": "Tus subtítulos han sido generados y están listos para ser enviados a la línea de tiempo."
+    "speakers": {
+      "label_one": "{{count}} hablante",
+      "label_other": "{{count}} hablantes"
     },
-    "adding": "Enviando...",
-    "success": "Enviado a la línea de tiempo",
-    "mode": {
-      "regular": "Plantilla normal",
-      "animated": "Plantilla animada"
+    "notConnected": "Conecta DaVinci Resolve para enviar subtítulos a una línea de tiempo.",
+    "noSubtitles": "No hay subtítulos que enviar",
+    "chooseTrack": "Elige una pista de salida",
+    "reviewAndSend": "Revisar y enviar",
+    "errors": {
+      "notConnected": "Ningún editor conectado. Conecta DaVinci Resolve, Adobe Premiere Pro o After Effects para personalizar plantillas.",
+      "timedOut": "Se agotó el tiempo de conexión. Asegúrate de que tu software de edición esté abierto e inténtalo de nuevo."
+    },
+    "sentAgain": "Enviado · Enviar de nuevo",
+    "title": "Ajustes de salida",
+    "batchStyle": {
+      "applyAll": "Actualizar estilos",
+      "applySpeaker": "Actualizar este hablante",
+      "updating": "Actualizando estilos...",
+      "success": "Se actualizaron {{count}} clips",
+      "noMatches": "No se encontraron clips de AutoSubs",
+      "description": "Aplicar estilos actuales a los subtítulos existentes.",
+      "partial": "{{updated}} actualizados, {{failed}} con error",
+      "failed": "No se pudieron actualizar los estilos"
+    },
+    "send": {
+      "adding": "Enviando...",
+      "success": "Enviado a la línea de tiempo"
     },
     "conflict": {
       "hasConflicts": "Esta pista tiene clips en conflicto. Los subtítulos pueden superponerse con el contenido existente."
@@ -594,61 +631,6 @@
         "nameRequired": "Por favor introduce un nombre."
       },
       "previewFailed": "No se pudo generar la vista previa"
-    }
-  },
-  "replaceStrings": {
-    "title": "Buscar/Reemplazar palabras",
-    "find": "Buscar",
-    "findPlaceholder": "Texto a buscar...",
-    "matchCase": "Coincidir mayúsculas/minúsculas",
-    "replaceWith": "Reemplazar con",
-    "replacePlaceholder": "Texto de reemplazo...",
-    "occurrencesFound": "{{count}} coincidencia encontrada",
-    "occurrencePosition": "{{current}} de {{total}}",
-    "noOccurrencesFound": "No se encontraron coincidencias",
-    "replaceCurrent": "Reemplazar actual",
-    "replaceAll": "Reemplazar todo ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "Pista de salida",
-      "placeholder": "Elige una pista",
-      "none": "Sin pista"
-    },
-    "style": {
-      "label": "Estilo de subtítulos",
-      "loading": "Cargando plantillas...",
-      "noTemplates": "No se encontraron plantillas.",
-      "groups": {
-        "resolve": "Plantillas de Resolve",
-        "autosubs": "Estilos de AutoSubs"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} hablante",
-      "label_other": "{{count}} hablantes"
-    },
-    "speakerCount_one": "{{count}} hablante",
-    "speakerCount_other": "{{count}} hablantes",
-    "notConnected": "Conecta DaVinci Resolve para enviar subtítulos a una línea de tiempo.",
-    "noSubtitles": "No hay subtítulos que enviar",
-    "chooseTrack": "Elige una pista de salida",
-    "reviewAndSend": "Revisar y enviar",
-    "errors": {
-      "notConnected": "Ningún editor conectado. Conecta DaVinci Resolve, Adobe Premiere Pro o After Effects para personalizar plantillas.",
-      "timedOut": "Se agotó el tiempo de conexión. Asegúrate de que tu software de edición esté abierto e inténtalo de nuevo."
-    },
-    "sentAgain": "Enviado · Enviar de nuevo",
-    "title": "Ajustes de salida",
-    "batchStyle": {
-      "applyAll": "Actualizar estilos",
-      "applySpeaker": "Actualizar este hablante",
-      "updating": "Actualizando estilos...",
-      "success": "Se actualizaron {{count}} clips",
-      "noMatches": "No se encontraron clips de AutoSubs",
-      "description": "Aplicar estilos actuales a los subtítulos existentes.",
-      "partial": "{{updated}} actualizados, {{failed}} con error",
-      "failed": "No se pudieron actualizar los estilos"
     }
   }
 }

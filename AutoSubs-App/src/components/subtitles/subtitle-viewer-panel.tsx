@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SubtitleList } from "@/components/subtitles/subtitle-list";
 import { type ExportFormat } from "@/components/common/export-popover";
-import { OutputPanel } from "@/components/subtitles/output-panel";
+import { OutputPanel } from "@/components/captions/output-panel";
 import { TranscriptStatusRow } from "@/components/subtitles/transcript-status-row";
 import { TranscriptHistoryPopover } from "@/components/subtitles/transcript-history-popover";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
@@ -550,7 +550,7 @@ export function SubtitleViewerPanel({
             className="font-semibold select-none truncate"
             data-tauri-drag-region={isMacOs ? true : undefined}
           >
-            {outputActive ? t("output.title") : t("subtitles.title")}
+            {outputActive ? t("captions.title") : t("subtitles.title")}
           </h2>
         </div>
         <div

@@ -5,13 +5,13 @@ import { useIntegration } from "@/contexts/IntegrationContext"
 import { CaptionPreset, Template } from "@/types"
 import { Label } from "@/components/ui/label"
 import {
-    AnimatedPresetPicker,
-} from "@/components/dialogs/caption-style/animated-preset-picker"
+    PresetGallery,
+} from "@/components/captions/preset-gallery"
 import { usePresets } from "@/contexts/PresetsContext"
 import {
-    CreatePresetFlow,
+    FusionPresetEditor,
     type CreatePresetSubmit,
-} from "@/components/dialogs/caption-style/create-preset-flow"
+} from "@/components/captions/fusion-preset-editor"
 import { cn } from "@/lib/utils"
 
 export const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
@@ -31,7 +31,7 @@ export interface CaptionTemplateSelection {
     presetId: string
 }
 
-interface CaptionTemplateSelectionContentProps {
+interface CaptionStyleSectionProps {
     mode: CaptionTemplateMode
     onModeChange: (mode: CaptionTemplateMode) => void
     templateValue: string
@@ -60,7 +60,7 @@ interface CaptionTemplateSelectionContentProps {
     hasAnimatedTemplate: boolean
 }
 
-export function CaptionTemplateSelectionContent({
+export function CaptionStyleSection({
     mode,
     onModeChange,
     templateValue,
@@ -87,7 +87,7 @@ export function CaptionTemplateSelectionContent({
     onRequestPreview,
     previewLoadingId,
     hasAnimatedTemplate,
-}: CaptionTemplateSelectionContentProps) {
+}: CaptionStyleSectionProps) {
     const { t } = useTranslation()
     const { selectedIntegration } = useIntegration()
 
@@ -99,7 +99,7 @@ export function CaptionTemplateSelectionContent({
 
     if (createSession.kind !== "closed") {
         return (
-            <CreatePresetFlow
+            <FusionPresetEditor
                 key={createSession.kind === "edit" ? createSession.presetId : "create"}
                 initialSettings={editingInitialSettings}
                 initialName={editingInitialName}
@@ -119,7 +119,7 @@ export function CaptionTemplateSelectionContent({
                   : "Adobe After Effects"
         return (
             <div className="flex h-[296px] items-center justify-center text-center text-sm font-medium text-muted-foreground">
-                {t("addToTimeline.template.connectTo", {
+                {t("captions.style.connectTo", {
                     integration: integrationLabel,
                     defaultValue: "Connect to {{integration}} to customise templates",
                 })}
@@ -137,17 +137,17 @@ export function CaptionTemplateSelectionContent({
         <div className="space-y-4">
             <section className="space-y-1.5">
                 <Label className="pl-1 text-xs text-muted-foreground">
-                    {t("output.style.groups.resolve")}
+                    {t("captions.style.groups.resolve")}
                 </Label>
                 {templatesLoading && (
                     <div className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground">
                         <Loader2 className="size-3.5 animate-spin" />
-                        <span>{t("output.style.loading", "Loading templates...")}</span>
+                        <span>{t("captions.style.loading", "Loading templates...")}</span>
                     </div>
                 )}
                 {!templatesLoading && templatesLoaded && regularTemplates.length === 0 && (
                     <p className="px-1 py-3 text-xs text-muted-foreground">
-                        {t("output.style.noTemplates", "No templates found.")}
+                        {t("captions.style.noTemplates", "No templates found.")}
                     </p>
                 )}
                 <div className="space-y-1">
@@ -179,9 +179,9 @@ export function CaptionTemplateSelectionContent({
             {hasAnimatedTemplate && (
                 <section className="space-y-1.5">
                     <Label className="pl-1 text-xs text-muted-foreground">
-                        {t("output.style.groups.autosubs")}
+                        {t("captions.style.groups.autosubs")}
                     </Label>
-                    <AnimatedPresetPicker
+                    <PresetGallery
                         presets={animatedPresets}
                         selectedPresetId={mode === "animated" ? presetId : ""}
                         onSelect={onPresetChange}

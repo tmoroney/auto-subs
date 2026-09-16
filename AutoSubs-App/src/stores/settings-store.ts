@@ -73,11 +73,6 @@ export const DEFAULT_SETTINGS: Settings = {
   // AutoSubs Caption settings
   presetId: DEFAULT_PRESET_ID,
   captionMode: "animated",
-
-  // Animation settings
-  animationType: "none",
-  highlightType: "none",
-  highlightColor: "#000000",
 };
 
 // ─── Store type ───────────────────────────────────────────────────────────

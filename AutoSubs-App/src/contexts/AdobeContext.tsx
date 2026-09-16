@@ -30,7 +30,6 @@ const AdobeContext = createContext<AdobeContextType | null>(null);
 const emptyTimeline: TimelineInfo = {
   name: "",
   timelineId: "",
-  templates: [],
   inputTracks: [],
   outputTracks: [],
   projectName: ""
@@ -41,7 +40,6 @@ function toTimelineInfo(data: any): TimelineInfo {
   return {
     name: data.name || data.sequenceName || "Sequence",
     timelineId: data.id || "adobe_seq",
-    templates: [],
     inputTracks: data.audioTrackInfo?.map((t: any) => ({
       value: t.index.toString(),
       label: t.name || `Audio ${t.index}`

@@ -105,7 +105,7 @@ export function CompletionStepItem({
                                     onClick={handleReviewAndSend}
                                 >
                                     <Send />
-                                    {t("output.reviewAndSend")}
+                                    {t("captions.reviewAndSend")}
                                 </Button>
                             )}
                         </div>

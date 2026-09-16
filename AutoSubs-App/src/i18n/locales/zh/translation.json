@@ -525,31 +525,68 @@
   "theme": {
     "toggle": "切换主题"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "轨道"
+  "replaceStrings": {
+    "title": "搜索/替换词语",
+    "find": "查找",
+    "findPlaceholder": "要查找的文本...",
+    "matchCase": "区分大小写",
+    "replaceWith": "替换为",
+    "replacePlaceholder": "替换文本...",
+    "occurrencesFound": "找到 {{count}} 处匹配",
+    "occurrencePosition": "第 {{current}} / {{total}} 处",
+    "noOccurrencesFound": "未找到匹配项",
+    "replaceCurrent": "替换当前项",
+    "replaceAll": "全部替换（{{count}}）"
+  },
+  "captions": {
+    "track": {
+      "label": "输出轨道",
+      "placeholder": "选择轨道",
+      "none": "无轨道"
+    },
+    "style": {
+      "loading": "正在加载模板...",
+      "noTemplates": "未找到模板。",
+      "label": "字幕样式",
+      "autosubs": {
+        "name": "AutoSubs 字幕",
+        "description": "逐字动画，可保存为预设。"
       },
-      "template": {
-        "title": "样式"
-      },
-      "speakers": {
-        "title": "说话人"
+      "resolve": {
+        "name": "Resolve 标题",
+        "description": "项目中的 Text+ 标题。"
       }
+    },
+    "speakers": {
+      "label_one": "{{count}} 位说话人",
+      "label_other": "{{count}} 位说话人"
+    },
+    "notConnected": "连接 DaVinci Resolve 后即可将字幕发送到时间线。",
+    "noSubtitles": "没有可发送的字幕",
+    "chooseTrack": "选择输出轨道",
+    "reviewAndSend": "检查并发送",
+    "errors": {
+      "notConnected": "未连接编辑软件。请连接 DaVinci Resolve、Adobe Premiere Pro 或 After Effects 以自定义模板。",
+      "timedOut": "连接超时。请确认剪辑软件正在运行，然后重试。"
+    },
+    "sentAgain": "已发送 · 再次发送",
+    "title": "输出设置",
+    "batchStyle": {
+      "applyAll": "更新时间线样式",
+      "applySpeaker": "更新此说话人",
+      "updating": "正在更新样式...",
+      "success": "已更新 {{count}} 个字幕片段",
+      "noMatches": "未找到匹配的 AutoSubs 片段",
+      "description": "将当前样式应用到现有字幕片段。",
+      "partial": "已更新 {{updated}} 个，失败 {{failed}} 个",
+      "failed": "无法更新时间线样式"
+    },
+    "send": {
+      "adding": "正在发送...",
+      "success": "已发送到时间线"
     },
     "conflict": {
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
-    },
-    "title": "发送到时间线",
-    "ready": {
-      "title": "字幕已就绪",
-      "description": "您的字幕已生成，可以发送到时间线中。"
-    },
-    "adding": "正在发送...",
-    "success": "已发送到时间线",
-    "mode": {
-      "regular": "常规模板",
-      "animated": "动画模板"
     },
     "preset": {
       "new": "新建预设",
@@ -594,61 +631,6 @@
         "nameRequired": "请输入名称。"
       },
       "previewFailed": "无法生成预览"
-    }
-  },
-  "replaceStrings": {
-    "title": "搜索/替换词语",
-    "find": "查找",
-    "findPlaceholder": "要查找的文本...",
-    "matchCase": "区分大小写",
-    "replaceWith": "替换为",
-    "replacePlaceholder": "替换文本...",
-    "occurrencesFound": "找到 {{count}} 处匹配",
-    "occurrencePosition": "第 {{current}} / {{total}} 处",
-    "noOccurrencesFound": "未找到匹配项",
-    "replaceCurrent": "替换当前项",
-    "replaceAll": "全部替换（{{count}}）"
-  },
-  "output": {
-    "track": {
-      "label": "输出轨道",
-      "placeholder": "选择轨道",
-      "none": "无轨道"
-    },
-    "style": {
-      "label": "字幕样式",
-      "loading": "正在加载模板...",
-      "noTemplates": "未找到模板。",
-      "groups": {
-        "resolve": "Resolve 模板",
-        "autosubs": "AutoSubs 样式"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} 位说话人",
-      "label_other": "{{count}} 位说话人"
-    },
-    "speakerCount_one": "{{count}} 位说话人",
-    "speakerCount_other": "{{count}} 位说话人",
-    "notConnected": "连接 DaVinci Resolve 后即可将字幕发送到时间线。",
-    "noSubtitles": "没有可发送的字幕",
-    "chooseTrack": "选择输出轨道",
-    "reviewAndSend": "检查并发送",
-    "errors": {
-      "notConnected": "未连接编辑软件。请连接 DaVinci Resolve、Adobe Premiere Pro 或 After Effects 以自定义模板。",
-      "timedOut": "连接超时。请确认剪辑软件正在运行，然后重试。"
-    },
-    "sentAgain": "已发送 · 再次发送",
-    "title": "输出设置",
-    "batchStyle": {
-      "applyAll": "更新时间线样式",
-      "applySpeaker": "更新此说话人",
-      "updating": "正在更新样式...",
-      "success": "已更新 {{count}} 个字幕片段",
-      "noMatches": "未找到匹配的 AutoSubs 片段",
-      "description": "将当前样式应用到现有字幕片段。",
-      "partial": "已更新 {{updated}} 个，失败 {{failed}} 个",
-      "failed": "无法更新时间线样式"
     }
   }
 }

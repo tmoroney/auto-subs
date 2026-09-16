@@ -28,10 +28,10 @@ import {
 import { SpeakerChips } from "@/components/subtitles/speaker-chips";
 import {
   ANIMATED_CAPTION_TEMPLATE,
-  CaptionTemplateSelectionContent,
+  CaptionStyleSection,
   type CreatePresetSession,
   type CreatePresetSubmit,
-} from "@/components/dialogs/caption-style/template-selection";
+} from "@/components/captions/caption-style-section";
 import {
   applyStylesToTimeline,
   cancelPresetEdit,
@@ -215,7 +215,7 @@ export function OutputPanel({
     let cancelled = false;
 
     if (!timelineInfo?.timelineId) {
-      setTemplateLoadError(t("output.errors.notConnected"));
+      setTemplateLoadError(t("captions.errors.notConnected"));
       setLoadingTimedOut(true);
       return;
     }
@@ -227,7 +227,7 @@ export function OutputPanel({
       if (cancelled) return;
       cancelled = true;
       setLoadingTimedOut(true);
-      setTemplateLoadError(t("output.errors.timedOut"));
+      setTemplateLoadError(t("captions.errors.timedOut"));
     }, 15000);
 
     onLoadTemplates?.().catch((err) => {
@@ -300,11 +300,11 @@ export function OutputPanel({
       selectedIntegration === "aftereffects" ? "After Effects" : "Premiere Pro",
     );
   } else {
-    summaryParts.push(trackLabel || t("output.track.none"));
+    summaryParts.push(trackLabel || t("captions.track.none"));
     summaryParts.push(styleLabel);
   }
   if (speakers.length > 1) {
-    summaryParts.push(t("output.speakerCount", { count: speakers.length }));
+    summaryParts.push(t("captions.speakerCount", { count: speakers.length }));
   }
 
   const showConflictWarning = Boolean(conflictInfo?.hasConflicts);
@@ -381,7 +381,7 @@ export function OutputPanel({
       const file = await storePresetPreview(preset.id, result.path);
       await setPresetPreview(preset.id, file);
     } catch (err: any) {
-      toast.error(t("addToTimeline.preset.previewFailed"));
+      toast.error(t("captions.preset.previewFailed"));
       console.warn("Could not generate preset preview:", err);
     } finally {
       setPreviewLoadingId(null);
@@ -428,22 +428,22 @@ export function OutputPanel({
       );
 
       if (result.matched === 0) {
-        toast.warning(t("output.batchStyle.noMatches"));
+        toast.warning(t("captions.batchStyle.noMatches"));
       } else if (result.failed > 0) {
         toast.warning(
-          t("output.batchStyle.partial", {
+          t("captions.batchStyle.partial", {
             updated: result.updated,
             failed: result.failed,
           }),
         );
       } else {
         toast.success(
-          t("output.batchStyle.success", { count: result.updated }),
+          t("captions.batchStyle.success", { count: result.updated }),
         );
       }
     } catch (err) {
       console.error("Failed to update timeline styles:", err);
-      toast.error(t("output.batchStyle.failed"));
+      toast.error(t("captions.batchStyle.failed"));
     } finally {
       setIsApplyingStyles(false);
     }
@@ -456,20 +456,20 @@ export function OutputPanel({
     actionLabel = (
       <>
         <Loader className="size-4 animate-spin will-change-transform" />
-        {t("addToTimeline.adding")}
+        {t("captions.send.adding")}
       </>
     );
   } else if (!hasSubtitles) {
-    actionLabel = t("output.noSubtitles");
+    actionLabel = t("captions.noSubtitles");
   } else if (needsTrackChoice) {
-    actionLabel = t("output.chooseTrack");
+    actionLabel = t("captions.chooseTrack");
   } else if (justSent) {
     // Sending is cheap to repeat and cheap to undo, so confirm what happened
     // and stay ready rather than locking the button.
     actionLabel = (
       <>
         <Check className="size-4" />
-        {t("output.sentAgain")}
+        {t("captions.sentAgain")}
       </>
     );
   } else {
@@ -571,7 +571,7 @@ export function OutputPanel({
                       : "text-muted-foreground",
                   )}
                 >
-                  {isConnected ? summaryParts.join(" · ") : t("output.notConnected")}
+                  {isConnected ? summaryParts.join(" · ") : t("captions.notConnected")}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
                   <Pencil className="size-3.5" />
@@ -599,8 +599,8 @@ export function OutputPanel({
                   <RefreshCw className="size-4" />
                 )}
                 {isApplyingStyles
-                  ? t("output.batchStyle.updating")
-                  : t("output.batchStyle.applyAll")}
+                  ? t("captions.batchStyle.updating")
+                  : t("captions.batchStyle.applyAll")}
               </Button>
             )}
             {isConnected && (
@@ -720,7 +720,7 @@ function OutputSheet(props: OutputSheetProps) {
   if (createSession.kind !== "closed") {
     return (
       <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-3 pb-3">
-        <CaptionTemplateSelectionContent
+        <CaptionStyleSection
           mode="animated"
           onModeChange={() => {}}
           templateValue={props.selectedTemplate.value}
@@ -782,21 +782,21 @@ function OutputSheet(props: OutputSheetProps) {
           <div className="space-y-4">
         {!isConnected && (
           <p className="px-1 text-xs text-muted-foreground">
-            {t("output.notConnected")}
+            {t("captions.notConnected")}
           </p>
         )}
 
         {!isAdobe && (
           <section ref={trackRef} className="space-y-1.5">
             <Label className="pl-1 text-xs text-muted-foreground">
-              {t("output.track.label")}
+              {t("captions.track.label")}
             </Label>
             <Select
               value={props.selectedOutputTrack}
               onValueChange={props.onOutputTrackChange}
             >
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder={t("output.track.placeholder")} />
+                <SelectValue placeholder={t("captions.track.placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {props.outputTracks.map((track) => (
@@ -809,7 +809,7 @@ function OutputSheet(props: OutputSheetProps) {
             {props.conflictInfo?.hasConflicts && (
               <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                <span className="pl-1">{t("addToTimeline.conflict.hasConflicts")}</span>
+                <span className="pl-1">{t("captions.conflict.hasConflicts")}</span>
               </div>
             )}
           </section>
@@ -818,7 +818,7 @@ function OutputSheet(props: OutputSheetProps) {
         {speakers.length > 1 && (
           <section ref={speakersRef} className="space-y-1.5">
             <Label className="pl-1 text-xs text-muted-foreground">
-              {t("output.speakers.label", { count: speakers.length })}
+              {t("captions.speakers.label", { count: speakers.length })}
             </Label>
             <SpeakerChips
               speakers={speakers}
@@ -832,7 +832,7 @@ function OutputSheet(props: OutputSheetProps) {
             page scroll instead of fighting a nested one. */}
         {!isAdobe && (
           <section ref={styleRef} className="space-y-4">
-            <CaptionTemplateSelectionContent
+            <CaptionStyleSection
               mode={props.captionMode}
               onModeChange={props.onCaptionModeChange}
               templateValue={props.selectedTemplate.value}

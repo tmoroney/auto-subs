@@ -525,31 +525,68 @@
       "disconnected": "未接続"
     }
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "トラック"
+  "replaceStrings": {
+    "title": "単語を検索/置換",
+    "find": "検索",
+    "findPlaceholder": "検索するテキスト...",
+    "matchCase": "大文字/小文字を区別",
+    "replaceWith": "置換後",
+    "replacePlaceholder": "置換テキスト...",
+    "occurrencesFound": "{{count}} 件見つかりました",
+    "occurrencePosition": "{{current}} / {{total}}",
+    "noOccurrencesFound": "一致が見つかりません",
+    "replaceCurrent": "現在を置換",
+    "replaceAll": "すべて置換 ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "出力トラック",
+      "placeholder": "トラックを選択",
+      "none": "トラックなし"
+    },
+    "style": {
+      "loading": "テンプレートを読み込み中...",
+      "noTemplates": "テンプレートが見つかりません。",
+      "label": "字幕スタイル",
+      "autosubs": {
+        "name": "AutoSubs キャプション",
+        "description": "単語ごとのアニメーション。プリセットとして保存。"
       },
-      "template": {
-        "title": "スタイル"
-      },
-      "speakers": {
-        "title": "話者"
+      "resolve": {
+        "name": "Resolve タイトル",
+        "description": "プロジェクト内の Text+ タイトル。"
       }
+    },
+    "speakers": {
+      "label_one": "話者 {{count}} 人",
+      "label_other": "話者 {{count}} 人"
+    },
+    "notConnected": "タイムラインに字幕を送るには DaVinci Resolve に接続してください。",
+    "noSubtitles": "送信する字幕がありません",
+    "chooseTrack": "出力トラックを選択",
+    "reviewAndSend": "確認して送信",
+    "errors": {
+      "notConnected": "エディターが接続されていません。テンプレートをカスタマイズするには DaVinci Resolve、Adobe Premiere Pro、または After Effects に接続してください。",
+      "timedOut": "接続がタイムアウトしました。編集ソフトが起動しているか確認して、もう一度お試しください。"
+    },
+    "sentAgain": "送信済み · もう一度送信",
+    "title": "出力設定",
+    "batchStyle": {
+      "applyAll": "タイムラインのスタイルを更新",
+      "applySpeaker": "この話者を更新",
+      "updating": "スタイルを更新中...",
+      "success": "字幕クリップ{{count}}件を更新しました",
+      "noMatches": "一致するAutoSubsクリップがありません",
+      "description": "現在のスタイルを既存の字幕に適用します。",
+      "partial": "{{updated}}件更新、{{failed}}件失敗",
+      "failed": "タイムラインのスタイルを更新できませんでした"
+    },
+    "send": {
+      "adding": "送信中...",
+      "success": "タイムラインに送信されました"
     },
     "conflict": {
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
-    },
-    "title": "タイムラインに送信",
-    "ready": {
-      "title": "字幕の準備完了",
-      "description": "字幕が生成されました。タイムラインに送信する準備ができています。"
-    },
-    "adding": "送信中...",
-    "success": "タイムラインに送信されました",
-    "mode": {
-      "regular": "通常テンプレート",
-      "animated": "アニメーションテンプレート"
     },
     "preset": {
       "new": "新規プリセット",
@@ -594,61 +631,6 @@
         "nameRequired": "名前を入力してください。"
       },
       "previewFailed": "プレビューを作成できません"
-    }
-  },
-  "replaceStrings": {
-    "title": "単語を検索/置換",
-    "find": "検索",
-    "findPlaceholder": "検索するテキスト...",
-    "matchCase": "大文字/小文字を区別",
-    "replaceWith": "置換後",
-    "replacePlaceholder": "置換テキスト...",
-    "occurrencesFound": "{{count}} 件見つかりました",
-    "occurrencePosition": "{{current}} / {{total}}",
-    "noOccurrencesFound": "一致が見つかりません",
-    "replaceCurrent": "現在を置換",
-    "replaceAll": "すべて置換 ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "出力トラック",
-      "placeholder": "トラックを選択",
-      "none": "トラックなし"
-    },
-    "style": {
-      "label": "字幕スタイル",
-      "loading": "テンプレートを読み込み中...",
-      "noTemplates": "テンプレートが見つかりません。",
-      "groups": {
-        "resolve": "Resolve テンプレート",
-        "autosubs": "AutoSubs スタイル"
-      }
-    },
-    "speakers": {
-      "label_one": "話者 {{count}} 人",
-      "label_other": "話者 {{count}} 人"
-    },
-    "speakerCount_one": "話者 {{count}} 人",
-    "speakerCount_other": "話者 {{count}} 人",
-    "notConnected": "タイムラインに字幕を送るには DaVinci Resolve に接続してください。",
-    "noSubtitles": "送信する字幕がありません",
-    "chooseTrack": "出力トラックを選択",
-    "reviewAndSend": "確認して送信",
-    "errors": {
-      "notConnected": "エディターが接続されていません。テンプレートをカスタマイズするには DaVinci Resolve、Adobe Premiere Pro、または After Effects に接続してください。",
-      "timedOut": "接続がタイムアウトしました。編集ソフトが起動しているか確認して、もう一度お試しください。"
-    },
-    "sentAgain": "送信済み · もう一度送信",
-    "title": "出力設定",
-    "batchStyle": {
-      "applyAll": "タイムラインのスタイルを更新",
-      "applySpeaker": "この話者を更新",
-      "updating": "スタイルを更新中...",
-      "success": "字幕クリップ{{count}}件を更新しました",
-      "noMatches": "一致するAutoSubsクリップがありません",
-      "description": "現在のスタイルを既存の字幕に適用します。",
-      "partial": "{{updated}}件更新、{{failed}}件失敗",
-      "failed": "タイムラインのスタイルを更新できませんでした"
     }
   }
 }
