@@ -2,7 +2,7 @@
 
 > **Status:** proposal, nothing implemented yet.
 >
-> **Goal:** one vocabulary for captions across UI, TypeScript and Lua; one piece of state for "what style am I sending"; a style editor that does not require a round trip through Fusion; and a screen that tells the user what the two kinds of caption actually are.
+> **Goal:** one vocabulary for captions across UI, TypeScript and Lua; one piece of state for "what style am I sending"; a Fusion round trip cheap enough to stop being a detour; and a screen that tells the user what the two kinds of caption actually are.
 
 ## 1. What is wrong today
 
@@ -55,11 +55,11 @@ A user cannot infer any of that from the current screen.
 
 All of this data already lives in contexts and stores (`usePresets`, `useSettingsStore`, `useResolve`). The drilling is pure overhead.
 
-### 1.4 Editing a style means leaving the app
+### 1.4 Editing a style is buried in ceremony
 
 `CreatePresetFlow` is a four phase state machine: `launching` → `editing` → `capturing` → `naming`. Phase `editing` means: AutoSubs has added a video track to your timeline, appended a five second caption clip, opened the Fusion page, and is now waiting while you alt-tab to Resolve, find the inspector, change a value, and come back to press "Capture settings". Then it tears the track down and renders a thumbnail offscreen by doing the whole append / render / delete dance again (`autosubs_core.lua:2326-2380`).
 
-That is the correct escape hatch for deep customisation. It is the wrong default for "make the text bigger" or "change the highlight to yellow". Especially since the preset itself is nothing but a flat map of 33 known keys (`autosubs-macro.setting:18-52`), and the built in presets in `built-in-presets.ts` are literally hand written key/value tables.
+Editing in Fusion is right: the macro's inspector is a good UI and the viewer plays the animation, which no still image can. The problem is everything wrapped around it. Four phases, a "Capture settings" button that exists only because the session is thrown away, a full teardown and rebuild to render one thumbnail, and a naming step bolted on at the end. The round trip is not the detour; the ceremony is.
 
 ### 1.5 Built in presets ship with no thumbnails
 
@@ -167,8 +167,8 @@ No behaviour change. Reviewable in one pass.
     Caption style
     ┌─────────────────────────────┐ ┌─────────────────────────────┐
     │ ● AutoSubs Captions         │ │ ○ Resolve Title Template    │
-    │   Animated, word by word.   │ │   A title from your project.│
-    │   Styled here.              │ │   Styled in Resolve.        │
+    │   Word by word animation,   │ │   A Text+ title already in  │
+    │   saved as reusable presets.│ │   your project.             │
     └─────────────────────────────┘ └─────────────────────────────┘
     [ What is the difference? ]
 
@@ -182,75 +182,73 @@ No behaviour change. Reviewable in one pass.
 17. Show the AutoSubs card as unavailable, with the reason, when the macro template cannot be found or imported, instead of removing the whole section (`template-selection.tsx:178`).
 18. "Update timeline styles": move it next to the caption style section rather than next to Send, since it acts on the style, and give it a one line explanation ("Restyle caption clips already on the timeline from this transcript"). Disable with a reason when the selected style is a Resolve template and no speaker colours are set, since in that case it can only change speaker colours (`autosubs_core.lua:1926-1931`).
 19. **Gate the caption style section on the chosen integration, not on the live connection.** `selectedIntegration` is just the persisted `preferredEditorIntegration` setting (`IntegrationContext.tsx:14-15`), switched from the integration picker (`integration-status.tsx:154`). Use that:
-    - Selected integration is DaVinci Resolve: the section is always shown, connected or not. Presets are stored locally, so the gallery, the editor and Save all work offline. Only the preview and the Fusion escape hatch need a connection, and they say so in place (item 22).
+    - Selected integration is DaVinci Resolve: the section is always shown, connected or not. Presets are stored locally, so browsing, selecting, importing and exporting all work offline. Editing a preset's look needs Resolve, because Fusion is the editor (phase 3), and the UI says so in place rather than hiding the button (item 24).
     - Selected integration is Premiere or After Effects: the section is not rendered at all. Those users never see a control they cannot use, so there is nothing to explain. Today's behaviour already hides it; the difference is that it now keys off the preference rather than off whether a timeline happens to be reachable.
     - `audioInputMode` is orthogonal and must not gate this. Someone who transcribed a local file but works in Resolve still sends captions to a timeline, so a file input user on the Resolve integration keeps the full section.
 
     Note the default is `davinci` for every new install (`settings-store.ts:22`), so the section is visible by default and its empty states are doing the teaching.
 
-### Phase 3: style presets without leaving the app
+### Phase 3: make Fusion the caption editor, and make the round trip cheap
 
-The macro's `InputKeys` list is fixed and known (`autosubs-macro.setting:18-52`), and presets are already flat maps of those keys. That makes an in-app form straightforward.
+> **This reverses the earlier draft of this phase.** It previously proposed an in-app form mirroring the macro's controls. That was wrong for two reasons, and both are worth writing down so nobody re-proposes it.
+>
+> **One.** The macro's inspector is already a carefully built UI, and mirroring it means every new control has to be added twice, in Fusion and in React, forever. That tax is paid on every future feature, which is exactly the kind of drag that makes a codebase unpleasant to work in.
+>
+> **Two, and decisive:** the thing being edited is an *animation*. Fusion's viewer shows it playing; the app can only ever show one rendered frame. An in-app editor would be permanently worse at the one thing this macro exists to do, so it cannot be the primary surface no matter how well it is built.
+>
+> The conclusion is not "keep the clunky round trip". It is: Fusion is the editor, and the round trip around it should be almost invisible.
 
-20. Add `lib/caption-preset-schema.ts`: a declarative description of the 33 keys, grouped and typed:
-    - **Text**: `Font`, `Style`, `TextSize`, `TextPosition`, `WrapEnabled`, `WrapBoxWidth`
-    - **Colour**: `FillEnabled` + `FillColor{Red,Green,Blue}`, `OutlineEnabled` + `OutlineThickness` + `OutlineColor{...}`, `ShadowEnabled` + `ShadowColor{...}`
-    - **Highlight**: `HighlightEnabled`, `HighlightStyle`, `HighlightColor{...}`, `HighlightExtendHorizontal`, `HighlightExtendVertical`, `HighlightRound`
-    - **Animation**: `FadeEnabled`, `PopInEnabled`, `SlideUpEnabled`, `AnimationLength`, `AnimationLevel`, `AnimationMode`
+20. **Fusion is the only place a caption style is edited.** The app owns the preset *library* (browse, select, name, duplicate, import, export, apply per speaker); Fusion owns the *look*. That split matches what each is good at and removes the duplicated UI entirely. Delete the in-app form idea; do not reintroduce it as "just a few controls" without item 23's guard rail.
+21. **Collapse the edit flow to two clicks.** With one session held open for the whole edit (item 26), the current `launching / editing / capturing / naming` ceremony is unnecessary:
+    - **Edit** on a preset card: the clip is placed and the Fusion page opens on it, already seeded with that preset's values. The user edits with the macro's own inspector and sees the animation play in the viewer, which is the whole point.
+    - **Save** in AutoSubs: read the tool's values, render the thumbnail, close the session. **Cancel**: close the session, change nothing.
 
-    Each entry carries a control type (font picker, slider with range, colour picker over the RGB triple, toggle, select), a label key and a default. The schema drives the form, the JSON validation in `parseImportedPreset`, and eventually the macro side key filtering.
-21. Add `preset-editor.tsx`: a form over that schema, opened by Edit or New in the gallery. No Resolve round trip, so it works with Resolve closed, which also makes it usable in the standalone app.
-22. **Say why the preview is not updating, always.** The settings form works with Resolve closed; the preview does not, because the only thing that can render this macro is Fusion. That asymmetry has to be visible in the editor rather than inferred from a picture that quietly stopped changing. Give the preview pane one explicit state at all times:
+    There is no separate "Capture settings" step, because the session is live the whole time and the app can read it whenever it likes. Naming becomes a field on the same screen as Save, not a third phase. The AutoSubs window during the edit is a small panel: the preset's name, a Save and a Cancel, and a line saying the caption is open in Fusion.
+22. **Generate the control schema from the macro, at build time.** Not a hand-written TypeScript mirror, and not a runtime API gamble. The macro's `UserControls` block already carries everything a schema needs, because Fusion needs it to draw the inspector: `LINKS_Name` (label), `INPID_InputControl` (`CheckboxControl`, `SliderControl`, `ComboControl`, `ColorControl`, `TextEditControl`, `ButtonControl`, `LabelControl`), `INP_MinScale` / `INP_MaxScale` (ranges), `INP_Default`, `INP_Integer`, `CCS_AddString` (combo items), `LBLC_NumInputs` (grouping) and `ICS_ControlPage` (tab). Add `AutoSubs-App/scripts/build-caption-schema.mjs` that parses `Resolve-Integration/autosubs-macro.setting` into a generated JSON module, and fail the build if the macro changed without the schema being regenerated.
 
-    | State | What is shown | Copy |
-    |---|---|---|
-    | Never rendered, Resolve closed | Placeholder | "Connect DaVinci Resolve to see a preview. You can still edit and save this style." |
-    | Rendered, Resolve closed, settings changed since | Last image, dimmed, "Outdated" badge | "Resolve is not connected, so this preview is out of date." |
-    | Connected, settings changed since last render | Last image, dimmed, "Outdated" badge | "Update preview" button |
-    | Rendering | Last image, dimmed, spinner | "Rendering in DaVinci Resolve..." |
-    | Rendered and current | Image | No message |
-    | Render failed | Last image or placeholder | Short reason plus "Try again" |
+    **This schema is not for building an editor.** It earns its place in three other ways:
+    - **Preset cards describe themselves.** Today `description` is a hand-typed string that goes stale the moment the preset changes (`built-in-presets.ts:12`). Derived instead: "Chalkboard Bold, pop in, yellow highlight". That is what actually helps someone choose between eight presets.
+    - **Imports are validated and filtered.** Unknown keys are dropped with a readable reason instead of being written blindly into `tool:SetInput`. `plans/preset-gallery.md` needs exactly this for community presets.
+    - **Version migration has something to compare against.** Paired with `caption_template_version`, the app can tell "this preset was made for a newer macro" from "this preset is malformed".
+23. **The guard rail, if quick in-app tweaks are ever wanted.** Some controls may genuinely deserve to be in the app one day (font, size, position: things people change per project and that do not need to be watched in motion). If that day comes, the macro decides which, via an explicit `QuickControls` list in `CustomData` naming a handful of keys. One line in the macro per control, under your control, rendered generically from item 22's schema. **Never a mirror of the inspector**, and never a control that exists in the app but not in the macro. Until there is real demand, ship none of it.
+24. **Say what needs Resolve, in place.** Editing and preview both need a connection now, so the states are simpler than the earlier draft assumed. The gallery thumbnail is the only preview the app renders, and it is a saved artifact rather than a live view:
 
-    The important line is the first one: editing and saving are never blocked, only the picture is. Model this as a single `PreviewState` union in the editor so no combination can render without copy, and reuse the same states for the gallery's "Re-render preview in Resolve" action.
+    | Situation | Behaviour |
+    |---|---|
+    | Resolve not connected | Gallery, select, import, export, duplicate all work. Edit is disabled with "Open DaVinci Resolve to edit this style." |
+    | Connected, editing | AutoSubs shows the small Save / Cancel panel; the live view is Fusion's viewer, not ours |
+    | Thumbnail missing | Placeholder plus "Re-render preview in Resolve" when connected, the same line as above when not |
+    | Thumbnail out of date | Dimmed with an "Outdated" marker (item 28) |
+    | Render failed | Short reason plus "Try again" |
 
-    The editor opens whenever Resolve is the selected integration, per item 19. Connection state changes what the preview pane says, never whether the editor is reachable.
-23. **Do not approximate the preview in the browser.** My first draft of this plan proposed a CSS or canvas stand-in when Resolve is closed. Drop that. The macro's look comes from Text+ outline geometry, the StyledTextFollower highlight box and per word animation timing; a CSS version will be subtly wrong in exactly the ways users care about (outline thickness, highlight padding and rounding, where a line breaks), and the mismatch will be read as a bug in the captions rather than in the preview. An honest empty state with a reason beats a lookalike that lies.
-24. **Hold one caption clip open for the whole edit; tear it down only on Save or Cancel.** A render is not cheap: `extract_frame` waits for two seconds of continuous graph idle before it even sets the render range (`autosubs_core.lua:2005-2018`), and `GeneratePreview` today adds a video track, appends a clip, renders and deletes both on every single call (`autosubs_core.lua:2109-2205`). Debouncing keystrokes into that is not viable, and it churns the user's timeline visibly. The session should live as long as the editor does:
-    - Open one preview session when the editor opens, reusing the `presetEditSession` machinery `StartPresetEdit` already has (`autosubs_core.lua:2252-2324`). The clip stays on its temporary track for the duration.
-    - Refreshing the preview then means: apply the current settings to the live tool, render one frame from the existing comp. No track add, no append, no delete. That is the whole point of keeping it open.
-    - Save and Cancel are the only intentional teardown points. The existing safety nets stay as backstops (editor unmount, sheet collapse, integration disconnect, `output-panel.tsx:172-192`), because a leaked track is worse than an early teardown.
-    - Default to manual refresh with an "Update preview" button, and offer auto refresh as an opt-in that fires on commit or blur, never per character.
-    - Guard the server so a second render cannot start while one is in flight, returning a clear "busy" rather than queueing.
+    The rule stays the same as before: never a dead control with no explanation, and never a quiet failure.
+25. **Do not approximate the caption in the browser.** An earlier draft proposed a CSS or canvas stand-in. Drop it permanently. The look comes from Text+ outline geometry, the StyledTextFollower highlight box and per word animation timing; a CSS version will be subtly wrong in exactly the ways users care about, and the mismatch will be read as a bug in the captions rather than in the preview. This applies to preset cards too: render real frames or show a placeholder, never a lookalike.
+26. **Hold one caption clip open for the whole edit; tear it down only on Save or Cancel.** This is what makes item 21 feel instant. Today `GeneratePreview` adds a video track, appends a clip, renders and deletes both on every single call (`autosubs_core.lua:2109-2205`), and `extract_frame` waits two seconds for the graph to go idle before it even sets the render range (`autosubs_core.lua:2005-2018`). Reuse the `presetEditSession` machinery `StartPresetEdit` already has (`autosubs_core.lua:2252-2324`) and keep the clip on its temporary track for the duration, so saving is read-plus-render rather than append-render-delete.
 
-    **A long-lived session turns three latent bugs into likely ones**, all in `teardown_preset_edit_session` (`autosubs_core.lua:2235-2250`), and all worth fixing as part of this item:
-    - It deletes by the stored `trackIndex`, captured as `GetTrackCount("video")` at creation. If the user adds or removes a video track during the edit, that index now points at one of their tracks. Resolve the temp track by identity at teardown time (name it something like `AutoSubs Preview` and look it up), never by a remembered number.
+    **A long-lived session turns three latent bugs into likely ones**, all in `teardown_preset_edit_session` (`autosubs_core.lua:2235-2250`), and all part of this item:
+    - It deletes by the stored `trackIndex`, captured as `GetTrackCount("video")` at creation. If the user adds or removes a video track during the edit, that index now points at one of their tracks. Resolve the temp track by identity at teardown (name it something like `AutoSubs Preview` and look it up), never by a remembered number.
     - It calls `project:GetCurrentTimeline()` at teardown, which may no longer be the timeline the clip was added to. Bind the session to a timeline id and refuse to delete anything if the current timeline is not that one.
-    - The session is in-memory only, so an app crash, a Lua server restart or a hot reload strands the track with nothing left to clean it up. Sweep on start: when the server boots or a new session begins, look for a leftover `AutoSubs Preview` track on the current timeline and remove it.
+    - The session is in-memory only, so an app crash, a Lua server restart or a hot reload strands the track with nothing left to clean it up. Sweep on start: when the server boots or a new session begins, remove any leftover `AutoSubs Preview` track on the current timeline.
 
-    Also handle the user moving away mid-edit: on a timeline or project switch (`refresh_project` already detects the project case, `autosubs_core.lua:186-202`) invalidate the session and tell the editor, rather than letting the next apply write into a dead handle.
+    Also handle the user moving away mid-edit: on a timeline or project switch (`refresh_project` already detects the project case, `autosubs_core.lua:186-202`) invalidate the session and tell the app, rather than letting the next read hit a dead handle.
 
-    **Spike the Fusion page question first.** `CapturePresetSettings` notes that a session comp open in the Fusion page keeps the viewer busy, so `extract_frame`'s idle wait never settles (`autosubs_core.lua:2352-2356`). So the two things cannot both be true at once: a comp parked open in Fusion, and a frame rendered from it. Resolution: the editor's own session stays on the edit page, where the clip is on the timeline but the viewer is not holding it, and only the explicit "Fine-tune in Fusion" action (item 25) opens the Fusion page. Coming back from fine-tuning switches to the edit page before the next render. Confirm the idle wait actually settles in that arrangement before building on it; if it does not, fall back to build-and-tear-down behind the manual button, where a few seconds is acceptable.
-
-25. **"Fine-tune in Fusion" becomes a step inside the session, not a separate flow.** With one clip already open for the duration of the edit (item 24), the advanced path no longer needs its own lifecycle: it opens the Fusion page on the clip that is already there, the user tweaks the inspector, and coming back reads the tool's values into the form. No second append, no teardown, no re-render from scratch. The existing four phase `launching / editing / capturing / naming` machine collapses into one action with two states, in Fusion or not.
-
-    That means splitting the current endpoints along their real seams. Today `StartPresetEdit` bundles "create the clip" with "open Fusion", and `CapturePresetSettings` bundles "read the values" with "tear it all down and render a thumbnail". Pull them apart:
+    **One thing to verify early.** `CapturePresetSettings` notes that a session comp open in the Fusion page keeps the viewer busy, so `extract_frame`'s idle wait never settles (`autosubs_core.lua:2352-2356`). Since the user is now editing *in* the Fusion page by design, the Save path must switch back to the edit page before rendering the thumbnail. Confirm that alone is enough for the idle wait to settle; if it is not, render the thumbnail from a throwaway clip the way `GeneratePreview` does today, which is acceptable because it happens once per save rather than once per tweak.
+27. **Split the endpoints along their real seams.** Today `StartPresetEdit` bundles "create the clip" with "open Fusion", and `CapturePresetSettings` bundles "read the values" with "tear it all down and render a thumbnail". One responsibility each:
 
     | Endpoint | Does |
     |---|---|
-    | `OpenPreviewSession` | Add the temp track, append the clip, apply seed settings. Stays on the edit page. |
-    | `ApplyPreviewSettings` | Write the current form values to the live tool. |
-    | `RenderPreviewFrame` | Render one frame from the existing comp. |
-    | `OpenPreviewInFusion` | Switch to the Fusion page on the session clip. |
-    | `ReadPreviewSettings` | Read the tool's values back. No teardown. |
-    | `ClosePreviewSession` | Tear down, on Save or Cancel only. |
+    | `OpenPresetEdit` | Add the temp track, append the clip, apply seed settings, open Fusion on it |
+    | `ReadPresetSettings` | Read the tool's values back. No teardown. |
+    | `RenderPresetThumbnail` | Render one frame for the gallery |
+    | `ClosePresetEdit` | Tear down, on Save or Cancel only |
 
-    Each does one thing, which is also what makes the Save path honest: read the values, render the final thumbnail, then close. Because all of this needs Resolve, it gets the same treatment as the preview: disabled with a reason when nothing is connected, never silently missing.
-26. **Gallery thumbnails can now go stale, so mark them.** Until this phase a preset could only be created through Resolve, so its thumbnail always matched its settings. Once a preset can be edited offline that guarantee is gone. `CaptionPreset` already carries both `updatedAt` and `previewUpdatedAt` (`PresetsContext.tsx:126-133`), so `previewUpdatedAt < updatedAt` is a free staleness check: show the thumbnail dimmed with an "Outdated" marker and offer "Re-render preview in Resolve". Same vocabulary as the editor, so the two surfaces teach the same thing.
-27. Colour handling: the macro stores three separate 0 to 1 floats per colour while the app uses hex everywhere else (`Speaker.color`, `hex_to_rgb` in Lua). Put the conversion in one place in `caption-preset-schema.ts` and use it for both the editor and `preset_with_speaker`'s counterpart on the TS side.
+    Save is then a legible sequence (read, render, close) instead of one endpoint with three jobs and a half-documented cleanup contract.
+28. **Gallery thumbnails can go stale, so mark them.** A preset's stored image can lag its settings (edited on another machine, imported from a newer macro, or a save whose render failed). `CaptionPreset` already carries both `updatedAt` and `previewUpdatedAt` (`PresetsContext.tsx:126-133`), so `previewUpdatedAt < updatedAt` is a free staleness check: dim the thumbnail, mark it "Outdated", offer "Re-render preview in Resolve".
+29. Colour handling: the macro stores three separate 0 to 1 floats per colour while the app uses hex everywhere else (`Speaker.color`, `hex_to_rgb` in Lua). Put the conversion in one place alongside the generated schema and use it for both the preset card summaries and `preset_with_speaker`'s counterpart on the TS side.
 
 ### Phase 4: Lua consolidation and docs
 
-28. Add `modules/caption_style.lua`:
+30. Add `modules/caption_style.lua`:
 
     ```lua
     -- kind_of(templateName) -> "autosubs" | "textplus"
@@ -260,14 +258,14 @@ The macro's `InputKeys` list is fixed and known (`autosubs-macro.setting:18-52`)
     ```
 
     Then `apply_subtitle_text`, `BatchApplyStyle` and `GeneratePreview` each call `caption_style.apply(comp, opts)` and stop knowing about `WordTiming`, `CharacterLevelStyling1`, `StyledText` or `loadstring`. One error policy instead of three.
-29. Move `is_animated_caption` / `resolve_template_name` into that module, and make the template identity explicit rather than prefix matched: `GetTemplates` already knows which media pool item is the bundled one, so it can return `{ label, value, kind }` and the frontend can stop matching on the string `"AutoSubs Caption"` too.
-30. `SetInputValues` should ignore unknown keys (currently `autosubs-macro.setting:63-70` calls `tool:SetInput(key, value)` unguarded for every key in `InputKeys`), so a preset saved by a newer build degrades instead of erroring. This is a macro change, which means `caption-bin.drb` must be regenerated by a maintainer before release. It is also a prerequisite for the community preset store in `plans/preset-gallery.md`, so do it once, here.
-31. Docs split of `Resolve-Integration/README.md`:
+31. Move `is_animated_caption` / `resolve_template_name` into that module, and make the template identity explicit rather than prefix matched: `GetTemplates` already knows which media pool item is the bundled one, so it can return `{ label, value, kind }` and the frontend can stop matching on the string `"AutoSubs Caption"` too.
+32. `SetInputValues` should ignore unknown keys (currently `autosubs-macro.setting:63-70` calls `tool:SetInput(key, value)` unguarded for every key in `InputKeys`), so a preset saved by a newer build degrades instead of erroring. This is a macro change, which means `caption-bin.drb` must be regenerated by a maintainer before release. It is also a prerequisite for the community preset store in `plans/preset-gallery.md`, so do it once, here.
+33. Docs split of `Resolve-Integration/README.md`:
     - `README.md`: architecture, bridge, protocol, dev workflow, platform notes
     - `docs/caption-styles.md`: the two kinds, the preset format, the `InputKeys` reference table, how the app applies each kind
     - `docs/animation-system.md`: unchanged
     - `docs/maintainer-template-release.md`: the `caption-bin.drb` regeneration ritual and the two Resolve quirks it works around
-32. Add a short "Caption styles" section to `AGENTS.md` pointing at `lib/caption-style.ts` and `modules/caption_style.lua` as the two places that own this, so the next change does not re-fork it.
+34. Add a short "Caption styles" section to `AGENTS.md` pointing at `lib/caption-style.ts` and `modules/caption_style.lua` as the two places that own this, so the next change does not re-fork it.
 
 ## 4. Order, effort and risk
 
@@ -276,28 +274,28 @@ The macro's `InputKeys` list is fixed and known (`autosubs-macro.setting:18-52`)
 | 0 naming, dead code, dispatcher | 1 session | Low, mechanical. Touches all 8 locale files | - |
 | 1 single state, split panel | 1 session | Medium. Settings migration needs care | 0 |
 | 2 self-explanatory UI | 1 session | Low. Mostly new copy and layout | 1 |
-| 3 in-app preset editor | 1 to 2 sessions, plus a spike | Medium. New surface. The preview session (item 24) needs proving against a live Resolve before it is built on | 1, ideally 2 |
-| 4 Lua consolidation and docs | 1 session | Medium. Item 30 requires regenerating `caption-bin.drb` | Ships with or after 3 |
+| 3 Fusion as the editor | Under 1 session, plus a build script | Low to medium. Mostly deletion and lifecycle work; needs a live Resolve to verify the session behaviour in item 26 | 1, ideally 2 |
+| 4 Lua consolidation and docs | 1 session | Medium. Item 32 requires regenerating `caption-bin.drb` | Ships with or after 3 |
 
 Phases 0 and 1 are worth doing even if nothing else happens: they remove the class of bug where the selection and the mode disagree.
 
 **Things to be careful about**
 
 - Settings migration: users have `captionMode` and `selectedTemplate` on disk. Ship the mapping and keep it for two releases. Do not silently reset a user to the default preset.
-- `caption-bin.drb` regeneration is maintainer only and must not be in a contributor PR (per `Resolve-Integration/README.md`). Only item 30 needs it.
+- `caption-bin.drb` regeneration is maintainer only and must not be in a contributor PR (per `Resolve-Integration/README.md`). Only item 32 needs it.
 - i18n budget: descriptions ≤ 60 characters and titles ≤ 25 characters in every locale, not just English, and no dashes. The new explanatory copy in phase 2 is the risky part. Run the checker in `AGENTS.md` before calling it done.
-- There is no test runner in `AutoSubs-App` today. The pure modules introduced here (`lib/caption-style.ts`, `lib/caption-preset-schema.ts`, the settings migration) are the first things in this codebase worth unit testing, so adding vitest alongside phase 1 would be cheap and would pay for itself on the migration alone.
+- There is no test runner in `AutoSubs-App` today. The pure modules introduced here (`lib/caption-style.ts`, the generated caption schema and its preset summaries, the settings migration) are the first things in this codebase worth unit testing, so adding vitest alongside phase 1 would be cheap and would pay for itself on the migration alone.
 - CI cannot run Resolve, so keep all Resolve-dependent logic behind the thin API wrappers and keep decision logic in the pure modules.
-- A caption clip now sits on the user's timeline for as long as the editor is open, so orphan cleanup stops being a nicety. Item 24's three fixes (resolve the track by identity, bind the session to a timeline id, sweep leftovers on server start) are part of that item, not follow ups.
-- Anything that needs Resolve must fail loudly and specifically, never by going quiet. Phase 3 makes this a rule for the preview (item 22) and the Fusion escape hatch (item 25), and phase 2 applies the same rule to the caption style cards (items 16, 17, 18, 19). One shared vocabulary for "this needs DaVinci Resolve open" across all of them, so the user learns it once.
+- A caption clip now sits on the user's timeline for as long as the edit is open, so orphan cleanup stops being a nicety. Item 26's three fixes (resolve the track by identity, bind the session to a timeline id, sweep leftovers on server start) are part of that item, not follow ups.
+- Anything that needs Resolve must fail loudly and specifically, never by going quiet. Phase 3 makes this a rule for editing and thumbnails (item 24), and phase 2 applies the same rule to the caption style cards (items 16, 17, 18, 19). One shared vocabulary for "this needs DaVinci Resolve open" across all of them, so the user learns it once.
 
 ## 5. What the user ends up with
 
 - One screen, three sections: Track, Speakers, Caption style.
 - Two clearly labelled caption sources, each with a one line description, a real thumbnail gallery for AutoSubs styles, and a "What is the difference?" explainer that answers the question once.
-- Style editing that happens in AutoSubs, with Fusion available as an explicit advanced step rather than a mandatory detour.
+- Style editing that stays in Fusion, where the animation actually plays, wrapped in a two click round trip: Edit opens the caption there, Save brings the values back. No capture ceremony, no duplicated inspector, and one place to add a control when the macro grows.
 - No hidden mode that changes itself, no grey placeholder gallery on first run, and no template list that goes stale until restart.
 
 ## 6. Related plans
 
-- `plans/preset-gallery.md`: the community preset store. Phase 3's schema and phase 4's item 27 are prerequisites for it, and its P0 and P1 items are already implemented.
+- `plans/preset-gallery.md`: the community preset store. Phase 3's generated schema (item 22) and phase 4's item 32 are prerequisites for it, and its P0 and P1 items are already implemented.
