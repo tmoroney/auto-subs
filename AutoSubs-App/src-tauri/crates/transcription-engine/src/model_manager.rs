@@ -249,7 +249,7 @@ impl ModelManager {
                 self.ensure_whisper_model(model, progress, is_cancelled).await
             }
             Source::Hf { repo, files } => {
-                if let Some((subdir, key)) = Self::flat_layout(entry) {
+                if let Some((subdir, _base, key)) = Self::flat_layout(entry) {
                     self.ensure_hf_flat(subdir, &key, repo, files, progress, is_cancelled, "progressSteps.prepare.asr").await
                 } else {
                     let paths: Vec<&str> = files.iter().map(|f| f.path()).collect();
@@ -260,12 +260,14 @@ impl ModelManager {
     }
 
     /// Decide whether a model uses the flattened per-model directory layout, and
-    /// if so where it lives: `Some((subdir, key))` → `<cache>/<subdir>/<key>`.
+    /// if so where it lives: `Some((subdir, base, key))` → `<cache>/<subdir>/<key>`.
     ///
     /// A model needs flattening when any file is renamed/nested or comes from a
     /// different repo. Moonshine keeps its historical `moonshine/<variant>` path;
-    /// everything else is keyed by `<engine>/<id>`.
-    fn flat_layout(entry: &ModelEntry) -> Option<(&'static str, String)> {
+    /// everything else is keyed by `<engine>/<id>`. `base` is the key before any
+    /// pin hash is appended; sibling dirs named `<base>-<sha256>` are superseded
+    /// pins of the same model left behind by earlier manifest revisions.
+    fn flat_layout(entry: &ModelEntry) -> Option<(&'static str, String, String)> {
         let Source::Hf { repo, files } = &entry.source else {
             return None;
         };
@@ -273,7 +275,7 @@ impl ModelManager {
         if !needs_flatten {
             return None;
         }
-        let (subdir, mut key) = match entry.engine {
+        let (subdir, base) = match entry.engine {
             MEngine::Moonshine => {
                 let variant = entry.moonshine_variant.clone().unwrap_or_else(|| entry.id.clone());
                 ("moonshine", variant)
@@ -286,6 +288,7 @@ impl ModelManager {
             MEngine::OmniAsr => ("omni_asr", entry.id.clone()),
             MEngine::Whisper => ("whisper", entry.id.clone()),
         };
+        let mut key = base.clone();
         if files.iter().any(|file| file.revision() != "main") {
             use sha2::{Digest, Sha256};
             // Readiness, download and deletion all resolve through this key.
@@ -301,7 +304,60 @@ impl ModelManager {
             key.push('-');
             key.push_str(&format!("{:x}", digest.finalize()));
         }
-        Some((subdir, key))
+        Some((subdir, base, key))
+    }
+
+    /// Whether `name` is a superseded pin of `base` — `<base>-<64 hex>`, the
+    /// shape `flat_layout` produces for manifest files pinned to a non-main
+    /// revision. The full-length hex suffix keeps a sibling model whose id
+    /// merely starts with `<base>-` (e.g. Moonshine's `tiny` vs `tiny-ar`)
+    /// from matching.
+    fn is_stale_flat_dir(name: &str, base: &str) -> bool {
+        let Some(suffix) = name.strip_prefix(base).and_then(|s| s.strip_prefix('-')) else {
+            return false;
+        };
+        suffix.len() == 64 && suffix.bytes().all(|b| b.is_ascii_hexdigit())
+    }
+
+    /// Remove superseded pin dirs for a flat-layout model — siblings of the
+    /// current key named `<base>-<sha256>`, written under earlier manifest
+    /// revisions. Best-effort: failures are logged, never fatal. Returns true
+    /// if anything was removed.
+    ///
+    /// Only invoked on explicit user deletion: another process sharing this
+    /// cache (e.g. an older app version or the CLI running a different manifest)
+    /// may still be loading from a superseded pin, so reclaiming them
+    /// automatically during `ensure` could pull active files out from under it.
+    fn remove_stale_flat_dirs(&self, subdir: &str, base: &str, keep: &str) -> bool {
+        let parent = match self.model_cache_dir() {
+            Ok(dir) => dir.join(subdir),
+            Err(_) => return false,
+        };
+        let Ok(entries) = fs::read_dir(&parent) else { return false };
+        let mut removed = false;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if name == keep || !Self::is_stale_flat_dir(name, base) {
+                continue;
+            }
+            match fs::remove_dir_all(&path) {
+                Ok(()) => {
+                    removed = true;
+                    tracing::info!("Removed superseded model cache: {}", path.display());
+                }
+                Err(e) => tracing::warn!(
+                    "Failed to remove superseded model cache {}: {}",
+                    path.display(),
+                    e
+                ),
+            }
+        }
+        removed
     }
 
     /// Download a set of repo-relative files from a HF repo into the hf-hub
@@ -653,17 +709,29 @@ impl ModelManager {
         Ok(())
     }
 
-    /// Delete a flat per-model directory (`<cache>/<subdir>/<key>`).
-    fn delete_flat_dir(&self, subdir: &str, key: &str) -> Result<()> {
-        let cache_dir = self.model_cache_dir()?;
-        let model_dir = cache_dir.join(subdir).join(key);
-        if !model_dir.exists() {
-            bail!("Model '{}/{}' not found in cache", subdir, key);
+    /// Delete a flat per-model directory (`<cache>/<subdir>/<key>`) together
+    /// with any superseded pin dirs (`<base>-<sha256>`) left behind by earlier
+    /// manifest revisions — unreachable through the current key, they would
+    /// otherwise be orphaned on disk.
+    fn delete_flat_dir(&self, subdir: &str, base: &str, key: &str) -> Result<()> {
+        let model_dir = self.model_cache_dir()?.join(subdir).join(key);
+
+        // Delete the requested pin on its own first: a failure on a stale
+        // sibling (e.g. a file locked by another process) must not block it.
+        let mut removed = false;
+        if model_dir.is_dir() {
+            fs::remove_dir_all(&model_dir).with_context(|| {
+                format!("Failed to delete model directory: {}", model_dir.display())
+            })?;
+            removed = true;
+            tracing::info!("Deleted model: {}", model_dir.display());
         }
 
-        fs::remove_dir_all(&model_dir)
-            .with_context(|| format!("Failed to delete model directory: {}", model_dir.display()))?;
-        tracing::info!("Deleted model: {}", model_dir.display());
+        removed |= self.remove_stale_flat_dirs(subdir, base, key);
+
+        if !removed {
+            bail!("Model '{}/{}' not found in cache", subdir, key);
+        }
         Ok(())
     }
 
@@ -765,7 +833,7 @@ impl ModelManager {
                     }
                 }
                 Source::Hf { repo, files } => {
-                    if let Some((subdir, key)) = Self::flat_layout(entry) {
+                    if let Some((subdir, _base, key)) = Self::flat_layout(entry) {
                         let dir = cache_dir.join(subdir).join(key);
                         // Validate (not just existence) so partial/too-small files
                         // left by an interrupted download aren't reported as cached.
@@ -828,8 +896,8 @@ impl ModelManager {
             Some(entry) => match &entry.source {
                 Source::WhisperGgml { model } => self.delete_whisper_model(model).is_ok(),
                 Source::Hf { repo, .. } => {
-                    if let Some((subdir, key)) = Self::flat_layout(entry) {
-                        self.delete_flat_dir(subdir, &key).is_ok()
+                    if let Some((subdir, base, key)) = Self::flat_layout(entry) {
+                        self.delete_flat_dir(subdir, &base, &key).is_ok()
                     } else {
                         self.delete_hf_repo(repo).is_ok()
                     }
@@ -1355,7 +1423,81 @@ mod tests {
             assert_ne!(key, ModelManager::flat_layout(&changed).unwrap(), "{field}");
         }
         assert!(ModelManager::flat_layout(manifest::get("parakeet").unwrap()).is_none());
-        assert_eq!(ModelManager::flat_layout(manifest::get("moonshine-tiny").unwrap()), Some(("moonshine", "tiny".into())));
+        assert_eq!(
+            ModelManager::flat_layout(manifest::get("moonshine-tiny").unwrap()),
+            Some(("moonshine", "tiny".into(), "tiny".into()))
+        );
+    }
+
+    /// A superseded pin dir (`<base>-<sha256>`) must be deleted alongside the
+    /// current key — otherwise a manifest revision bump orphans hundreds of MB
+    /// that the UI can neither list nor delete.
+    #[test]
+    fn delete_flat_dir_removes_superseded_pin_dirs() {
+        let cache_dir = std::env::temp_dir().join(format!(
+            "autosubs-test-flat-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let manager = ModelManager::new(cache_dir.clone());
+
+        let entry = manifest::get("orukeet").unwrap();
+        let (subdir, base, key) = ModelManager::flat_layout(entry).unwrap();
+        let stale = cache_dir
+            .join(subdir)
+            .join(format!("{base}-{}", "0".repeat(64)));
+        let current = cache_dir.join(subdir).join(&key);
+        // A sibling whose name shares the base prefix but isn't a hash must survive.
+        let unrelated = cache_dir.join(subdir).join(format!("{base}-v2"));
+        for dir in [&stale, &current, &unrelated] {
+            fs::create_dir_all(dir).unwrap();
+        }
+
+        assert!(manager.delete_cached_model("orukeet"));
+        assert!(!stale.exists() && !current.exists());
+        assert!(unrelated.exists());
+        let _ = fs::remove_dir_all(&cache_dir);
+    }
+
+    /// Cross-process safety: `ensure` must NOT remove superseded pin dirs.
+    /// Another process sharing the cache (e.g. an older app version or the CLI)
+    /// may still be loading from them, so only explicit deletion may sweep.
+    #[tokio::test]
+    async fn ensure_hf_flat_preserves_superseded_pin_dirs() {
+        let cache_dir = std::env::temp_dir().join(format!(
+            "autosubs-test-flat-ensure-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let manager = ModelManager::new(cache_dir.clone());
+
+        let entry = manifest::get("orukeet").unwrap();
+        let (subdir, base, key) = ModelManager::flat_layout(entry).unwrap();
+        let model_dir = cache_dir.join(subdir).join(&key);
+        fs::create_dir_all(&model_dir).unwrap();
+        let Source::Hf { files, .. } = &entry.source else { panic!("expected HF") };
+        for f in files {
+            let ext = Path::new(f.dest())
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+            let size = if ext == "json" || ext == "txt" { 4 } else { 200_000 };
+            fs::write(model_dir.join(f.dest()), vec![0u8; size]).unwrap();
+        }
+        let stale = cache_dir
+            .join(subdir)
+            .join(format!("{base}-{}", "1".repeat(64)));
+        fs::create_dir_all(&stale).unwrap();
+
+        manager.ensure_model(entry, None, None).await.unwrap();
+        assert!(stale.exists());
+        let _ = fs::remove_dir_all(&cache_dir);
     }
 
     /// Regression test for the "stuck at 0% forever" bug: a download attempt for a file
