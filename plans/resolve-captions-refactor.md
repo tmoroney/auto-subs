@@ -1,6 +1,11 @@
 # Resolve caption workflow: simplify, consolidate, explain
 
-> **Status:** proposal, nothing implemented yet.
+> **Status:** implemented, except item 15 (pre-rendered thumbnails for the
+> built-in presets), which needs a maintainer with Resolve open to render four
+> PNGs. Item 28 turned out to be already done: `SetInputValues` has filtered by
+> `InputKeys` since the preset-gallery work, so `caption-bin.drb` did not need
+> regenerating. The sections below are kept as the record of why each change
+> was made.
 >
 > **Goal:** one vocabulary for captions across UI, TypeScript and Lua; one piece of state for "what style am I sending"; a Fusion round trip cheap enough to stop being a detour; and a screen that tells the user what the two kinds of caption actually are.
 >

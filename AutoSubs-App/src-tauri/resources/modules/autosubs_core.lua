@@ -1580,7 +1580,9 @@ end
 -- spamming one print per failed clip, we aggregate failures and return a
 -- summary so the caller can surface a single clean error.
 -- Returns: { failed = N, total = M, firstError = "..." }
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated, presetSettings,
+-- The caption kind is read from each comp by caption_style.apply, so this does
+-- not need to be told which template was used.
+local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, presetSettings,
                                    speakerIndexById, transcriptId)
     local startTime = os.clock()
     local failed = 0
@@ -1761,7 +1763,7 @@ function AddSubtitles(req)
                 presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
             end
 
-            local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, isAnimated,
+            local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist,
                 presetSettings, speakerIndexById, transcriptId)
 
             -- Force timeline refresh by jumping to the first subtitle
