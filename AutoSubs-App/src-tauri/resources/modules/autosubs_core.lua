@@ -2246,6 +2246,23 @@ local function track_index_of_item(timeline, target)
     return nil
 end
 
+-- Look up one of the project's timelines by unique id, for when the user has
+-- switched timelines mid session: cleanup still has to reach the timeline the
+-- preview clip actually sits on.
+local function find_timeline_by_id(timelineId)
+    if not (project and timelineId) then return nil end
+    local ok, count = pcall(project.GetTimelineCount, project)
+    if not ok or type(count) ~= "number" then return nil end
+    for index = 1, count do
+        local got, candidate = pcall(project.GetTimelineByIndex, project, index)
+        if got and candidate then
+            local hasId, id = pcall(candidate.GetUniqueId, candidate)
+            if hasId and id == timelineId then return candidate end
+        end
+    end
+    return nil
+end
+
 -- Remove the temp clip + track, if any, and return to the edit page in case
 -- the user wandered off to Fusion mid session. Safe to call without an active
 -- session.
@@ -2255,15 +2272,18 @@ local function teardown_preset_edit_session()
 
     local timeline = project and project:GetCurrentTimeline()
 
-    -- Only ever touch the timeline the clip was added to. After a timeline
-    -- switch the handles refer to somewhere else entirely.
+    -- Only ever touch the timeline the clip was added to: after a timeline
+    -- switch the current one is somewhere else entirely. Go and fetch the
+    -- session's own timeline rather than giving up, which used to strand the
+    -- preview clip and its track until the user came back and edited a preset
+    -- there again.
     if session and timeline then
         local sameTimeline = true
         pcall(function()
             sameTimeline = timeline:GetUniqueId() == session.timelineId
         end)
         if not sameTimeline then
-            timeline = nil
+            timeline = find_timeline_by_id(session.timelineId)
         end
     end
 
