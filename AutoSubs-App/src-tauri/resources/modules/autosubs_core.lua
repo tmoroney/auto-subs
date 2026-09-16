@@ -175,6 +175,7 @@ local ANIMATED_CAPTION_DISPLAY_NAME = "AutoSubs Caption"
 local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
 local ANIMATED_CAPTION = ANIMATED_CAPTION_DISPLAY_NAME .. " " .. CAPTION_TEMPLATE_VERSION
 local AUTOSUBS_BIN = "AutoSubs"
+local MEDIA_POOL_UNAVAILABLE = "Resolve media pool is not available"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
 
@@ -293,15 +294,67 @@ local function is_matching_title(title)
     return titleSet[title] == true
 end
 
+-- Resolve exposes media pool folders / clips as either tables or userdata
+-- depending on the host version, so never test for "table" alone.
+local function is_api_object(obj)
+    local t = type(obj)
+    return t == "table" or t == "userdata"
+end
+
+-- Resolve can return nil instead of an empty list from GetSubFolderList /
+-- GetClipList (e.g. while a project is still loading), which crashes ipairs().
+local function safe_list(list)
+    if type(list) == "table" then
+        return list
+    end
+    return {}
+end
+
+local function call_api(obj, method, ...)
+    if not is_api_object(obj) then
+        return nil
+    end
+    local ok, fn = pcall(function() return obj[method] end)
+    if not ok or type(fn) ~= "function" then
+        return nil
+    end
+    local callOk, result = pcall(fn, obj, ...)
+    if not callOk then
+        return nil
+    end
+    return result
+end
+
+-- GetClipProperty() can fail on clips that Resolve has not fully resolved yet.
+local function clip_properties(clip)
+    local props = call_api(clip, "GetClipProperty")
+    if type(props) ~= "table" then
+        return nil
+    end
+    return props
+end
+
+local function clip_property(clip, key)
+    local props = clip_properties(clip)
+    if not props then
+        return nil
+    end
+    return props[key]
+end
+
 local function walk_media_pool(folder, onClip)
+    if not is_api_object(folder) then
+        return
+    end
+
     -- Recurse into subfolders first
-    for _, subfolder in ipairs(folder:GetSubFolderList()) do
+    for _, subfolder in ipairs(safe_list(call_api(folder, "GetSubFolderList"))) do
         local stop = walk_media_pool(subfolder, onClip)
         if stop then return true end
     end
 
     -- Visit all clips in this folder
-    for _, clip in ipairs(folder:GetClipList()) do
+    for _, clip in ipairs(safe_list(call_api(folder, "GetClipList"))) do
         local stop = onClip(clip, folder)
         if stop then return true end
     end
@@ -326,8 +379,8 @@ local function resolve_template_name(templateName)
 end
 
 local function get_root_subfolder(rootFolder, folderName)
-    for _, subfolder in ipairs(rootFolder:GetSubFolderList()) do
-        if subfolder:GetName() == folderName then
+    for _, subfolder in ipairs(safe_list(call_api(rootFolder, "GetSubFolderList"))) do
+        if call_api(subfolder, "GetName") == folderName then
             return subfolder
         end
     end
@@ -337,8 +390,13 @@ end
 local function find_template_item(folder, templateName)
     local template, sourceBin
     templateName = resolve_template_name(templateName)
+    -- The bundled animated template is versioned ("AutoSubs Caption <date>"),
+    -- so an older caption-bin.drb or a version skew between builds must still
+    -- match. Any other name is compared exactly.
+    local wantsAnimated = is_animated_caption(templateName)
     walk_media_pool(folder, function(clip, clipFolder)
-        if clip:GetClipProperty()["Clip Name"] == templateName then
+        local clipName = clip_property(clip, "Clip Name")
+        if clipName == templateName or (wantsAnimated and is_animated_caption(clipName)) then
             template = clip
             sourceBin = clipFolder
             return true
@@ -349,10 +407,16 @@ end
 
 local function delete_obsolete_caption_templates(autosubsFolder, currentTemplate)
     local obsoleteTemplates = {}
-    local currentTemplateId = currentTemplate:GetUniqueId()
-    for _, clip in ipairs(autosubsFolder:GetClipList()) do
-        local clipName = clip:GetClipProperty()["Clip Name"]
-        if clip:GetUniqueId() ~= currentTemplateId and is_animated_caption(clipName) then
+    local currentTemplateId = call_api(currentTemplate, "GetUniqueId")
+    if currentTemplateId == nil then
+        -- Without a reliable id for the template we just imported, a cleanup
+        -- pass could delete that very clip. Leave the bin untouched instead.
+        print("Skipping obsolete caption template cleanup: current template has no unique id")
+        return
+    end
+    for _, clip in ipairs(safe_list(call_api(autosubsFolder, "GetClipList"))) do
+        local clipName = clip_property(clip, "Clip Name")
+        if call_api(clip, "GetUniqueId") ~= currentTemplateId and is_animated_caption(clipName) then
             table.insert(obsoleteTemplates, clip)
         end
     end
@@ -418,7 +482,7 @@ local function ensure_default_template(rootFolder)
     end
 
     delete_obsolete_caption_templates(targetBin, template)
-    local remainingClips = sourceBin:GetClipList()
+    local remainingClips = safe_list(call_api(sourceBin, "GetClipList"))
     if #remainingClips > 0 then
         mediaPool:DeleteClips(remainingClips)
     end
@@ -428,21 +492,31 @@ end
 
 -- Get a list of all Text+ templates in the media pool
 get_templates = function()
-    local rootFolder = mediaPool:GetRootFolder()
+    local rootFolder = call_api(mediaPool, "GetRootFolder")
     local t = {}
-    local hasDefault = ensure_default_template(rootFolder) ~= nil
+    local hasAnimated = ensure_default_template(rootFolder) ~= nil
 
     walk_media_pool(rootFolder, function(clip)
-        local props = clip:GetClipProperty()
-        local clipType = props["Type"]
-        if is_matching_title(clipType) then
-            local clipName = props["Clip Name"]
-            if not (hasDefault and clipName == ANIMATED_CAPTION_DISPLAY_NAME) then
-                local displayName = clipName == ANIMATED_CAPTION and ANIMATED_CAPTION_DISPLAY_NAME or clipName
-                table.insert(t, { label = displayName, value = displayName })
-            end
+        local props = clip_properties(clip)
+        if not props then
+            return
+        end
+        local clipName = props["Clip Name"]
+        if clipName == nil or not is_matching_title(props["Type"]) then
+            return
+        end
+        -- Any versioned "AutoSubs Caption <version>" clip (and legacy
+        -- unversioned copies) collapse into a single user-facing entry.
+        if is_animated_caption(clipName) then
+            hasAnimated = true
+        else
+            table.insert(t, { label = clipName, value = clipName })
         end
     end)
+
+    if hasAnimated then
+        table.insert(t, 1, { label = ANIMATED_CAPTION_DISPLAY_NAME, value = ANIMATED_CAPTION_DISPLAY_NAME })
+    end
 
     return t
 end
@@ -1196,7 +1270,20 @@ local function sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, m
     return speakers
 end
 
-local function get_template(rootFolder, templateName)
+-- Frame rate of the template clip, falling back to the timeline (and finally
+-- 24 fps) when Resolve cannot report the clip's FPS property.
+local function template_frame_rate_of(templateItem, timeline)
+    local fps = tonumber(clip_property(templateItem, "FPS"))
+    if not fps then
+        fps = tonumber(call_api(timeline, "GetSetting", "timelineFrameRate"))
+    end
+    return fps or 24
+end
+
+local function get_template(rootFolder, templateName, timeline)
+    if not is_api_object(rootFolder) then
+        return nil, nil, MEDIA_POOL_UNAVAILABLE
+    end
     if templateName == "" then
         templateName = ANIMATED_CAPTION
     end
@@ -1228,7 +1315,7 @@ local function get_template(rootFolder, templateName)
             "' in media pool (also tried 'Default Template' and '" .. ANIMATED_CAPTION .. "')"
     end
 
-    local template_frame_rate = templateItem:GetClipProperty()["FPS"]
+    local template_frame_rate = template_frame_rate_of(templateItem, timeline)
     -- Return resolvedName so callers detect the animated caption template even
     -- after a fallback (the isAnimated flag depends on it).
     return templateItem, template_frame_rate, nil, resolvedName
@@ -1743,9 +1830,9 @@ function AddSubtitles(filePath, trackIndex, templateName, conflictMode, presetSe
 
             speakers = sanitize_speaker_tracks(timeline, speakers, trackIndex, markIn, markOut)
 
-            local rootFolder = mediaPool:GetRootFolder()
+            local rootFolder = call_api(mediaPool, "GetRootFolder")
             local templateItem, template_frame_rate, templateErr, resolvedTemplateName = get_template(rootFolder,
-                templateName)
+                templateName, timeline)
             if not templateItem then
                 return make_error("Template not found", templateErr)
             end
@@ -2095,7 +2182,10 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     if not timeline then
         return make_error("Failed to generate preview", "No active timeline in Resolve")
     end
-    local rootFolder = mediaPool:GetRootFolder()
+    local rootFolder = call_api(mediaPool, "GetRootFolder")
+    if not rootFolder then
+        return make_error("Failed to generate preview", MEDIA_POOL_UNAVAILABLE)
+    end
 
     -- Resolve the template item
     local templateItem = get_template_item(rootFolder, templateName)
@@ -2118,7 +2208,7 @@ function GeneratePreview(speaker, templateName, presetSettings, exportDir, langu
     end
 
     local trackIndex = timeline:GetTrackCount("video")
-    local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
+    local fps = template_frame_rate_of(templateItem, timeline)
 
     local appendOk, appended = pcall(function()
         return mediaPool:AppendToTimeline({ {
@@ -2261,7 +2351,10 @@ function StartPresetEdit(initialSettings)
         return { error = "No active timeline" }
     end
 
-    local rootFolder = mediaPool:GetRootFolder()
+    local rootFolder = call_api(mediaPool, "GetRootFolder")
+    if not rootFolder then
+        return { error = MEDIA_POOL_UNAVAILABLE }
+    end
     local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     if not templateItem then
         -- Template missing — trigger auto-import and retry
@@ -2275,7 +2368,7 @@ function StartPresetEdit(initialSettings)
     local ok, err = pcall(function()
         timeline:AddTrack("video")
         local trackIndex = timeline:GetTrackCount("video")
-        local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
+        local fps = template_frame_rate_of(templateItem, timeline)
         local position = timeline:GetStartFrame()
 
         local appended = mediaPool:AppendToTimeline({ {
