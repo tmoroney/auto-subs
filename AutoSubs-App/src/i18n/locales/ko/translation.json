@@ -550,11 +550,40 @@
       "label": "자막 스타일",
       "autosubs": {
         "name": "AutoSubs 자막",
-        "description": "단어별 애니메이션, 프리셋으로 저장됩니다."
+        "description": "단어별 애니메이션, 프리셋으로 저장됩니다.",
+        "unavailable": "이 프로젝트의 미디어 풀에 없습니다."
       },
       "resolve": {
         "name": "Resolve 타이틀",
         "description": "프로젝트에 있는 Text+ 타이틀입니다."
+      },
+      "refresh": "목록 새로고침",
+      "unavailable": "스타일 없음",
+      "difference": {
+        "trigger": "무엇이 다른가요?",
+        "title": "자막 스타일",
+        "rows": {
+          "animation": {
+            "label": "애니메이션",
+            "autosubs": "단어별",
+            "resolve": "없음"
+          },
+          "styling": {
+            "label": "편집 위치",
+            "autosubs": "Fusion, 여기 저장",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "출처",
+            "autosubs": "기본 제공",
+            "resolve": "내 프로젝트"
+          },
+          "restyle": {
+            "label": "기존 클립",
+            "autosubs": "스타일 전체",
+            "resolve": "화자 색상만"
+          }
+        }
       }
     },
     "speakers": {
@@ -573,25 +602,20 @@
     "title": "출력 설정",
     "batchStyle": {
       "applyAll": "타임라인 스타일 업데이트",
-      "applySpeaker": "이 화자 업데이트",
       "updating": "스타일 업데이트 중...",
       "success": "자막 클립 {{count}}개 업데이트됨",
       "noMatches": "일치하는 AutoSubs 클립이 없습니다",
-      "description": "현재 스타일을 기존 자막에 적용합니다.",
       "partial": "{{updated}}개 업데이트, {{failed}}개 실패",
       "failed": "타임라인 스타일을 업데이트하지 못했습니다"
     },
     "send": {
-      "adding": "전송 중...",
-      "success": "타임라인으로 전송됨"
+      "adding": "전송 중..."
     },
     "conflict": {
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
     },
     "preset": {
       "new": "새 프리셋",
-      "builtIn": "내장됨",
-      "custom": "사용자 정의",
       "preview": "미리보기 생성",
       "duplicate": "복제",
       "delete": "삭제",
@@ -601,19 +625,16 @@
       "import": "파일 가져오기",
       "paste": "JSON 붙여넣기",
       "phase": {
-        "launchingTitle": "Resolve에서 자막 열기 중…",
-        "launchingHint": "임시 트랙에 미리보기 자막을 배치합니다.",
-        "editingTitle": "DaVinci Resolve로 전환",
-        "editingBody": "새 트랙에 자막이 배치되고 Fusion 페이지에서 열렸습니다. 검사기를 사용하여 사용자 정의한 후 여기로 돌아오세요.",
-        "capturingTitle": "Resolve에서 설정 읽기 중…",
-        "nameTitle": "프리셋 이름 지정",
-        "nameHint": "짧고 설명적인 이름을 지정하세요."
+        "openingTitle": "Resolve에서 자막을 여는 중...",
+        "savingTitle": "Resolve에서 저장하는 중...",
+        "editingTitle": "Resolve에서 자막 편집",
+        "editingBody": "자막이 Fusion 페이지에 열려 있습니다. 인스펙터로 수정하고 재생을 확인한 뒤 돌아와 저장하세요.",
+        "savingBody": "설정을 읽고 미리보기를 만드는 중입니다."
       },
       "action": {
         "cancel": "취소",
         "save": "프리셋 저장",
-        "back": "뒤로",
-        "captureSettings": "설정 캡처"
+        "saving": "저장 중..."
       },
       "nameLabel": "프리셋 이름",
       "namePlaceholder": "예: 굵은 노란색, 틱톡 스타일",
@@ -630,7 +651,14 @@
         "captureFailed": "Resolve에서 자막 설정을 읽을 수 없습니다.",
         "nameRequired": "이름을 입력하세요."
       },
-      "previewFailed": "미리보기를 만들 수 없음"
-    }
+      "previewFailed": "미리보기를 만들 수 없음",
+      "needsResolve": "DaVinci Resolve를 열면 편집할 수 있습니다.",
+      "rendering": "미리보기 생성 중...",
+      "editTitle": "스타일 편집",
+      "createTitle": "새 자막 스타일"
+    },
+    "chooseStyle": "자막 스타일 선택",
+    "speakerCount_one": "화자 {{count}}명",
+    "speakerCount_other": "화자 {{count}}명"
   }
 }

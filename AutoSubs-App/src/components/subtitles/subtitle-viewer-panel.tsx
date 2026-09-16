@@ -363,10 +363,6 @@ export function SubtitleViewerPanel({
 
   const {
     timelineInfo: resolveTimeline,
-    templates: resolveTemplates,
-    templatesLoading: resolveTemplatesLoading,
-    templatesLoaded: resolveTemplatesLoaded,
-    refreshTemplates: refreshResolveTemplates,
     pushToTimeline: resolvePush,
     jumpToTime: resolveJumpToTime,
   } = useResolve();
@@ -614,11 +610,6 @@ export function SubtitleViewerPanel({
       <OutputPanel
         timelineInfo={timelineInfo}
         isConnected={isIntegrationConnected}
-        selectedIntegration={selectedIntegration as any}
-        templates={isAdobeActive ? [] : resolveTemplates}
-        templatesLoading={!isAdobeActive && resolveTemplatesLoading}
-        templatesLoaded={isAdobeActive || resolveTemplatesLoaded}
-        onLoadTemplates={isAdobeActive ? undefined : refreshResolveTemplates}
         onAddToTimeline={handleAddToTimeline}
         onExport={handleExport}
         isAdding={isAddingToTimeline}

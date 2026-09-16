@@ -550,11 +550,40 @@
       "label": "字幕样式",
       "autosubs": {
         "name": "AutoSubs 字幕",
-        "description": "逐字动画，可保存为预设。"
+        "description": "逐字动画，可保存为预设。",
+        "unavailable": "此项目的媒体池中没有该模板。"
       },
       "resolve": {
         "name": "Resolve 标题",
         "description": "项目中的 Text+ 标题。"
+      },
+      "refresh": "刷新列表",
+      "unavailable": "样式不可用",
+      "difference": {
+        "trigger": "有什么区别？",
+        "title": "字幕样式",
+        "rows": {
+          "animation": {
+            "label": "动画",
+            "autosubs": "逐字",
+            "resolve": "无"
+          },
+          "styling": {
+            "label": "编辑位置",
+            "autosubs": "Fusion，存在这里",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "来源",
+            "autosubs": "随附",
+            "resolve": "你的项目"
+          },
+          "restyle": {
+            "label": "已有片段",
+            "autosubs": "整体样式",
+            "resolve": "仅说话人颜色"
+          }
+        }
       }
     },
     "speakers": {
@@ -573,25 +602,20 @@
     "title": "输出设置",
     "batchStyle": {
       "applyAll": "更新时间线样式",
-      "applySpeaker": "更新此说话人",
       "updating": "正在更新样式...",
       "success": "已更新 {{count}} 个字幕片段",
       "noMatches": "未找到匹配的 AutoSubs 片段",
-      "description": "将当前样式应用到现有字幕片段。",
       "partial": "已更新 {{updated}} 个，失败 {{failed}} 个",
       "failed": "无法更新时间线样式"
     },
     "send": {
-      "adding": "正在发送...",
-      "success": "已发送到时间线"
+      "adding": "正在发送..."
     },
     "conflict": {
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
     },
     "preset": {
       "new": "新建预设",
-      "builtIn": "内置",
-      "custom": "自定义",
       "preview": "生成预览",
       "duplicate": "复制",
       "delete": "删除",
@@ -601,19 +625,16 @@
       "import": "导入文件",
       "paste": "粘贴 JSON",
       "phase": {
-        "launchingTitle": "正在 Resolve 中打开字幕…",
-        "launchingHint": "我们将在临时轨道上放置一个预览字幕。",
-        "editingTitle": "切换到 DaVinci Resolve",
-        "editingBody": "字幕已放置在新轨道上并在 Fusion 页面打开。使用检查器进行自定义，然后返回这里。",
-        "capturingTitle": "正在从 Resolve 读取设置…",
-        "nameTitle": "为您的预设命名",
-        "nameHint": "给它一个简短且描述性的名称。"
+        "openingTitle": "正在 Resolve 中打开字幕...",
+        "savingTitle": "正在从 Resolve 保存...",
+        "editingTitle": "在 Resolve 中编辑字幕",
+        "editingBody": "字幕已在 Fusion 页面打开。用检查器调整并查看播放效果，然后回到这里保存。",
+        "savingBody": "正在读取设置并生成预览。"
       },
       "action": {
         "cancel": "取消",
         "save": "保存预设",
-        "back": "返回",
-        "captureSettings": "捕获设置"
+        "saving": "保存中..."
       },
       "nameLabel": "预设名称",
       "namePlaceholder": "例如：粗体黄色、TikTok 风格",
@@ -630,7 +651,14 @@
         "captureFailed": "无法从 Resolve 读取字幕设置。",
         "nameRequired": "请输入名称。"
       },
-      "previewFailed": "无法生成预览"
-    }
+      "previewFailed": "无法生成预览",
+      "needsResolve": "打开 DaVinci Resolve 即可编辑样式。",
+      "rendering": "正在生成预览...",
+      "editTitle": "编辑字幕样式",
+      "createTitle": "新建字幕样式"
+    },
+    "chooseStyle": "选择字幕样式",
+    "speakerCount_one": "{{count}} 位说话人",
+    "speakerCount_other": "{{count}} 位说话人"
   }
 }

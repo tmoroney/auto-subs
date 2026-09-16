@@ -1,177 +1,168 @@
-import * as React from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-    AlertCircle,
-    ArrowRight,
-    ChevronLeft,
-    MonitorPlay,
-    Sparkles,
-} from "lucide-react"
-import { useTranslation } from "react-i18next"
+import * as React from "react";
+import { AlertCircle, MonitorPlay } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
     cancelPresetEdit,
-    capturePresetSettings,
     ensureCaptionPreviewDir,
-    startPresetEdit,
-} from "@/api/resolve-api"
-
-export type CreatePresetSubmit = (args: {
-    name: string
-    description?: string
-    macroSettings: Record<string, unknown>
-    previewPath?: string
-}) => Promise<void> | void
-
-type Phase =
-    | { kind: "launching" }
-    | { kind: "editing" }
-    | { kind: "capturing" }
-    | { kind: "naming"; settings: Record<string, unknown>; previewPath?: string }
+    openPresetEdit,
+    savePresetEdit,
+} from "@/api/resolve-api";
+import { usePresets } from "@/contexts/PresetsContext";
+import { useSettingsStore } from "@/stores/settings-store";
+import { storePresetPreview } from "@/lib/caption-previews";
+import type { CaptionPreset } from "@/types";
 
 interface FusionPresetEditorProps {
-    // Optional starting settings when editing an existing user preset.
-    // `undefined` means "create a new preset from macro defaults".
-    initialSettings?: Record<string, unknown>
-    initialName?: string
-    initialDescription?: string
-    submitLabel?: string
-    onSubmit: CreatePresetSubmit
-    onExit: () => void
+    /** Preset being edited, or `null` to start from the macro's defaults. */
+    preset: CaptionPreset | null;
+    onDone: () => void;
 }
 
+type Phase = "opening" | "editing" | "saving";
+
 /**
- * Three-phase flow that walks the user through creating (or editing) a caption
- * preset via a live round-trip to Resolve:
+ * Editing wrapper around Fusion.
  *
- *   1. launching  - StartPresetEdit call in flight.
- *   2. editing    - temp caption is on the timeline; user tweaks in Fusion.
- *   3. naming     - settings captured, user confirms name + saves.
+ * The caption's look is edited in Resolve, where the macro's own inspector
+ * lives and where the animation actually plays. AutoSubs holds the clip open
+ * for the whole session and keeps just the library concerns: what this style
+ * is called, and whether to keep it.
  *
- * The flow owns calling `cancelPresetEdit` whenever the user bails out so we
- * never leave an orphan track behind.
+ * There is deliberately no "capture settings" step. The session stays live, so
+ * Save reads the values whenever the user is ready.
  */
-export function FusionPresetEditor({
-    initialSettings,
-    initialName,
-    initialDescription,
-    submitLabel,
-    onSubmit,
-    onExit,
-}: FusionPresetEditorProps) {
-    const { t } = useTranslation()
-    const [phase, setPhase] = React.useState<Phase>({ kind: "launching" })
-    const [error, setError] = React.useState<string | null>(null)
-    const [name, setName] = React.useState(initialName ?? "")
-    const [description, setDescription] = React.useState(initialDescription ?? "")
-    const [isSaving, setIsSaving] = React.useState(false)
+export function FusionPresetEditor({ preset, onDone }: FusionPresetEditorProps) {
+    const { t } = useTranslation();
+    const { createPreset, updatePreset, setPresetPreview } = usePresets();
+    const updateSetting = useSettingsStore((s) => s.updateSetting);
 
-    // Track whether we still hold an active session so unmount/ESC can clean it up.
-    const hasActiveSessionRef = React.useRef(false)
-    // Guard against React 18 StrictMode's intentional double-mount in dev,
-    // which would otherwise fire two StartPresetEdit calls at Resolve.
-    const didStartRef = React.useRef(false)
+    const [phase, setPhase] = React.useState<Phase>("opening");
+    const [error, setError] = React.useState<string | null>(null);
+    const [name, setName] = React.useState(preset?.name ?? "");
+    const [description, setDescription] = React.useState(preset?.description ?? "");
 
-    const startEdit = React.useCallback(
-        async (seedSettings?: Record<string, unknown>) => {
-            setPhase({ kind: "launching" })
-            setError(null)
-            const result = await startPresetEdit(seedSettings)
-            if (result.error) {
-                setError(result.error)
-                hasActiveSessionRef.current = false
-                return
-            }
-            hasActiveSessionRef.current = true
-            setPhase({ kind: "editing" })
-        },
-        [],
-    )
+    // Tracks whether Resolve still holds a clip for us, so every exit path
+    // (Cancel, unmount, the panel closing underneath us) can clean it up.
+    const hasSessionRef = React.useRef(false);
+    // React 18 StrictMode double-mounts in dev, which would otherwise open two
+    // sessions and leave one stranded.
+    const didOpenRef = React.useRef(false);
 
-    // Kick off the first session on mount.
     React.useEffect(() => {
-        if (didStartRef.current) return
-        didStartRef.current = true
-        startEdit(initialSettings)
+        if (didOpenRef.current) return;
+        didOpenRef.current = true;
+
+        openPresetEdit(preset?.macroSettings)
+            .then((result) => {
+                if (result.error) {
+                    setError(result.error);
+                    return;
+                }
+                hasSessionRef.current = true;
+                setPhase("editing");
+            })
+            .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+
         return () => {
-            if (hasActiveSessionRef.current) {
-                // Fire-and-forget: we're unmounting, can't await.
-                cancelPresetEdit().catch(() => {})
-                hasActiveSessionRef.current = false
-            }
-        }
+            if (!hasSessionRef.current) return;
+            // Fire and forget: we are unmounting and cannot await.
+            cancelPresetEdit().catch(() => {});
+            hasSessionRef.current = false;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, []);
 
     async function handleCancel() {
-        if (hasActiveSessionRef.current) {
-            await cancelPresetEdit().catch(() => {})
-            hasActiveSessionRef.current = false
+        if (hasSessionRef.current) {
+            hasSessionRef.current = false;
+            await cancelPresetEdit().catch(() => {});
         }
-        onExit()
-    }
-
-    async function handleCapture() {
-        setPhase({ kind: "capturing" })
-        setError(null)
-        let exportDir: string | undefined
-        try {
-            exportDir = await ensureCaptionPreviewDir()
-        } catch (e) {
-            console.warn("Preset preview directory unavailable:", e)
-            exportDir = undefined
-        }
-        const result = await capturePresetSettings(exportDir)
-        if (result.previewError) {
-            console.warn("Preset preview render failed:", result.previewError)
-        }
-        // `CapturePresetSettings` tears down the session itself on both the
-        // success and error paths.
-        hasActiveSessionRef.current = false
-        if (result.error || !result.settings) {
-            setError(result.error ?? t("captions.preset.errors.captureFailed"))
-            setPhase({ kind: "editing" })
-            return
-        }
-        setPhase({
-            kind: "naming",
-            settings: result.settings,
-            previewPath: result.previewPath,
-        })
-    }
-
-    async function handleBackToEditing() {
-        if (phase.kind !== "naming") return
-        // Re-open in Resolve seeded with the captured settings so the user
-        // doesn't lose their work.
-        await startEdit(phase.settings)
+        onDone();
     }
 
     async function handleSave() {
-        if (phase.kind !== "naming") return
-        const trimmed = name.trim()
+        const trimmed = name.trim();
         if (!trimmed) {
-            setError(t("captions.preset.errors.nameRequired"))
-            return
+            setError(t("captions.preset.errors.nameRequired"));
+            return;
         }
-        setIsSaving(true)
+
+        setPhase("saving");
+        setError(null);
+
+        let exportDir: string | undefined;
         try {
-            await onSubmit({
-                name: trimmed,
-                description: description.trim() || undefined,
-                macroSettings: phase.settings,
-                previewPath: phase.previewPath,
-            })
-        } finally {
-            setIsSaving(false)
+            exportDir = await ensureCaptionPreviewDir();
+        } catch (err) {
+            console.warn("Preset preview directory unavailable:", err);
+        }
+
+        const result = await savePresetEdit(exportDir).catch((err) => ({
+            error: err instanceof Error ? err.message : String(err),
+        }));
+
+        // `SavePresetEdit` closes the session on both its success and error
+        // paths, so the clip is gone either way.
+        hasSessionRef.current = false;
+
+        if ("error" in result && result.error) {
+            setError(result.error);
+            setPhase("editing");
+            return;
+        }
+
+        const { settings, previewPath, previewError } =
+            result as Awaited<ReturnType<typeof savePresetEdit>>;
+        if (previewError) console.warn("Preset preview render failed:", previewError);
+
+        if (!settings) {
+            setError(t("captions.preset.errors.captureFailed"));
+            setPhase("editing");
+            return;
+        }
+
+        try {
+            let id: string;
+            if (preset) {
+                id = preset.id;
+                await updatePreset(id, { name: trimmed, description, macroSettings: settings });
+            } else {
+                id = (await createPreset(trimmed, settings, description)).id;
+            }
+
+            if (previewPath) {
+                try {
+                    await setPresetPreview(id, await storePresetPreview(id, previewPath));
+                } catch (err) {
+                    console.warn("Could not store preset preview:", err);
+                }
+            }
+
+            updateSetting("captionStyle", { source: "autosubs", presetId: id });
+            onDone();
+        } catch (err: any) {
+            setError(err?.message ?? "Failed to save preset");
+            setPhase("editing");
         }
     }
 
+    const busy = phase !== "editing";
+
     return (
         <div className="space-y-4">
+            <h3 className="text-sm font-medium">
+                {preset
+                    ? t("captions.preset.editTitle")
+                    : t("captions.preset.createTitle")}
+            </h3>
+
             {error && (
                 <Alert variant="destructive">
                     <AlertCircle className="size-4" />
@@ -179,132 +170,78 @@ export function FusionPresetEditor({
                 </Alert>
             )}
 
-            {phase.kind === "launching" && (
-                <PhaseCard
-                    icon={<Sparkles className="size-6 text-primary animate-pulse" />}
-                    title={t("captions.preset.phase.launchingTitle")}
-                    body={t("captions.preset.phase.launchingHint")}
-                />
-            )}
-
-            {phase.kind === "capturing" && (
-                <PhaseCard
-                    icon={<Sparkles className="size-6 text-primary animate-pulse" />}
-                    title={t("captions.preset.phase.capturingTitle")}
-                    body={t("captions.preset.phase.launchingHint")}
-                />
-            )}
-
-            {phase.kind === "editing" && (
-                <PhaseCard
-                    icon={<MonitorPlay className="size-6 text-primary" />}
-                    title={t("captions.preset.phase.editingTitle")}
-                    body={t("captions.preset.phase.editingBody")}
-                />
-            )}
-
-            {phase.kind === "naming" && (
-                <div className="space-y-3">
-                    <div>
-                        <h3 className="text-sm font-medium">
-                            {t("captions.preset.phase.nameTitle")}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            {t("captions.preset.phase.nameHint")}
+            <div className="rounded-lg border bg-muted/40 p-5">
+                <div className="flex items-start gap-4">
+                    <div className="shrink-0 rounded-md border bg-background p-2">
+                        {busy ? (
+                            <Spinner className="size-6 text-primary" />
+                        ) : (
+                            <MonitorPlay className="size-6 text-primary" />
+                        )}
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-sm font-medium">
+                            {phase === "opening"
+                                ? t("captions.preset.phase.openingTitle")
+                                : phase === "saving"
+                                  ? t("captions.preset.phase.savingTitle")
+                                  : t("captions.preset.phase.editingTitle")}
+                        </h4>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            {phase === "saving"
+                                ? t("captions.preset.phase.savingBody")
+                                : t("captions.preset.phase.editingBody")}
                         </p>
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs" htmlFor="preset-name-input">
-                            {t("captions.preset.nameLabel")}
-                        </Label>
-                        <Input
-                            id="preset-name-input"
-                            autoFocus
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder={t("captions.preset.namePlaceholder")}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") handleSave()
-                            }}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs" htmlFor="preset-desc-input">
-                            {t("captions.preset.descriptionLabel")}
-                        </Label>
-                        <Textarea
-                            id="preset-desc-input"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder={t("captions.preset.descriptionPlaceholder")}
-                            rows={2}
-                        />
-                    </div>
                 </div>
-            )}
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-xs" htmlFor="preset-name-input">
+                    {t("captions.preset.nameLabel")}
+                </Label>
+                <Input
+                    id="preset-name-input"
+                    autoFocus
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("captions.preset.namePlaceholder")}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !busy) void handleSave();
+                    }}
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-xs" htmlFor="preset-desc-input">
+                    {t("captions.preset.descriptionLabel")}
+                </Label>
+                <Textarea
+                    id="preset-desc-input"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={t("captions.preset.descriptionPlaceholder")}
+                    rows={2}
+                />
+            </div>
 
             <div className="flex items-center justify-between gap-2">
-                {phase.kind === "naming" ? (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleBackToEditing}
-                        disabled={isSaving}
-                    >
-                        <ChevronLeft className="size-4" />
-                        {t("captions.preset.action.back")}
-                    </Button>
-                ) : (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={phase.kind === "capturing"}
-                    >
-                        {t("captions.preset.action.cancel")}
-                    </Button>
-                )}
-
-                {phase.kind === "editing" && (
-                    <Button type="button" onClick={handleCapture}>
-                        {t("captions.preset.action.captureSettings")}
-                        <ArrowRight className="size-4" />
-                    </Button>
-                )}
-
-                {phase.kind === "naming" && (
-                    <Button type="button" onClick={handleSave} disabled={isSaving}>
-                        {isSaving && (
-                            <div className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        )}
-                        {submitLabel ?? t("captions.preset.action.save")}
-                    </Button>
-                )}
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={phase === "saving"}
+                >
+                    {t("captions.preset.action.cancel")}
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={busy}>
+                    {phase === "saving" && <Spinner className="size-3.5" />}
+                    {phase === "saving"
+                        ? t("captions.preset.action.saving")
+                        : t("captions.preset.action.save")}
+                </Button>
             </div>
         </div>
-    )
-}
-
-function PhaseCard({
-    icon,
-    title,
-    body,
-}: {
-    icon: React.ReactNode
-    title: string
-    body: string
-}) {
-    return (
-        <div className="rounded-lg border bg-muted/40 p-5">
-            <div className="flex items-start gap-4">
-                <div className="shrink-0 rounded-md bg-background p-2 border">{icon}</div>
-                <div className="space-y-1">
-                    <h3 className="text-sm font-medium">{title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
-                </div>
-            </div>
-        </div>
-    )
+    );
 }

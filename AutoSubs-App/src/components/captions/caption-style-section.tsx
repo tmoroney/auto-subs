@@ -1,204 +1,293 @@
-import * as React from "react"
-import { Check, Loader2 } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import { useIntegration } from "@/contexts/IntegrationContext"
-import { CaptionPreset, Template } from "@/types"
-import { Label } from "@/components/ui/label"
-import {
-    PresetGallery,
-} from "@/components/captions/preset-gallery"
-import { usePresets } from "@/contexts/PresetsContext"
-import {
-    FusionPresetEditor,
-    type CreatePresetSubmit,
-} from "@/components/captions/fusion-preset-editor"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { Check, HelpCircle, RefreshCw, Sparkles, Type } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-export const ANIMATED_CAPTION_TEMPLATE = "AutoSubs Caption"
-
-export type CaptionTemplateMode = "regular" | "animated"
-
-export type CreatePresetSession =
-    | { kind: "closed" }
-    | { kind: "create" }
-    | { kind: "edit"; presetId: string }
-
-export type { CreatePresetSubmit }
-
-export interface CaptionTemplateSelection {
-    mode: CaptionTemplateMode
-    templateValue: string
-    presetId: string
-}
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
+import { PresetGallery } from "@/components/captions/preset-gallery";
+import type { CaptionPresetActions } from "@/components/captions/use-caption-presets";
+import type { ResolveTemplatesState } from "@/components/captions/use-resolve-templates";
+import { useSettingsStore } from "@/stores/settings-store";
+import { cn } from "@/lib/utils";
+import type { CaptionPreset, CaptionStyle } from "@/types";
 
 interface CaptionStyleSectionProps {
-    mode: CaptionTemplateMode
-    onModeChange: (mode: CaptionTemplateMode) => void
-    templateValue: string
-    onTemplateChange: (value: string) => void
-    templates: Template[]
-    templatesLoading: boolean
-    templatesLoaded: boolean
-    templateLoadError: string | null
-    presetId: string
-    onPresetChange: (id: string) => void
-    animatedPresets: ReturnType<typeof usePresets>["presets"]
-    createSession: CreatePresetSession
-    onRequestCreate: () => void
-    onRequestEdit: (preset: CaptionPreset) => void
-    onCreateFlowExit: () => void
-    onSubmitPreset: CreatePresetSubmit
-    editingInitialSettings?: Record<string, unknown>
-    editingInitialName?: string
-    editingInitialDescription?: string
-    onDeletePreset: (id: string) => Promise<void> | void
-    onDuplicatePreset: (preset: CaptionPreset) => Promise<void> | void
-    onImportPreset: (json: string) => Promise<CaptionPreset>
-    onExportPreset: (id: string) => string
-    onRequestPreview?: (preset: CaptionPreset) => void
-    previewLoadingId?: string | null
-    hasAnimatedTemplate: boolean
+    captionStyle: CaptionStyle;
+    presets: CaptionPresetActions;
+    templates: ResolveTemplatesState;
+    isConnected: boolean;
+    /** Opens the Fusion editor. `null` means "start from the macro defaults". */
+    onEditPreset: (preset: CaptionPreset | null) => void;
 }
 
+/**
+ * The caption style picker: two mutually exclusive sources, then the detail
+ * for whichever is chosen.
+ *
+ * The sources used to be two adjacent lists distinguished only by their group
+ * heading, which said where each came from but never what you got. Picking a
+ * source first makes the choice explicit, and leaves one obvious place to say
+ * what the difference actually is.
+ */
 export function CaptionStyleSection({
-    mode,
-    onModeChange,
-    templateValue,
-    onTemplateChange,
+    captionStyle,
+    presets,
     templates,
-    templatesLoading,
-    templatesLoaded,
-    templateLoadError,
-    presetId,
-    onPresetChange,
-    animatedPresets,
-    createSession,
-    onRequestCreate,
-    onRequestEdit,
-    onCreateFlowExit,
-    onSubmitPreset,
-    editingInitialSettings,
-    editingInitialName,
-    editingInitialDescription,
-    onDeletePreset,
-    onDuplicatePreset,
-    onImportPreset,
-    onExportPreset,
-    onRequestPreview,
-    previewLoadingId,
-    hasAnimatedTemplate,
+    isConnected,
+    onEditPreset,
 }: CaptionStyleSectionProps) {
-    const { t } = useTranslation()
-    const { selectedIntegration } = useIntegration()
+    const { t } = useTranslation();
+    const updateSetting = useSettingsStore((s) => s.updateSetting);
 
-    React.useEffect(() => {
-        if (templatesLoaded && mode === "animated" && !hasAnimatedTemplate) {
-            onModeChange("regular")
-        }
-    }, [templatesLoaded, mode, hasAnimatedTemplate, onModeChange])
+    const source = captionStyle.source;
 
-    if (createSession.kind !== "closed") {
-        return (
-            <FusionPresetEditor
-                key={createSession.kind === "edit" ? createSession.presetId : "create"}
-                initialSettings={editingInitialSettings}
-                initialName={editingInitialName}
-                initialDescription={editingInitialDescription}
-                onSubmit={onSubmitPreset}
-                onExit={onCreateFlowExit}
-            />
-        )
-    }
+    const selectAutoSubs = () => {
+        if (source === "autosubs") return;
+        const fallback = presets.presets[0];
+        if (!fallback) return;
+        presets.select(fallback.id);
+    };
 
-    if (!templatesLoading && templateLoadError) {
-        const integrationLabel =
-            selectedIntegration === "davinci"
-                ? "DaVinci Resolve"
-                : selectedIntegration === "premiere"
-                  ? "Adobe Premiere Pro"
-                  : "Adobe After Effects"
-        return (
-            <div className="flex h-[296px] items-center justify-center text-center text-sm font-medium text-muted-foreground">
-                {t("captions.style.connectTo", {
-                    integration: integrationLabel,
-                    defaultValue: "Connect to {{integration}} to customise templates",
-                })}
-            </div>
-        )
-    }
+    const selectResolve = () => {
+        if (source === "resolve") return;
+        const first = templates.templates[0];
+        updateSetting("captionStyle", {
+            source: "resolve",
+            templateName: first?.value ?? "",
+        });
+    };
 
-    const regularTemplates = templates.filter(
-        (tpl) => tpl.value !== ANIMATED_CAPTION_TEMPLATE,
-    )
-
-    // One list, grouped — rather than a mode switch the user has to understand
-    // before they can browse. Picking an item implies its mode.
     return (
-        <div className="space-y-4">
-            <section className="space-y-1.5">
-                <Label className="pl-1 text-xs text-muted-foreground">
-                    {t("captions.style.groups.resolve")}
+        <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2 pl-1">
+                <Label className="text-xs text-muted-foreground">
+                    {t("captions.style.label")}
                 </Label>
-                {templatesLoading && (
-                    <div className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground">
-                        <Loader2 className="size-3.5 animate-spin" />
-                        <span>{t("captions.style.loading", "Loading templates...")}</span>
-                    </div>
-                )}
-                {!templatesLoading && templatesLoaded && regularTemplates.length === 0 && (
+                <DifferenceExplainer />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+                <SourceCard
+                    icon={<Sparkles className="size-4" />}
+                    title={t("captions.style.autosubs.name")}
+                    description={t("captions.style.autosubs.description")}
+                    selected={source === "autosubs"}
+                    disabled={templates.loaded && !templates.hasAutoSubsTemplate}
+                    disabledReason={t("captions.style.autosubs.unavailable")}
+                    onSelect={selectAutoSubs}
+                />
+                <SourceCard
+                    icon={<Type className="size-4" />}
+                    title={t("captions.style.resolve.name")}
+                    description={t("captions.style.resolve.description")}
+                    selected={source === "resolve"}
+                    onSelect={selectResolve}
+                />
+            </div>
+
+            {source === "autosubs" ? (
+                <PresetGallery
+                    presets={presets}
+                    selectedPresetId={captionStyle.presetId}
+                    isConnected={isConnected}
+                    onEditPreset={onEditPreset}
+                />
+            ) : (
+                <ResolveTemplateList
+                    state={templates}
+                    selectedTemplate={captionStyle.templateName}
+                    onSelect={(templateName) =>
+                        updateSetting("captionStyle", { source: "resolve", templateName })
+                    }
+                />
+            )}
+        </section>
+    );
+}
+
+// ----------------------------------------------------------------------------
+
+function SourceCard({
+    icon,
+    title,
+    description,
+    selected,
+    disabled,
+    disabledReason,
+    onSelect,
+}: {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    selected: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            disabled={disabled}
+            onClick={onSelect}
+            className={cn(
+                "flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:bg-muted/50",
+                disabled && "cursor-not-allowed opacity-60 hover:bg-background",
+            )}
+        >
+            <span className="flex items-center gap-2 text-xs font-medium">
+                <span className={cn(selected ? "text-primary" : "text-muted-foreground")}>
+                    {icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{title}</span>
+                {selected && <Check className="size-3.5 shrink-0 text-primary" />}
+            </span>
+            <span className="text-xs leading-relaxed text-muted-foreground">
+                {disabled && disabledReason ? disabledReason : description}
+            </span>
+        </button>
+    );
+}
+
+/**
+ * Answers "which one do I want" once, in the place the question is asked,
+ * rather than leaving the user to infer it from two group headings.
+ */
+function DifferenceExplainer() {
+    const { t } = useTranslation();
+    const rows = ["animation", "styling", "source", "restyle"] as const;
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                >
+                    <HelpCircle className="size-3.5" />
+                    {t("captions.style.difference.trigger")}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[22rem] p-3">
+                <p className="mb-2 text-xs font-medium">
+                    {t("captions.style.difference.title")}
+                </p>
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="text-muted-foreground">
+                            <th className="w-1/3" />
+                            <th className="pb-1 text-left font-medium">
+                                {t("captions.style.autosubs.name")}
+                            </th>
+                            <th className="pb-1 text-left font-medium">
+                                {t("captions.style.resolve.name")}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="align-top">
+                        {rows.map((row) => (
+                            <tr key={row} className="border-t border-border/60">
+                                <td className="py-1.5 pr-2 text-muted-foreground">
+                                    {t(`captions.style.difference.rows.${row}.label`)}
+                                </td>
+                                <td className="py-1.5 pr-2">
+                                    {t(`captions.style.difference.rows.${row}.autosubs`)}
+                                </td>
+                                <td className="py-1.5">
+                                    {t(`captions.style.difference.rows.${row}.resolve`)}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+function ResolveTemplateList({
+    state,
+    selectedTemplate,
+    onSelect,
+}: {
+    state: ResolveTemplatesState;
+    selectedTemplate: string;
+    onSelect: (templateName: string) => void;
+}) {
+    const { t } = useTranslation();
+    const { templates, loading, loaded, error, refresh } = state;
+
+    if (loading) {
+        return (
+            <div className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground">
+                <Spinner className="size-3.5" />
+                <span>{t("captions.style.loading")}</span>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="space-y-2 px-1 py-3">
+                <p className="text-xs text-muted-foreground">{error}</p>
+                <Button type="button" variant="outline" size="sm" onClick={refresh}>
+                    <RefreshCw className="size-3.5" />
+                    {t("captions.style.refresh")}
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-2">
+            <div className="space-y-1">
+                {loaded && templates.length === 0 && (
                     <p className="px-1 py-3 text-xs text-muted-foreground">
-                        {t("captions.style.noTemplates", "No templates found.")}
+                        {t("captions.style.noTemplates")}
                     </p>
                 )}
-                <div className="space-y-1">
-                    {!templatesLoading &&
-                        templatesLoaded &&
-                        regularTemplates.map((template) => {
-                            const isSelected =
-                                mode === "regular" && templateValue === template.value
-                            return (
-                                <button
-                                    key={template.value}
-                                    type="button"
-                                    onClick={() => onTemplateChange(template.value)}
-                                    className={cn(
-                                        "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                        isSelected
-                                            ? "border-primary bg-primary/5 text-foreground"
-                                            : "border-border bg-background text-foreground hover:bg-muted/50",
-                                    )}
-                                >
-                                    <span className="min-w-0 truncate">{template.label}</span>
-                                    {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
-                                </button>
-                            )
-                        })}
-                </div>
-            </section>
-
-            {hasAnimatedTemplate && (
-                <section className="space-y-1.5">
-                    <Label className="pl-1 text-xs text-muted-foreground">
-                        {t("captions.style.groups.autosubs")}
-                    </Label>
-                    <PresetGallery
-                        presets={animatedPresets}
-                        selectedPresetId={mode === "animated" ? presetId : ""}
-                        onSelect={onPresetChange}
-                        onRequestEdit={onRequestEdit}
-                        onDelete={onDeletePreset}
-                        onExportJson={onExportPreset}
-                        onDuplicate={onDuplicatePreset}
-                        onImportJson={onImportPreset}
-                        onRequestPreview={
-                            selectedIntegration === "davinci" ? onRequestPreview : undefined
-                        }
-                        previewLoadingId={previewLoadingId}
-                        onRequestCreate={onRequestCreate}
-                    />
-                </section>
-            )}
+                {templates.map((template) => {
+                    const isSelected = selectedTemplate === template.value;
+                    return (
+                        <button
+                            key={template.value}
+                            type="button"
+                            onClick={() => onSelect(template.value)}
+                            className={cn(
+                                "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                isSelected
+                                    ? "border-primary bg-primary/5 text-foreground"
+                                    : "border-border bg-background text-foreground hover:bg-muted/50",
+                            )}
+                        >
+                            <span className="min-w-0 truncate">{template.label}</span>
+                            {isSelected && (
+                                <Check className="size-3.5 shrink-0 text-primary" />
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 px-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                onClick={refresh}
+            >
+                <RefreshCw className="size-3.5" />
+                {t("captions.style.refresh")}
+            </Button>
         </div>
-    )
-
+    );
 }

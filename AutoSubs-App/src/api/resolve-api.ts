@@ -277,33 +277,44 @@ export async function generatePreview(
   return data;
 }
 
-// Starts an interactive caption-preset edit session in Resolve. Adds a new
-// video track, drops an AutoSubs Caption clip, opens the Fusion page and
-// (optionally) applies existing preset settings to the tool so the user can
-// tweak them in the Fusion inspector.
-export async function startPresetEdit(
-  initialSettings?: Record<string, unknown>,
-): Promise<{ ok?: true; error?: string }> {
-  return callResolve({ func: 'StartPresetEdit', initialSettings });
-}
-
-// Reads the AutoSubs tool's current input values via the macro's GetInputValues
-// helper, then tears down the preset-edit clip/track.
-export async function capturePresetSettings(exportDir?: string): Promise<{
+export interface PresetEditSaveResult {
   settings?: Record<string, unknown>;
   previewPath?: string;
   previewError?: string;
   error?: string;
-}> {
-  return callResolve({ func: 'CapturePresetSettings', exportDir });
+}
+
+/**
+ * Opens a caption for editing in Resolve: adds a temporary video track, drops
+ * an AutoSubs Caption clip on it, seeds it with `initialSettings` and opens the
+ * Fusion page on it.
+ *
+ * The clip stays on the timeline until `savePresetEdit` or `cancelPresetEdit`,
+ * so the user can tweak the macro's inspector for as long as they like and
+ * watch the animation play in Resolve's viewer.
+ */
+export async function openPresetEdit(
+  initialSettings?: Record<string, unknown>,
+): Promise<{ ok?: true; error?: string }> {
+  return callResolve({ func: 'OpenPresetEdit', initialSettings });
+}
+
+/**
+ * Reads the open caption's current input values, renders its thumbnail and
+ * closes the session. Always closes, so the caller can assume the temporary
+ * clip is gone whichever way this returns.
+ */
+export async function savePresetEdit(
+  exportDir?: string,
+): Promise<PresetEditSaveResult> {
+  return callResolve({ func: 'SavePresetEdit', exportDir });
+}
+
+/** Closes the session without reading anything. Safe with no session open. */
+export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }> {
+  return callResolve({ func: 'CancelPresetEdit' });
 }
 
 export async function ensureCaptionPreviewDir(): Promise<string> {
   return invoke<string>('ensure_caption_preview_dir');
-}
-
-// Tears down the preset-edit clip/track without capturing. Safe to call with
-// no active session.
-export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }> {
-  return callResolve({ func: 'CancelPresetEdit' });
 }

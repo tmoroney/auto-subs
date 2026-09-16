@@ -2,7 +2,6 @@ import * as React from "react";
 import {
   AlertTriangle,
   Check,
-  ChevronLeft,
   Download,
   Loader,
   Pencil,
@@ -12,58 +11,39 @@ import {
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { toast } from "sonner";
-import { copyFile } from "@tauri-apps/plugin-fs";
-import { join } from "@tauri-apps/api/path";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SpeakerChips } from "@/components/subtitles/speaker-chips";
-import {
-  ANIMATED_CAPTION_TEMPLATE,
-  CaptionStyleSection,
-  type CreatePresetSession,
-  type CreatePresetSubmit,
-} from "@/components/captions/caption-style-section";
+import { OutputSheet } from "@/components/captions/output-sheet";
+import { FusionPresetEditor } from "@/components/captions/fusion-preset-editor";
+import { useCaptionPresets } from "@/components/captions/use-caption-presets";
+import { useResolveTemplates } from "@/components/captions/use-resolve-templates";
 import {
   applyStylesToTimeline,
-  cancelPresetEdit,
   checkTrackConflicts,
-  ensureCaptionPreviewDir,
-  generatePreview,
   type ConflictInfo,
 } from "@/api/resolve-api";
-import { usePresets, DEFAULT_PRESET_ID } from "@/contexts/PresetsContext";
+import { useIntegration } from "@/contexts/IntegrationContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   OUTPUT_SHEET_ANIMATION_MS,
   useOutputPanelStore,
-  type OutputSection,
 } from "@/stores/output-panel-store";
 import { ExportPopover, type ExportFormat } from "@/components/common/export-popover";
-import type { Speaker, Template, TimelineInfo } from "@/types";
+import {
+  describeCaptionStyle,
+  isStyleAvailable,
+  resolveCaptionStyle,
+} from "@/lib/caption-style";
+import type { CaptionPreset, Speaker, TimelineInfo } from "@/types";
 import { cn } from "@/lib/utils";
-import { storePresetPreview } from "@/lib/caption-previews";
 
 interface OutputPanelProps {
   timelineInfo?: TimelineInfo;
   isConnected: boolean;
-  selectedIntegration?: "davinci" | "premiere" | "aftereffects";
-  templates: Template[];
-  templatesLoading: boolean;
-  templatesLoaded: boolean;
-  onLoadTemplates?: () => Promise<Template[]>;
   onAddToTimeline: (
     selectedOutputTrack: string,
-    selectedTemplate: string,
+    templateName: string,
     presetSettings?: Record<string, unknown>,
   ) => Promise<void>;
   onExport: (format: ExportFormat) => Promise<void>;
@@ -72,19 +52,16 @@ interface OutputPanelProps {
   justSent: boolean;
   /**
    * The transcript region. It is passed in rather than rendered as a sibling
-   * so the sheet can sit on top of it as a real overlay — that keeps the
-   * transcript mounted, so it is already there the instant the sheet starts
-   * animating away, and the two can never fight over the same flex space.
+   * so the sheet can sit on top of it as a real overlay, which keeps the
+   * transcript mounted and stops the two fighting over the same flex space.
    */
   children?: React.ReactNode;
 }
 
 /**
- * Bottom-anchored output configuration. Renders as two pieces:
- *
- *  - the sheet (only while expanded), which the viewer places in the region
- *    the transcript normally occupies so it gets the full panel height;
- *  - the summary bar + primary action, which is always visible.
+ * Bottom-anchored output configuration. Renders as two pieces: the sheet
+ * (only while expanded), and the always-visible summary bar plus primary
+ * action.
  *
  * The summary bar is the whole reason this works: it states what pressing the
  * button will do, so the button can commit immediately instead of opening a
@@ -93,11 +70,6 @@ interface OutputPanelProps {
 export function OutputPanel({
   timelineInfo,
   isConnected,
-  selectedIntegration,
-  templates,
-  templatesLoading,
-  templatesLoaded,
-  onLoadTemplates,
   onAddToTimeline,
   onExport,
   isAdding,
@@ -105,38 +77,23 @@ export function OutputPanel({
   children,
 }: OutputPanelProps) {
   const { t } = useTranslation();
-  const isAdobe =
-    selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
+  const { selectedIntegration } = useIntegration();
+
+  // Caption styles are a Resolve feature. Gating on the chosen integration
+  // rather than on a live connection means Resolve users keep the section when
+  // Resolve happens to be closed, and Adobe users never see a control they
+  // cannot use.
+  const isResolve = selectedIntegration === "davinci";
 
   const { subtitles, speakers, updateSpeakers, currentSubtitleDocumentFilename } =
     useSubtitleDocument();
 
-  const {
-    selectedTemplate,
-    presetId,
-    selectedOutputTrack,
-    captionMode,
-    updateSetting,
-  } = useSettingsStore(
+  const { captionStyle, selectedOutputTrack } = useSettingsStore(
     useShallow((s) => ({
-      selectedTemplate: s.selectedTemplate,
-      presetId: s.presetId,
+      captionStyle: s.captionStyle,
       selectedOutputTrack: s.selectedOutputTrack,
-      captionMode: s.captionMode,
-      updateSetting: s.updateSetting,
     })),
   );
-
-  const {
-    presets,
-    getPreset,
-    createPreset,
-    updatePreset,
-    deletePreset,
-    importPreset,
-    exportPreset,
-    setPresetPreview,
-  } = usePresets();
 
   const {
     expanded,
@@ -160,6 +117,17 @@ export function OutputPanel({
     })),
   );
 
+  const presets = useCaptionPresets();
+  const templates = useResolveTemplates(expanded && isResolve);
+
+  // `null` is a valid value here (create from macro defaults), so the session
+  // is a tagged state rather than a nullable preset.
+  const [editing, setEditing] = React.useState<
+    { preset: CaptionPreset | null } | null
+  >(null);
+  const [conflictInfo, setConflictInfo] = React.useState<ConflictInfo | null>(null);
+  const [isApplyingStyles, setIsApplyingStyles] = React.useState(false);
+
   // Tear the sheet down only after its exit animation has run. `expanded`
   // stays true throughout, which is what keeps the transcript from popping in
   // behind the sheet mid-slide.
@@ -169,88 +137,18 @@ export function OutputPanel({
     return () => clearTimeout(timer);
   }, [closing, finishClose]);
 
-  const [createSession, setCreateSession] = React.useState<CreatePresetSession>({
-    kind: "closed",
-  });
-  const [conflictInfo, setConflictInfo] = React.useState<ConflictInfo | null>(null);
-  const [templateLoadError, setTemplateLoadError] = React.useState<string | null>(null);
-  const [loadingTimedOut, setLoadingTimedOut] = React.useState(false);
-  const [previewLoadingId, setPreviewLoadingId] = React.useState<string | null>(null);
-  const [isApplyingStyles, setIsApplyingStyles] = React.useState(false);
-
-  const outputTracks = timelineInfo?.outputTracks ?? [];
-  const hasSubtitles = subtitles.length > 0;
-
-  // ── Preset-edit teardown ────────────────────────────────────────────────
-  // A preset edit session drops a temporary track into Resolve, so it must be
-  // cancelled whenever the sheet goes away — collapsing, the viewer closing
-  // (unmount), or the editor disconnecting. The dialog this replaced could
-  // rely on a single close event; a sheet has several exits, so we track the
-  // session in a ref and tear down from one place.
-  const createSessionRef = React.useRef(createSession);
-  createSessionRef.current = createSession;
-
-  const endPresetSession = React.useCallback(() => {
-    if (createSessionRef.current.kind === "closed") return;
-    cancelPresetEdit().catch(() => {});
-    setCreateSession({ kind: "closed" });
-  }, []);
-
-  React.useEffect(() => endPresetSession, [endPresetSession]);
-
+  // An edit session puts a clip on the user's timeline, so it must not outlive
+  // the surface that owns it: collapsing the sheet or losing the editor both
+  // end it. The editor itself handles telling Resolve.
   React.useEffect(() => {
-    if (!expanded || !isConnected) endPresetSession();
-  }, [expanded, isConnected, endPresetSession]);
-
-  // ── Template loading ────────────────────────────────────────────────────
-  const shouldLoadTemplates =
-    expanded &&
-    !isAdobe &&
-    !templatesLoaded &&
-    !templatesLoading &&
-    !!onLoadTemplates;
-
-  React.useEffect(() => {
-    if (!shouldLoadTemplates) return;
-    let cancelled = false;
-
-    if (!timelineInfo?.timelineId) {
-      setTemplateLoadError(t("captions.errors.notConnected"));
-      setLoadingTimedOut(true);
-      return;
-    }
-
-    setTemplateLoadError(null);
-    setLoadingTimedOut(false);
-
-    const timeoutId = setTimeout(() => {
-      if (cancelled) return;
-      cancelled = true;
-      setLoadingTimedOut(true);
-      setTemplateLoadError(t("captions.errors.timedOut"));
-    }, 15000);
-
-    onLoadTemplates?.().catch((err) => {
-      if (cancelled) return;
-      clearTimeout(timeoutId);
-      setTemplateLoadError(err instanceof Error ? err.message : String(err));
-      setLoadingTimedOut(true);
-    });
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-    };
-  }, [shouldLoadTemplates, onLoadTemplates, timelineInfo?.timelineId, t]);
+    if (!expanded || !isConnected) setEditing(null);
+  }, [expanded, isConnected]);
 
   // ── Conflict check ──────────────────────────────────────────────────────
   // Runs whether or not the sheet is open: the warning belongs in the summary
   // row so it is read *before* the send button is pressed.
   const shouldCheckConflicts =
-    isConnected &&
-    !isAdobe &&
-    !!currentSubtitleDocumentFilename &&
-    !!selectedOutputTrack;
+    isConnected && isResolve && !!currentSubtitleDocumentFilename && !!selectedOutputTrack;
 
   React.useEffect(() => {
     if (!shouldCheckConflicts) {
@@ -272,30 +170,36 @@ export function OutputPanel({
   }, [shouldCheckConflicts, currentSubtitleDocumentFilename, selectedOutputTrack]);
 
   // ── Derived state ───────────────────────────────────────────────────────
-  const hasAnimatedTemplate = templates.some(
-    (tpl) => tpl.value === ANIMATED_CAPTION_TEMPLATE,
-  );
-  const effectiveTemplatesLoading = templatesLoading && !loadingTimedOut;
+  const outputTracks = timelineInfo?.outputTracks ?? [];
+  const hasSubtitles = subtitles.length > 0;
 
   const trackLabel =
     outputTracks.find((track) => track.value === selectedOutputTrack)?.label ?? "";
 
-  const styleLabel =
-    captionMode === "animated"
-      ? (getPreset(presetId)?.name ?? t("addToTimeline.mode.animated"))
-      : selectedTemplate.label;
+  const styleLabel = describeCaptionStyle(
+    captionStyle,
+    presets.getPreset,
+    t("captions.style.unavailable"),
+  );
 
-  // A saved track can disappear when the user switches timeline. Sending
-  // blind in that case would drop subtitles somewhere unexpected.
+  const styleIsAvailable = isStyleAvailable(
+    captionStyle,
+    presets.presets,
+    templates.templates,
+    templates.loaded,
+  );
+
+  // A saved track can disappear when the user switches timeline. Sending blind
+  // in that case would drop subtitles somewhere unexpected.
   const trackIsValid =
-    isAdobe ||
     outputTracks.length === 0 ||
     outputTracks.some((track) => track.value === selectedOutputTrack);
 
   const needsTrackChoice = !trackIsValid;
+  const needsStyleChoice = isResolve && !styleIsAvailable;
 
   const summaryParts: string[] = [];
-  if (isAdobe) {
+  if (!isResolve) {
     summaryParts.push(
       selectedIntegration === "aftereffects" ? "After Effects" : "Premiere Pro",
     );
@@ -307,105 +211,30 @@ export function OutputPanel({
     summaryParts.push(t("captions.speakerCount", { count: speakers.length }));
   }
 
-  const showConflictWarning = Boolean(conflictInfo?.hasConflicts);
+  const showWarning = Boolean(conflictInfo?.hasConflicts) || needsStyleChoice;
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function handleToggle() {
-    if (expanded) endPresetSession();
+    if (expanded) setEditing(null);
     toggle();
   }
 
-  const handleSubmitPreset: CreatePresetSubmit = async ({
-    name,
-    description,
-    macroSettings,
-    previewPath,
-  }) => {
-    try {
-      let id: string;
-      if (createSession.kind === "edit") {
-        id = createSession.presetId;
-        await updatePreset(id, { name, description, macroSettings });
-      } else {
-        const created = await createPreset(name, macroSettings, description);
-        id = created.id;
-      }
-      updateSetting("presetId", id);
-      if (previewPath) {
-        try {
-          const file = await storePresetPreview(id, previewPath);
-          await setPresetPreview(id, file);
-        } catch (err) {
-          console.warn("Could not store preset preview:", err);
-        }
-      }
-      updateSetting("captionMode", "animated");
-      setCreateSession({ kind: "closed" });
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save preset");
-    }
-  };
-
-  async function handleDuplicatePreset(id: string) {
-    const preset = getPreset(id);
-    if (!preset) return;
-    const copy = await createPreset(
-      `${preset.name} copy`,
-      preset.macroSettings,
-      preset.description,
-    );
-    if (preset.previewImage) {
-      try {
-        const dir = await ensureCaptionPreviewDir();
-        await copyFile(
-          await join(dir, preset.previewImage),
-          await join(dir, `${copy.id}.png`),
-        );
-        await setPresetPreview(copy.id, `${copy.id}.png`);
-      } catch (err) {
-        console.warn("Could not copy preset preview:", err);
-      }
-    }
-    updateSetting("presetId", copy.id);
-  }
-
-  async function handleGeneratePreview(preset: ReturnType<typeof usePresets>["presets"][number]) {
-    setPreviewLoadingId(preset.id);
-    try {
-      const dir = await ensureCaptionPreviewDir();
-      const result = await generatePreview(
-        ANIMATED_CAPTION_TEMPLATE,
-        dir,
-        preset.macroSettings,
-      );
-      const file = await storePresetPreview(preset.id, result.path);
-      await setPresetPreview(preset.id, file);
-    } catch (err: any) {
-      toast.error(t("captions.preset.previewFailed"));
-      console.warn("Could not generate preset preview:", err);
-    } finally {
-      setPreviewLoadingId(null);
-    }
-  }
-
-  function handleSpeakerChange(index: number, updated: Speaker) {
-    const next = [...speakers];
-    next[index] = updated;
-    updateSpeakers(next);
-  }
-
   async function handlePrimaryAction() {
-    // The only case where the button navigates instead of committing: it
-    // cannot do its job until a valid track is picked, and the label says so.
+    // The only cases where the button navigates instead of committing: it
+    // cannot do its job until these are resolved, and the label says so.
     if (needsTrackChoice) {
       open("track");
       return;
     }
+    if (needsStyleChoice) {
+      open("style");
+      return;
+    }
 
-    const templateName =
-      captionMode === "animated" ? ANIMATED_CAPTION_TEMPLATE : selectedTemplate.value;
-    const presetSettings =
-      captionMode === "animated" ? getPreset(presetId)?.macroSettings : undefined;
+    const { templateName, presetSettings } = resolveCaptionStyle(
+      captionStyle,
+      presets.getPreset,
+    );
 
     requestClose();
     onAddToTimeline(selectedOutputTrack, templateName, presetSettings).catch((err) => {
@@ -416,8 +245,7 @@ export function OutputPanel({
   async function handleApplyStyles() {
     if (!currentSubtitleDocumentFilename) return;
 
-    const presetSettings =
-      captionMode === "animated" ? getPreset(presetId)?.macroSettings : undefined;
+    const { presetSettings } = resolveCaptionStyle(captionStyle, presets.getPreset);
 
     setIsApplyingStyles(true);
     try {
@@ -437,9 +265,7 @@ export function OutputPanel({
           }),
         );
       } else {
-        toast.success(
-          t("captions.batchStyle.success", { count: result.updated }),
-        );
+        toast.success(t("captions.batchStyle.success", { count: result.updated }));
       }
     } catch (err) {
       console.error("Failed to update timeline styles:", err);
@@ -449,6 +275,13 @@ export function OutputPanel({
     }
   }
 
+  function handleSpeakerChange(index: number, updated: Speaker) {
+    const next = [...speakers];
+    next[index] = updated;
+    updateSpeakers(next);
+  }
+
+  // ── Primary action label ────────────────────────────────────────────────
   const actionDisabled = isAdding || !hasSubtitles;
 
   let actionLabel: React.ReactNode;
@@ -463,6 +296,8 @@ export function OutputPanel({
     actionLabel = t("captions.noSubtitles");
   } else if (needsTrackChoice) {
     actionLabel = t("captions.chooseTrack");
+  } else if (needsStyleChoice) {
+    actionLabel = t("captions.chooseStyle");
   } else if (justSent) {
     // Sending is cheap to repeat and cheap to undo, so confirm what happened
     // and stay ready rather than locking the button.
@@ -485,65 +320,37 @@ export function OutputPanel({
     <>
       <div className="relative flex min-h-0 flex-1 flex-col">
         {children}
-        {expanded && (
-          <OutputSheet
-            closing={closing}
-          isConnected={isConnected}
-          isAdobe={isAdobe}
-          focusSection={focusSection}
-          onFocusHandled={clearFocusSection}
-          onBack={handleToggle}
-          outputTracks={outputTracks}
-          selectedOutputTrack={selectedOutputTrack}
-          onOutputTrackChange={(value) => updateSetting("selectedOutputTrack", value)}
-          conflictInfo={conflictInfo}
-          captionMode={captionMode}
-          onCaptionModeChange={(mode) => updateSetting("captionMode", mode)}
-          selectedTemplate={selectedTemplate}
-          onTemplateChange={(value) => {
-            const matched = templates.find((tpl) => tpl.value === value);
-            if (matched) updateSetting("selectedTemplate", matched);
-            updateSetting("captionMode", "regular");
-          }}
-          templates={templates}
-          templatesLoading={effectiveTemplatesLoading}
-          templatesLoaded={templatesLoaded}
-          templateLoadError={templateLoadError}
-          presetId={presetId || DEFAULT_PRESET_ID}
-          onPresetChange={(id) => {
-            updateSetting("presetId", id);
-            updateSetting("captionMode", "animated");
-          }}
-          presets={presets}
-          createSession={createSession}
-          onRequestCreate={() => setCreateSession({ kind: "create" })}
-          onRequestEdit={(id) => setCreateSession({ kind: "edit", presetId: id })}
-          onCreateFlowExit={() => setCreateSession({ kind: "closed" })}
-          onSubmitPreset={handleSubmitPreset}
-          editingPreset={
-            createSession.kind === "edit" ? getPreset(createSession.presetId) : undefined
-          }
-          onDeletePreset={deletePreset}
-          onDuplicatePreset={handleDuplicatePreset}
-          onImportPreset={async (json) => {
-            const imported = await importPreset(json);
-            updateSetting("presetId", imported.id);
-            updateSetting("captionMode", "animated");
-            return imported;
-          }}
-          onExportPreset={exportPreset}
-          hasAnimatedTemplate={hasAnimatedTemplate}
-          onRequestPreview={handleGeneratePreview}
-          previewLoadingId={previewLoadingId}
-          speakers={speakers}
-          onSpeakerChange={handleSpeakerChange}
-        />
-        )}
+        {expanded &&
+          (editing ? (
+            <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-4 py-3">
+              <FusionPresetEditor
+                preset={editing.preset}
+                onDone={() => setEditing(null)}
+              />
+            </div>
+          ) : (
+            <OutputSheet
+              closing={closing}
+              isConnected={isConnected}
+              showCaptionStyle={isResolve}
+              focusSection={focusSection}
+              onFocusHandled={clearFocusSection}
+              onBack={handleToggle}
+              outputTracks={outputTracks}
+              conflictInfo={conflictInfo}
+              speakers={speakers}
+              onSpeakerChange={handleSpeakerChange}
+              captionStyle={captionStyle}
+              presets={presets}
+              templates={templates}
+              onEditPreset={(preset) => setEditing({ preset })}
+            />
+          ))}
       </div>
 
-      {/* Summary + primary action. Hidden while a preset edit owns the screen
-          so its own Cancel/Save buttons are the only way out. */}
-      {createSession.kind === "closed" && (
+      {/* Summary + primary action. Hidden while the preset editor owns the
+          screen so its own Cancel/Save buttons are the only way out. */}
+      {!editing && (
         <div className="shrink-0 border-t bg-card">
           {/* Without an editor there is nothing to summarise; the row is only
               kept so an expanded sheet still has a way to collapse. */}
@@ -555,23 +362,23 @@ export function OutputPanel({
                 aria-expanded={expanded}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md border px-3 py-2 text-xs transition-colors",
-                  showConflictWarning
+                  showWarning
                     ? "border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/15"
                     : "border-border bg-muted/40 hover:bg-muted/70",
                 )}
               >
-                {showConflictWarning && (
+                {showWarning && (
                   <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
                 )}
                 <span
                   className={cn(
                     "min-w-0 flex-1 truncate text-left",
-                    showConflictWarning
+                    showWarning
                       ? "text-amber-700 dark:text-amber-400"
                       : "text-muted-foreground",
                   )}
                 >
-                  {isConnected ? summaryParts.join(" · ") : t("captions.notConnected")}
+                  {summaryParts.join(" · ")}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
                   <Pencil className="size-3.5" />
@@ -581,15 +388,13 @@ export function OutputPanel({
           )}
 
           <div className="flex flex-wrap justify-end gap-2 p-3">
-            {isConnected && !isAdobe && expanded && !closing && (
+            {isConnected && isResolve && expanded && !closing && (
               <Button
                 type="button"
                 variant="outline"
                 className="min-w-44 flex-[1_1_11rem]"
                 disabled={
-                  isApplyingStyles ||
-                  !hasSubtitles ||
-                  !currentSubtitleDocumentFilename
+                  isApplyingStyles || !hasSubtitles || !currentSubtitleDocumentFilename
                 }
                 onClick={handleApplyStyles}
               >
@@ -639,230 +444,5 @@ export function OutputPanel({
         </div>
       )}
     </>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Sheet
-// ----------------------------------------------------------------------------
-
-interface OutputSheetProps {
-  isConnected: boolean;
-  isAdobe: boolean;
-  closing: boolean;
-  focusSection: OutputSection | null;
-  onFocusHandled: () => void;
-  /** Collapses the sheet and returns to the transcript. */
-  onBack: () => void;
-  outputTracks: TimelineInfo["outputTracks"];
-  selectedOutputTrack: string;
-  onOutputTrackChange: (value: string) => void;
-  conflictInfo: ConflictInfo | null;
-  captionMode: "regular" | "animated";
-  onCaptionModeChange: (mode: "regular" | "animated") => void;
-  selectedTemplate: Template;
-  onTemplateChange: (value: string) => void;
-  templates: Template[];
-  templatesLoading: boolean;
-  templatesLoaded: boolean;
-  templateLoadError: string | null;
-  presetId: string;
-  onPresetChange: (id: string) => void;
-  presets: ReturnType<typeof usePresets>["presets"];
-  createSession: CreatePresetSession;
-  onRequestCreate: () => void;
-  onRequestEdit: (presetId: string) => void;
-  onCreateFlowExit: () => void;
-  onSubmitPreset: CreatePresetSubmit;
-  editingPreset?: ReturnType<ReturnType<typeof usePresets>["getPreset"]>;
-  onDeletePreset: (id: string) => Promise<void> | void;
-  onDuplicatePreset: (id: string) => Promise<void> | void;
-  onImportPreset: (json: string) => Promise<any>;
-  onExportPreset: (id: string) => string;
-  hasAnimatedTemplate: boolean;
-  onRequestPreview?: (preset: ReturnType<typeof usePresets>["presets"][number]) => void;
-  previewLoadingId?: string | null;
-  speakers: Speaker[];
-  onSpeakerChange: (index: number, speaker: Speaker) => void;
-}
-
-function OutputSheet(props: OutputSheetProps) {
-  const { t } = useTranslation();
-  const {
-    closing,
-    isConnected,
-    isAdobe,
-    focusSection,
-    onFocusHandled,
-    createSession,
-    speakers,
-  } = props;
-
-  const trackRef = React.useRef<HTMLDivElement>(null);
-  const styleRef = React.useRef<HTMLDivElement>(null);
-  const speakersRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!focusSection) return;
-    const target =
-      focusSection === "track"
-        ? trackRef.current
-        : focusSection === "style"
-          ? styleRef.current
-          : focusSection === "speakers"
-            ? speakersRef.current
-            : null;
-    target?.scrollIntoView({ block: "start", behavior: "smooth" });
-    onFocusHandled();
-  }, [focusSection, onFocusHandled]);
-
-  // The preset editor needs the whole sheet — it has its own action buttons.
-  if (createSession.kind !== "closed") {
-    return (
-      <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-3 pb-3">
-        <CaptionStyleSection
-          mode="animated"
-          onModeChange={() => {}}
-          templateValue={props.selectedTemplate.value}
-          onTemplateChange={props.onTemplateChange}
-          templates={props.templates}
-          templatesLoading={props.templatesLoading}
-          templatesLoaded={props.templatesLoaded}
-          templateLoadError={props.templateLoadError}
-          presetId={props.presetId}
-          onPresetChange={props.onPresetChange}
-          animatedPresets={props.presets}
-          createSession={createSession}
-          onRequestCreate={props.onRequestCreate}
-          onRequestEdit={(p) => props.onRequestEdit(p.id)}
-          onCreateFlowExit={props.onCreateFlowExit}
-          onSubmitPreset={props.onSubmitPreset}
-          editingInitialSettings={props.editingPreset?.macroSettings}
-          editingInitialName={props.editingPreset?.name}
-          editingInitialDescription={props.editingPreset?.description}
-          onDeletePreset={props.onDeletePreset}
-          onDuplicatePreset={(p) => props.onDuplicatePreset(p.id)}
-          onImportPreset={props.onImportPreset}
-          onExportPreset={props.onExportPreset}
-          hasAnimatedTemplate={props.hasAnimatedTemplate}
-          onRequestPreview={props.onRequestPreview}
-          previewLoadingId={props.previewLoadingId}
-        />
-      </div>
-    );
-  }
-
-  return (
-    // A distinct surface, not a silent replacement of the transcript: the
-    // header names where you are and how to get back, and the slide-up ties
-    // the sheet to the pill that opened it.
-    <div
-      className={cn(
-        "absolute inset-0 z-10 flex flex-col bg-background duration-200",
-        closing
-          ? "animate-out fade-out slide-out-to-bottom-2"
-          : "animate-in fade-in slide-in-from-bottom-2",
-      )}
-    >
-      {/* A plain back link rather than a bordered bar: a full-width strip
-          implies something at each end, which is what made a lone button look
-          unbalanced. It sits outside the section spacing so it reads as
-          attached to the content below rather than as an abandoned row. */}
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="px-4 pb-4 pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            className="-ml-1.5 mb-2 h-7 gap-1 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            onClick={props.onBack}
-          >
-            <ChevronLeft className="size-4" />
-            {t("common.back")}
-          </Button>
-          <div className="space-y-4">
-        {!isConnected && (
-          <p className="px-1 text-xs text-muted-foreground">
-            {t("captions.notConnected")}
-          </p>
-        )}
-
-        {!isAdobe && (
-          <section ref={trackRef} className="space-y-1.5">
-            <Label className="pl-1 text-xs text-muted-foreground">
-              {t("captions.track.label")}
-            </Label>
-            <Select
-              value={props.selectedOutputTrack}
-              onValueChange={props.onOutputTrackChange}
-            >
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder={t("captions.track.placeholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {props.outputTracks.map((track) => (
-                  <SelectItem key={track.value} value={track.value}>
-                    {track.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {props.conflictInfo?.hasConflicts && (
-              <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                <span className="pl-1">{t("captions.conflict.hasConflicts")}</span>
-              </div>
-            )}
-          </section>
-        )}
-
-        {speakers.length > 1 && (
-          <section ref={speakersRef} className="space-y-1.5">
-            <Label className="pl-1 text-xs text-muted-foreground">
-              {t("captions.speakers.label", { count: speakers.length })}
-            </Label>
-            <SpeakerChips
-              speakers={speakers}
-              onSpeakerChange={props.onSpeakerChange}
-              tracks={props.outputTracks}
-            />
-          </section>
-        )}
-
-        {/* Style last: it is the only section that grows, so it owns the
-            page scroll instead of fighting a nested one. */}
-        {!isAdobe && (
-          <section ref={styleRef} className="space-y-4">
-            <CaptionStyleSection
-              mode={props.captionMode}
-              onModeChange={props.onCaptionModeChange}
-              templateValue={props.selectedTemplate.value}
-              onTemplateChange={props.onTemplateChange}
-              templates={props.templates}
-              templatesLoading={props.templatesLoading}
-              templatesLoaded={props.templatesLoaded}
-              templateLoadError={props.templateLoadError}
-              presetId={props.presetId}
-              onPresetChange={props.onPresetChange}
-              animatedPresets={props.presets}
-              createSession={createSession}
-              onRequestCreate={props.onRequestCreate}
-              onRequestEdit={(p) => props.onRequestEdit(p.id)}
-              onCreateFlowExit={props.onCreateFlowExit}
-              onSubmitPreset={props.onSubmitPreset}
-              onDeletePreset={props.onDeletePreset}
-              onDuplicatePreset={(p) => props.onDuplicatePreset(p.id)}
-              onImportPreset={props.onImportPreset}
-              onExportPreset={props.onExportPreset}
-              hasAnimatedTemplate={props.hasAnimatedTemplate}
-              onRequestPreview={props.onRequestPreview}
-              previewLoadingId={props.previewLoadingId}
-            />
-          </section>
-        )}
-
-          </div>
-        </div>
-      </ScrollArea>
-    </div>
   );
 }

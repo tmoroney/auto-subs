@@ -202,9 +202,9 @@ local STYLE_INDEX = {
 }
 
 -- Global state for an active caption-preset edit session.
--- Populated by StartPresetEdit, consumed/cleared by CapturePresetSettings or
--- CancelPresetEdit. Holds just enough Resolve handles to tear down the
--- temporary clip/track and read the tool's input values.
+-- Populated by OpenPresetEdit, consumed/cleared by SavePresetEdit or
+-- CancelPresetEdit. Holds just enough Resolve handles to read the tool's input
+-- values and tear the temporary clip down again.
 local presetEditSession = nil
 
 -- Global state for export operations
@@ -1784,7 +1784,7 @@ end
 -- Add subtitles to the timeline using the specified template
 -- conflictMode: "replace" (delete existing), "skip" (write around conflicts), "new_track" (use new track), nil (default/old behavior)
 -- presetSettings: optional opaque table of AutoSubs Caption macro input values
--- (captured via StartPresetEdit/CapturePresetSettings). Ignored for non-animated templates.
+-- (captured via OpenPresetEdit/SavePresetEdit). Ignored for non-animated templates.
 function AddSubtitles(req)
     local filePath, trackIndex, templateName = req.filePath, req.trackIndex, req.templateName
     local conflictMode, presetSettings = req.conflictMode, req.presetSettings
@@ -2323,37 +2323,89 @@ end
 -- inspector and round-trip those values back into a JSON preset we store in
 -- the app.
 --
--- The three endpoints below form a mini state machine driven from the app:
---   StartPresetEdit  -> drops a caption clip on a temp track, opens Fusion.
---   CapturePresetSettings -> reads tool inputs, tears down the temp track,
---   then renders a preview offscreen.
---   CancelPresetEdit -> tears down without reading.
+-- The three endpoints below are one per user action:
+--   OpenPresetEdit   -> drops a caption clip on a temp track, opens Fusion.
+--   SavePresetEdit   -> reads tool inputs, renders the thumbnail, closes.
+--   CancelPresetEdit -> closes without reading.
+--
+-- The clip stays on the timeline for the whole session so the user can edit in
+-- Fusion and watch the animation play, and so saving is read-plus-render
+-- rather than append-render-delete.
 -- ---------------------------------------------------------------------------
 
--- Remove the temp clip + track created by StartPresetEdit, if any, and return
--- to the edit page. Safe to call without an active session.
-local function teardown_preset_edit_session()
-    if presetEditSession == nil then return end
-    local timeline = project:GetCurrentTimeline()
-    pcall(function()
-        if timeline and presetEditSession.timelineItem then
-            timeline:DeleteClips({ presetEditSession.timelineItem })
+-- Name given to the temporary track, so teardown can find it again by identity.
+local PRESET_EDIT_TRACK_NAME = "AutoSubs Preview"
+
+-- Find the preview track by name. A stored index goes stale the moment the
+-- user adds or removes a video track mid session, and deleting by a stale
+-- index would delete one of their tracks.
+local function find_preset_edit_track(timeline)
+    if not timeline then return nil end
+    local ok, count = pcall(timeline.GetTrackCount, timeline, "video")
+    if not ok or type(count) ~= "number" then return nil end
+    for index = count, 1, -1 do
+        local named, name = pcall(timeline.GetTrackName, timeline, "video", index)
+        if named and name == PRESET_EDIT_TRACK_NAME then
+            return index
         end
-    end)
-    pcall(function()
-        if timeline and presetEditSession.trackIndex then
-            timeline:DeleteTrack("video", presetEditSession.trackIndex)
-        end
-    end)
-    pcall(function() resolve:OpenPage("edit") end)
-    presetEditSession = nil
+    end
+    return nil
 end
 
-function StartPresetEdit(req)
+-- Remove the temp clip + track, if any, and return to the edit page. Safe to
+-- call without an active session.
+local function teardown_preset_edit_session()
+    local session = presetEditSession
+    presetEditSession = nil
+
+    local timeline = project and project:GetCurrentTimeline()
+
+    -- Only ever touch the timeline the clip was added to. After a timeline
+    -- switch the handles refer to somewhere else entirely.
+    if session and timeline then
+        local sameTimeline = true
+        pcall(function()
+            sameTimeline = timeline:GetUniqueId() == session.timelineId
+        end)
+        if not sameTimeline then
+            timeline = nil
+        end
+    end
+
+    if timeline and session and session.timelineItem then
+        pcall(function() timeline:DeleteClips({ session.timelineItem }) end)
+    end
+
+    local trackIndex = timeline and find_preset_edit_track(timeline)
+    if timeline and trackIndex then
+        pcall(function() timeline:DeleteTrack("video", trackIndex) end)
+    end
+
+    pcall(function() resolve:OpenPage("edit") end)
+end
+
+-- Remove a preview track left behind by a crash, a server restart or a hot
+-- reload: the session only ever lived in memory, so nothing else would.
+local function sweep_orphan_preset_edit_track(timeline)
+    if presetEditSession ~= nil then return end
+    local trackIndex = find_preset_edit_track(timeline)
+    if not trackIndex then return end
+    print("[AutoSubs] Removing stranded '" .. PRESET_EDIT_TRACK_NAME .. "' track")
+    pcall(function()
+        local items = timeline:GetItemListInTrack("video", trackIndex)
+        if items and #items > 0 then
+            timeline:DeleteClips(items)
+        end
+    end)
+    pcall(function() timeline:DeleteTrack("video", trackIndex) end)
+end
+
+function OpenPresetEdit(req)
     local initialSettings = req and req.initialSettings
-    -- Never stack sessions. Callers are expected to finalise or cancel first.
+
+    -- Never stack sessions. Callers finalise or cancel first.
     if presetEditSession ~= nil then
-        return { error = "A preset edit is already in progress" }
+        return { error = "A caption is already open for editing" }
     end
 
     refresh_project()
@@ -2362,13 +2414,15 @@ function StartPresetEdit(req)
         return { error = "No active timeline" }
     end
 
-    local rootFolder = call_api(mediaPool, "GetRootFolder")
+    sweep_orphan_preset_edit_track(timeline)
+
+    local rootFolder = mediaPool and mediaPool:GetRootFolder()
     if not rootFolder then
-        return { error = MEDIA_POOL_UNAVAILABLE }
+        return { error = "Could not read the media pool" }
     end
     local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     if not templateItem then
-        -- Template missing — trigger auto-import and retry
+        -- Template missing: trigger auto-import and retry.
         get_templates()
         templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     end
@@ -2379,7 +2433,9 @@ function StartPresetEdit(req)
     local ok, err = pcall(function()
         timeline:AddTrack("video")
         local trackIndex = timeline:GetTrackCount("video")
-        local fps = template_frame_rate_of(templateItem, timeline)
+        pcall(timeline.SetTrackName, timeline, "video", trackIndex, PRESET_EDIT_TRACK_NAME)
+
+        local fps = tonumber(templateItem:GetClipProperty()["FPS"]) or 24
         local position = timeline:GetStartFrame()
 
         local appended = mediaPool:AppendToTimeline({ {
@@ -2394,13 +2450,14 @@ function StartPresetEdit(req)
             error("Failed to append preview clip to timeline")
         end
 
-        -- Open caption in Fusion (move playhead over it and open Fusion page)
+        -- Park the playhead over the clip and open it in Fusion, which is
+        -- where the caption is actually edited.
         timeline:SetCurrentTimecode(timeline:GetStartTimecode())
         local comp = timelineItem:GetFusionCompByIndex(1)
-        local tool = comp:FindTool("AutoSubs")
+        local tool = comp and comp:FindTool("AutoSubs")
 
-        -- Apply any existing settings so editing an existing preset starts
-        -- from its current look rather than macro defaults.
+        -- Seed with the preset's current look so editing starts from it
+        -- rather than from the macro defaults.
         if tool and initialSettings ~= nil and next(initialSettings) ~= nil then
             pcall(function()
                 local setter = tool:GetData("SetInputValues")
@@ -2411,32 +2468,35 @@ function StartPresetEdit(req)
         end
 
         presetEditSession = {
-            trackIndex = trackIndex,
+            timelineId = timeline:GetUniqueId(),
             timelineItem = timelineItem,
             comp = comp,
             tool = tool,
         }
+
+        pcall(function() resolve:OpenPage("fusion") end)
     end)
 
     if not ok then
-        -- Best-effort cleanup so we don't leave an orphan track.
+        -- Best-effort cleanup so we do not leave an orphan track.
         teardown_preset_edit_session()
-        return { error = "Failed to start preset edit: " .. tostring(err) }
+        return { error = "Failed to open the caption for editing: " .. tostring(err) }
     end
 
     return { ok = true }
 end
 
-function CapturePresetSettings(req)
+function SavePresetEdit(req)
     local exportDir = req and req.exportDir
+
     if presetEditSession == nil then
-        return { error = "No preset edit in progress" }
+        return { error = "No caption is open for editing" }
     end
 
     local tool = presetEditSession.tool
     if not tool then
         teardown_preset_edit_session()
-        return { error = "AutoSubs tool not found in preview composition" }
+        return { error = "AutoSubs tool not found in the preview composition" }
     end
 
     local settings = nil
@@ -2448,19 +2508,18 @@ function CapturePresetSettings(req)
         settings = loadstring(getter)()(tool)
     end)
 
-    -- Always tear down, even on failure, so the user isn't left with a
-    -- stranded preview clip on their timeline. This has to happen before the
-    -- preview render: the session comp is open in the Fusion page, where the
-    -- viewer keeps it busy, so extract_frame's idle wait can never settle.
+    -- Always close, even on failure, so the user is never left with a stray
+    -- preview clip. This has to happen before the thumbnail render: the
+    -- session comp is open in the Fusion page, where the viewer keeps it busy,
+    -- so extract_frame's idle wait could never settle.
     teardown_preset_edit_session()
 
     if not ok then
-        return { error = "Failed to capture preset settings: " .. tostring(err) }
+        return { error = "Failed to read the caption settings: " .. tostring(err) }
     end
 
-    -- Render the thumbnail offscreen from the captured settings — the same
-    -- code path as the picker's "Generate preview" action — rather than
-    -- trying to render the live edit-session comp.
+    -- Render the thumbnail from the captured settings, the same path the
+    -- gallery's re-render uses. Once per save, not once per tweak.
     local previewPath, previewError
     if type(exportDir) == "string" and exportDir ~= "" then
         local previewOk, result = pcall(GeneratePreview, {
@@ -2482,7 +2541,6 @@ function CapturePresetSettings(req)
         end
     end
 
-    dump(settings)
     return { settings = settings or {}, previewPath = previewPath, previewError = previewError }
 end
 
@@ -2581,8 +2639,8 @@ local handlers = {
     CheckTrackConflicts = function(req) return CheckTrackConflicts(req) end,
     BatchApplyStyle = function(req) return BatchApplyStyle(req) end,
     GeneratePreview = function(req) return GeneratePreview(req) end,
-    StartPresetEdit = function(req) return StartPresetEdit(req) end,
-    CapturePresetSettings = function(req) return CapturePresetSettings(req) end,
+    OpenPresetEdit = function(req) return OpenPresetEdit(req) end,
+    SavePresetEdit = function(req) return SavePresetEdit(req) end,
     CancelPresetEdit = function() return CancelPresetEdit() end,
 
     JumpToTime = function(req)

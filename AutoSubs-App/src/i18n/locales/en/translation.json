@@ -570,11 +570,40 @@
       "label": "Caption style",
       "autosubs": {
         "name": "AutoSubs Captions",
-        "description": "Word by word animation, saved as presets."
+        "description": "Word by word animation, saved as presets.",
+        "unavailable": "Not found in this project's media pool."
       },
       "resolve": {
         "name": "Resolve Title",
         "description": "A Text+ title from your project."
+      },
+      "refresh": "Refresh list",
+      "unavailable": "Style unavailable",
+      "difference": {
+        "trigger": "What is the difference?",
+        "title": "Caption styles",
+        "rows": {
+          "animation": {
+            "label": "Animation",
+            "autosubs": "Word by word",
+            "resolve": "None"
+          },
+          "styling": {
+            "label": "Styled in",
+            "autosubs": "Fusion, saved here",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "Comes from",
+            "autosubs": "Included",
+            "resolve": "Your project"
+          },
+          "restyle": {
+            "label": "Restyles clips",
+            "autosubs": "Whole style",
+            "resolve": "Speaker colours"
+          }
+        }
       }
     },
     "speakers": {
@@ -593,25 +622,20 @@
     "title": "Output settings",
     "batchStyle": {
       "applyAll": "Update timeline styles",
-      "applySpeaker": "Update this speaker",
       "updating": "Updating styles...",
       "success": "Updated {{count}} caption clips",
       "noMatches": "No matching AutoSubs clips found",
-      "description": "Apply current styles to existing caption clips.",
       "partial": "Updated {{updated}} clips, {{failed}} failed",
       "failed": "Couldn't update timeline styles"
     },
     "send": {
-      "adding": "Sending...",
-      "success": "Sent to timeline"
+      "adding": "Sending..."
     },
     "conflict": {
       "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."
     },
     "preset": {
       "new": "New preset",
-      "builtIn": "Built-in",
-      "custom": "Custom",
       "preview": "Generate preview",
       "duplicate": "Duplicate",
       "delete": "Delete",
@@ -621,19 +645,16 @@
       "import": "Import file",
       "paste": "Paste JSON",
       "phase": {
-        "launchingTitle": "Opening caption in Resolve…",
-        "launchingHint": "We’ll drop a preview caption on a temporary track.",
-        "editingTitle": "Switch to DaVinci Resolve",
-        "editingBody": "A caption has been placed on a new track and opened in the Fusion page. Customise it using the inspector, then come back here.",
-        "capturingTitle": "Reading settings from Resolve…",
-        "nameTitle": "Name your preset",
-        "nameHint": "Give it something short and descriptive."
+        "openingTitle": "Opening the caption in Resolve...",
+        "savingTitle": "Saving from Resolve...",
+        "editingTitle": "Edit the caption in Resolve",
+        "editingBody": "The caption is open on the Fusion page. Change it with the inspector and watch it play, then come back and save.",
+        "savingBody": "Reading your settings and rendering the preview."
       },
       "action": {
         "cancel": "Cancel",
         "save": "Save preset",
-        "back": "Back",
-        "captureSettings": "Capture settings"
+        "saving": "Saving..."
       },
       "nameLabel": "Preset name",
       "namePlaceholder": "e.g. Bold Yellow, TikTok Style",
@@ -650,7 +671,14 @@
         "captureFailed": "Couldn’t read the caption settings from Resolve.",
         "nameRequired": "Please enter a name."
       },
-      "previewFailed": "Could not render preview"
-    }
+      "previewFailed": "Could not render preview",
+      "needsResolve": "Open DaVinci Resolve to edit caption styles.",
+      "rendering": "Rendering preview...",
+      "editTitle": "Edit caption style",
+      "createTitle": "New caption style"
+    },
+    "chooseStyle": "Choose a caption style",
+    "speakerCount_one": "{{count}} speaker",
+    "speakerCount_other": "{{count}} speakers"
   }
 }

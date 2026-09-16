@@ -161,12 +161,22 @@ export interface Settings {
     // Adobe integrations
     selectedInputTracksByApp: Record<Integration, string[]>;
     selectedOutputTrack: string;
-    selectedTemplate: Template;
 
-    // AutoSubs Caption settings
-    presetId: string;
-    captionMode: "regular" | "animated";
+    // Caption style: which of the two kinds of caption to send, and which one.
+    captionStyle: CaptionStyle;
 }
+
+/**
+ * The single answer to "what will pressing Send put on the timeline".
+ *
+ * `autosubs` is the bundled Fusion macro, styled by a preset the app stores.
+ * `resolve` is any Text+ or Fusion title already in the project's media pool,
+ * styled in Resolve. These were once three separate settings that had to be
+ * written in lockstep; the union makes an inconsistent pair unrepresentable.
+ */
+export type CaptionStyle =
+    | { source: "autosubs"; presetId: string }
+    | { source: "resolve"; templateName: string };
 
 // Caption preset for the custom AutoSubs animated caption macro.
 // `macroSettings` is an opaque table round-tripped through the Fusion macro's

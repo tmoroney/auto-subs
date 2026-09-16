@@ -550,11 +550,40 @@
       "label": "字幕スタイル",
       "autosubs": {
         "name": "AutoSubs キャプション",
-        "description": "単語ごとのアニメーション。プリセットとして保存。"
+        "description": "単語ごとのアニメーション。プリセットとして保存。",
+        "unavailable": "このプロジェクトのメディアプールにありません。"
       },
       "resolve": {
         "name": "Resolve タイトル",
         "description": "プロジェクト内の Text+ タイトル。"
+      },
+      "refresh": "リストを更新",
+      "unavailable": "スタイルが見つかりません",
+      "difference": {
+        "trigger": "違いは？",
+        "title": "キャプションスタイル",
+        "rows": {
+          "animation": {
+            "label": "アニメーション",
+            "autosubs": "単語ごと",
+            "resolve": "なし"
+          },
+          "styling": {
+            "label": "編集場所",
+            "autosubs": "Fusion、保存はここ",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "入手元",
+            "autosubs": "同梱",
+            "resolve": "プロジェクト"
+          },
+          "restyle": {
+            "label": "既存クリップ",
+            "autosubs": "スタイル全体",
+            "resolve": "話者の色のみ"
+          }
+        }
       }
     },
     "speakers": {
@@ -573,25 +602,20 @@
     "title": "出力設定",
     "batchStyle": {
       "applyAll": "タイムラインのスタイルを更新",
-      "applySpeaker": "この話者を更新",
       "updating": "スタイルを更新中...",
       "success": "字幕クリップ{{count}}件を更新しました",
       "noMatches": "一致するAutoSubsクリップがありません",
-      "description": "現在のスタイルを既存の字幕に適用します。",
       "partial": "{{updated}}件更新、{{failed}}件失敗",
       "failed": "タイムラインのスタイルを更新できませんでした"
     },
     "send": {
-      "adding": "送信中...",
-      "success": "タイムラインに送信されました"
+      "adding": "送信中..."
     },
     "conflict": {
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
     },
     "preset": {
       "new": "新規プリセット",
-      "builtIn": "組み込み",
-      "custom": "カスタム",
       "preview": "プレビューを生成",
       "duplicate": "複製",
       "delete": "削除",
@@ -601,19 +625,16 @@
       "import": "ファイルをインポート",
       "paste": "JSONを貼り付け",
       "phase": {
-        "launchingTitle": "Resolveで字幕を開いています…",
-        "launchingHint": "一時トラックにプレビュー字幕を配置します。",
-        "editingTitle": "DaVinci Resolveに切り替え",
-        "editingBody": "字幕が新しいトラックに配置され、Fusionページで開かれました。インスペクターを使用してカスタマイズし、ここに戻ってください。",
-        "capturingTitle": "Resolveから設定を読み込んでいます…",
-        "nameTitle": "プリセットに名前を付ける",
-        "nameHint": "短くて説明的な名前を付けてください。"
+        "openingTitle": "Resolve でキャプションを開いています...",
+        "savingTitle": "Resolve から保存しています...",
+        "editingTitle": "Resolve でキャプションを編集",
+        "editingBody": "キャプションは Fusion ページで開いています。インスペクタで調整して再生を確認し、戻って保存してください。",
+        "savingBody": "設定を読み取り、プレビューを作成しています。"
       },
       "action": {
         "cancel": "キャンセル",
         "save": "プリセットを保存",
-        "back": "戻る",
-        "captureSettings": "設定をキャプチャ"
+        "saving": "保存中..."
       },
       "nameLabel": "プリセット名",
       "namePlaceholder": "例：太字の黄色、TikTokスタイル",
@@ -630,7 +651,14 @@
         "captureFailed": "Resolveから字幕設定を読み取れませんでした。",
         "nameRequired": "名前を入力してください。"
       },
-      "previewFailed": "プレビューを作成できません"
-    }
+      "previewFailed": "プレビューを作成できません",
+      "needsResolve": "DaVinci Resolve を開くと編集できます。",
+      "rendering": "プレビューを作成中...",
+      "editTitle": "スタイルを編集",
+      "createTitle": "新しいスタイル"
+    },
+    "chooseStyle": "スタイルを選択",
+    "speakerCount_one": "話者 {{count}} 人",
+    "speakerCount_other": "話者 {{count}} 人"
   }
 }

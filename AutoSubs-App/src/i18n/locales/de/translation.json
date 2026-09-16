@@ -550,11 +550,40 @@
       "label": "Untertitel-Stil",
       "autosubs": {
         "name": "AutoSubs Untertitel",
-        "description": "Wort für Wort animiert, als Vorlage gespeichert."
+        "description": "Wort für Wort animiert, als Vorlage gespeichert.",
+        "unavailable": "Nicht im Medienpool dieses Projekts."
       },
       "resolve": {
         "name": "Resolve Titel",
         "description": "Ein Text+ Titel aus deinem Projekt."
+      },
+      "refresh": "Liste aktualisieren",
+      "unavailable": "Stil nicht verfügbar",
+      "difference": {
+        "trigger": "Wo ist der Unterschied?",
+        "title": "Untertitelstile",
+        "rows": {
+          "animation": {
+            "label": "Animation",
+            "autosubs": "Wort für Wort",
+            "resolve": "Keine"
+          },
+          "styling": {
+            "label": "Gestaltet in",
+            "autosubs": "Fusion, hier gespeichert",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "Herkunft",
+            "autosubs": "Mitgeliefert",
+            "resolve": "Dein Projekt"
+          },
+          "restyle": {
+            "label": "Ändert Clips",
+            "autosubs": "Ganzer Stil",
+            "resolve": "Sprecherfarben"
+          }
+        }
       }
     },
     "speakers": {
@@ -573,25 +602,20 @@
     "title": "Ausgabe-Einstellungen",
     "batchStyle": {
       "applyAll": "Timeline-Stile ändern",
-      "applySpeaker": "Diesen Sprecher ändern",
       "updating": "Stile werden aktualisiert...",
       "success": "{{count}} Untertitelclips aktualisiert",
       "noMatches": "Keine passenden AutoSubs-Clips gefunden",
-      "description": "Aktuelle Stile auf vorhandene Untertitel anwenden.",
       "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen",
       "failed": "Timeline-Stile konnten nicht geändert werden"
     },
     "send": {
-      "adding": "Wird gesendet...",
-      "success": "Zur Timeline gesendet"
+      "adding": "Wird gesendet..."
     },
     "conflict": {
       "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
     },
     "preset": {
       "new": "Neue Voreinstellung",
-      "builtIn": "Integriert",
-      "custom": "Benutzerdefiniert",
       "preview": "Vorschau erstellen",
       "duplicate": "Duplizieren",
       "delete": "Löschen",
@@ -601,19 +625,16 @@
       "import": "Datei importieren",
       "paste": "JSON einfügen",
       "phase": {
-        "launchingTitle": "Untertitel in Resolve öffnen…",
-        "launchingHint": "Wir platzieren einen Vorschau-Untertitel auf einer temporären Spur.",
-        "editingTitle": "Zu DaVinci Resolve wechseln",
-        "editingBody": "Ein Untertitel wurde auf einer neuen Spur platziert und auf der Fusion-Seite geöffnet. Passe ihn mit dem Inspektor an und komme dann hierher zurück.",
-        "capturingTitle": "Einstellungen aus Resolve lesen…",
-        "nameTitle": "Voreinstellung benennen",
-        "nameHint": "Gib ihr einen kurzen, beschreibenden Namen."
+        "openingTitle": "Untertitel wird in Resolve geöffnet...",
+        "savingTitle": "Wird aus Resolve gespeichert...",
+        "editingTitle": "Untertitel in Resolve bearbeiten",
+        "editingBody": "Der Untertitel ist auf der Fusion-Seite geöffnet. Ändere ihn im Inspektor und sieh ihn dir an, dann komm zurück und speichere.",
+        "savingBody": "Einstellungen werden gelesen und die Vorschau erstellt."
       },
       "action": {
         "cancel": "Abbrechen",
         "save": "Voreinstellung speichern",
-        "back": "Zurück",
-        "captureSettings": "Einstellungen erfassen"
+        "saving": "Speichern..."
       },
       "nameLabel": "Name der Voreinstellung",
       "namePlaceholder": "z.B. Fett Gelb, TikTok-Stil",
@@ -630,7 +651,14 @@
         "captureFailed": "Untertitel-Einstellungen konnten nicht aus Resolve gelesen werden.",
         "nameRequired": "Bitte gib einen Namen ein."
       },
-      "previewFailed": "Vorschau fehlgeschlagen"
-    }
+      "previewFailed": "Vorschau fehlgeschlagen",
+      "needsResolve": "Öffne DaVinci Resolve, um Stile zu bearbeiten.",
+      "rendering": "Vorschau wird erstellt...",
+      "editTitle": "Stil bearbeiten",
+      "createTitle": "Neuer Untertitelstil"
+    },
+    "chooseStyle": "Untertitelstil wählen",
+    "speakerCount_one": "{{count}} Sprecher",
+    "speakerCount_other": "{{count}} Sprecher"
   }
 }

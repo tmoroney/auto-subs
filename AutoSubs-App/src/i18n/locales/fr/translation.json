@@ -550,11 +550,40 @@
       "label": "Style de sous-titres",
       "autosubs": {
         "name": "Sous-titres AutoSubs",
-        "description": "Animation mot à mot, enregistrée en préréglage."
+        "description": "Animation mot à mot, enregistrée en préréglage.",
+        "unavailable": "Absent du chutier de ce projet."
       },
       "resolve": {
         "name": "Titre Resolve",
         "description": "Un titre Text+ de votre projet."
+      },
+      "refresh": "Actualiser la liste",
+      "unavailable": "Style indisponible",
+      "difference": {
+        "trigger": "Quelle différence ?",
+        "title": "Styles de sous-titre",
+        "rows": {
+          "animation": {
+            "label": "Animation",
+            "autosubs": "Mot à mot",
+            "resolve": "Aucune"
+          },
+          "styling": {
+            "label": "Réglé dans",
+            "autosubs": "Fusion, gardé ici",
+            "resolve": "Resolve"
+          },
+          "source": {
+            "label": "Provient de",
+            "autosubs": "Fourni",
+            "resolve": "Votre projet"
+          },
+          "restyle": {
+            "label": "Reprend les clips",
+            "autosubs": "Style entier",
+            "resolve": "Couleur locuteur"
+          }
+        }
       }
     },
     "speakers": {
@@ -573,25 +602,20 @@
     "title": "Paramètres de sortie",
     "batchStyle": {
       "applyAll": "Actualiser les styles",
-      "applySpeaker": "Actualiser cet intervenant",
       "updating": "Mise à jour des styles...",
       "success": "{{count}} clips de sous-titres actualisés",
       "noMatches": "Aucun clip AutoSubs correspondant",
-      "description": "Appliquer les styles aux sous-titres existants.",
       "partial": "{{updated}} actualisés, {{failed}} en échec",
       "failed": "Impossible d’actualiser les styles"
     },
     "send": {
-      "adding": "Envoi en cours...",
-      "success": "Envoyé à la timeline"
+      "adding": "Envoi en cours..."
     },
     "conflict": {
       "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existent."
     },
     "preset": {
       "new": "Nouveau préréglage",
-      "builtIn": "Intégré",
-      "custom": "Personnalisé",
       "preview": "Générer l’aperçu",
       "duplicate": "Dupliquer",
       "delete": "Supprimer",
@@ -601,19 +625,16 @@
       "import": "Importer un fichier",
       "paste": "Coller JSON",
       "phase": {
-        "launchingTitle": "Ouverture du sous-titre dans Resolve…",
-        "launchingHint": "Nous allons placer un sous-titre d'aperçu sur une piste temporaire.",
-        "editingTitle": "Basculer vers DaVinci Resolve",
-        "editingBody": "Un sous-titre a été placé sur une nouvelle piste et ouvert dans la page Fusion. Personnalisez-le à l'aide de l'inspecteur, puis revenez ici.",
-        "capturingTitle": "Lecture des paramètres depuis Resolve…",
-        "nameTitle": "Nommez votre préréglage",
-        "nameHint": "Donnez-lui un nom court et descriptif."
+        "openingTitle": "Ouverture du sous-titre dans Resolve...",
+        "savingTitle": "Enregistrement depuis Resolve...",
+        "editingTitle": "Modifier le sous-titre dans Resolve",
+        "editingBody": "Le sous-titre est ouvert sur la page Fusion. Modifiez-le dans l'inspecteur et regardez-le tourner, puis revenez enregistrer.",
+        "savingBody": "Lecture de vos réglages et création de l'aperçu."
       },
       "action": {
         "cancel": "Annuler",
         "save": "Enregistrer le préréglage",
-        "back": "Retour",
-        "captureSettings": "Capturer les paramètres"
+        "saving": "Enregistrement..."
       },
       "nameLabel": "Nom du préréglage",
       "namePlaceholder": "ex. Jaune gras, Style TikTok",
@@ -630,7 +651,14 @@
         "captureFailed": "Impossible de lire les paramètres du sous-titre depuis Resolve.",
         "nameRequired": "Veuillez entrer un nom."
       },
-      "previewFailed": "Aperçu impossible"
-    }
+      "previewFailed": "Aperçu impossible",
+      "needsResolve": "Ouvrez DaVinci Resolve pour modifier les styles.",
+      "rendering": "Aperçu en cours...",
+      "editTitle": "Modifier le style",
+      "createTitle": "Nouveau style"
+    },
+    "chooseStyle": "Choisir un style",
+    "speakerCount_one": "{{count}} intervenant",
+    "speakerCount_other": "{{count}} intervenants"
   }
 }
