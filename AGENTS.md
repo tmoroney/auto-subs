@@ -101,6 +101,9 @@ Always install dependencies inside `AutoSubs-App/` and compile using these targe
 | **Run Dev (Linux/Win)** | `AutoSubs-App/` | `npm run dev:linux` / `npm run dev:win` |
 | **Build Web Assets** | `AutoSubs-App/` | `npm run build:web` |
 | **Build Adobe CEP** | `Adobe-Extension/` | `npm run build` |
+| **Syntax-check Lua** | repo root | `luajit -bl AutoSubs-App/src-tauri/resources/modules/autosubs_core.lua /dev/null` |
+
+`luac` is not installed on macOS — use `luajit -bl <file> /dev/null` to parse without executing (the files reference Resolve's globals at load time, so they cannot simply be run). `luajit` also matches Resolve's embedded LuaJIT runtime, unlike stock `lua`.
 
 ---
 

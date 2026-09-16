@@ -111,7 +111,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleRestartOnboarding = () => {
     updateSetting("onboardingCompleted", false);
-    updateSetting("tourCompleted", false);
     onOpenChange(false);
   };
 

@@ -11,7 +11,6 @@ import { useProgress } from "@/contexts/ProgressContext"
 import { useTranslation } from "react-i18next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
-import { OnboardingTour } from "@/components/dialogs/onboarding-tour"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
 import { useSettingsStore } from "@/stores/settings-store"
 import { getVersion } from "@tauri-apps/api/app"
@@ -72,7 +71,6 @@ function AppContentBody() {
     React.useState(false)
   const { processingSteps, isRunActive, livePreviewSegments } = useProgress()
   const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted)
-  const tourCompleted = useSettingsStore((s) => s.tourCompleted)
   const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
   const isHydrated = useSettingsStore((s) => s.isHydrated)
   const { subtitles } = useSubtitleDocument()
@@ -118,12 +116,6 @@ function AppContentBody() {
     onboardingCompleted &&
     !!currentVersion &&
     lastSeenVersion !== currentVersion
-
-  const showTour =
-    isHydrated &&
-    onboardingCompleted &&
-    tourCompleted === false &&
-    !showWhatsNew
 
   const handleCloseSubtitleViewer = React.useCallback(() => {
     if (!showSubtitleViewer || isSubtitleViewerClosing) return
@@ -357,7 +349,6 @@ function AppContentBody() {
 
           {showGettingStarted && <GettingStartedOverlay />}
           {showWhatsNew && <WhatsNewDialog />}
-          {showTour && <OnboardingTour />}
       </div>
     </TooltipProvider>
   )

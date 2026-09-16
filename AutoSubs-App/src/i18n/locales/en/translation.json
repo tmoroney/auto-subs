@@ -485,35 +485,6 @@
     },
     "continue": "Get Started"
   },
-  "tour": {
-    "connection": {
-      "title": "Connection Status",
-      "description": "This shows whether AutoSubs is connected to DaVinci Resolve. Green means connected and ready to access your timeline."
-    },
-    "modeSwitcher": {
-      "title": "Input Mode",
-      "description": "Switch between transcribing a file directly, or extracting audio from a DaVinci Resolve timeline."
-    },
-    "modelPicker": {
-      "title": "AI Model",
-      "description": "Choose the speech recognition model. A model that supports your language has been automatically selected. Different models trade off between speed and accuracy."
-    },
-    "audioInput": {
-      "title": "Audio Source",
-      "description": "Select audio tracks from your Resolve timeline, or drop a media file here to transcribe it directly."
-    },
-    "controls": {
-      "title": "Transcription Controls",
-      "description": "Configure language, speaker identification, text formatting, then click Generate Subtitles to start."
-    },
-    "history": {
-      "title": "Subtitle History",
-      "description": "Access and search through your saved subtitle documents here."
-    },
-    "skip": "Skip tour",
-    "next": "Next",
-    "finish": "Get Started"
-  },
   "titlebar": {
     "subtitleHistory": {
       "title": "Subtitle History",

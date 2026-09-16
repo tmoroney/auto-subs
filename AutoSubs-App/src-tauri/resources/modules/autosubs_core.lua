@@ -1986,8 +1986,8 @@ end
 --
 -- The three endpoints below form a mini state machine driven from the app:
 --   StartPresetEdit  -> drops a caption clip on a temp track, opens Fusion.
---   CapturePresetSettings -> reads tool inputs, renders a preview, and tears down
---   the temp track.
+--   CapturePresetSettings -> reads tool inputs, tears down the temp track,
+--   then renders a preview offscreen.
 --   CancelPresetEdit -> tears down without reading.
 -- ---------------------------------------------------------------------------
 
@@ -2104,28 +2104,34 @@ function CapturePresetSettings(exportDir)
         settings = loadstring(getter)()(tool)
     end)
 
-    local previewPath, previewError
-    if ok and type(exportDir) == "string" and exportDir ~= "" then
-        local frameErr
-        local previewOk, previewErr = pcall(function()
-            previewPath, frameErr = extract_frame(presetEditSession.comp, exportDir)
-        end)
-        if not previewOk then
-            previewError = tostring(previewErr)
-        elseif not previewPath or previewPath == "" then
-            previewError = frameErr or "Preset preview render produced no image"
-        end
-        if previewError then
-            print("[AutoSubs] Preset preview render failed: " .. previewError)
-        end
-    end
-
     -- Always tear down, even on failure, so the user isn't left with a
-    -- stranded preview clip on their timeline.
+    -- stranded preview clip on their timeline. This has to happen before the
+    -- preview render: the session comp is open in the Fusion page, where the
+    -- viewer keeps it busy, so extract_frame's idle wait can never settle.
     teardown_preset_edit_session()
 
     if not ok then
         return { error = "Failed to capture preset settings: " .. tostring(err) }
+    end
+
+    -- Render the thumbnail offscreen from the captured settings — the same
+    -- code path as the picker's "Generate preview" action — rather than
+    -- trying to render the live edit-session comp.
+    local previewPath, previewError
+    if type(exportDir) == "string" and exportDir ~= "" then
+        local previewOk, result = pcall(GeneratePreview, nil, ANIMATED_CAPTION, settings, exportDir, nil)
+        if previewOk and type(result) == "table" and result.path then
+            previewPath = result.path
+        elseif previewOk and type(result) == "table" then
+            previewError = (result.detail and result.detail ~= "" and result.detail)
+                or result.error
+                or "Preset preview render produced no image"
+        else
+            previewError = tostring(result)
+        end
+        if previewError then
+            print("[AutoSubs] Preset preview render failed: " .. tostring(previewError))
+        end
     end
 
     dump(settings)

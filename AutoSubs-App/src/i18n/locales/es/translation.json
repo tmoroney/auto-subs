@@ -465,35 +465,6 @@
     },
     "continue": "Empezar"
   },
-  "tour": {
-    "connection": {
-      "title": "Estado de conexión",
-      "description": "Muestra si AutoSubs está conectado a DaVinci Resolve. Verde significa conectado y listo para acceder a la línea de tiempo."
-    },
-    "modeSwitcher": {
-      "title": "Modo de entrada",
-      "description": "Cambia entre transcribir un archivo directamente o extraer audio de una línea de tiempo de DaVinci Resolve."
-    },
-    "modelPicker": {
-      "title": "Modelo de IA",
-      "description": "Elige el modelo de reconocimiento de voz. Se ha seleccionado automáticamente un modelo compatible con tu idioma. Los distintos modelos ofrecen diferentes equilibrios entre velocidad y precisión."
-    },
-    "audioInput": {
-      "title": "Fuente de audio",
-      "description": "Selecciona pistas de audio de tu línea de tiempo de Resolve o arrastra un archivo multimedia aquí para transcribirlo directamente."
-    },
-    "controls": {
-      "title": "Controles de transcripción",
-      "description": "Configura idioma, identificación de hablante, formato de texto y luego haz clic en Generar subtítulos para empezar."
-    },
-    "history": {
-      "title": "Transcripciones anteriores",
-      "description": "Accede y busca entre todas tus transcripciones anteriores aquí."
-    },
-    "skip": "Omitir tour",
-    "next": "Siguiente",
-    "finish": "Empezar"
-  },
   "titlebar": {
     "subtitleHistory": {
       "title": "Historial de subtítulos",

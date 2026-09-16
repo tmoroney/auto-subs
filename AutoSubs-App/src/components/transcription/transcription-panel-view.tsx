@@ -236,7 +236,6 @@ export function TranscriptionPanelView({
           <div className={showProcessing ? "flex-shrink-0" : "min-h-0 flex-1"}>
             <div
               className="flex h-full w-full flex-col gap-2.5"
-              data-tour="transcription-controls"
             >
               {isProcessing ? (
                 <RunSummaryCard

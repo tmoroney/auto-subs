@@ -46,7 +46,6 @@ export function SourceModeTabs({
           onSwitchToTimeline();
         }
       }}
-      data-tour="mode-switcher"
       key={i18n.language}
       className="w-full"
     >
@@ -146,7 +145,6 @@ export function FileDropArea({
           : "transition-colors hover:border-muted-foreground/40 hover:bg-muted/30",
         className,
       )}
-      data-tour="audio-input"
       tabIndex={0}
       role="button"
       aria-label={t("actionBar.fileDrop.aria")}
@@ -272,7 +270,6 @@ export function TimelineTrackSelector({
   return (
     <div
       className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
-      data-tour="audio-input"
     >
       {inputTracks.length > 0 ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-background">

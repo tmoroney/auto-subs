@@ -129,7 +129,6 @@ export function ModelPicker({
               triggerClassName,
             )}
             aria-expanded={open}
-            data-tour="model-picker"
             onMouseEnter={() => {
               chevronsIconRef.current?.startAnimation()
             }}

@@ -124,7 +124,6 @@ export interface Settings {
     // UI settings
     uiLanguage: SupportedUiLanguage;
     onboardingCompleted: boolean;
-    tourCompleted: boolean;
     lastSeenVersion: string;
     showEnglishOnlyModels: boolean;
 

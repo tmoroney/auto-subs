@@ -42,7 +42,6 @@ export function LanguageButton() {
           aria-haspopup="listbox"
           aria-expanded={open}
           className="group w-full min-w-0 select-none justify-start rounded-lg bg-muted/30 pl-4 pr-3 dark:bg-muted"
-          data-tour="transcription-controls-target"
           onMouseEnter={() => chevronsRef.current?.startAnimation()}
           onMouseLeave={() => chevronsRef.current?.stopAnimation()}
         >
