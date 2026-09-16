@@ -571,27 +571,16 @@
       "unavailable": "Стиль недоступен",
       "difference": {
         "trigger": "В чём разница?",
-        "title": "Стили субтитров",
         "rows": {
           "animation": {
             "label": "Анимация",
             "autosubs": "По словам",
             "resolve": "Нет"
           },
-          "styling": {
-            "label": "Настройка в",
-            "autosubs": "Fusion, хранится тут",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "Источник",
-            "autosubs": "В комплекте",
-            "resolve": "Ваш проект"
-          },
-          "restyle": {
-            "label": "Готовые клипы",
-            "autosubs": "Весь стиль",
-            "resolve": "Цвет спикера"
+          "availability": {
+            "label": "Доступен в",
+            "autosubs": "Любом проекте",
+            "resolve": "Только в открытом"
           }
         }
       }

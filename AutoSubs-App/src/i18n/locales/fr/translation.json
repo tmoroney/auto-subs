@@ -561,27 +561,16 @@
       "unavailable": "Style indisponible",
       "difference": {
         "trigger": "Quelle différence ?",
-        "title": "Styles de sous-titre",
         "rows": {
           "animation": {
             "label": "Animation",
             "autosubs": "Mot à mot",
             "resolve": "Aucune"
           },
-          "styling": {
-            "label": "Réglé dans",
-            "autosubs": "Fusion, gardé ici",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "Provient de",
-            "autosubs": "Fourni",
-            "resolve": "Votre projet"
-          },
-          "restyle": {
-            "label": "Reprend les clips",
-            "autosubs": "Style entier",
-            "resolve": "Couleur locuteur"
+          "availability": {
+            "label": "Disponible dans",
+            "autosubs": "Tout projet",
+            "resolve": "Ce projet uniquement"
           }
         }
       }

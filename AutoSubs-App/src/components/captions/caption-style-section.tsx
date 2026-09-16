@@ -4,7 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    HoverCard,
+    HoverCardContent,
+    HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Spinner } from "@/components/ui/spinner";
 import { PresetGallery } from "@/components/captions/preset-gallery";
 import type { CaptionPresetActions } from "@/components/captions/use-caption-presets";
@@ -61,14 +65,16 @@ export function CaptionStyleSection({
 
     return (
         <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2 pl-1">
+            <div className="flex items-center gap-1 pl-1">
                 <Label className="text-xs text-muted-foreground">
                     {t("captions.style.label")}
                 </Label>
                 <DifferenceExplainer />
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            {/* One column: the panel lives in a ~330px pane, where two cards
+                side by side truncate their own titles. */}
+            <div className="grid gap-2">
                 <SourceCard
                     icon={<Sparkles className="size-4" />}
                     title={t("captions.style.autosubs.name")}
@@ -157,60 +163,59 @@ function SourceCard({
 }
 
 /**
- * Answers "which one do I want" once, in the place the question is asked,
- * rather than leaving the user to infer it from two group headings.
+ * Answers "which one do I want" once, next to the question.
+ *
+ * On hover (and on focus, which is how a keyboard reaches it) rather than
+ * behind a click: the whole point is that nobody should have to go looking for
+ * it. Laid out as one block per style rather than a comparison grid, because
+ * three columns of prose do not fit the pane this panel lives in.
  */
 function DifferenceExplainer() {
     const { t } = useTranslation();
-    const rows = ["animation", "styling", "source", "restyle"] as const;
+    const rows = ["animation", "availability"] as const;
 
     return (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button
+        <HoverCard openDelay={150} closeDelay={100}>
+            <HoverCardTrigger asChild>
+                <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1 px-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                    aria-label={t("captions.style.difference.trigger")}
+                    className="rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <HelpCircle className="size-3.5" />
-                    {t("captions.style.difference.trigger")}
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[22rem] p-3">
-                <p className="mb-2 text-xs font-medium">
-                    {t("captions.style.difference.title")}
-                </p>
-                <table className="w-full text-xs">
-                    <thead>
-                        <tr className="text-muted-foreground">
-                            <th className="w-1/3" />
-                            <th className="pb-1 text-left font-medium">
-                                {t("captions.style.autosubs.name")}
-                            </th>
-                            <th className="pb-1 text-left font-medium">
-                                {t("captions.style.resolve.name")}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="align-top">
-                        {rows.map((row) => (
-                            <tr key={row} className="border-t border-border/60">
-                                <td className="py-1.5 pr-2 text-muted-foreground">
-                                    {t(`captions.style.difference.rows.${row}.label`)}
-                                </td>
-                                <td className="py-1.5 pr-2">
-                                    {t(`captions.style.difference.rows.${row}.autosubs`)}
-                                </td>
-                                <td className="py-1.5">
-                                    {t(`captions.style.difference.rows.${row}.resolve`)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </PopoverContent>
-        </Popover>
+                </button>
+            </HoverCardTrigger>
+            <HoverCardContent
+                align="start"
+                collisionPadding={12}
+                className="w-72 space-y-3 p-3"
+            >
+                {(["autosubs", "resolve"] as const).map((kind) => (
+                    <div key={kind} className="space-y-1">
+                        <p className="flex items-center gap-1.5 text-xs font-medium">
+                            {kind === "autosubs" ? (
+                                <Sparkles className="size-3.5 shrink-0 text-primary" />
+                            ) : (
+                                <Type className="size-3.5 shrink-0 text-muted-foreground" />
+                            )}
+                            {t(`captions.style.${kind}.name`)}
+                        </p>
+                        <dl className="space-y-0.5 pl-5 text-xs">
+                            {rows.map((row) => (
+                                <div key={row} className="flex gap-2">
+                                    <dt className="w-24 shrink-0 text-muted-foreground">
+                                        {t(`captions.style.difference.rows.${row}.label`)}
+                                    </dt>
+                                    <dd className="min-w-0 flex-1">
+                                        {t(`captions.style.difference.rows.${row}.${kind}`)}
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                ))}
+            </HoverCardContent>
+        </HoverCard>
     );
 }
 

@@ -561,27 +561,16 @@
       "unavailable": "スタイルが見つかりません",
       "difference": {
         "trigger": "違いは？",
-        "title": "キャプションスタイル",
         "rows": {
           "animation": {
             "label": "アニメーション",
             "autosubs": "単語ごと",
             "resolve": "なし"
           },
-          "styling": {
-            "label": "編集場所",
-            "autosubs": "Fusion、保存はここ",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "入手元",
-            "autosubs": "同梱",
-            "resolve": "プロジェクト"
-          },
-          "restyle": {
-            "label": "既存クリップ",
-            "autosubs": "スタイル全体",
-            "resolve": "話者の色のみ"
+          "availability": {
+            "label": "使える範囲",
+            "autosubs": "すべてのプロジェクト",
+            "resolve": "開いているプロジェクト"
           }
         }
       }

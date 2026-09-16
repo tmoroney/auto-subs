@@ -561,27 +561,16 @@
       "unavailable": "样式不可用",
       "difference": {
         "trigger": "有什么区别？",
-        "title": "字幕样式",
         "rows": {
           "animation": {
             "label": "动画",
             "autosubs": "逐字",
             "resolve": "无"
           },
-          "styling": {
-            "label": "编辑位置",
-            "autosubs": "Fusion，存在这里",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "来源",
-            "autosubs": "随附",
-            "resolve": "你的项目"
-          },
-          "restyle": {
-            "label": "已有片段",
-            "autosubs": "整体样式",
-            "resolve": "仅说话人颜色"
+          "availability": {
+            "label": "可用范围",
+            "autosubs": "任意项目",
+            "resolve": "当前项目"
           }
         }
       }

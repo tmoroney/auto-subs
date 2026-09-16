@@ -561,27 +561,16 @@
       "unavailable": "Estilo no disponible",
       "difference": {
         "trigger": "¿Cuál es la diferencia?",
-        "title": "Estilos de subtítulo",
         "rows": {
           "animation": {
             "label": "Animación",
             "autosubs": "Palabra a palabra",
             "resolve": "Ninguna"
           },
-          "styling": {
-            "label": "Se diseña en",
-            "autosubs": "Fusion, se guarda aquí",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "Procede de",
-            "autosubs": "Incluido",
-            "resolve": "Tu proyecto"
-          },
-          "restyle": {
-            "label": "Recolorea clips",
-            "autosubs": "Estilo completo",
-            "resolve": "Color de hablante"
+          "availability": {
+            "label": "Disponible en",
+            "autosubs": "Cualquier proyecto",
+            "resolve": "Solo este proyecto"
           }
         }
       }

@@ -581,27 +581,16 @@
       "unavailable": "Style unavailable",
       "difference": {
         "trigger": "What is the difference?",
-        "title": "Caption styles",
         "rows": {
           "animation": {
             "label": "Animation",
             "autosubs": "Word by word",
             "resolve": "None"
           },
-          "styling": {
-            "label": "Styled in",
-            "autosubs": "Fusion, saved here",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "Comes from",
-            "autosubs": "Included",
-            "resolve": "Your project"
-          },
-          "restyle": {
-            "label": "Restyles clips",
-            "autosubs": "Whole style",
-            "resolve": "Speaker colours"
+          "availability": {
+            "label": "Available in",
+            "autosubs": "Any project",
+            "resolve": "The open project"
           }
         }
       }

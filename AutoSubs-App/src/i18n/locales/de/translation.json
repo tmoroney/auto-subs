@@ -561,27 +561,16 @@
       "unavailable": "Stil nicht verfügbar",
       "difference": {
         "trigger": "Wo ist der Unterschied?",
-        "title": "Untertitelstile",
         "rows": {
           "animation": {
             "label": "Animation",
             "autosubs": "Wort für Wort",
             "resolve": "Keine"
           },
-          "styling": {
-            "label": "Gestaltet in",
-            "autosubs": "Fusion, hier gespeichert",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "Herkunft",
-            "autosubs": "Mitgeliefert",
-            "resolve": "Dein Projekt"
-          },
-          "restyle": {
-            "label": "Ändert Clips",
-            "autosubs": "Ganzer Stil",
-            "resolve": "Sprecherfarben"
+          "availability": {
+            "label": "Verfügbar in",
+            "autosubs": "Jedem Projekt",
+            "resolve": "Nur diesem Projekt"
           }
         }
       }

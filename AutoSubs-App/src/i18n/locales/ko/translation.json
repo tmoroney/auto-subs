@@ -561,27 +561,16 @@
       "unavailable": "스타일 없음",
       "difference": {
         "trigger": "무엇이 다른가요?",
-        "title": "자막 스타일",
         "rows": {
           "animation": {
             "label": "애니메이션",
             "autosubs": "단어별",
             "resolve": "없음"
           },
-          "styling": {
-            "label": "편집 위치",
-            "autosubs": "Fusion, 여기 저장",
-            "resolve": "Resolve"
-          },
-          "source": {
-            "label": "출처",
-            "autosubs": "기본 제공",
-            "resolve": "내 프로젝트"
-          },
-          "restyle": {
-            "label": "기존 클립",
-            "autosubs": "스타일 전체",
-            "resolve": "화자 색상만"
+          "availability": {
+            "label": "사용 범위",
+            "autosubs": "모든 프로젝트",
+            "resolve": "현재 프로젝트"
           }
         }
       }
