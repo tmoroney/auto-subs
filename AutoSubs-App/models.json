@@ -68,7 +68,7 @@
           "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es",
           "sv", "ru", "uk"
         ],
-        "image": "macaw.png",
+        "image": "grey-parrot.png",
         "languageSupport": {
           "kind": "restricted",
           "languages": [

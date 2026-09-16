@@ -255,7 +255,7 @@
       "label": "Whisper Diminuto",
       "description": "Ultra-rápido",
       "details": "Transcripción en inglés muy rápida con poca memoria. Ideal para borradores rápidos.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "base": {
       "label": "Whisper Básico",
@@ -267,7 +267,7 @@
       "label": "Whisper Básico",
       "description": "Rápido",
       "details": "Transcripción en inglés fiable con poca memoria. Ideal para el día a día.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "small": {
       "label": "Whisper Pequeño",
@@ -279,7 +279,7 @@
       "label": "Whisper Pequeño",
       "description": "Equilibrado",
       "details": "Equilibrio entre velocidad y precisión en inglés con memoria moderada.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "medium": {
       "label": "Whisper Mediano",
@@ -291,7 +291,7 @@
       "label": "Whisper Mediano",
       "description": "Preciso",
       "details": "Alta precisión en inglés con velocidad moderada. Bueno para audio difícil.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "large_v3_turbo": {
       "label": "Whisper Grande Turbo",
@@ -315,7 +315,7 @@
       "label": "Moonshine Diminuto",
       "description": "Ultrarrápido",
       "details": "Transcripción en inglés ultrarrápida en el dispositivo con recursos mínimos. Ideal para uso en tiempo real.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "moonshine_tiny_ar": {
       "label": "Moonshine Diminuto",
@@ -357,7 +357,7 @@
       "label": "Moonshine Básico",
       "description": "Rápido y preciso",
       "details": "Transcripción rápida en inglés en el dispositivo con mejor precisión que Moonshine Tiny.",
-      "badge": "Solo inglés"
+      "badge": "Inglés"
     },
     "moonshine_base_es": {
       "label": "Moonshine Básico",

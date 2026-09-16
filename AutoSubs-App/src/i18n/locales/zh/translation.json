@@ -255,7 +255,7 @@
       "label": "Whisper 微型",
       "description": "超快速",
       "details": "最快的英语转录，内存占用最小。适合快速草稿。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "base": {
       "label": "Whisper 基础",
@@ -267,7 +267,7 @@
       "label": "Whisper 基础",
       "description": "快速",
       "details": "可靠的英语转录，内存要求低。适合日常使用。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "small": {
       "label": "Whisper 小型",
@@ -279,7 +279,7 @@
       "label": "Whisper 小型",
       "description": "平衡",
       "details": "平衡的速度和英语准确性，内存占用适中。能处理各种口音。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "medium": {
       "label": "Whisper 中型",
@@ -291,7 +291,7 @@
       "label": "Whisper 中型",
       "description": "准确",
       "details": "高准确性英语转录，速度适中。适合具有挑战性的音频。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "large_v3_turbo": {
       "label": "Whisper 大型涡轮",
@@ -315,7 +315,7 @@
       "label": "Moonshine 微型",
       "description": "超快速",
       "details": "极快的本地英语转录，资源消耗极低。适合实时使用。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "moonshine_tiny_ar": {
       "label": "Moonshine 微型",
@@ -357,7 +357,7 @@
       "label": "Moonshine 基础",
       "description": "快速且准确",
       "details": "快速的本地英语转录，比Moonshine Tiny精度更高。",
-      "badge": "仅英语"
+      "badge": "英语"
     },
     "moonshine_base_es": {
       "label": "Moonshine 基础",

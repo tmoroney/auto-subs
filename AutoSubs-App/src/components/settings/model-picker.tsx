@@ -36,7 +36,7 @@ function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
  * rather than the Badge default (text-xs + py-0.5), which is 20px tall and
  * stretches the row.
  */
-const TAG_CLASS = "h-[15px] rounded px-1 py-0 text-[10px] font-medium leading-none"
+const TAG_CLASS = "h-[15px] rounded px-1 py-0 text-[10px] font-medium leading-none whitespace-nowrap"
 
 /**
  * One rating on a 1-5 scale, drawn as filled segments. Two of these stacked
@@ -195,8 +195,8 @@ export function ModelPicker({
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <img src={model.image} alt={t(model.label) + " icon"} className="size-8 object-contain rounded flex-shrink-0" />
                           <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-1.5 leading-none">
-                              <span className="font-medium text-xs leading-none">{t(model.label)}</span>
+                            <div className="flex items-center gap-1.5 leading-none flex-wrap">
+                              <span className="font-medium text-xs leading-none truncate">{t(model.label)}</span>
                               {/* The top row earns a badge: the sort that put it
                                   there is otherwise invisible. */}
                               {index === 0 && activeSort === 'recommended' && !searchQuery && (

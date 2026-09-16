@@ -259,7 +259,7 @@
       "label": "Whisper Tiny",
       "description": "Ultra-fast",
       "details": "Fastest English transcription with minimal memory. Ideal for quick drafts.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "base": {
       "label": "Whisper Base",
@@ -271,7 +271,7 @@
       "label": "Whisper Base",
       "description": "Fast",
       "details": "Reliable English transcription with low memory. Great for everyday use.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "small": {
       "label": "Whisper Small",
@@ -283,7 +283,7 @@
       "label": "Whisper Small",
       "description": "Balanced",
       "details": "Balanced speed and English accuracy with moderate memory. Handles varied accents.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "medium": {
       "label": "Whisper Medium",
@@ -295,7 +295,7 @@
       "label": "Whisper Medium",
       "description": "Accurate",
       "details": "High accuracy English transcription with moderate speed. Good for challenging audio.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "large_v3_turbo": {
       "label": "Whisper Large Turbo",
@@ -319,7 +319,7 @@
       "label": "Moonshine Tiny",
       "description": "Ultra-fast",
       "details": "Extremely fast on-device English transcription with minimal resources. Ideal for real-time use.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "moonshine_tiny_ar": {
       "label": "Moonshine Tiny",
@@ -361,7 +361,7 @@
       "label": "Moonshine Base",
       "description": "Fast & Accurate",
       "details": "Fast on-device English transcription with better accuracy than Moonshine Tiny.",
-      "badge": "English Only"
+      "badge": "English"
     },
     "moonshine_base_es": {
       "label": "Moonshine Base",

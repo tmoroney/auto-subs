@@ -188,7 +188,7 @@
       "label": "Whisper 기본"
     },
     "base_en": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "빠름",
       "details": "낮은 메모리로 안정적인 영어 자막 생성. 일상 사용에 적합.",
       "label": "Whisper 기본"
@@ -234,7 +234,7 @@
       "title": "모델"
     },
     "moonshine_base": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "빠르고 정확",
       "details": "Moonshine Tiny보다 높은 정확도의 빠른 온디바이스 영어 자막 생성.",
       "label": "Moonshine 기본"
@@ -246,7 +246,7 @@
       "label": "Moonshine 기본"
     },
     "moonshine_tiny": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "초고속",
       "details": "최소 리소스로 초고속 온디바이스 영어 자막 생성. 실시간 사용에 최적.",
       "label": "Moonshine 초소형"
@@ -294,7 +294,7 @@
       "label": "Whisper 중형"
     },
     "medium_en": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "정확",
       "details": "적당한 속도로 높은 영어 정확도. 어려운 오디오에 적합.",
       "label": "Whisper 중형"
@@ -312,7 +312,7 @@
       "label": "Whisper 소형"
     },
     "small_en": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "균형",
       "details": "적당한 메모리로 속도와 영어 정확도의 균형. 다양한 억양에 대응.",
       "label": "Whisper 소형"
@@ -324,7 +324,7 @@
       "label": "Whisper 초소형"
     },
     "tiny_en": {
-      "badge": "영어 전용",
+      "badge": "영어",
       "description": "초고속",
       "details": "최소 메모리로 가장 빠른 영어 자막 생성. 빠른 초안에 최적.",
       "label": "Whisper 초소형"

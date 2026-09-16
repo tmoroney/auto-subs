@@ -255,7 +255,7 @@
       "label": "Whisper Tiny",
       "description": "Ultra-rapide",
       "details": "Transcription anglaise très rapide avec peu de mémoire. Idéal pour des brouillons.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "base": {
       "label": "Whisper Base",
@@ -267,7 +267,7 @@
       "label": "Whisper Base",
       "description": "Rapide",
       "details": "Transcription anglaise fiable avec peu de mémoire. Parfait au quotidien.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "small": {
       "label": "Whisper Small",
@@ -279,7 +279,7 @@
       "label": "Whisper Small",
       "description": "Équilibré",
       "details": "Équilibre vitesse/précision en anglais avec mémoire modérée.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "medium": {
       "label": "Whisper Medium",
@@ -291,7 +291,7 @@
       "label": "Whisper Medium",
       "description": "Précis",
       "details": "Haute précision en anglais avec vitesse modérée.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "large_v3_turbo": {
       "label": "Whisper Large Turbo",
@@ -315,7 +315,7 @@
       "label": "Moonshine Tiny",
       "description": "Ultra-rapide",
       "details": "Transcription anglaise ultra-rapide sur l'appareil avec un minimum de ressources. Idéal pour une utilisation en temps réel.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "moonshine_tiny_ar": {
       "label": "Moonshine Tiny",
@@ -357,7 +357,7 @@
       "label": "Moonshine Base",
       "description": "Rapide et précis",
       "details": "Transcription anglaise rapide sur l'appareil avec une meilleure précision que Moonshine Tiny.",
-      "badge": "Anglais uniquement"
+      "badge": "Anglais"
     },
     "moonshine_base_es": {
       "label": "Moonshine Base",

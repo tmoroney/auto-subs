@@ -259,7 +259,7 @@
       "label": "Whisper Tiny",
       "description": "Сверхбыстрая",
       "details": "Самая быстрая транскрибация английского при минимуме памяти. Подходит для черновиков.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "base": {
       "label": "Whisper Base",
@@ -271,7 +271,7 @@
       "label": "Whisper Base",
       "description": "Быстрая",
       "details": "Надёжная транскрибация английского с низким расходом памяти. Хороша для повседневных задач.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "small": {
       "label": "Whisper Small",
@@ -283,7 +283,7 @@
       "label": "Whisper Small",
       "description": "Сбалансированная",
       "details": "Баланс скорости и точности английского при умеренном расходе памяти. Справляется с разными акцентами.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "medium": {
       "label": "Whisper Medium",
@@ -295,7 +295,7 @@
       "label": "Whisper Medium",
       "description": "Точная",
       "details": "Высокая точность английского при умеренной скорости. Подходит для сложного аудио.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "large_v3_turbo": {
       "label": "Whisper Large Turbo",
@@ -319,7 +319,7 @@
       "label": "Moonshine Tiny",
       "description": "Сверхбыстрая",
       "details": "Очень быстрая локальная транскрибация английского при минимуме ресурсов. Подходит для работы в реальном времени.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "moonshine_tiny_ar": {
       "label": "Moonshine Tiny",
@@ -361,7 +361,7 @@
       "label": "Moonshine Base",
       "description": "Быстрая и точная",
       "details": "Быстрая локальная транскрибация английского, точнее чем Moonshine Tiny.",
-      "badge": "Только английский"
+      "badge": "Английский"
     },
     "moonshine_base_es": {
       "label": "Moonshine Base",
