@@ -2169,10 +2169,9 @@ end
 --
 -- The clip stays on the timeline for the whole session so the user can tweak
 -- its controls and watch the animation play, and so saving is read-plus-render
--- rather than append-render-delete. Opening parks the playhead on the clip and
--- switches to the Fusion page, which is where the macro's inspector -- the
--- editing UI for a caption's look -- is guaranteed to be showing the preview
--- clip rather than whatever the user had selected before.
+-- rather than append-render-delete. The page is left alone: the Inspector
+-- exposes the macro's controls on the edit page, so there is no need to drag
+-- the user over to Fusion.
 -- ---------------------------------------------------------------------------
 
 -- Name given to the temporary track, so teardown can find it again by identity.
@@ -2388,11 +2387,6 @@ function OpenPresetEdit(req)
         if tool and initialSettings ~= nil and next(initialSettings) ~= nil then
             pcall(caption_style.write, comp, tool, initialSettings)
         end
-
-        -- The macro's inspector is the editing UI, so hand the user the page
-        -- that shows it for this clip. On the edit page the Inspector would
-        -- keep showing whatever they had selected before.
-        pcall(function() resolve:OpenPage("fusion") end)
 
         presetEditSession = {
             timelineId = timeline:GetUniqueId(),
