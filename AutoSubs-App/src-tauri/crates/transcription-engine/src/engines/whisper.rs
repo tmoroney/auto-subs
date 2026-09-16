@@ -16,7 +16,7 @@ pub static SHOULD_CANCEL: once_cell::sync::Lazy<Mutex<bool>> =
 // Latest progress values updated from hot compute loops (blocking threads)
 // Emission to the frontend is throttled via a periodic Tokio task.
 
-fn setup_params(options: &TranscribeOptions) -> FullParams {
+fn setup_params(options: &TranscribeOptions) -> FullParams<'_, '_> {
     // Determine the beam size or best_of value, defaulting to 5
     let beam_size_or_best_of = options.advanced.as_ref().and_then(|a| a.best_of_or_beam_size).unwrap_or(5).max(1);
 

@@ -68,27 +68,3 @@ pub struct Transcript {
     pub speakers: Vec<Speaker>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JsonSegment {
-    id: usize,
-    seek: usize,
-    start: f64,
-    end: f64,
-    text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    speaker_id: Option<String>,
-    tokens: Vec<i32>,
-    temperature: f32,
-    avg_logprob: f64,
-    compression_ratio: f64,
-    no_speech_prob: f64,
-    words: Vec<JsonWordTimestamp>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JsonWordTimestamp {
-    word: String,
-    start: f64,
-    end: f64,
-    probability: f32,
-}

@@ -1013,7 +1013,7 @@
 						end
 					end
 				]],
-				-- Maps Style-tab wrap controls onto native Text+ Layout inputs.
+				-- Maps Text-tab wrap controls onto native Text+ Layout inputs.
 				-- Custom IDs (WrapEnabled / WrapBoxWidth) are required: Width and
 				-- Height already mean the image format on this tool, and Wrap is a
 				-- native Text+ input. LayoutType 0 = Point, 1 = Text Box (Resolve 20+).
@@ -1086,7 +1086,7 @@
 						SubtitleLabel = {
 							INP_Integer = false,
 							LBLC_DropDownButton = true,
-							LBLC_NumInputs = 6,
+							LBLC_NumInputs = 8,
 							INP_SplineType = "Default",
 							INP_Default = 1,
 							LINKID_DataType = "Number",
@@ -1673,19 +1673,8 @@
 							INP_External = false,
 							INP_Passive = false,
 						},
-						WrapLabel = {
-							LINKS_Name = "Wrap",
-							INP_Integer = false,
-							LBLC_DropDownButton = true,
-							LBLC_NumInputs = 2,
-							INP_SplineType = "Default",
-							INP_Default = 1,
-							LINKID_DataType = "Number",
-							INP_Passive = true,
-							INPID_InputControl = "LabelControl",
-						},
 						WrapEnabled = {
-							LINKS_Name = "Wrap to Text Box",
+							LINKS_Name = "Wrap Text",
 							INP_MaxAllowed = 1,
 							INP_Integer = false,
 							INPID_InputControl = "CheckboxControl",
@@ -1717,7 +1706,7 @@
 							INP_SplineType = "Default",
 							INP_External = false,
 							INP_Passive = false,
-							LINKS_Name = "Box Width",
+							LINKS_Name = "Wrap Width",
 							INPS_ExecuteOnChange = [[
 								local func = tool:GetData("UpdateWrap")
 								if func then
@@ -1975,6 +1964,22 @@
 					Source = "Center",
 					Name = "Center",
 				},
+				WrapEnabled = InstanceInput {
+					SourceOp = "Template",
+					Source = "WrapEnabled",
+					Page = "Text",
+					Default = 0,
+				},
+				WrapBoxWidth = InstanceInput {
+					SourceOp = "Template",
+					Source = "WrapBoxWidth",
+					Page = "Text",
+					Default = 0.8,
+					MinAllowed = 0.05,
+					MaxAllowed = 2,
+					MinScale = 0.2,
+					MaxScale = 1,
+				},
 				ModifyWordTiming = InstanceInput {
 					SourceOp = "Template",
 					Source = "ModifyWordTiming",
@@ -2210,27 +2215,6 @@
 					Source = "UpdateShadowColor",
 					Page = "Style",
 				},
-				WrapLabel = InstanceInput {
-					SourceOp = "Template",
-					Source = "WrapLabel",
-					Page = "Style",
-				},
-				WrapEnabled = InstanceInput {
-					SourceOp = "Template",
-					Source = "WrapEnabled",
-					Page = "Style",
-					Default = 0,
-				},
-				WrapBoxWidth = InstanceInput {
-					SourceOp = "Template",
-					Source = "WrapBoxWidth",
-					Page = "Style",
-					Default = 0.8,
-					MinAllowed = 0.05,
-					MaxAllowed = 2,
-					MinScale = 0.2,
-					MaxScale = 1,
-				}
 				-- Multiple InstanceInputs can point to the same source control.
 				-- Use distinct instance names only when exposing the same control in different
 				-- pages/groups/roles.

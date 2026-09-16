@@ -398,7 +398,7 @@
     "orukeet": {
       "label": "Orukeet",
       "description": "Локально, 25 европейских языков",
-      "details": "Orukeet от Oruk. Веса модели: CC BY-SA 4.0.",
+      "details": "Быстрее и точнее, чем Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
     }
   },

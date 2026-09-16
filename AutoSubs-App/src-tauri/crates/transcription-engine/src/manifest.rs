@@ -230,7 +230,7 @@ mod orukeet_tests {
     use super::*;
 
     #[test]
-    fn pinned_orukeet_uses_flat_parakeet_layout_without_invented_ratings() {
+    fn pinned_orukeet_uses_flat_parakeet_layout() {
         let model = MANIFEST.get("orukeet").unwrap();
         assert_eq!(model.engine, Engine::Parakeet);
         assert_eq!(model.quantization, Some(Quant::Int8));
@@ -244,8 +244,10 @@ mod orukeet_tests {
             assert!(files.iter().any(|f| f.dest() == required));
         }
         let ui = model.ui.as_ref().unwrap();
-        assert!(ui.accuracy.is_none() && ui.speed.is_none());
-        assert_eq!(ui.best_for.as_deref(), Some([].as_slice()));
+        assert_eq!(ui.accuracy, Some(5.0));
+        assert_eq!(ui.speed, Some(5.0));
+        let LanguageSupport::Restricted { languages } = &ui.language_support else { panic!("expected restricted") };
+        assert_eq!(ui.best_for.as_deref(), Some(languages.as_slice()));
         let old: FileSpec = serde_json::from_str(r#""config.json""#).unwrap();
         let renamed: FileSpec = serde_json::from_str(r#"{"path":"onnx/config.json","dest":"config.json"}"#).unwrap();
         assert_eq!(old.revision(), "main");

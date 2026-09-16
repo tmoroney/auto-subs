@@ -410,7 +410,7 @@
     "orukeet": {
       "label": "Orukeet",
       "description": "Local, 25 European languages",
-      "details": "Orukeet by Oruk. Weights licensed under CC BY-SA 4.0.",
+      "details": "Faster and more accurate than Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
     }
   },

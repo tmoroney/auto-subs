@@ -102,7 +102,7 @@ impl PLDA {
     }
 
     /// Get the between-class covariance (phi) in PLDA space
-    pub fn phi(&self) -> ArrayView1<f64> {
+    pub fn phi(&self) -> ArrayView1<'_, f64> {
         self.plda_psi.slice(ndarray::s![..self.lda_dimension])
     }
 }

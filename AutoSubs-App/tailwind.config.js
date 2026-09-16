@@ -14,6 +14,9 @@ export default {
   			serif: ['var(--font-serif)'],
   			mono: ['var(--font-mono)']
   		},
+  		transitionTimingFunction: {
+  			smooth: 'cubic-bezier(0.32, 0.72, 0, 1)'
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

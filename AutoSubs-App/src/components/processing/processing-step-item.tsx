@@ -77,7 +77,7 @@ export function ProcessingStepItem({
                 {isActive && (
                     <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                            className="h-full rounded-full bg-primary transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                            className="h-full rounded-full bg-primary transition-[width] duration-300 ease-smooth"
                             style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
                         />
                     </div>

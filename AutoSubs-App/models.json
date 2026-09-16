@@ -61,9 +61,13 @@
       "ui": {
         "size": "672MB",
         "ramMb": 4096,
-        "accuracy": null,
-        "speed": null,
-        "bestFor": [],
+        "accuracy": 5,
+        "speed": 5,
+        "bestFor": [
+          "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el",
+          "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es",
+          "sv", "ru", "uk"
+        ],
         "image": "macaw.png",
         "languageSupport": {
           "kind": "restricted",
@@ -112,7 +116,7 @@
           "config.json"
         ]
       },
-      "ui": {"size": "700MB", "ramMb": 2048, "accuracy": 5, "speed": 5, "image": "macaw.png", "languageSupport": {"kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]}}
+      "ui": {"size": "700MB", "ramMb": 2048, "accuracy": 5, "speed": 4.5, "image": "macaw.png", "languageSupport": {"kind": "restricted", "languages": ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]}}
     },
     {
       "id": "tiny",

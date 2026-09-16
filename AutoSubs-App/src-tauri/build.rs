@@ -24,8 +24,10 @@ fn main() {
             .unwrap_or_else(|| "15.5".to_string());
 
         if let Some(sdk) = sdk_path {
-            println!("cargo:warning=Using macOS SDK at: {}", sdk);
-            println!("cargo:warning=Using macOS SDK version: {}", sdk_ver);
+            // Informational only: printed to the build log (visible with `cargo -vv`)
+            // rather than as cargo warnings, which surface on every build.
+            eprintln!("Using macOS SDK at: {}", sdk);
+            eprintln!("Using macOS SDK version: {}", sdk_ver);
             // Ensure clang knows the SDK and the linker uses it for syslibroot.
             println!("cargo:rustc-link-arg=-isysroot");
             println!("cargo:rustc-link-arg={}", sdk);
@@ -62,7 +64,7 @@ fn main() {
             })
             .unwrap_or_else(|| "clang".to_string());
 
-        println!("cargo:warning=Using clang driver: {}", clang_path);
+        eprintln!("Using clang driver: {}", clang_path);
 
         let clang_res_dir = std::process::Command::new(&clang_path)
             .arg("-print-resource-dir")
@@ -70,7 +72,7 @@ fn main() {
             .ok()
             .and_then(|o| if o.status.success() { Some(String::from_utf8_lossy(&o.stdout).trim().to_string()) } else { None });
         if let Some(res) = clang_res_dir {
-            println!("cargo:warning=Clang resource dir: {}", res);
+            eprintln!("Clang resource dir: {}", res);
             let darwin_lib = format!("{}/lib/darwin", res);
             let crt = format!("{}/libclang_rt.osx.a", darwin_lib);
             if std::path::Path::new(&crt).exists() {
@@ -81,7 +83,7 @@ fn main() {
                 // And force-load the archive so the symbol is not skipped due to
                 // archive resolution order or dead_strip behavior.
                 println!("cargo:rustc-link-arg=-Wl,-force_load,{}", crt);
-                println!("cargo:warning=Linking compiler-rt archive: {}", crt);
+                eprintln!("Linking compiler-rt archive: {}", crt);
             } else {
                 println!("cargo:warning=compiler-rt archive not found at {} (skipping explicit link)", crt);
             }

@@ -406,7 +406,7 @@
     "orukeet": {
       "label": "Orukeet",
       "description": "本地处理，支持25种欧洲语言",
-      "details": "Oruk 出品的 Orukeet。模型权重采用 CC BY-SA 4.0 许可。",
+      "details": "比 Parakeet 更快、更准确。CC BY-SA 4.0。",
       "badge": "CC BY-SA 4.0"
     }
   },

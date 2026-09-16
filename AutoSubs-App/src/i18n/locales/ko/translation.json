@@ -370,7 +370,7 @@
     "orukeet": {
       "label": "Orukeet",
       "description": "로컬 처리, 유럽 25개 언어",
-      "details": "Oruk의 Orukeet. 모델 가중치 라이선스: CC BY-SA 4.0.",
+      "details": "Parakeet보다 빠르고 정확합니다. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
     }
   },

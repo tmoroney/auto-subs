@@ -370,7 +370,7 @@
     "orukeet": {
       "label": "Orukeet",
       "description": "ローカル処理、欧州25言語",
-      "details": "OrukのOrukeet。モデルの重みはCC BY-SA 4.0。",
+      "details": "Parakeet より高速で高精度。CC BY-SA 4.0。",
       "badge": "CC BY-SA 4.0"
     }
   },
