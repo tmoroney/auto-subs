@@ -2277,11 +2277,17 @@ local function teardown_preset_edit_session()
     -- session's own timeline rather than giving up, which used to strand the
     -- preview clip and its track until the user came back and edited a preset
     -- there again.
-    if session and timeline then
-        local sameTimeline = true
-        pcall(function()
-            sameTimeline = timeline:GetUniqueId() == session.timelineId
-        end)
+    -- Closing the timeline leaves no current one at all, which is just as much
+    -- a reason to go looking for the session's own as having switched to
+    -- another. Only an unreadable id on a timeline we do have is taken as a
+    -- match, so a Resolve build without GetUniqueId still cleans up in place.
+    if session then
+        local sameTimeline = timeline ~= nil
+        if timeline then
+            pcall(function()
+                sameTimeline = timeline:GetUniqueId() == session.timelineId
+            end)
+        end
         if not sameTimeline then
             timeline = find_timeline_by_id(session.timelineId)
         end
