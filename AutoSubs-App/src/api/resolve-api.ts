@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getSubtitleDocumentPath, getAudioExportDir } from '@/utils/file-utils';
-import { Speaker, Template } from '@/types';
+import { Speaker, Template, TimelineInfo } from '@/types';
 
 /**
  * Error thrown when the AutoSubs Lua server (inside Resolve) reports a failure
@@ -128,10 +128,7 @@ export async function getTimelineInfo() {
   if (!data.timelineId) {
     throw new Error('No timeline detected in Resolve.');
   }
-  return {
-    ...data,
-    templates: [],
-  };
+  return data as TimelineInfo;
 }
 
 export async function getTemplates(): Promise<Template[]> {
@@ -263,7 +260,7 @@ export async function getRenderJobStatus() {
 
 export async function generatePreview(
   templateName: string,
-  exportPath: string,
+  exportDir: string,
   presetSettings?: Record<string, unknown>,
   speaker?: Speaker,
   language?: string,
@@ -272,7 +269,7 @@ export async function generatePreview(
     func: 'GeneratePreview',
     speaker,
     templateName,
-    exportPath,
+    exportDir,
     presetSettings,
     language,
   });
@@ -280,33 +277,45 @@ export async function generatePreview(
   return data;
 }
 
-// Starts an interactive caption-preset edit session in Resolve. Adds a new
-// video track, drops an AutoSubs Caption clip, opens the Fusion page and
-// (optionally) applies existing preset settings to the tool so the user can
-// tweak them in the Fusion inspector.
-export async function startPresetEdit(
-  initialSettings?: Record<string, unknown>,
-): Promise<{ ok?: true; error?: string }> {
-  return callResolve({ func: 'StartPresetEdit', initialSettings });
-}
-
-// Reads the AutoSubs tool's current input values via the macro's GetInputValues
-// helper, then tears down the preset-edit clip/track.
-export async function capturePresetSettings(exportDir?: string): Promise<{
+export interface PresetEditSaveResult {
   settings?: Record<string, unknown>;
   previewPath?: string;
   previewError?: string;
   error?: string;
-}> {
-  return callResolve({ func: 'CapturePresetSettings', exportDir });
+}
+
+/**
+ * Opens a caption for editing in Resolve: adds a temporary video track, drops
+ * an AutoSubs Caption clip on it, seeds it with `initialSettings` and parks the
+ * playhead over the middle of the clip. Resolve stays on whichever page the
+ * user was on; the inspector shows the macro's controls either way.
+ *
+ * The clip stays on the timeline until `savePresetEdit` or `cancelPresetEdit`,
+ * so the user can tweak the macro's inspector for as long as they like and
+ * watch the animation play in Resolve's viewer.
+ */
+export async function openPresetEdit(
+  initialSettings?: Record<string, unknown>,
+): Promise<{ ok?: true; error?: string }> {
+  return callResolve({ func: 'OpenPresetEdit', initialSettings });
+}
+
+/**
+ * Reads the open caption's current input values, renders its thumbnail and
+ * closes the session. Always closes, so the caller can assume the temporary
+ * clip is gone whichever way this returns.
+ */
+export async function savePresetEdit(
+  exportDir?: string,
+): Promise<PresetEditSaveResult> {
+  return callResolve({ func: 'SavePresetEdit', exportDir });
+}
+
+/** Closes the session without reading anything. Safe with no session open. */
+export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }> {
+  return callResolve({ func: 'CancelPresetEdit' });
 }
 
 export async function ensureCaptionPreviewDir(): Promise<string> {
   return invoke<string>('ensure_caption_preview_dir');
-}
-
-// Tears down the preset-edit clip/track without capturing. Safe to call with
-// no active session.
-export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }> {
-  return callResolve({ func: 'CancelPresetEdit' });
 }

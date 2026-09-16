@@ -545,37 +545,72 @@
   "theme": {
     "toggle": "Toggle theme"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "Track"
-      },
-      "template": {
-        "title": "Style",
-        "connectTo": "Connect to {{integration}} to customise templates"
-      },
-      "speakers": {
-        "title": "Speakers"
-      }
+  "replaceStrings": {
+    "title": "Search/Replace Words",
+    "find": "Find",
+    "findPlaceholder": "Text to find...",
+    "matchCase": "Match Case",
+    "replaceWith": "Replace with",
+    "replacePlaceholder": "Replacement text...",
+    "occurrencesFound": "{{count}} occurrence found",
+    "occurrencePosition": "{{current}} of {{total}}",
+    "noOccurrencesFound": "No occurrences found",
+    "replaceCurrent": "Replace Current",
+    "replaceAll": "Replace All ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "Output track",
+      "placeholder": "Choose a track",
+      "none": "No track"
     },
-    "title": "Send to Timeline",
-    "ready": {
-      "title": "Subtitles Ready",
-      "description": "Your subtitles have been generated and are ready to be sent to the timeline."
+    "style": {
+      "loading": "Loading templates...",
+      "noTemplates": "No templates found.",
+      "label": "Caption style",
+      "autosubs": {
+        "name": "AutoSubs Captions",
+        "description": "Word by word animation with simple styling controls.",
+        "unavailable": "Not found in this project's media pool."
+      },
+      "resolve": {
+        "name": "Resolve Title",
+        "description": "A Text+ title from this project's media pool."
+      },
+      "refresh": "Refresh list",
+      "unavailable": "Style unavailable"
     },
-    "adding": "Sending...",
-    "success": "Sent to timeline",
-    "mode": {
-      "regular": "Regular Template",
-      "animated": "Animated Template"
+    "speakers": {
+      "label_one": "{{count}} speaker",
+      "label_other": "{{count}} speakers"
+    },
+    "notConnected": "Connect DaVinci Resolve to send subtitles to a timeline.",
+    "noSubtitles": "No subtitles to send",
+    "chooseTrack": "Choose an output track",
+    "reviewAndSend": "Review & Send",
+    "errors": {
+      "notConnected": "No editor connected. Connect to DaVinci Resolve, Adobe Premiere Pro, or After Effects to customise templates.",
+      "timedOut": "Connection timed out. Ensure your editing software is running and try again."
+    },
+    "sentAgain": "Sent · Send again",
+    "title": "Output settings",
+    "batchStyle": {
+      "applyAll": "Update timeline styles",
+      "updating": "Updating styles...",
+      "success": "Updated {{count}} caption clips",
+      "noMatches": "No matching AutoSubs clips found",
+      "partial": "Updated {{updated}} clips, {{failed}} failed",
+      "failed": "Couldn't update timeline styles"
+    },
+    "send": {
+      "adding": "Sending..."
     },
     "conflict": {
       "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."
     },
     "preset": {
       "new": "New preset",
-      "builtIn": "Built-in",
-      "custom": "Custom",
+      "moreActions": "More actions",
       "preview": "Generate preview",
       "duplicate": "Duplicate",
       "delete": "Delete",
@@ -585,19 +620,16 @@
       "import": "Import file",
       "paste": "Paste JSON",
       "phase": {
-        "launchingTitle": "Opening caption in Resolve…",
-        "launchingHint": "We’ll drop a preview caption on a temporary track.",
-        "editingTitle": "Switch to DaVinci Resolve",
-        "editingBody": "A caption has been placed on a new track and opened in the Fusion page. Customise it using the inspector, then come back here.",
-        "capturingTitle": "Reading settings from Resolve…",
-        "nameTitle": "Name your preset",
-        "nameHint": "Give it something short and descriptive."
+        "openingTitle": "Opening the caption in Resolve...",
+        "savingTitle": "Saving from Resolve...",
+        "editingTitle": "Edit the caption in Resolve",
+        "editingBody": "The caption is on your timeline with the playhead over it. Change it with the inspector and watch it play, then come back and save.",
+        "savingBody": "Reading your settings and rendering the preview."
       },
       "action": {
         "cancel": "Cancel",
         "save": "Save preset",
-        "back": "Back",
-        "captureSettings": "Capture settings"
+        "saving": "Saving..."
       },
       "nameLabel": "Preset name",
       "namePlaceholder": "e.g. Bold Yellow, TikTok Style",
@@ -614,62 +646,14 @@
         "captureFailed": "Couldn’t read the caption settings from Resolve.",
         "nameRequired": "Please enter a name."
       },
-      "previewFailed": "Could not render preview"
-    }
-  },
-  "replaceStrings": {
-    "title": "Search/Replace Words",
-    "find": "Find",
-    "findPlaceholder": "Text to find...",
-    "matchCase": "Match Case",
-    "replaceWith": "Replace with",
-    "replacePlaceholder": "Replacement text...",
-    "occurrencesFound": "{{count}} occurrence found",
-    "occurrencePosition": "{{current}} of {{total}}",
-    "noOccurrencesFound": "No occurrences found",
-    "replaceCurrent": "Replace Current",
-    "replaceAll": "Replace All ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "Output track",
-      "placeholder": "Choose a track",
-      "none": "No track"
+      "previewFailed": "Could not render preview",
+      "needsResolve": "Open DaVinci Resolve to edit caption styles.",
+      "rendering": "Rendering preview...",
+      "editTitle": "Edit caption style",
+      "createTitle": "New caption style"
     },
-    "style": {
-      "label": "Caption style",
-      "loading": "Loading templates...",
-      "noTemplates": "No templates found.",
-      "groups": {
-        "resolve": "Resolve Templates",
-        "autosubs": "AutoSubs Styles"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} speaker",
-      "label_other": "{{count}} speakers"
-    },
+    "chooseStyle": "Choose a caption style",
     "speakerCount_one": "{{count}} speaker",
-    "speakerCount_other": "{{count}} speakers",
-    "notConnected": "Connect DaVinci Resolve to send subtitles to a timeline.",
-    "noSubtitles": "No subtitles to send",
-    "chooseTrack": "Choose an output track",
-    "reviewAndSend": "Review & Send",
-    "errors": {
-      "notConnected": "No editor connected. Connect to DaVinci Resolve, Adobe Premiere Pro, or After Effects to customise templates.",
-      "timedOut": "Connection timed out. Ensure your editing software is running and try again."
-    },
-    "sentAgain": "Sent · Send again",
-    "title": "Output settings",
-    "batchStyle": {
-      "applyAll": "Update timeline styles",
-      "applySpeaker": "Update this speaker",
-      "updating": "Updating styles...",
-      "success": "Updated {{count}} caption clips",
-      "noMatches": "No matching AutoSubs clips found",
-      "description": "Apply current styles to existing caption clips.",
-      "partial": "Updated {{updated}} clips, {{failed}} failed",
-      "failed": "Couldn't update timeline styles"
-    }
+    "speakerCount_other": "{{count}} speakers"
   }
 }

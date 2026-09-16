@@ -27,10 +27,11 @@ export interface Track {
 export interface TimelineInfo {
     name: string;
     timelineId: string;
-    templates: Template[];
     inputTracks: Track[];
     outputTracks: Track[];
     projectName: string;
+    /** Resolve's unique project id. Empty on hosts that do not report one. */
+    projectId?: string;
 }
 
 // Subtitle Interfaces
@@ -126,6 +127,7 @@ export interface Settings {
     onboardingCompleted: boolean;
     lastSeenVersion: string;
     showEnglishOnlyModels: boolean;
+    subtitlePanelWidth: number;
 
     // Survey notification settings
     timesDismissedSurvey: number;
@@ -162,17 +164,22 @@ export interface Settings {
     // Adobe integrations
     selectedInputTracksByApp: Record<Integration, string[]>;
     selectedOutputTrack: string;
-    selectedTemplate: Template;
 
-    // AutoSubs Caption settings
-    presetId: string;
-    captionMode: "regular" | "animated";
-
-    // Animation settings
-    animationType: string;
-    highlightType: string;
-    highlightColor: string;
+    // Caption style: which of the two kinds of caption to send, and which one.
+    captionStyle: CaptionStyle;
 }
+
+/**
+ * The single answer to "what will pressing Send put on the timeline".
+ *
+ * `autosubs` is the bundled Fusion macro, styled by a preset the app stores.
+ * `resolve` is any Text+ or Fusion title already in the project's media pool,
+ * styled in Resolve. These were once three separate settings that had to be
+ * written in lockstep; the union makes an inconsistent pair unrepresentable.
+ */
+export type CaptionStyle =
+    | { source: "autosubs"; presetId: string }
+    | { source: "resolve"; templateName: string };
 
 // Caption preset for the custom AutoSubs animated caption macro.
 // `macroSettings` is an opaque table round-tripped through the Fusion macro's

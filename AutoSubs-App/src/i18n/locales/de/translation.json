@@ -525,36 +525,72 @@
   "theme": {
     "toggle": "Theme umschalten"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "Spur"
-      },
-      "template": {
-        "title": "Stil"
-      },
-      "speakers": {
-        "title": "Sprecher"
-      }
+  "replaceStrings": {
+    "title": "Wörter suchen/ersetzen",
+    "find": "Suchen",
+    "findPlaceholder": "Zu suchender Text...",
+    "matchCase": "Groß-/Kleinschreibung beachten",
+    "replaceWith": "Ersetzen durch",
+    "replacePlaceholder": "Ersatztext...",
+    "occurrencesFound": "{{count}} Treffer gefunden",
+    "occurrencePosition": "{{current}} von {{total}}",
+    "noOccurrencesFound": "Keine Treffer gefunden",
+    "replaceCurrent": "Aktuellen ersetzen",
+    "replaceAll": "Alle ersetzen ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "Ausgabespur",
+      "placeholder": "Spur wählen",
+      "none": "Keine Spur"
     },
-    "title": "Zur Timeline senden",
-    "ready": {
-      "title": "Untertitel bereit",
-      "description": "Deine Untertitel wurden generiert und können nun zur Timeline gesendet werden."
+    "style": {
+      "loading": "Vorlagen werden geladen...",
+      "noTemplates": "Keine Vorlagen gefunden.",
+      "label": "Untertitel-Stil",
+      "autosubs": {
+        "name": "AutoSubs Untertitel",
+        "description": "Wort für Wort animiert, mit einfachen Styling-Reglern.",
+        "unavailable": "Nicht im Medienpool dieses Projekts."
+      },
+      "resolve": {
+        "name": "Resolve Titel",
+        "description": "Ein Text+ Titel aus dem Medienpool dieses Projekts."
+      },
+      "refresh": "Liste aktualisieren",
+      "unavailable": "Stil nicht verfügbar"
     },
-    "adding": "Wird gesendet...",
-    "success": "Zur Timeline gesendet",
-    "mode": {
-      "regular": "Normale Vorlage",
-      "animated": "Animierte Vorlage"
+    "speakers": {
+      "label_one": "{{count}} Sprecher",
+      "label_other": "{{count}} Sprecher"
+    },
+    "notConnected": "Verbinde DaVinci Resolve, um Untertitel an eine Timeline zu senden.",
+    "noSubtitles": "Keine Untertitel zum Senden",
+    "chooseTrack": "Ausgabespur wählen",
+    "reviewAndSend": "Prüfen & Senden",
+    "errors": {
+      "notConnected": "Kein Editor verbunden. Verbinde DaVinci Resolve, Adobe Premiere Pro oder After Effects, um Vorlagen anzupassen.",
+      "timedOut": "Zeitüberschreitung. Stelle sicher, dass deine Schnittsoftware läuft, und versuche es erneut."
+    },
+    "sentAgain": "Gesendet · Erneut senden",
+    "title": "Ausgabe-Einstellungen",
+    "batchStyle": {
+      "applyAll": "Timeline-Stile ändern",
+      "updating": "Stile werden aktualisiert...",
+      "success": "{{count}} Untertitelclips aktualisiert",
+      "noMatches": "Keine passenden AutoSubs-Clips gefunden",
+      "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen",
+      "failed": "Timeline-Stile konnten nicht geändert werden"
+    },
+    "send": {
+      "adding": "Wird gesendet..."
     },
     "conflict": {
       "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
     },
     "preset": {
       "new": "Neue Voreinstellung",
-      "builtIn": "Integriert",
-      "custom": "Benutzerdefiniert",
+      "moreActions": "Weitere Aktionen",
       "preview": "Vorschau erstellen",
       "duplicate": "Duplizieren",
       "delete": "Löschen",
@@ -564,19 +600,16 @@
       "import": "Datei importieren",
       "paste": "JSON einfügen",
       "phase": {
-        "launchingTitle": "Untertitel in Resolve öffnen…",
-        "launchingHint": "Wir platzieren einen Vorschau-Untertitel auf einer temporären Spur.",
-        "editingTitle": "Zu DaVinci Resolve wechseln",
-        "editingBody": "Ein Untertitel wurde auf einer neuen Spur platziert und auf der Fusion-Seite geöffnet. Passe ihn mit dem Inspektor an und komme dann hierher zurück.",
-        "capturingTitle": "Einstellungen aus Resolve lesen…",
-        "nameTitle": "Voreinstellung benennen",
-        "nameHint": "Gib ihr einen kurzen, beschreibenden Namen."
+        "openingTitle": "Untertitel wird in Resolve geöffnet...",
+        "savingTitle": "Wird aus Resolve gespeichert...",
+        "editingTitle": "Untertitel in Resolve bearbeiten",
+        "editingBody": "Der Untertitel liegt in deiner Timeline, der Abspielkopf steht darauf. Ändere ihn im Inspektor und sieh ihn dir an, dann komm zurück und speichere.",
+        "savingBody": "Einstellungen werden gelesen und die Vorschau erstellt."
       },
       "action": {
         "cancel": "Abbrechen",
         "save": "Voreinstellung speichern",
-        "back": "Zurück",
-        "captureSettings": "Einstellungen erfassen"
+        "saving": "Speichern..."
       },
       "nameLabel": "Name der Voreinstellung",
       "namePlaceholder": "z.B. Fett Gelb, TikTok-Stil",
@@ -593,62 +626,14 @@
         "captureFailed": "Untertitel-Einstellungen konnten nicht aus Resolve gelesen werden.",
         "nameRequired": "Bitte gib einen Namen ein."
       },
-      "previewFailed": "Vorschau fehlgeschlagen"
-    }
-  },
-  "replaceStrings": {
-    "title": "Wörter suchen/ersetzen",
-    "find": "Suchen",
-    "findPlaceholder": "Zu suchender Text...",
-    "matchCase": "Groß-/Kleinschreibung beachten",
-    "replaceWith": "Ersetzen durch",
-    "replacePlaceholder": "Ersatztext...",
-    "occurrencesFound": "{{count}} Treffer gefunden",
-    "occurrencePosition": "{{current}} von {{total}}",
-    "noOccurrencesFound": "Keine Treffer gefunden",
-    "replaceCurrent": "Aktuellen ersetzen",
-    "replaceAll": "Alle ersetzen ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "Ausgabespur",
-      "placeholder": "Spur wählen",
-      "none": "Keine Spur"
+      "previewFailed": "Vorschau fehlgeschlagen",
+      "needsResolve": "Öffne DaVinci Resolve, um Stile zu bearbeiten.",
+      "rendering": "Vorschau wird erstellt...",
+      "editTitle": "Stil bearbeiten",
+      "createTitle": "Neuer Untertitelstil"
     },
-    "style": {
-      "label": "Untertitel-Stil",
-      "loading": "Vorlagen werden geladen...",
-      "noTemplates": "Keine Vorlagen gefunden.",
-      "groups": {
-        "resolve": "Resolve-Vorlagen",
-        "autosubs": "AutoSubs-Stile"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} Sprecher",
-      "label_other": "{{count}} Sprecher"
-    },
+    "chooseStyle": "Untertitelstil wählen",
     "speakerCount_one": "{{count}} Sprecher",
-    "speakerCount_other": "{{count}} Sprecher",
-    "notConnected": "Verbinde DaVinci Resolve, um Untertitel an eine Timeline zu senden.",
-    "noSubtitles": "Keine Untertitel zum Senden",
-    "chooseTrack": "Ausgabespur wählen",
-    "reviewAndSend": "Prüfen & Senden",
-    "errors": {
-      "notConnected": "Kein Editor verbunden. Verbinde DaVinci Resolve, Adobe Premiere Pro oder After Effects, um Vorlagen anzupassen.",
-      "timedOut": "Zeitüberschreitung. Stelle sicher, dass deine Schnittsoftware läuft, und versuche es erneut."
-    },
-    "sentAgain": "Gesendet · Erneut senden",
-    "title": "Ausgabe-Einstellungen",
-    "batchStyle": {
-      "applyAll": "Timeline-Stile ändern",
-      "applySpeaker": "Diesen Sprecher ändern",
-      "updating": "Stile werden aktualisiert...",
-      "success": "{{count}} Untertitelclips aktualisiert",
-      "noMatches": "Keine passenden AutoSubs-Clips gefunden",
-      "description": "Aktuelle Stile auf vorhandene Untertitel anwenden.",
-      "partial": "{{updated}} aktualisiert, {{failed}} fehlgeschlagen",
-      "failed": "Timeline-Stile konnten nicht geändert werden"
-    }
+    "speakerCount_other": "{{count}} Sprecher"
   }
 }

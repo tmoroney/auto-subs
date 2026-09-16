@@ -16,7 +16,8 @@ interface ResolveContextType {
   exportProgress: number;
   cancelRequestedRef: React.MutableRefObject<boolean>;
   refresh: () => Promise<void>;
-  refreshTemplates: () => Promise<Template[]>;
+  /** Loads the project's Fusion title templates; `force` bypasses the cache. */
+  refreshTemplates: (options?: { force?: boolean }) => Promise<Template[]>;
   pushToTimeline: (filename?: string, selectedTemplate?: string, selectedOutputTrack?: string, presetSettings?: Record<string, unknown>) => Promise<void>;
   getSourceAudio: (audioInputMode: "file" | "timeline", fileInput: string | null, inputTracks: string[]) => Promise<{ path: string, offset: number } | null>;
   setIsExporting: (isExporting: boolean) => void;
@@ -26,27 +27,50 @@ interface ResolveContextType {
 }
 
 
+const EMPTY_TIMELINE_INFO: TimelineInfo = {
+  name: "",
+  timelineId: "",
+  inputTracks: [],
+  outputTracks: [],
+  projectName: "",
+  projectId: "",
+};
+
+/**
+ * Templates live in the Resolve project's media pool, so a cached list is only
+ * valid for the project it was read from. Keying the cache this way is what
+ * stops a template added mid session (or a project switch) from being invisible
+ * until the app restarts.
+ *
+ * The key is the project's unique id where Resolve reports one: two distinct
+ * projects can carry the same display name, and keying on the name alone would
+ * serve one project's templates to the other. The name is only a fallback for
+ * hosts that report no id.
+ */
+const templatesCacheKey = (info: TimelineInfo) =>
+  info.projectId ? `id:${info.projectId}` : `name:${info.projectName || ""}`;
+
 const ResolveContext = createContext<ResolveContextType | null>(null);
 
 export function ResolveProvider({ children }: { children: React.ReactNode }) {
   const { selectedIntegration } = useIntegration();
   const exportRange = useSettingsStore((s) => s.exportRange);
-  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>({ name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [], projectName: "" });
+  const [timelineInfo, setTimelineInfo] = useState<TimelineInfo>(EMPTY_TIMELINE_INFO);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  /** Project the cached `templates` were read from, or null when unloaded. */
+  const [templatesKey, setTemplatesKey] = useState<string | null>(null);
   const [markIn] = useState(0);
   
   // Export state
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
   const cancelRequestedRef = useRef<boolean>(false);
-  const emptyTimelineInfo: TimelineInfo = { name: "", timelineId: "", templates: [], inputTracks: [], outputTracks: [], projectName: "" };
 
   const refresh = useCallback(async () => {
     try {
-      let newTimelineInfo = await getTimelineInfo();
-      setTimelineInfo({ ...newTimelineInfo, templates });
+      const newTimelineInfo = await getTimelineInfo();
+      setTimelineInfo(newTimelineInfo);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Resolve offline — fail silently during background polling. Matches both
@@ -61,33 +85,38 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
       }
       throw error;
     }
-  }, [templates]);
+  }, []);
 
-  const refreshTemplates = useCallback(async () => {
-    if (templatesLoaded) {
-      return templates;
-    }
+  const currentTemplatesKey = templatesCacheKey(timelineInfo);
+  const templatesLoaded = templatesKey !== null && templatesKey === currentTemplatesKey;
 
-    setTemplatesLoading(true);
-    try {
-      const nextTemplates = await getTemplates();
-      setTemplates(nextTemplates);
-      setTemplatesLoaded(true);
-      setTimelineInfo((info) => ({ ...info, templates: nextTemplates }));
-      return nextTemplates;
-    } finally {
-      setTemplatesLoading(false);
-    }
-  }, [templates, templatesLoaded]);
+  const refreshTemplates = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      if (!force && templatesKey !== null && templatesKey === currentTemplatesKey) {
+        return templates;
+      }
+
+      setTemplatesLoading(true);
+      try {
+        const nextTemplates = await getTemplates();
+        setTemplates(nextTemplates);
+        setTemplatesKey(currentTemplatesKey);
+        return nextTemplates;
+      } finally {
+        setTemplatesLoading(false);
+      }
+    },
+    [templates, templatesKey, currentTemplatesKey],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     if (selectedIntegration !== "davinci") {
-      setTimelineInfo(emptyTimelineInfo);
+      setTimelineInfo(EMPTY_TIMELINE_INFO);
       setTemplates([]);
       setTemplatesLoading(false);
-      setTemplatesLoaded(false);
+      setTemplatesKey(null);
       return;
     }
 
@@ -97,7 +126,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
       inFlight = true;
       try {
         const info = await getTimelineInfo();
-        if (!cancelled) setTimelineInfo({ ...info, templates });
+        if (!cancelled) setTimelineInfo(info);
       } catch (error) {
         if (cancelled) return;
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -106,7 +135,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
           errorMessage.includes('tcp connect error') ||
           errorMessage.includes('No timeline detected')
         ) {
-          setTimelineInfo(emptyTimelineInfo);
+          setTimelineInfo(EMPTY_TIMELINE_INFO);
         }
       } finally {
         inFlight = false;
@@ -127,7 +156,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
       startupTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearInterval(interval);
     };
-  }, [selectedIntegration, templates, refresh]);
+  }, [selectedIntegration]);
 
   async function pushToTimeline(
     filename?: string,

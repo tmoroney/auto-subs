@@ -46,6 +46,22 @@ flowchart TD
 * **Solution**: [AutoSubs.lua](AutoSubs-App/src-tauri/resources/AutoSubs.lua) uses LuaJIT FFI to declare and invoke native Windows APIs (`MultiByteToWideChar` and `_wfopen`) to safely handle file encodings.
 * **Fusion Macro**: The animated caption macro is stored at [Resolve-Integration/autosubs-macro.setting](Resolve-Integration/autosubs-macro.setting). See [Resolve-Integration/README.md](Resolve-Integration/README.md) for editing instructions and workflow.
 
+### 3b. Caption styles: two kinds, two owners
+
+AutoSubs sends captions either as its own bundled Fusion macro (animated, word by word, styled by a preset the app stores) or as any Text+ / Fusion title already in the user's media pool (styled in Resolve). Nearly every caption bug comes from code that handles one and forgets the other.
+
+Two files own that difference, and new code belongs in them rather than beside them:
+
+* **[modules/caption_style.lua](AutoSubs-App/src-tauri/resources/modules/caption_style.lua)** — which kind a comp holds, how text and word timings go in, how preset values are read and written, how a speaker's colour is applied. `AddSubtitles`, `BatchApplyStyle` and `GeneratePreview` all call into it; they used to carry three copies of the branch and had already drifted apart.
+* **[src/lib/caption-style.ts](AutoSubs-App/src/lib/caption-style.ts)** — the `CaptionStyle` union that is the single answer to "what will Send put on the timeline", plus what to send for it.
+
+Two rules worth knowing before changing anything here:
+
+* **The look is edited in Fusion, never mirrored in React.** The macro's inspector is the editing UI and Resolve's viewer is the only thing that can play the animation. The app owns the preset *library* (name, thumbnail, import/export, per speaker colour) and nothing else. A control added to the macro must not need a second implementation in the app.
+* **Unknown preset keys are skipped, and that is the whole compatibility story.** `SetInputValues` only applies keys the installed macro declares in `InputKeys`, so presets degrade across macro versions on their own. There is no preset versioning and no migration; do not add one.
+
+See [Resolve-Integration/docs/caption-styles.md](Resolve-Integration/docs/caption-styles.md) for the full picture.
+
 ### 4. Adobe CEP WebSocket Bridge (Port `8185`)
 * Communicates with Adobe Premiere Pro and After Effects through the bundled CEP extension ([Adobe-Extension](Adobe-Extension)).
 * **Tricky Detail**: The extension launches a WebSocket client connecting to the Tauri app's built-in server ([adobe_bridge.rs](AutoSubs-App/src-tauri/src/adobe_bridge.rs)) to coordinate timeline audio exports and subtitle imports.
@@ -114,4 +130,5 @@ Always install dependencies inside `AutoSubs-App/` and compile using these targe
 - **[AutoSubs-App README](AutoSubs-App/README.md)** - Technical architecture and code organization
 - **[CLI Guide](CLI.md)** - Command-line interface reference
 - **[Resolve Integration](Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
+- **[Caption Styles](Resolve-Integration/docs/caption-styles.md)** - the two caption kinds, presets, and the Fusion editing round trip
 - **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details

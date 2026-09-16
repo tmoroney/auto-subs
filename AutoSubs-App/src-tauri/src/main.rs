@@ -258,7 +258,7 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
     let mut builder =
         tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
             .title("AutoSubs")
-            .inner_size(750.0, 700.0)
+            .inner_size(800.0, 700.0)
             .decorations(true)
             .accept_first_mouse(true)
             .visible(false);
@@ -334,6 +334,17 @@ fn main() {
             // Focus the existing window when a second instance is launched
             let _ = app.get_webview_window("main").map(|w| w.set_focus());
         }));
+        // Restore the previous window geometry on launch. VISIBLE is excluded:
+        // the window starts hidden and the app's own show/focus flow reveals it.
+        builder = builder.plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        );
     }
 
     builder

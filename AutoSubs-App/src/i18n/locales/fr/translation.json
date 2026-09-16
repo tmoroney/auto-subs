@@ -525,36 +525,72 @@
   "theme": {
     "toggle": "Basculer le thème"
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "Piste"
-      },
-      "template": {
-        "title": "Style"
-      },
-      "speakers": {
-        "title": "Intervenants"
-      }
+  "replaceStrings": {
+    "title": "Rechercher/Remplacer des mots",
+    "find": "Rechercher",
+    "findPlaceholder": "Texte à rechercher...",
+    "matchCase": "Respecter la casse",
+    "replaceWith": "Remplacer par",
+    "replacePlaceholder": "Texte de remplacement...",
+    "occurrencesFound": "{{count}} occurrence trouvée",
+    "occurrencePosition": "{{current}} sur {{total}}",
+    "noOccurrencesFound": "Aucune occurrence trouvée",
+    "replaceCurrent": "Remplacer l’actuelle",
+    "replaceAll": "Tout remplacer ({{count}})"
+  },
+  "captions": {
+    "track": {
+      "label": "Piste de sortie",
+      "placeholder": "Choisir une piste",
+      "none": "Aucune piste"
     },
-    "title": "Envoyer à la timeline",
-    "ready": {
-      "title": "Sous-titres prêts",
-      "description": "Vos sous-titres ont été générés et sont prêts à être envoiés à la timeline."
+    "style": {
+      "loading": "Chargement des modèles...",
+      "noTemplates": "Aucun modèle trouvé.",
+      "label": "Style de sous-titres",
+      "autosubs": {
+        "name": "Sous-titres AutoSubs",
+        "description": "Animation mot à mot avec des contrôles simples.",
+        "unavailable": "Absent du chutier de ce projet."
+      },
+      "resolve": {
+        "name": "Titre Resolve",
+        "description": "Un titre Text+ du chutier de ce projet."
+      },
+      "refresh": "Actualiser la liste",
+      "unavailable": "Style indisponible"
     },
-    "adding": "Envoi en cours...",
-    "success": "Envoyé à la timeline",
-    "mode": {
-      "regular": "Modèle normal",
-      "animated": "Modèle animé"
+    "speakers": {
+      "label_one": "{{count}} intervenant",
+      "label_other": "{{count}} intervenants"
+    },
+    "notConnected": "Connectez DaVinci Resolve pour envoyer les sous-titres vers une timeline.",
+    "noSubtitles": "Aucun sous-titre à envoyer",
+    "chooseTrack": "Choisir une piste de sortie",
+    "reviewAndSend": "Vérifier et envoyer",
+    "errors": {
+      "notConnected": "Aucun éditeur connecté. Connectez DaVinci Resolve, Adobe Premiere Pro ou After Effects pour personnaliser les modèles.",
+      "timedOut": "Délai de connexion dépassé. Vérifiez que votre logiciel de montage est ouvert et réessayez."
+    },
+    "sentAgain": "Envoyé · Renvoyer",
+    "title": "Paramètres de sortie",
+    "batchStyle": {
+      "applyAll": "Actualiser les styles",
+      "updating": "Mise à jour des styles...",
+      "success": "{{count}} clips de sous-titres actualisés",
+      "noMatches": "Aucun clip AutoSubs correspondant",
+      "partial": "{{updated}} actualisés, {{failed}} en échec",
+      "failed": "Impossible d’actualiser les styles"
+    },
+    "send": {
+      "adding": "Envoi en cours..."
     },
     "conflict": {
       "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existent."
     },
     "preset": {
       "new": "Nouveau préréglage",
-      "builtIn": "Intégré",
-      "custom": "Personnalisé",
+      "moreActions": "Plus d'actions",
       "preview": "Générer l’aperçu",
       "duplicate": "Dupliquer",
       "delete": "Supprimer",
@@ -564,19 +600,16 @@
       "import": "Importer un fichier",
       "paste": "Coller JSON",
       "phase": {
-        "launchingTitle": "Ouverture du sous-titre dans Resolve…",
-        "launchingHint": "Nous allons placer un sous-titre d'aperçu sur une piste temporaire.",
-        "editingTitle": "Basculer vers DaVinci Resolve",
-        "editingBody": "Un sous-titre a été placé sur une nouvelle piste et ouvert dans la page Fusion. Personnalisez-le à l'aide de l'inspecteur, puis revenez ici.",
-        "capturingTitle": "Lecture des paramètres depuis Resolve…",
-        "nameTitle": "Nommez votre préréglage",
-        "nameHint": "Donnez-lui un nom court et descriptif."
+        "openingTitle": "Ouverture du sous-titre dans Resolve...",
+        "savingTitle": "Enregistrement depuis Resolve...",
+        "editingTitle": "Modifier le sous-titre dans Resolve",
+        "editingBody": "Le sous-titre est sur votre timeline, la tête de lecture dessus. Modifiez-le dans l'inspecteur et regardez-le tourner, puis revenez enregistrer.",
+        "savingBody": "Lecture de vos réglages et création de l'aperçu."
       },
       "action": {
         "cancel": "Annuler",
         "save": "Enregistrer le préréglage",
-        "back": "Retour",
-        "captureSettings": "Capturer les paramètres"
+        "saving": "Enregistrement..."
       },
       "nameLabel": "Nom du préréglage",
       "namePlaceholder": "ex. Jaune gras, Style TikTok",
@@ -593,62 +626,14 @@
         "captureFailed": "Impossible de lire les paramètres du sous-titre depuis Resolve.",
         "nameRequired": "Veuillez entrer un nom."
       },
-      "previewFailed": "Aperçu impossible"
-    }
-  },
-  "replaceStrings": {
-    "title": "Rechercher/Remplacer des mots",
-    "find": "Rechercher",
-    "findPlaceholder": "Texte à rechercher...",
-    "matchCase": "Respecter la casse",
-    "replaceWith": "Remplacer par",
-    "replacePlaceholder": "Texte de remplacement...",
-    "occurrencesFound": "{{count}} occurrence trouvée",
-    "occurrencePosition": "{{current}} sur {{total}}",
-    "noOccurrencesFound": "Aucune occurrence trouvée",
-    "replaceCurrent": "Remplacer l’actuelle",
-    "replaceAll": "Tout remplacer ({{count}})"
-  },
-  "output": {
-    "track": {
-      "label": "Piste de sortie",
-      "placeholder": "Choisir une piste",
-      "none": "Aucune piste"
+      "previewFailed": "Aperçu impossible",
+      "needsResolve": "Ouvrez DaVinci Resolve pour modifier les styles.",
+      "rendering": "Aperçu en cours...",
+      "editTitle": "Modifier le style",
+      "createTitle": "Nouveau style"
     },
-    "style": {
-      "label": "Style de sous-titres",
-      "loading": "Chargement des modèles...",
-      "noTemplates": "Aucun modèle trouvé.",
-      "groups": {
-        "resolve": "Modèles Resolve",
-        "autosubs": "Styles AutoSubs"
-      }
-    },
-    "speakers": {
-      "label_one": "{{count}} intervenant",
-      "label_other": "{{count}} intervenants"
-    },
+    "chooseStyle": "Choisir un style",
     "speakerCount_one": "{{count}} intervenant",
-    "speakerCount_other": "{{count}} intervenants",
-    "notConnected": "Connectez DaVinci Resolve pour envoyer les sous-titres vers une timeline.",
-    "noSubtitles": "Aucun sous-titre à envoyer",
-    "chooseTrack": "Choisir une piste de sortie",
-    "reviewAndSend": "Vérifier et envoyer",
-    "errors": {
-      "notConnected": "Aucun éditeur connecté. Connectez DaVinci Resolve, Adobe Premiere Pro ou After Effects pour personnaliser les modèles.",
-      "timedOut": "Délai de connexion dépassé. Vérifiez que votre logiciel de montage est ouvert et réessayez."
-    },
-    "sentAgain": "Envoyé · Renvoyer",
-    "title": "Paramètres de sortie",
-    "batchStyle": {
-      "applyAll": "Actualiser les styles",
-      "applySpeaker": "Actualiser cet intervenant",
-      "updating": "Mise à jour des styles...",
-      "success": "{{count}} clips de sous-titres actualisés",
-      "noMatches": "Aucun clip AutoSubs correspondant",
-      "description": "Appliquer les styles aux sous-titres existants.",
-      "partial": "{{updated}} actualisés, {{failed}} en échec",
-      "failed": "Impossible d’actualiser les styles"
-    }
+    "speakerCount_other": "{{count}} intervenants"
   }
 }

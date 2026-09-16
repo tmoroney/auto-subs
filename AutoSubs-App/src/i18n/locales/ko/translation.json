@@ -525,36 +525,72 @@
       "disconnected": "연결 끊김"
     }
   },
-  "addToTimeline": {
-    "steps": {
-      "outputTrack": {
-        "title": "트랙"
+  "replaceStrings": {
+    "find": "찾기",
+    "findPlaceholder": "찾을 텍스트...",
+    "matchCase": "대소문자 일치",
+    "noOccurrencesFound": "일치하는 항목이 없습니다",
+    "occurrencePosition": "{{current}} / {{total}}",
+    "occurrencesFound": "{{count}}개 항목 찾음",
+    "replaceAll": "모두 바꾸기 ({{count}})",
+    "replaceCurrent": "현재 항목 바꾸기",
+    "replacePlaceholder": "바꿀 텍스트...",
+    "replaceWith": "다음으로 바꾸기",
+    "title": "단어 찾기/바꾸기"
+  },
+  "captions": {
+    "track": {
+      "label": "출력 트랙",
+      "placeholder": "트랙 선택",
+      "none": "트랙 없음"
+    },
+    "style": {
+      "loading": "템플릿 불러오는 중...",
+      "noTemplates": "템플릿을 찾을 수 없습니다.",
+      "label": "자막 스타일",
+      "autosubs": {
+        "name": "AutoSubs 자막",
+        "description": "단어별 애니메이션과 간편한 스타일 컨트롤.",
+        "unavailable": "이 프로젝트의 미디어 풀에 없습니다."
       },
-      "template": {
-        "title": "스타일"
+      "resolve": {
+        "name": "Resolve 타이틀",
+        "description": "이 프로젝트 미디어 풀의 Text+ 타이틀."
       },
-      "speakers": {
-        "title": "화자"
-      }
+      "refresh": "목록 새로고침",
+      "unavailable": "스타일 없음"
+    },
+    "speakers": {
+      "label_one": "화자 {{count}}명",
+      "label_other": "화자 {{count}}명"
+    },
+    "notConnected": "타임라인으로 자막을 보내려면 DaVinci Resolve에 연결하세요.",
+    "noSubtitles": "보낼 자막이 없습니다",
+    "chooseTrack": "출력 트랙 선택",
+    "reviewAndSend": "검토 후 보내기",
+    "errors": {
+      "notConnected": "연결된 편집기가 없습니다. 템플릿을 사용자화하려면 DaVinci Resolve, Adobe Premiere Pro 또는 After Effects에 연결하세요.",
+      "timedOut": "연결 시간이 초과되었습니다. 편집 소프트웨어가 실행 중인지 확인한 후 다시 시도하세요."
+    },
+    "sentAgain": "보냄 · 다시 보내기",
+    "title": "출력 설정",
+    "batchStyle": {
+      "applyAll": "타임라인 스타일 업데이트",
+      "updating": "스타일 업데이트 중...",
+      "success": "자막 클립 {{count}}개 업데이트됨",
+      "noMatches": "일치하는 AutoSubs 클립이 없습니다",
+      "partial": "{{updated}}개 업데이트, {{failed}}개 실패",
+      "failed": "타임라인 스타일을 업데이트하지 못했습니다"
+    },
+    "send": {
+      "adding": "전송 중..."
     },
     "conflict": {
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
     },
-    "adding": "전송 중...",
-    "success": "타임라인으로 전송됨",
-    "title": "타임라인으로 전송",
-    "ready": {
-      "title": "자막 준비 완료",
-      "description": "자막이 생성되어 타임라인에 전송할 준비가 되었습니다."
-    },
-    "mode": {
-      "regular": "일반 템플릿",
-      "animated": "애니메이션 템플릿"
-    },
     "preset": {
       "new": "새 프리셋",
-      "builtIn": "내장됨",
-      "custom": "사용자 정의",
+      "moreActions": "기타 작업",
       "preview": "미리보기 생성",
       "duplicate": "복제",
       "delete": "삭제",
@@ -564,19 +600,16 @@
       "import": "파일 가져오기",
       "paste": "JSON 붙여넣기",
       "phase": {
-        "launchingTitle": "Resolve에서 자막 열기 중…",
-        "launchingHint": "임시 트랙에 미리보기 자막을 배치합니다.",
-        "editingTitle": "DaVinci Resolve로 전환",
-        "editingBody": "새 트랙에 자막이 배치되고 Fusion 페이지에서 열렸습니다. 검사기를 사용하여 사용자 정의한 후 여기로 돌아오세요.",
-        "capturingTitle": "Resolve에서 설정 읽기 중…",
-        "nameTitle": "프리셋 이름 지정",
-        "nameHint": "짧고 설명적인 이름을 지정하세요."
+        "openingTitle": "Resolve에서 자막을 여는 중...",
+        "savingTitle": "Resolve에서 저장하는 중...",
+        "editingTitle": "Resolve에서 자막 편집",
+        "editingBody": "자막이 타임라인에 있고 재생 헤드가 그 위에 있습니다. 인스펙터로 수정하고 재생을 확인한 뒤 돌아와 저장하세요.",
+        "savingBody": "설정을 읽고 미리보기를 만드는 중입니다."
       },
       "action": {
         "cancel": "취소",
         "save": "프리셋 저장",
-        "back": "뒤로",
-        "captureSettings": "설정 캡처"
+        "saving": "저장 중..."
       },
       "nameLabel": "프리셋 이름",
       "namePlaceholder": "예: 굵은 노란색, 틱톡 스타일",
@@ -593,62 +626,14 @@
         "captureFailed": "Resolve에서 자막 설정을 읽을 수 없습니다.",
         "nameRequired": "이름을 입력하세요."
       },
-      "previewFailed": "미리보기를 만들 수 없음"
-    }
-  },
-  "replaceStrings": {
-    "find": "찾기",
-    "findPlaceholder": "찾을 텍스트...",
-    "matchCase": "대소문자 일치",
-    "noOccurrencesFound": "일치하는 항목이 없습니다",
-    "occurrencePosition": "{{current}} / {{total}}",
-    "occurrencesFound": "{{count}}개 항목 찾음",
-    "replaceAll": "모두 바꾸기 ({{count}})",
-    "replaceCurrent": "현재 항목 바꾸기",
-    "replacePlaceholder": "바꿀 텍스트...",
-    "replaceWith": "다음으로 바꾸기",
-    "title": "단어 찾기/바꾸기"
-  },
-  "output": {
-    "track": {
-      "label": "출력 트랙",
-      "placeholder": "트랙 선택",
-      "none": "트랙 없음"
+      "previewFailed": "미리보기를 만들 수 없음",
+      "needsResolve": "DaVinci Resolve를 열면 편집할 수 있습니다.",
+      "rendering": "미리보기 생성 중...",
+      "editTitle": "스타일 편집",
+      "createTitle": "새 자막 스타일"
     },
-    "style": {
-      "label": "자막 스타일",
-      "loading": "템플릿 불러오는 중...",
-      "noTemplates": "템플릿을 찾을 수 없습니다.",
-      "groups": {
-        "resolve": "Resolve 템플릿",
-        "autosubs": "AutoSubs 스타일"
-      }
-    },
-    "speakers": {
-      "label_one": "화자 {{count}}명",
-      "label_other": "화자 {{count}}명"
-    },
+    "chooseStyle": "자막 스타일 선택",
     "speakerCount_one": "화자 {{count}}명",
-    "speakerCount_other": "화자 {{count}}명",
-    "notConnected": "타임라인으로 자막을 보내려면 DaVinci Resolve에 연결하세요.",
-    "noSubtitles": "보낼 자막이 없습니다",
-    "chooseTrack": "출력 트랙 선택",
-    "reviewAndSend": "검토 후 보내기",
-    "errors": {
-      "notConnected": "연결된 편집기가 없습니다. 템플릿을 사용자화하려면 DaVinci Resolve, Adobe Premiere Pro 또는 After Effects에 연결하세요.",
-      "timedOut": "연결 시간이 초과되었습니다. 편집 소프트웨어가 실행 중인지 확인한 후 다시 시도하세요."
-    },
-    "sentAgain": "보냄 · 다시 보내기",
-    "title": "출력 설정",
-    "batchStyle": {
-      "applyAll": "타임라인 스타일 업데이트",
-      "applySpeaker": "이 화자 업데이트",
-      "updating": "스타일 업데이트 중...",
-      "success": "자막 클립 {{count}}개 업데이트됨",
-      "noMatches": "일치하는 AutoSubs 클립이 없습니다",
-      "description": "현재 스타일을 기존 자막에 적용합니다.",
-      "partial": "{{updated}}개 업데이트, {{failed}}개 실패",
-      "failed": "타임라인 스타일을 업데이트하지 못했습니다"
-    }
+    "speakerCount_other": "화자 {{count}}명"
   }
 }

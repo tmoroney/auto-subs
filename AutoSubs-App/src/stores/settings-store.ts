@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { platform } from "@tauri-apps/plugin-os";
-import { Settings } from "@/types";
+import { CaptionStyle, Settings } from "@/types";
 import { getPreferredUiLanguage, normalizeUiLanguage, initI18n } from "@/i18n";
 import {
   models,
@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   onboardingCompleted: false,
   lastSeenVersion: "",
   showEnglishOnlyModels: false,
+  subtitlePanelWidth: 400,
 
   // Survey notification settings
   timesDismissedSurvey: 0,
@@ -68,17 +69,71 @@ export const DEFAULT_SETTINGS: Settings = {
     aftereffects: [],
   },
   selectedOutputTrack: "1",
-  selectedTemplate: { value: "Default Template", label: "Default Template" },
 
-  // AutoSubs Caption settings
-  presetId: DEFAULT_PRESET_ID,
-  captionMode: "animated",
-
-  // Animation settings
-  animationType: "none",
-  highlightType: "none",
-  highlightColor: "#000000",
+  // Caption style
+  captionStyle: { source: "autosubs", presetId: DEFAULT_PRESET_ID },
 };
+
+// ─── Persisted-shape normalisation ────────────────────────────────────────
+/**
+ * Reshape settings loaded from disk into the current schema.
+ *
+ * Before the `captionStyle` union, the caption selection lived in three
+ * fields (`captionMode`, `selectedTemplate`, `presetId`) that callers had to
+ * keep in agreement. Older settings files still carry them, so map them onto
+ * the union and drop them.
+ *
+ * The Tauri storage adapter has no version field (it stores the bare settings
+ * object so the on-disk format stays readable), so this runs on every load and
+ * must be idempotent: already-migrated settings pass straight through.
+ */
+export function normalizePersistedSettings(persisted: unknown): Partial<Settings> {
+  if (!persisted || typeof persisted !== "object") return {};
+  const {
+    captionMode,
+    selectedTemplate,
+    presetId,
+    captionStyle,
+    ...rest
+  } = persisted as Record<string, unknown>;
+
+  const next = rest as Partial<Settings>;
+
+  if (isCaptionStyle(captionStyle)) {
+    next.captionStyle = captionStyle;
+    return next;
+  }
+
+  const templateName =
+    selectedTemplate && typeof selectedTemplate === "object"
+      ? (selectedTemplate as { value?: unknown }).value
+      : undefined;
+
+  if (captionMode === "regular" && typeof templateName === "string" && templateName) {
+    next.captionStyle = { source: "resolve", templateName };
+  } else {
+    // Anything else (including a missing mode) lands on the animated default,
+    // which is what every install has shipped with.
+    next.captionStyle = {
+      source: "autosubs",
+      presetId: typeof presetId === "string" && presetId ? presetId : DEFAULT_PRESET_ID,
+    };
+  }
+
+  return next;
+}
+
+function isCaptionStyle(value: unknown): value is CaptionStyle {
+  if (!value || typeof value !== "object") return false;
+  const style = value as Partial<CaptionStyle> & { source?: string };
+  if (style.source === "autosubs") {
+    return typeof (style as { presetId?: unknown }).presetId === "string";
+  }
+  if (style.source === "resolve") {
+    return typeof (style as { templateName?: unknown }).templateName === "string";
+  }
+  return false;
+}
 
 // ─── Store type ───────────────────────────────────────────────────────────
 interface SettingsStore extends Settings {
@@ -142,6 +197,10 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: STORE_KEY,
       storage: createTauriStorage<Settings>(STORE_FILE, STORE_KEY),
+      merge: (persisted, current) => ({
+        ...current,
+        ...normalizePersistedSettings(persisted),
+      }),
       // Only persist the settings fields — never the hydration flag or actions.
       partialize: (state) => {
         const {

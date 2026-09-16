@@ -8,7 +8,7 @@ This document describes how AutoSubs integrates with DaVinci Resolve: architectu
 
 - **Set up development environment** → [Development Workflow](#development-workflow)
 - **Change Resolve integration logic** → [Lua Server](#lua-server-autosubs_corelua)
-- **Modify the animated caption** → [Fusion Macro](#fusion-macro-autosubs-macrosetting)
+- **Modify the animated caption** → [Caption styles](docs/caption-styles.md)
 - **Understand the architecture** → [Architecture](#architecture)
 
 ## Architecture
@@ -75,6 +75,7 @@ npm run dev             # starts the app in dev mode
 | File | Purpose |
 |---|---|
 | `modules/autosubs_core.lua` | Main server and Resolve API functions |
+| `modules/caption_style.lua` | Everything that differs between the two caption kinds |
 | `modules/luaresolve.lua` | Helper functions for the Resolve API |
 | `modules/font_fallback.lua` | Font fallback for non-Latin scripts |
 | `modules/libavutil.lua` | Audio utilities |
@@ -130,13 +131,18 @@ export async function jumpToTime(seconds: number) {
 ```
 
 ```lua
--- autosubs_core.lua
-handlers["JumpToTime"] = function(data)
-  local timeline = getCurrentTimeline()
-  timeline:SetCurrentTimecode(secondsToTimecode(data.seconds))
-  return { ok = true }
-end
+-- autosubs_core.lua, in the `handlers` table
+JumpToTime = function(req)
+    JumpToTime(req.seconds)
+    return { message = "Jumped to time" }
+end,
 ```
+
+Handlers take the decoded request table rather than positional arguments, so a
+field renamed on the TypeScript side arrives as `nil` instead of silently
+shifting every argument after it. The return value is encoded as the response
+body; a handler that stops or reloads the server returns a control table
+(`{ quit = true }`) as its second result.
 
 | Function | Description |
 |---|---|
@@ -148,129 +154,23 @@ end
 | `CheckTrackConflicts` | Checks if subtitles would conflict with existing clips on a track. |
 | `AddSubtitles` | Adds subtitle clips to the timeline using the Fusion macro. |
 | `GeneratePreview` | Renders a single preview frame of a subtitle clip. |
-| `StartPresetEdit` | Drops a test clip in Fusion for interactive preset editing. |
-| `CapturePresetSettings` | Reads macro input values and cleans up the preset edit session. |
-| `CancelPresetEdit` | Tears down the preset-edit clip/track without capturing. |
+| `BatchApplyStyle` | Restyles caption clips already on the timeline. |
+| `OpenPresetEdit` | Opens a caption in Fusion for editing and keeps it open. |
+| `SavePresetEdit` | Reads the open caption's values, renders its thumbnail, closes. |
+| `CancelPresetEdit` | Closes the edit session without reading anything. |
 | `JumpToTime` | Moves the playhead to a given time in seconds. |
 
 For parameters and return shapes, the Lua handlers in `autosubs_core.lua` are the authoritative reference.
 
-## Fusion Macro (`autosubs-macro.setting`)
 
-The macro is a Fusion template stored as a `.setting` file. It renders animated captions with per-word highlighting using Text+, StyledTextFollower, KeyStretcherMod, BezierSpline, and XYPath tools.
+## Caption styles and the Fusion macro
 
-Lua functions embedded in the macro's `CustomData` field handle preset get/set (`GetInputValues`, `SetInputValues`), animation logic (`SetAnimations`), word-timing highlight updates (`UpdateHighlight`), and text wrap (`UpdateWrap`).
+The two kinds of caption, the preset format, and how a style is edited are
+documented separately:
 
-### Text wrap (Resolve 20+)
-
-The Style tab exposes **Wrap to Text Box** and **Box Width**. These map onto native Text+ Layout inputs (`LayoutType`, `Wrap`, `LayoutWidth`) because the macro hides the Layout tab. Wrap is off by default so existing captions keep a single line. Requires DaVinci Resolve 20 or later; on older versions the controls are harmless no-ops.
-
-### Recommended Development Extension
-
-For editing `.setting` files, the **[Fusion Setting Highlighter](https://github.com/tmoroney/fusion-setting-highlighter)** extension is highly recommended. It provides syntax highlighting for Fusion `.setting` files with full embedded Lua support inside script blocks.
-
-**Installation:**
-
-macOS / Linux:
-```bash
-curl -fsSL https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master/scripts/install.sh | sh
-```
-
-Windows (PowerShell):
-```powershell
-irm https://raw.githubusercontent.com/tmoroney/fusion-setting-highlighter/master/scripts/install.ps1 | iex
-```
-
-### Editing the Macro
-
-You need a Fusion text clip on the timeline to open in the Fusion page. The easiest starting point is the "AutoSubs Caption" clip in the **AutoSubs** bin in your media pool:
-
-1. If the bin isn't in your media pool, drag `AutoSubs-App/src-tauri/resources/caption-bin.drb` into the media pool to import it.
-2. Drag the **AutoSubs Caption** clip from the bin onto the timeline.
-3. Double-click the clip to open it in the Fusion page.
-4. Delete the existing macro node.
-5. Drag `autosubs-macro.setting` into the Fusion page — it appears as a node and is ready to edit.
-
-<details>
-<summary><strong>Animation Architecture</strong></summary>
-
-All animation logic lives in `CustomData` inside `autosubs-macro.setting` as Lua long-bracket strings (`[[ ... ]]`) that are executed at runtime via `loadstring`. There are three parts:
-
-**`Animations` table** — named strings, one `ApplyX` and one `ResetX` per animation. Each function receives a single `ctx` table:
-
-```lua
-ctx = {
-    follower      -- StyledTextFollower tool
-    animStretcher -- AnimationKeyframeStretcher tool
-    animSpline    -- BezierSpline connected to the stretcher
-    animInEnd     -- frame where the in-animation ends (0–100 range)
-    animOutStart  -- frame where the out-animation starts (0–100 range)
-    mode          -- 0 = in only, 1 = out only, 2 = both
-    level         -- 0 = line, 1 = word
-}
-```
-
-**`AnimationRegistry`** — an ordered list of descriptors. `SetAnimations` loops over this; it never hardcodes individual animation names.
-
-```lua
-{ controlKey = "PopInEnabled", usesFade = true, applyKey = "ApplyPopIn", resetKey = "ResetPopIn" }
-```
-
-- `controlKey` — the `UserControl` checkbox that enables this animation
-- `usesFade` — if `true`, fade is automatically applied as a base layer when this animation is enabled (even if `FadeEnabled` is off)
-- `applyKey` / `resetKey` — keys into the `Animations` table
-
-**`SetAnimations`** — the orchestrator. On each call it: resets all registered animations, checks which are enabled and whether fade is needed, applies fade once (or flat opacity), then applies each enabled animation. It does not need to change when new animations are added.
-
-</details>
-
-> Full detail on the `ctx` table, the `AnimationRegistry`/`SetAnimations` pattern, the per-animation recipes (Fade, PopIn, SlideUp), and the order/timing spline is in [`docs/animation-system.md`](docs/animation-system.md).
-
-### Adding a New Animation
-
-Every animation needs its own enable/disable toggle, so adding one always involves both the logic and the Fusion node graph:
-
-1. Add `ApplyX` and `ResetX` strings to the `Animations` table in `CustomData`.
-2. Add a descriptor entry to `AnimationRegistry`.
-3. Add the control key to `InputKeys` in `CustomData` (so presets capture its value).
-4. Add a `UserControl` checkbox entry in the `UserControls = ordered()` block (around line 986), following the same pattern as `SlideUpEnabled`:
-
-```lua
-BounceEnabled = {
-    LINKS_Name = "Bounce",
-    LINKID_DataType = "Number",
-    INPID_InputControl = "CheckboxControl",
-    INP_Integer = true,
-    INP_Default = 0,
-    INP_Passive = true,
-    INP_External = false,
-    CBC_TriState = false,
-},
-```
-
-Steps 1–2 are pure text edits in `autosubs-macro.setting`. Steps 3–4 require opening the macro in the Fusion page.
-
-### Maintainer Note: Updating the Caption Bin
-
-> **For maintainers only** — do not include `caption-bin.drb` in your PR.
-
-When the macro changes, the caption bin must be regenerated before release. This is handled by the maintainer, not contributors, since the binary is opaque in code review and the app must be codesigned before shipping.
-
-Run `npm run setup-resolve` from `AutoSubs-App/`, then in Resolve open **Workspace → Scripts → AutoSubs - Update Caption Template** with any project and timeline open. The script imports (or finds) the AutoSubs bin, appends the caption template to a temporary video track, replaces its `AutoSubs` tool with the current `autosubs-macro.setting`, and waits. Drag that clip from the temporary track into the new **AutoSubs** bin and the script versions it, exports `caption-bin.drb`, updates `modules/caption_template_version.lua`, and cleans up.
-
-The clip name (**"AutoSubs Caption"**, optionally suffixed with a date) is hardcoded in `autosubs_core.lua`, so let the script do the naming.
-
-#### Two Resolve/Fusion quirks the script has to work around
-
-Both fail *silently*, and both previously caused the script to export a bin still containing the **previous** macro:
-
-1. **`mediaPool:AppendToTimeline()` does not report a blocked append.** If anything already occupies the target slot on the target track, nothing is added but the call still returns a truthy `timelineItem`. Every method on that handle returns *no value at all* (not even `nil`), so `tostring(item:GetName())` raises "value expected" rather than printing `nil`. The script therefore appends onto a freshly added track and validates the handle with `GetFusionCompCount() == 1` before continuing.
-
-2. **`comp:Paste()` only works on the Fusion-API comp, never the Resolve-API one.** A comp from `timelineItem:GetFusionCompByIndex()` reliably round-trips `SetData`/`GetData` and reports its tools, but `Paste()` on it returns `false` and adds nothing. Only `fu:GetCurrentComp()` can paste — and "current" is whatever comp was last active, which appending does not change. A long session also accumulates hundreds of open comps (`#fu:GetCompList()` can reach the high hundreds), so the current comp is effectively arbitrary.
-
-   The script bridges the two: it stamps a one-off token onto the Resolve-API comp, calls `LoadFusionCompByName()` plus `OpenPage("fusion")` to make that comp active, and refuses to paste unless `fu:GetCurrentComp()` reports the same token back. After pasting it stamps the template version and re-reads it through the Resolve API to confirm the edit landed on the timeline clip.
-
-Because the clip you drag is a manual choice, the script also re-checks that version stamp on the dragged clip before overwriting `caption-bin.drb`. If the stamp is missing it aborts rather than shipping a stale template.
+- [`docs/caption-styles.md`](docs/caption-styles.md) - the two caption kinds, the preset format, the macro, and the editing round trip
+- [`docs/animation-system.md`](docs/animation-system.md) - how the macro implements its animations
+- [`docs/maintainer-template-release.md`](docs/maintainer-template-release.md) - regenerating `caption-bin.drb` for a release
 
 ## Platform-Specific Notes
 
@@ -297,7 +197,9 @@ Because the clip you drag is a manual choice, the script also re-checks that ver
 
 App-specific docs live here; all general Resolve/Fusion reference lives in the skill (single source of truth):
 
+- `docs/caption-styles.md` — the two caption kinds, the preset format, and the editing round trip (app-specific)
 - `docs/animation-system.md` — how the AutoSubs macro implements its animations (app-specific)
+- `docs/maintainer-template-release.md` — regenerating `caption-bin.drb` (maintainers)
 - `davinci-resolve-fusion/` — the general Resolve/Fusion skill (distributed separately; also the reference for this project):
     - `references/resolve-api.txt` — Resolve scripting API (re-sync with `davinci-resolve-fusion/scripts/update-resolve-api.sh`)
     - `references/fusion-manual/00-index.md` — Fusion manual, split one-file-per-class for easy searching
@@ -305,3 +207,4 @@ App-specific docs live here; all general Resolve/Fusion reference lives in the s
     - `examples/` — runnable Resolve API examples
 
 Blackmagic's documentation is limited and sometimes outdated. `autosubs_core.lua` is the most reliable reference for working Resolve API usage.
+
