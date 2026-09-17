@@ -4,10 +4,10 @@ Local-first AI subtitles. No cloud, no subscription, no data leaving your machin
 
 Use it as a standalone app, or connect to **DaVinci Resolve**, **Adobe Premiere Pro**, and **After Effects**.
 
-- 🎙️ **Transcription:** Whisper, Parakeet, Moonshine, SenseVoice, Canary, and more.
-- 👥 **Speaker Diarization:** Identifies and labels different speakers in the transcript, enabling per-speaker styling
-- 🌍 **Over 1,000 Languages:** Transcription and translation across a wide range of languages
-- 💻 **Cross-Platform:** macOS (Apple Silicon/Intel), Windows (Vulkan/DirectML), Linux
+- 🎙️ **Speech to Subtitles:** Turns audio or video into accurate, timestamped subtitles. Pick from several AI models, from fast and lightweight to maximum accuracy.
+- 👥 **Speaker Labels:** Automatically detects who is speaking and labels each speaker, so you can give each person their own style.
+- 🌍 **1,000+ Languages:** Transcribe or translate almost any language, all processed on your own machine.
+- 💻 **Mac, Windows & Linux:** Works on Apple Silicon and Intel Macs, Windows, and Linux. Everything runs offline.
 
 [![Downloads](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-downloads.json)](https://tom-moroney.com/release-tracker/)
 [![Weekly App Opens](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-weekly-users.json&style=flat)](https://tom-moroney.com/release-tracker/)
