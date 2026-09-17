@@ -4,9 +4,9 @@ Local-first AI subtitles. No cloud, no subscription, no data leaving your machin
 
 Use it as a standalone app, or connect to **DaVinci Resolve**, **Adobe Premiere Pro**, and **After Effects**.
 
-- 🎙️ **Transcription:** Whisper, Moonshine, and Parakeet models via whisper-rs and ONNX Runtime
+- 🎙️ **Transcription:** Whisper, Parakeet, Moonshine, SenseVoice, Canary, and more via whisper-rs and ONNX Runtime
 - 👥 **Speaker Diarization:** Identifies and labels different speakers in the transcript, enabling per-speaker styling
-- 🌍 **100+ Languages:** Transcription and translation across a wide range of languages
+- 🌍 **Over 1,000 Languages:** Transcription and translation across a wide range of languages
 - 💻 **Cross-Platform:** macOS (Apple Silicon/Intel), Windows (Vulkan/DirectML), Linux
 
 [![Downloads](https://img.shields.io/endpoint?url=https://tom-moroney.com/release-tracker/data/badge-downloads.json)](https://tom-moroney.com/release-tracker/)
@@ -129,10 +129,11 @@ Useful Sensors' Moonshine, via ONNX Runtime. The `tiny` English model is quantiz
 
 ### Parakeet
 
-NVIDIA's Parakeet-TDT-0.6B-v3 (int8 ONNX). Fast and accurate, with support for 25 European languages plus Russian and Ukrainian.
+NVIDIA's Parakeet-TDT-0.6B-v3 (int8 ONNX). Fast and accurate, with support for 25 European languages plus Russian and Ukrainian. Orukeet is a community variant on the same engine — faster and more accurate than Parakeet, with weights under CC BY-SA 4.0.
 
 | Model | Size | RAM | Languages | Accuracy |
 |---|---|---|---|---|
+| orukeet | 672 MB | 4 GB | 25 languages (EU + RU + UK) | ★★★★ |
 | parakeet | 700 MB | 2 GB | 25 languages (EU + RU + UK) | ★★★★ |
 
 ### SenseVoice
@@ -173,9 +174,17 @@ GigaAM Multilingual (600M, int8 ONNX) covers Central Asian languages that the ot
 |---|---|---|---|---|
 | gigaam-multilingual | 592 MB | 3 GB | Russian, Kazakh, Kyrgyz, Uzbek, English | ★★★★ |
 
+### Omni-ASR
+
+Meta's Omnilingual ASR (1B CTC, fp32 ONNX). Covers 1600+ languages, making it the fallback for languages no specialist model supports. Output is lowercase with no punctuation.
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| omni-asr-1b-ctc | 3.7 GB | 4 GB | 1600+ languages | ★★★ |
+
 ### Diarization & VAD
 
-In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription).
+In addition to transcription models, AutoSubs downloads a speaker diarization model (~40 MB, user-selectable from the Model Manager) and a Silero VAD model (auto-downloaded for voice activity detection during transcription). An optional MMS forced-alignment model (~320 MB, CC BY-NC 4.0) can also be downloaded for word-level timestamps — see [Model licensing](#model-licensing).
 
 ---
 

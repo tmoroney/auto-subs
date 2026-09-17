@@ -220,9 +220,18 @@ Provide the exact Windows commands they need:
 git fetch --tags
 git checkout v${NEW_VERSION}
 cd AutoSubs-App
+npm run dev
 npm run build:win
-.\scripts\upload-windows-artifacts.ps1 v${NEW_VERSION}
+npm run upload:win
 ```
+
+`npm run dev` is run once first — it launches the app in dev mode so the
+toolchain can compile and prepare anything the release build needs; the user
+closes the app, then runs the release build. `upload:win`
+wraps `scripts/upload-windows-artifacts.ps1`, which auto-detects the newest
+draft release when no tag is passed, renames the NSIS installer and `.sig` to
+`AutoSubs-windows-x86_64.exe` / `.sig`, uploads them to the draft release, and
+triggers `generate-updater-json.yml`.
 
 If `upload-windows-artifacts.ps1` does not exist, tell the user to upload
 `AutoSubs_${NEW_VERSION}_x64-setup.exe` and its `.sig` file manually, renaming
