@@ -16,21 +16,32 @@ This document describes how AutoSubs integrates with DaVinci Resolve: architectu
 ```mermaid
 flowchart TD
     ReactFE[React Frontend] <-->|Tauri IPC| RustBE[Rust Backend]
-    RustBE <-->|HTTP POST :56002| resolve_bridge[resolve_bridge.rs]
-    resolve_bridge <-->|HTTP| LuaServer[Lua Server on Port 56002]
+    RustBE <-->|Tauri command| resolve_bridge[resolve_bridge.rs]
+    resolve_bridge <-->|File mailbox| LuaServer[Lua Server in Resolve]
     LuaServer <-->|Resolve API| Resolve[DaVinci Resolve]
     LuaServer <-->|Fusion API| Fusion[Fusion Page]
     Fusion <-->|Macro| Macro[autosubs-macro.setting]
 ```
 
 - **React Frontend**: UI for timeline selection, export settings, subtitle preview
-- **Rust Backend (`resolve_bridge.rs`)**: HTTP client that posts requests to the Lua server
-- **Lua Server (`autosubs_core.lua`)**: HTTP server running inside Resolve on port 56002
+- **Rust Backend (`resolve_bridge.rs`)**: writes mailbox requests and polls `Fusion.prefs` for the response
+- **Lua Server (`autosubs_core.lua`)**: file-mailbox loop running inside Resolve (Workspace > Scripts)
 - **Fusion Macro (`autoSubs-macro.setting`)**: Fusion template for animated captions with per-word highlighting
 
-### Why the HTTP Bridge?
+### Why the File Mailbox?
 
-The frontend originally used `@tauri-apps/plugin-http` to POST directly to the Lua server, but the plugin's response-body stream hangs indefinitely against Resolve's `Connection: close` responses. Routing through Rust's `reqwest` via the `resolve_bridge` Tauri command fixes this.
+Resolve 21.1 (free edition) sandboxes the Lua state that runs Workspace > Scripts scripts: `io`, `ffi`, `package`, `require`, `os.execute` and `bmd.readdir` are all nil, so the old `ljsocket` HTTP server on port 56002 can no longer exist. The bridge is now a file mailbox, the only transport:
+
+- **Rust → Lua**: `resolve_bridge.rs` atomically writes `request.lua` (a `return {...}` chunk with an id and a JSON body) into a shared mailbox dir (`<data_local_dir>/com.autosubs/resolve-bridge`). The Lua loop picks it up with `loadfile`.
+- **Lua → Rust**: the Lua side calls `fusion:SetPrefs("Global.AutoSubsBridge.Ack"/".Response", ...)` then `fusion:SavePrefs()`, which flushes `Fusion.prefs` to disk; Rust polls that file. Responses are `<id>:<base64 json>` so Rust never has to parse Fusion's Lua string escaping.
+
+The Lua side must not use `io`, `ffi`, `package`, `require`, `os.execute` or `bmd.readdir` anywhere — modules are loaded through `AutoSubs_require` (see `modules/bootstrap.lua`).
+
+### Resident server & zero-click startup
+
+Resolve runs any `*.scriptlib` in the root of `Fusion/Scripts/` at startup; `AutoSubs.scriptlib` hands the bootstrap to `fusion:Execute()`, which runs the bridge loop asynchronously in another scripting state. The bridge is therefore **resident**: it starts with Resolve and the app never starts or stops it.
+
+Two in-memory prefs keys coordinate launches (never `SavePrefs`'d): the loop writes `Global.AutoSubsBridge.Heartbeat` once a second, and a launch checks `bridge_alive()` before starting. The scriptlib launches with `mode = "startup"` (no-op if a loop is already alive); the Utility/Dev scripts launch with `mode = "manual"` (takeover: set `Stop`, wait up to 4 s for the old loop to exit and clear it, then start fresh) — so running Workspace → Scripts → AutoSubs is the "restart the bridge" path.
 
 ## Communication Flow
 
@@ -38,10 +49,10 @@ The frontend originally used `@tauri-apps/plugin-http` to POST directly to the L
 React Frontend
   → invoke('resolve_bridge', { payload, timeoutSecs })
   → Rust resolve_bridge.rs
-  → HTTP POST to http://127.0.0.1:56002/
-  → Lua server (autosubs_core.lua)
+  → write request.lua into the mailbox dir
+  → Lua server (autosubs_core.lua) loadfiles it
   → Resolve/Fusion API
-  → Response body → Frontend JSON.parse()
+  → Lua writes Ack + Response to Fusion.prefs → Rust polls → body → Frontend JSON.parse()
 ```
 
 On failure the Lua server returns:
@@ -76,21 +87,21 @@ npm run dev             # starts the app in dev mode
 |---|---|
 | `modules/autosubs_core.lua` | Main server and Resolve API functions |
 | `modules/caption_style.lua` | Everything that differs between the two caption kinds |
-| `modules/luaresolve.lua` | Helper functions for the Resolve API |
+| `modules/bootstrap.lua` | Platform detection, `AutoSubs_require` module shim, base64 |
 | `modules/font_fallback.lua` | Font fallback for non-Latin scripts |
-| `modules/libavutil.lua` | Audio utilities |
+| `modules/timecode.lua` | Pure-Lua timecode <-> frame conversion |
 
 ### Debugging
 
 - **Lua**: Use `print()` — output appears in Resolve's Console (**Script → Console**)
-- **HTTP**: Check Rust backend logs for `resolve_bridge` requests
+- **Bridge**: Check Rust backend logs for `resolve_bridge` requests; the mailbox dir is `<data_local_dir>/com.autosubs/resolve-bridge` and responses land in `Fusion.prefs` under `Global.AutoSubsBridge.*`
 - **Fusion**: Inspect tool inputs in the Fusion inspector or check node connections in the Flow view
 
 ### Common Issues
 
 | Symptom | Fix |
 |---|---|
-| Server not responding | Confirm Resolve is running and the dev script was launched; check port 56002 isn't in use |
+| Server not responding | Confirm Resolve is running and the dev script was launched; delete a stale `request.lua` from the mailbox dir if one lingers |
 | Macro not found | Verify `autosubs-macro.setting` is in the correct location and re-import if needed |
 | Animation not working | Check KeyStretcherMod connection, verify animation length > 0 and the animation is enabled |
 
@@ -98,10 +109,11 @@ npm run dev             # starts the app in dev mode
 
 ### Server Startup
 
-Both scripts are thin **launchers** — they set up Lua module paths and delegate immediately to `autosubs_core.lua`. All real logic lives in `autosubs_core.lua`; there is almost never a reason to edit the launchers.
+Both scripts are thin **launchers** — they `loadfile` `modules/bootstrap.lua` and call it, which sets up module loading (`AutoSubs_require`) and calls `AutoSubs:Init()`. All real logic lives in `autosubs_core.lua`; there is almost never a reason to edit the launchers.
 
-- **Production** (`AutoSubs.lua`): Sets `package.path`, verifies that `autosubs_core.lua` exists at the expected location, then calls `AutoSubs:Init()`. Launches the app window.
-- **Development** (`AutoSubs (Dev).lua`): Same pattern, but points at your repo checkout and starts the server without launching the app window. Lua edits take effect on next script run.
+- **Production** (`AutoSubs.lua`): Verifies that `bootstrap.lua` exists at the expected location, then runs it with `mode = "manual"` (restarts the resident bridge).
+- **Development** (`AutoSubs (Dev).lua`): Same pattern, but points at your repo checkout with `dev_mode = true`. Lua edits take effect on next script run.
+- **Startup** (`AutoSubs.scriptlib`, installed to the Scripts root, not Utility): runs once when Resolve starts; launches the bridge with `mode = "startup"` via `fusion:Execute`.
 
 ### How the Launchers Are Generated
 
@@ -176,7 +188,7 @@ documented separately:
 
 ### Windows
 
-- Uses LuaJIT FFI (`MultiByteToWideChar`, `_wfopen`) for UTF-16 path handling — standard `io.open` fails on paths with special characters
+- Windows paths from `os.getenv` are ANSI-codepage bytes, which is what `loadfile`/file APIs expect — do not convert them
 - App: `%LOCALAPPDATA%\AutoSubs\AutoSubs.exe`
 - Resources: `%LOCALAPPDATA%\AutoSubs\resources`
 - Scripts: `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\`

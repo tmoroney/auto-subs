@@ -14,7 +14,7 @@ AutoSubs uses a local-first **Tauri v2 (Rust + React)** app communicating with h
 flowchart TD
     ReactFE[React Frontend] <-->|Tauri IPC| RustBE[Rust Backend Core]
     RustBE <-->|Local Crate Calls| AICrates[transcription-engine & diarize]
-    RustBE <-->|HTTP POST :56002| Resolve[DaVinci Resolve LuaJIT Server]
+    RustBE <-->|File Mailbox| Resolve[DaVinci Resolve Lua Server]
     RustBE <-->|WebSocket :8185| Adobe[Adobe CEP Extension]
 ```
 
@@ -22,11 +22,14 @@ flowchart TD
 
 ## ⚠️ High-Context & Tricky Architecture Details
 
-### 1. The DaVinci Resolve Bridge (Port `56002`)
-* **The Server**: Runs directly inside Resolve's LuaJIT environment, powered by [ljsocket.lua](AutoSubs-App/src-tauri/resources/modules/ljsocket.lua).
-* **The Gotcha**: The frontend does *not* talk to the Lua server directly. Tauri's webview HTTP plugin hangs when processing Resolve's short, unbuffered `Connection: close` responses.
-* **The Solution**: All HTTP traffic is proxied through the Rust backend command `resolve_bridge` ([resolve_bridge.rs](AutoSubs-App/src-tauri/src/resolve_bridge.rs)) using `reqwest`.
-* **Documentation**: Comprehensive documentation of the Resolve integration architecture, Lua server API, Fusion macro system, and development workflow is available in [Resolve-Integration/README.md](Resolve-Integration/README.md).
+### 1. The DaVinci Resolve Bridge (File Mailbox)
+* **Why not sockets**: Resolve 21.1 (free edition) sandboxes the Lua state that runs Workspace > Scripts scripts — `io`, `ffi`, `package`, `require`, `os.execute` and `bmd.readdir` are all nil, so the old `ljsocket` HTTP server on port 56002 is gone for good. Lua code must never touch those globals.
+* **Rust → Lua**: [resolve_bridge.rs](AutoSubs-App/src-tauri/src/resolve_bridge.rs) atomically writes `request.lua` (a `return { id = "...", body = [==[<json>]==] }` chunk) into `<data_local_dir>/com.autosubs/resolve-bridge`; the Lua loop in [autosubs_core.lua](AutoSubs-App/src-tauri/resources/modules/autosubs_core.lua) picks it up with `loadfile`. Payloads with a `filePath` get the file's parsed JSON attached as `subtitleData` because Lua can't read files.
+* **Lua → Rust**: Lua acks with `fusion:SetPrefs("Global.AutoSubsBridge.Ack", id)` and answers with `Response = "<id>:<base64 json>"`, flushing via `SavePrefs()`; Rust polls `Fusion/Profiles/*/Fusion.prefs`.
+* **Module loading**: `require` doesn't exist — [bootstrap.lua](AutoSubs-App/src-tauri/resources/modules/bootstrap.lua) installs `AutoSubs_require` (loadfile + cache) and detects the platform/mailbox path. Entry scripts just `loadfile` it.
+* **Zero-click startup**: Resolve runs `Fusion/Scripts/*.scriptlib` at launch; [AutoSubs.scriptlib](AutoSubs-App/src-tauri/resources/AutoSubs.scriptlib) hands the bootstrap to `fusion:Execute()`, so a resident bridge loop starts with Resolve itself — the app never starts or stops it.
+* **One loop at a time**: the loop writes `Global.AutoSubsBridge.Heartbeat` (in-memory prefs, no SavePrefs) every second; launchers probe it via `bridge_alive()`. The Utility/Dev scripts launch with `mode = "manual"` (takeover: set `Stop`, wait for the old loop to clear it, start fresh); the scriptlib uses `mode = "startup"` (skip if already alive).
+* **Documentation**: See [Resolve-Integration/README.md](Resolve-Integration/README.md).
 
 ### 2. Local AI Execution & Cargo Features
 * **Engines**: Transcription is handled by `whisper-rs` (C++ bindings) and `transcribe-rs` (ONNX via `ort` for Moonshine/Parakeet). Diarization is a custom Pyannote port in Rust ([diarize](AutoSubs-App/src-tauri/crates/diarize)).
@@ -41,9 +44,8 @@ flowchart TD
 
 
 
-### 3. DaVinci Resolve Sandboxing & Wide Characters (Windows)
-* Resolve's Lua engine is sandboxed. On Windows, file access fails on paths containing special or non-ASCII characters if standard Lua `io.open` is used.
-* **Solution**: [AutoSubs.lua](AutoSubs-App/src-tauri/resources/AutoSubs.lua) uses LuaJIT FFI to declare and invoke native Windows APIs (`MultiByteToWideChar` and `_wfopen`) to safely handle file encodings.
+### 3. DaVinci Resolve Sandboxing
+* Resolve's Lua engine is heavily sandboxed (see section 1): no `io`, `ffi`, `package`, `require`, `os.execute` or `bmd.readdir`. File I/O therefore happens on the Rust side; paths from `os.getenv` are ANSI-codepage bytes on Windows, which is what `loadfile`/file APIs expect — don't convert them.
 * **Fusion Macro**: The animated caption macro is stored at [Resolve-Integration/autosubs-macro.setting](Resolve-Integration/autosubs-macro.setting). See [Resolve-Integration/README.md](Resolve-Integration/README.md) for editing instructions and workflow.
 
 ### 3b. Caption styles: two kinds, two owners

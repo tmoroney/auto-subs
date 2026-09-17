@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
 use tauri::{Manager, RunEvent};
@@ -127,7 +126,7 @@ fn setup_proxy_env() {
     }
 
     // Build NO_PROXY from the WinINet ProxyOverride list so that local
-    // connections (Resolve bridge on 127.0.0.1:56002, etc.) are never
+    // connections (Adobe bridge on 127.0.0.1:8185, etc.) are never
     // routed through the proxy. Always include loopback addresses even if
     // ProxyOverride is absent; WinINet's "<local>" sentinel is replaced
     // with the canonical addresses that ureq/reqwest understand.
@@ -449,6 +448,11 @@ fn main() {
                 });
             }
 
+            // Drop a leftover mailbox request (e.g. the Exit written just
+            // before a previous app quit) so a freshly launched Lua script
+            // can't replay it before our first request.
+            resolve_bridge::clear_stale_request();
+
             // If a Resolve server from a previous session is running, make sure it
             // hot-reloads to the current app's Lua code and version.
             let app_version = app.package_info().version.to_string();
@@ -621,47 +625,11 @@ fn main() {
                         *should_cancel = true;
                     }
 
-                    // Windows: do a small blocking send inline so we don't exit before the request is on the wire
+                    // The Lua bridge is a resident server started by Resolve
+                    // itself (scriptlib) — it must NOT be told to exit when
+                    // the app quits. Just exit.
                     #[cfg(target_os = "windows")]
                     {
-                        let url = "http://127.0.0.1:56002/";
-                        let bc = reqwest::blocking::Client::builder()
-                            .no_proxy()
-                            .tcp_nodelay(true)
-                            .timeout(Duration::from_millis(800))
-                            .build();
-                        if let Ok(bc) = bc {
-                            let _ = bc
-                                .post(url)
-                                .header("Connection", "close")
-                                .json(&json!({ "func": "Exit" }))
-                                .send();
-                        }
-
-                        // As an extra-safe fallback, send a raw HTTP request over TCP synchronously
-                        {
-                            use std::io::Write;
-                            use std::net::TcpStream;
-                            let body = b"{\"func\":\"Exit\"}";
-                            let req = format!(
-                                "POST / HTTP/1.1\r\nHost: 127.0.0.1:56002\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
-                                body.len()
-                            );
-                            if let Ok(mut stream) = TcpStream::connect_timeout(
-                                &"127.0.0.1:56002".parse().unwrap(),
-                                Duration::from_millis(400),
-                            ) {
-                                let _ = stream.set_nodelay(true);
-                                let _ = stream.set_write_timeout(Some(Duration::from_millis(400)));
-                                let _ = stream.write_all(req.as_bytes());
-                                let _ = stream.write_all(body);
-                                let _ = stream.flush();
-                            }
-                        }
-                        // brief pause to allow flush
-                        std::thread::sleep(Duration::from_millis(250));
-
-                        // now actually exit the app
                         app.exit(0);
 
                         // last resort hard exit after a grace period
@@ -676,23 +644,6 @@ fn main() {
                     {
                         let app_handle = app.clone();
                         tauri::async_runtime::spawn(async move {
-                            // short timeout to avoid hanging on exit
-                            let client = Client::builder()
-                                .no_proxy()
-                                .tcp_nodelay(true)
-                                .timeout(Duration::from_millis(750))
-                                .build()
-                                .unwrap_or_else(|_| Client::new());
-
-                            let url = "http://127.0.0.1:56002/";
-                            let _ = client
-                                .post(url)
-                                .header("Connection", "close")
-                                .json(&json!({ "func": "Exit" }))
-                                .send()
-                                .await;
-
-                            tokio::time::sleep(Duration::from_millis(150)).await;
                             app_handle.exit(0);
                         });
                     }

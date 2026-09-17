@@ -598,7 +598,9 @@ function json.decode (str, pos, nullval, ...)
 end
 
 function json.use_lpeg ()
-  local g = require ("lpeg")
+  -- `require` is nil inside Resolve's sandboxed scripting state; error
+  -- cleanly instead of calling a nil value.
+  local g = require and require("lpeg") or error("lpeg is not available in this environment")
 
   if g.version() == "0.11" then
     error "due to a bug in LPeg 0.11, it cannot be used for JSON matching"

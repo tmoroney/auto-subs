@@ -131,6 +131,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (
+          errorMessage.includes('DaVinci Resolve is not running') ||
           errorMessage.includes('Connection refused') ||
           errorMessage.includes('tcp connect error') ||
           errorMessage.includes('No timeline detected')

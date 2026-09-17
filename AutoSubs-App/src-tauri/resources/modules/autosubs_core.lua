@@ -1,116 +1,27 @@
 ---These are global variables given to us by the Resolve embedded LuaJIT environment
 ---I disable the undefined global warnings for them to stop my editor from complaining
 ---@diagnostic disable: undefined-global, deprecated
-local ffi = ffi
+--
+-- Resolve 21.1 sandboxes the Lua state that runs Workspace > Scripts scripts:
+-- io, ffi, package, require, os.execute and bmd.readdir are all nil here.
+-- Modules are loaded via AutoSubs_require (see bootstrap.lua) and the bridge
+-- to the desktop app is a file mailbox (request.lua read via loadfile;
+-- responses written to Fusion.prefs via SetPrefs/SavePrefs).
 
 -- Shared access to the Resolve / Fusion scripting environment (see resolve_env.lua).
--- The entry scripts add the modules dir to package.path before requiring us.
-local resolve_env = require("resolve_env")
+local resolve_env = AutoSubs_require("resolve_env")
 
 -- resolve is provided implicitly by the Resolve environment - no need to call Resolve() unless running in terminal
 local resolve = resolve_env.get_resolve()
+local fusion = resolve_env.get_fusion()
 
 local DEV_MODE = false
 
--- Whether to launch the main app when the server starts. Disabled during hot-reload
--- because the app is already running.
-local launch_app = true
-
 -- App version reported by the GetVersion endpoint; used to detect stale servers.
-local VERSION = require("version")
-
--- Server Port
-local PORT = 56002
-
--- Platform-specific FFI bindings
--- Safe wrapper around ffi.cdef so this module can be hot-reloaded without
--- crashing on re-declarations of C types/functions that are already defined.
-local function safe_cdef(def)
-    local ok, err = pcall(ffi.cdef, def)
-    if not ok then
-        err = tostring(err):lower()
-        if not (err:find("redefine") or err:find("redecl")) then
-            error(err, 2)
-        end
-    end
-end
-
-if ffi.os == "Windows" then
-    safe_cdef([[
-        typedef wchar_t WCHAR;
-
-        int MultiByteToWideChar(
-            unsigned int CodePage,
-            unsigned long dwFlags,
-            const char* lpMultiByteStr,
-            int cbMultiByte,
-            WCHAR* lpWideCharStr,
-            int cchWideChar);
-
-        void* _wfopen(const WCHAR* filename, const WCHAR* mode);
-        size_t fread(void* buffer, size_t size, size_t count, void* stream);
-        int fclose(void* stream);
-
-        void Sleep(unsigned int ms);
-        int ShellExecuteA(
-            void* hwnd,
-            const char* lpOperation,
-            const char* lpFile,
-            const char* lpParameters,
-            const char* lpDirectory,
-            int nShowCmd);
-    ]])
-else
-    safe_cdef([[
-        int system(const char *command);
-        struct timespec { long tv_sec; long tv_nsec; };
-        int nanosleep(const struct timespec *req, struct timespec *rem);
-    ]])
-end
-
--- Helper to convert a UTF-8 string to a wide-character (WCHAR) string
-local function to_wide_string(str)
-    local len = #str + 1 -- Include null terminator
-    local buffer = ffi.new("WCHAR[?]", len)
-    local bytes_written = ffi.C.MultiByteToWideChar(65001, 0, str, -1, buffer, len)
-    if bytes_written == 0 then
-        error("Failed to convert string to wide string: " .. str)
-    end
-    return buffer
-end
-
--- Function to read the content of a file using _wfopen on Windows for special character support
-local function read_file(file_path)
-    if (ffi.os == "Windows") then
-        local wide_path = to_wide_string(file_path)
-        local mode = to_wide_string("rb")
-        local f = ffi.C._wfopen(wide_path, mode)
-        if f == nil then
-            error("Failed to open file: " .. file_path)
-        end
-
-        local buffer = {}
-        local temp_buffer = ffi.new("char[4096]") -- 4KB buffer for reading
-        while true do
-            local read_bytes = ffi.C.fread(temp_buffer, 1, 4096, f)
-            if read_bytes == 0 then
-                break
-            end
-            buffer[#buffer + 1] = ffi.string(temp_buffer, read_bytes)
-        end
-        ffi.C.fclose(f)
-
-        return table.concat(buffer)
-    else
-        local file = assert(io.open(file_path, "r"))
-        local content = file:read("*a")
-        file:close()
-        return content
-    end
-end
+local VERSION = AutoSubs_require("version")
 
 local function join_path(dir, filename)
-    local sep = package.config:sub(1, 1) -- returns '\\' on Windows, '/' elsewhere
+    local sep = AUTOSUBS_SEP or "/"
     -- Remove trailing separator from dir, if any
     if dir:sub(-1) == sep then
         return dir .. filename
@@ -119,60 +30,28 @@ local function join_path(dir, filename)
     end
 end
 
--- Pause execution for a specified number of seconds (platform-independent)
-local function sleep(n)
-    if ffi.os == "Windows" then
-        ffi.C.Sleep(n * 1000)
-    else
-        local ts = ffi.new("struct timespec")
-        ts.tv_sec = math.floor(n)
-        ts.tv_nsec = (n - math.floor(n)) * 1e9
-        ffi.C.nanosleep(ts, nil)
-    end
-end
-
 -- Load external libraries. These are required lazily in Init(), so the language
 -- server would otherwise infer them as `nil` here and flag every later use.
 ---@type any
-local socket = nil
----@type any
 local json = nil
 ---@type any
-local luaresolve = nil
+local timecode = nil
 ---@type any
 local font_fallback = nil
-
--- Function to read a JSON file. Returns the decoded table on success, or
--- `nil, err` on failure so callers can surface the real reason.
-local function read_json_file(file_path)
-    local ok, content = pcall(read_file, file_path)
-    if not ok then
-        return nil, tostring(content)
-    end
-
-    -- Parse the JSON content
-    if json == nil or json.decode == nil then
-        return nil, "JSON library not available"
-    end
-    local data, _, err = json.decode(content, 1, nil)
-    if err then
-        return nil, tostring(err)
-    end
-    return data
-end
 
 -- OS SPECIFIC CONFIGURATION
 local resources_path
 local main_app
-local command_open
+-- Full path to the mailbox request file the desktop app writes (set in Init).
+local REQUEST_FILE
 
 -- Load Resolve objects
 local projectManager = resolve:GetProjectManager()
 local project = projectManager:GetCurrentProject()
 local mediaPool = project:GetMediaPool()
 
-local CAPTION_TEMPLATE_VERSION = require("caption_template_version")
-local caption_style = require("caption_style")
+local CAPTION_TEMPLATE_VERSION = AutoSubs_require("caption_template_version")
+local caption_style = AutoSubs_require("caption_style")
 local ANIMATED_CAPTION_DISPLAY_NAME = caption_style.DISPLAY_NAME
 local ANIMATED_CAPTION = caption_style.versioned_name(CAPTION_TEMPLATE_VERSION)
 local AUTOSUBS_BIN = caption_style.BIN_NAME
@@ -238,13 +117,11 @@ end
 -- input of time in seconds
 function JumpToTime(seconds)
     local timeline = project:GetCurrentTimeline()
-    local frameRate = timeline:GetSetting("timelineFrameRate")
+    local frameRate = tonumber(timeline:GetSetting("timelineFrameRate"))
     local frames = to_frames(seconds, frameRate) + timeline:GetStartFrame() + 1
-    if not luaresolve then
-        error("Resolve timecode library is not available")
-    end
-    local timecode = luaresolve:timecode_from_frame_auto(frames, frameRate)
-    timeline:SetCurrentTimecode(timecode)
+    local tc = timecode.timecode_from_frame_auto(frames, frameRate,
+        timeline:GetSetting("timelineDropFrameTimecode"))
+    timeline:SetCurrentTimecode(tc)
 end
 
 -- List of title strings to search for
@@ -669,7 +546,7 @@ function GetExportProgress()
             local frameRate = timeline:GetSetting("timelineFrameRate")
 
             -- Playhead position in frames
-            local playheadPosition = luaresolve:frame_from_timecode(currentTimecode, frameRate)
+            local playheadPosition = timecode.frame_from_timecode(currentTimecode, tonumber(frameRate))
 
             -- Get mark in and out from audioInfo (already in frames)
             local markIn = currentExportJob.audioInfo.markIn
@@ -1131,13 +1008,14 @@ function CheckTrackConflicts(req)
     local timelineStart = timeline:GetStartFrame()
     local frame_rate = timeline:GetSetting("timelineFrameRate")
 
-    -- Read the subtitle data to get time ranges
-    local data, readErr = read_json_file(filePath)
+    -- Subtitle data arrives decoded on the request (the app reads the file
+    -- itself); filePath only identifies which transcript it came from.
+    local data = req.subtitleData
     if type(data) ~= "table" then
         return {
             hasConflicts = false,
             error = "Could not read subtitle file",
-            detail = readErr or "unknown error"
+            detail = "request did not include subtitleData"
         }
     end
 
@@ -1193,10 +1071,10 @@ function CheckTrackConflicts(req)
     }
 end
 
-local function load_subtitle_data(filePath)
-    local data, err = read_json_file(filePath)
+local function load_subtitle_data(req)
+    local data = req.subtitleData
     if type(data) ~= "table" then
-        return nil, err or "Could not parse subtitle JSON"
+        return nil, "request did not include subtitleData"
     end
     return data
 end
@@ -1666,7 +1544,7 @@ function AddSubtitles(req)
     local result
     local ok, err = pcall(function()
         result = (function()
-            local data, loadErr = load_subtitle_data(filePath)
+            local data, loadErr = load_subtitle_data(req)
             if not data then
                 return make_error("Failed to load subtitle file", loadErr)
             end
@@ -1816,31 +1694,11 @@ function AddSubtitles(req)
     return result
 end
 
--- Wide-character-safe existence check: io.open cannot open paths with
--- non-ASCII characters on Windows, but _wfopen can.
-local function preview_file_exists(path)
-    local f
-    if ffi.os == "Windows" then
-        f = ffi.C._wfopen(to_wide_string(path), to_wide_string("rb"))
-    else
-        f = io.open(path, "rb")
-    end
-    if f ~= nil then
-        if ffi.os == "Windows" then
-            ffi.C.fclose(f)
-        else
-            f:close()
-        end
-        return true
-    end
-    return false
-end
-
 function BatchApplyStyle(req)
     local filePath, targetSpeakerId, presetSettings = req.filePath, req.targetSpeakerId, req.presetSettings
     refresh_project()
 
-    local data, loadErr = load_subtitle_data(filePath)
+    local data, loadErr = load_subtitle_data(req)
     if not data then
         return make_error("Failed to load subtitle file", loadErr)
     end
@@ -1935,15 +1793,7 @@ end
 -- directly, so rendering runs in a short-lived comp script.
 local function extract_frame(comp, exportDir)
     local function debug_log(message)
-        -- Log next to the rendered previews inside the app-private data
-        -- directory rather than a predictable world-writable /tmp path.
-        pcall(function()
-            local file = io.open(join_path(exportDir, "preview-render.log"), "a")
-            if file then
-                file:write(os.date("%H:%M:%S") .. " " .. tostring(message) .. "\n")
-                file:close()
-            end
-        end)
+        print("[AutoSubs] " .. os.date("%H:%M:%S") .. " " .. tostring(message))
     end
 
     debug_log("enter")
@@ -2023,7 +1873,7 @@ local function extract_frame(comp, exportDir)
             local renderError = comp:GetData("AutoSubsPreviewRenderError")
             error("Saver render failed for frame " .. frameIndex .. ": " .. tostring(renderError))
         end
-        if not preview_file_exists(outputPath) then
+        if not bmd.fileexists(outputPath) then
             error("Saver render produced no image at " .. outputPath)
         end
     end)
@@ -2390,15 +2240,14 @@ function OpenPresetEdit(req)
         -- has settled by then, so the caption reads as it will on export, and
         -- the clip's controls are what the Inspector shows.
         local parked = false
-        if luaresolve then
-            local clipStart = timelineItem:GetStart()
-            local clipEnd = timelineItem:GetEnd()
-            local frameRate = tonumber(timeline:GetSetting("timelineFrameRate")) or fps
-            if clipStart and clipEnd and clipEnd > clipStart then
-                local centreFrame = math.floor((clipStart + clipEnd) / 2)
-                local timecode = luaresolve:timecode_from_frame_auto(centreFrame, frameRate)
-                parked = timeline:SetCurrentTimecode(timecode) and true or false
-            end
+        local clipStart = timelineItem:GetStart()
+        local clipEnd = timelineItem:GetEnd()
+        local frameRate = tonumber(timeline:GetSetting("timelineFrameRate")) or fps
+        if clipStart and clipEnd and clipEnd > clipStart then
+            local centreFrame = math.floor((clipStart + clipEnd) / 2)
+            local tc = timecode.timecode_from_frame_auto(centreFrame, frameRate,
+                timeline:GetSetting("timelineDropFrameTimecode"))
+            parked = timeline:SetCurrentTimecode(tc) and true or false
         end
         if not parked then
             timeline:SetCurrentTimecode(timeline:GetStartTimecode())
@@ -2503,65 +2352,6 @@ local function safe_json(obj)
     return "{}"
 end
 
-function LaunchApp()
-    if ffi.os == "Windows" then
-        -- Windows
-        local SW_SHOW = 5 -- Show the window
-
-        -- Call ShellExecuteA from Shell32.dll
-        local shell32 = ffi.load("Shell32")
-        local result_open = shell32.ShellExecuteA(nil, "open", main_app, nil, nil, SW_SHOW)
-
-        if result_open > 32 then
-            print("AutoSubs launched successfully.")
-        else
-            print("Failed to launch AutoSubs. Error code:", result_open)
-            return
-        end
-    else
-        -- MacOS & Linux
-        local result_open = ffi.C.system(command_open)
-
-        if result_open == 0 then
-            print("AutoSubs launched successfully.")
-        else
-            print("Failed to launch AutoSubs. Error code:", result_open)
-            return
-        end
-    end
-end
-
--- Send a small HTTP POST to 127.0.0.1:PORT with {"func":"Exit"}
-local function send_exit_via_socket()
-    local ok = pcall(function()
-        local info = assert(socket.find_first_address("127.0.0.1", PORT))
-        local client = assert(socket.create(info.family, info.socket_type, info.protocol))
-        assert(client:set_option("nodelay", true, "tcp"))
-        client:set_blocking(true)
-
-        assert(client:connect(info))
-
-        local body = "{\"func\":\"Exit\"}"
-        local req = string.format(
-            "POST / HTTP/1.1\r\nHost: 127.0.0.1:%d\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",
-            PORT, #body, body
-        )
-
-        assert(client:send(req))
-        client:close()
-    end)
-    if not ok then
-        print("Failed to send Exit via socket")
-    end
-end
-
-local function create_response(body)
-    local header = "HTTP/1.1 200 OK\r\n" .. "Server: ljsocket/0.1\r\n" .. "Content-Type: application/json\r\n" ..
-        "Content-Length: " .. #body .. "\r\n" .. "Connection: close\r\n" .. "\r\n"
-
-    local response = header .. body
-    return response
-end
 
 -- ---------------------------------------------------------------------------
 -- Request handlers
@@ -2607,107 +2397,91 @@ local handlers = {
     end,
 }
 
+-- Write an ack / response for a request into Fusion.prefs. Rust polls the
+-- prefs file on disk; SetPrefs + SavePrefs is the only channel back that the
+-- sandboxed scripting state still allows.
+local function bridge_write(key, value)
+    if not fusion then
+        return
+    end
+    -- Retry a few times: SavePrefs can transiently fail while Resolve is
+    -- writing the file itself.
+    for _ = 1, 5 do
+        local ok = pcall(function()
+            fusion:SetPrefs(key, value)
+            fusion:SavePrefs()
+        end)
+        if ok then
+            return
+        end
+        bmd.wait(0.05)
+    end
+end
+
+local function bridge_ack(id)
+    bridge_write("Global.AutoSubsBridge.Ack", id)
+end
+
+local function bridge_respond(id, body_json)
+    bridge_write("Global.AutoSubsBridge.Response", id .. ":" .. AutoSubs_base64(body_json))
+end
+
 function StartServer()
-    -- Set up server socket configuration
-    local info = assert(socket.find_first_address("127.0.0.1", PORT))
-    local server = assert(socket.create(info.family, info.socket_type, info.protocol))
-
-    -- Set socket options
-    server:set_blocking(false)
-    assert(server:set_option("nodelay", true, "tcp"))
-    assert(server:set_option("reuseaddr", true))
-
-    -- Bind and listen
-    local success, err = pcall(function()
-        assert(server:bind(info))
-    end)
-
-    if not success then
-        send_exit_via_socket()
-        sleep(0.5)
-        assert(server:bind(info))
-    end
-
-    assert(server:listen())
-    print("AutoSubs server is listening on port: ", PORT)
-    print("Press Ctrl+C to stop the server")
-
-    -- Launch app if not in dev mode and not hot-reloading.
-    if not DEV_MODE and launch_app then
-        LaunchApp()
-    end
-
-    -- Server loop with signal handling
+    -- File-mailbox loop: the desktop app drops request.lua in the shared
+    -- mailbox directory; we ack it, run the handler, and write the response
+    -- into Fusion.prefs (see resolve_bridge.rs for the other side).
     local quitServer = false
     local shouldReload = false
+    -- Last handled request id lives in the AUTOSUBS_LAST_REQUEST_ID global
+    -- so it survives hot-reloads: a lingering request file can't be
+    -- re-dispatched after ReloadServer.
+    local last_heartbeat = 0
+
     while not quitServer do
-        -- Server loop to handle client connections
-        local client, err = server:accept()
-        if client then
-            local peername, peer_err = client:get_peer_name()
-            if peername then
-                assert(client:set_blocking(false))
-                -- Try to receive data (example HTTP request)
-                local str, err = client:receive()
-                if str then
-                    -- Accumulate the full HTTP request (headers + body). Start with what we have.
-                    local request = str
-                    local header_body_separator = "\r\n\r\n"
-                    -- Temporarily allow short blocking reads to finish the HTTP request, then return to non-blocking
-                    if client.settimeout then client:settimeout(0.2) end
-                    while true do
-                        local sep_start, sep_end = string.find(request, header_body_separator, 1, true)
-                        if sep_end then
-                            local headers = string.sub(request, 1, sep_start - 1)
-                            local body_start_idx = sep_end + 1
-                            local cl = string.match(headers, "[Cc]ontent%-[Ll]ength:%s*(%d+)")
-                            if cl then
-                                local needed = tonumber(cl) or 0
-                                local current = #request - (body_start_idx - 1)
-                                if current >= needed then
-                                    break
-                                end
-                            else
-                                -- No Content-Length: assume no body or already complete
-                                break
-                            end
-                        end
-                        local chunk, rerr, partial = client:receive(1024)
-                        if chunk and #chunk > 0 then
-                            request = request .. chunk
-                        elseif partial and #partial > 0 then
-                            request = request .. partial
-                        else
-                            -- timeout or other read error; stop accumulating
-                            break
-                        end
-                    end
-                    if client.settimeout then client:settimeout(0) end
+        -- Resident-bridge handshake (see bootstrap.lua): heartbeat once per
+        -- second so launchers can tell a live loop from a dead one, and watch
+        -- for a Stop request from a manual (takeover) launch. In-memory prefs
+        -- only — no SavePrefs, so this never touches disk.
+        if fusion then
+            local now = os.time()
+            if now ~= last_heartbeat then
+                last_heartbeat = now
+                pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", tostring(now))
+            end
+            local stop_ok, stop = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
+            if stop_ok and type(stop) == "string" and stop ~= "" then
+                quitServer = true
+            end
+        end
 
-                    -- Extract body content after headers, if present
-                    local _, sep_end = string.find(request, header_body_separator, 1, true)
-                    local content = nil
-                    if sep_end then
-                        content = string.sub(request, sep_end + 1)
-                    end
-                    print("Received request:", content)
+        if bmd.fileexists(REQUEST_FILE) then
+            -- nil on a half-written/garbage file: just retry next tick
+            local chunk = loadfile(REQUEST_FILE)
+            local ok, req = false, nil
+            if chunk then
+                ok, req = pcall(chunk)
+            end
+            if ok and type(req) == "table" and type(req.id) == "string"
+                and req.id ~= AUTOSUBS_LAST_REQUEST_ID then
+                AUTOSUBS_LAST_REQUEST_ID = req.id
 
-                    -- Parse the JSON content safely (avoid crashes if body is missing/partial)
-                    local data, pos, jerr = nil, nil, nil
-                    if content and #content > 0 then
-                        local ok, r1, r2, r3 = pcall(json.decode, content, 1, nil)
-                        if ok then
-                            data, pos, jerr = r1, r2, r3
-                        else
-                            jerr = r1
-                        end
-                    end
+                -- Request ids are unix_millis * 1000 + counter, and Rust only
+                -- writes a request after the previous response, so a
+                -- legitimate request is always fresh. Anything older than
+                -- 20 s is a leftover (e.g. an Exit from a previous app run):
+                -- record it as handled without acking or responding.
+                local req_millis = tonumber(req.id)
+                local stale = req_millis ~= nil
+                    and (os.time() * 1000 - math.floor(req_millis / 1000) > 20000)
+                if stale then
+                    print("[AutoSubs Server] Ignoring stale request id " .. req.id)
+                else
+                    bridge_ack(req.id)
 
-                    -- Initialize body for response
+                    local data, _, jerr = json.decode(req.body, 1, nil)
+
                     local body = nil
-
-                    -- success already defined above
-                    success, err = pcall(function()
+                    local success, err = pcall(function()
                         if data ~= nil then
                             local handler = handlers[data.func]
                             if handler then
@@ -2720,27 +2494,16 @@ function StartServer()
                                 end
                             else
                                 print("Invalid function name: " .. tostring(data.func))
+                                body = safe_json({ error = true, message = "Invalid function name",
+                                    func = data.func })
                             end
                         else
-                            -- Fallback: if JSON parse failed, detect Exit command by substring
-                            -- Check both the parsed body `content` and the raw request `str`
-                            local has_exit = false
-                            if content and string.find(content, '"func"%s*:%s*"Exit"') then
-                                has_exit = true
-                            elseif str and string.find(str, '"func"%s*:%s*"Exit"') then
-                                has_exit = true
-                            end
-                            if has_exit then
-                                body = safe_json({ message = "Server shutting down" })
-                                quitServer = true
-                            else
-                                body = safe_json({ message = "Invalid JSON data" })
-                                print("Invalid JSON data")
-                            end
+                            body = safe_json({ message = "Invalid JSON data" })
+                            print("Invalid JSON data: " .. tostring(jerr))
                         end
                     end)
 
-                    -- Ensure we always return a body to avoid response builder crashes
+                    -- Ensure we always return a body
                     if body == nil then
                         body = safe_json({ message = "OK" })
                     end
@@ -2757,33 +2520,21 @@ function StartServer()
                             tostring(data and data.func or "<unknown>") .. "): " .. errMsg)
                     end
 
-                    -- Send HTTP response content (don't assert to avoid crashing on client disconnect)
-                    local response = create_response(body)
-                    if DEV_MODE then print(response) end
-                    local sent, sendErr = client:send(response)
-                    if not sent then
-                        print("Send failed:", sendErr or "unknown")
-                    end
-
-                    -- Close connection
-                    client:close()
-                elseif err == "closed" then
-                    client:close()
-                elseif err ~= "timeout" then
-                    -- Don't crash the server on unexpected client receive errors
-                    print("Socket recv error:", err or "unknown")
-                    client:close()
+                    bridge_respond(req.id, body)
                 end
             end
-        elseif err ~= "timeout" then
-            -- Don't crash the server on unexpected accept errors
-            print("Accept error:", err or "unknown")
         end
-        sleep(0.1)
+        bmd.wait(0.05)
     end
 
-    print("Shutting down AutoSubs Link server...")
-    server:close()
+    -- Leaving the loop (Stop takeover or Exit): clear the handshake keys so a
+    -- waiting manual launch can proceed and nothing sees a stale heartbeat.
+    if fusion then
+        pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Stop", "")
+        pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
+    end
+
+    print("Shutting down AutoSubs server...")
 
     if shouldReload then
         print("[AutoSubs Server] Hot-reloading autosubs_core...")
@@ -2793,16 +2544,24 @@ function StartServer()
         local reload_resources_path = resources_path
         local reload_executable_path = main_app
 
-        -- Ensure the new modules directory is searched first.
         local new_modules_path = join_path(reload_resources_path, "modules")
-        package.path = new_modules_path .. "/?.lua;" .. package.path
-
         local new_core_path = join_path(new_modules_path, "autosubs_core.lua")
+
+        -- Clear cached modules BEFORE running the new chunk so it re-requires
+        -- fresh copies instead of binding the old cached modules. The running
+        -- server keeps its own locals, so the fallbacks below still work.
+        for _, name in ipairs({
+            "autosubs_core", "resolve_env", "caption_template_version",
+            "caption_style", "font_fallback", "dkjson", "version",
+            "timecode", "bootstrap"
+        }) do
+            AutoSubs_loaded[name] = nil
+        end
+
         local new_core_chunk, load_err = loadfile(new_core_path)
         if not new_core_chunk then
             print("[AutoSubs Server] Failed to load new autosubs_core.lua:", load_err)
             print("[AutoSubs Server] Restarting previous server...")
-            launch_app = false
             return StartServer()
         end
 
@@ -2810,19 +2569,8 @@ function StartServer()
         if type(new_core) ~= "table" or type(new_core.Init) ~= "function" then
             print("[AutoSubs Server] New autosubs_core.lua did not return an AutoSubs table")
             print("[AutoSubs Server] Restarting previous server...")
-            launch_app = false
             return StartServer()
         end
-
-        -- Clear cached modules that may have changed so the new resources are used.
-        package.loaded["autosubs_core"] = nil
-        package.loaded["resolve_env"] = nil
-        package.loaded["caption_template_version"] = nil
-        package.loaded["font_fallback"] = nil
-        package.loaded["dkjson"] = nil
-        package.loaded["version"] = nil
-        -- Intentionally keep ljsocket and libavutil cached: they call ffi.cdef and
-        -- their API is stable, so reloading them risks redefinition errors.
 
         local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE,
             false)
@@ -2830,8 +2578,7 @@ function StartServer()
             print("[AutoSubs Server] New server initialization failed:", init_err)
             print("[AutoSubs Server] Restarting previous server...")
             -- Drop the broken new module so a later reload can be retried.
-            package.loaded["autosubs_core"] = nil
-            launch_app = false
+            AutoSubs_loaded["autosubs_core"] = nil
             return StartServer()
         end
 
@@ -2843,25 +2590,15 @@ function StartServer()
 end
 
 local AutoSubs = {
-    Init = function(self, executable_path, resources_folder, dev_mode, should_launch_app)
+    Init = function(self, executable_path, resources_folder, dev_mode)
         DEV_MODE = dev_mode
-        launch_app = should_launch_app ~= false
         main_app = executable_path
         resources_path = resources_folder
+        REQUEST_FILE = join_path(AUTOSUBS_MAILBOX, "request.lua")
 
-        if ffi.os == "OSX" then
-            command_open = 'open ' .. main_app
-        elseif ffi.os ~= "Windows" then -- Linux
-            command_open = string.format("'%s' &", main_app)
-        end
-
-        -- Set package path for module loading and import required modules
-        local modules_path = join_path(resources_folder, "modules")
-        package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
-        socket = require("ljsocket")
-        json = require("dkjson")
-        luaresolve = require("libavutil")
-        font_fallback = require("font_fallback")
+        json = AutoSubs_require("dkjson")
+        timecode = AutoSubs_require("timecode")
+        font_fallback = AutoSubs_require("font_fallback")
         return StartServer()
     end
 }

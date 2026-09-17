@@ -8,16 +8,33 @@
 
   ; Generate AutoSubs.lua with the installation path baked in (no file read needed at launch)
   FileOpen $0 "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs.lua" w
-  FileWrite $0 "local app_executable = [["
-  FileWrite $0 $INSTDIR
-  FileWrite $0 "\AutoSubs.exe]]$\r$\n"
   FileWrite $0 "local resources_folder = [["
   FileWrite $0 $INSTDIR
   FileWrite $0 "\resources]]$\r$\n"
-  FileWrite $0 "local modules_path = resources_folder .. $\"\\modules$\"$\r$\n"
-  FileWrite $0 "package.path = package.path .. $\";$\" .. modules_path .. $\"\\?.lua$\"$\r$\n"
-  FileWrite $0 "local AutoSubs = require($\"autosubs_core$\")$\r$\n"
-  FileWrite $0 "AutoSubs:Init(app_executable, resources_folder, false)$\r$\n"
+  FileWrite $0 "local app_executable = [["
+  FileWrite $0 $INSTDIR
+  FileWrite $0 "\AutoSubs.exe]]$\r$\n"
+  FileWrite $0 "local boot = assert(loadfile(resources_folder .. $\"\\modules\\bootstrap.lua$\"))()$\r$\n"
+  FileWrite $0 "boot(resources_folder, app_executable, false, { mode = $\"manual$\" })$\r$\n"
+  FileClose $0
+
+  ; Generate AutoSubs.scriptlib in the Scripts ROOT (Resolve runs it at
+  ; startup). It delegates to bootstrap via fusion:Execute so the bridge loop
+  ; runs asynchronously and can't block Resolve's launch.
+  CreateDirectory "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts"
+  FileOpen $0 "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\AutoSubs.scriptlib" w
+  FileWrite $0 "pcall(function()$\r$\n"
+  FileWrite $0 "  local resources_folder = [["
+  FileWrite $0 $INSTDIR
+  FileWrite $0 "\resources]]$\r$\n"
+  FileWrite $0 "  local app_executable = [["
+  FileWrite $0 $INSTDIR
+  FileWrite $0 "\AutoSubs.exe]]$\r$\n"
+  FileWrite $0 "  local bootstrap_path = resources_folder .. $\"\\modules\\bootstrap.lua$\"$\r$\n"
+  FileWrite $0 "  (fusion or fu):Execute(string.format($\r$\n"
+  FileWrite $0 "    'local boot = assert(loadfile(%q))(); boot(%q, %q, false, { mode = $\"startup$\" })',$\r$\n"
+  FileWrite $0 "    bootstrap_path, resources_folder, app_executable))$\r$\n"
+  FileWrite $0 "end)$\r$\n"
   FileClose $0
 
   ; Remove redundant v3 modules copy (now loaded from install dir via package.path).

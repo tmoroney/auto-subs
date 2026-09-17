@@ -30,20 +30,14 @@ if resources_folder == "__AUTOSUBS_RESOURCES_FOLDER__" then
     )
 end
 
-local sep = package.config:sub(1, 1) -- '\\' on Windows, '/' elsewhere
-local function join_path(dir, filename)
-    if dir:sub(-1) == sep then
-        return dir .. filename
-    end
-    return dir .. sep .. filename
-end
+-- Load the bootstrap via loadfile (the sandboxed scripting state has no
+-- require/package); it sets up module loading and starts the core server.
+-- mode = "manual": running this script restarts the bridge against your repo
+-- checkout (it stops any resident bridge first, including the startup one).
+local bootstrap_path = resources_folder .. "/modules/bootstrap.lua"
+local boot = assert(loadfile(bootstrap_path))()
 
--- Make the AutoSubs Lua modules importable, then launch the core server.
-local modules_path = join_path(resources_folder, "modules")
-package.path = package.path .. ";" .. join_path(modules_path, "?.lua")
-
-local AutoSubs = require("autosubs_core")
 -- No executable path is needed in dev mode: the core server never launches the
--- desktop app while dev mode is enabled (the final argument below).
-return AutoSubs:Init("", resources_folder, true)
+-- desktop app while dev mode is enabled.
+return boot(resources_folder, "", true, { mode = "manual" })
 

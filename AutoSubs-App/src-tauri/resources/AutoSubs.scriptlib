@@ -1,0 +1,35 @@
+-- AutoSubs bridge auto-starter.
+--
+-- DaVinci Resolve runs any *.scriptlib file placed in the ROOT of the
+-- user-level Fusion/Scripts folder once at startup. We use that to start the
+-- AutoSubs bridge with zero clicks: instead of running the loop here (which
+-- would block Resolve's startup), we hand the real launcher to
+-- fusion:Execute(), which runs it asynchronously in another scripting state.
+-- The bridge loop then lives there as a resident server until Resolve quits
+-- or the Utility > AutoSubs script restarts it (mode = "manual" takeover).
+--
+-- The whole body is pcall'd so a failure can never break Resolve's startup.
+--
+---@diagnostic disable: undefined-global
+pcall(function()
+    -- On Windows the installer (hooks.nsi) generates AutoSubs.scriptlib with
+    -- the path baked in, so this file is only ever run on macOS and Linux.
+    local resources_folder
+    local app_executable
+    if bmd.direxists("/Applications") then
+        app_executable = "/Applications/AutoSubs.app"
+        resources_folder = app_executable .. "/Contents/Resources/resources"
+    else
+        app_executable = "/usr/bin/autosubs"
+        resources_folder = "/usr/lib/autosubs/resources"
+    end
+
+    local bootstrap_path = resources_folder .. "/modules/bootstrap.lua"
+    if not bmd.fileexists(bootstrap_path) then
+        return -- app not installed
+    end
+
+    (fusion or fu):Execute(string.format(
+        'local boot = assert(loadfile(%q))(); boot(%q, %q, false, { mode = "startup" })',
+        bootstrap_path, resources_folder, app_executable))
+end)

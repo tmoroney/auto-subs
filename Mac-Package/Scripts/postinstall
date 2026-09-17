@@ -15,6 +15,10 @@ mkdir -p "$UTILITY_PATH"
 # Copy Lua file
 cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
 
+# Zero-click bridge startup: Resolve runs Scripts/*.scriptlib at launch
+mkdir -p "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
+cp "$RESOURCES_PATH/AutoSubs.scriptlib" "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/"
+
 # Write JSON file with installation path
 echo "$INSTALL_PATH" > "$TEXT_FILE"
 

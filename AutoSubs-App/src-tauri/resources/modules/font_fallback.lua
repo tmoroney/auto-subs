@@ -12,7 +12,7 @@
 -- installed font list. Callers decide whether to apply the suggestion.
 
 ---@diagnostic disable: undefined-global
-local resolve_env = require("resolve_env")
+local resolve_env = AutoSubs_require("resolve_env")
 
 local M = {}
 

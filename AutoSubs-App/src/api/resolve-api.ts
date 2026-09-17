@@ -56,11 +56,11 @@ function throwIfError(data: any, fallbackFunc?: string): void {
  * Posts `payload` to the AutoSubs Lua server via a small Rust shim
  * (`resolve_bridge`) and returns the parsed JSON body.
  *
- * We used to call `@tauri-apps/plugin-http` directly, but its response-body
- * stream was observed to hang indefinitely against this specific server's
- * short `Connection: close` responses (headers would arrive with `200 OK`
- * but neither `.json()` nor `.text()` would ever resolve). Routing through
- * Rust/reqwest bypasses that plugin entirely.
+ * The bridge is a file mailbox, not HTTP: Resolve 21.1 sandboxes the Lua
+ * scripting state (no io/ffi/package/require), so the Rust backend writes a
+ * `request.lua` chunk that the Lua server picks up with `loadfile`, and the
+ * Lua server answers by writing to `Fusion.prefs` via `SavePrefs()`, which
+ * Rust polls. See `src-tauri/src/resolve_bridge.rs`.
  */
 async function callResolve(
   payload: Record<string, unknown>,
@@ -240,10 +240,6 @@ export async function applyStylesToTimeline(
   });
   throwIfError(data, 'BatchApplyStyle');
   return data;
-}
-
-export async function closeResolveLink() {
-  return callResolve({ func: 'Exit' });
 }
 
 export async function getExportProgress() {
