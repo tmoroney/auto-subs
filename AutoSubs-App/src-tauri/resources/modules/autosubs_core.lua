@@ -2457,11 +2457,27 @@ function StartServer()
     -- so it survives hot-reloads: a lingering request file can't be
     -- re-dispatched after ReloadServer.
     local last_heartbeat = 0
-    -- Handshake identity (see bootstrap.lua): a Stop timestamp only applies
-    -- to loops that were already running when it was set, and request claims
-    -- name this incarnation so a leftover duplicate can't re-run requests.
-    local start_time = os.time()
+    -- Handshake identity (see bootstrap.lua): a loop exits when the Stop pref
+    -- changes from the value it saw at startup, so a Stop aimed at a previous
+    -- loop (or a stale one persisted to disk) never kills a fresh loop.
+    -- Request claims name this incarnation so a duplicate can't re-run them.
+    local stop_snapshot = ""
+    if fusion then
+        local ok, s = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
+        if ok and type(s) == "string" then
+            stop_snapshot = s
+        end
+    end
     local instance_id = _G.AUTOSUBS_OWNER or tostring({})
+
+    -- If a launch claimed the bridge while we were offline (e.g. during a
+    -- reload), it owns it now — bow out instead of running a second loop.
+    if fusion then
+        local ok, owner = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Owner")
+        if ok and type(owner) == "string" and owner ~= "" and owner ~= instance_id then
+            return
+        end
+    end
 
     while not quitServer do
         -- Resident-bridge handshake (see bootstrap.lua): heartbeat once per
@@ -2475,8 +2491,7 @@ function StartServer()
                 pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", tostring(now))
             end
             local stop_ok, stop = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
-            local stop_ts = stop_ok and tonumber(stop) or nil
-            if stop_ts and stop_ts > start_time then
+            if stop_ok and type(stop) == "string" and stop ~= "" and stop ~= stop_snapshot then
                 quitServer = true
             end
         end
@@ -2564,13 +2579,17 @@ function StartServer()
     -- Leaving the loop (Stop takeover or Exit): clear the handshake keys so a
     -- waiting manual launch can proceed and nothing sees a stale heartbeat —
     -- but only while we still own the bridge, or a busy loop that lost a
-    -- takeover would erase the winner's heartbeat on its way out.
+    -- takeover would erase the winner's heartbeat on its way out. A reload
+    -- keeps ownership: the new incarnation is the same owner, and clearing it
+    -- would let a launch mid-reload claim the bridge and double the loops.
     if fusion then
         local owner_ok, owner = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Owner")
         if not owner_ok or type(owner) ~= "string" or owner == "" or owner == instance_id then
             pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Stop", "")
-            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
-            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Owner", "")
+            if not shouldReload then
+                pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
+                pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Owner", "")
+            end
         end
     end
 

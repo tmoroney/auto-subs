@@ -70,10 +70,10 @@ end
 --   Heartbeat: unix seconds, written once per second by the owning loop.
 --   Owner: unique token of the launch that claimed the bridge, decided
 --          last-writer-wins after a settle window.
---   Stop: unix timestamp set by a manual launch to ask running loops to
---         exit. A loop exits only when the timestamp is newer than its own
---         start time, so a Stop aimed at a predecessor never kills the fresh
---         loop — and one persisted to disk by a stray SavePrefs is harmless.
+--   Stop: set by a manual launch to ask running loops to exit. A loop exits
+--         only when the value differs from what it read at startup, so a Stop
+--         aimed at a predecessor never kills the fresh loop — and one
+--         persisted to disk by a stray SavePrefs is harmless.
 local function fusion_object()
     return rawget(_G, "fusion") or rawget(_G, "fu")
 end
@@ -125,8 +125,9 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
         -- Takeover: ask any running loop to exit, then start fresh. Stop is
         -- set unconditionally — a stale heartbeat means the old loop is dead
         -- OR busy inside a Resolve call, and a busy one must still see the
-        -- request when it resumes. Our new loop starts after the timestamp
-        -- and ignores it. The wait only happens when a loop looks alive.
+        -- request when it resumes. Our new loop reads Stop as its startup
+        -- snapshot and ignores it. The wait only happens when a loop looks
+        -- alive.
         pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", tostring(os.time()))
         if bridge_alive(fu) then
             local deadline = os.time() + 4

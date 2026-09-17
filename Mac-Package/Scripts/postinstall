@@ -5,19 +5,32 @@ INSTALL_PATH="/Applications"
 APP_PATH="$INSTALL_PATH/AutoSubs.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
 OLD_UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
-UTILITY_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+
+# pkg scripts run as root, so $HOME is the installer account's — resolve the
+# console user's home and run user-scoped writes as them instead.
+CONSOLE_USER="$(stat -f %Su /dev/console)"
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
+    USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')"
+    AS_USER=(sudo -u "$CONSOLE_USER")
+else
+    USER_HOME="$HOME"
+    AS_USER=()
+fi
+
+SCRIPTS_DIR="$USER_HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
+UTILITY_PATH="$SCRIPTS_DIR/Utility"
 
 # Write the Resolve bridge launcher + startup scriptlib now so the bridge is
 # in place before the app first runs. The app also rewrites them on startup
-# (resolve_scripts.rs), which keeps them current across updates.
-SCRIPTS_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
-mkdir -p "$SCRIPTS_DIR/Utility"
+# (resolve_scripts.rs), which keeps them current across updates. `tee` runs
+# as the console user so the app (running as them) can rewrite the files.
+"${AS_USER[@]}" mkdir -p "$UTILITY_PATH"
 sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
-    "$RESOURCES_PATH/AutoSubs.lua" > "$SCRIPTS_DIR/Utility/AutoSubs.lua"
+    "$RESOURCES_PATH/AutoSubs.lua" | "${AS_USER[@]}" tee "$UTILITY_PATH/AutoSubs.lua" > /dev/null
 sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
-    "$RESOURCES_PATH/AutoSubs.scriptlib" > "$SCRIPTS_DIR/AutoSubs.scriptlib"
+    "$RESOURCES_PATH/AutoSubs.scriptlib" | "${AS_USER[@]}" tee "$SCRIPTS_DIR/AutoSubs.scriptlib" > /dev/null
 
 # Remove legacy Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"
@@ -25,20 +38,20 @@ rm -f "$OLD_UTILITY_PATH/AutoSubs V2.lua"
 rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
 
 # Adobe Extension Installation
-PREMIERE_PATH="$HOME/Library/Application Support/Adobe/CEP/extensions"
-mkdir -p "$PREMIERE_PATH"
-cp -r "$RESOURCES_PATH/com.autosubs.adobe" "$PREMIERE_PATH"
+PREMIERE_PATH="$USER_HOME/Library/Application Support/Adobe/CEP/extensions"
+"${AS_USER[@]}" mkdir -p "$PREMIERE_PATH"
+"${AS_USER[@]}" cp -r "$RESOURCES_PATH/com.autosubs.adobe" "$PREMIERE_PATH"
 
 # Enable PlayerDebugMode for Adobe CEP extensions (CSXS 6-14)
 # CSXS.13/14 are required for Premiere Pro 2026 (v26); older keys cover legacy versions.
-defaults write com.adobe.CSXS.6 PlayerDebugMode 1
-defaults write com.adobe.CSXS.7 PlayerDebugMode 1
-defaults write com.adobe.CSXS.8 PlayerDebugMode 1
-defaults write com.adobe.CSXS.9 PlayerDebugMode 1
-defaults write com.adobe.CSXS.10 PlayerDebugMode 1
-defaults write com.adobe.CSXS.11 PlayerDebugMode 1
-defaults write com.adobe.CSXS.12 PlayerDebugMode 1
-defaults write com.adobe.CSXS.13 PlayerDebugMode 1
-defaults write com.adobe.CSXS.14 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.6 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.7 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.8 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.9 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.10 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.11 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.12 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.13 PlayerDebugMode 1
+"${AS_USER[@]}" defaults write com.adobe.CSXS.14 PlayerDebugMode 1
 
 exit 0
