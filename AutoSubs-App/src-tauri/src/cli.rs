@@ -126,6 +126,17 @@ pub async fn run<R: Runtime>(app: AppHandle<R>) -> ! {
         flush_and_exit(0);
     }
 
+    // `--install-resolve-scripts`: platform installers run this at install time
+    // so the Resolve bridge scripts exist before the app first launches. The
+    // app also refreshes them on every startup, which keeps them current
+    // across updates.
+    if arg_flag(&matches, "install-resolve-scripts") {
+        match crate::resolve_scripts::install_resolve_scripts_now(&app) {
+            Ok(()) => flush_and_exit(0),
+            Err(e) => fail(&e),
+        }
+    }
+
     run_transcribe(app, matches).await
 }
 

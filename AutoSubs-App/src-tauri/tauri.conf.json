@@ -53,6 +53,8 @@
           "ffmpeg"
         ],
         "files": {
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
+          "/opt/resolve/Fusion/Scripts/AutoSubs.scriptlib": "gen-resolve-linux/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
           "/usr/lib/autosubs/resources/AutoSubs.scriptlib": "resources/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
@@ -70,6 +72,8 @@
           "ffmpeg"
         ],
         "files": {
+          "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
+          "/opt/resolve/Fusion/Scripts/AutoSubs.scriptlib": "gen-resolve-linux/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
           "/usr/lib/autosubs/resources/AutoSubs.scriptlib": "resources/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
@@ -119,6 +123,10 @@
         {
           "name": "list-models",
           "description": "List the available transcription models and exit."
+        },
+        {
+          "name": "install-resolve-scripts",
+          "description": "Install the DaVinci Resolve bridge scripts and exit (used by the installers)."
         },
         {
           "name": "output",

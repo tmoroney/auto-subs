@@ -7,9 +7,17 @@ RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
 OLD_UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
 UTILITY_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
 
-# The app installs AutoSubs.lua + AutoSubs.scriptlib into the user's Resolve
-# Scripts folder itself at startup (resolve_scripts.rs), so app updates
-# refresh them without a reinstall.
+# Write the Resolve bridge launcher + startup scriptlib now so the bridge is
+# in place before the app first runs. The app also rewrites them on startup
+# (resolve_scripts.rs), which keeps them current across updates.
+SCRIPTS_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
+mkdir -p "$SCRIPTS_DIR/Utility"
+sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
+    -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
+    "$RESOURCES_PATH/AutoSubs.lua" > "$SCRIPTS_DIR/Utility/AutoSubs.lua"
+sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
+    -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
+    "$RESOURCES_PATH/AutoSubs.scriptlib" > "$SCRIPTS_DIR/AutoSubs.scriptlib"
 
 # Remove legacy Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"

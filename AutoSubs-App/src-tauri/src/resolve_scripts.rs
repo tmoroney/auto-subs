@@ -32,20 +32,32 @@ pub fn install_resolve_scripts(app: &tauri::AppHandle) {
     while !fusion_support_dir().is_some_and(|p| p.is_dir()) {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
-    if let Err(e) = install(app) {
+    if let Err(e) = install(app, false) {
         tracing::warn!("resolve script install skipped: {e}");
     }
 }
 
-fn install(app: &tauri::AppHandle) -> Result<(), String> {
+/// Installer-time entry point (`autosubs --install-resolve-scripts`, invoked by
+/// the Windows installer). Unlike the startup path this creates the Scripts
+/// tree when Resolve hasn't run yet — the user just chose to install AutoSubs,
+/// so pre-seeding is wanted — and returns failures instead of only logging.
+pub fn install_resolve_scripts_now<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<(), String> {
+    install(app, true)
+}
+
+fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> Result<(), String> {
     use tauri::Manager;
 
     // The support dir only exists when Resolve is installed — not our business
-    // to create the whole tree for a user without Resolve.
-    let support = match fusion_support_dir() {
-        Some(p) if p.is_dir() => p,
-        _ => return Ok(()),
-    };
+    // to create the whole tree for a user without Resolve, unless an installer
+    // asked us to pre-seed it.
+    let support = fusion_support_dir()
+        .ok_or_else(|| "could not determine Resolve support directory".to_string())?;
+    if !support.is_dir() && !create_tree {
+        return Ok(());
+    }
     let scripts_root = support.join("Fusion").join("Scripts");
 
     // The resource dir contains the bundled `resources/` tree; tolerate both
