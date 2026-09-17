@@ -205,7 +205,19 @@ fn windows_lua_path_bytes(p: &Path) -> Vec<u8> {
     };
     use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
 
-    let wide: Vec<u16> = p.as_os_str().encode_wide().chain(Some(0)).collect();
+    // resource_dir() hands us verbatim \\?\C:\... paths on Windows. Resolve's
+    // narrow file APIs (fopen, bmd.fileexists) may not understand the prefix,
+    // and our install paths are well under MAX_PATH — drop it.
+    const BS: u16 = b'\\' as u16;
+    let mut wide: Vec<u16> = p.as_os_str().encode_wide().collect();
+    if wide.starts_with(&[BS, BS, b'?' as u16, BS]) {
+        wide.drain(..4);
+        if wide.starts_with(&[b'U' as u16, b'N' as u16, b'C' as u16, BS]) {
+            wide.drain(..3);
+            wide.insert(0, BS); // \\?\UNC\server -> \\server
+        }
+    }
+    let wide: Vec<u16> = wide.into_iter().chain(Some(0)).collect();
 
     unsafe {
         // 1) ANSI code page, flagging any character that had to be approximated.
