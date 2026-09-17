@@ -2426,6 +2426,27 @@ local function bridge_respond(id, body_json)
     bridge_write("Global.AutoSubsBridge.Response", id .. ":" .. AutoSubs_base64(body_json))
 end
 
+-- Claim a mailbox request so only one loop handles it. A raced takeover or
+-- double launch can briefly leave two loops polling the same mailbox; the
+-- claim lives in shared (in-memory) prefs and is decided last-writer-wins
+-- after a settle window, so a request is never handled twice.
+local function bridge_claim(req_id, instance_id)
+    if not fusion then
+        return true
+    end
+    local key = "Global.AutoSubsBridge.Claim"
+    local mine = instance_id .. ":" .. req_id
+    local ok, claim = pcall(fusion.GetPrefs, fusion, key)
+    if ok and type(claim) == "string" and claim ~= mine
+        and claim:sub(-(#req_id + 1)) == ":" .. req_id then
+        return false -- another loop already claimed this request
+    end
+    pcall(fusion.SetPrefs, fusion, key, mine)
+    bmd.wait(0.15)
+    local ok2, final = pcall(fusion.GetPrefs, fusion, key)
+    return ok2 and final == mine
+end
+
 function StartServer()
     -- File-mailbox loop: the desktop app drops request.lua in the shared
     -- mailbox directory; we ack it, run the handler, and write the response
@@ -2436,6 +2457,11 @@ function StartServer()
     -- so it survives hot-reloads: a lingering request file can't be
     -- re-dispatched after ReloadServer.
     local last_heartbeat = 0
+    -- Handshake identity (see bootstrap.lua): a Stop timestamp only applies
+    -- to loops that were already running when it was set, and request claims
+    -- name this incarnation so a leftover duplicate can't re-run requests.
+    local start_time = os.time()
+    local instance_id = _G.AUTOSUBS_OWNER or tostring({})
 
     while not quitServer do
         -- Resident-bridge handshake (see bootstrap.lua): heartbeat once per
@@ -2449,7 +2475,8 @@ function StartServer()
                 pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", tostring(now))
             end
             local stop_ok, stop = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
-            if stop_ok and type(stop) == "string" and stop ~= "" then
+            local stop_ts = stop_ok and tonumber(stop) or nil
+            if stop_ts and stop_ts > start_time then
                 quitServer = true
             end
         end
@@ -2462,7 +2489,8 @@ function StartServer()
                 ok, req = pcall(chunk)
             end
             if ok and type(req) == "table" and type(req.id) == "string"
-                and req.id ~= AUTOSUBS_LAST_REQUEST_ID then
+                and req.id ~= AUTOSUBS_LAST_REQUEST_ID
+                and bridge_claim(req.id, instance_id) then
                 AUTOSUBS_LAST_REQUEST_ID = req.id
 
                 -- Request ids are unix_millis * 1000 + counter, and Rust only
@@ -2491,6 +2519,12 @@ function StartServer()
                                 if control then
                                     quitServer = control.quit or quitServer
                                     shouldReload = control.reload or shouldReload
+                                    -- Wind down a raced duplicate too: it
+                                    -- would otherwise outlive an Exit.
+                                    if control.quit and fusion then
+                                        pcall(fusion.SetPrefs, fusion,
+                                            "Global.AutoSubsBridge.Stop", tostring(os.time()))
+                                    end
                                 end
                             else
                                 print("Invalid function name: " .. tostring(data.func))
@@ -2528,10 +2562,16 @@ function StartServer()
     end
 
     -- Leaving the loop (Stop takeover or Exit): clear the handshake keys so a
-    -- waiting manual launch can proceed and nothing sees a stale heartbeat.
+    -- waiting manual launch can proceed and nothing sees a stale heartbeat —
+    -- but only while we still own the bridge, or a busy loop that lost a
+    -- takeover would erase the winner's heartbeat on its way out.
     if fusion then
-        pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Stop", "")
-        pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
+        local owner_ok, owner = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Owner")
+        if not owner_ok or type(owner) ~= "string" or owner == "" or owner == instance_id then
+            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Stop", "")
+            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
+            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Owner", "")
+        end
     end
 
     print("Shutting down AutoSubs server...")

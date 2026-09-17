@@ -25,6 +25,13 @@ const EXECUTABLE_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_APP_EXECUTABLE__]]";
 /// Entry point from Tauri setup. Never fails the app: anything unexpected is a
 /// `tracing::warn` and we move on.
 pub fn install_resolve_scripts(app: &tauri::AppHandle) {
+    // Resolve creates its per-user support dir on first launch, which can
+    // happen after AutoSubs starts — wait for it rather than skipping script
+    // installation for the whole session. We still never create the tree
+    // ourselves, so on machines without Resolve this thread just sleeps.
+    while !fusion_support_dir().is_some_and(|p| p.is_dir()) {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    }
     if let Err(e) = install(app) {
         tracing::warn!("resolve script install skipped: {e}");
     }

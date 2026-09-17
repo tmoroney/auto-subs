@@ -67,9 +67,13 @@ end
 -- Resident-bridge handshake. The startup scriptlib and the Utility/Dev
 -- scripts can both launch the bridge; these prefs keys (in-memory only, no
 -- SavePrefs) coordinate so only one loop ever runs:
---   Heartbeat: unix seconds, written once per second by the running loop.
---   Stop: set to a timestamp by a manual launch to ask a running loop to
---         exit; the loop clears it to "" when it does.
+--   Heartbeat: unix seconds, written once per second by the owning loop.
+--   Owner: unique token of the launch that claimed the bridge, decided
+--          last-writer-wins after a settle window.
+--   Stop: unix timestamp set by a manual launch to ask running loops to
+--         exit. A loop exits only when the timestamp is newer than its own
+--         start time, so a Stop aimed at a predecessor never kills the fresh
+--         loop — and one persisted to disk by a stray SavePrefs is harmless.
 local function fusion_object()
     return rawget(_G, "fusion") or rawget(_G, "fu")
 end
@@ -83,6 +87,22 @@ local function bridge_alive(fu)
     return hb ~= nil and os.time() - hb <= 3
 end
 
+-- Last-writer-wins claim: publish a unique owner token plus a heartbeat, wait
+-- out a settle window so a launch racing us can overwrite it, then read back.
+-- The loser sees someone else's token and leaves the bridge alone.
+local function claim_bridge(fu)
+    local token = tostring(os.time()) .. " " .. tostring({})
+    pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Owner", token)
+    pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Heartbeat", tostring(os.time()))
+    bmd.wait(0.3)
+    local ok, owner = pcall(fu.GetPrefs, fu, "Global.AutoSubsBridge.Owner")
+    if ok and owner == token then
+        _G.AUTOSUBS_OWNER = token
+        return true
+    end
+    return false
+end
+
 local function boot(resources_folder, app_executable, dev_mode, opts)
     local platform = detect_platform()
     _G.AUTOSUBS_PLATFORM = platform
@@ -93,19 +113,22 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     -- Launch-mode coordination (see the handshake comment above).
     local mode = (opts and opts.mode) or "manual"
     local fu = fusion_object()
+    local can_signal = fu and type(fu.SetPrefs) == "function"
     if mode == "startup" then
         if bridge_alive(fu) then
             return -- a resident bridge is already running
         end
-        -- Claim the bridge immediately: narrows the race between two startup
-        -- scriptlibs both probing liveness.
-        if fu and type(fu.SetPrefs) == "function" then
-            pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Heartbeat", tostring(os.time()))
+        if can_signal and not claim_bridge(fu) then
+            return -- a racing launch claimed the bridge first
         end
-    elseif mode == "manual" then
-        -- Takeover: ask the running loop to exit, then start fresh.
-        if bridge_alive(fu) and fu and type(fu.SetPrefs) == "function" then
-            pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", tostring(os.time()))
+    elseif mode == "manual" and can_signal then
+        -- Takeover: ask any running loop to exit, then start fresh. Stop is
+        -- set unconditionally — a stale heartbeat means the old loop is dead
+        -- OR busy inside a Resolve call, and a busy one must still see the
+        -- request when it resumes. Our new loop starts after the timestamp
+        -- and ignores it. The wait only happens when a loop looks alive.
+        pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", tostring(os.time()))
+        if bridge_alive(fu) then
             local deadline = os.time() + 4
             while os.time() < deadline do
                 bmd.wait(0.1)
@@ -114,19 +137,10 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
                     break
                 end
             end
-            -- Dead loop with a fresh-looking heartbeat: clear Stop ourselves
-            -- and proceed.
-            if fu:GetPrefs("Global.AutoSubsBridge.Stop") ~= "" then
-                pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", "")
-            end
         end
-    end
-
-    -- A Stop value can be persisted to disk by a SavePrefs that fires while it
-    -- is set, and Resolve reloads prefs at startup; never let a stale one kill
-    -- the loop we are about to start.
-    if fu and type(fu.SetPrefs) == "function" then
-        pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", "")
+        if not claim_bridge(fu) then
+            return -- a racing launch claimed the bridge first
+        end
     end
 
     local modules_path = resources_folder .. _G.AUTOSUBS_SEP .. "modules"
