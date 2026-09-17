@@ -123,7 +123,22 @@ fn write_template(
 /// Byte-level placeholder substitution. Paths are injected as Lua long-string
 /// bytes, so this must run on the raw template bytes — never UTF-8 strings.
 fn substitute(template: Vec<u8>, resources: &[u8], executable: &[u8]) -> Vec<u8> {
-    replace_all(replace_all(template, RESOURCES_PLACEHOLDER, resources), EXECUTABLE_PLACEHOLDER, executable)
+    replace_all(
+        replace_all(template, RESOURCES_PLACEHOLDER, &lua_long_string(resources)),
+        EXECUTABLE_PLACEHOLDER,
+        &lua_long_string(executable),
+    )
+}
+
+/// Wrap raw path bytes in a Lua long bracket so the `[[__AUTOSUBS_*__]]`
+/// placeholders keep their string delimiters after substitution. Backslashes
+/// need no escaping inside long strings.
+fn lua_long_string(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len() + 4);
+    out.extend_from_slice(b"[[");
+    out.extend_from_slice(bytes);
+    out.extend_from_slice(b"]]");
+    out
 }
 
 fn replace_all(haystack: Vec<u8>, needle: &[u8], replacement: &[u8]) -> Vec<u8> {
@@ -257,14 +272,14 @@ mod tests {
         let template =
             b"a = [[__AUTOSUBS_RESOURCES_FOLDER__]]\nb = [[__AUTOSUBS_APP_EXECUTABLE__]]\n".to_vec();
         let out = substitute(template, b"/res", b"C:\\app\\AutoSubs.exe");
-        assert_eq!(out, b"a = /res\nb = C:\\app\\AutoSubs.exe\n".to_vec());
+        assert_eq!(out, b"a = [[/res]]\nb = [[C:\\app\\AutoSubs.exe]]\n".to_vec());
     }
 
     #[test]
     fn substitute_handles_repeated_and_absent_placeholders() {
         let template = b"[[__AUTOSUBS_RESOURCES_FOLDER__]]/x and [[__AUTOSUBS_RESOURCES_FOLDER__]]/y".to_vec();
         let out = substitute(template, b"R", b"E");
-        assert_eq!(out, b"R/x and R/y".to_vec());
+        assert_eq!(out, b"[[R]]/x and [[R]]/y".to_vec());
     }
 
     #[cfg(target_os = "macos")]
