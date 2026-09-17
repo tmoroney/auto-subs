@@ -125,7 +125,7 @@ export function TranscriptionHeader({
         data-tauri-drag-region={isMacOs ? true : undefined}
       >
         <div
-          className="min-w-0"
+          className={`min-w-0 ${isMacOs ? "ml-1" : ""}`}
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
           {shouldShowUpdateStatus ? (

@@ -119,12 +119,8 @@ export function IntegrationStatus() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
-            className={`flex items-center gap-1.5 h-7 text-xs px-1.5 min-w-0 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 ${
-              activeIntegration.connected
-                ? "hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
-                : "hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-            }`}
+            variant="outline"
+            className="flex items-center bg-zinc-50 dark:bg-zinc-900 gap-1.5 h-7 shadow-none rounded-sm px-1.5 text-xs min-w-0 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0"
           >
             <img
               src={activeIntegration.logo}
