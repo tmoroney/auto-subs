@@ -77,6 +77,12 @@ tauri-plugin-updater = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.55"
+# WideCharToMultiByte + GetShortPathNameW for ANSI-safe Resolve script paths.
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Storage_FileSystem",
+] }
 
 [features]
 default = ["mac-aarch"]

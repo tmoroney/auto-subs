@@ -151,8 +151,8 @@ export function AdobeProvider({ children }: { children: React.ReactNode }) {
   // closure while still preventing a double-fire on every connection event.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (isConnected) {
-      refreshApp(selectedIntegration as 'premiere' | 'aftereffects', isConnected);
+    if (isConnected && (selectedIntegration === 'premiere' || selectedIntegration === 'aftereffects')) {
+      refreshApp(selectedIntegration, isConnected);
     }
   }, [selectedIntegration]); // isConnected excluded intentionally — see comment above
 

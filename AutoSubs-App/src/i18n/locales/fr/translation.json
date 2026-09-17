@@ -498,7 +498,7 @@
         "connected": "Connecté",
         "canGetAudio": "Vous pouvez récupérer l’audio depuis la timeline et y réenvoier des sous-titres.",
         "cantConnect": "Impossible de se connecter à la timeline",
-        "openResolve": "Ouvrez DaVinci Resolve et allez dans Espace de travail → Scripts → AutoSubs"
+        "openResolve": "Ouvrez DaVinci Resolve. AutoSubs se connecte automatiquement."
       }
     },
     "premiere": {
@@ -519,6 +519,14 @@
         "canGetAudio": "Vous pouvez récupérer l'audio de la composition et y ajouter des sous-titres.",
         "disconnected": "Extension déconnectée",
         "openAfterEffects": "Ouvrez After Effects pour vous connecter automatiquement."
+      }
+    },
+    "standalone": {
+      "productName": "Autonome",
+      "description": "Transcrire des fichiers, sans éditeur",
+      "tooltip": {
+        "ready": "Prêt",
+        "helper": "Transcrire des fichiers audio ou vidéo et exporter les sous-titres."
       }
     }
   },

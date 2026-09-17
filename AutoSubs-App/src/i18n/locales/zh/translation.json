@@ -498,7 +498,7 @@
         "connected": "已连接",
         "canGetAudio": "您可以从时间线获取音频，并将字幕发送回时间线。",
         "cantConnect": "无法连接到时间线",
-        "openResolve": "打开 DaVinci Resolve，然后前往 Workspace → Scripts → AutoSubs"
+        "openResolve": "打开 DaVinci Resolve。AutoSubs 会自动连接。"
       }
     },
     "premiere": {
@@ -519,6 +519,14 @@
         "canGetAudio": "您可以从合成中获取音频并将字幕添加回去。",
         "disconnected": "扩展已断开",
         "openAfterEffects": "打开 After Effects 以自动连接。"
+      }
+    },
+    "standalone": {
+      "productName": "独立模式",
+      "description": "无需编辑器即可转录文件",
+      "tooltip": {
+        "ready": "就绪",
+        "helper": "转录音频或视频文件并导出字幕。"
       }
     }
   },

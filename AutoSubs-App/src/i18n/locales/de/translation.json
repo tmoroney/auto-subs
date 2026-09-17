@@ -498,7 +498,7 @@
         "connected": "Verbunden",
         "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
         "cantConnect": "Keine Verbindung zur Timeline möglich",
-        "openResolve": "Öffne DaVinci Resolve und gehe zu Arbeitsbereich → Skripte → AutoSubs"
+        "openResolve": "DaVinci Resolve öffnen. AutoSubs verbindet sich automatisch."
       }
     },
     "premiere": {
@@ -519,6 +519,14 @@
         "canGetAudio": "Sie können Audio aus der Komposition abrufen und Untertitel hinzufügen.",
         "disconnected": "Erweiterung getrennt",
         "openAfterEffects": "Öffnen Sie After Effects, um automatisch zu verbinden."
+      }
+    },
+    "standalone": {
+      "productName": "Eigenständig",
+      "description": "Dateien transkribieren, ohne Editor",
+      "tooltip": {
+        "ready": "Bereit",
+        "helper": "Transkribiert Audio- oder Videodateien und exportiert die Untertitel."
       }
     }
   },

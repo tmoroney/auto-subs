@@ -109,6 +109,13 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
     [templates, templatesKey, currentTemplatesKey],
   );
 
+  // Mirror of connection state for the poll scheduler below, so the effect
+  // doesn't re-subscribe every time timelineInfo changes.
+  const connectedRef = useRef(false);
+  useEffect(() => {
+    connectedRef.current = timelineInfo.timelineId !== "";
+  }, [timelineInfo]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -121,6 +128,22 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
     }
 
     let inFlight = false;
+    let pollTimer: number | null = null;
+    const scheduleNext = () => {
+      if (cancelled) return;
+      // Two cadences: disconnected polls every 5 s (each offline probe can
+      // already take ~2 s in the mailbox ack timeout, so don't go lower);
+      // connected polls stay at 60 s since this is a timeline-info refresh,
+      // not a liveness check.
+      const delay = connectedRef.current ? 60000 : 5000;
+      // Only one chain: the startup burst below also lands here, so drop any
+      // timer already pending before arming the next one.
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      pollTimer = window.setTimeout(() => {
+        void pollTimeline();
+      }, delay);
+    };
+
     const pollTimeline = async () => {
       if (cancelled || inFlight) return;
       inFlight = true;
@@ -140,6 +163,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         }
       } finally {
         inFlight = false;
+        scheduleNext();
       }
     };
 
@@ -148,14 +172,11 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         void pollTimeline();
       }, delay),
     );
-    const interval = window.setInterval(() => {
-      void pollTimeline();
-    }, 60000);
 
     return () => {
       cancelled = true;
       startupTimers.forEach((timer) => window.clearTimeout(timer));
-      window.clearInterval(interval);
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
     };
   }, [selectedIntegration]);
 

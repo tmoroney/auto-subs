@@ -44,6 +44,9 @@ const REPO_PATH_PLACEHOLDER = '[[__AUTOSUBS_REPO_PATH__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
+// Dev auto-starter generated into the Scripts ROOT (parent of Utility) so the
+// dev bridge launches with Resolve itself.
+const SCRIPTLIB_NAME = 'AutoSubs (Dev).scriptlib';
 const CAPTION_UPDATER_NAME = 'AutoSubs - Update Caption Template.lua';
 
 // Older name this script used to generate; cleaned up so contributors don't end
@@ -207,9 +210,45 @@ function setupResolveDev() {
     console.warn(`⚠ Could not remove stale ${LEGACY_LAUNCHER_NAME}: ${err.message}`);
   }
 
+  // Generate the dev scriptlib in the Scripts ROOT (parent of Utility):
+  // Resolve runs it at startup, so the dev bridge comes up with Resolve.
+  const scriptsRoot = path.dirname(resolvePath);
+  const scriptlibSource = path.join(resourcesFolder, SCRIPTLIB_NAME);
+  const scriptlibDest = path.join(scriptsRoot, SCRIPTLIB_NAME);
+  if (fs.existsSync(scriptlibSource)) {
+    let scriptlib = fs.readFileSync(scriptlibSource, 'utf8');
+    if (!scriptlib.includes(RESOURCES_PLACEHOLDER)) {
+      console.error(`❌ Template is missing the expected placeholder ${RESOURCES_PLACEHOLDER}.`);
+      console.error(`   File: ${scriptlibSource}`);
+      process.exit(1);
+    }
+    // Same raw-path baking as the launcher above.
+    scriptlib = scriptlib.replace(RESOURCES_PLACEHOLDER, `[[${resourcesFolder}]]`);
+    try {
+      fs.writeFileSync(scriptlibDest, scriptlib);
+      console.log(`✓ ${SCRIPTLIB_NAME} generated successfully`);
+      console.log(`   Destination: ${scriptlibDest}`);
+    } catch (err) {
+      console.error(`❌ Failed to write ${SCRIPTLIB_NAME}: ${err.message}`);
+      process.exit(1);
+    }
+  } else {
+    console.warn(`⚠ ${SCRIPTLIB_NAME} template not found; skipping dev auto-start`);
+  }
+
+  // A production scriptlib in the same folder would race the dev one at
+  // Resolve startup (the heartbeat guard picks whichever runs first).
+  const prodScriptlib = path.join(scriptsRoot, 'AutoSubs.scriptlib');
+  if (fs.existsSync(prodScriptlib)) {
+    console.warn(`⚠ A production AutoSubs.scriptlib also exists in ${scriptsRoot}.`);
+    console.warn('  Both would try to start a bridge at Resolve launch — the heartbeat');
+    console.warn('  guard makes one win, but which one is a race. Delete AutoSubs.scriptlib');
+    console.warn('  while developing.');
+  }
+
   const menuLabel = LAUNCHER_NAME.replace(/\.lua$/, '');
-  console.log(`\nYou can now open it from Resolve via:`);
-  console.log(`   Workspace → Scripts → ${menuLabel}`);
+  console.log(`\nThe dev bridge now starts automatically when Resolve launches (via ${SCRIPTLIB_NAME}).`);
+  console.log(`To restart it against your checkout: Workspace → Scripts → ${menuLabel}`);
   console.log('\nEdits to the Lua modules take effect the next time you run the script.');
   console.log('Re-run `npm run setup-resolve` if you move this repository.');
 }

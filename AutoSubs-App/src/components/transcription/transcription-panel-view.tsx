@@ -23,6 +23,7 @@ import {
   TimelineTrackSelector,
   formatLocalizedTrackNumber,
 } from "./source-section";
+import type { Integration } from "@/contexts/IntegrationContext";
 import { LanguageButton } from "./language-button";
 import { OptionsRow } from "./options-row";
 import { isSupportedMediaFile, type ProcessingStep } from "./utils";
@@ -52,7 +53,7 @@ export interface TranscriptionPanelViewProps {
   onStartNewTranscription: () => void | Promise<void>;
   onRefreshAudioTracks?: () => Promise<void>;
   isProcessing?: boolean;
-  selectedIntegration: "davinci" | "premiere" | "aftereffects";
+  selectedIntegration: Integration;
 }
 
 export function TranscriptionPanelView({
@@ -249,24 +250,30 @@ export function TranscriptionPanelView({
                       number={formatSectionNumber(1)}
                       label={t("actionBar.source", "Source")}
                     />
-                    <div className="mb-2.5 w-full">
-                      <SourceModeTabs
-                        audioInputMode={audioInputMode}
-                        onAudioInputModeChange={onAudioInputModeChange}
-                        onSwitchToTimeline={handleRefreshAudioTracks}
-                      />
-                    </div>
+                    {/* Standalone has no timeline: hide the mode toggle and
+                        never render the track selector (file mode only). */}
+                    {selectedIntegration !== "standalone" && (
+                      <div className="mb-2.5 w-full">
+                        <SourceModeTabs
+                          audioInputMode={audioInputMode}
+                          onAudioInputModeChange={onAudioInputModeChange}
+                          onSwitchToTimeline={handleRefreshAudioTracks}
+                        />
+                      </div>
+                    )}
                     <div className="grid min-h-0 flex-1 grid-rows-1">
-                      <TimelineTrackSelector
-                        inputTracks={inputTracks}
-                        selectedIntegration={selectedIntegration}
-                        onRefreshTracks={handleRefreshAudioTracks}
-                        isRefreshingTracks={isRefreshingTracks}
-                        className={cn(
-                          "row-start-1 col-start-1 transition-opacity duration-0",
-                          audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
-                        )}
-                      />
+                      {selectedIntegration !== "standalone" && (
+                        <TimelineTrackSelector
+                          inputTracks={inputTracks}
+                          selectedIntegration={selectedIntegration}
+                          onRefreshTracks={handleRefreshAudioTracks}
+                          isRefreshingTracks={isRefreshingTracks}
+                          className={cn(
+                            "row-start-1 col-start-1 transition-opacity duration-0",
+                            audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
+                          )}
+                        />
+                      )}
                       <FileDropArea
                         selectedFile={selectedFile}
                         onSelectedFileChange={setSelectedFile}

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icons/upload";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings-store";
+import type { Integration } from "@/contexts/IntegrationContext";
 import type { Track } from "@/types";
 import { SUPPORTED_MEDIA_EXTENSIONS, isVideoExtension } from "./utils";
 import { MediaPlayer } from "@/components/media/media-player";
@@ -209,7 +210,7 @@ export function FileDropArea({
 
 interface TimelineTrackSelectorProps {
   inputTracks: Track[];
-  selectedIntegration: "davinci" | "premiere" | "aftereffects";
+  selectedIntegration: Integration;
   onRefreshTracks?: () => void;
   isRefreshingTracks?: boolean;
   className?: string;

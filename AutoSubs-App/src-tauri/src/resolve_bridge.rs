@@ -73,8 +73,10 @@ fn mailbox_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "could not determine the local data directory".to_string())
 }
 
-/// Base directory that contains `Fusion/Profiles/<name>/Fusion.prefs`.
-fn fusion_prefs_base() -> Option<PathBuf> {
+/// Per-user Resolve support directory — the parent of `Fusion/Profiles` (where
+/// we read prefs) and `Fusion/Scripts` (where resolve_scripts.rs installs the
+/// launcher + scriptlib). None when Resolve's layout can't be determined.
+pub(crate) fn fusion_support_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         // %APPDATA% (Roaming)\Blackmagic Design\DaVinci Resolve\Support
@@ -99,7 +101,7 @@ fn fusion_prefs_base() -> Option<PathBuf> {
 
 /// Locate `Fusion/Profiles/*/Fusion.prefs`, most recently modified wins.
 fn fusion_prefs_path() -> Option<PathBuf> {
-    let profiles = fusion_prefs_base()?.join("Fusion").join("Profiles");
+    let profiles = fusion_support_dir()?.join("Fusion").join("Profiles");
     let mut best: Option<(SystemTime, PathBuf)> = None;
     for entry in fs::read_dir(profiles).ok()?.flatten() {
         let prefs = entry.path().join("Fusion.prefs");

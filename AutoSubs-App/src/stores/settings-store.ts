@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
     davinci: ["1"],
     premiere: [],
     aftereffects: [],
+    standalone: [],
   },
   selectedOutputTrack: "1",
 

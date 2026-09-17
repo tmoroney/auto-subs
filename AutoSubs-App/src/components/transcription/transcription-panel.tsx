@@ -105,6 +105,11 @@ export function TranscriptionPanel({
 
   const { selectedIntegration } = useIntegration();
 
+  // Standalone has no timeline: treat it as file mode everywhere in this
+  // panel even if a stale persisted setting says otherwise.
+  const isStandalone = selectedIntegration === "standalone";
+  const effectiveMode: "file" | "timeline" = isStandalone ? "file" : audioInputMode;
+
   const isPremiereActive =
     selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
   const timelineInfo = isPremiereActive ? premiereTimeline : resolveTimeline;
@@ -200,7 +205,7 @@ export function TranscriptionPanel({
       language,
       enableForcedAlignment: willUseForcedAlignment,
       enableDiarize,
-      audioInputMode,
+      audioInputMode: effectiveMode,
     });
 
     return cleanup;
@@ -210,11 +215,11 @@ export function TranscriptionPanel({
     language,
     willUseForcedAlignment,
     enableDiarize,
-    audioInputMode,
+    effectiveMode,
   ]);
 
   React.useEffect(() => {
-    if (audioInputMode === "timeline" && isExporting) {
+    if (effectiveMode === "timeline" && isExporting) {
       updateProgressStep({
         progress: exportProgress,
         type: "Prepare",
@@ -224,7 +229,7 @@ export function TranscriptionPanel({
   }, [
     isExporting,
     exportProgress,
-    audioInputMode,
+    effectiveMode,
     updateProgressStep,
   ]);
 
@@ -245,27 +250,27 @@ export function TranscriptionPanel({
     setLabeledProgress(null);
     cancelRequestedRef.current = false;
     setFileInput(null);
-    if (audioInputMode === "timeline") {
+    if (effectiveMode === "timeline") {
       await refreshAudioTracks();
     }
   }, [
     cancelRequestedRef,
     clearProgressSteps,
     refreshAudioTracks,
-    audioInputMode,
+    effectiveMode,
     setExportProgress,
     setIsExporting,
     setFileInput,
   ]);
 
   const handleStartTranscription = async () => {
-    if (audioInputMode === "timeline" && !timelineInfo.timelineId) {
+    if (effectiveMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;
     }
 
     cancelRequestedRef.current = false;
-    if (audioInputMode === "file" && !fileInput) {
+    if (effectiveMode === "file" && !fileInput) {
       console.error("No file selected");
       return;
     }
@@ -287,7 +292,7 @@ export function TranscriptionPanel({
       language,
       enableForcedAlignment: willUseForcedAlignment,
       enableDiarize,
-      audioInputMode,
+      audioInputMode: effectiveMode,
     });
 
     try {
@@ -300,7 +305,7 @@ export function TranscriptionPanel({
 
       const [audioInfo, modelPaths] = await Promise.all([
         getSourceAudio(
-          audioInputMode,
+          effectiveMode,
           fileInput,
           activeSelectedTracks,
         ),
@@ -452,7 +457,7 @@ export function TranscriptionPanel({
             openModelSelector={openModelSelector}
             onOpenModelSelectorChange={setOpenModelSelector}
             isSmallScreen={isSmallScreen}
-            audioInputMode={audioInputMode}
+            audioInputMode={effectiveMode}
             onAudioInputModeChange={(mode) =>
               updateSetting("audioInputMode", mode)
             }

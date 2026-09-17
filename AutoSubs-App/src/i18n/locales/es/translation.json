@@ -498,7 +498,7 @@
         "connected": "Conectado",
         "canGetAudio": "Puedes obtener el audio de la línea de tiempo y añadirle subtítulos.",
         "cantConnect": "No se puede conectar a la línea de tiempo",
-        "openResolve": "Abre DaVinci Resolve y ve a Workspace → Scripts → AutoSubs"
+        "openResolve": "Abre DaVinci Resolve. AutoSubs se conecta automáticamente."
       }
     },
     "premiere": {
@@ -519,6 +519,14 @@
         "canGetAudio": "Puedes obtener el audio de la composición y añadirle subtítulos.",
         "disconnected": "Extensión desconectada",
         "openAfterEffects": "Abre After Effects para conectarte automáticamente."
+      }
+    },
+    "standalone": {
+      "productName": "Independiente",
+      "description": "Transcribe archivos sin editor",
+      "tooltip": {
+        "ready": "Listo",
+        "helper": "Transcribe archivos de audio o video y exporta los subtítulos."
       }
     }
   },

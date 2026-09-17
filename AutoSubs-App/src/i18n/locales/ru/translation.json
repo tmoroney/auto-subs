@@ -508,7 +508,7 @@
         "connected": "Подключено",
         "canGetAudio": "Можно добавлять субтитры.",
         "cantConnect": "Не удаётся подключиться к таймлайну",
-        "openResolve": "Откройте DaVinci Resolve и перейдите в Workspace → Scripts → AutoSubs"
+        "openResolve": "Откройте DaVinci Resolve. AutoSubs подключится автоматически."
       }
     },
     "premiere": {
@@ -529,6 +529,14 @@
         "canGetAudio": "Можно добавлять субтитры.",
         "disconnected": "Расширение отключено",
         "openAfterEffects": "Откройте After Effects для автоматического подключения."
+      }
+    },
+    "standalone": {
+      "productName": "Автономный",
+      "description": "Транскрибация файлов без редактора",
+      "tooltip": {
+        "ready": "Готов",
+        "helper": "Транскрибирует аудио- или видеофайлы и экспортирует субтитры."
       }
     }
   },

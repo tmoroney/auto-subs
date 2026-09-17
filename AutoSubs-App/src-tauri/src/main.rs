@@ -29,6 +29,7 @@ mod transcription_api;
 mod transcript_types;
 mod logging;
 mod resolve_bridge;
+mod resolve_scripts;
 mod adobe_bridge;
 mod cli;
 #[cfg(target_os = "macos")]
@@ -452,6 +453,17 @@ fn main() {
             // before a previous app quit) so a freshly launched Lua script
             // can't replay it before our first request.
             resolve_bridge::clear_stale_request();
+
+            // Release builds install/refresh the Resolve launcher + scriptlib
+            // themselves so app updates land them without a reinstall. Dev
+            // builds must not: the setup-resolve dev scriptlib would fight them.
+            #[cfg(not(debug_assertions))]
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    resolve_scripts::install_resolve_scripts(&handle);
+                });
+            }
 
             // If a Resolve server from a previous session is running, make sure it
             // hot-reloads to the current app's Lua code and version.

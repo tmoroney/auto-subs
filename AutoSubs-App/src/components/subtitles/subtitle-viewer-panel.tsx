@@ -406,9 +406,11 @@ export function SubtitleViewerPanel({
   const handleJumpToTime = React.useCallback(
     async (seconds: number) => {
       seekAudioPreview(seconds);
+      // Standalone has no timeline to seek.
+      if (selectedIntegration === "standalone") return;
       await jumpToTime(seconds);
     },
-    [jumpToTime, seekAudioPreview],
+    [jumpToTime, seekAudioPreview, selectedIntegration],
   );
 
   const { t } = useTranslation();

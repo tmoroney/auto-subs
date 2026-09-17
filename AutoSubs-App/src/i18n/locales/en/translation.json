@@ -518,7 +518,7 @@
         "connected": "Connected",
         "canGetAudio": "Ready to add subtitles.",
         "cantConnect": "Can't connect to timeline",
-        "openResolve": "Open DaVinci Resolve and go to Workspace → Scripts → AutoSubs"
+        "openResolve": "Open DaVinci Resolve. AutoSubs connects automatically."
       }
     },
     "premiere": {
@@ -539,6 +539,14 @@
         "canGetAudio": "Ready to add subtitles.",
         "disconnected": "Extension disconnected",
         "openAfterEffects": "Open After Effects to connect automatically."
+      }
+    },
+    "standalone": {
+      "productName": "Standalone",
+      "description": "Transcribe files, no editor needed",
+      "tooltip": {
+        "ready": "Ready",
+        "helper": "Transcribe audio or video files and export the subtitles."
       }
     }
   },

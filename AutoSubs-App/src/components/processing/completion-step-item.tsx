@@ -9,6 +9,7 @@ import {
 import { Download, FileText, Send, VolumeX } from "lucide-react"
 import { ExportPopover } from "@/components/common/export-popover"
 import { TimelineInfo } from "@/types"
+import type { Integration } from "@/contexts/IntegrationContext"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { useOutputPanelStore } from "@/stores/output-panel-store"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -19,7 +20,7 @@ export interface CompletionStepProps {
     onViewSubtitles?: () => void;
     isSubtitleViewerOpen?: boolean;
     timelineInfo: TimelineInfo;
-    selectedIntegration?: "davinci" | "premiere" | "aftereffects";
+    selectedIntegration?: Integration;
 }
 
 export function CompletionStepItem({

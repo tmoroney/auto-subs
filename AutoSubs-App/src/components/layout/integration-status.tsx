@@ -73,6 +73,18 @@ export function IntegrationStatus() {
         : t("titlebar.aftereffects.tooltip.openAfterEffects"),
       refresh: refreshAdobe,
     },
+    standalone: {
+      productName: t("titlebar.standalone.productName"),
+      logo: "/autosubs-logo.png",
+      connected: true,
+      timelineName: undefined,
+      projectName: undefined,
+      description: t("titlebar.standalone.description"),
+      connectedText: t("titlebar.standalone.tooltip.ready"),
+      disconnectedText: t("titlebar.standalone.tooltip.ready"),
+      helperText: t("titlebar.standalone.tooltip.helper"),
+      refresh: async () => {},
+    },
   } satisfies Record<
     Integration,
     {
@@ -91,9 +103,14 @@ export function IntegrationStatus() {
 
   const activeIntegration = integrations[selectedIntegration];
 
-  const activeLabel = activeIntegration.connected
-    ? activeIntegration.timelineName || activeIntegration.connectedText
-    : t("titlebar.status.disconnected");
+  // Standalone is always "connected" with no timeline; its trigger label is
+  // the product name rather than the "Ready" status text.
+  const activeLabel =
+    selectedIntegration === "standalone"
+      ? activeIntegration.productName
+      : activeIntegration.connected
+        ? activeIntegration.timelineName || activeIntegration.connectedText
+        : t("titlebar.status.disconnected");
 
   return (
     <div
@@ -171,16 +188,20 @@ export function IntegrationStatus() {
               </DropdownMenuItem>
             );
           })}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              void activeIntegration.refresh();
-            }}
-            className="cursor-pointer"
-          >
-            <RotateCcw className="size-4" />
-            <span>{t("common.refresh", "Refresh connection")}</span>
-          </DropdownMenuItem>
+          {selectedIntegration !== "standalone" && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  void activeIntegration.refresh();
+                }}
+                className="cursor-pointer"
+              >
+                <RotateCcw className="size-4" />
+                <span>{t("common.refresh", "Refresh connection")}</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

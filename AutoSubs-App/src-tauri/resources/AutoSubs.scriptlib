@@ -8,21 +8,16 @@
 -- The bridge loop then lives there as a resident server until Resolve quits
 -- or the Utility > AutoSubs script restarts it (mode = "manual" takeover).
 --
+-- This file is a TEMPLATE. The AutoSubs app itself writes the installed copy
+-- on startup (resolve_scripts.rs), baking the real install paths into the
+-- [[...]] placeholders below.
+--
 -- The whole body is pcall'd so a failure can never break Resolve's startup.
 --
 ---@diagnostic disable: undefined-global
 pcall(function()
-    -- On Windows the installer (hooks.nsi) generates AutoSubs.scriptlib with
-    -- the path baked in, so this file is only ever run on macOS and Linux.
-    local resources_folder
-    local app_executable
-    if bmd.direxists("/Applications") then
-        app_executable = "/Applications/AutoSubs.app"
-        resources_folder = app_executable .. "/Contents/Resources/resources"
-    else
-        app_executable = "/usr/bin/autosubs"
-        resources_folder = "/usr/lib/autosubs/resources"
-    end
+    local resources_folder = [[__AUTOSUBS_RESOURCES_FOLDER__]]
+    local app_executable = [[__AUTOSUBS_APP_EXECUTABLE__]]
 
     local bootstrap_path = resources_folder .. "/modules/bootstrap.lua"
     if not bmd.fileexists(bootstrap_path) then

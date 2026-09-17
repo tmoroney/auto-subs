@@ -25,6 +25,7 @@ function getTranscriptSourceType(
   audioInputMode: "file" | "timeline",
   integration: Integration | undefined
 ): TranscriptSourceType {
+  if (integration === "standalone") return "standalone";
   if (audioInputMode === "file") return "standalone";
   switch (integration) {
     case "premiere":

@@ -6,29 +6,15 @@ APP_PATH="$INSTALL_PATH/AutoSubs.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
 OLD_UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
 UTILITY_PATH="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
-WORKFLOW_INTEGRATION_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
-TEXT_FILE="$UTILITY_PATH/AutoSubs/install_path.txt"
 
-# Ensure user-level Utility directory exists
-mkdir -p "$UTILITY_PATH"
-
-# Copy Lua file
-cp "$RESOURCES_PATH/AutoSubs.lua" "$UTILITY_PATH"
-
-# Zero-click bridge startup: Resolve runs Scripts/*.scriptlib at launch
-mkdir -p "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
-cp "$RESOURCES_PATH/AutoSubs.scriptlib" "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/"
-
-# Write JSON file with installation path
-echo "$INSTALL_PATH" > "$TEXT_FILE"
+# The app installs AutoSubs.lua + AutoSubs.scriptlib into the user's Resolve
+# Scripts folder itself at startup (resolve_scripts.rs), so app updates
+# refresh them without a reinstall.
 
 # Remove legacy Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"
 rm -f "$OLD_UTILITY_PATH/AutoSubs V2.lua"
 rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
-
-# Also copy lua file to Workflow Integration Plugin for ease of use
-cp "$RESOURCES_PATH/AutoSubs.lua" "$WORKFLOW_INTEGRATION_PATH"
 
 # Adobe Extension Installation
 PREMIERE_PATH="$HOME/Library/Application Support/Adobe/CEP/extensions"

@@ -498,7 +498,7 @@
         "canGetAudio": "タイムラインから音声を取得し、字幕を送信できます。",
         "cantConnect": "タイムラインに接続できません",
         "connected": "接続済み",
-        "openResolve": "DaVinci Resolve を開き、ワークスペース → スクリプト → AutoSubs に移動してください"
+        "openResolve": "DaVinci Resolve を開いてください。AutoSubs が自動的に接続します。"
       }
     },
     "premiere": {
@@ -523,6 +523,14 @@
     },
     "status": {
       "disconnected": "未接続"
+    },
+    "standalone": {
+      "productName": "スタンドアロン",
+      "description": "エディターなしでファイルを文字起こし",
+      "tooltip": {
+        "ready": "準備完了",
+        "helper": "音声または動画ファイルを文字起こしし、字幕をエクスポートします。"
+      }
     }
   },
   "replaceStrings": {

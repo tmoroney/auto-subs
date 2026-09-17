@@ -84,6 +84,12 @@ export function OutputPanel({
   // Resolve happens to be closed, and Adobe users never see a control they
   // cannot use.
   const isResolve = selectedIntegration === "davinci";
+  const isStandalone = selectedIntegration === "standalone";
+
+  // Standalone has no editor to send to: it is always "disconnected" for
+  // output purposes, which hides the send button and the summary row while
+  // leaving file export available.
+  const editorConnected = isConnected && !isStandalone;
 
   const { subtitles, speakers, updateSpeakers, currentSubtitleDocumentFilename } =
     useSubtitleDocument();
@@ -141,14 +147,14 @@ export function OutputPanel({
   // the surface that owns it: collapsing the sheet or losing the editor both
   // end it. The editor itself handles telling Resolve.
   React.useEffect(() => {
-    if (!expanded || !isConnected) setEditing(null);
-  }, [expanded, isConnected]);
+    if (!expanded || !editorConnected) setEditing(null);
+  }, [expanded, editorConnected]);
 
   // ── Conflict check ──────────────────────────────────────────────────────
   // Runs whether or not the sheet is open: the warning belongs in the summary
   // row so it is read *before* the send button is pressed.
   const shouldCheckConflicts =
-    isConnected && isResolve && !!currentSubtitleDocumentFilename && !!selectedOutputTrack;
+    editorConnected && isResolve && !!currentSubtitleDocumentFilename && !!selectedOutputTrack;
 
   React.useEffect(() => {
     if (!shouldCheckConflicts) {
@@ -199,7 +205,7 @@ export function OutputPanel({
   const needsStyleChoice = isResolve && !styleIsAvailable;
 
   const summaryParts: string[] = [];
-  if (!isResolve) {
+  if (!isResolve && !isStandalone) {
     summaryParts.push(
       selectedIntegration === "aftereffects" ? "After Effects" : "Premiere Pro",
     );
@@ -331,8 +337,8 @@ export function OutputPanel({
           ) : (
             <OutputSheet
               closing={closing}
-              isConnected={isConnected}
-              showCaptionStyle={isResolve}
+              isConnected={editorConnected}
+              showCaptionStyle={isResolve && !isStandalone}
               focusSection={focusSection}
               onFocusHandled={clearFocusSection}
               onBack={handleToggle}
@@ -354,7 +360,7 @@ export function OutputPanel({
         <div className="shrink-0 border-t bg-card">
           {/* Without an editor there is nothing to summarise; the row is only
               kept so an expanded sheet still has a way to collapse. */}
-          {isConnected && (!expanded || closing) && (
+          {editorConnected && (!expanded || closing) && (
             <div className="px-3 pt-3">
               <button
                 type="button"
@@ -388,7 +394,7 @@ export function OutputPanel({
           )}
 
           <div className="flex flex-wrap justify-end gap-2 p-3">
-            {isConnected && isResolve && expanded && !closing && (
+            {editorConnected && isResolve && expanded && !closing && (
               <Button
                 type="button"
                 variant="outline"
@@ -412,7 +418,7 @@ export function OutputPanel({
                 this group, so the export icon can never end up alone on its
                 own line. */}
             <div className="flex flex-[1_1_12rem] justify-end gap-2">
-              {isConnected && (
+              {editorConnected && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -427,7 +433,7 @@ export function OutputPanel({
                 onExport={onExport}
                 hasSubtitles={hasSubtitles}
                 trigger={
-                  isConnected ? (
+                  editorConnected ? (
                     <Button
                       variant="outline"
                       size="icon"
