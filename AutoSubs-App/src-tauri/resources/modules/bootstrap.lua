@@ -67,9 +67,17 @@ end
 -- Resident-bridge handshake. The startup scriptlib and the Utility/Dev
 -- scripts can both launch the bridge; these prefs keys (in-memory only, no
 -- SavePrefs) coordinate so only one loop ever runs:
---   Heartbeat: unix seconds, written once per second by the owning loop.
+--   Probe/ProbeAck: liveness check. A launch writes a unique token to Probe;
+--         the loop echoes it into ProbeAck (~2x/sec). The loop keeps NO
+--         continuous prefs writes on purpose: every bound fusion: call is
+--         marshaled through Resolve's UI event queue, and a queued
+--         prefs event landing during Resolve's shutdown teardown crashes
+--         the app (FusionApp::PrefsChanged on a half-dead prefs store).
+--   Heartbeat: legacy once-a-second liveness write kept only for old loops
+--         during upgrades; new loops never write it.
 --   Owner: unique token of the launch that claimed the bridge, decided
---          last-writer-wins after a settle window.
+--          last-writer-wins after a settle window. A running loop also
+--          exits when it sees a foreign Owner.
 --   Stop: unique token set by a manual launch to ask running loops to exit.
 --         A loop exits only when the value differs from what it read at
 --         startup, so a Stop aimed at a predecessor never kills the fresh
@@ -82,9 +90,24 @@ local function bridge_alive(fu)
     if not fu or type(fu.GetPrefs) ~= "function" then
         return false
     end
+    -- Fast path: a pre-probe loop still heartbeats once a second.
     local ok, hb = pcall(fu.GetPrefs, fu, "Global.AutoSubsBridge.Heartbeat")
     hb = ok and tonumber(hb) or nil
-    return hb ~= nil and os.time() - hb <= 3
+    if hb ~= nil and os.time() - hb <= 3 then
+        return true
+    end
+    -- Probe the loop directly: it echoes the token into ProbeAck on its next
+    -- prefs check (~0.5 s), so 30 x 50 ms covers it with margin.
+    local token = tostring(os.time()) .. " " .. tostring({})
+    pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Probe", token)
+    for _ = 1, 30 do
+        bmd.wait(0.05)
+        local ack_ok, ack = pcall(fu.GetPrefs, fu, "Global.AutoSubsBridge.ProbeAck")
+        if ack_ok and ack == token then
+            return true
+        end
+    end
+    return false
 end
 
 -- Last-writer-wins claim: publish a unique owner token plus a heartbeat, wait

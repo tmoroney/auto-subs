@@ -2456,19 +2456,26 @@ function StartServer()
     -- Last handled request id lives in the AUTOSUBS_LAST_REQUEST_ID global
     -- so it survives hot-reloads: a lingering request file can't be
     -- re-dispatched after ReloadServer.
-    local last_heartbeat = 0
     -- Handshake identity (see bootstrap.lua): a loop exits when the Stop pref
     -- changes from the value it saw at startup, so a Stop aimed at a previous
     -- loop (or a stale one persisted to disk) never kills a fresh loop.
     -- Request claims name this incarnation so a duplicate can't re-run them.
     local stop_snapshot = ""
+    local last_probe = ""
     if fusion then
         local ok, s = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
         if ok and type(s) == "string" then
             stop_snapshot = s
         end
+        -- Same for Probe: a token persisted to disk by an earlier SavePrefs
+        -- must not be re-acked on behalf of a launcher that asked ages ago.
+        local pok, p = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Probe")
+        if pok and type(p) == "string" then
+            last_probe = p
+        end
     end
     local instance_id = _G.AUTOSUBS_OWNER or tostring({})
+    local pref_tick = 0
 
     -- If a launch claimed the bridge while we were offline (e.g. during a
     -- reload), it owns it now — bow out instead of running a second loop.
@@ -2480,18 +2487,32 @@ function StartServer()
     end
 
     while not quitServer do
-        -- Resident-bridge handshake (see bootstrap.lua): heartbeat once per
-        -- second so launchers can tell a live loop from a dead one, and watch
-        -- for a Stop request from a manual (takeover) launch. In-memory prefs
-        -- only — no SavePrefs, so this never touches disk.
-        if fusion then
-            local now = os.time()
-            if now ~= last_heartbeat then
-                last_heartbeat = now
-                pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", tostring(now))
-            end
+        -- Resident-bridge handshake (see bootstrap.lua): every bound fusion:
+        -- call is marshaled through Resolve's UI event queue, and a queued
+        -- prefs event landing during Resolve's shutdown teardown has crashed
+        -- the app — so the idle loop touches prefs only ~2x/sec (10 ticks of
+        -- the 50 ms wait) and writes nothing at all unless probed. In-memory
+        -- prefs only — no SavePrefs, so this never touches disk.
+        --   Stop: a manual launch asks us to exit (value changed from the
+        --         snapshot taken above).
+        --   Probe: a launcher asking "are you alive" — echo the token into
+        --         ProbeAck once, when it changes.
+        --   Owner: a foreign token means a launch claimed the bridge while
+        --         we were busy — bow out instead of running a second loop.
+        pref_tick = pref_tick + 1
+        if fusion and pref_tick >= 10 then
+            pref_tick = 0
             local stop_ok, stop = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Stop")
             if stop_ok and type(stop) == "string" and stop ~= "" and stop ~= stop_snapshot then
+                quitServer = true
+            end
+            local probe_ok, probe = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Probe")
+            if probe_ok and type(probe) == "string" and probe ~= "" and probe ~= last_probe then
+                last_probe = probe
+                pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.ProbeAck", probe)
+            end
+            local own_ok, owner = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Owner")
+            if own_ok and type(owner) == "string" and owner ~= "" and owner ~= instance_id then
                 quitServer = true
             end
         end
@@ -2587,6 +2608,8 @@ function StartServer()
         local owner_ok, owner = pcall(fusion.GetPrefs, fusion, "Global.AutoSubsBridge.Owner")
         if not owner_ok or type(owner) ~= "string" or owner == "" or owner == instance_id then
             pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Stop", "")
+            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Probe", "")
+            pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.ProbeAck", "")
             if not shouldReload then
                 pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Heartbeat", "0")
                 pcall(fusion.SetPrefs, fusion, "Global.AutoSubsBridge.Owner", "")
