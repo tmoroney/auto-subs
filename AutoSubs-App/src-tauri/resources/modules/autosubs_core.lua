@@ -58,18 +58,23 @@ local AUTOSUBS_BIN = caption_style.BIN_NAME
 local MEDIA_POOL_UNAVAILABLE = "Resolve media pool is not available"
 local defaultTemplateImportAttempted = false
 local lastProjectId = project:GetUniqueId()
+-- Result of the last full media pool template scan (see get_templates):
+-- valid only while the pool fingerprint below still matches.
+local templatesCache = { fingerprint = nil, list = nil }
 
 -- Refresh the cached project / mediaPool references and detect project
 -- switches. When the user opens a different Resolve project the old
 -- mediaPool no longer contains the AutoSubs Caption template, so we
 -- must reset the one-shot import guard so get_templates() will try
--- the import again.
+-- the import again. The template list cache is per project too.
 local function refresh_project()
     project = projectManager:GetCurrentProject()
     mediaPool = project:GetMediaPool()
     local currentId = project:GetUniqueId()
     if currentId ~= lastProjectId then
         defaultTemplateImportAttempted = false
+        templatesCache.fingerprint = nil
+        templatesCache.list = nil
         lastProjectId = currentId
     end
 end
@@ -183,21 +188,11 @@ local function call_api(obj, method, ...)
     return result
 end
 
--- GetClipProperty() can fail on clips that Resolve has not fully resolved yet.
-local function clip_properties(clip)
-    local props = call_api(clip, "GetClipProperty")
-    if type(props) ~= "table" then
-        return nil
-    end
-    return props
-end
-
+-- GetClipProperty(key) can fail on clips that Resolve has not fully resolved
+-- yet. Always query a single key: the no-argument form builds a full property
+-- dict per clip, which is what made media pool scans expensive.
 local function clip_property(clip, key)
-    local props = clip_properties(clip)
-    if not props then
-        return nil
-    end
-    return props[key]
+    return call_api(clip, "GetClipProperty", key)
 end
 
 local function walk_media_pool(folder, onClip)
@@ -342,19 +337,49 @@ local function ensure_default_template(rootFolder)
     return template
 end
 
--- Get a list of all Text+ templates in the media pool
-get_templates = function()
+-- Cheap structural fingerprint of the media pool: one API call per folder
+-- (subfolder list + clip list) rather than one per clip. Used to skip the
+-- expensive template scan when nothing moved. It can't see same-count
+-- edits (a renamed or swapped title), which is why callers may force a
+-- rescan.
+local function media_pool_fingerprint(rootFolder)
+    local parts = {}
+    local function visit(folder)
+        for _, subfolder in ipairs(safe_list(call_api(folder, "GetSubFolderList"))) do
+            visit(subfolder)
+        end
+        parts[#parts + 1] = tostring(call_api(folder, "GetName"))
+            .. "#" .. tostring(#safe_list(call_api(folder, "GetClipList")))
+    end
+    if is_api_object(rootFolder) then
+        visit(rootFolder)
+    end
+    return table.concat(parts, "|")
+end
+
+-- Get a list of all Text+ templates in the media pool. The scan costs one
+-- marshaled Resolve API call per media pool clip, which stalls the mailbox
+-- loop for a long time on large pools (the app's template dropdown used to
+-- time out waiting for it), so the result is cached per project and only
+-- re-scanned when the fingerprint above changes or `force` is set.
+get_templates = function(force)
     local rootFolder = call_api(mediaPool, "GetRootFolder")
+    if not force and templatesCache.list ~= nil
+        and media_pool_fingerprint(rootFolder) == templatesCache.fingerprint then
+        return templatesCache.list
+    end
+
     local t = {}
     local hasAnimated = ensure_default_template(rootFolder) ~= nil
 
     walk_media_pool(rootFolder, function(clip)
-        local props = clip_properties(clip)
-        if not props then
+        -- Filter on Type first: a single-key lookup per clip instead of a
+        -- full GetClipProperty() dict for every clip in the pool.
+        if not is_matching_title(clip_property(clip, "Type")) then
             return
         end
-        local clipName = props["Clip Name"]
-        if clipName == nil or not is_matching_title(props["Type"]) then
+        local clipName = clip_property(clip, "Clip Name")
+        if clipName == nil then
             return
         end
         -- Any versioned "AutoSubs Caption <version>" clip (and legacy
@@ -370,6 +395,10 @@ get_templates = function()
         table.insert(t, 1, { label = ANIMATED_CAPTION_DISPLAY_NAME, value = ANIMATED_CAPTION_DISPLAY_NAME })
     end
 
+    -- Fingerprint after the scan: ensure_default_template may have imported,
+    -- moved or deleted clips, so the stored value reflects the final state.
+    templatesCache.fingerprint = media_pool_fingerprint(rootFolder)
+    templatesCache.list = t
     return t
 end
 
@@ -411,9 +440,9 @@ function GetTimelineInfo()
     return timelineInfo
 end
 
-function GetTemplates()
+function GetTemplates(force)
     refresh_project()
-    return get_templates()
+    return get_templates(force)
 end
 
 function GetVersion()
@@ -1153,11 +1182,10 @@ local function get_template(rootFolder, templateName, timeline)
     if templateName ~= nil and templateName ~= "" then
         templateItem = get_template_item(rootFolder, templateName)
     end
-    -- If the template wasn't found, trigger get_templates() which will
-    -- auto-import the default caption-bin.drb if it hasn't been tried for
-    -- this project yet, then retry the lookup.
+    -- If the template wasn't found, auto-import the default caption-bin.drb
+    -- if it hasn't been tried for this project yet, then retry the lookup.
     if not templateItem and templateName ~= nil and templateName ~= "" then
-        get_templates()
+        ensure_default_template(rootFolder)
         templateItem = get_template_item(rootFolder, templateName)
     end
     if not templateItem then
@@ -1918,7 +1946,7 @@ function GeneratePreview(req)
     local templateItem = get_template_item(rootFolder, templateName)
     if not templateItem then
         -- Template missing — trigger auto-import and retry
-        get_templates()
+        ensure_default_template(rootFolder)
         templateItem = get_template_item(rootFolder, templateName)
     end
     if not templateItem then
@@ -2195,7 +2223,7 @@ function OpenPresetEdit(req)
     local templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     if not templateItem then
         -- Template missing: trigger auto-import and retry.
-        get_templates()
+        ensure_default_template(rootFolder)
         templateItem = get_template_item(rootFolder, ANIMATED_CAPTION)
     end
     if not templateItem then
@@ -2363,7 +2391,7 @@ end
 -- ---------------------------------------------------------------------------
 local handlers = {
     GetTimelineInfo = function() return GetTimelineInfo() end,
-    GetTemplates = function() return GetTemplates() end,
+    GetTemplates = function(req) return GetTemplates(req and req.force) end,
     GetVersion = function() return GetVersion() end,
     GetExportProgress = function() return GetExportProgress() end,
     CancelExport = function() return CancelExport() end,
@@ -2474,7 +2502,7 @@ function StartServer()
             last_probe = p
         end
     end
-    local instance_id = _G.AUTOSUBS_OWNER or tostring({})
+    local instance_id = rawget(_G, "AUTOSUBS_OWNER") or tostring({})
     local pref_tick = 0
 
     -- If a launch claimed the bridge while we were offline (e.g. during a
@@ -2525,73 +2553,85 @@ function StartServer()
                 ok, req = pcall(chunk)
             end
             if ok and type(req) == "table" and type(req.id) == "string"
-                and req.id ~= AUTOSUBS_LAST_REQUEST_ID
-                and bridge_claim(req.id, instance_id) then
+                and req.id ~= AUTOSUBS_LAST_REQUEST_ID then
                 AUTOSUBS_LAST_REQUEST_ID = req.id
 
                 -- Request ids are unix_millis * 1000 + counter, and Rust only
                 -- writes a request after the previous response, so a
-                -- legitimate request is always fresh. Anything older than
-                -- 20 s is a leftover (e.g. an Exit from a previous app run):
-                -- record it as handled without acking or responding.
+                -- legitimate request is always fresh — unless it queued in
+                -- the mailbox behind a handler that outlived its app-side
+                -- timeout, which can park it for over a minute. Anything
+                -- older than 120 s is a leftover (e.g. an Exit from a
+                -- previous app run): record it as handled without acking or
+                -- responding.
                 local req_millis = tonumber(req.id)
                 local stale = req_millis ~= nil
-                    and (os.time() * 1000 - math.floor(req_millis / 1000) > 20000)
+                    and (os.time() * 1000 - math.floor(req_millis / 1000) > 120000)
                 if stale then
                     print("[AutoSubs Server] Ignoring stale request id " .. req.id)
                 else
+                    -- Ack before claiming: the ack is the app's only liveness
+                    -- signal on a short deadline, while the claim costs
+                    -- several marshaled prefs round trips plus a settle wait,
+                    -- so answering "seen" first keeps a congested Resolve UI
+                    -- queue from looking like a dead bridge.
                     bridge_ack(req.id)
 
-                    local data, _, jerr = json.decode(req.body, 1, nil)
+                    if bridge_claim(req.id, instance_id) then
+                        local data, _, jerr = json.decode(req.body, 1, nil)
 
-                    local body = nil
-                    local success, err = pcall(function()
-                        if data ~= nil then
-                            local handler = handlers[data.func]
-                            if handler then
-                                print("[AutoSubs Server] " .. tostring(data.func))
-                                local result, control = handler(data)
-                                body = safe_json(result == nil and { message = "OK" } or result)
-                                if control then
-                                    quitServer = control.quit or quitServer
-                                    shouldReload = control.reload or shouldReload
-                                    -- Wind down a raced duplicate too: it
-                                    -- would otherwise outlive an Exit.
-                                    if control.quit and fusion then
-                                        pcall(fusion.SetPrefs, fusion,
-                                            "Global.AutoSubsBridge.Stop",
-                                            tostring(os.time()) .. " " .. tostring({}))
+                        local body = nil
+                        local success, err = pcall(function()
+                            if data ~= nil then
+                                local handler = handlers[data.func]
+                                if handler then
+                                    print("[AutoSubs Server] " .. tostring(data.func))
+                                    local result, control = handler(data)
+                                    body = safe_json(result == nil and { message = "OK" } or result)
+                                    if control then
+                                        quitServer = control.quit or quitServer
+                                        shouldReload = control.reload or shouldReload
+                                        -- Wind down a raced duplicate too: it
+                                        -- would otherwise outlive an Exit.
+                                        if control.quit and fusion then
+                                            pcall(fusion.SetPrefs, fusion,
+                                                "Global.AutoSubsBridge.Stop",
+                                                tostring(os.time()) .. " " .. tostring({}))
+                                        end
                                     end
+                                else
+                                    print("Invalid function name: " .. tostring(data.func))
+                                    body = safe_json({ error = true, message = "Invalid function name",
+                                        func = data.func })
                                 end
                             else
-                                print("Invalid function name: " .. tostring(data.func))
-                                body = safe_json({ error = true, message = "Invalid function name",
-                                    func = data.func })
+                                body = safe_json({ message = "Invalid JSON data" })
+                                print("Invalid JSON data: " .. tostring(jerr))
                             end
-                        else
-                            body = safe_json({ message = "Invalid JSON data" })
-                            print("Invalid JSON data: " .. tostring(jerr))
+                        end)
+
+                        -- Ensure we always return a body
+                        if body == nil then
+                            body = safe_json({ message = "OK" })
                         end
-                    end)
 
-                    -- Ensure we always return a body
-                    if body == nil then
-                        body = safe_json({ message = "OK" })
+                        if not success then
+                            local errMsg = tostring(err)
+                            body = safe_json({
+                                error = true,
+                                message = "Server handler failed",
+                                detail = errMsg,
+                                func = data and data.func or nil
+                            })
+                            print("[AutoSubs Server] handler error (" ..
+                                tostring(data and data.func or "<unknown>") .. "): " .. errMsg)
+                        end
+
+                        bridge_respond(req.id, body)
                     end
-
-                    if not success then
-                        local errMsg = tostring(err)
-                        body = safe_json({
-                            error = true,
-                            message = "Server handler failed",
-                            detail = errMsg,
-                            func = data and data.func or nil
-                        })
-                        print("[AutoSubs Server] handler error (" ..
-                            tostring(data and data.func or "<unknown>") .. "): " .. errMsg)
-                    end
-
-                    bridge_respond(req.id, body)
+                    -- A lost claim means a racing loop owns the request and
+                    -- will respond; the id is already marked handled either
+                    -- way, so it won't be re-claimed every tick.
                 end
             end
         end
