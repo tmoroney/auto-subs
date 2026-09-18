@@ -103,6 +103,32 @@ local function claim_bridge(fu)
     return false
 end
 
+-- Launch the desktop app from inside the sandbox. os.execute and ffi are
+-- gone, so bmd.openfileexternal — the primitive Fusion scripts use to open
+-- files/folders with the OS handler — is the only way left to start a
+-- process. On Windows it ShellExecutes the .exe, on macOS it opens the .app
+-- bundle. The app is single-instance, so launching an already-running copy
+-- just focuses its window. If the sandbox ever strips openfileexternal too,
+-- degrade to a console hint.
+local function launch_app(app_executable)
+    if not bmd.fileexists(app_executable) and not bmd.direxists(app_executable) then
+        print("[AutoSubs] Could not find the app at: " .. tostring(app_executable))
+        print("[AutoSubs] Please re-run the AutoSubs installer.")
+        return
+    end
+    if type(bmd.openfileexternal) ~= "function" then
+        print("[AutoSubs] Bridge restarted. Open the AutoSubs app to continue.")
+        return
+    end
+    local ok, err = pcall(bmd.openfileexternal, "Open", app_executable)
+    if ok then
+        print("[AutoSubs] Launching the AutoSubs app...")
+    else
+        print("[AutoSubs] Could not launch the app (" .. tostring(err) ..
+            "). Open AutoSubs manually to continue.")
+    end
+end
+
 local function boot(resources_folder, app_executable, dev_mode, opts)
     local platform = detect_platform()
     _G.AUTOSUBS_PLATFORM = platform
@@ -168,6 +194,14 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
         end
         loaded[name] = result
         return result
+    end
+
+    -- A manual launch (Utility/Dev script) also opens the desktop app — the
+    -- old socket server did this via ffi/os.execute, both gone now. Startup
+    -- mode never launches it: Resolve opening should not pop AutoSubs up
+    -- every time. Do it before Init tail-calls the (blocking) server loop.
+    if mode == "manual" and not dev_mode and app_executable ~= "" then
+        launch_app(app_executable)
     end
 
     local AutoSubs = _G.AutoSubs_require("autosubs_core")

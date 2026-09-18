@@ -111,8 +111,8 @@ npm run dev             # starts the app in dev mode
 
 Both scripts are thin **launchers** — they `loadfile` `modules/bootstrap.lua` and call it, which sets up module loading (`AutoSubs_require`) and calls `AutoSubs:Init()`. All real logic lives in `autosubs_core.lua`; there is almost never a reason to edit the launchers.
 
-- **Production** (`AutoSubs.lua`): Verifies that `bootstrap.lua` exists at the expected location, then runs it with `mode = "manual"` (restarts the resident bridge).
-- **Development** (`AutoSubs (Dev).lua`): Same pattern, but points at your repo checkout with `dev_mode = true`. Lua edits take effect on next script run.
+- **Production** (`AutoSubs.lua`): Verifies that `bootstrap.lua` exists at the expected location, then runs it with `mode = "manual"` (restarts the resident bridge). A manual run also launches the desktop app via `bmd.openfileexternal("Open", app_executable)` — the only process-launch primitive the sandbox leaves (os.execute/ffi are nil). The app is single-instance, so this just focuses the window when it is already running. `mode = "startup"` never launches the app, so Resolve opening doesn't pop AutoSubs up.
+- **Development** (`AutoSubs (Dev).lua`): Same pattern, but points at your repo checkout with `dev_mode = true`. Lua edits take effect on next script run. Dev mode never launches an app.
 - **Startup** (`AutoSubs.scriptlib`, installed to the Scripts root, not Utility): runs once when Resolve starts; launches the bridge with `mode = "startup"` via `fusion:Execute`.
 
 ### How the Launchers Are Generated
