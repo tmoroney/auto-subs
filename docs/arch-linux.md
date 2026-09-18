@@ -33,7 +33,10 @@ ships ffmpeg as a Tauri sidecar, but on Linux it falls back to the binary on
 
 ### GPU acceleration
 
-Whisper and the ONNX models run through Vulkan (`--features linux`):
+The Linux build enables `vulkan`, which in
+[`transcription-engine/Cargo.toml`](../AutoSubs-App/src-tauri/crates/transcription-engine/Cargo.toml)
+expands to `whisper-rs/vulkan` — so Vulkan accelerates the **Whisper** models
+and nothing else:
 
 ```bash
 sudo pacman -S vulkan-icd-loader
@@ -43,8 +46,17 @@ sudo pacman -S vulkan-intel     # Intel
 sudo pacman -S nvidia-utils     # NVIDIA (proprietary driver)
 ```
 
-Without a working ICD, transcription still runs but falls back to CPU and is a
-lot slower. `vulkaninfo | head` should list at least one device.
+`vulkaninfo | head` should list at least one device. Without a working ICD,
+Whisper falls back to CPU and is considerably slower on long files.
+
+The ONNX Runtime models — Moonshine, Parakeet, SenseVoice, Canary, Cohere,
+GigaAM and Omni-ASR — and speaker diarization both go through `ort`, and the
+Linux preset enables no execution provider for it, so **they run on CPU
+regardless of your GPU**. This is a property of the presets rather than an
+oversight: ONNX Runtime has no Vulkan execution provider to enable, so the
+other presets pair Vulkan with a separate ONNX backend — `windows` adds
+`directml` and `mac-aarch` adds `coreml`. Picking a Whisper model is therefore
+how you get GPU acceleration on Linux; picking an ONNX model will not use it.
 
 ### Building from source
 
