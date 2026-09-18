@@ -98,7 +98,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
 
       setTemplatesLoading(true);
       try {
-        const nextTemplates = await getTemplates();
+        const nextTemplates = await getTemplates(force);
         setTemplates(nextTemplates);
         setTemplatesKey(currentTemplatesKey);
         return nextTemplates;
@@ -129,13 +129,18 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
 
     let inFlight = false;
     let pollTimer: number | null = null;
-    const scheduleNext = () => {
+    // Consecutive offline-looking poll failures. A single stalled mailbox
+    // ack is normal when Resolve is busy (a slow Lua handler or a congested
+    // UI event queue delays the response), so the badge only drops to
+    // "Disconnected" after a second failure in a row.
+    let offlineStrikes = 0;
+    const scheduleNext = (delayOverride?: number) => {
       if (cancelled) return;
       // Two cadences: disconnected polls every 5 s (each offline probe can
       // already take ~2 s in the mailbox ack timeout, so don't go lower);
       // connected polls stay at 60 s since this is a timeline-info refresh,
       // not a liveness check.
-      const delay = connectedRef.current ? 60000 : 5000;
+      const delay = delayOverride ?? (connectedRef.current ? 60000 : 5000);
       // Only one chain: the startup burst below also lands here, so drop any
       // timer already pending before arming the next one.
       if (pollTimer !== null) window.clearTimeout(pollTimer);
@@ -149,21 +154,40 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
       inFlight = true;
       try {
         const info = await getTimelineInfo();
-        if (!cancelled) setTimelineInfo(info);
+        if (!cancelled) {
+          offlineStrikes = 0;
+          setTimelineInfo(info);
+        }
       } catch (error) {
         if (cancelled) return;
         const errorMessage = error instanceof Error ? error.message : String(error);
-        if (
-          errorMessage.includes('DaVinci Resolve is not running') ||
-          errorMessage.includes('Connection refused') ||
-          errorMessage.includes('tcp connect error') ||
-          errorMessage.includes('No timeline detected')
-        ) {
+        if (errorMessage.includes('No timeline detected')) {
+          // The bridge answered; Resolve just has no timeline open.
+          offlineStrikes = 0;
           setTimelineInfo(EMPTY_TIMELINE_INFO);
+        } else if (
+          errorMessage.includes('DaVinci Resolve is not running') ||
+          errorMessage.includes('AutoSubs bridge is unavailable') ||
+          errorMessage.includes('Connection refused') ||
+          errorMessage.includes('tcp connect error')
+        ) {
+          offlineStrikes++;
+          if (!connectedRef.current || offlineStrikes >= 2) {
+            setTimelineInfo(EMPTY_TIMELINE_INFO);
+          }
         }
       } finally {
         inFlight = false;
-        scheduleNext();
+        // After a first offline-looking failure on a live connection, re-poll
+        // soon so the second strike (or a success) settles the badge within
+        // a few seconds instead of the usual 60 s cadence. After a clear,
+        // force the disconnected cadence since connectedRef lags a render.
+        const delay = offlineStrikes >= 2
+          ? 5000
+          : connectedRef.current && offlineStrikes === 1
+            ? 3000
+            : undefined;
+        scheduleNext(delay);
       }
     };
 

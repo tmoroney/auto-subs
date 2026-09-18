@@ -131,8 +131,11 @@ export async function getTimelineInfo() {
   return data as TimelineInfo;
 }
 
-export async function getTemplates(): Promise<Template[]> {
-  const data = await callResolve({ func: 'GetTemplates' }, 15);
+export async function getTemplates(force = false): Promise<Template[]> {
+  // The Lua side caches the template list per project and only re-scans the
+  // media pool when its shape changes, but a cold scan of a large pool still
+  // costs one marshaled API call per clip — allow a full minute for it.
+  const data = await callResolve({ func: 'GetTemplates', force }, 60);
   throwIfError(data, 'GetTemplates');
   return Array.isArray(data) ? data : [];
 }

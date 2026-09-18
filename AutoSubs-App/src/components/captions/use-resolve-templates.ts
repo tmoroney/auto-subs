@@ -6,7 +6,7 @@ import { isAutoSubsTemplate } from "@/lib/caption-style";
 import type { Template } from "@/types";
 
 /** How long to wait for Resolve before assuming it will not answer. */
-const LOAD_TIMEOUT_MS = 15000;
+const LOAD_TIMEOUT_MS = 60000;
 
 export interface ResolveTemplatesState {
     /** Title templates in the project's media pool, minus the AutoSubs macro. */

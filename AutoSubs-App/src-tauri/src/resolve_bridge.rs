@@ -41,6 +41,26 @@ const RESOLVE_OFFLINE_MESSAGE: &str = "DaVinci Resolve is not running or the Aut
 const ACK_TIMEOUT: Duration = Duration::from_secs(2);
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
 
+/// While a previous handler is still running (Rust timed out on it but Lua
+/// kept going — it has no cancellation), a new request sits in the mailbox
+/// unacked: the loop is busy, not dead. `request_in_flight` detects that
+/// state and extends the ack deadline by this much, refreshed every time the
+/// evidence is still present.
+const BUSY_HOLD: Duration = Duration::from_secs(10);
+
+/// An acked-but-unanswered request older than this is an abandoned leftover
+/// from a previous run, not a live handler — don't let it mask a dead
+/// bridge. Request ids encode their creation time (`unix_millis * 1000 +
+/// counter`), so the age is recoverable.
+const BUSY_ACK_MAX_AGE_MS: u64 = 120_000;
+
+/// Absolute cap on how long `request_in_flight` may postpone the offline
+/// verdict. A stale ack also survives a bridge that *died* mid-handler (a
+/// crash is the only way to get one — the loop always responds before it can
+/// exit), so extending per-poll without a ceiling would mask a dead bridge
+/// for up to BUSY_ACK_MAX_AGE_MS instead of detecting it promptly.
+const MAX_BUSY_WAIT: Duration = Duration::from_secs(60);
+
 /// Serialises mailbox requests: only one request.lua exists at a time.
 static REQUEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -56,14 +76,17 @@ pub struct ResolveBridgeArgs {
     pub timeout_secs: Option<u64>,
 }
 
-/// Unique request id, always a decimal string on both sides.
-fn next_request_id() -> String {
-    let millis = SystemTime::now()
+fn unix_millis() -> u64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
+        .unwrap_or(0)
+}
+
+/// Unique request id, always a decimal string on both sides.
+fn next_request_id() -> String {
     let counter = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed) % 1000;
-    (millis * 1000 + counter).to_string()
+    (unix_millis() * 1000 + counter).to_string()
 }
 
 /// `<data_local_dir>/com.autosubs/resolve-bridge`, matching the Lua side.
@@ -175,6 +198,32 @@ fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String
     Some(Ok(text))
 }
 
+/// True when the prefs file shows the Lua loop alive but busy: an `Ack` for
+/// a different, still-recent request id with no matching `Response` yet —
+/// i.e. a handler is in flight. This happens when a caller's timeout fired
+/// while its handler kept running (the template scan on a large media pool
+/// can outlive the frontend's patience by tens of seconds); the loop will
+/// pick our request up when it finishes. A very old acked-but-unanswered id
+/// is an abandoned leftover, not evidence of life.
+fn request_in_flight(text: &str, id: &str) -> bool {
+    let Some(ack) = pref_value(text, "Ack") else {
+        return false;
+    };
+    if ack == id {
+        return false;
+    }
+    let Ok(encoded) = ack.parse::<u64>() else {
+        return false;
+    };
+    if unix_millis().saturating_sub(encoded / 1000) > BUSY_ACK_MAX_AGE_MS {
+        return false;
+    }
+    match pref_value(text, "Response") {
+        Some(value) => decode_response(value, ack).is_none(),
+        None => true,
+    }
+}
+
 /// If the payload carries a string `filePath`, read that file and attach the
 /// parsed JSON as `subtitleData` (the sandboxed Lua side cannot read files).
 fn attach_subtitle_data(payload: &mut serde_json::Value) -> Result<(), String> {
@@ -252,7 +301,8 @@ async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String
     let prefs_path = fusion_prefs_path().ok_or_else(|| RESOLVE_OFFLINE_MESSAGE.to_string())?;
 
     let deadline = Instant::now() + timeout;
-    let ack_deadline = Instant::now() + ACK_TIMEOUT;
+    let busy_cap = Instant::now() + MAX_BUSY_WAIT;
+    let mut ack_deadline = Instant::now() + ACK_TIMEOUT;
     let mut acked = false;
 
     loop {
@@ -267,6 +317,15 @@ async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String
                     if ack == id {
                         acked = true;
                     }
+                }
+                // An ack for a different request with no response yet means
+                // the loop is busy inside a handler, not dead — our request
+                // is next in line. Keep waiting instead of reporting a false
+                // disconnect, but never past busy_cap: the same evidence is
+                // left behind when the bridge dies mid-handler, so an
+                // unbounded extension would mask a dead bridge too.
+                if request_in_flight(&text, id) {
+                    ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
                 }
             }
         }
@@ -361,5 +420,34 @@ mod tests {
         // valid base64 but not JSON -> keep polling
         let not_json = base64::engine::general_purpose::STANDARD.encode("hello");
         assert!(decode_response(&format!("7:{}", not_json), "7").is_none());
+    }
+
+    #[test]
+    fn request_in_flight_detects_busy_loop() {
+        // A recent request id (unix_millis * 1000 + counter) that was acked
+        // but has no response: the loop is inside its handler.
+        let busy_id = (unix_millis() * 1000).to_string();
+        let ours = "999";
+        let text = format!("Ack = \"{}\"\n", busy_id);
+        assert!(request_in_flight(&text, ours));
+
+        // A response for that id means the handler finished.
+        let done = base64::engine::general_purpose::STANDARD.encode("{}");
+        let text = format!("Ack = \"{}\"\nResponse = \"{}:{}\"", busy_id, busy_id, done);
+        assert!(!request_in_flight(&text, ours));
+
+        // Our own ack is not "someone else is busy".
+        let text = format!("Ack = \"{}\"", ours);
+        assert!(!request_in_flight(&text, ours));
+
+        // An acked-but-unanswered request from long ago is an abandoned
+        // leftover, not a live handler.
+        let old_id = ((unix_millis() - 600_000) * 1000).to_string();
+        let text = format!("Ack = \"{}\"", old_id);
+        assert!(!request_in_flight(&text, ours));
+
+        // No ack at all, or an unparsable one, is not evidence of life.
+        assert!(!request_in_flight("Response = \"1:e30=\"", ours));
+        assert!(!request_in_flight("Ack = \"not-a-number\"", ours));
     }
 }
