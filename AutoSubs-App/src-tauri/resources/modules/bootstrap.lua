@@ -70,10 +70,10 @@ end
 --   Heartbeat: unix seconds, written once per second by the owning loop.
 --   Owner: unique token of the launch that claimed the bridge, decided
 --          last-writer-wins after a settle window.
---   Stop: set by a manual launch to ask running loops to exit. A loop exits
---         only when the value differs from what it read at startup, so a Stop
---         aimed at a predecessor never kills the fresh loop — and one
---         persisted to disk by a stray SavePrefs is harmless.
+--   Stop: unique token set by a manual launch to ask running loops to exit.
+--         A loop exits only when the value differs from what it read at
+--         startup, so a Stop aimed at a predecessor never kills the fresh
+--         loop — and one persisted to disk by a stray SavePrefs is harmless.
 local function fusion_object()
     return rawget(_G, "fusion") or rawget(_G, "fu")
 end
@@ -128,7 +128,8 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
         -- request when it resumes. Our new loop reads Stop as its startup
         -- snapshot and ignores it. The wait only happens when a loop looks
         -- alive.
-        pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop", tostring(os.time()))
+        pcall(fu.SetPrefs, fu, "Global.AutoSubsBridge.Stop",
+            tostring(os.time()) .. " " .. tostring({}))
         if bridge_alive(fu) then
             local deadline = os.time() + 4
             while os.time() < deadline do

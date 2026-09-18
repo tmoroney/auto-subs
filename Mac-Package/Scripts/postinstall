@@ -6,16 +6,22 @@ APP_PATH="$INSTALL_PATH/AutoSubs.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources/resources"
 OLD_UTILITY_PATH="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
 
+# Remove legacy system-level Lua scripts if present
+rm -f "$OLD_UTILITY_PATH/AutoSubs V2.lua"
+rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
+
 # pkg scripts run as root, so $HOME is the installer account's — resolve the
-# console user's home and run user-scoped writes as them instead.
+# console user's home and run user-scoped writes as them. With no logged-in
+# console user (SSH/MDM/Setup Assistant installs) there is no user to target,
+# so skip per-user files entirely; the app installs the Resolve scripts itself
+# on first launch.
 CONSOLE_USER="$(stat -f %Su /dev/console)"
-if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
-    USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')"
-    AS_USER=(sudo -u "$CONSOLE_USER")
-else
-    USER_HOME="$HOME"
-    AS_USER=()
+if [ -z "$CONSOLE_USER" ] || [ "$CONSOLE_USER" = "root" ]; then
+    echo "AutoSubs: no console user; skipping per-user Resolve and Adobe setup"
+    exit 0
 fi
+USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')"
+AS_USER=(sudo -u "$CONSOLE_USER")
 
 SCRIPTS_DIR="$USER_HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
 UTILITY_PATH="$SCRIPTS_DIR/Utility"
@@ -32,10 +38,8 @@ sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
     "$RESOURCES_PATH/AutoSubs.scriptlib" | "${AS_USER[@]}" tee "$SCRIPTS_DIR/AutoSubs.scriptlib" > /dev/null
 
-# Remove legacy Lua scripts if present
+# Remove legacy user-level Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"
-rm -f "$OLD_UTILITY_PATH/AutoSubs V2.lua"
-rm -f "$OLD_UTILITY_PATH/AutoSubs.lua"
 
 # Adobe Extension Installation
 PREMIERE_PATH="$USER_HOME/Library/Application Support/Adobe/CEP/extensions"

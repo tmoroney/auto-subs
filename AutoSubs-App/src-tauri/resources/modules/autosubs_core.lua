@@ -2538,7 +2538,8 @@ function StartServer()
                                     -- would otherwise outlive an Exit.
                                     if control.quit and fusion then
                                         pcall(fusion.SetPrefs, fusion,
-                                            "Global.AutoSubsBridge.Stop", tostring(os.time()))
+                                            "Global.AutoSubsBridge.Stop",
+                                            tostring(os.time()) .. " " .. tostring({}))
                                     end
                                 end
                             else
