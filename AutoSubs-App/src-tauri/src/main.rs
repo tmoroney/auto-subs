@@ -588,7 +588,6 @@ fn main() {
             logging::export_backend_logs,
             logging::open_log_dir,
             resolve_bridge::resolve_bridge,
-            resolve_bridge::get_resolve_server_version,
             ensure_caption_preview_dir,
             adobe_bridge::send_to_adobe,
             trigger_install_update,

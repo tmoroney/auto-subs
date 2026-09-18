@@ -2,10 +2,8 @@ import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getVersion } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/core";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useSettingsStore } from "@/stores/settings-store";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -16,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ExternalLink, Loader2, AlertCircle, Server } from "lucide-react";
+import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
 
 const RELEASE_API_URL =
   "https://api.github.com/repos/tmoroney/auto-subs/releases/latest";
@@ -38,9 +36,6 @@ export function WhatsNewDialog() {
   const isHydrated = useSettingsStore((s) => s.isHydrated);
 
   const [currentVersion, setCurrentVersion] = React.useState<string>("");
-  const [resolveVersion, setResolveVersion] = React.useState<string | null>(
-    null,
-  );
   const [release, setRelease] = React.useState<ReleaseInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -68,26 +63,6 @@ export function WhatsNewDialog() {
       cancelled = true;
     };
   }, []);
-
-  // Check the Resolve server's reported version so we can keep the restart
-  // notice visible while the server is still running an old (or unreachable)
-  // version, and hide it once the backend has confirmed a match.
-  React.useEffect(() => {
-    let cancelled = false;
-    invoke<string | null>("get_resolve_server_version")
-      .then((v) => {
-        if (!cancelled) setResolveVersion(v);
-      })
-      .catch(() => {
-        if (!cancelled) setResolveVersion(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const showResolveRestartNotice =
-    currentVersion !== "" && resolveVersion !== currentVersion;
 
   React.useEffect(() => {
     if (!shouldShow) return;
@@ -161,19 +136,7 @@ export function WhatsNewDialog() {
           )}
         </DialogHeader>
 
-        {showResolveRestartNotice && (
-          <Alert className="border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-            <Server className="size-4" />
-            <AlertTitle>Update installed</AlertTitle>
-            <AlertDescription>
-              AutoSubs restarted and disconnected from Resolve. In DaVinci
-              Resolve, run Workspace -&gt; Scripts -&gt; AutoSubs again to start
-              the updated Lua server.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <ScrollArea className="h-[40vh] max-h-[350px] px-2">
+        <ScrollArea className="h-[55vh] max-h-[500px] px-2">
           {loading && (
             <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
               <Loader2 className="mr-2 size-4 animate-spin" />

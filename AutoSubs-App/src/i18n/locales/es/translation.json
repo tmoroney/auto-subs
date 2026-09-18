@@ -60,12 +60,6 @@
     "refresh": "Actualizar conexión",
     "edit": "Editar"
   },
-  "update": {
-    "restartResolveServer": {
-      "title": "Actualización instalada",
-      "description": "AutoSubs se reinició y se desconectó de Resolve. En DaVinci Resolve, ejecuta Workspace -> Scripts -> AutoSubs de nuevo para iniciar el servidor Lua actualizado."
-    }
-  },
   "importExport": {
     "button": "Exportar / Importar",
     "importTab": "Importar",

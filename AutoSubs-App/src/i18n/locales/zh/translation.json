@@ -60,12 +60,6 @@
     "refresh": "刷新连接",
     "edit": "编辑"
   },
-  "update": {
-    "restartResolveServer": {
-      "title": "更新已安装",
-      "description": "AutoSubs 已重新启动并与 Resolve 断开连接。请在 DaVinci Resolve 中再次运行 Workspace -> Scripts -> AutoSubs，以启动更新后的 Lua 服务器。"
-    }
-  },
   "importExport": {
     "button": "导出 / 导入",
     "importTab": "导入",

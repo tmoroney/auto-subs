@@ -60,12 +60,6 @@
     "refresh": "Verbindung aktualisieren",
     "edit": "Bearbeiten"
   },
-  "update": {
-    "restartResolveServer": {
-      "title": "Update installiert",
-      "description": "AutoSubs wurde neu gestartet und von Resolve getrennt. Führe in DaVinci Resolve erneut Arbeitsbereich -> Skripte -> AutoSubs aus, um den aktualisierten Lua-Server zu starten."
-    }
-  },
   "importExport": {
     "button": "Exportieren / Importieren",
     "importTab": "Import",

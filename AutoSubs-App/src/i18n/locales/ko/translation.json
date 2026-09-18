@@ -111,12 +111,6 @@
     "refresh": "연결 새로고침",
     "edit": "편집"
   },
-  "update": {
-    "restartResolveServer": {
-      "title": "업데이트가 설치되었습니다",
-      "description": "AutoSubs가 다시 시작되어 Resolve와의 연결이 끊어졌습니다. 업데이트된 Lua 서버를 시작하려면 DaVinci Resolve에서 작업 공간 -> 스크립트 -> AutoSubs를 다시 실행하세요."
-    }
-  },
   "completion": {
     "processingComplete": "처리 완료",
     "subtitlesReady": "자막이 준비되었습니다!",
