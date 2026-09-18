@@ -21,6 +21,10 @@ if [ -z "$CONSOLE_USER" ] || [ "$CONSOLE_USER" = "root" ]; then
     exit 0
 fi
 USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')"
+if [ ! -d "$USER_HOME" ]; then
+    echo "AutoSubs: could not resolve home for $CONSOLE_USER; skipping per-user Resolve and Adobe setup"
+    exit 0
+fi
 AS_USER=(sudo -u "$CONSOLE_USER")
 
 SCRIPTS_DIR="$USER_HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"

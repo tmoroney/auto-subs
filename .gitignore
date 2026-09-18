@@ -13,7 +13,7 @@ AutoSubs/node_modules/*
 /Mac-Server/dist
 sign.sh
 *.pkg
-/AutoSubs/src-tauri/target
+/AutoSubs-App/src-tauri/target
 .env
 /Windows-Server/build
 /Windows-Server/dist

@@ -1,5 +1,9 @@
 {
   "runtime.version": "LuaJIT",
+  "workspace.ignoreDir": [
+    ".vscode",
+    "target"
+  ],
   "diagnostics.globals": [
     "Resolve",
     "Fusion",
