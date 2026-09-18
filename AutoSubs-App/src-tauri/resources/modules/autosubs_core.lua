@@ -1839,8 +1839,11 @@ local function extract_frame(timeline, timelineItem, exportDir)
             if i ~= previewTrack then
                 local enabled = timeline:GetIsTrackEnabled("video", i)
                 if enabled then
+                    -- Record first so a throw still gets the track restored.
                     trackStates[i] = true
-                    timeline:SetTrackEnable("video", i, false)
+                    if not timeline:SetTrackEnable("video", i, false) then
+                        error("could not disable video track " .. i)
+                    end
                 end
             end
         end
@@ -1870,9 +1873,23 @@ local function extract_frame(timeline, timelineItem, exportDir)
         end
     end)
 
-    -- Always restore the tracks we disabled.
+    -- Always restore the tracks we disabled, and say which ones would not come
+    -- back: a preview that quietly leaves the user's footage hidden is worse
+    -- than no preview.
+    local stuck = {}
     for i, _ in pairs(trackStates) do
-        pcall(timeline.SetTrackEnable, timeline, "video", i, true)
+        local called, restored = pcall(timeline.SetTrackEnable, timeline, "video", i, true)
+        if not (called and restored) then
+            stuck[#stuck + 1] = i
+        end
+    end
+    if #stuck > 0 then
+        table.sort(stuck)
+        local message = "could not re-enable video track(s) " .. table.concat(stuck, ", ")
+            .. "; turn them back on in the timeline"
+        if not ok then message = tostring(err) .. "; " .. message end
+        print("[AutoSubs] extract_frame: " .. message)
+        return "", message
     end
     if not ok then
         print("[AutoSubs] extract_frame failed: " .. tostring(err))
@@ -2185,10 +2202,12 @@ function OpenPresetEdit(req)
         return { error = "Could not find '" .. ANIMATED_CAPTION .. "' template in media pool" }
     end
 
-    local ok, err = pcall(function()
-        local originalTimecode = nil
-        pcall(function() originalTimecode = timeline:GetCurrentTimecode() end)
+    -- Read before the protected block so the failure path below can restore
+    -- it even when setup throws before the session exists.
+    local originalTimecode = nil
+    pcall(function() originalTimecode = timeline:GetCurrentTimecode() end)
 
+    local ok, err = pcall(function()
         timeline:AddTrack("video")
         local trackIndex = timeline:GetTrackCount("video")
         pcall(timeline.SetTrackName, timeline, "video", trackIndex, PRESET_EDIT_TRACK_NAME)
@@ -2249,8 +2268,13 @@ function OpenPresetEdit(req)
     end)
 
     if not ok then
-        -- Best-effort cleanup so we do not leave an orphan track.
+        -- Best-effort cleanup so we do not leave an orphan track. Without a
+        -- session teardown does not know where the playhead was, so put it back
+        -- here.
         teardown_preset_edit_session()
+        if originalTimecode then
+            pcall(function() timeline:SetCurrentTimecode(originalTimecode) end)
+        end
         return { error = "Failed to open the caption for editing: " .. tostring(err) }
     end
 
