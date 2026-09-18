@@ -1,6 +1,6 @@
 Blackmagic tightened the Lua sandbox in DaVinci Resolve 21.1, which broke the server-based integration AutoSubs used to communicate with Resolve. This release is a full rewrite of the Resolve integration so it works again on the latest Resolve versions, including the free edition.
 
-One trade-off: the AutoSubs script inside Resolve can no longer launch the app for you. The upside is you never need to touch the script at all — the connection is already running in the background, so you just open AutoSubs.
+One trade-off: the AutoSubs script inside Resolve can no longer launch the app for you. The upside is you never need to touch the script at all — the connection is already running in the background, so you just open AutoSubs. (If Resolve was open while updating, restart it once so the new script loads.)
 
 ## What's New
 - Added automatic Resolve integration: the bridge now starts with DaVinci Resolve itself, so subtitles can be sent without launching a script first.
