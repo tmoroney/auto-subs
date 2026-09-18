@@ -47,6 +47,7 @@ flowchart TD
 
 ### 3. DaVinci Resolve Sandboxing
 * Resolve's Lua engine is heavily sandboxed (see section 1): no `io`, `ffi`, `package`, `require`, `os.execute` or `bmd.readdir`. File I/O therefore happens on the Rust side; paths from `os.getenv` are ANSI-codepage bytes on Windows, which is what `loadfile`/file APIs expect — don't convert them.
+* **No Fusion rendering from scripts on 21.1.** `Composition:RunScript` is nil, `comp:Execute`/`fusion:Execute` scripts do not start while the bridge is inside a request, and `Composition:Render` (blocking or `Wait = false`) segfaults Resolve in `Fusion::Operator::AddRequest`. Preview thumbnails therefore come from `Project:ExportCurrentFrameAsStill` on the timeline ([extract_frame](AutoSubs-App/src-tauri/resources/modules/autosubs_core.lua)); do not reintroduce a Saver/`Render` path.
 * **Fusion Macro**: The animated caption macro is stored at [Resolve-Integration/autosubs-macro.setting](Resolve-Integration/autosubs-macro.setting). See [Resolve-Integration/README.md](Resolve-Integration/README.md) for editing instructions and workflow.
 
 ### 3b. Caption styles: two kinds, two owners

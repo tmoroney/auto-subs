@@ -1786,109 +1786,93 @@ function BatchApplyStyle(req)
     }
 end
 
--- Export a representative frame of the preview comp to a PNG in `exportDir`
--- and return its path, or "" plus an error message when the render fails so
--- callers can tell a failed render apart from a comp with nothing to render.
--- Resolve 21 crashes when the long-running server calls Composition:Render
--- directly, so rendering runs in a short-lived comp script.
-local function extract_frame(comp, exportDir)
+-- Which video track holds this item. Resolve hands back a fresh proxy on each
+-- call, so fall back to the unique id when identity comparison comes up empty.
+local function track_index_of_item(timeline, target)
+    if not (timeline and target) then return nil end
+    local okId, targetId = pcall(target.GetUniqueId, target)
+    local ok, count = pcall(timeline.GetTrackCount, timeline, "video")
+    if not ok or type(count) ~= "number" then return nil end
+    for index = count, 1, -1 do
+        local listed, items = pcall(timeline.GetItemListInTrack, timeline, "video", index)
+        if listed and type(items) == "table" then
+            for _, item in ipairs(items) do
+                if item == target then return index end
+                if okId and targetId then
+                    local gotId, id = pcall(item.GetUniqueId, item)
+                    if gotId and id == targetId then return index end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Export the frame under the playhead to a PNG in `exportDir` via Resolve's
+-- own still export and return its path, or "" plus an error message. This
+-- deliberately stays on the Resolve API: on Resolve 21.1 every route that
+-- renders through the Fusion comp from a script state (Composition:Render,
+-- RunScript, Execute) either does nothing or crashes Resolve.
+local function extract_frame(timeline, timelineItem, exportDir)
     local function debug_log(message)
         print("[AutoSubs] " .. os.date("%H:%M:%S") .. " " .. tostring(message))
     end
 
     debug_log("enter")
-    local mediaOut = comp:FindToolByID("MediaOut")
-    if not mediaOut then
-        error("MediaOut tool not found in the composition")
+    local clipStart, clipEnd = timelineItem:GetStart(), timelineItem:GetEnd()
+    if not (clipStart and clipEnd and clipEnd > clipStart) then
+        return "", "preview clip has no duration"
     end
+    local frame = math.floor((clipStart + clipEnd) / 2)
+    local outputPath = join_path(exportDir, "subtitle-preview-" .. frame .. ".png")
 
-    local attrs = comp:GetAttrs() or {}
-    local globalStart = attrs.COMPN_GlobalStart or 0
-    local globalEnd = attrs.COMPN_GlobalEnd or globalStart
-    local frameIndex = math.floor((globalStart + globalEnd) / 2)
-    local originalRenderStart = attrs.COMPN_RenderStart
-    local originalRenderEnd = attrs.COMPN_RenderEnd
-    local saver
-    local outputPath = join_path(exportDir, "subtitle-preview-" .. frameIndex .. ".png")
-
+    -- Video tracks we disable, to re-enable afterwards.
+    local trackStates = {}
     local ok, err = pcall(function()
-        debug_log("waiting for graph to become idle")
-        local stableChecks = 0
-        local idleDeadline = os.time() + 15
-        while stableChecks < 20 and os.time() < idleDeadline do
-            if comp:IsRendering() then
-                stableChecks = 0
-            else
-                stableChecks = stableChecks + 1
+        -- Hide every other video track so the still is the caption on black.
+        local count = timeline:GetTrackCount("video")
+        local previewTrack = track_index_of_item(timeline, timelineItem)
+        if not previewTrack then
+            error("could not locate the preview clip's track")
+        end
+        for i = 1, count do
+            if i ~= previewTrack then
+                local enabled = timeline:GetIsTrackEnabled("video", i)
+                if enabled then
+                    trackStates[i] = true
+                    timeline:SetTrackEnable("video", i, false)
+                end
             end
+        end
+
+        -- Park the playhead mid clip so the viewer shows the settled caption.
+        local frameRate = tonumber(timeline:GetSetting("timelineFrameRate"))
+        local tc = timecode.timecode_from_frame_auto(frame, frameRate,
+            timeline:GetSetting("timelineDropFrameTimecode"))
+        if not timeline:SetCurrentTimecode(tc) then
+            error("could not move the playhead to the preview clip")
+        end
+
+        -- Give the viewer a moment to draw the frame, then export it.
+        bmd.wait(0.5)
+        debug_log("exporting still for frame " .. frame)
+        local exported = project:ExportCurrentFrameAsStill(outputPath)
+        debug_log("ExportCurrentFrameAsStill returned " .. tostring(exported))
+        if exported ~= true then
+            error("ExportCurrentFrameAsStill returned " .. tostring(exported))
+        end
+        local deadline = os.time() + 10
+        while not bmd.fileexists(outputPath) and os.time() < deadline do
             bmd.wait(0.1)
-        end
-        if stableChecks < 20 then
-            error("Fusion composition did not become idle before preview render")
-        end
-        debug_log("graph idle for two seconds")
-        comp:SetAttrs({COMPN_RenderStart = frameIndex, COMPN_RenderEnd = frameIndex})
-        local verifiedAttrs = comp:GetAttrs() or {}
-        if tonumber(verifiedAttrs.COMPN_RenderStart) ~= frameIndex or
-            tonumber(verifiedAttrs.COMPN_RenderEnd) ~= frameIndex then
-            error("Could not set the one-frame render range")
-        end
-
-        debug_log("one-frame range verified")
-        if next(comp:GetToolList(false, "Saver") or {}) then
-            error("Preview composition already contains a Saver tool")
-        end
-
-        saver = comp:AddTool("Saver")
-        if not saver then
-            error("Could not add a Saver tool to the composition")
-        end
-
-        local name = saver.Name
-        local settings = saver:SaveSettings()
-        -- The digit run before the extension is the Saver's frame-number
-        -- field: rendering frameIndex substitutes it in place, so the written
-        -- file lands exactly at outputPath.
-        settings.Tools[name].Inputs.Clip.Value["Filename"] = outputPath
-        settings.Tools[name].Inputs.Clip.Value["FormatID"] = "PNGFormat"
-        settings.Tools[name].Inputs["OutputFormat"]["Value"] = "PNGFormat"
-        saver:LoadSettings(settings)
-        saver:SetInput("PNGFormat.Depth", 1)
-        saver.Input = mediaOut.Output
-
-        comp:SetData("AutoSubsPreviewFrame", frameIndex)
-        comp:SetData("AutoSubsPreviewRenderStatus", "pending")
-        comp:SetData("AutoSubsPreviewRenderError", "")
-        debug_log("launching render helper for frame " .. frameIndex)
-        comp:RunScript(join_path(resources_path, "modules/render_preview.lua"))
-
-        local deadline = os.time() + 15
-        local status = comp:GetData("AutoSubsPreviewRenderStatus")
-        while status == "pending" and os.time() < deadline do
-            bmd.wait(0.1)
-            status = comp:GetData("AutoSubsPreviewRenderStatus")
-        end
-        debug_log("render helper status " .. tostring(status))
-        if status ~= "success" then
-            local renderError = comp:GetData("AutoSubsPreviewRenderError")
-            error("Saver render failed for frame " .. frameIndex .. ": " .. tostring(renderError))
         end
         if not bmd.fileexists(outputPath) then
-            error("Saver render produced no image at " .. outputPath)
+            error("still export produced no image at " .. outputPath)
         end
     end)
 
-    if saver then
-        pcall(function() saver:Delete() end)
-    end
-    debug_log("temporary Saver removed")
-    if originalRenderStart ~= nil and originalRenderEnd ~= nil then
-        pcall(function()
-            comp:SetAttrs({
-                COMPN_RenderStart = originalRenderStart,
-                COMPN_RenderEnd = originalRenderEnd,
-            })
-        end)
+    -- Always restore the tracks we disabled.
+    for i, _ in pairs(trackStates) do
+        pcall(timeline.SetTrackEnable, timeline, "video", i, true)
     end
     if not ok then
         print("[AutoSubs] extract_frame failed: " .. tostring(err))
@@ -1958,6 +1942,9 @@ function GeneratePreview(req)
         presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, language)
     end
 
+    local savedTimecode = nil
+    pcall(function() savedTimecode = timeline:GetCurrentTimecode() end)
+
     local outputPath, outputErr = nil, nil
     local success, err = pcall(function()
         if timelineItem:GetFusionCompCount() > 0 then
@@ -1984,13 +1971,16 @@ function GeneratePreview(req)
                 pcall(function() styleTool:SetInput("Font", fontSwap.to) end)
             end
 
-            outputPath, outputErr = extract_frame(comp, exportDir)
+            outputPath, outputErr = extract_frame(timeline, timelineItem, exportDir)
         end
     end)
 
     -- Always clean up, even on failure, so the user isn't left with a stray track.
     pcall(function() timeline:DeleteClips({ timelineItem }) end)
     pcall(function() timeline:DeleteTrack("video", trackIndex) end)
+    if savedTimecode then
+        pcall(function() timeline:SetCurrentTimecode(savedTimecode) end)
+    end
 
     if not success then
         return make_error("Failed to generate preview", err)
@@ -2021,7 +2011,8 @@ end
 -- its controls and watch the animation play, and so saving is read-plus-render
 -- rather than append-render-delete. The page is left alone: the Inspector
 -- exposes the macro's controls on the edit page, so there is no need to drag
--- the user over to Fusion.
+-- the user over to Fusion. The session remembers the user's playhead position
+-- and restores it when the clip comes off the timeline.
 -- ---------------------------------------------------------------------------
 
 -- Name given to the temporary track, so teardown can find it again by identity.
@@ -2069,28 +2060,6 @@ local function find_preset_edit_track(timeline)
         local named, name = pcall(timeline.GetTrackName, timeline, "video", index)
         if named and name == PRESET_EDIT_TRACK_NAME and preset_edit_track_is_ours(timeline, index) then
             return index
-        end
-    end
-    return nil
-end
-
--- Which video track holds this item. Resolve hands back a fresh proxy on each
--- call, so fall back to the unique id when identity comparison comes up empty.
-local function track_index_of_item(timeline, target)
-    if not (timeline and target) then return nil end
-    local okId, targetId = pcall(target.GetUniqueId, target)
-    local ok, count = pcall(timeline.GetTrackCount, timeline, "video")
-    if not ok or type(count) ~= "number" then return nil end
-    for index = count, 1, -1 do
-        local listed, items = pcall(timeline.GetItemListInTrack, timeline, "video", index)
-        if listed and type(items) == "table" then
-            for _, item in ipairs(items) do
-                if item == target then return index end
-                if okId and targetId then
-                    local gotId, id = pcall(item.GetUniqueId, item)
-                    if gotId and id == targetId then return index end
-                end
-            end
         end
     end
     return nil
@@ -2162,6 +2131,10 @@ local function teardown_preset_edit_session()
         pcall(function() timeline:DeleteTrack("video", trackIndex) end)
     end
 
+    if timeline and session and session.timecode then
+        pcall(function() timeline:SetCurrentTimecode(session.timecode) end)
+    end
+
     pcall(function() resolve:OpenPage("edit") end)
 end
 
@@ -2213,6 +2186,9 @@ function OpenPresetEdit(req)
     end
 
     local ok, err = pcall(function()
+        local originalTimecode = nil
+        pcall(function() originalTimecode = timeline:GetCurrentTimecode() end)
+
         timeline:AddTrack("video")
         local trackIndex = timeline:GetTrackCount("video")
         pcall(timeline.SetTrackName, timeline, "video", trackIndex, PRESET_EDIT_TRACK_NAME)
@@ -2268,6 +2244,7 @@ function OpenPresetEdit(req)
             timelineItem = timelineItem,
             comp = comp,
             tool = tool,
+            timecode = originalTimecode,
         }
     end)
 
@@ -2299,10 +2276,9 @@ function SavePresetEdit(req)
     end)
 
     -- Always close, even on failure, so the user is never left with a stray
-    -- preview clip. This has to happen before the thumbnail render: while the
-    -- session clip is still on the timeline a viewer can keep its comp busy
-    -- (certainly so if the user opened it in Fusion), and extract_frame's idle
-    -- wait would never settle.
+    -- preview clip. The thumbnail is rendered afterwards from a fresh clip so
+    -- the still shows the saved settings on their own, with the session clip
+    -- and the user's other tracks out of the picture.
     teardown_preset_edit_session()
 
     if not ok then

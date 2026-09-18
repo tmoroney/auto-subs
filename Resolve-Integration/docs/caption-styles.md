@@ -60,9 +60,13 @@ user added or removed a track mid session. Teardown also refuses to touch a
 timeline that is not the one the clip was added to, and a track stranded by a
 crash or a hot reload is swept when the next session opens.
 
-`SavePresetEdit` closes the session before rendering the thumbnail. That order
-matters: a comp left open in the Fusion page keeps the viewer busy, so
-`extract_frame`'s idle wait would never settle.
+`SavePresetEdit` closes the session first, then renders the thumbnail from a
+fresh throwaway clip. The thumbnail is *not* a Fusion render: on Resolve 21.1
+`Composition:Render` from a script state crashes Resolve and the isolated-helper
+routes (`RunScript`, `comp:Execute`, `fusion:Execute`) never run while a request
+is being handled. `extract_frame` instead parks the playhead on the clip, hides
+the other video tracks, and calls `Project:ExportCurrentFrameAsStill`, Resolve's
+own viewer still export, then restores the tracks and the playhead.
 
 ## Fusion Macro (`autosubs-macro.setting`)
 
