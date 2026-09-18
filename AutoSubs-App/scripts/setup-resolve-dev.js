@@ -23,15 +23,18 @@ function getResolveScriptsPath() {
       return path.join(os.homedir(), 'Library', 'Application Support', 'Blackmagic Design', 'DaVinci Resolve', 'Fusion', 'Scripts', 'Utility');
     
     case 'linux':
-      // Linux: Try /opt/resolve first, then /home/resolve
-      const optPath = '/opt/resolve/Fusion/Scripts/Utility';
-      const homePath = path.join(os.homedir(), 'resolve', 'Fusion', 'Scripts', 'Utility');
-      
-      if (fs.existsSync(optPath)) {
-        return optPath;
-      }
-      return homePath;
-    
+      // Linux: the per-user tree. This matches fusion_support_dir() in
+      // src-tauri/src/resolve_bridge.rs and the directory the release build
+      // installs into via resolve_scripts.rs, so the dev launcher lands
+      // alongside the paths the app already knows about.
+      //
+      // Deliberately NOT /opt/resolve/Fusion/Scripts/Utility: that tree is
+      // where the deb/rpm packages install the production launcher, and it is
+      // root-owned in a standard install, so writing there both needs sudo and
+      // races the release launcher. Resolve scans the per-user tree as well,
+      // so nothing is lost by staying out of /opt.
+      return path.join(os.homedir(), '.local', 'share', 'DaVinciResolve', 'Fusion', 'Scripts', 'Utility');
+
     default:
       console.error(`❌ Unsupported platform: ${platform}`);
       process.exit(1);
@@ -237,13 +240,21 @@ function setupResolveDev() {
   }
 
   // A production scriptlib in the same folder would race the dev one at
-  // Resolve startup (the heartbeat guard picks whichever runs first).
-  const prodScriptlib = path.join(scriptsRoot, 'AutoSubs.scriptlib');
-  if (fs.existsSync(prodScriptlib)) {
-    console.warn(`⚠ A production AutoSubs.scriptlib also exists in ${scriptsRoot}.`);
+  // Resolve startup (the heartbeat guard picks whichever runs first). Resolve
+  // scans both the per-user tree and /opt/resolve on Linux, and the deb/rpm
+  // packages install the production scriptlib into the latter, so on Linux the
+  // two can collide across trees rather than within one.
+  const prodScriptlibs = [
+    path.join(scriptsRoot, 'AutoSubs.scriptlib'),
+    ...(process.platform === 'linux'
+      ? [path.join('/opt', 'resolve', 'Fusion', 'Scripts', 'AutoSubs.scriptlib')]
+      : []),
+  ];
+  for (const prodScriptlib of prodScriptlibs) {
+    if (!fs.existsSync(prodScriptlib)) continue;
+    console.warn(`⚠ A production AutoSubs.scriptlib also exists at ${prodScriptlib}.`);
     console.warn('  Both would try to start a bridge at Resolve launch — the heartbeat');
-    console.warn('  guard makes one win, but which one is a race. Delete AutoSubs.scriptlib');
-    console.warn('  while developing.');
+    console.warn('  guard makes one win, but which one is a race. Remove it while developing.');
   }
 
   const menuLabel = LAUNCHER_NAME.replace(/\.lua$/, '');

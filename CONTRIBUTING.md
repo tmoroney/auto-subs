@@ -11,6 +11,7 @@ I welcome contributions from everyone. I will try to review any pull requests as
 - **[Resolve Integration](Resolve-Integration/README.md)** - DaVinci Resolve integration architecture and development
 - **[Adobe Extension](Adobe-Extension/README.md)** - Adobe Premiere Pro/After Effects integration details
 - **[AGENTS.md](AGENTS.md)** - AI agent context with architecture gotchas and bridge details
+- **[Arch Linux](docs/arch-linux.md)** - Dependency mapping, Wayland compositing, and Resolve paths on Arch
 
 ## Dev Setup
 
