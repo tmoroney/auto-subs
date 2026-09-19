@@ -47,9 +47,13 @@ const REPO_PATH_PLACEHOLDER = '[[__AUTOSUBS_REPO_PATH__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
-// Dev auto-starter generated into the Scripts ROOT (parent of Utility) so the
-// dev bridge launches with Resolve itself.
-const SCRIPTLIB_NAME = 'AutoSubs (Dev).scriptlib';
+// Startup scriptlibs that 3.10.0-era setups installed into the Scripts ROOT
+// (parent of Utility). They started the bridge via fusion:Execute, which holds
+// Fusion's shared script executor for the whole Resolve session and breaks
+// scripted macro controls, so they are removed rather than generated. See
+// Resolve-Integration/docs/resident-bridge-fusion-regression.md.
+const DEV_SCRIPTLIB_NAME = 'AutoSubs (Dev).scriptlib';
+const PROD_SCRIPTLIB_NAME = 'AutoSubs.scriptlib';
 const CAPTION_UPDATER_NAME = 'AutoSubs - Update Caption Template.lua';
 
 // Older name this script used to generate; cleaned up so contributors don't end
@@ -201,31 +205,7 @@ function setupResolveDev() {
     process.exit(1);
   }
 
-  // Generate the dev scriptlib in the Scripts ROOT (parent of Utility):
-  // Resolve runs it at startup, so the dev bridge comes up with Resolve.
   const scriptsRoot = path.dirname(resolvePath);
-  const scriptlibSource = path.join(resourcesFolder, SCRIPTLIB_NAME);
-  const scriptlibDest = path.join(scriptsRoot, SCRIPTLIB_NAME);
-  if (fs.existsSync(scriptlibSource)) {
-    let scriptlib = fs.readFileSync(scriptlibSource, 'utf8');
-    if (!scriptlib.includes(RESOURCES_PLACEHOLDER)) {
-      console.error(`❌ Template is missing the expected placeholder ${RESOURCES_PLACEHOLDER}.`);
-      console.error(`   File: ${scriptlibSource}`);
-      process.exit(1);
-    }
-    // Same raw-path baking as the launcher above.
-    scriptlib = scriptlib.replace(RESOURCES_PLACEHOLDER, `[[${resourcesFolder}]]`);
-    try {
-      fs.writeFileSync(scriptlibDest, scriptlib);
-      console.log(`✓ ${SCRIPTLIB_NAME} generated successfully`);
-      console.log(`   Destination: ${scriptlibDest}`);
-    } catch (err) {
-      console.error(`❌ Failed to write ${SCRIPTLIB_NAME}: ${err.message}`);
-      process.exit(1);
-    }
-  } else {
-    console.warn(`⚠ ${SCRIPTLIB_NAME} template not found; skipping dev auto-start`);
-  }
 
   // ── Stale artifact cleanup ────────────────────────────────────────────────
   // Resolve scans the per-user Scripts tree and, on Linux, the system one
@@ -234,17 +214,22 @@ function setupResolveDev() {
   //
   // Before this script moved to the per-user tree it wrote to /opt, so a
   // checkout that ran it there, or ran it under sudo, still has a launcher
-  // there and — worse — a scriptlib that starts a second bridge on every
-  // Resolve launch, pointing at a checkout that may since have moved.
+  // there. Any startup scriptlib (dev or production, either tree) is removed
+  // too: it blocks Fusion's script executor for the whole session.
   const legacyRoots = process.platform === 'linux'
     ? [path.join('/opt', 'resolve', 'Fusion', 'Scripts')]
     : [];
 
-  const staleArtifacts = [path.join(resolvePath, LEGACY_LAUNCHER_NAME)];
+  const staleArtifacts = [
+    path.join(resolvePath, LEGACY_LAUNCHER_NAME),
+    path.join(scriptsRoot, DEV_SCRIPTLIB_NAME),
+    path.join(scriptsRoot, PROD_SCRIPTLIB_NAME),
+  ];
   for (const root of legacyRoots) {
     staleArtifacts.push(
       path.join(root, 'Utility', LAUNCHER_NAME),
-      path.join(root, SCRIPTLIB_NAME),
+      path.join(root, DEV_SCRIPTLIB_NAME),
+      path.join(root, PROD_SCRIPTLIB_NAME),
       path.join(root, 'Utility', CAPTION_UPDATER_NAME),
       path.join(root, 'Utility', LEGACY_LAUNCHER_NAME),
     );
@@ -269,28 +254,13 @@ function setupResolveDev() {
     for (const artifact of blockedArtifacts) {
       console.warn(`    ${artifact}`);
     }
-    console.warn('  Resolve scans that tree too, and a scriptlib there starts a SECOND');
-    console.warn('  bridge at launch that races the one just installed. Remove with:');
+    console.warn('  Resolve scans that tree too; a stale launcher shows up twice in the');
+    console.warn('  Scripts menu and a scriptlib there blocks Fusion scripts. Remove with:');
     console.warn(`    sudo rm -f ${quoted}`);
   }
 
-  // A production scriptlib would race the dev one the same way (the heartbeat
-  // guard picks whichever runs first). Never removed here: that tree belongs to
-  // an installed release, not to this checkout.
-  const prodScriptlibs = [
-    path.join(scriptsRoot, 'AutoSubs.scriptlib'),
-    ...legacyRoots.map((root) => path.join(root, 'AutoSubs.scriptlib')),
-  ];
-  for (const prodScriptlib of prodScriptlibs) {
-    if (!fs.existsSync(prodScriptlib)) continue;
-    console.warn(`⚠ A production AutoSubs.scriptlib also exists at ${prodScriptlib}.`);
-    console.warn('  Both would try to start a bridge at Resolve launch — the heartbeat');
-    console.warn('  guard makes one win, but which one is a race. Remove it while developing.');
-  }
-
   const menuLabel = LAUNCHER_NAME.replace(/\.lua$/, '');
-  console.log(`\nThe dev bridge now starts automatically when Resolve launches (via ${SCRIPTLIB_NAME}).`);
-  console.log(`To restart it against your checkout: Workspace → Scripts → ${menuLabel}`);
+  console.log(`\nStart the dev bridge once per Resolve session: Workspace → Scripts → ${menuLabel}`);
   console.log('\nEdits to the Lua modules take effect the next time you run the script.');
   console.log('Re-run `npm run setup-resolve` if you move this repository.');
 }

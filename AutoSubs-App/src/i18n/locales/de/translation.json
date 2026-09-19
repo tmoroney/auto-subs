@@ -492,7 +492,7 @@
         "connected": "Verbunden",
         "canGetAudio": "Du kannst Audio aus der Timeline holen und Untertitel wieder hinzufügen.",
         "cantConnect": "Keine Verbindung zur Timeline möglich",
-        "openResolve": "DaVinci Resolve öffnen. AutoSubs verbindet sich automatisch."
+        "openResolve": "Resolve öffnen, dann Workspace → Scripts → AutoSubs starten."
       }
     },
     "premiere": {

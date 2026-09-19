@@ -502,7 +502,7 @@
         "connected": "Подключено",
         "canGetAudio": "Можно добавлять субтитры.",
         "cantConnect": "Не удаётся подключиться к таймлайну",
-        "openResolve": "Откройте DaVinci Resolve. AutoSubs подключится автоматически."
+        "openResolve": "Откройте Resolve и запустите Workspace → Scripts → AutoSubs."
       }
     },
     "premiere": {

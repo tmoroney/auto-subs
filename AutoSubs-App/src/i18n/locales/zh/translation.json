@@ -492,7 +492,7 @@
         "connected": "已连接",
         "canGetAudio": "您可以从时间线获取音频，并将字幕发送回时间线。",
         "cantConnect": "无法连接到时间线",
-        "openResolve": "打开 DaVinci Resolve。AutoSubs 会自动连接。"
+        "openResolve": "在 Resolve 中运行 Workspace → Scripts → AutoSubs。"
       }
     },
     "premiere": {

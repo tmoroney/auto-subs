@@ -33,8 +33,8 @@ use serde_json::json;
 use tokio::sync::Mutex;
 
 const RESOLVE_OFFLINE_MESSAGE: &str = "DaVinci Resolve is not running or the AutoSubs bridge is unavailable. \
-     Please open DaVinci Resolve (the bridge starts automatically), or run \
-     Workspace → Scripts → AutoSubs to restart it.";
+     Open DaVinci Resolve and run Workspace → Scripts → AutoSubs \
+     (once per Resolve session).";
 
 /// How long to wait for the Lua side to ack a fresh request before declaring
 /// the bridge offline.
@@ -98,7 +98,7 @@ fn mailbox_dir() -> Result<PathBuf, String> {
 
 /// Per-user Resolve support directory — the parent of `Fusion/Profiles` (where
 /// we read prefs) and `Fusion/Scripts` (where resolve_scripts.rs installs the
-/// launcher + scriptlib). None when Resolve's layout can't be determined.
+/// launcher). None when Resolve's layout can't be determined.
 pub(crate) fn fusion_support_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {

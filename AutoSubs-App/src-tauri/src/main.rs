@@ -454,9 +454,10 @@ fn main() {
             // can't replay it before our first request.
             resolve_bridge::clear_stale_request();
 
-            // Release builds install/refresh the Resolve launcher + scriptlib
-            // themselves so app updates land them without a reinstall. Dev
-            // builds must not: the setup-resolve dev scriptlib would fight them.
+            // Release builds install/refresh the Resolve launcher themselves so
+            // app updates land it without a reinstall (and remove the 3.10.0
+            // startup scriptlib). Dev builds must not: setup-resolve owns the
+            // dev launcher.
             #[cfg(not(debug_assertions))]
             {
                 let handle = app.handle().clone();
@@ -636,9 +637,10 @@ fn main() {
                         *should_cancel = true;
                     }
 
-                    // The Lua bridge is a resident server started by Resolve
-                    // itself (scriptlib) — it must NOT be told to exit when
-                    // the app quits. Just exit.
+                    // The Lua bridge stays resident in Resolve after it is
+                    // started from Workspace > Scripts, so reopening the app
+                    // reconnects without re-running the script — it must NOT
+                    // be told to exit when the app quits. Just exit.
                     #[cfg(target_os = "windows")]
                     {
                         app.exit(0);

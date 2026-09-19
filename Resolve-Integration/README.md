@@ -37,11 +37,13 @@ Resolve 21.1 (free edition) sandboxes the Lua state that runs Workspace > Script
 
 The Lua side must not use `io`, `ffi`, `package`, `require`, `os.execute` or `bmd.readdir` anywhere — modules are loaded through `AutoSubs_require` (see `modules/bootstrap.lua`).
 
-### Resident server & zero-click startup
+### Resident server
 
-Resolve runs any `*.scriptlib` in the root of `Fusion/Scripts/` at startup; `AutoSubs.scriptlib` hands the bootstrap to `fusion:Execute()`, which runs the bridge loop asynchronously in another scripting state. The bridge is therefore **resident**: it starts with Resolve and the app never starts or stops it.
+The user starts the bridge once per Resolve session from Workspace → Scripts → AutoSubs. From then on it is **resident**: it keeps running after the app closes (so reopening the app reconnects immediately) and the app never starts or stops it.
 
-In-memory prefs keys coordinate launches (never `SavePrefs`'d). A launch checks `bridge_alive()` before starting: a fresh `Global.AutoSubsBridge.Heartbeat` (written once a second by pre-probe loops, and once at claim time) means alive, otherwise the launch writes a unique `Global.AutoSubsBridge.Probe` token and waits ~1.5 s for the loop to echo it into `Global.AutoSubsBridge.ProbeAck` (the loop polls prefs ~2x/sec). The idle loop deliberately writes **no** prefs: every bound `fusion:` call is marshaled through Resolve's UI event queue, and a queued prefs event landing during Resolve's shutdown teardown crashed the app in `FusionApp::PrefsChanged` — minimal traffic is the mitigation. The winner claims `Global.AutoSubsBridge.Owner` with a unique token (last-writer-wins after a settle window), and a running loop that sees a foreign `Owner` exits. The scriptlib launches with `mode = "startup"` (no-op if a loop is already alive); the Utility/Dev scripts launch with `mode = "manual"` (takeover: set `Stop` to the current timestamp, wait up to 4 s for the old loop to exit and clear it, then start fresh) — so running Workspace → Scripts → AutoSubs is the "restart the bridge" path. A loop exits when `Stop` differs from the value it read at startup, so a takeover aimed at a loop busy in a Resolve call still lands when it resumes, and never kills the replacement. Each mailbox request is claimed via `Global.AutoSubsBridge.Claim` before handling, so two briefly-coexisting loops can't run the same request twice.
+3.10.0 tried a zero-click start: an `AutoSubs.scriptlib` in the Scripts root handed the bootstrap to `fusion:Execute()` at Resolve launch. That was removed in 3.10.1, and the app now deletes any installed copy. A loop started with `fusion:Execute` holds Fusion's shared script executor until it returns (macro control scripts, `comp:Execute` and the Console all queue behind it, and `bmd.wait` does not yield it), so every scripted macro control stopped responding and Fusion text fields dropped focus for the whole session. **Never run a long-lived loop via `fusion:Execute`.** Details: [docs/resident-bridge-fusion-regression.md](docs/resident-bridge-fusion-regression.md).
+
+In-memory prefs keys coordinate launches (never `SavePrefs`'d). A launch checks `bridge_alive()` before starting: a fresh `Global.AutoSubsBridge.Heartbeat` (written once a second by pre-probe loops, and once at claim time) means alive, otherwise the launch writes a unique `Global.AutoSubsBridge.Probe` token and waits ~1.5 s for the loop to echo it into `Global.AutoSubsBridge.ProbeAck` (the loop polls prefs ~2x/sec). The idle loop deliberately writes **no** prefs: every bound `fusion:` call is marshaled through Resolve's UI event queue, and a queued prefs event landing during Resolve's shutdown teardown crashed the app in `FusionApp::PrefsChanged` — minimal traffic is the mitigation. The winner claims `Global.AutoSubsBridge.Owner` with a unique token (last-writer-wins after a settle window), and a running loop that sees a foreign `Owner` exits. The Utility/Dev scripts launch with `mode = "manual"` (takeover: set `Stop` to the current timestamp, wait up to 4 s for the old loop to exit and clear it, then start fresh) — so running Workspace → Scripts → AutoSubs is the "restart the bridge" path. A loop exits when `Stop` differs from the value it read at startup, so a takeover aimed at a loop busy in a Resolve call still lands when it resumes, and never kills the replacement. Each mailbox request is claimed via `Global.AutoSubsBridge.Claim` before handling, so two briefly-coexisting loops can't run the same request twice.
 
 ## Communication Flow
 
@@ -69,7 +71,7 @@ The frontend `throwIfError` helper in `resolve-api.ts` checks for this and throw
 ```bash
 # In AutoSubs-App/
 npm install
-npm run setup-resolve   # generates AutoSubs (Dev).lua + AutoSubs (Dev).scriptlib in Resolve's Scripts folder
+npm run setup-resolve   # generates AutoSubs (Dev).lua in Resolve's Scripts folder
 npm run dev             # starts the app in dev mode
 ```
 
@@ -113,15 +115,14 @@ Both scripts are thin **launchers** — they `loadfile` `modules/bootstrap.lua` 
 
 - **Production** (`AutoSubs.lua`): Verifies that `bootstrap.lua` exists at the expected location, then runs it with `mode = "manual"` (restarts the resident bridge).
 - **Development** (`AutoSubs (Dev).lua`): Same pattern, but points at your repo checkout with `dev_mode = true`. Lua edits take effect on next script run.
-- **Startup** (`AutoSubs.scriptlib`, installed to the Scripts root, not Utility): runs once when Resolve starts; launches the bridge with `mode = "startup"` via `fusion:Execute`.
 
 ### How the Launchers Are Generated
 
-`AutoSubs.lua` and `AutoSubs.scriptlib` are generated — do not hand-edit the installed copies:
+`AutoSubs.lua` is generated — do not hand-edit the installed copy:
 
-- **Templates**: `src-tauri/resources/AutoSubs.lua` and `src-tauri/resources/AutoSubs.scriptlib` contain `[[__AUTOSUBS_RESOURCES_FOLDER__]]` / `[[__AUTOSUBS_APP_EXECUTABLE__]]` placeholders.
-- **App startup**: release builds run `resolve_scripts.rs`, which substitutes the real paths and writes `Utility/AutoSubs.lua` + `AutoSubs.scriptlib` into the user's Resolve Scripts folder, but only when the content differs. This means a Tauri app update refreshes the launchers without a reinstall. Dev builds skip it entirely so the dev scriptlib wins.
-- **Installers** also drop them so the bridge exists before the app first runs: the NSIS hook runs `AutoSubs.exe --install-resolve-scripts` (the same Rust path, but pre-seeding the Scripts tree), the macOS pkg postinstall sed-substitutes the templates, and deb/rpm ship copies generated by `scripts/gen-resolve-linux.js` into `/opt/resolve/Fusion/Scripts/`.
+- **Template**: `src-tauri/resources/AutoSubs.lua` contains `[[__AUTOSUBS_RESOURCES_FOLDER__]]` / `[[__AUTOSUBS_APP_EXECUTABLE__]]` placeholders.
+- **App startup**: release builds run `resolve_scripts.rs`, which substitutes the real paths and writes `Utility/AutoSubs.lua` into the user's Resolve Scripts folder, but only when the content differs, and deletes a 3.10.0 `AutoSubs.scriptlib` from the Scripts root. This means a Tauri app update refreshes the launcher without a reinstall. Dev builds skip it entirely so the dev launcher wins.
+- **Installers** also drop the launcher before the app first runs: the NSIS hook runs `AutoSubs.exe --install-resolve-scripts` (the same Rust path, but pre-seeding the Scripts tree), the macOS pkg postinstall sed-substitutes the templates, and deb/rpm ship copies generated by `scripts/gen-resolve-linux.js` into `/opt/resolve/Fusion/Scripts/`.
 - **Windows**: Lua's `loadfile` reads narrow `fopen` paths, so the baked bytes are ANSI code page (falling back to the 8.3 short path, then UTF-8) rather than UTF-8.
 
 `AutoSubs (Dev).lua` follows the same pattern: `npm run setup-resolve` reads the template from `src-tauri/resources/AutoSubs (Dev).lua` and writes a generated copy — with your repo's absolute path baked in — to Resolve's Scripts folder.

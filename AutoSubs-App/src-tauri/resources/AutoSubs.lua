@@ -31,8 +31,10 @@ if not bmd.fileexists(bootstrap_path) then
 end
 
 -- Launch AutoSubs via the bootstrap (sets up module loading and the bridge).
--- mode = "manual": this is the restart path — the startup scriptlib normally
--- keeps a resident bridge running; running this script asks it to stop and
--- takes over with a fresh one.
+-- mode = "manual": asks any running bridge to stop and takes over with a fresh
+-- one. This script is the only way the bridge starts: the 3.10.0 startup
+-- scriptlib ran it via fusion:Execute, which held Fusion's script executor for
+-- the whole session (see docs/resident-bridge-fusion-regression.md). A loop it
+-- left running exits on this takeover, which frees the executor again.
 local boot = assert(loadfile(bootstrap_path))()
 boot(resources_folder, app_executable, false, { mode = "manual" })

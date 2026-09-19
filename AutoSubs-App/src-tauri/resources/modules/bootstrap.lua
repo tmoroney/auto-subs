@@ -64,9 +64,10 @@ local function base64_encode(data)
     end) .. ({ "", "==", "=" })[#data % 3 + 1])
 end
 
--- Resident-bridge handshake. The startup scriptlib and the Utility/Dev
--- scripts can both launch the bridge; these prefs keys (in-memory only, no
--- SavePrefs) coordinate so only one loop ever runs:
+-- Resident-bridge handshake. The Utility/Dev scripts launch the bridge, and a
+-- loop from an earlier launch (or from the 3.10.0 startup scriptlib, which ran
+-- it via fusion:Execute) may still be alive; these prefs keys (in-memory only,
+-- no SavePrefs) coordinate so only one loop ever runs:
 --   Probe/ProbeAck: liveness check. A launch writes a unique token to Probe;
 --         the loop echoes it into ProbeAck (~2x/sec). The loop keeps NO
 --         continuous prefs writes on purpose: every bound fusion: call is
@@ -137,14 +138,7 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     local mode = (opts and opts.mode) or "manual"
     local fu = fusion_object()
     local can_signal = fu and type(fu.SetPrefs) == "function"
-    if mode == "startup" then
-        if bridge_alive(fu) then
-            return -- a resident bridge is already running
-        end
-        if can_signal and not claim_bridge(fu) then
-            return -- a racing launch claimed the bridge first
-        end
-    elseif mode == "manual" and can_signal then
+    if mode == "manual" and can_signal then
         -- Takeover: ask any running loop to exit, then start fresh. Stop is
         -- set unconditionally — a stale heartbeat means the old loop is dead
         -- OR busy inside a Resolve call, and a busy one must still see the
