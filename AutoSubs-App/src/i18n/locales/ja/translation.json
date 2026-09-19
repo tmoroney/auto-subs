@@ -492,7 +492,7 @@
         "canGetAudio": "タイムラインから音声を取得し、字幕を送信できます。",
         "cantConnect": "タイムラインに接続できません",
         "connected": "接続済み",
-        "openResolve": "DaVinci Resolve を開き、Workspace → Scripts → AutoSubs を実行してください。"
+        "openResolve": "Resolve で Workspace → Scripts → AutoSubs を実行してください。"
       }
     },
     "premiere": {

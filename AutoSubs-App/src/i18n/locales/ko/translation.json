@@ -492,7 +492,7 @@
         "canGetAudio": "타임라인에서 오디오를 가져오고 자막을 전송할 수 있습니다.",
         "cantConnect": "타임라인에 연결할 수 없습니다",
         "connected": "연결됨",
-        "openResolve": "DaVinci Resolve를 열고 Workspace → Scripts → AutoSubs를 실행하세요."
+        "openResolve": "Resolve에서 Workspace → Scripts → AutoSubs를 실행하세요."
       }
     },
     "premiere": {

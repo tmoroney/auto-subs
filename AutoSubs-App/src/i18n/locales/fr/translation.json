@@ -492,7 +492,7 @@
         "connected": "Connecté",
         "canGetAudio": "Vous pouvez récupérer l’audio depuis la timeline et y réenvoier des sous-titres.",
         "cantConnect": "Impossible de se connecter à la timeline",
-        "openResolve": "Ouvrez DaVinci Resolve et lancez Workspace → Scripts → AutoSubs."
+        "openResolve": "Ouvrez Resolve et lancez Workspace → Scripts → AutoSubs."
       }
     },
     "premiere": {

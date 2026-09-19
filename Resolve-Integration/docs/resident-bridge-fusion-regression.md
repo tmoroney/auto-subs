@@ -28,7 +28,10 @@ need Fix 2 (`fusion:RunScript`) or Fix 3 (a trampoline). Both still run through
   `--install-resolve-scripts` from the NSIS hook) before any fallible step.
 * macOS `postinstall` `rm -f`s it. deb/rpm no longer ship
   `/opt/resolve/Fusion/Scripts/AutoSubs.scriptlib`, so the package upgrade
-  removes it. `gen-resolve-linux.js` generates only the launcher.
+  removes it. Their `linux/postinst.sh` also deletes each user's
+  `~/.local/share/DaVinciResolve/Fusion/Scripts/AutoSubs.scriptlib` (written
+  by the 3.10.0 app), so Resolve can't run a stale copy before the new app
+  has been opened. `gen-resolve-linux.js` generates only the launcher.
 * Templates `AutoSubs.scriptlib` and `AutoSubs (Dev).scriptlib` deleted.
   `setup-resolve-dev.js` removes stale dev/prod scriptlibs instead of
   generating one.

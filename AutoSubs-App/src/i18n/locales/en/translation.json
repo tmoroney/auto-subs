@@ -512,7 +512,7 @@
         "connected": "Connected",
         "canGetAudio": "Ready to add subtitles.",
         "cantConnect": "Can't connect to timeline",
-        "openResolve": "Open DaVinci Resolve and run Workspace → Scripts → AutoSubs."
+        "openResolve": "Open Resolve, then run Workspace → Scripts → AutoSubs."
       }
     },
     "premiere": {

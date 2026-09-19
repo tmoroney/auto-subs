@@ -49,6 +49,7 @@
     "linux": {
       "deb": {
         "desktopTemplate": "./linux/autosubs.desktop",
+        "postInstallScript": "./linux/postinst.sh",
         "depends": [
           "ffmpeg"
         ],
@@ -60,6 +61,7 @@
       },
       "rpm": {
         "desktopTemplate": "./linux/autosubs.desktop",
+        "postInstallScript": "./linux/postinst.sh",
         "epoch": 0,
         "release": "1",
         "depends": [
