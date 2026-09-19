@@ -1,14 +1,22 @@
-//! Installs the Resolve launcher (`Utility/AutoSubs.lua`) and the startup
-//! scriptlib (`AutoSubs.scriptlib`) into the user's Resolve Scripts folder.
+//! Installs the Resolve launcher (`Utility/AutoSubs.lua`) into the user's
+//! Resolve Scripts folder, and removes the `AutoSubs.scriptlib` that 3.10.0
+//! installed.
+//!
+//! The scriptlib started the bridge at Resolve launch through
+//! `fusion:Execute()`. A loop running there holds Fusion's shared script
+//! executor for the whole session, which broke every scripted macro control and
+//! made Fusion text fields drop focus. The bridge now only ever runs from
+//! Workspace > Scripts > AutoSubs, the state 3.9.0 used. See
+//! `Resolve-Integration/docs/resident-bridge-fusion-regression.md`.
 //!
 //! The app owns this — not the installers — so a Tauri updater refresh lands
 //! new scripts without a reinstall. Templates live in the bundled resources
 //! with `[[__AUTOSUBS_RESOURCES_FOLDER__]]` / `[[__AUTOSUBS_APP_EXECUTABLE__]]`
 //! placeholders; we substitute raw bytes and write only when content differs.
 //!
-//! Release builds only: a dev build must not install production launchers —
-//! they would fight the `AutoSubs (Dev).scriptlib` that `npm run setup-resolve`
-//! writes. main.rs guards the call with `cfg!(debug_assertions)`.
+//! Release builds only: a dev build must not install the production launcher
+//! next to the `AutoSubs (Dev).lua` that `npm run setup-resolve` writes.
+//! main.rs guards the call with `cfg!(debug_assertions)`.
 
 // In dev builds only the unit tests call into this module — main.rs skips the
 // install call entirely.
@@ -60,6 +68,11 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     }
     let scripts_root = support.join("Fusion").join("Scripts");
 
+    // Remove the 3.10.0 startup scriptlib before anything that can fail, so an
+    // upgrade always drops it. A loop it already started lives until Resolve
+    // quits (or until Utility > AutoSubs takes over and stops it).
+    remove_startup_scriptlib(&scripts_root);
+
     // The resource dir contains the bundled `resources/` tree; tolerate both
     // `resource_dir/resources` and a flat layout.
     let resource_dir = app
@@ -82,18 +95,10 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     let resources_bytes = lua_path_bytes(&resources_folder);
     let executable_bytes = lua_path_bytes(&app_executable);
 
-    // Utility launcher (restart path) and startup scriptlib (zero-click start).
     write_template(
         &resource_dir,
         "resources/AutoSubs.lua",
         &scripts_root.join("Utility").join("AutoSubs.lua"),
-        &resources_bytes,
-        &executable_bytes,
-    )?;
-    write_template(
-        &resource_dir,
-        "resources/AutoSubs.scriptlib",
-        &scripts_root.join("AutoSubs.scriptlib"),
         &resources_bytes,
         &executable_bytes,
     )?;
@@ -104,6 +109,16 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     let _ = fs::remove_dir_all(utility.join("AutoSubs"));
 
     Ok(())
+}
+
+/// Delete the startup scriptlib 3.10.0 installed into the Scripts root.
+fn remove_startup_scriptlib(scripts_root: &Path) {
+    let path = scripts_root.join("AutoSubs.scriptlib");
+    match fs::remove_file(&path) {
+        Ok(()) => tracing::info!("removed Resolve startup scriptlib {}", path.display()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => tracing::warn!("could not remove {}: {e}", path.display()),
+    }
 }
 
 fn write_template(
@@ -297,6 +312,22 @@ fn windows_lua_path_bytes(p: &Path) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn remove_startup_scriptlib_deletes_only_the_scriptlib() {
+        let root = std::env::temp_dir().join(format!("autosubs-scriptlib-{}", std::process::id()));
+        fs::create_dir_all(root.join("Utility")).unwrap();
+        fs::write(root.join("AutoSubs.scriptlib"), b"x").unwrap();
+        fs::write(root.join("Utility").join("AutoSubs.lua"), b"y").unwrap();
+
+        remove_startup_scriptlib(&root);
+        assert!(!root.join("AutoSubs.scriptlib").exists());
+        assert!(root.join("Utility").join("AutoSubs.lua").exists());
+
+        // Absent file is a no-op.
+        remove_startup_scriptlib(&root);
+        fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn substitute_replaces_both_placeholders() {

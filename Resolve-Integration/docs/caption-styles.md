@@ -64,7 +64,8 @@ crash or a hot reload is swept when the next session opens.
 fresh throwaway clip. The thumbnail is *not* a Fusion render: on Resolve 21.1
 `Composition:Render` from a script state crashes Resolve and the isolated-helper
 routes (`RunScript`, `comp:Execute`, `fusion:Execute`) never run while a request
-is being handled. `extract_frame` instead parks the playhead on the clip, hides
+is being handled (a script started via `fusion:Execute` holds Fusion's shared
+script executor until it returns; see `resident-bridge-fusion-regression.md`). `extract_frame` instead parks the playhead on the clip, hides
 the other video tracks, and calls `Project:ExportCurrentFrameAsStill`, Resolve's
 own viewer still export, then restores the tracks and the playhead.
 

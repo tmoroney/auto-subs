@@ -1,16 +1,10 @@
-Blackmagic tightened the Lua sandbox in DaVinci Resolve 21.1, which broke the server-based integration AutoSubs used to communicate with Resolve. This release is a full rewrite of the Resolve integration so it works again on the latest Resolve versions, including the free edition.
+This update fixes a serious problem in 3.10.0 where AutoSubs interfered with DaVinci Resolve's Fusion page: custom caption controls stopped responding, text fields lost focus while typing, and in some cases dragging colour controls crashed Resolve.
 
-One trade-off: the AutoSubs script inside Resolve can no longer launch the app for you. The upside is you never need to touch the script at all — the connection is already running in the background, so you just open AutoSubs. (If Resolve was open while updating, restart it once so the new script loads.)
+The cause was the new automatic start, which ran the AutoSubs connection inside Fusion's own script engine for the whole Resolve session. It has been removed. Start the connection the way you did before 3.10.0: open DaVinci Resolve and run **Workspace → Scripts → AutoSubs** once per session. It then stays connected in the background, even if you close and reopen AutoSubs.
 
-## What's New
-- Added automatic Resolve integration: the bridge now starts with DaVinci Resolve itself, so subtitles can be sent without launching a script first.
-- Added support for DaVinci Resolve 21.1 (including the free edition), which removed the APIs the previous integration relied on.
-
-## Improvements
-- Improved Resolve script updates: the app and installers now keep integration scripts current automatically across app updates.
-- Improved connection reliability so restarts and reconnects can't leave duplicate or stuck bridge instances.
+**If you used 3.10.0, restart DaVinci Resolve once after updating.** Alternatively, running Workspace → Scripts → AutoSubs replaces the old connection straight away.
 
 ## Bug Fixes
-- Fixed Resolve scripts failing to load on Windows due to invalid generated paths.
-- Fixed rare cases where the Resolve connection could stop responding after restarts.
-- Fixed the macOS installer skipping per-user Resolve and Adobe setup in some environments.
+- Fixed caption template controls (animation, highlight and other custom options) not responding on the Fusion page.
+- Fixed Fusion text fields deselecting while typing, and slider/colour drags glitching or crashing Resolve.
+- The AutoSubs startup script from 3.10.0 is now removed automatically on update.

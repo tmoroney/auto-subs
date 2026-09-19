@@ -6,11 +6,11 @@
   RMDir /r "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs"
   Delete "$PROGRAMDATA\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins\AutoSubs V2.lua"
 
-  ; Write the Resolve bridge launcher + startup scriptlib now so the bridge
-  ; exists before the app first runs (a headless flag reuses the app's own
-  ; install path, including ANSI/8.3 path handling). The app also refreshes
-  ; them on startup (resolve_scripts.rs), which keeps them current across
-  ; updates — a failure here is therefore recoverable, so don't check $0.
+  ; Write the Resolve bridge launcher now so it exists before the app first
+  ; runs (a headless flag reuses the app's own install path, including
+  ; ANSI/8.3 path handling). The same path deletes the AutoSubs.scriptlib that
+  ; 3.10.0 installed. The app also does both on startup (resolve_scripts.rs),
+  ; so a failure here is recoverable — don't check $0.
   ExecWait '"$INSTDIR\AutoSubs.exe" --install-resolve-scripts' $0
 
   ; Remove redundant v3 modules copy (now loaded from install dir via package.path).

@@ -54,9 +54,7 @@
         ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
-          "/opt/resolve/Fusion/Scripts/AutoSubs.scriptlib": "gen-resolve-linux/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
-          "/usr/lib/autosubs/resources/AutoSubs.scriptlib": "resources/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }
       },
@@ -73,9 +71,7 @@
         ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
-          "/opt/resolve/Fusion/Scripts/AutoSubs.scriptlib": "gen-resolve-linux/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
-          "/usr/lib/autosubs/resources/AutoSubs.scriptlib": "resources/AutoSubs.scriptlib",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }
       }

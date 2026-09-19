@@ -30,17 +30,18 @@ AS_USER=(sudo -u "$CONSOLE_USER")
 SCRIPTS_DIR="$USER_HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"
 UTILITY_PATH="$SCRIPTS_DIR/Utility"
 
-# Write the Resolve bridge launcher + startup scriptlib now so the bridge is
-# in place before the app first runs. The app also rewrites them on startup
-# (resolve_scripts.rs), which keeps them current across updates. `tee` runs
-# as the console user so the app (running as them) can rewrite the files.
+# Write the Resolve bridge launcher now so it is in place before the app first
+# runs. The app also rewrites it on startup (resolve_scripts.rs), which keeps
+# it current across updates. `tee` runs as the console user so the app
+# (running as them) can rewrite the file.
 "${AS_USER[@]}" mkdir -p "$UTILITY_PATH"
 sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
     "$RESOURCES_PATH/AutoSubs.lua" | "${AS_USER[@]}" tee "$UTILITY_PATH/AutoSubs.lua" > /dev/null
-sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
-    -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
-    "$RESOURCES_PATH/AutoSubs.scriptlib" | "${AS_USER[@]}" tee "$SCRIPTS_DIR/AutoSubs.scriptlib" > /dev/null
+
+# 3.10.0 installed a startup scriptlib that ran the bridge via fusion:Execute,
+# which blocks Fusion's script executor for the whole Resolve session.
+rm -f "$SCRIPTS_DIR/AutoSubs.scriptlib"
 
 # Remove legacy user-level Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"
