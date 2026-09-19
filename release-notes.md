@@ -5,6 +5,9 @@ The cause was the new automatic start, which ran the AutoSubs connection inside 
 **If you used 3.10.0, restart DaVinci Resolve once after updating.** Alternatively, running Workspace → Scripts → AutoSubs replaces the old connection straight away.
 
 ## Bug Fixes
-- Fixed caption template controls (animation, highlight and other custom options) not responding on the Fusion page.
-- Fixed Fusion text fields deselecting while typing.
-- The AutoSubs startup script from 3.10.0 is now removed automatically on update.
+- Fixed scripted Fusion controls and text fields freezing for the whole Resolve session — the 3.10.0 startup script ran the AutoSubs bridge inside Fusion's script executor; the bridge now only runs from Workspace > Scripts > AutoSubs. (If Resolve was open during the update, restart it.)
+- Fixed Resolve crashing on quit while the AutoSubs bridge was running.
+- Fixed the caption template dropdown hanging on "Loading templates..." and the app briefly showing "Disconnected" on projects with large media pools.
+- Fixed caption preset thumbnails crashing Resolve 21.1 on save — they now render via timeline frame export instead.
+- Fixed caption preview failures leaving the playhead moved and silently stuck tracks — failures are now reported and the playhead is restored.
+- Fixed the Linux Resolve setup script failing on standard installs, and added Arch Linux setup documentation.
