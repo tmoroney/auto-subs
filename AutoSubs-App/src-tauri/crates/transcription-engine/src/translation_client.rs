@@ -39,11 +39,26 @@ fn normalize_google_lang(code: &str, is_target: bool) -> String {
 /// Translates text from one language to another.
 pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
+    translate_text_with_client(&client, text, from, to).await
+}
+
+fn backoff(attempt: u32) -> Duration {
+    // 500ms, 1s, 2s, 4s, 8s, plus deterministic jitter so concurrent workers
+    // don't retry in lockstep after a 429.
+    Duration::from_millis((500u64 << attempt).min(8000) + (attempt as u64 * 173) % 400)
+}
+
+async fn translate_text_with_client(
+    client: &reqwest::Client,
+    text: &str,
+    from: &str,
+    to: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     let url = "https://translate.googleapis.com/translate_a/single";
     let sl = normalize_google_lang(from, false);
     let tl = normalize_google_lang(to, true);
 
-    let max_retries = 3u32;
+    let max_retries = 5u32;
     let mut attempt = 0u32;
     loop {
         let resp_result = client
@@ -63,8 +78,7 @@ pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, 
                     return Ok(translated_text);
                 } else if resp.status().as_u16() == 429 || resp.status().is_server_error() {
                     if attempt >= max_retries { break; }
-                    let backoff_ms = 200u64 << attempt; // 200ms, 400ms, 800ms
-                    sleep(Duration::from_millis(backoff_ms)).await;
+                    sleep(backoff(attempt)).await;
                     attempt += 1;
                     continue;
                 } else {
@@ -76,8 +90,7 @@ pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, 
             }
             Err(e) => {
                 if attempt >= max_retries { return Err(e.into()); }
-                let backoff_ms = 200u64 << attempt;
-                sleep(Duration::from_millis(backoff_ms)).await;
+                sleep(backoff(attempt)).await;
                 attempt += 1;
                 continue;
             }
@@ -90,6 +103,10 @@ pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, 
 /// Translate a collection of texts concurrently while preserving order.
 ///
 /// Empty strings are preserved as empty and not sent to the service.
+/// A segment that still fails after retries keeps its original text instead of
+/// failing the whole batch — a partially translated transcript is far more
+/// useful than discarding the transcription entirely. Only when *every*
+/// non-empty segment fails (service down/unreachable) is an error returned.
 pub async fn translate_batch(
     texts: Vec<String>,
     from: &str,
@@ -105,24 +122,47 @@ pub async fn translate_batch(
         return Ok(Vec::new());
     }
 
-    let concurrency: usize = 4;
+    // One shared client: per-segment `Client::new()` defeats connection reuse,
+    // which makes the translate endpoint throttle much sooner.
+    let client = std::sync::Arc::new(reqwest::Client::new());
+    let concurrency: usize = 2;
     let mut out: Vec<Option<String>> = vec![None; n];
+    let mut failed = 0usize;
+    let mut attempted = 0usize;
 
-    let mut stream = stream::iter(texts.into_iter().enumerate())
-        .map(|(i, txt)| async move {
-            if txt.trim().is_empty() {
-                (i, Ok(String::new()))
-            } else {
-                (i, translate_text(&txt, from, to).await)
+    let mut stream = stream::iter(texts.iter().cloned().enumerate())
+        .map(|(i, txt)| {
+            let client = std::sync::Arc::clone(&client);
+            async move {
+                if txt.trim().is_empty() {
+                    (i, txt, Ok(String::new()))
+                } else {
+                    (i, txt.clone(), translate_text_with_client(&client, &txt, from, to).await)
+                }
             }
         })
         .buffer_unordered(concurrency);
 
-    while let Some((i, res)) = stream.next().await {
+    while let Some((i, original, res)) = stream.next().await {
         match res {
             Ok(tr) => out[i] = Some(tr),
-            Err(e) => return Err(e),
+            Err(e) => {
+                if !original.trim().is_empty() {
+                    attempted += 1;
+                    failed += 1;
+                    tracing::warn!("translation failed for segment {}, keeping original text: {}", i, e);
+                }
+                out[i] = Some(original);
+            }
         }
+    }
+
+    let total_non_empty = texts.iter().filter(|t| !t.trim().is_empty()).count();
+    if total_non_empty > 0 && failed == total_non_empty {
+        return Err("translation failed for every segment — the translation service may be unreachable".into());
+    }
+    if failed > 0 {
+        tracing::warn!("translation: {}/{} segments kept their original text after retries", failed, attempted);
     }
 
     Ok(out.into_iter().map(|o| o.unwrap_or_default()).collect())
