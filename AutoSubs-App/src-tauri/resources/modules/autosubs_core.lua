@@ -1511,7 +1511,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             if not fusionCompCount then
                 noFusionComp = noFusionComp + 1
                 error(
-                "template clip has no Fusion composition (GetFusionCompCount returned nil) — your DaVinci Resolve version may be incompatible")
+                "clip has no Fusion composition (GetFusionCompCount returned nil) — Resolve either refused to place the clip (blocked append) or the template is incompatible with this Resolve version")
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
@@ -1545,7 +1545,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
 
     if noFusionComp > 0 then
         print(string.format(
-            "[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). This usually means your DaVinci Resolve version is incompatible with the AutoSubs Caption template.",
+            "[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). Resolve either refused to place those clips or the template is incompatible with this Resolve version.",
             noFusionComp, #timelineItems))
     end
     if failed > 0 then
@@ -1665,6 +1665,48 @@ function AddSubtitles(req)
                     "a different track.")
             end
 
+            -- AppendToTimeline does not report a blocked append: it returns
+            -- truthy "dead" item handles whose methods all return nothing (so
+            -- they later surface as GetFusionCompCount() == nil and look like
+            -- a version-incompatible template). Detect them by probing a cheap
+            -- getter, then retry the blocked clips on a freshly added video
+            -- track — an empty track can't have placement conflicts.
+            local deadIndices = {}
+            for i, item in ipairs(timelineItems) do
+                local probeOk, probeVal = pcall(function() return item:GetStart() end)
+                if not probeOk or probeVal == nil then
+                    table.insert(deadIndices, i)
+                end
+            end
+            if #deadIndices > 0 then
+                print(string.format(
+                    "[AutoSubs] %d of %d appended clips are dead handles (blocked append) — retrying on a fresh video track",
+                    #deadIndices, #timelineItems))
+                local addOk, added = pcall(function() return timeline:AddTrack("video") end)
+                if addOk and added then
+                    local newTrackIndex = timeline:GetTrackCount("video")
+                    local retryList = {}
+                    for _, i in ipairs(deadIndices) do
+                        clipList[i].trackIndex = newTrackIndex
+                        table.insert(retryList, clipList[i])
+                    end
+                    local retryOk, retryItems = pcall(function()
+                        return mediaPool:AppendToTimeline(retryList)
+                    end)
+                    if retryOk and type(retryItems) == "table" then
+                        for j, i in ipairs(deadIndices) do
+                            timelineItems[i] = retryItems[j]
+                        end
+                        print(string.format("[AutoSubs] Retried %d blocked clips on new video track %d",
+                            #deadIndices, newTrackIndex))
+                    else
+                        print("[AutoSubs] Retry append on fresh track failed: " .. tostring(retryItems))
+                    end
+                else
+                    print("[AutoSubs] Could not add a video track for the blocked-append retry")
+                end
+            end
+
             -- Use the resolved template name so a fallback to ANIMATED_CAPTION still
             -- enables the animated-text path.
             local isAnimated = caption_style.is_autosubs_template(resolvedTemplateName)
@@ -1692,7 +1734,7 @@ function AddSubtitles(req)
                 local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
                 if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
                     warning = warning ..
-                    string.format(" (%d had no Fusion composition — your Resolve version may be incompatible)",
+                    string.format(" (%d clips were not placed or had no Fusion composition)",
                         applyStats.noFusionComp)
                 end
                 return {
@@ -1705,7 +1747,7 @@ function AddSubtitles(req)
                 local short = string.format("Failed to place all %d subtitles", applyStats.total)
                 if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
                     short = short ..
-                    " — template clips had no Fusion composition. Check that your DaVinci Resolve version supports the AutoSubs Caption template."
+                    " — the caption clips could not be placed on the timeline (Resolve refused the append) or the template is incompatible with this Resolve version."
                 end
                 return make_error(short, applyStats.firstError)
             end
