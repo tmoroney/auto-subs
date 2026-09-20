@@ -4,7 +4,7 @@ use std::path::Path;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperSegment, DtwParameters, DtwMode, DtwModelPreset};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Mutex;
-use crate::utils::{calculate_dtw_mem_size, cs_to_s, push_segment_clamped};
+use crate::utils::{calculate_dtw_mem_size, cs_to_s, find_low_energy_split, push_segment_clamped};
 
 type ProgressCallbackType = once_cell::sync::Lazy<Mutex<Option<Box<dyn Fn(i32) + Send + Sync>>>>;
 static PROGRESS_CALLBACK: ProgressCallbackType = once_cell::sync::Lazy::new(|| Mutex::new(None));
@@ -351,6 +351,49 @@ fn get_token_timestamps(seg: &WhisperSegment) -> Vec<WordTimestamp> {
     spans
 }
 
+/// Whisper's encoder context is ~30s of audio; passing a longer buffer makes
+/// ggml abort inside `whisper_full`, which kills the whole app. Split any VAD
+/// segment longer than this at a low-energy point so speech isn't cut mid-word.
+const MAX_WHISPER_CHUNK_SECONDS: f64 = 30.0;
+
+fn split_overlong_segments(speech_segments: Vec<SpeechSegment>) -> Vec<SpeechSegment> {
+    const SAMPLE_RATE: f64 = 16000.0;
+    const SEARCH_WINDOW_SECONDS: f64 = 0.5;
+
+    let max_samples = (MAX_WHISPER_CHUNK_SECONDS * SAMPLE_RATE) as usize;
+    let search_window = (SEARCH_WINDOW_SECONDS * SAMPLE_RATE) as usize;
+
+    let mut out = Vec::with_capacity(speech_segments.len());
+    for segment in speech_segments {
+        if segment.samples.len() <= max_samples {
+            out.push(segment);
+            continue;
+        }
+        let mut start = 0usize;
+        while start < segment.samples.len() {
+            let target = (start + max_samples).min(segment.samples.len());
+            let split = if target == segment.samples.len() {
+                target
+            } else {
+                find_low_energy_split(&segment.samples, start, target, search_window)
+                    .max(start + 1)
+            };
+            out.push(SpeechSegment {
+                start: segment.start + start as f64 / SAMPLE_RATE,
+                end: segment.start + split as f64 / SAMPLE_RATE,
+                samples: segment.samples[start..split].to_vec(),
+                speaker_id: segment.speaker_id.clone(),
+            });
+            start = split;
+        }
+        tracing::info!(
+            "split {:.2}s speech segment into smaller chunks for Whisper",
+            segment.end - segment.start
+        );
+    }
+    out
+}
+
 // Pass in path to normalised mono 16k PCM16 audio file
 pub async fn run_transcription_pipeline(
     ctx: WhisperContext,
@@ -361,6 +404,8 @@ pub async fn run_transcription_pipeline(
     abort_callback: Option<Box<dyn Fn() -> bool + Send + Sync>>,
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Transcribe called with {:?}", options);
+
+    let speech_segments = split_overlong_segments(speech_segments);
 
     // Create Whisper state
     let mut state = ctx.create_state().context("failed to create state")?;
@@ -516,4 +561,46 @@ pub async fn run_transcription_pipeline(
     if let Ok(mut slot) = PROGRESS_CALLBACK.lock() { *slot = None; }
 
     Ok((segments, detected_lang))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn seg(start: f64, seconds: f64) -> SpeechSegment {
+        let len = (seconds * 16000.0) as usize;
+        SpeechSegment {
+            start,
+            end: start + seconds,
+            samples: vec![0i16; len],
+            speaker_id: Some("S1".into()),
+        }
+    }
+
+    #[test]
+    fn short_segments_pass_through() {
+        let out = split_overlong_segments(vec![seg(0.0, 10.0), seg(20.0, 30.0)]);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].start, 0.0);
+        assert_eq!(out[0].end, 10.0);
+        assert_eq!(out[1].speaker_id.as_deref(), Some("S1"));
+    }
+
+    #[test]
+    fn overlong_segment_is_split_contiguously_within_cap() {
+        let out = split_overlong_segments(vec![seg(5.0, 75.0)]);
+        assert!(out.len() >= 3, "75s should split into at least 3 chunks, got {}", out.len());
+        let max_samples = (MAX_WHISPER_CHUNK_SECONDS * 16000.0) as usize;
+        for chunk in &out {
+            assert!(chunk.samples.len() <= max_samples);
+            assert!((chunk.start + chunk.samples.len() as f64 / 16000.0 - chunk.end).abs() < 1e-9);
+            assert_eq!(chunk.speaker_id.as_deref(), Some("S1"));
+        }
+        // Chunks are contiguous and cover the original range.
+        assert_eq!(out[0].start, 5.0);
+        assert_eq!(out.last().unwrap().end, 80.0);
+        for w in out.windows(2) {
+            assert_eq!(w[0].end, w[1].start);
+        }
+    }
 }
