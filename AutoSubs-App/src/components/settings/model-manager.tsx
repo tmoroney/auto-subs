@@ -1,3 +1,4 @@
+import React from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +18,27 @@ interface ManageModelsDialogProps {
   onOpenChange: (open: boolean) => void;
   models: Model[];
   onDeleteModel: (modelValue: string) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export function ManageModelsDialog({
   open,
   onOpenChange,
   models,
-  onDeleteModel
+  onDeleteModel,
+  onRefresh
 }: ManageModelsDialogProps) {
   const { t } = useTranslation();
   const downloadedModels = models.filter(model => model.isDownloaded);
+
+  // Re-query the backend every time the dialog opens so a stale (possibly
+  // empty) result from window startup doesn't stick until the next
+  // transcription finishes.
+  React.useEffect(() => {
+    if (open && onRefresh) {
+      void onRefresh();
+    }
+  }, [open, onRefresh]);
 
   const handleDeleteModel = async (modelValue: string) => {
     const modelName = t(models.find((m) => m.value === modelValue)?.label || "");

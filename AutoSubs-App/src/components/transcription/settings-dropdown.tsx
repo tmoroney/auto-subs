@@ -35,7 +35,7 @@ import type { Model } from "@/types";
 export function SettingsDropdown() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { modelsState, downloadedModelValues, handleDeleteModel } = useModels();
+  const { modelsState, downloadedModelValues, handleDeleteModel, checkDownloadedModels } = useModels();
   const [manageModelsOpen, setManageModelsOpen] = React.useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = React.useState(false);
@@ -198,6 +198,7 @@ export function SettingsDropdown() {
         onOpenChange={setManageModelsOpen}
         models={managerModels}
         onDeleteModel={(modelValue) => void handleDeleteModel(modelValue)}
+        onRefresh={() => void checkDownloadedModels()}
       />
 
       <SettingsDialog
