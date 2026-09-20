@@ -154,8 +154,7 @@ async fn flush(
     }
 
     let translated = crate::translation_client::translate_batch(texts, source_lang, target_lang)
-        .await
-        .map_err(|e| eyre::eyre!("{}", e))?;
+        .await?;
 
     for (i, job) in jobs.into_iter().enumerate() {
         let mut seg = job.segment;
