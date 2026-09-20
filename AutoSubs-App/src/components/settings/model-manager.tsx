@@ -1,3 +1,4 @@
+import React from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +18,35 @@ interface ManageModelsDialogProps {
   onOpenChange: (open: boolean) => void;
   models: Model[];
   onDeleteModel: (modelValue: string) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export function ManageModelsDialog({
   open,
   onOpenChange,
   models,
-  onDeleteModel
+  onDeleteModel,
+  onRefresh
 }: ManageModelsDialogProps) {
   const { t } = useTranslation();
   const downloadedModels = models.filter(model => model.isDownloaded);
+
+  // Keep the latest callback in a ref so the effect below only fires on the
+  // closed -> open transition; depending on `onRefresh` directly would re-fire
+  // whenever a caller passes a new inline function after each refresh.
+  const onRefreshRef = React.useRef(onRefresh);
+  React.useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  });
+
+  // Re-query the backend every time the dialog opens so a stale (possibly
+  // empty) result from window startup doesn't stick until the next
+  // transcription finishes.
+  React.useEffect(() => {
+    if (open) {
+      void onRefreshRef.current?.();
+    }
+  }, [open]);
 
   const handleDeleteModel = async (modelValue: string) => {
     const modelName = t(models.find((m) => m.value === modelValue)?.label || "");

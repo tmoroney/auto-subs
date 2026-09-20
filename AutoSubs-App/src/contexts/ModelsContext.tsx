@@ -18,20 +18,30 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
   const [downloadedModelValues, setDownloadedModelValues] = useState<string[]>([]);
 
   async function checkDownloadedModels() {
-    try {
-      const downloadedModels = await invoke("get_downloaded_models") as string[]
-      console.log("Downloaded models:", downloadedModels)
-      setDownloadedModelValues(downloadedModels)
+    // The backend command can fail transiently when invoked during window
+    // startup. The result was fetched exactly once on mount with no retry,
+    // so a single transient failure left the "Manage downloaded models"
+    // dialog permanently empty until the next transcription finished.
+    const maxAttempts = 3;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const downloadedModels = await invoke("get_downloaded_models") as string[]
+        console.log("Downloaded models:", downloadedModels)
+        setDownloadedModelValues(downloadedModels)
 
-      const updatedModels = models.map(model => ({
-        ...model,
-        isDownloaded: downloadedModels.some(downloadedModel =>
-          downloadedModel === model.value
-        )
-      }))
-      setModelsState(updatedModels)
-    } catch (error) {
-      console.error("Failed to check downloaded models:", error)
+        const updatedModels = models.map(model => ({
+          ...model,
+          isDownloaded: downloadedModels.some(downloadedModel =>
+            downloadedModel === model.value
+          )
+        }))
+        setModelsState(updatedModels)
+        return
+      } catch (error) {
+        console.error(`Failed to check downloaded models (attempt ${attempt}/${maxAttempts}):`, error)
+        if (attempt >= maxAttempts) return
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000))
+      }
     }
   }
 
