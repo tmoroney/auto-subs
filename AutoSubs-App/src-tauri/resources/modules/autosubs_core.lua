@@ -1680,10 +1680,13 @@ function AddSubtitles(req)
                 local probeOk, probeVal = pcall(function() return item:GetStart() end)
                 return probeOk and probeVal ~= nil
             end
+            local createdTracks = {}
             local function add_fresh_track()
                 local addOk, added = pcall(function() return timeline:AddTrack("video") end)
                 if addOk and added then
-                    return timeline:GetTrackCount("video")
+                    local idx = timeline:GetTrackCount("video")
+                    table.insert(createdTracks, idx)
+                    return idx
                 end
                 return nil
             end
@@ -1699,6 +1702,7 @@ function AddSubtitles(req)
                     "[AutoSubs] %d of %d appended clips are dead handles (blocked append), retrying on fresh video tracks",
                     #deadIndices, #timelineItems))
                 local retryTrack = nil
+                local retryTrackUsed = {}
                 local recovered = 0
                 for _, i in ipairs(deadIndices) do
                     local clip = clipList[i]
@@ -1707,7 +1711,7 @@ function AddSubtitles(req)
                             retryTrack = add_fresh_track()
                         end
                         local placed = false
-                        for _ = 1, 2 do
+                        for attempt = 1, 2 do
                             if retryTrack == nil then break end
                             clip.trackIndex = retryTrack
                             local retryOk, retryItems = pcall(function()
@@ -1715,14 +1719,33 @@ function AddSubtitles(req)
                             end)
                             if retryOk and type(retryItems) == "table" and retryItems[1] and is_live_item(retryItems[1]) then
                                 timelineItems[i] = retryItems[1]
+                                retryTrackUsed[retryTrack] = true
                                 placed = true
                                 recovered = recovered + 1
                                 break
                             end
-                            retryTrack = add_fresh_track()
+                            -- Only grow a new track when another attempt remains;
+                            -- an unused one after the last try is pure clutter.
+                            if attempt < 2 then
+                                retryTrack = add_fresh_track()
+                            else
+                                retryTrack = nil
+                            end
                         end
                         if not placed then
                             print("[AutoSubs] Clip " .. i .. " could not be placed even on fresh tracks")
+                        end
+                    end
+                end
+                -- Remove retry tracks where nothing landed (failed appends leave
+                -- empty tracks behind). Delete highest index first so earlier
+                -- indices stay valid.
+                for t = #createdTracks, 1, -1 do
+                    local idx = createdTracks[t]
+                    if not retryTrackUsed[idx] then
+                        local items = timeline:GetItemsInTrack("video", idx)
+                        if items == nil or next(items) == nil then
+                            timeline:DeleteTrack("video", idx)
                         end
                     end
                 end
