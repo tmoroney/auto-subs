@@ -562,3 +562,45 @@ pub async fn run_transcription_pipeline(
 
     Ok((segments, detected_lang))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn seg(start: f64, seconds: f64) -> SpeechSegment {
+        let len = (seconds * 16000.0) as usize;
+        SpeechSegment {
+            start,
+            end: start + seconds,
+            samples: vec![0i16; len],
+            speaker_id: Some("S1".into()),
+        }
+    }
+
+    #[test]
+    fn short_segments_pass_through() {
+        let out = split_overlong_segments(vec![seg(0.0, 10.0), seg(20.0, 30.0)]);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].start, 0.0);
+        assert_eq!(out[0].end, 10.0);
+        assert_eq!(out[1].speaker_id.as_deref(), Some("S1"));
+    }
+
+    #[test]
+    fn overlong_segment_is_split_contiguously_within_cap() {
+        let out = split_overlong_segments(vec![seg(5.0, 75.0)]);
+        assert!(out.len() >= 3, "75s should split into at least 3 chunks, got {}", out.len());
+        let max_samples = (MAX_WHISPER_CHUNK_SECONDS * 16000.0) as usize;
+        for chunk in &out {
+            assert!(chunk.samples.len() <= max_samples);
+            assert!((chunk.start + chunk.samples.len() as f64 / 16000.0 - chunk.end).abs() < 1e-9);
+            assert_eq!(chunk.speaker_id.as_deref(), Some("S1"));
+        }
+        // Chunks are contiguous and cover the original range.
+        assert_eq!(out[0].start, 5.0);
+        assert_eq!(out.last().unwrap().end, 80.0);
+        for w in out.windows(2) {
+            assert_eq!(w[0].end, w[1].start);
+        }
+    }
+}
