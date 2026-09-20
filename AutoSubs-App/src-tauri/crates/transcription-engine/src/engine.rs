@@ -710,9 +710,7 @@ impl Engine {
         // and word overlaps using the original VAD speech intervals.
         if !vad_intervals.is_empty() {
             let vad_config = VadSnapConfig::default();
-            if let Err(e) = snap_timestamps_to_vad(&mut segments, &vad_intervals, &vad_config) {
-                tracing::warn!("VAD timestamp snapping failed: {}", e);
-            }
+            snap_timestamps_to_vad(&mut segments, &vad_intervals, &vad_config)?;
         }
 
         // Determine the final output language of the transcript.
