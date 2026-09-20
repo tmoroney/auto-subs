@@ -43,9 +43,13 @@ pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String, 
 }
 
 fn backoff(attempt: u32) -> Duration {
-    // 500ms, 1s, 2s, 4s, 8s, plus deterministic jitter so concurrent workers
-    // don't retry in lockstep after a 429.
-    Duration::from_millis((500u64 << attempt).min(8000) + (attempt as u64 * 173) % 400)
+    // 500ms, 1s, 2s, 4s, 8s, plus jitter from wall-clock nanos so concurrent
+    // workers don't retry in lockstep after a 429.
+    let jitter = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos() as u64 % 400)
+        .unwrap_or(0);
+    Duration::from_millis((500u64 << attempt).min(8000) + jitter)
 }
 
 async fn translate_text_with_client(
@@ -104,9 +108,9 @@ async fn translate_text_with_client(
 ///
 /// Empty strings are preserved as empty and not sent to the service.
 /// A segment that still fails after retries keeps its original text instead of
-/// failing the whole batch — a partially translated transcript is far more
-/// useful than discarding the transcription entirely. Only when *every*
-/// non-empty segment fails (service down/unreachable) is an error returned.
+/// failing the whole batch — the caller (translation_pipeline::flush) treats an
+/// Err as fatal for the entire run, so segment failures must never propagate.
+/// A warning is logged per failure and summarized at the end.
 pub async fn translate_batch(
     texts: Vec<String>,
     from: &str,
@@ -157,10 +161,6 @@ pub async fn translate_batch(
         }
     }
 
-    let total_non_empty = texts.iter().filter(|t| !t.trim().is_empty()).count();
-    if total_non_empty > 0 && failed == total_non_empty {
-        return Err("translation failed for every segment — the translation service may be unreachable".into());
-    }
     if failed > 0 {
         tracing::warn!("translation: {}/{} segments kept their original text after retries", failed, attempted);
     }
