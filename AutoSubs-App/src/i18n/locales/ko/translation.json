@@ -427,7 +427,7 @@
     },
     "speechDetection": {
       "title": "음성 감지",
-      "description": "합니다. 누락 시 끄세요"
+      "description": "음성을 감지합니다. 누락되면 끄세요"
     }
   },
   "speakerEditor": {
