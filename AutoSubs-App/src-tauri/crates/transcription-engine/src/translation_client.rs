@@ -109,7 +109,11 @@ async fn translate_text_with_client(
 /// Empty strings are preserved as empty and not sent to the service.
 /// A segment that still fails after retries keeps its original text instead of
 /// failing the whole batch — the caller (translation_pipeline::flush) treats an
-/// Err as fatal for the entire run, so segment failures must never propagate.
+/// Err as fatal for the entire run, so a few bad segments must not propagate.
+/// The batch only errors when every attempted segment failed (with at least 2
+/// attempted): that means the service itself is down, and succeeding there
+/// would silently emit source-language captions labelled as translated. A lone
+/// failing segment still keeps its original text rather than aborting the run.
 /// A warning is logged per failure and summarized at the end.
 pub async fn translate_batch(
     texts: Vec<String>,
@@ -159,6 +163,14 @@ pub async fn translate_batch(
                 out[i] = Some(original);
             }
         }
+    }
+
+    if attempted >= 2 && failed == attempted {
+        return Err(format!(
+            "translation failed for all {} segments in batch; service appears unreachable",
+            attempted
+        )
+        .into());
     }
 
     if failed > 0 {
