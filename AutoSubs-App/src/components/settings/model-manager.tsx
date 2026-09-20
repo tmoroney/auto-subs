@@ -31,14 +31,22 @@ export function ManageModelsDialog({
   const { t } = useTranslation();
   const downloadedModels = models.filter(model => model.isDownloaded);
 
+  // Keep the latest callback in a ref so the effect below only fires on the
+  // closed -> open transition; depending on `onRefresh` directly would re-fire
+  // whenever a caller passes a new inline function after each refresh.
+  const onRefreshRef = React.useRef(onRefresh);
+  React.useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  });
+
   // Re-query the backend every time the dialog opens so a stale (possibly
   // empty) result from window startup doesn't stick until the next
   // transcription finishes.
   React.useEffect(() => {
-    if (open && onRefresh) {
-      void onRefresh();
+    if (open) {
+      void onRefreshRef.current?.();
     }
-  }, [open, onRefresh]);
+  }, [open]);
 
   const handleDeleteModel = async (modelValue: string) => {
     const modelName = t(models.find((m) => m.value === modelValue)?.label || "");
