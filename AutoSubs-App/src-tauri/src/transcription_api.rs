@@ -100,6 +100,7 @@ pub struct FrontendTranscribeOptions {
     pub enable_gpu: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub enable_forced_alignment: Option<bool>,
+    pub enable_vad: Option<bool>,
     pub max_speakers: Option<usize>,
     pub density: Option<TextDensity>,
     pub max_lines: Option<usize>,
@@ -387,7 +388,9 @@ pub async fn transcribe_audio<R: Runtime>(
         let mut transcribe_options = TranscribeOptions::default();
         transcribe_options.model = options.model.clone();
         transcribe_options.lang = options.lang.clone().or(Some("auto".into()));
-        transcribe_options.enable_vad = Some(true); // Always enable VAD
+        // VAD stays on by default but can be disabled for audio it handles
+        // poorly (muffled, band-limited phone speech, heavy noise).
+        transcribe_options.enable_vad = options.enable_vad.or(Some(true));
         transcribe_options.enable_diarize = options.enable_diarize;
         transcribe_options.enable_forced_alignment = Some(
             options.enable_forced_alignment.unwrap_or(false) && !options.translate.unwrap_or(false),

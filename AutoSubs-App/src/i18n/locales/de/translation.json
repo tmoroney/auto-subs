@@ -44,6 +44,10 @@
     "support": {
       "supportAutoSubs": "AutoSubs unterstützen",
       "viewSource": "Quellcode ansehen"
+    },
+    "speechDetection": {
+      "title": "Spracherkennung",
+      "description": "Überspringt Stille; aus, wenn Wörter fehlen"
     }
   },
   "common": {

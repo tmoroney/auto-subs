@@ -44,6 +44,10 @@
     "support": {
       "supportAutoSubs": "Support AutoSubs",
       "viewSource": "Contribute"
+    },
+    "speechDetection": {
+      "title": "Speech Detection",
+      "description": "Skips silence; turn off if words are missed"
     }
   },
   "common": {

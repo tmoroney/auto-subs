@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Gauge, Clock, GraduationCap, Terminal, ChevronDown } from "lucide-react";
+import { AudioLines, Gauge, Clock, GraduationCap, Terminal, ChevronDown, Ear } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -53,6 +53,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const uiLanguage = useSettingsStore((s) => s.uiLanguage);
   const enableGpu = useSettingsStore((s) => s.enableGpu);
+  const enableVad = useSettingsStore((s) => s.enableVad);
   const enableDTW = useSettingsStore((s) => s.enableDTW);
   const enableForcedAlignment = useSettingsStore((s) => s.enableForcedAlignment);
   const translate = useSettingsStore((s) => s.translate);
@@ -335,6 +336,27 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         disabled={alignmentSupersedesDtw}
                         onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
                         aria-label={t("settings.dtw.title")}
+                      />
+                    </ItemActions>
+                  </Item>
+                </Field>
+
+                <Field>
+                  <Item variant="outline" size="sm">
+                    <ItemMedia variant="icon" className="bg-emerald-100 dark:bg-emerald-900/30">
+                      <Ear className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{t("settings.speechDetection.title", "Speech Detection")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-2">
+                        {t("settings.speechDetection.description", "Skips silence; turn off if words are missed")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        checked={enableVad}
+                        onCheckedChange={(checked) => updateSetting("enableVad", checked)}
+                        aria-label={t("settings.speechDetection.title", "Speech Detection")}
                       />
                     </ItemActions>
                   </Item>

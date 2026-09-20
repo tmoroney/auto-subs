@@ -44,6 +44,10 @@
     "support": {
       "supportAutoSubs": "Soutenir AutoSubs",
       "viewSource": "Voir le code source"
+    },
+    "speechDetection": {
+      "title": "Détection vocale",
+      "description": "Ignore le silence; désactive si mots manquants"
     }
   },
   "common": {

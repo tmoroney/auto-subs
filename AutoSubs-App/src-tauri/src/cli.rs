@@ -199,6 +199,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         enable_gpu,
         enable_diarize: Some(arg_flag(&m, "diarize")),
         enable_forced_alignment: Some(forced_alignment),
+        enable_vad: None,
         max_speakers: arg_num(&m, "max-speakers"),
         density,
         max_lines: arg_num(&m, "max-lines"),
