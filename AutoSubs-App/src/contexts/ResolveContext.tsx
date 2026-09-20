@@ -348,7 +348,7 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
         }
 
         let audioPath = audioInfo["path"];
-        await validateExportedAudioFile(audioPath);
+        audioPath = await validateExportedAudioFile(audioPath);
 
         let audioOffset = audioInfo["offset"];
         return { path: audioPath, offset: audioOffset };

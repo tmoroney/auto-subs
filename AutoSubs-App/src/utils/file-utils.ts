@@ -4,6 +4,8 @@ import {
   documentDir,
   appLocalDataDir,
   videoDir,
+  dirname,
+  basename,
 } from "@tauri-apps/api/path";
 import {
   readDir,
@@ -504,7 +506,7 @@ export async function getAudioExportDir(): Promise<string> {
   return dir;
 }
 
-export async function validateExportedAudioFile(filePath: string): Promise<void> {
+export async function validateExportedAudioFile(filePath: string): Promise<string> {
   if (!filePath) {
     throw new Error("Resolve did not report an exported audio file path.");
   }
@@ -525,7 +527,7 @@ export async function validateExportedAudioFile(filePath: string): Promise<void>
       // filesystem a few seconds to finish flushing before treating it as bad.
       if (fileStats.size > 44) {
         if (lastSize === fileStats.size) {
-          return;
+          return filePath;
         }
         lastFailure = `Resolve audio export is still being written: ${filePath}`;
         lastSize = fileStats.size;
@@ -538,6 +540,31 @@ export async function validateExportedAudioFile(filePath: string): Promise<void>
     if (attempt < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
     }
+  }
+
+  // Resolve can render with a stale preset (e.g. when the localized 'Audio
+  // Only' preset name doesn't exist), producing the file under the same unique
+  // stem but a different extension. The export stem is timestamped and random,
+  // so a sibling file with that stem can only be this render's output.
+  try {
+    const dir = await dirname(filePath);
+    const stem = (await basename(filePath)).replace(/\.[^.]+$/, "");
+    const entries = await readDir(dir);
+    const match = entries.find(
+      (e) => e.isFile && e.name.startsWith(stem + ".")
+    );
+    if (match) {
+      const candidate = await join(dir, match.name);
+      const s = await stat(candidate);
+      if (s.size > 44) {
+        console.log(
+          `Exported audio found under a different extension: ${candidate}`
+        );
+        return candidate;
+      }
+    }
+  } catch {
+    // Directory listing failed; fall through to the original error.
   }
 
   throw new Error(lastFailure);

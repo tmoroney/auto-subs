@@ -877,11 +877,15 @@ function ExportAudio(req)
     local exportName = "autosubs-exported-audio-" ..
         os.date("!%Y%m%d-%H%M%S") .. "-" .. tostring(math.random(100000, 999999))
 
-    -- Build render settings
+    -- Build render settings. Both key spellings are sent: older Resolve docs
+    -- show "ExportVideo"/"ExportAudio" while some versions accept the "Is*"
+    -- forms; unknown keys are ignored, so setting both covers both.
     local renderSettings = {
         TargetDir = outputDir,
         CustomName = exportName,
         RenderMode = "Single clip",
+        ExportVideo = false,
+        ExportAudio = true,
         IsExportVideo = false,
         IsExportAudio = true,
         AudioBitDepth = 24,
@@ -928,7 +932,21 @@ function ExportAudio(req)
 
     -- Must switch to Deliver page to start render and customise settings (wierd quirk of Resolve API)
     resolve:OpenPage("deliver")
-    project:LoadRenderPreset('Audio Only')
+
+    -- 'Audio Only' is a stock preset, but its name is localized on non-English
+    -- Resolve installs, so the load can silently fail. Without it the job renders
+    -- with whatever preset was last selected and the app waits for a WAV that
+    -- never appears. Check the return and configure audio-only output directly.
+    local presetLoaded = project:LoadRenderPreset('Audio Only')
+    if not presetLoaded then
+        print("[AutoSubs] 'Audio Only' render preset not found; configuring WAV output directly")
+        local ok, fmtErr = pcall(function()
+            project:SetCurrentRenderFormatAndCodec('wav', 'LinearPCM')
+        end)
+        if not ok then
+            print("[AutoSubs] Failed to set WAV render format: " .. tostring(fmtErr))
+        end
+    end
 
     project:SetRenderSettings(renderSettings)
 
