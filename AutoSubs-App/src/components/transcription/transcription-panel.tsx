@@ -46,6 +46,7 @@ export function TranscriptionPanel({
     enableDTW,
     enableForcedAlignment,
     enableGpu,
+    enableVad,
     enableDiarize,
     maxSpeakers,
     textDensity,
@@ -68,6 +69,7 @@ export function TranscriptionPanel({
       enableDTW: s.enableDTW,
       enableForcedAlignment: s.enableForcedAlignment,
       enableGpu: s.enableGpu,
+      enableVad: s.enableVad,
       enableDiarize: s.enableDiarize,
       maxSpeakers: s.maxSpeakers,
       textDensity: s.textDensity,
@@ -298,7 +300,7 @@ export function TranscriptionPanel({
     try {
       const ensureModelsRequest: EnsureModelsRequest = {
         model: modelsState[model].value,
-        enable_vad: true,
+        enable_vad: enableVad,
         enable_diarize: enableDiarize,
         enable_forced_alignment: willUseForcedAlignment,
       };
@@ -327,6 +329,7 @@ export function TranscriptionPanel({
         translate,
         targetLanguage,
         enableDtw: enableDTW,
+        enableVad,
         enableForcedAlignment: willUseForcedAlignment,
         enableGpu,
         enableDiarize,

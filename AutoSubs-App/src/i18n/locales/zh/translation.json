@@ -44,6 +44,10 @@
     "support": {
       "supportAutoSubs": "支持 AutoSubs",
       "viewSource": "查看源代码"
+    },
+    "speechDetection": {
+      "title": "语音检测",
+      "description": "跳过静音，如有遗漏请关闭"
     }
   },
   "common": {

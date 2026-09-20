@@ -424,6 +424,10 @@
     "uiLanguage": {
       "description": "メニューとボタンを更新",
       "title": "アプリの言語"
+    },
+    "speechDetection": {
+      "title": "音声検出",
+      "description": "音声を検出します。聞き取りが不安定ならオフに"
     }
   },
   "speakerEditor": {

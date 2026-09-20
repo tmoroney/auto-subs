@@ -147,6 +147,7 @@ export interface Settings {
     enableDTW: boolean,
     enableForcedAlignment: boolean,
     enableGpu: boolean,
+    enableVad: boolean,
 
     // Text settings
     textDensity: "less" | "standard" | "more" | "single" | "custom",
@@ -222,6 +223,7 @@ export interface TranscriptionOptions {
     enableDtw: boolean,
     enableForcedAlignment: boolean,
     enableGpu: boolean,
+    enableVad: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
     density: "less" | "standard" | "more" | "single" | "custom",

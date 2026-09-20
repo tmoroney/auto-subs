@@ -44,6 +44,10 @@
     "support": {
       "supportAutoSubs": "Поддержать AutoSubs",
       "viewSource": "Внести вклад"
+    },
+    "speechDetection": {
+      "title": "Распознавание речи",
+      "description": "Пропускает тишину; отключите при пропусках"
     }
   },
   "common": {
