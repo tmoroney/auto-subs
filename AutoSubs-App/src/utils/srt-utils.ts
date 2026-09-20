@@ -101,11 +101,14 @@ export function generateSrt(subtitles: Subtitle[]): string {
 
 // --- Helper function for robust SRT parsing ---
 export function parseSrt(srtData: string) {
+    // Normalize CRLF/CR line endings first: the block separator lookahead below
+    // requires two consecutive LFs, which "\r\n\r\n" never contains.
+    const normalized = srtData.replace(/\r\n?/g, '\n');
     const regex = /(\d+)\s*\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\s*\n([\s\S]*?)(?=\n{2,}|$)/g;
     const segments: { id: string; start: number; end: number; text: string }[] = [];
     let match;
     let idx = 0;
-    while ((match = regex.exec(srtData)) !== null) {
+    while ((match = regex.exec(normalized)) !== null) {
         const [, , start, end, text] = match;
         const startInSeconds = srtTimeToSeconds(start);
         const endInSeconds = srtTimeToSeconds(end);
