@@ -127,11 +127,11 @@ async fn translate_text_with_client(
 /// A segment that still fails after retries keeps its original text instead of
 /// failing the whole batch — the caller (translation_pipeline::flush) treats an
 /// Err as fatal for the entire run, so a few bad segments must not propagate.
-/// The batch only errors when every attempted segment failed with a
+/// The batch only errors when every non-empty segment failed with a
 /// retry-exhausting (service-side) error: that means the service itself is
 /// down, and succeeding there would silently emit source-language captions
-/// labelled as translated. A lone segment that the API rejects outright still
-/// keeps its original text rather than aborting the run.
+/// labelled as translated. Any single success — or a segment the API rejects
+/// outright — degrades to keeping originals rather than aborting the run.
 /// A warning is logged per failure and summarized at the end.
 pub async fn translate_batch(
     texts: Vec<String>,
@@ -153,8 +153,8 @@ pub async fn translate_batch(
     let client = std::sync::Arc::new(reqwest::Client::new());
     let concurrency: usize = 2;
     let mut out: Vec<Option<String>> = vec![None; n];
+    let attempted = texts.iter().filter(|t| !t.trim().is_empty()).count();
     let mut failed = 0usize;
-    let mut attempted = 0usize;
     let mut outage_failures = 0usize;
 
     let mut stream = stream::iter(texts.iter().cloned().enumerate())
@@ -175,7 +175,6 @@ pub async fn translate_batch(
             Ok(tr) => out[i] = Some(tr),
             Err(e) => {
                 if !original.trim().is_empty() {
-                    attempted += 1;
                     failed += 1;
                     if e.downcast_ref::<ServiceUnavailable>().is_some() {
                         outage_failures += 1;
@@ -187,7 +186,7 @@ pub async fn translate_batch(
         }
     }
 
-    if attempted > 0 && outage_failures == attempted {
+    if attempted > 0 && failed == attempted && outage_failures == attempted {
         return Err(eyre!(
             "translation failed for all {} segments in batch; service appears unreachable",
             attempted
