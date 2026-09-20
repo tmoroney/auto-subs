@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AutoSubs — website
 
-## Getting Started
+The marketing site for [AutoSubs](https://github.com/tmoroney/auto-subs), built with
+[Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.com).
 
-First, run the development server:
+It lives on the `website-dev` branch and deploys to GitHub Pages automatically on
+every push, so the site is served from the `/auto-subs` sub-path.
+
+## Develop
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dev server runs at **http://localhost:4321/auto-subs/** — note the sub-path, the
+bare root will not match production.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build     # static output into dist/
+npm run preview   # serve the built site
+npm run check     # type-check .astro files
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Requires Node 22.12 or newer (Astro 7).
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  components/    One file per page section
+  data/          Copy and lists that change often (models, supporters, links)
+  layouts/       Base.astro — head tags, fonts, reveal observer
+  pages/         index.astro — assembles the sections
+  styles/        global.css — theme tokens, marquee, motion preferences
+public/          Static assets served at /auto-subs/*
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The page ships around 2.5 KB of JavaScript. Three small inline scripts do all the
+interactive work: platform detection on the download button, the language counter,
+and the scroll reveal. Keep it that way — if a change needs a framework, it probably
+needs a rethink instead.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Still to confirm
 
-## Deploy on Vercel
+- `src/data/site.ts` — the Discord invite is a placeholder.
+- `src/components/Speed.astro` — confirm the hardware string ("Apple M3 MacBook Air")
+  matches the machine the 30-minute benchmark was actually run on.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Images
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Source images live in `src/assets/` and go through Astro's pipeline, which emits
+responsive WebP at build time (the screenshot drops 600 kB → 117 kB). Only files
+that must keep a fixed URL — favicons and the social card — sit in `public/`.
+Regenerate those from the app icon with sharp if the icon ever changes.
+
+## Supporter quotes
+
+Quoted verbatim in `src/data/supporters.ts`. Long ones are shortened by cutting
+whole clauses and marking the cut with an ellipsis, never by rewording — each one
+carries a real person's name against it. Two unused quotes are kept in a comment
+at the bottom of that file.
+
+## Live numbers
+
+Download totals come from the release tracker endpoint and star counts from the
+GitHub API. Both are fetched at build time so they render without JavaScript, then
+refreshed client-side so they stay current between deploys. Every failure path
+degrades to hiding the number rather than breaking the page.

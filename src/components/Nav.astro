@@ -1,0 +1,58 @@
+---
+import { Image } from "astro:assets";
+import { site } from "../data/site";
+import icon from "../assets/app-icon.png";
+---
+
+<header
+  id="site-nav"
+  class="sticky top-0 z-40 border-b border-transparent bg-paper transition-colors data-scrolled:border-line/70"
+>
+  <nav class="shell flex h-16 items-center justify-between" aria-label="Primary">
+    <a href="#main" class="flex items-center">
+      <Image
+        src={icon}
+        alt="AutoSubs"
+        width={72}
+        height={72}
+        densities={[1, 2]}
+        format="webp"
+        class="h-9 w-9 rounded-[9px]"
+      />
+    </a>
+
+    <div class="flex items-center gap-1 text-sm">
+      <a
+        href={site.repo}
+        class="rounded-full px-2.5 py-2 text-ink-2 sm:px-3 transition-colors hover:text-ink"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        GitHub
+      </a>
+      <a
+        href={site.discord}
+        class="rounded-full px-2.5 py-2 text-ink-2 sm:px-3 transition-colors hover:text-ink"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Discord
+      </a>
+      <a
+        href={site.donate}
+        class="ml-0.5 rounded-full bg-ink px-3.5 py-2 sm:ml-1 sm:px-4 font-medium text-paper transition-opacity hover:opacity-85"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Donate
+      </a>
+    </div>
+  </nav>
+</header>
+
+<script>
+  const nav = document.getElementById("site-nav");
+  const onScroll = () => nav?.toggleAttribute("data-scrolled", window.scrollY > 0);
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+</script>

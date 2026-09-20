@@ -1,0 +1,235 @@
+---
+import { downloads, downloadMenu, homebrewCommand, site } from "../data/site";
+
+// Rendered with the neutral fallback so it is correct without JS; the script
+// rewrites href and label once the platform is known.
+const fallback = downloads.other;
+
+// This component renders more than once per page, so the menu needs an id of
+// its own for aria-controls to point at the right panel.
+const menuId = `download-menu-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<div class="relative inline-block" data-download-root>
+  <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+    <!-- Split button: the left half downloads, the right half opens the rest -->
+    <div class="flex items-stretch rounded-full bg-ink text-paper">
+      <a
+        data-download-link
+        href={fallback.url}
+        class="inline-flex items-center gap-2.5 whitespace-nowrap rounded-l-full py-3.5 pl-5 pr-4 text-base font-medium transition-colors hover:bg-ink-2 sm:pl-6"
+      >
+        <svg viewBox="0 0 24 24" class="h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+        </svg>
+        <span data-download-label>{fallback.label}</span>
+        <span data-download-note class="hidden text-sm text-paper/55 xs:inline">{fallback.note}</span>
+      </a>
+
+      <button
+        type="button"
+        data-download-toggle
+        aria-expanded="false"
+        aria-controls={menuId}
+        aria-label="Show all download options"
+        class="flex cursor-pointer items-center rounded-r-full border-l border-paper/25 px-3.5 transition-colors hover:bg-ink-2"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform" data-download-chevron fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+    </div>
+
+    <a
+      href={site.repo}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-2.5 whitespace-nowrap rounded-full border border-line bg-white px-5 py-3.5 text-base font-medium text-ink transition-colors hover:border-ink/30 sm:px-6"
+    >
+      <svg viewBox="0 0 24 24" class="h-4.5 w-4.5" fill="currentColor" aria-hidden="true">
+        <path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.35 4.81-4.58 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z" />
+      </svg>
+      View source
+    </a>
+  </div>
+
+  <div
+    id={menuId}
+    data-download-menu
+    hidden
+    class="absolute left-0 top-full z-30 mt-2 w-[21.5rem] max-w-[calc(100vw-2.5rem)] rounded-2xl border border-line bg-white p-1.5 text-left shadow-[0_18px_50px_-18px_rgba(12,12,13,0.3)]"
+  >
+    {downloadMenu.map((item) => (
+      <a
+        href={item.url}
+        class="flex items-baseline justify-between gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-paper-2"
+      >
+        <span class="text-sm font-medium">{item.label}</span>
+        <span class="text-[13px] text-ink-3">{item.note}</span>
+      </a>
+    ))}
+
+    <div class="mt-1 border-t border-line px-2 pt-4">
+      <p class="text-[13px] text-ink-3">Homebrew</p>
+      <button
+        type="button"
+        data-copy-command={homebrewCommand}
+        class="mt-1.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg bg-paper-2 px-3 py-2 text-left transition-colors hover:bg-line/60"
+      >
+        <code class="whitespace-nowrap text-[13px]">{homebrewCommand}</code>
+        <span data-copy-label class="shrink-0 text-[13px] text-ink-3">Copy</span>
+      </button>
+    </div>
+
+    <a
+      href={site.allDownloads}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="mt-2 block rounded-xl px-3 py-2.5 text-sm text-ink-2 transition-colors hover:bg-paper-2"
+    >
+      All releases and install notes
+    </a>
+  </div>
+</div>
+
+<script>
+  import { downloads } from "../data/site";
+
+  /* Selected by data attribute rather than id: this component renders more
+     than once per page and the primary button is kept in sync across all of
+     them, while each popover is scoped to its own root. */
+  const links = document.querySelectorAll<HTMLAnchorElement>("[data-download-link]");
+  const labels = document.querySelectorAll<HTMLElement>("[data-download-label]");
+  const notes = document.querySelectorAll<HTMLElement>("[data-download-note]");
+
+  const apply = (key: keyof typeof downloads) => {
+    const target = downloads[key];
+    links.forEach((el) => (el.href = target.url));
+    labels.forEach((el) => (el.textContent = target.label));
+    notes.forEach((el) => (el.textContent = target.note));
+  };
+
+  /* Intel Macs are the awkward case: the UA string never says, and only
+     Chromium exposes architecture via client hints. Everywhere else the GPU
+     renderer string is the usable signal, since Apple Silicon reports an
+     "Apple" GPU while Intel Macs report Intel or AMD. Without this, an Intel
+     Mac on Safari silently downloads the Apple Silicon build. */
+  const isIntelMac = () => {
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      if (!gl) return false;
+
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      if (!ext) return false;
+
+      return /intel|amd|radeon/i.test(String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)));
+    } catch {
+      return false;
+    }
+  };
+
+  if (links.length) {
+    const ua = navigator.userAgent;
+
+    if (ua.includes("Win")) {
+      apply("windows");
+    } else if (ua.includes("Mac")) {
+      apply("mac_arm");
+
+      const uaData = (navigator as Navigator & {
+        userAgentData?: {
+          getHighEntropyValues?: (keys: string[]) => Promise<{ architecture?: string }>;
+        };
+      }).userAgentData;
+
+      if (uaData?.getHighEntropyValues) {
+        uaData
+          .getHighEntropyValues(["architecture"])
+          .then((hints) => {
+            if (hints?.architecture?.toLowerCase().includes("x86")) apply("mac_intel");
+          })
+          .catch(() => {});
+      } else if (isIntelMac()) {
+        apply("mac_intel");
+      }
+    } else if (ua.includes("Linux") && !ua.includes("Android")) {
+      // No browser exposes the distro, so .deb is the majority default and
+      // the popover carries Fedora and openSUSE users to the .rpm.
+      apply("linux");
+    }
+  }
+
+  // --- Popover ------------------------------------------------------------
+  const roots = document.querySelectorAll<HTMLElement>("[data-download-root]");
+
+  const closeAll = (except?: HTMLElement) => {
+    roots.forEach((root) => {
+      if (root === except) return;
+      const menu = root.querySelector<HTMLElement>("[data-download-menu]");
+      const toggle = root.querySelector<HTMLElement>("[data-download-toggle]");
+      const chevron = root.querySelector<HTMLElement>("[data-download-chevron]");
+      if (!menu || !toggle) return;
+      menu.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      chevron?.style.removeProperty("transform");
+    });
+  };
+
+  roots.forEach((root) => {
+    const menu = root.querySelector<HTMLElement>("[data-download-menu]");
+    const toggle = root.querySelector<HTMLButtonElement>("[data-download-toggle]");
+    const chevron = root.querySelector<HTMLElement>("[data-download-chevron]");
+    if (!menu || !toggle) return;
+
+    toggle.addEventListener("click", () => {
+      const opening = menu.hidden;
+      closeAll(root);
+      menu.hidden = !opening;
+      toggle.setAttribute("aria-expanded", String(opening));
+
+      if (opening) {
+        /* The footer instance sits near the bottom of the page, where a menu
+           dropping downwards would hang off the viewport. Measure once it is
+           visible and flip it above the button when there is no room below. */
+        menu.classList.remove("bottom-full", "mb-2");
+        menu.classList.add("top-full", "mt-2");
+
+        const spaceBelow = window.innerHeight - toggle.getBoundingClientRect().bottom;
+        if (spaceBelow < menu.offsetHeight + 16) {
+          menu.classList.remove("top-full", "mt-2");
+          menu.classList.add("bottom-full", "mb-2");
+        }
+      }
+
+      if (chevron) {
+        if (opening) chevron.style.transform = "rotate(180deg)";
+        else chevron.style.removeProperty("transform");
+      }
+    });
+
+    // Copy the Homebrew command rather than making people select it by hand.
+    const copyButton = root.querySelector<HTMLButtonElement>("[data-copy-command]");
+    const copyLabel = root.querySelector<HTMLElement>("[data-copy-label]");
+
+    copyButton?.addEventListener("click", async () => {
+      const command = copyButton.dataset.copyCommand ?? "";
+      try {
+        await navigator.clipboard.writeText(command);
+        if (!copyLabel) return;
+        copyLabel.textContent = "Copied";
+        window.setTimeout(() => (copyLabel.textContent = "Copy"), 1600);
+      } catch {
+        // Clipboard can be blocked; the command is visible either way.
+      }
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as Node;
+    if (![...roots].some((root) => root.contains(target))) closeAll();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAll();
+  });
+</script>

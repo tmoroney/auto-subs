@@ -1,0 +1,65 @@
+---
+/* Icons are inline 24px stroke paths rather than an icon library: six of them
+   cost a few hundred bytes of markup and no JavaScript. */
+const features = [
+  {
+    title: "Subtitle formatter",
+    body: "Raw word timestamps become cues that fit the frame: characters-per-line and per-second caps, script-aware line breaking.",
+    icon: "M4 7h16M4 12h10M4 17h13",
+  },
+  {
+    title: "Word-level timing",
+    body: "Forced alignment puts a timestamp on every word, so karaoke captions and word-by-word highlighting land on the beat.",
+    icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7.5V12l3 2",
+  },
+  {
+    title: "Knows who is speaking",
+    body: "Diarization labels each voice automatically, so everyone in an interview can carry their own style.",
+    icon: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3 20a6 6 0 0 1 12 0M16.5 11.5a3 3 0 0 0 0-6M18 20a5.5 5.5 0 0 0-3-4.9",
+  },
+  {
+    title: "Lands in your editor",
+    body: "Real styled text on a Resolve timeline, caption tracks in Premiere Pro, text layers in After Effects.",
+    icon: "M12 3 3 8l9 5 9-5-9-5ZM3 16l9 5 9-5M3 12l9 5 9-5",
+  },
+  {
+    title: "Nothing leaves your machine",
+    body: "No upload, no account, no telemetry. Footage under NDA stays on the drive it came from.",
+    icon: "M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8.5 11V7.5a3.5 3.5 0 1 1 7 0V11",
+  },
+  {
+    title: "Free, open and native",
+    body: "MIT licensed, Rust transcription engine, Mac, Windows and Linux. No paid tier behind a feature flag.",
+    icon: "M12 20.5S4.5 16 4.5 10.8A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7.5 1.8c0 5.2-7.5 9.7-7.5 9.7Z",
+  },
+];
+---
+
+<section id="features" class="border-t border-line py-24 md:py-32">
+  <div class="shell">
+    <h2 class="reveal max-w-2xl text-section font-semibold leading-tight">
+      Includes the whole package
+    </h2>
+
+    <div class="mt-14 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-2 lg:grid-cols-3">
+      {features.map((feature) => (
+        <article class="reveal bg-paper p-8">
+          <svg
+            viewBox="0 0 24 24"
+            class="h-6 w-6 text-accent"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d={feature.icon} />
+          </svg>
+          <h3 class="mt-5 text-lg font-semibold">{feature.title}</h3>
+          <p class="mt-2.5 leading-relaxed text-ink-2">{feature.body}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

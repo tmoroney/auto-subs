@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - website-dev
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,17 +27,19 @@ jobs:
         uses: ./.github/workflows/setup-node
 
       - name: Setup Pages ⚙️
-        uses: actions/configure-pages@v4
-        with:
-          static_site_generator: next
+        uses: actions/configure-pages@v5
 
-      - name: Build with Next.js 🏗️
-        run: npx next build
+      - name: Build with Astro 🏗️
+        run: npm run build
+        env:
+          # Lifts the build-time api.github.com call off the 60/hour
+          # unauthenticated limit, which shared runner IPs routinely exhaust.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact 📡
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
+          path: ./dist
 
   deploy:
     environment:

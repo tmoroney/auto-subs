@@ -1,0 +1,65 @@
+---
+import "@fontsource-variable/inter";
+import "../styles/global.css";
+import { site } from "../data/site";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = `${site.name} · ${site.tagline}`, description = site.description } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={`${base}/favicon-32.png`} type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(`${base}/og.png`, Astro.site).href} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-5 focus:py-2.5 focus:text-sm focus:text-paper"
+    >
+      Skip to content
+    </a>
+    <slot />
+
+    <script>
+      // Single observer for every entrance animation on the page.
+      const targets = document.querySelectorAll<HTMLElement>(".reveal");
+
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              entry.target.classList.add("is-visible");
+              observer.unobserve(entry.target);
+            }
+          },
+          { rootMargin: "0px 0px -12% 0px", threshold: 0.1 },
+        );
+
+        targets.forEach((el) => observer.observe(el));
+      } else {
+        targets.forEach((el) => el.classList.add("is-visible"));
+      }
+    </script>
+  </body>
+</html>

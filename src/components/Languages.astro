@@ -1,0 +1,103 @@
+---
+import { modelRows } from "../data/models";
+
+// Deliberately mismatched durations: identical speeds in opposite directions
+// read as mechanical, slightly different ones read as drift.
+const rowConfig = [
+  { dir: "left", duration: "64s" },
+  { dir: "right", duration: "86s" },
+  { dir: "left", duration: "74s" },
+] as const;
+---
+
+<section id="languages" class="border-y border-line bg-paper-2 py-24 md:py-32">
+  <!-- Counter -->
+  <div class="shell reveal text-center">
+    <p
+      id="language-counter"
+      class="text-counter font-semibold leading-none tabular-nums"
+      data-target="1600"
+      aria-describedby="language-counter-label"
+    >
+      0
+    </p>
+    <p id="language-counter-label" class="mt-4 text-section font-semibold">
+      languages supported
+    </p>
+  </div>
+
+  <!-- Model wall -->
+  <div class="mt-10 md:mt-12">
+    <p class="shell mx-auto mb-8 max-w-2xl text-center text-sm leading-relaxed text-ink-3">
+      Eight on-device model families, including Whisper, Parakeet, Canary and
+      Meta's Omnilingual ASR. Downloaded on demand, run entirely on your machine.
+    </p>
+
+    <div class="marquee-mask flex flex-col gap-3" aria-hidden="true">
+      {modelRows.map((row, i) => (
+        <div
+          class:list={["marquee-track", i === 2 && "hidden sm:flex"]}
+          data-dir={rowConfig[i].dir}
+          style={`animation-duration: ${rowConfig[i].duration}`}
+        >
+          {[...row, ...row].map((model) => (
+            <span class="flex shrink-0 items-baseline gap-2.5 rounded-full border border-line bg-paper px-5 py-3">
+              <span class="text-sm font-medium whitespace-nowrap">{model.name}</span>
+              <span class="text-xs tabular-nums whitespace-nowrap text-ink-3">{model.size}</span>
+              <span class="text-xs whitespace-nowrap text-ink-3">· {model.detail}</span>
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+
+  </div>
+</section>
+
+<script>
+  const el = document.getElementById("language-counter");
+
+  if (el) {
+    const target = Number(el.dataset.target ?? 0);
+    const format = new Intl.NumberFormat("en");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const settle = () => {
+      el.textContent = `${format.format(target)}+`;
+    };
+
+    if (reduced) {
+      settle();
+    } else {
+      const run = () => {
+        const duration = 1600;
+        const start = performance.now();
+
+        const tick = (now: number) => {
+          const progress = Math.min((now - start) / duration, 1);
+          // Ease-out cubic: fast out of the gate, then settles on the number.
+          const eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = format.format(Math.round(target * eased));
+
+          if (progress < 1) requestAnimationFrame(tick);
+          else settle();
+        };
+
+        requestAnimationFrame(tick);
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            observer.disconnect();
+            run();
+          }
+        },
+        { threshold: 0.5 },
+      );
+
+      observer.observe(el);
+    }
+  }
+</script>

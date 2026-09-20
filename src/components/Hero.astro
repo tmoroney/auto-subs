@@ -1,0 +1,104 @@
+---
+import { Image } from "astro:assets";
+import DownloadButton from "./DownloadButton.astro";
+import screenshot from "../assets/app-screenshot.png";
+import { getStats } from "../data/stats";
+
+const { downloads, stars } = await getStats();
+
+const steps = ["Drop in audio or video", "Pick a model", "Transcribe"];
+---
+
+<section class="relative pt-12 pb-16 md:pt-16 md:pb-20">
+  <div class="shell grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
+    <!-- Left: the pitch. Kept deliberately short so it does not out-run the
+         screenshot beside it. -->
+    <div class="reveal is-visible">
+      <h1 class="text-display font-semibold leading-[1.02]">
+        AutoSubs
+        <span class="block text-ink-2">Local AI subtitles</span>
+      </h1>
+
+      <p class="mt-5 max-w-lg text-lg leading-relaxed text-ink-2">
+        Free, open source, and running entirely on your own machine. Use it on
+        its own, or wired straight into DaVinci Resolve, Premiere Pro and After
+        Effects.
+      </p>
+
+      <div class="mt-8">
+        <DownloadButton />
+      </div>
+
+      <!-- The whole product in one line -->
+      <ol class="mt-8 flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-ink-2">
+        {steps.map((step, i) => (
+          <li class="flex items-center gap-2.5">
+            {i > 0 && <span class="text-ink-3" aria-hidden="true">&rarr;</span>}
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      {(downloads || stars) && (
+        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line pt-6 text-sm text-ink-3">
+          {downloads && (
+            <p><span id="stat-downloads" class="font-semibold text-ink">{downloads}</span> downloads</p>
+          )}
+          {stars && (
+            <p><span id="stat-stars" class="font-semibold text-ink">{stars}</span> GitHub stars</p>
+          )}
+          <p><span class="font-semibold text-ink">100%</span> on-device</p>
+          <p><span class="font-semibold text-ink">0</span> subscriptions</p>
+        </div>
+      )}
+    </div>
+
+    <!-- Right: the app itself -->
+    <div class="reveal is-visible relative lg:-mr-6 xl:-mr-14">
+      <div class="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-tr from-accent/10 via-transparent to-accent/5 blur-3xl" aria-hidden="true"></div>
+      <Image
+        src={screenshot}
+        alt="AutoSubs connected to a DaVinci Resolve timeline, with generated subtitles listed beside the transcription controls."
+        widths={[640, 960, 1400]}
+        sizes="(min-width: 1024px) 52vw, 100vw"
+        format="webp"
+        quality={82}
+        loading="eager"
+        fetchpriority="high"
+        class="w-full"
+      />
+    </div>
+  </div>
+
+</section>
+
+<script>
+  import { site } from "../data/site";
+  import { normaliseUnit } from "../data/stats";
+
+  // Refresh the build-time numbers so they stay current between deploys.
+  const downloadsEl = document.getElementById("stat-downloads");
+  const starsEl = document.getElementById("stat-stars");
+
+  if (downloadsEl) {
+    fetch(site.downloadsEndpoint)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { message?: string } | null) => {
+        if (d?.message) downloadsEl.textContent = normaliseUnit(d.message);
+      })
+      .catch(() => {});
+  }
+
+  if (starsEl) {
+    fetch("https://api.github.com/repos/tmoroney/auto-subs")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { stargazers_count?: number } | null) => {
+        if (typeof d?.stargazers_count !== "number") return;
+        starsEl.textContent = new Intl.NumberFormat("en", {
+          notation: "compact",
+          maximumFractionDigits: 1,
+        }).format(d.stargazers_count);
+      })
+      .catch(() => {});
+  }
+</script>

@@ -1,0 +1,44 @@
+---
+import DownloadButton from "./DownloadButton.astro";
+import { site } from "../data/site";
+
+const links = [
+  { label: "GitHub", href: site.repo },
+  { label: "Discord", href: site.discord },
+  { label: "Donate", href: site.donate },
+  { label: "Contribute", href: site.contributing },
+  { label: "Report an issue", href: site.issues },
+  { label: "About the developer", href: site.developer },
+];
+---
+
+<section class="border-t border-line py-24 text-center md:py-32">
+  <div class="shell">
+    <h2 class="reveal mx-auto max-w-2xl text-section font-semibold leading-tight">
+      Free. Local. Yours.
+    </h2>
+    <div class="reveal mt-10 flex flex-col items-center">
+      <DownloadButton />
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-line py-12">
+  <div class="shell flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+    <p class="text-sm text-ink-3">
+      &copy; {new Date().getFullYear()} Tom Moroney · MIT licensed
+    </p>
+    <nav class="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Footer">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-ink-2 transition-colors hover:text-ink"
+        >
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  </div>
+</footer>

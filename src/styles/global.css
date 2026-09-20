@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme {
+  /* The arch label inside the split download button cannot wrap without
+     looking broken, and the chevron leaves no room for it on a phone. */
+  --breakpoint-xs: 30rem;
+
+  /* Warm near-white page, near-black ink: high contrast, low glare. */
+  --color-paper: #faf9f7;
+  --color-paper-2: #f2f1ed;
+  --color-ink: #0c0c0d;
+  --color-ink-2: #45454a;
+  --color-ink-3: #77777f;
+  --color-line: #e4e2dc;
+  --color-accent: #2463eb; /* sampled from the app icon */
+
+  /* Emoji fallbacks matter: supporter quotes contain them and Inter has none. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+
+  --text-display: clamp(2.5rem, 4.6vw, 3.75rem);
+  --text-section: clamp(2rem, 4.5vw, 3.25rem);
+  --text-counter: clamp(4rem, 14vw, 11rem);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Headlines only. Body copy stays at default tracking for readability. */
+  h1, h2, h3 {
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 78rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .shell { padding-inline: 2.5rem; }
+  }
+}
+
+/* --- Marquee -------------------------------------------------------------
+   Each track holds the chip list twice, so translating by -50% lands exactly
+   on the duplicate and the loop is seamless. Durations are deliberately
+   mismatched: identical speeds in opposite directions read as mechanical. */
+@keyframes marquee-left {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes marquee-right {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 0.75rem;
+  will-change: transform;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.marquee-track[data-dir="left"]  { animation-name: marquee-left; }
+.marquee-track[data-dir="right"] { animation-name: marquee-right; }
+
+.marquee-mask {
+  /* The tracks are width:max-content, so without this the document itself
+     grows to several thousand pixels and the whole page scrolls sideways. */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6rem, #000 calc(100% - 6rem), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6rem, #000 calc(100% - 6rem), transparent);
+}
+
+/* Three scrolling rows is exactly the pattern that drives motion-sensitive
+   people off a page. Freeze it, don't just slow it down. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  .marquee-track {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .marquee-mask {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
+
+/* Entrance reveal, driven by IntersectionObserver adding .is-visible. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}

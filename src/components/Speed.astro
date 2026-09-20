@@ -1,0 +1,45 @@
+---
+import { Image } from "astro:assets";
+import screenshot from "../assets/app-screenshot2.png";
+
+/* Measured by running the same 30-minute file through Parakeet, Orukeet and
+   SenseVoice. All three finished in under a minute, so the claim holds for
+   whichever of them someone picks.
+   CONFIRM the hardware string below before publishing. */
+const hardware = "Apple M3 MacBook Pro";
+---
+
+<section class="py-24 md:py-32">
+  <div class="shell grid items-center gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20">
+    <!-- Left: the app finishing the job -->
+    <div class="reveal lg:-ml-6 xl:-ml-10">
+      <Image
+        src={screenshot}
+        alt="AutoSubs in standalone mode, showing a finished transcript with nine speakers identified and 648 subtitles ready to export."
+        widths={[640, 960, 1400]}
+        sizes="(min-width: 1024px) 52vw, 100vw"
+        format="webp"
+        quality={82}
+        loading="lazy"
+        decoding="async"
+        class="w-full"
+      />
+    </div>
+
+    <!-- Right: the number carries it, the same way the language counter does.
+         A bordered stat card here just competed with the screenshot. -->
+    <div class="reveal">
+      <p class="text-sm font-medium text-ink-3">30 minutes of audio</p>
+      <h2 class="mt-2 text-[clamp(3.5rem,7vw,5.5rem)] font-semibold leading-none tracking-[-0.04em] text-accent">
+        &lt; 60 sec
+      </h2>
+      <p class="mt-5 text-2xl font-semibold leading-snug">
+        30&times; faster than real time. No GPU required.
+      </p>
+      <p class="mt-6 max-w-sm text-sm leading-relaxed text-ink-3">
+        Parakeet, Orukeet and SenseVoice on an {hardware}. Nothing uploaded,
+        nothing queued.
+      </p>
+    </div>
+  </div>
+</section>

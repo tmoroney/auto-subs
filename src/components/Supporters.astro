@@ -1,0 +1,51 @@
+---
+import { supporters } from "../data/supporters";
+import { site } from "../data/site";
+---
+
+<section id="supporters" class="border-t border-line bg-paper-2 py-20 md:py-24">
+  <div class="shell">
+    <!-- Heading and actions share a row so the buttons are not stranded at the
+         bottom of a tall wall of quotes. -->
+    <div class="reveal flex flex-wrap items-center justify-between gap-6">
+      <h2 class="text-section font-semibold leading-tight">Funded by the community</h2>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          href={site.donate}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center rounded-full bg-ink px-6 py-3.5 font-medium text-paper transition-transform hover:-translate-y-0.5"
+        >
+          Buy me a coffee
+        </a>
+        <a
+          href={site.contributing}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center rounded-full border border-line bg-white px-6 py-3.5 font-medium transition-colors hover:border-ink/30"
+        >
+          Contribute code
+        </a>
+      </div>
+    </div>
+
+    <!-- Columns rather than a grid: the quotes are different lengths, and
+         masonry lets that read as texture instead of ragged rows. -->
+    <div class="reveal mt-10 gap-4 sm:columns-2 lg:columns-3">
+      {supporters.map((supporter) => (
+        <figure class="mb-4 break-inside-avoid rounded-2xl border border-line bg-paper p-5">
+          <blockquote class="text-[15px] leading-relaxed text-ink-2">
+            <p>&ldquo;{supporter.message}&rdquo;</p>
+          </blockquote>
+          <figcaption class="mt-3.5 flex flex-wrap items-baseline gap-x-2 text-[13px]">
+            <span class="font-medium">{supporter.name}</span>
+            <span class="text-ink-3">
+              {supporter.coffees} {supporter.coffees === 1 ? "coffee" : "coffees"}
+            </span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
