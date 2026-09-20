@@ -1511,7 +1511,7 @@ local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersE
             if not fusionCompCount then
                 noFusionComp = noFusionComp + 1
                 error(
-                "clip has no Fusion composition (GetFusionCompCount returned nil) — Resolve either refused to place the clip (blocked append) or the template is incompatible with this Resolve version")
+                "clip has no Fusion composition (GetFusionCompCount returned nil): Resolve either refused to place the clip (blocked append) or the template is incompatible with this Resolve version")
             end
             if fusionCompCount > 0 then
                 local comp = timelineItem:GetFusionCompByIndex(1)
@@ -1669,41 +1669,66 @@ function AddSubtitles(req)
             -- truthy "dead" item handles whose methods all return nothing (so
             -- they later surface as GetFusionCompCount() == nil and look like
             -- a version-incompatible template). Detect them by probing a cheap
-            -- getter, then retry the blocked clips on a freshly added video
-            -- track — an empty track can't have placement conflicts.
+            -- getter, then retry each blocked clip individually on freshly
+            -- added video tracks. Per-clip retries matter: clip frame ranges
+            -- can overlap each other (build_clip_list extends durations into
+            -- small gaps), so clips that were blocked may still conflict with
+            -- each other on a shared fresh track. When the current fresh track
+            -- also returns a dead handle for a clip, that clip spills onto
+            -- another fresh track.
+            local function is_live_item(item)
+                local probeOk, probeVal = pcall(function() return item:GetStart() end)
+                return probeOk and probeVal ~= nil
+            end
+            local function add_fresh_track()
+                local addOk, added = pcall(function() return timeline:AddTrack("video") end)
+                if addOk and added then
+                    return timeline:GetTrackCount("video")
+                end
+                return nil
+            end
+
             local deadIndices = {}
             for i, item in ipairs(timelineItems) do
-                local probeOk, probeVal = pcall(function() return item:GetStart() end)
-                if not probeOk or probeVal == nil then
+                if not is_live_item(item) then
                     table.insert(deadIndices, i)
                 end
             end
             if #deadIndices > 0 then
                 print(string.format(
-                    "[AutoSubs] %d of %d appended clips are dead handles (blocked append) — retrying on a fresh video track",
+                    "[AutoSubs] %d of %d appended clips are dead handles (blocked append), retrying on fresh video tracks",
                     #deadIndices, #timelineItems))
-                local addOk, added = pcall(function() return timeline:AddTrack("video") end)
-                if addOk and added then
-                    local newTrackIndex = timeline:GetTrackCount("video")
-                    local retryList = {}
-                    for _, i in ipairs(deadIndices) do
-                        clipList[i].trackIndex = newTrackIndex
-                        table.insert(retryList, clipList[i])
-                    end
-                    local retryOk, retryItems = pcall(function()
-                        return mediaPool:AppendToTimeline(retryList)
-                    end)
-                    if retryOk and type(retryItems) == "table" then
-                        for j, i in ipairs(deadIndices) do
-                            timelineItems[i] = retryItems[j]
+                local retryTrack = nil
+                local recovered = 0
+                for _, i in ipairs(deadIndices) do
+                    local clip = clipList[i]
+                    if clip then
+                        if retryTrack == nil then
+                            retryTrack = add_fresh_track()
                         end
-                        print(string.format("[AutoSubs] Retried %d blocked clips on new video track %d",
-                            #deadIndices, newTrackIndex))
-                    else
-                        print("[AutoSubs] Retry append on fresh track failed: " .. tostring(retryItems))
+                        local placed = false
+                        for _ = 1, 2 do
+                            if retryTrack == nil then break end
+                            clip.trackIndex = retryTrack
+                            local retryOk, retryItems = pcall(function()
+                                return mediaPool:AppendToTimeline({ clip })
+                            end)
+                            if retryOk and type(retryItems) == "table" and retryItems[1] and is_live_item(retryItems[1]) then
+                                timelineItems[i] = retryItems[1]
+                                placed = true
+                                recovered = recovered + 1
+                                break
+                            end
+                            retryTrack = add_fresh_track()
+                        end
+                        if not placed then
+                            print("[AutoSubs] Clip " .. i .. " could not be placed even on fresh tracks")
+                        end
                     end
-                else
-                    print("[AutoSubs] Could not add a video track for the blocked-append retry")
+                end
+                if recovered > 0 then
+                    print(string.format("[AutoSubs] Recovered %d of %d blocked clips onto fresh video tracks",
+                        recovered, #deadIndices))
                 end
             end
 
@@ -1747,7 +1772,7 @@ function AddSubtitles(req)
                 local short = string.format("Failed to place all %d subtitles", applyStats.total)
                 if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
                     short = short ..
-                    " — the caption clips could not be placed on the timeline (Resolve refused the append) or the template is incompatible with this Resolve version."
+                    ". The caption clips could not be placed on the timeline (Resolve refused the append) or the template is incompatible with this Resolve version."
                 end
                 return make_error(short, applyStats.firstError)
             end
