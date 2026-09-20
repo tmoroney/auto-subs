@@ -622,7 +622,7 @@ impl Engine {
                     if let Some(seg) = translated.get_mut(i) {
                         seg.start = clamped.start;
                         seg.end = clamped.end.max(clamped.start);
-                        crate::translate::regenerate_words_uniform(seg);
+                        crate::translation_client::regenerate_words_uniform(seg);
                     }
                 }
 

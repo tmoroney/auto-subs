@@ -1,11 +1,9 @@
-This update fixes a serious problem in 3.10.0 where AutoSubs interfered with DaVinci Resolve's Fusion page: custom caption controls stopped responding and text fields lost focus while typing.
+**Resolve users: this fixes a serious 3.10.0 bug** where AutoSubs froze the Fusion page — caption controls stopped responding and text fields lost focus. The automatic start that caused it is gone.
 
-The cause was the new automatic start, which ran the AutoSubs connection inside Fusion's own script engine for the whole Resolve session. It has been removed. Start the connection the way you did before 3.10.0: open DaVinci Resolve and run **Workspace → Scripts → AutoSubs** once per session. It then stays connected in the background, even if you close and reopen AutoSubs.
-
-**If you used 3.10.0, restart DaVinci Resolve once after updating.** Alternatively, running Workspace → Scripts → AutoSubs replaces the old connection straight away.
+To connect, run **Workspace → Scripts → AutoSubs** once per session, like before 3.10.0. Note the script can no longer open the AutoSubs app for you — Resolve's free edition removed that ability — so launch AutoSubs yourself first. **If you used 3.10.0, restart Resolve once after updating.**
 
 ## Bug Fixes
-- Fixed scripted Fusion controls and text fields freezing for the whole Resolve session — the 3.10.0 startup script ran the AutoSubs bridge inside Fusion's script executor; the bridge now only runs from Workspace > Scripts > AutoSubs. (If Resolve was open during the update, restart it.)
+- Fixed scripted Fusion controls and text fields freezing for the whole Resolve session.
 - Fixed Resolve crashing on quit while the AutoSubs bridge was running.
 - Fixed the caption template dropdown hanging on "Loading templates..." and the app briefly showing "Disconnected" on projects with large media pools.
 - Fixed caption preset thumbnails crashing Resolve 21.1 on save — they now render via timeline frame export instead.

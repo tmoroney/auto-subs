@@ -153,14 +153,14 @@ async fn flush(
         eyre::bail!("Translation cancelled");
     }
 
-    let translated = crate::translate::translate_batch(texts, source_lang, target_lang)
+    let translated = crate::translation_client::translate_batch(texts, source_lang, target_lang)
         .await
         .map_err(|e| eyre::eyre!("{}", e))?;
 
     for (i, job) in jobs.into_iter().enumerate() {
         let mut seg = job.segment;
         seg.text = translated.get(i).cloned().unwrap_or_default();
-        crate::translate::regenerate_words_uniform(&mut seg);
+        crate::translation_client::regenerate_words_uniform(&mut seg);
 
         {
             let mut map = submitter.results.lock().unwrap();

@@ -1,5 +1,5 @@
 use eyre::{Result, eyre};
-use transcription_engine::{get_translate_languages, translate};
+use transcription_engine::{get_translate_languages, translation_client};
 
 struct CliArgs {
     text: String,
@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let translated = translate::translate_text(&args.text, &args.from, &args.to)
+    let translated = translation_client::translate_text(&args.text, &args.from, &args.to)
         .await
         .map_err(|error| eyre!("{}", error))?;
     println!("Translated text: {}", translated);
