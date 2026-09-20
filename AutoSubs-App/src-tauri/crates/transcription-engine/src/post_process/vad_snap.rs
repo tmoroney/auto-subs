@@ -90,7 +90,8 @@ pub fn snap_timestamps_to_vad(
                 }
 
                 // Trailing edge correction: clamp word.end to VAD voice offset
-                if word.end > vad_end && (word.end - vad_end) <= config.max_trailing_pad_sec {
+                // Only clamp if overhang EXCEEDS the allowed padding threshold
+                if word.end > vad_end && (word.end - vad_end) > config.max_trailing_pad_sec {
                     word.end = vad_end;
                 }
 
@@ -136,8 +137,34 @@ pub fn snap_timestamps_to_vad(
     for i in 0..segments.len().saturating_sub(1) {
         if segments[i].end > segments[i + 1].start {
             let boundary = (segments[i].end + segments[i + 1].start) / 2.0;
+
+            // Adjust segment boundaries
             segments[i].end = boundary;
             segments[i + 1].start = boundary;
+
+            // Clamp words in current segment to new segment end boundary
+            if let Some(words) = &mut segments[i].words {
+                for word in words.iter_mut() {
+                    if word.end > boundary {
+                        word.end = boundary;
+                    }
+                    if word.start > boundary {
+                        word.start = boundary;
+                    }
+                }
+            }
+
+            // Clamp words in next segment to new segment start boundary
+            if let Some(words) = &mut segments[i + 1].words {
+                for word in words.iter_mut() {
+                    if word.start < boundary {
+                        word.start = boundary;
+                    }
+                    if word.end < boundary {
+                        word.end = boundary;
+                    }
+                }
+            }
         }
     }
 
@@ -353,6 +380,48 @@ mod tests {
         assert!((segments[0].end - 2.75).abs() < 0.001);
         assert!((segments[1].start - 2.75).abs() < 0.001);
         assert!(segments[0].end <= segments[1].start);
+
+        // Word timestamps should also be clamped to the new boundaries
+        let words0 = segments[0].words.as_ref().unwrap();
+        let words1 = segments[1].words.as_ref().unwrap();
+        assert_eq!(words0[0].end, 2.75); // "Hello" end clamped to boundary
+        assert_eq!(words1[0].start, 2.75); // "world" start clamped to boundary
+    }
+
+    #[test]
+    fn test_segment_overlap_with_multiple_words() {
+        // Two segments with multiple words overlapping
+        let mut segments = vec![
+            make_segment(vec![
+                make_word("Hello", 1.0, 2.0),
+                make_word(" there", 2.0, 3.5), // extends past next segment start
+            ]),
+            make_segment(vec![
+                make_word("world", 2.5, 3.5),
+                make_word("!", 3.5, 4.0),
+            ]),
+        ];
+
+        let vad_intervals = vec![(1.0, 4.0)];
+        let config = VadSnapConfig::default();
+
+        snap_timestamps_to_vad(&mut segments, &vad_intervals, &config).unwrap();
+
+        // Boundary should be at midpoint: (3.5 + 2.5) / 2 = 3.0
+        assert!((segments[0].end - 3.0).abs() < 0.001);
+        assert!((segments[1].start - 3.0).abs() < 0.001);
+
+        // All words in first segment should have end <= 3.0
+        let words0 = segments[0].words.as_ref().unwrap();
+        for word in words0 {
+            assert!(word.end <= 3.0, "word end {} should be <= 3.0", word.end);
+        }
+
+        // All words in second segment should have start >= 3.0
+        let words1 = segments[1].words.as_ref().unwrap();
+        for word in words1 {
+            assert!(word.start >= 3.0, "word start {} should be >= 3.0", word.start);
+        }
     }
 
     #[test]
