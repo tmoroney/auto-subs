@@ -134,49 +134,56 @@ pub fn snap_timestamps_to_vad(
     }
 
     // Final pass: ensure segments don't overlap each other
-    for i in 0..segments.len().saturating_sub(1) {
-        if segments[i].end > segments[i + 1].start {
-            let boundary = (segments[i].end + segments[i + 1].start) / 2.0;
-            const MIN_WORD_DURATION: f64 = 0.01; // 10ms minimum word duration to prevent zero-duration collapse
+    // Use iterative resolution because adjusting segment i+1 as preceding segment
+    // in a later iteration can reduce its first word's start, creating a new overlap
+    // with segment i that was already checked.
+    const MIN_WORD_DURATION: f64 = 0.01; // 10ms minimum word duration to prevent zero-duration collapse
+    let mut any_overlap = true;
+    while any_overlap {
+        any_overlap = false;
+        for i in 0..segments.len().saturating_sub(1) {
+            if segments[i].end > segments[i + 1].start {
+                any_overlap = true;
+                let boundary = (segments[i].end + segments[i + 1].start) / 2.0;
 
-            // 1. Adjust preceding segment words (ensure all end <= boundary without dropping any words)
-            if let Some(words) = &mut segments[i].words {
-                let count = words.len();
-                if count > 0 {
-                    // Clamp last word to boundary
-                    if words[count - 1].end > boundary {
-                        words[count - 1].end = boundary;
-                        if words[count - 1].start >= boundary {
-                            words[count - 1].start = (boundary - MIN_WORD_DURATION).max(0.0);
+                // 1. Adjust preceding segment words (ensure all end <= boundary without dropping any words)
+                if let Some(words) = &mut segments[i].words {
+                    let count = words.len();
+                    if count > 0 {
+                        // Clamp last word to boundary
+                        if words[count - 1].end > boundary {
+                            words[count - 1].end = boundary;
+                            if words[count - 1].start >= boundary {
+                                words[count - 1].start = (boundary - MIN_WORD_DURATION).max(0.0);
+                            }
                         }
-                    }
 
-                    // Move backwards through words to ensure sequential start < end ordering
-                    for idx in (0..count - 1).rev() {
-                        if words[idx].end > words[idx + 1].start {
-                            words[idx].end = words[idx + 1].start;
-                            if words[idx].start >= words[idx].end {
-                                words[idx].start = (words[idx].end - MIN_WORD_DURATION).max(0.0);
+                        // Move backwards through words to ensure sequential start < end ordering
+                        for idx in (0..count - 1).rev() {
+                            if words[idx].end > words[idx + 1].start {
+                                words[idx].end = words[idx + 1].start;
+                                if words[idx].start >= words[idx].end {
+                                    words[idx].start = (words[idx].end - MIN_WORD_DURATION).max(0.0);
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // 2. Adjust succeeding segment words (ensure all start >= boundary without dropping any words)
-            if let Some(words) = &mut segments[i + 1].words {
-                let count = words.len();
-                if count > 0 {
-                    // Clamp first word start to boundary
-                    if words[0].start < boundary {
-                        words[0].start = boundary;
-                        if words[0].end <= boundary {
-                            words[0].end = boundary + MIN_WORD_DURATION;
+                // 2. Adjust succeeding segment words (ensure all start >= boundary without dropping any words)
+                if let Some(words) = &mut segments[i + 1].words {
+                    let count = words.len();
+                    if count > 0 {
+                        // Clamp first word start to boundary
+                        if words[0].start < boundary {
+                            words[0].start = boundary;
+                            if words[0].end <= boundary {
+                                words[0].end = boundary + MIN_WORD_DURATION;
+                            }
                         }
-                    }
 
-                    // Move forwards through words to ensure sequential start < end ordering
-                    for idx in 1..count {
+                        // Move forwards through words to ensure sequential start < end ordering
+                        for idx in 1..count {
                         if words[idx].start < words[idx - 1].end {
                             words[idx].start = words[idx - 1].end;
                             if words[idx].end <= words[idx].start {
