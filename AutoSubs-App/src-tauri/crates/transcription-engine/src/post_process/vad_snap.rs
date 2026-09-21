@@ -192,25 +192,25 @@ pub fn snap_timestamps_to_vad(
                         }
                     }
                 }
-            }
 
-            // 3. Recalculate true segment boundaries based on adjusted words
-            if let Some(words) = &segments[i].words {
-                if let (Some(first), Some(last)) = (words.first(), words.last()) {
-                    segments[i].start = segments[i].start.min(first.start);
-                    segments[i].end = last.end;
+                // 3. Recalculate true segment boundaries based on adjusted words
+                if let Some(words) = &segments[i].words {
+                    if let (Some(first), Some(last)) = (words.first(), words.last()) {
+                        segments[i].start = segments[i].start.min(first.start);
+                        segments[i].end = last.end;
+                    }
+                } else {
+                    segments[i].end = boundary;
                 }
-            } else {
-                segments[i].end = boundary;
-            }
 
-            if let Some(words) = &segments[i + 1].words {
-                if let (Some(first), Some(last)) = (words.first(), words.last()) {
-                    segments[i + 1].start = first.start;
-                    segments[i + 1].end = segments[i + 1].end.max(last.end);
+                if let Some(words) = &segments[i + 1].words {
+                    if let (Some(first), Some(last)) = (words.first(), words.last()) {
+                        segments[i + 1].start = first.start;
+                        segments[i + 1].end = segments[i + 1].end.max(last.end);
+                    }
+                } else {
+                    segments[i + 1].start = boundary;
                 }
-            } else {
-                segments[i + 1].start = boundary;
             }
         }
     }
