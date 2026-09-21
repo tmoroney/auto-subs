@@ -184,63 +184,98 @@ fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     result
 }
 
-/// Strings the Lua side got from Resolve's API are ANSI code-page bytes on
-/// Windows (e.g. a Cyrillic user profile path inside a media path or clip
-/// name). Decode them losslessly so names round-trip: the frontend echoes
-/// values like `templateName` back and Lua compares them byte-for-byte.
+/// Append `byte` decoded as one ANSI code-page char. On non-Windows
+/// platforms ANSI payloads don't occur; emit U+FFFD.
 #[cfg(target_os = "windows")]
-fn ansi_codepage_to_utf8(bytes: &[u8]) -> String {
+fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
     use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
-    unsafe {
-        let needed = MultiByteToWideChar(
-            CP_ACP,
-            0,
-            bytes.as_ptr(),
-            bytes.len() as i32,
-            std::ptr::null_mut(),
-            0,
-        );
-        if needed > 0 {
-            let mut wide = vec![0u16; needed as usize];
-            let written = MultiByteToWideChar(
-                CP_ACP,
-                0,
-                bytes.as_ptr(),
-                bytes.len() as i32,
-                wide.as_mut_ptr(),
-                needed,
-            );
-            if written > 0 {
-                wide.truncate(written as usize);
-                if let Ok(s) = String::from_utf16(&wide) {
-                    return s;
-                }
-            }
+    let mut wide = [0u16; 1];
+    let written = unsafe {
+        MultiByteToWideChar(CP_ACP, 0, &byte, 1, wide.as_mut_ptr(), 1)
+    };
+    if written == 1 {
+        if let Some(c) = char::from_u32(wide[0] as u32) {
+            let mut buf = [0u8; 4];
+            out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
+            return;
         }
     }
-    String::from_utf8_lossy(bytes).into_owned()
+    out.extend_from_slice("\u{FFFD}".as_bytes());
 }
 
 #[cfg(not(target_os = "windows"))]
-fn ansi_codepage_to_utf8(bytes: &[u8]) -> String {
-    String::from_utf8_lossy(bytes).into_owned()
+fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
+    let _ = byte;
+    out.extend_from_slice("\u{FFFD}".as_bytes());
+}
+
+/// Transcode a JSON document that mixes encodings. On Windows the Lua side
+/// builds responses from both UTF-8 strings (values the app sent that Lua
+/// echoes back) and ANSI code-page bytes (strings Resolve's API returns,
+/// like clip names or paths) — a single document can contain both. Inside
+/// string literals, valid UTF-8 sequences pass through and any other
+/// non-ASCII byte decodes as one ANSI char, so neither half is mangled.
+/// Structural bytes are ASCII and pass through untouched.
+fn mixed_encoding_to_utf8(bytes: &[u8]) -> String {
+    let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 4);
+    let mut in_string = false;
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if in_string && b == b'\\' {
+            // JSON escapes are ASCII; copy the pair unchanged.
+            out.push(b);
+            i += 1;
+            if i < bytes.len() {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        } else if b == b'"' {
+            in_string = !in_string;
+            out.push(b);
+            i += 1;
+        } else if in_string && b >= 0x80 {
+            // Expected UTF-8 sequence length from the lead byte.
+            let len = match b {
+                0xC0..=0xDF => 2,
+                0xE0..=0xEF => 3,
+                0xF0..=0xF7 => 4,
+                _ => 0,
+            };
+            if len > 0
+                && i + len <= bytes.len()
+                && std::str::from_utf8(&bytes[i..i + len]).is_ok()
+            {
+                out.extend_from_slice(&bytes[i..i + len]);
+                i += len;
+            } else {
+                ansi_byte_to_utf8(&mut out, b);
+                i += 1;
+            }
+        } else {
+            out.push(b);
+            i += 1;
+        }
+    }
+    // Valid UTF-8 by construction except a malformed `\<non-ascii>` pair.
+    String::from_utf8(out).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
 
 /// Decode a `<id>:<base64 json>` response value. Returns the JSON body only
 /// when it is valid base64 and parseable JSON — anything else means we
 /// caught the prefs file half-written and should keep polling. Payloads are
-/// normally UTF-8; non-UTF-8 payloads are decoded as the Windows ANSI code
-/// page so Resolve-supplied names survive instead of either being dropped
-/// (reporting a healthy bridge as unresponsive) or mangled.
+/// normally UTF-8; non-UTF-8 payloads go through mixed_encoding_to_utf8 so
+/// Resolve-supplied ANSI names survive instead of being dropped (a dropped
+/// response makes a healthy bridge look unresponsive).
 fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String>> {
     let (rid, encoded) = value.split_once(':')?;
     if rid != id {
         return None;
     }
     let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).ok()?;
-    let text = match String::from_utf8(bytes) {
-        Ok(text) => text,
-        Err(err) => ansi_codepage_to_utf8(err.as_bytes()),
+    let text = match std::str::from_utf8(&bytes) {
+        Ok(text) => text.to_string(),
+        Err(_) => mixed_encoding_to_utf8(&bytes),
     };
     serde_json::from_str::<serde_json::Value>(&text).ok()?;
     Some(Ok(text))
@@ -473,9 +508,24 @@ mod tests {
         // valid base64 but not JSON -> keep polling
         let not_json = base64::engine::general_purpose::STANDARD.encode("hello");
         assert!(decode_response(&format!("7:{}", not_json), "7").is_none());
-        // non-UTF-8 bytes (ANSI code page) -> decoded lossily, still parses
+        // non-UTF-8 bytes (ANSI code page) -> transcoded, still parses
         let ansi = base64::engine::general_purpose::STANDARD.encode(b"{\"ok\":\"\xC0\"}");
         assert!(decode_response(&format!("7:{}", ansi), "7").is_some());
+    }
+
+    #[test]
+    fn mixed_encoding_preserves_utf8_strings() {
+        // A payload mixing a valid UTF-8 string with ANSI bytes: the UTF-8
+        // part must survive byte-for-byte instead of being transcoded.
+        let mut doc = b"{\"a\":\"caf\xC3\xA9\",\"b\":\"".to_vec();
+        doc.extend_from_slice(&[0xC0u8, 0xD1, 0xD2]); // ANSI-only bytes
+        doc.extend_from_slice(b"\"}");
+        let text = mixed_encoding_to_utf8(&doc);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["a"], "caf\u{e9}");
+        // The ANSI bytes decoded to something (chars on Windows, U+FFFD
+        // elsewhere) rather than dropping the response.
+        assert!(parsed["b"].is_string());
     }
 
     #[test]
