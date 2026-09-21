@@ -305,7 +305,57 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
     })) {
         tracing::warn!("Failed to set native window theme: {}", e);
     }
+    #[cfg(target_os = "macos")]
+    disable_zoom_animation(&window);
     Ok(window)
+}
+
+/// Make the title-bar double-click / zoom-button resize instantaneous.
+///
+/// AppKit animates `zoom:` with a blocking `setFrame:display:animate:` loop that
+/// starves WKWebView's layer commits, so the page only catches up once the
+/// animation ends (blank strip when growing, stale content snapping when
+/// shrinking). `animationResizeTime:` is NSWindow's hook for that duration;
+/// returning 0 makes the frame change and the web content land together.
+#[cfg(target_os = "macos")]
+fn disable_zoom_animation(window: &tauri::WebviewWindow) {
+    use objc2::runtime::{AnyClass, AnyObject, Sel};
+
+    #[repr(C)]
+    struct CGRect {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    }
+
+    extern "C-unwind" fn animation_resize_time(_this: &AnyObject, _sel: Sel, _frame: CGRect) -> f64 {
+        0.0
+    }
+
+    let ns_window = match window.ns_window() {
+        Ok(ptr) => ptr,
+        Err(e) => {
+            tracing::warn!("Failed to get NSWindow for zoom animation override: {}", e);
+            return;
+        }
+    };
+
+    unsafe {
+        let obj: &AnyObject = &*(ns_window as *const AnyObject);
+        let cls: *const AnyClass = obj.class();
+        let imp: objc2::runtime::Imp = std::mem::transmute(
+            animation_resize_time as extern "C-unwind" fn(&AnyObject, Sel, CGRect) -> f64,
+        );
+        // Added to tao's NSWindow subclass, so it overrides NSWindow's default.
+        // Returns false if a previous call already added it, which is fine.
+        objc2::ffi::class_addMethod(
+            cls as *mut AnyClass,
+            objc2::sel!(animationResizeTime:),
+            imp,
+            c"d@:{CGRect={CGPoint=dd}{CGSize=dd}}".as_ptr(),
+        );
+    }
 }
 
 #[tauri::command]
