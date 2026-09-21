@@ -589,7 +589,10 @@
       "failed": "Impossible d’actualiser les styles"
     },
     "send": {
-      "adding": "Envoi en cours..."
+      "adding": "Envoi en cours...",
+      "placedPartial": "{{placed}} sous-titres placés sur {{total}}",
+      "blockedHint": "Certains sous-titres ont été bloqués. Essayez 'Add to New Track' comme piste de sortie.",
+      "skippedHint": "Certains sous-titres sont hors de la timeline et ont été ignorés."
     },
     "conflict": {
       "hasConflicts": "Cette piste contient des clips conflictuels. Les sous-titres peuvent chevaucher le contenu existent."
@@ -641,5 +644,9 @@
     "chooseStyle": "Choisir un style",
     "speakerCount_one": "{{count}} intervenant",
     "speakerCount_other": "{{count}} intervenants"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "Impossible d'ajouter les sous-titres à la timeline",
+    "clipsBlocked": "Impossible de placer les sous-titres sur la piste de sortie. Essayez 'Add to New Track'."
   }
 }

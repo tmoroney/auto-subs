@@ -589,7 +589,10 @@
       "failed": "타임라인 스타일을 업데이트하지 못했습니다"
     },
     "send": {
-      "adding": "전송 중..."
+      "adding": "전송 중...",
+      "placedPartial": "자막 {{total}}개 중 {{placed}}개 배치",
+      "blockedHint": "일부 캡션이 차단되었습니다. 출력 트랙으로 'Add to New Track'을 선택해 보세요.",
+      "skippedHint": "타임라인 범위를 벗어난 자막은 건너뛰었습니다."
     },
     "conflict": {
       "hasConflicts": "이 트랙에 충돌하는 클립이 있습니다. 자막이 기존 콘텐츠와 겹칠 수 있습니다."
@@ -641,5 +644,9 @@
     "chooseStyle": "자막 스타일 선택",
     "speakerCount_one": "화자 {{count}}명",
     "speakerCount_other": "화자 {{count}}명"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "자막을 타임라인에 추가할 수 없습니다",
+    "clipsBlocked": "출력 트랙에 캡션을 배치할 수 없습니다. 'Add to New Track'을 시도해 보세요."
   }
 }

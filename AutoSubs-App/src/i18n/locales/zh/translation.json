@@ -589,7 +589,10 @@
       "failed": "无法更新时间线样式"
     },
     "send": {
-      "adding": "正在发送..."
+      "adding": "正在发送...",
+      "placedPartial": "已放置 {{total}} 条字幕中的 {{placed}} 条",
+      "blockedHint": "部分字幕被阻止。请尝试将输出轨道设为“Add to New Track”。",
+      "skippedHint": "超出时间线范围的字幕已被跳过。"
     },
     "conflict": {
       "hasConflicts": "该轨道存在冲突的剪辑。字幕可能与现有内容重叠。"
@@ -641,5 +644,9 @@
     "chooseStyle": "选择字幕样式",
     "speakerCount_one": "{{count}} 位说话人",
     "speakerCount_other": "{{count}} 位说话人"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "无法将字幕添加到时间线",
+    "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。"
   }
 }

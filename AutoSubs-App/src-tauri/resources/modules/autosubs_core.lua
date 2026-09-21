@@ -110,8 +110,10 @@ local currentExportJob = {
 -- failure, or the function's result on success. Used so the frontend error
 -- dialog can surface the actual error from Resolve instead of a generic
 -- "something went wrong".
-local function make_error(short, detail)
-    return { error = short, detail = tostring(detail or "") }
+local function make_error(short, detail, code)
+    -- `code` lets the frontend localize this failure (it maps the code to a
+    -- translation key); `error`/`detail` stay as the raw technical fallback.
+    return { error = short, detail = tostring(detail or ""), code = code }
 end
 
 -- Convert seconds to frames based on the timeline frame rate
@@ -1903,28 +1905,27 @@ function AddSubtitles(req)
                 JumpToTime(subtitles[1].start)
             end
 
-            -- If some (but not all) clips failed to receive text/styling, still report
-            -- success but include a warning summary so the UI can mention it.
+            -- If some (but not all) clips failed to receive text/styling, still
+            -- report success plus the counts so the UI can localize a warning.
             if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
-                local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
-                if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
-                    warning = warning ..
-                    string.format(" (%d clips were not placed or had no Fusion composition)",
-                        applyStats.noFusionComp)
-                end
                 return {
                     ok = true,
                     fontSwap = fontSwap,
-                    warning = warning,
+                    failed = applyStats.failed,
+                    total = applyStats.total,
+                    noFusionComp = applyStats.noFusionComp,
+                    skipped = skippedBounds,
                     detail = applyStats.firstError
                 }
             elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
                 local short = string.format("Failed to place all %d subtitles", applyStats.total)
+                local errCode = nil
                 if applyStats.noFusionComp and applyStats.noFusionComp == #clipList and #clipList > 0 then
-                    short = short ..
-                    ". Resolve refused to place the caption clips on the chosen video track (it may be occupied or locked), or the template is incompatible with this Resolve version. Try 'Add to New Track' as the output track."
+                    -- Every clip was a dead handle / comp-less: the frontend
+                    -- renders the occupied-or-locked-track guidance localized.
+                    errCode = "clips_blocked"
                 end
-                return make_error(short, applyStats.firstError)
+                return make_error(short, applyStats.firstError, errCode)
             end
 
             return { ok = true, fontSwap = fontSwap }

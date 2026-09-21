@@ -10,12 +10,15 @@ import { Speaker, Template, TimelineInfo } from '@/types';
 export class ResolveApiError extends Error {
   public detail?: string;
   public func?: string;
+  /** Machine-readable failure reason the UI can map to localized copy. */
+  public code?: string;
 
-  constructor(message: string, detail?: string, func?: string) {
+  constructor(message: string, detail?: string, func?: string, code?: string) {
     super(message);
     this.name = "ResolveApiError";
     this.detail = detail;
     this.func = func;
+    this.code = code;
   }
 }
 
@@ -48,8 +51,10 @@ function throwIfError(data: any, fallbackFunc?: string): void {
     typeof (data as any).func === "string"
       ? (data as any).func
       : fallbackFunc;
+  const code =
+    typeof (data as any).code === "string" ? (data as any).code : undefined;
 
-  throw new ResolveApiError(shortMessage, detail, func);
+  throw new ResolveApiError(shortMessage, detail, func, code);
 }
 
 /**
@@ -170,7 +175,13 @@ export interface AddSubtitlesResult {
   result?: {
     ok?: boolean;
     fontSwap?: FontSwapInfo | null;
-    warning?: string;
+    /** Placement stats so the UI can localize a partial-failure warning. */
+    failed?: number;
+    total?: number;
+    /** Clips Resolve refused to place (dead handles / no Fusion comp). */
+    noFusionComp?: number;
+    /** Segments skipped for falling outside the timeline's range. */
+    skipped?: number;
     detail?: string;
   } | false;
 }

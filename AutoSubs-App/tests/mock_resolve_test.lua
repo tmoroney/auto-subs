@@ -347,19 +347,22 @@ do
         addTrack = false,
     })
     check(r and r.error ~= nil, "returns error", "got ok=true")
-    local msg = tostring(r and r.error)
-    check(msg:find("Add to New Track") ~= nil, "error suggests new track", msg)
+    check(r and r.code == "clips_blocked", "error code tells the UI this was a blocked append",
+        tostring(r and r.code))
 end
 
--- S5: subtitles beyond the timeline end are skipped, with a warning.
+-- S5: subtitles beyond the timeline end are skipped and reported in the
+-- structured stats the frontend localizes.
 do
     local r = run("bounds skip", {
         subs = { { 0, 1 }, { 2, 3 }, { 500, 501 } },
     }) -- timeline is 120s
     check(r and r.ok == true, "ok", tostring(r and r.error))
     check(#track_items(tl, 1) == 2, "2 in-range captions placed")
-    check(r and r.warning ~= nil and r.warning:find("1 of 3") ~= nil, "warning counts skip",
-        tostring(r and r.warning))
+    check(r and r.failed == 1 and r.total == 3 and r.skipped == 1,
+        "stats report the skip",
+        tostring(r and r.failed) .. "/" .. tostring(r and r.total) ..
+            " skipped=" .. tostring(r and r.skipped))
 end
 
 -- S6: whole batch call throws -> per-clip fallback still places them.
