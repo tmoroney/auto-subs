@@ -34,6 +34,7 @@ import { useOutputPanelStore } from "@/stores/output-panel-store";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { describeError } from "@/components/transcription/utils";
+import { ResolveApiError } from "@/api/resolve-api";
 import { useTranslation } from "react-i18next";
 import { type SubtitleDocumentListItem } from "@/utils/file-utils";
 
@@ -519,7 +520,13 @@ export function SubtitleViewerPanel({
         error,
         t("errorDialog.addToTimelineFailed", "Couldn't add subtitles to timeline"),
       );
-      showError({ title, message, detail });
+      // A Resolve-side code lets us replace the raw English message with a
+      // localized one ("clips_blocked" = every clip was a blocked append).
+      const localized =
+        error instanceof ResolveApiError && error.code === "clips_blocked"
+          ? t("errorDialog.clipsBlocked")
+          : message;
+      showError({ title, message: localized, detail });
     } finally {
       setIsAddingToTimeline(false);
     }

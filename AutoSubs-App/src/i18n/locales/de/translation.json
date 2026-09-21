@@ -589,7 +589,10 @@
       "failed": "Timeline-Stile konnten nicht geändert werden"
     },
     "send": {
-      "adding": "Wird gesendet..."
+      "adding": "Wird gesendet...",
+      "placedPartial": "{{placed}} von {{total}} Untertiteln platziert",
+      "blockedHint": "Einige Untertitel wurden blockiert. 'Add to New Track' als Ausgabespur wählen.",
+      "skippedHint": "Einige Untertitel liegen außerhalb der Timeline und wurden übersprungen."
     },
     "conflict": {
       "hasConflicts": "Diese Spur hat konfliktierende Clips. Untertitel könnten mit vorhandenem Inhalt überlappen."
@@ -641,5 +644,9 @@
     "chooseStyle": "Untertitelstil wählen",
     "speakerCount_one": "{{count}} Sprecher",
     "speakerCount_other": "{{count}} Sprecher"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "Untertitel konnten nicht zur Timeline hinzugefügt werden",
+    "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen."
   }
 }

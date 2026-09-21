@@ -589,7 +589,10 @@
       "failed": "タイムラインのスタイルを更新できませんでした"
     },
     "send": {
-      "adding": "送信中..."
+      "adding": "送信中...",
+      "placedPartial": "{{total}}件中{{placed}}件の字幕を配置しました",
+      "blockedHint": "一部のキャプションがブロックされました。出力トラックに「Add to New Track」を選択してください。",
+      "skippedHint": "タイムラインの範囲外の字幕はスキップされました。"
     },
     "conflict": {
       "hasConflicts": "このトラックには競合するクリップがあります。字幕が既存のコンテンツと重複する可能性があります。"
@@ -641,5 +644,9 @@
     "chooseStyle": "スタイルを選択",
     "speakerCount_one": "話者 {{count}} 人",
     "speakerCount_other": "話者 {{count}} 人"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "字幕をタイムラインに追加できませんでした",
+    "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。"
   }
 }

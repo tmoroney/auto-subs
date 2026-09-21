@@ -609,7 +609,10 @@
       "failed": "Couldn't update timeline styles"
     },
     "send": {
-      "adding": "Sending..."
+      "adding": "Sending...",
+      "placedPartial": "Placed {{placed}} of {{total}} subtitles",
+      "blockedHint": "Some captions were blocked. Try 'Add to New Track' as the output track.",
+      "skippedHint": "Some subtitles fall outside the timeline's range and were skipped."
     },
     "conflict": {
       "hasConflicts": "This track has conflicting clips. Subtitles may overlap with existing content."
@@ -661,5 +664,9 @@
     "chooseStyle": "Choose a caption style",
     "speakerCount_one": "{{count}} speaker",
     "speakerCount_other": "{{count}} speakers"
+  },
+  "errorDialog": {
+    "addToTimelineFailed": "Couldn't add subtitles to timeline",
+    "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'."
   }
 }

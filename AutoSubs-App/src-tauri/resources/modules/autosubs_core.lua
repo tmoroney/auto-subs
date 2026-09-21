@@ -110,8 +110,10 @@ local currentExportJob = {
 -- failure, or the function's result on success. Used so the frontend error
 -- dialog can surface the actual error from Resolve instead of a generic
 -- "something went wrong".
-local function make_error(short, detail)
-    return { error = short, detail = tostring(detail or "") }
+local function make_error(short, detail, code)
+    -- `code` lets the frontend localize this failure (it maps the code to a
+    -- translation key); `error`/`detail` stay as the raw technical fallback.
+    return { error = short, detail = tostring(detail or ""), code = code }
 end
 
 -- Convert seconds to frames based on the timeline frame rate
@@ -1036,12 +1038,16 @@ end
 local function sanitize_track_index(timeline, trackIndex, markIn, markOut)
     -- Only create a new track if trackIndex is explicitly "0" (new track), empty/nil, or invalid
     -- Respect user's track selection regardless of whether the track is empty
-    if trackIndex == "0" or trackIndex == "" or trackIndex == nil or tonumber(trackIndex) > timeline:GetTrackCount("video") then
+    local numeric = tonumber(trackIndex)
+    if trackIndex == "0" or trackIndex == "" or trackIndex == nil or numeric == nil or
+        numeric < 1 or numeric > timeline:GetTrackCount("video") then
         trackIndex = timeline:GetTrackCount("video") + 1
         timeline:AddTrack("video")
+        return trackIndex
     end
 
-    return tonumber(trackIndex)
+    -- A fractional index would make Resolve reject the clipInfo; snap it.
+    return math.floor(numeric)
 end
 
 -- Check for existing clips on a track that would conflict with new subtitles
@@ -1448,10 +1454,32 @@ local function find_subtitle_clips(timeline, transcriptId, subtitles, targetSpea
     return matches, stats
 end
 
+-- AppendToTimeline does not report a blocked append: it returns truthy "dead"
+-- item handles whose methods all return nothing (so they later surface as
+-- GetFusionCompCount() == nil and look like a version-incompatible template).
+-- Probing a cheap getter tells a placed clip from a dead handle.
+local function is_live_item(item)
+    if item == nil then return false end
+    local probeOk, probeVal = pcall(function() return item:GetStart() end)
+    return probeOk and probeVal ~= nil
+end
+
+-- Builds the clipInfo list for AppendToTimeline. Returns:
+--   clipList           -- clipInfo dicts in subtitle order
+--   clipSubtitleIndex  -- clipList[k] belongs to subtitles[clipSubtitleIndex[k]]
+--   skippedBounds      -- count of segments dropped for falling outside the
+--                         timeline (whisper can emit slightly negative starts,
+--                         and transcripts can be longer than the timeline).
+-- A clipInfo outside the timeline bounds (or with a non-integer frame) can make
+-- Resolve reject or dead-handle the whole batch, so out-of-bounds segments are
+-- dropped here rather than left to fail inside the append.
 local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-                               template_frame_rate, timelineStart, speakerIndexById)
+                               template_frame_rate, timelineStart, timelineEnd, speakerIndexById)
     local joinThreshold = frame_rate
     local clipList = {}
+    local clipSubtitleIndex = {}
+    local skippedBounds = 0
+    local prevClip, prevClipEnd = nil, nil -- last emitted clip + its exclusive end frame
     for i, subtitle in ipairs(subtitles) do
         -- Skip malformed segments (nil start/end) instead of crashing in to_frames().
         if subtitle["start"] == nil or subtitle["end"] == nil then
@@ -1466,22 +1494,6 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
         if end_frame <= start_frame then
             end_frame = start_frame + 1
         end
-        local timeline_pos = timelineStart + start_frame
-        local clip_timeline_duration = end_frame - start_frame
-
-        if i < #subtitles then
-            local nextSub = subtitles[i + 1]
-            if nextSub and nextSub["start"] ~= nil then
-                local next_start = timelineStart + math.floor(to_frames(nextSub["start"], frame_rate) + 0.5)
-                local frames_between = next_start - (timeline_pos + clip_timeline_duration)
-                if frames_between < joinThreshold then
-                    clip_timeline_duration = clip_timeline_duration + frames_between + 1
-                end
-            end
-        end
-
-        -- endFrame is template-relative source frames, not timeline frames.
-        local duration = math.max(1, math.floor((clip_timeline_duration / frame_rate) * template_frame_rate + 0.5))
 
         local itemTrack = trackIndex
         if speakersExist then
@@ -1490,6 +1502,37 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
                 itemTrack = speaker.track
             end
         end
+
+        local timeline_pos = timelineStart + start_frame
+        local clip_timeline_duration = end_frame - start_frame
+
+        -- Clips cannot start before the timeline's first frame.
+        if timelineEnd and timeline_pos >= timelineEnd or timeline_pos + clip_timeline_duration <= timelineStart then
+            skippedBounds = skippedBounds + 1
+            goto continue
+        end
+        if timeline_pos < timelineStart then
+            clip_timeline_duration = clip_timeline_duration - (timelineStart - timeline_pos)
+            timeline_pos = timelineStart
+        end
+        if timelineEnd and timeline_pos + clip_timeline_duration > timelineEnd then
+            clip_timeline_duration = timelineEnd - timeline_pos
+        end
+
+        -- If the gap to the previous clip on the same track is under ~1 s, join
+        -- them by extending the previous clip to end at this clip's start (the
+        -- old +1 overshot into this clip's first frame, a 1-frame overlap that
+        -- Resolve can refuse as a blocked append).
+        if prevClip and prevClip.trackIndex == itemTrack then
+            local frames_between = timeline_pos - prevClipEnd
+            if frames_between < joinThreshold then
+                prevClip.endFrame = math.max(1, math.floor(
+                    prevClip.endFrame + (frames_between / frame_rate) * template_frame_rate + 0.5))
+            end
+        end
+
+        -- endFrame is template-relative source frames, not timeline frames.
+        local duration = math.max(1, math.floor((clip_timeline_duration / frame_rate) * template_frame_rate + 0.5))
 
         local newClip = {
             mediaPoolItem = templateItem,
@@ -1501,10 +1544,17 @@ local function build_clip_list(subtitles, speakers, speakersExist, trackIndex, t
         }
 
         table.insert(clipList, newClip)
+        table.insert(clipSubtitleIndex, i)
+        prevClip, prevClipEnd = newClip, timeline_pos + clip_timeline_duration
         ::continue::
     end
 
-    return clipList
+    if skippedBounds > 0 then
+        print(string.format("[AutoSubs] Skipped %d subtitle(s) that fall outside the timeline's range",
+            skippedBounds))
+    end
+
+    return clipList, clipSubtitleIndex, skippedBounds
 end
 
 -- Applies subtitle text + styling to each appended timeline item. Instead of
@@ -1514,66 +1564,80 @@ end
 -- templateName names the media pool clip these items were appended from:
 -- caption_style.apply needs it to tell the bundled macro from a user's own
 -- title before running any helper the comp carries.
-local function apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist, presetSettings,
-                                   speakerIndexById, transcriptId, templateName)
+local function apply_subtitle_text(timelineItems, clipCount, subtitles, clipSubtitleIndex, speakers,
+                                   speakersExist, presetSettings, speakerIndexById, transcriptId, templateName)
     local startTime = os.clock()
     local failed = 0
     local noFusionComp = 0
     local firstError = nil
-    for i, timelineItem in ipairs(timelineItems) do
-        local success, err = pcall(function()
-            local subtitle = subtitles[i]
-            local subtitleText = subtitle["text"]
-
-            local fusionCompCount = timelineItem:GetFusionCompCount()
-            if not fusionCompCount then
-                noFusionComp = noFusionComp + 1
-                error(
-                "clip has no Fusion composition (GetFusionCompCount returned nil): Resolve either refused to place the clip (blocked append) or the template is incompatible with this Resolve version")
-            end
-            if fusionCompCount > 0 then
-                local comp = timelineItem:GetFusionCompByIndex(1)
-                local speaker = nil
-                if speakersExist then
-                    speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
-                end
-
-                local styleTool = caption_style.apply(comp, {
-                    templateName = templateName,
-                    text = subtitleText,
-                    words = subtitle.words,
-                    start = subtitle.start,
-                    settings = presetSettings,
-                    speaker = speaker,
-                })
-
-                -- Hidden Fusion tool data lets later batch operations identify
-                -- the transcript segment without changing visible clip names.
-                tag_subtitle_tool(styleTool, transcriptId, i, subtitle.speaker_id)
-
-                timelineItem:SetClipColor("Green") -- Visualise updated clips
-            end
-        end)
-
-        if not success then
+    -- timelineItems aligns with clipSubtitleIndex and may have holes (clips
+    -- Resolve never placed), so iterate to clipCount rather than ipairs.
+    for i = 1, clipCount do
+        local timelineItem = timelineItems[i]
+        if timelineItem == nil then
             failed = failed + 1
-            if firstError == nil then firstError = tostring(err) end
+            if firstError == nil then
+                firstError = "clip was not placed on the timeline (AppendToTimeline returned no item)"
+            end
+        else
+            local success, err = pcall(function()
+                -- clipSubtitleIndex maps the appended clip back to its segment;
+                -- build_clip_list can skip malformed/out-of-range segments, so a
+                -- bare [i] would pair text to the wrong subtitle after a skip.
+                local subtitle = subtitles[clipSubtitleIndex[i]]
+                local subtitleText = subtitle["text"]
+
+                local fusionCompCount = timelineItem:GetFusionCompCount()
+                if not fusionCompCount then
+                    noFusionComp = noFusionComp + 1
+                    error(
+                    "clip has no Fusion composition (GetFusionCompCount returned nil): Resolve either refused to place the clip (blocked append) or the template is incompatible with this Resolve version")
+                end
+                if fusionCompCount > 0 then
+                    local comp = timelineItem:GetFusionCompByIndex(1)
+                    local speaker = nil
+                    if speakersExist then
+                        speaker = get_speaker_from_id(speakers, subtitle.speaker_id, speakerIndexById)
+                    end
+
+                    local styleTool = caption_style.apply(comp, {
+                        templateName = templateName,
+                        text = subtitleText,
+                        words = subtitle.words,
+                        start = subtitle.start,
+                        settings = presetSettings,
+                        speaker = speaker,
+                    })
+
+                    -- Hidden Fusion tool data lets later batch operations identify
+                    -- the transcript segment without changing visible clip names.
+                    tag_subtitle_tool(styleTool, transcriptId, clipSubtitleIndex[i], subtitle.speaker_id)
+
+                    timelineItem:SetClipColor("Green") -- Visualise updated clips
+                end
+            end)
+
+            if not success then
+                failed = failed + 1
+                if firstError == nil then firstError = tostring(err) end
+            end
         end
     end
 
     if noFusionComp > 0 then
         print(string.format(
             "[AutoSubs] %d of %d subtitle clips had no Fusion composition (GetFusionCompCount returned nil). Resolve either refused to place those clips or the template is incompatible with this Resolve version.",
-            noFusionComp, #timelineItems))
+            noFusionComp, clipCount))
     end
     if failed > 0 then
         print(string.format("[AutoSubs] Failed to place %d of %d subtitles. First error: %s",
-            failed, #timelineItems, tostring(firstError)))
+            failed, clipCount, tostring(firstError)))
     end
 
-    print(string.format("[AutoSubs] Applied subtitle text to %d clips in %.3f seconds.", #timelineItems, os.clock() - startTime))
+    print(string.format("[AutoSubs] Applied subtitle text to %d clips in %.3f seconds.", clipCount - failed,
+        os.clock() - startTime))
 
-    return { failed = failed, total = #timelineItems, firstError = firstError, noFusionComp = noFusionComp }
+    return { failed = failed, total = clipCount, firstError = firstError, noFusionComp = noFusionComp }
 end
 
 -- Add subtitles to the timeline using the specified template
@@ -1620,7 +1684,10 @@ function AddSubtitles(req)
 
             trackIndex = sanitize_track_index(timeline, trackIndex, markIn, markOut)
 
-            local frame_rate = timeline:GetSetting("timelineFrameRate")
+            local frame_rate = tonumber(timeline:GetSetting("timelineFrameRate"))
+            if not frame_rate then
+                return make_error("Failed to add subtitles", "Could not read the timeline frame rate")
+            end
 
             local earlyResult = nil
             trackIndex, subtitles, earlyResult = apply_conflict_mode(timeline, subtitles, trackIndex, conflictMode,
@@ -1639,8 +1706,16 @@ function AddSubtitles(req)
                 return make_error("Template not found", templateErr)
             end
 
-            local clipList = build_clip_list(subtitles, speakers, speakersExist, trackIndex, templateItem, frame_rate,
-                template_frame_rate, timelineStart, speakerIndexById)
+            local clipList, clipSubtitleIndex, skippedBounds = build_clip_list(subtitles, speakers, speakersExist,
+                trackIndex, templateItem, frame_rate, template_frame_rate, timelineStart, timeline:GetEndFrame(),
+                speakerIndexById)
+
+            if #clipList == 0 then
+                local reason = skippedBounds > 0 and
+                    "all " .. skippedBounds .. " subtitle(s) fall outside the timeline's range" or
+                    "no valid segments to place"
+                return make_error("Failed to add subtitles to timeline", reason)
+            end
 
             -- Temporarily unlock locked target tracks so AppendToTimeline doesn't
             -- silently return an empty table. Re-lock them afterwards.
@@ -1667,20 +1742,43 @@ function AddSubtitles(req)
                 return mediaPool:AppendToTimeline(clipList)
             end)
 
+            -- A single bad clipInfo can make Resolve reject or return nil for
+            -- the whole batch on Resolve 21. Fall back to one append per clip so
+            -- the good ones still land; dead handles are retried below.
+            if not appendOk or type(timelineItems) ~= "table" or #timelineItems == 0 then
+                if not appendOk then
+                    print("[AutoSubs] Batch AppendToTimeline failed: " .. tostring(timelineItems))
+                else
+                    print("[AutoSubs] Batch AppendToTimeline returned no items; retrying per clip")
+                end
+                timelineItems = {}
+                for i, clip in ipairs(clipList) do
+                    local oneOk, oneItems = pcall(function()
+                        return mediaPool:AppendToTimeline({ clip })
+                    end)
+                    if oneOk and type(oneItems) == "table" and oneItems[1] ~= nil then
+                        timelineItems[i] = oneItems[1]
+                    end
+                end
+            end
+
             for ti in pairs(lockedTracks) do
                 pcall(timeline.SetTrackLock, timeline, "video", ti, true)
                 print("[AutoSubs] Re-locked video track " .. ti)
             end
 
-            if not appendOk then
-                return make_error("Failed to add subtitles to timeline", timelineItems)
+            local anyPlaced = false
+            for i = 1, #clipList do
+                if timelineItems[i] ~= nil then
+                    anyPlaced = true
+                    break
+                end
             end
-            if type(timelineItems) ~= "table" or #timelineItems == 0 then
+            if not anyPlaced then
                 return make_error("Failed to add subtitles to timeline",
-                    "Resolve did not return any timeline items from AppendToTimeline. " ..
-                    "This can happen if the template clip is invalid/corrupt or the target " ..
-                    "track index is out of range. Try re-importing the template or choosing " ..
-                    "a different track.")
+                    "Resolve did not place any caption clips. This can happen if the template " ..
+                    "clip is invalid/corrupt or the target track index is out of range. " ..
+                    "Try re-importing the template or choosing a different track.")
             end
 
             -- AppendToTimeline does not report a blocked append: it returns
@@ -1694,10 +1792,6 @@ function AddSubtitles(req)
             -- each other on a shared fresh track. When the current fresh track
             -- also returns a dead handle for a clip, that clip spills onto
             -- another fresh track.
-            local function is_live_item(item)
-                local probeOk, probeVal = pcall(function() return item:GetStart() end)
-                return probeOk and probeVal ~= nil
-            end
             local createdTracks = {}
             local function add_fresh_track()
                 local addOk, added = pcall(function() return timeline:AddTrack("video") end)
@@ -1709,24 +1803,35 @@ function AddSubtitles(req)
                 return nil
             end
 
+            -- timelineItems is aligned with clipList, not necessarily dense: a
+            -- clip the batch never placed leaves a hole, which counts as dead.
             local deadIndices = {}
-            for i, item in ipairs(timelineItems) do
-                if not is_live_item(item) then
+            for i = 1, #clipList do
+                if not is_live_item(timelineItems[i]) then
                     table.insert(deadIndices, i)
                 end
             end
             if #deadIndices > 0 then
                 print(string.format(
                     "[AutoSubs] %d of %d appended clips are dead handles (blocked append), retrying on fresh video tracks",
-                    #deadIndices, #timelineItems))
-                local retryTrack = nil
+                    #deadIndices, #clipList))
+                -- Each source track gets its own fresh retry track so retries
+                -- preserve speaker-track separation instead of folding every
+                -- speaker onto one track.
+                local retryTrackBySource = {}
                 local retryTrackUsed = {}
                 local recovered = 0
                 for _, i in ipairs(deadIndices) do
                     local clip = clipList[i]
                     if clip then
+                        local sourceTrack = clip.trackIndex
+                        -- First-choice retry track for this source track:
+                        -- remembered even while it is empty so sibling clips of
+                        -- the same speaker track still land together.
+                        local retryTrack = retryTrackBySource[sourceTrack]
                         if retryTrack == nil then
                             retryTrack = add_fresh_track()
+                            retryTrackBySource[sourceTrack] = retryTrack
                         end
                         local placed = false
                         for attempt = 1, 2 do
@@ -1742,13 +1847,11 @@ function AddSubtitles(req)
                                 recovered = recovered + 1
                                 break
                             end
-                            -- Only grow a new track when another attempt remains;
-                            -- an unused one after the last try is pure clutter.
-                            if attempt < 2 then
-                                retryTrack = add_fresh_track()
-                            else
-                                retryTrack = nil
-                            end
+                            -- Overlapping sibling clips can collide on the same
+                            -- retry track, so the next attempt uses another
+                            -- fresh track; the map keeps pointing at the first
+                            -- choice for later siblings.
+                            retryTrack = nil
                         end
                         if not placed then
                             print("[AutoSubs] Clip " .. i .. " could not be placed even on fresh tracks")
@@ -1786,36 +1889,43 @@ function AddSubtitles(req)
                 presetSettings, fontSwap = font_fallback.maybe_override(presetSettings, data["language"])
             end
 
-            local applyStats = apply_subtitle_text(timelineItems, subtitles, speakers, speakersExist,
-                presetSettings, speakerIndexById, transcriptId, resolvedTemplateName)
+            local applyStats = apply_subtitle_text(timelineItems, #clipList, subtitles, clipSubtitleIndex, speakers,
+                speakersExist, presetSettings, speakerIndexById, transcriptId, resolvedTemplateName)
+            if skippedBounds > 0 then
+                applyStats.failed = applyStats.failed + skippedBounds
+                applyStats.total = applyStats.total + skippedBounds
+                if applyStats.firstError == nil then
+                    applyStats.firstError =
+                        skippedBounds .. " subtitle(s) fell outside the timeline's range and were skipped"
+                end
+            end
 
             -- Force timeline refresh by jumping to the first subtitle
             if subtitles and #subtitles > 0 then
                 JumpToTime(subtitles[1].start)
             end
 
-            -- If some (but not all) clips failed to receive text/styling, still report
-            -- success but include a warning summary so the UI can mention it.
+            -- If some (but not all) clips failed to receive text/styling, still
+            -- report success plus the counts so the UI can localize a warning.
             if applyStats and applyStats.failed > 0 and applyStats.failed < applyStats.total then
-                local warning = string.format("Failed to place %d of %d subtitles", applyStats.failed, applyStats.total)
-                if applyStats.noFusionComp and applyStats.noFusionComp > 0 then
-                    warning = warning ..
-                    string.format(" (%d clips were not placed or had no Fusion composition)",
-                        applyStats.noFusionComp)
-                end
                 return {
                     ok = true,
                     fontSwap = fontSwap,
-                    warning = warning,
+                    failed = applyStats.failed,
+                    total = applyStats.total,
+                    noFusionComp = applyStats.noFusionComp,
+                    skipped = skippedBounds,
                     detail = applyStats.firstError
                 }
             elseif applyStats and applyStats.failed == applyStats.total and applyStats.total > 0 then
                 local short = string.format("Failed to place all %d subtitles", applyStats.total)
-                if applyStats.noFusionComp and applyStats.noFusionComp == applyStats.total then
-                    short = short ..
-                    ". The caption clips could not be placed on the timeline (Resolve refused the append) or the template is incompatible with this Resolve version."
+                local errCode = nil
+                if applyStats.noFusionComp and applyStats.noFusionComp == #clipList and #clipList > 0 then
+                    -- Every clip was a dead handle / comp-less: the frontend
+                    -- renders the occupied-or-locked-track guidance localized.
+                    errCode = "clips_blocked"
                 end
-                return make_error(short, applyStats.firstError)
+                return make_error(short, applyStats.firstError, errCode)
             end
 
             return { ok = true, fontSwap = fontSwap }
@@ -2082,10 +2192,11 @@ function GeneratePreview(req)
             trackIndex = trackIndex
         } })
     end)
-    if not appendOk or type(appended) ~= "table" or not appended[1] then
+    -- A blocked append returns a truthy dead handle, so validate the item.
+    if not appendOk or type(appended) ~= "table" or not is_live_item(appended[1]) then
         pcall(function() timeline:DeleteTrack("video", trackIndex) end)
         return make_error("Failed to generate preview",
-            (not appendOk) and tostring(appended) or "AppendToTimeline returned no items")
+            (not appendOk) and tostring(appended) or "AppendToTimeline did not place the clip")
     end
     local timelineItem = appended[1]
 
@@ -2358,8 +2469,9 @@ function OpenPresetEdit(req)
             recordFrame = position,
             trackIndex = trackIndex,
         } })
+        -- A blocked append returns a truthy dead handle, so validate the item.
         local timelineItem = appended and appended[1]
-        if not timelineItem then
+        if not is_live_item(timelineItem) then
             error("Failed to append preview clip to timeline")
         end
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 import { toast } from 'sonner';
 import { Template, TimelineInfo } from '@/types';
 import { getTimelineInfo, getTemplates, cancelExport, addSubtitlesToTimeline, ResolveApiError } from '@/api/resolve-api';
+import i18n from '@/i18n';
 import { useIntegration } from '@/contexts/IntegrationContext';
 import { useSettingsStore } from '@/stores/settings-store';
 import { validateExportedAudioFile } from '@/utils/file-utils';
@@ -219,8 +220,27 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
 
     // Surface a language-aware font swap (done server-side in the Lua macro
     // server) so the user knows why their caption font changed.
-    const result = response && typeof response === 'object' ? response.result : undefined;
-    const fontSwap = result && typeof result === 'object' ? result.fontSwap : null;
+    const rawResult = response && typeof response === 'object' ? response.result : undefined;
+    const result = rawResult && typeof rawResult === 'object' ? rawResult : undefined;
+    const fontSwap = result?.fontSwap;
+    // Placement stats come back as structured fields so the toast can be
+    // localized; `detail` stays a raw technical message.
+    const failed = result?.failed ?? 0;
+    const total = result?.total ?? 0;
+    if (failed > 0 && total > 0) {
+      // Bounds-skips and blocked clips can co-occur; explain every cause.
+      const hints = [
+        result?.skipped ? i18n.t("captions.send.skippedHint") : null,
+        result?.noFusionComp ? i18n.t("captions.send.blockedHint") : null,
+      ]
+        .filter((h): h is string => h != null)
+        .join(" ");
+      const hint = hints !== "" ? hints : result?.detail;
+      toast.warning(
+        i18n.t("captions.send.placedPartial", { placed: total - failed, total }),
+        { description: hint },
+      );
+    }
     if (fontSwap) {
       if (fontSwap.to) {
         toast.info(
