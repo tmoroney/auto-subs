@@ -142,27 +142,57 @@ pub fn snap_timestamps_to_vad(
             segments[i].end = boundary;
             segments[i + 1].start = boundary;
 
-            // Clamp words in current segment to new segment end boundary
+            // Adjust words in preceding segment
+            // - If word crosses boundary (start < boundary < end), trim end to boundary
+            // - If word is entirely past boundary (start >= boundary), mark for removal
             if let Some(words) = &mut segments[i].words {
                 for word in words.iter_mut() {
-                    if word.end > boundary {
+                    if word.start < boundary && word.end > boundary {
                         word.end = boundary;
-                    }
-                    if word.start > boundary {
+                    } else if word.start >= boundary {
                         word.start = boundary;
+                        word.end = boundary;
                     }
                 }
+                // Remove zero-duration or invalid words
+                words.retain(|w| w.end > w.start);
             }
 
-            // Clamp words in next segment to new segment start boundary
+            // Adjust words in succeeding segment
+            // - If word crosses boundary (start < boundary < end), trim start to boundary
+            // - If word is entirely before boundary (end <= boundary), mark for removal
             if let Some(words) = &mut segments[i + 1].words {
                 for word in words.iter_mut() {
-                    if word.start < boundary {
+                    if word.start < boundary && word.end > boundary {
                         word.start = boundary;
-                    }
-                    if word.end < boundary {
+                    } else if word.end <= boundary {
+                        word.start = boundary;
                         word.end = boundary;
                     }
+                }
+                // Remove zero-duration or invalid words
+                words.retain(|w| w.end > w.start);
+            }
+
+            // Recalculate segment bounds from remaining words after boundary adjustment
+            if let Some(words) = &segments[i].words {
+                if let (Some(first), Some(last)) = (words.first(), words.last()) {
+                    segments[i].start = first.start;
+                    segments[i].end = last.end;
+                } else {
+                    // No words left in segment - set to boundary point
+                    segments[i].start = boundary;
+                    segments[i].end = boundary;
+                }
+            }
+            if let Some(words) = &segments[i + 1].words {
+                if let (Some(first), Some(last)) = (words.first(), words.last()) {
+                    segments[i + 1].start = first.start;
+                    segments[i + 1].end = last.end;
+                } else {
+                    // No words left in segment - set to boundary point
+                    segments[i + 1].start = boundary;
+                    segments[i + 1].end = boundary;
                 }
             }
         }
@@ -421,6 +451,56 @@ mod tests {
         let words1 = segments[1].words.as_ref().unwrap();
         for word in words1 {
             assert!(word.start >= 3.0, "word start {} should be >= 3.0", word.start);
+        }
+    }
+
+    #[test]
+    fn test_segment_overlap_removes_words_past_boundary() {
+        // Test that words entirely past the midpoint boundary are removed,
+        // and words crossing the boundary are trimmed without collapsing
+        let mut segments = vec![
+            make_segment(vec![
+                make_word("Hello", 1.0, 2.0),
+                make_word(" world", 2.0, 3.5), // crosses boundary at 3.0
+                make_word(" extra", 3.5, 4.0), // entirely past boundary, should be removed
+            ]),
+            make_segment(vec![
+                make_word(" prev", 2.5, 3.5),  // crosses boundary at 3.0
+                make_word(" there", 3.0, 3.5), // entirely before boundary, should be removed
+                make_word("!", 3.5, 4.0),
+            ]),
+        ];
+
+        let vad_intervals = vec![(1.0, 4.0)];
+        let config = VadSnapConfig::default();
+
+        snap_timestamps_to_vad(&mut segments, &vad_intervals, &config).unwrap();
+
+        // Boundary should be at midpoint: (3.5 + 2.5) / 2 = 3.0
+        assert!((segments[0].end - 3.0).abs() < 0.001);
+        assert!((segments[1].start - 3.0).abs() < 0.001);
+
+        // First segment: "Hello" and " world" remain
+        let words0 = segments[0].words.as_ref().unwrap();
+        assert_eq!(words0.len(), 2, "first segment should have 2 words after boundary fix");
+        assert_eq!(words0[0].text, "Hello");
+        assert_eq!(words0[1].text, " world");
+        // " world" end should be trimmed to 3.0
+        assert!((words0[1].end - 3.0).abs() < 0.001);
+        assert!(words0[1].start < 3.0);
+
+        // Second segment: " prev" and "!" remain
+        let words1 = segments[1].words.as_ref().unwrap();
+        assert_eq!(words1.len(), 2, "second segment should have 2 words after boundary fix");
+        assert_eq!(words1[0].text, " prev");
+        assert_eq!(words1[1].text, "!");
+        // " prev" start should be trimmed to 3.0
+        assert!((words1[0].start - 3.0).abs() < 0.001);
+        assert!(words1[0].end > 3.0);
+
+        // Verify no zero-duration words
+        for word in words0.iter().chain(words1.iter()) {
+            assert!(word.end > word.start, "word '{}' has zero/negative duration: [{}, {}]", word.text, word.start, word.end);
         }
     }
 
