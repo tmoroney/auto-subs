@@ -253,6 +253,12 @@ fn trigger_install_update(state: tauri::State<InstallSignal>) {
 /// Mirrors the previous `tauri.conf.json` window config. It starts hidden and is
 /// shown later (after the macOS traffic-light positioner is installed), matching the
 /// existing startup flow.
+///
+/// The native window and webview get an opaque background matching the page's
+/// `--background` colour for the current theme. Without it the OS paints its
+/// default (white / transparent) surface into the area exposed while the window
+/// is being enlarged, before the web content has re-laid-out to fill it. The
+/// frontend keeps this in sync when the user switches theme.
 fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     #[allow(unused_mut)]
     let mut builder =
@@ -282,7 +288,15 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
         builder = builder.zoom_hotkeys_enabled(true);
     }
 
-    builder.build()
+    // The window is still hidden here, so the colour lands before first paint.
+    let window = builder.build()?;
+    let dark = matches!(window.theme(), Ok(tauri::Theme::Dark));
+    let _ = window.set_background_color(Some(if dark {
+        tauri::window::Color(0, 0, 0, 255)
+    } else {
+        tauri::window::Color(255, 255, 255, 255)
+    }));
+    Ok(window)
 }
 
 #[tauri::command]

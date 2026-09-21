@@ -148,6 +148,9 @@
     {
       "identifier": "core:window:allow-toggle-maximize"
     },
+    {
+      "identifier": "core:window:allow-set-background-color"
+    },
     "core:webview:allow-set-webview-zoom",
     "process:default",
     "shell:default",

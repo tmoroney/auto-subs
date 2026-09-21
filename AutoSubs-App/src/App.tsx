@@ -89,6 +89,7 @@ function AppContentBody() {
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
   const mainContentRef = React.useRef<HTMLDivElement>(null)
+  const subtitlePanelRef = React.useRef<HTMLDivElement>(null)
   const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
   const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
   const wasMobileRef = React.useRef(false)
@@ -258,16 +259,31 @@ function AppContentBody() {
     const startWidth = subtitlePanelWidth
     let latestWidth = startWidth
 
+    const maxWidth = getMaxSubtitlePanelWidth()
+    let frame: number | null = null
+
+    // Write the width straight to the DOM while dragging (one write per frame)
+    // so both panels aren't re-rendered on every pointermove; React state
+    // catches up once on release.
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const nextWidth = startWidth + startX - moveEvent.clientX
-      latestWidth = Math.min(
-        getMaxSubtitlePanelWidth(),
-        Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
-      )
-      setSubtitlePanelWidth(latestWidth)
+      latestWidth = Math.min(maxWidth, Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth))
+      if (frame !== null) return
+      frame = window.requestAnimationFrame(() => {
+        frame = null
+        const panel = subtitlePanelRef.current
+        if (panel) panel.style.width = `${latestWidth}px`
+      })
     }
 
     const handlePointerUp = () => {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+        frame = null
+      }
+      const panel = subtitlePanelRef.current
+      if (panel) panel.style.width = `${latestWidth}px`
+      setSubtitlePanelWidth(latestWidth)
       setIsSubtitleViewerResizing(false)
       // Persist the user's chosen width once per drag, not per pointermove.
       updateSetting("subtitlePanelWidth", latestWidth)
@@ -317,6 +333,7 @@ function AppContentBody() {
               </div>
               {showSubtitleViewer && (
                 <div
+                  ref={subtitlePanelRef}
                   className={subtitleViewerClassName}
                   style={{
                     width: isMobile
