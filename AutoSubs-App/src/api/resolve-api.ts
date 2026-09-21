@@ -170,6 +170,8 @@ export interface AddSubtitlesResult {
   result?: {
     ok?: boolean;
     fontSwap?: FontSwapInfo | null;
+    warning?: string;
+    detail?: string;
   } | false;
 }
 

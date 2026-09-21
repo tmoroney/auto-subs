@@ -219,8 +219,16 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
 
     // Surface a language-aware font swap (done server-side in the Lua macro
     // server) so the user knows why their caption font changed.
-    const result = response && typeof response === 'object' ? response.result : undefined;
-    const fontSwap = result && typeof result === 'object' ? result.fontSwap : null;
+    const rawResult = response && typeof response === 'object' ? response.result : undefined;
+    const result = rawResult && typeof rawResult === 'object' ? rawResult : undefined;
+    const fontSwap = result?.fontSwap;
+    const warning = result?.warning;
+    if (warning) {
+      toast.warning(
+        String(warning),
+        { description: result?.detail ? String(result.detail) : undefined },
+      );
+    }
     if (fontSwap) {
       if (fontSwap.to) {
         toast.info(
