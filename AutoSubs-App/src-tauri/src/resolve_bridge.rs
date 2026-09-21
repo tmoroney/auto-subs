@@ -209,56 +209,45 @@ fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
     out.extend_from_slice("\u{FFFD}".as_bytes());
 }
 
-/// Transcode a JSON document that mixes encodings. On Windows the Lua side
-/// builds responses from both UTF-8 strings (values the app sent that Lua
-/// echoes back) and ANSI code-page bytes (strings Resolve's API returns,
-/// like clip names or paths) — a single document can contain both. Inside
-/// string literals, valid UTF-8 sequences pass through and any other
-/// non-ASCII byte decodes as one ANSI char, so neither half is mangled.
-/// Structural bytes are ASCII and pass through untouched.
+/// Transcode a JSON document that may mix encodings. On Windows the Lua
+/// side builds responses from both UTF-8 strings (values the app sent that
+/// Lua echoes back) and ANSI code-page bytes (strings Resolve's API
+/// returns, like clip names or paths) — a single document can contain
+/// both. JSON structure and escapes are pure ASCII, and no UTF-8 or ANSI
+/// byte ≥0x80 can equal `"` or `\`, so a flat pass over the bytes is
+/// enough: valid UTF-8 sequences pass through and any other non-ASCII byte
+/// decodes as one ANSI char.
 fn mixed_encoding_to_utf8(bytes: &[u8]) -> String {
     let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 4);
-    let mut in_string = false;
     let mut i = 0;
     while i < bytes.len() {
         let b = bytes[i];
-        if in_string && b == b'\\' {
-            // JSON escapes are ASCII; copy the pair unchanged.
+        if b < 0x80 {
             out.push(b);
             i += 1;
-            if i < bytes.len() {
-                out.push(bytes[i]);
-                i += 1;
-            }
-        } else if b == b'"' {
-            in_string = !in_string;
-            out.push(b);
-            i += 1;
-        } else if in_string && b >= 0x80 {
-            // Expected UTF-8 sequence length from the lead byte.
-            let len = match b {
-                0xC0..=0xDF => 2,
-                0xE0..=0xEF => 3,
-                0xF0..=0xF7 => 4,
-                _ => 0,
-            };
-            if len > 0
-                && i + len <= bytes.len()
-                && std::str::from_utf8(&bytes[i..i + len]).is_ok()
-            {
-                out.extend_from_slice(&bytes[i..i + len]);
-                i += len;
-            } else {
-                ansi_byte_to_utf8(&mut out, b);
-                i += 1;
-            }
+            continue;
+        }
+        // Expected UTF-8 sequence length from the lead byte.
+        let len = match b {
+            0xC0..=0xDF => 2,
+            0xE0..=0xEF => 3,
+            0xF0..=0xF7 => 4,
+            _ => 0,
+        };
+        if len > 0
+            && i + len <= bytes.len()
+            && std::str::from_utf8(&bytes[i..i + len]).is_ok()
+        {
+            out.extend_from_slice(&bytes[i..i + len]);
+            i += len;
         } else {
-            out.push(b);
+            ansi_byte_to_utf8(&mut out, b);
             i += 1;
         }
     }
-    // Valid UTF-8 by construction except a malformed `\<non-ascii>` pair.
-    String::from_utf8(out).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
+    // Every byte ≥0x80 was either a verified UTF-8 sequence or a transcoded
+    // char, and ASCII passes through — the output is valid UTF-8.
+    String::from_utf8(out).unwrap()
 }
 
 /// Decode a `<id>:<base64 json>` response value. Returns the JSON body only
