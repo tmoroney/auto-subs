@@ -70,12 +70,14 @@ pub fn extract_vad_intervals(
 /// several). A word sitting entirely inside a silence gap is left untouched —
 /// clamping it to a distant boundary would collapse or teleport it.
 fn snap_word_to_vad(word: &mut WordTimestamp, vad: &[(f64, f64)], config: &VadSnapConfig) {
-    // Intervals are sorted by start; skip every interval ending before the word.
-    let i = vad.partition_point(|&(_, vad_end)| word.start > vad_end);
+    // Intervals are sorted by start; skip every interval ending at or before
+    // the word's start. A word merely touching a VAD boundary isn't owned by
+    // that interval — clamping it would collapse the word to zero duration.
+    let i = vad.partition_point(|&(_, vad_end)| word.start >= vad_end);
     let Some(&(vad_start, vad_end)) = vad.get(i) else {
         return;
     };
-    if word.end < vad_start {
+    if word.end <= vad_start {
         return; // fully inside a gap before this interval
     }
     if word.start < vad_start && vad_start - word.start <= config.max_leading_pad_sec {
@@ -108,19 +110,27 @@ fn resolve_word_overlaps(words: &mut [WordTimestamp]) {
 }
 
 /// Enforce non-overlapping segments with a single forward pass. Overlapping
-/// neighbours meet at the midpoint of the overlap; a segment's next start only
-/// ever moves later, so no iteration is needed.
+/// neighbours meet at the midpoint of the overlap, floored by the previous
+/// pair's boundary — a middle segment squeezed from both sides can collapse to
+/// zero width, but it can never slide back under the boundary already fixed
+/// behind it, so a single pass provably converges.
 fn resolve_segment_overlaps(segments: &mut [Segment]) {
+    let mut prev_boundary: Option<f64> = None;
     for i in 0..segments.len().saturating_sub(1) {
         let (before, after) = segments.split_at_mut(i + 1);
         let prev = &mut before[i];
         let next = &mut after[0];
         if prev.end <= next.start {
+            prev_boundary = None;
             continue;
         }
-        let boundary = (prev.end + next.start) / 2.0;
+        let mut boundary = (prev.end + next.start) / 2.0;
+        if let Some(floor) = prev_boundary {
+            boundary = boundary.max(floor);
+        }
+        let floor = prev_boundary.unwrap_or(0.0);
         if let Some(words) = prev.words.as_mut() {
-            clamp_words_before_boundary(words, boundary);
+            clamp_words_before_boundary(words, boundary, floor);
             if let (Some(first), Some(last)) = (words.first(), words.last()) {
                 prev.start = prev.start.min(first.start);
                 prev.end = last.end;
@@ -137,13 +147,15 @@ fn resolve_segment_overlaps(segments: &mut [Segment]) {
         } else {
             next.start = boundary;
         }
+        prev_boundary = Some(boundary);
     }
 }
 
 /// Clamp word ends so none reaches past `boundary`, walking backwards so words
-/// that land entirely past it compress to MIN_WORD_DURATION rather than
-/// dropping out or ending late.
-fn clamp_words_before_boundary(words: &mut [WordTimestamp], boundary: f64) {
+/// that land entirely past it compress to MIN_WORD_DURATION where possible.
+/// `floor` is the boundary fixed for the previous segment pair: no word start
+/// may move below it, which is what makes the single forward pass safe.
+fn clamp_words_before_boundary(words: &mut [WordTimestamp], boundary: f64, floor: f64) {
     let count = words.len();
     for i in (0..count).rev() {
         let limit = if i + 1 == count {
@@ -155,7 +167,7 @@ fn clamp_words_before_boundary(words: &mut [WordTimestamp], boundary: f64) {
             words[i].end = limit;
         }
         if words[i].start >= words[i].end {
-            words[i].start = (words[i].end - MIN_WORD_DURATION).max(0.0);
+            words[i].start = (words[i].end - MIN_WORD_DURATION).max(floor);
         }
     }
 }
@@ -206,10 +218,10 @@ mod tests {
 
     #[test]
     fn test_trailing_overhang_truncation() {
-        // Word extends 1.5s into silence after VAD end at 5.0s
+        // Word starts inside speech and extends 1.5s past VAD end at 5.0s
         let mut segments = vec![make_segment(vec![
             make_word("Hello", 4.0, 5.0),
-            make_word("world", 5.0, 6.5),
+            make_word("world", 4.5, 6.5),
         ])];
 
         let vad_intervals = vec![(4.0, 5.0)];
@@ -217,6 +229,21 @@ mod tests {
 
         // "world" end should be clamped to VAD end (5.0) since overhang (1.5s) > max_pad (0.5s)
         assert_eq!(segments[0].words.as_ref().unwrap()[1].end, 5.0);
+        assert!(segments[0].words.as_ref().unwrap()[1].start < 5.0);
+    }
+
+    #[test]
+    fn test_word_starting_at_vad_end_not_owned() {
+        // Word starts exactly at the VAD offset — it belongs to the silence
+        // after speech, so it must not be clamped (clamping would zero it out).
+        let mut segments = vec![make_segment(vec![make_word("noise", 5.0, 6.5)])];
+
+        let vad_intervals = vec![(4.0, 5.0)];
+        snap_timestamps_to_vad(&mut segments, &vad_intervals, &VadSnapConfig::default());
+
+        let word = &segments[0].words.as_ref().unwrap()[0];
+        assert_eq!(word.start, 5.0);
+        assert_eq!(word.end, 6.5);
     }
 
     #[test]
@@ -430,5 +457,28 @@ mod tests {
                 word.end
             );
         }
+    }
+
+    #[test]
+    fn test_middle_segment_squeezed_by_two_neighbours() {
+        // Regression: a middle segment squeezed from both sides used to get its
+        // start pulled back below the boundary already fixed behind it.
+        let mut segments = vec![
+            make_segment(vec![make_word("a", 0.0, 10.0)]),
+            make_segment(vec![make_word("b", 4.0, 8.0)]),
+            make_segment(vec![make_word("c", 5.0, 9.0)]),
+        ];
+
+        let vad_intervals = vec![(0.0, 10.0)];
+        snap_timestamps_to_vad(&mut segments, &vad_intervals, &VadSnapConfig::default());
+
+        // A/B resolves at 7.0; B/C then resolves at boundary max(6.5, 7.0) = 7.0,
+        // collapsing B to a point at 7.0 rather than overlapping A again.
+        assert!(segments[0].end <= segments[1].start,
+            "segments overlap: {:?} vs {:?}", segments[0].end, segments[1].start);
+        assert!(segments[1].end <= segments[2].start);
+        assert!((segments[0].end - 7.0).abs() < 0.001);
+        assert!(segments[1].start >= 7.0);
+        assert!(segments[2].start >= segments[1].end);
     }
 }
