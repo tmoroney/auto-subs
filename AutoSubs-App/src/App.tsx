@@ -324,7 +324,7 @@ function AppContentBody() {
           {/* Main Content Area with Resizable Panels */}
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[370px] flex-1 overflow-hidden [contain:layout_style]">
+              <div className="min-h-0 min-w-[370px] flex-1 overflow-hidden">
                 <TranscriptionPanel
                   onViewSubtitles={handleOpenSubtitleViewer}
                   onTranscriptCreated={handleTranscriptCreated}
