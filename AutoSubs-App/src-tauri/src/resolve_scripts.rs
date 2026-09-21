@@ -25,10 +25,15 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::resolve_bridge::fusion_support_dir;
+use crate::resolve_bridge::{fusion_support_dir, mailbox_dir};
 
 const RESOURCES_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_RESOURCES_FOLDER__]]";
 const EXECUTABLE_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_APP_EXECUTABLE__]]";
+// Unlike the path placeholders this one is a bare Lua expression in the
+// template, so an unsubstituted copy reads it as a nil global — installers
+// that don't know about it (macOS pkg, shared Linux package) get the
+// env-derived path fallback automatically.
+const MAILBOX_PLACEHOLDER: &[u8] = b"__AUTOSUBS_MAILBOX_DIR__";
 
 /// Entry point from Tauri setup. Never fails the app: anything unexpected is a
 /// `tracing::warn` and we move on.
@@ -94,6 +99,19 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
 
     let resources_bytes = lua_path_bytes(&resources_folder);
     let executable_bytes = lua_path_bytes(&app_executable);
+    // Baked in so the Lua side doesn't have to rebuild the mailbox path from
+    // LOCALAPPDATA, which is mangled when the profile isn't representable in
+    // the ANSI code page. `nil` keeps Lua's env-derived fallback.
+    let mailbox_expr = match mailbox_dir() {
+        Ok(dir) => {
+            // The dir is otherwise created lazily on the first request;
+            // GetShortPathNameW can only shorten a path that exists, and the
+            // 8.3 name is the fallback when the profile isn't ANSI-safe.
+            let _ = fs::create_dir_all(&dir);
+            lua_long_string(&lua_path_bytes(&dir))
+        }
+        Err(_) => b"nil".to_vec(),
+    };
 
     write_template(
         &resource_dir,
@@ -101,6 +119,7 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
         &scripts_root.join("Utility").join("AutoSubs.lua"),
         &resources_bytes,
         &executable_bytes,
+        &mailbox_expr,
     )?;
 
     // Legacy cleanup the installers used to do; harmless to keep doing here.
@@ -127,12 +146,16 @@ fn write_template(
     target: &Path,
     resources_bytes: &[u8],
     executable_bytes: &[u8],
+    mailbox_expr: &[u8],
 ) -> Result<(), String> {
     let template_path = resource_dir.join(template_rel);
     let template = fs::read(&template_path)
         .map_err(|e| format!("read {}: {e}", template_path.display()))?;
 
     let content = substitute(template, resources_bytes, executable_bytes);
+    // Unlike the paths above, this replacement is a whole Lua expression —
+    // a `[[...]]` string or `nil` — not just path bytes.
+    let content = replace_all(content, MAILBOX_PLACEHOLDER, &mailbox_expr);
 
     if let Ok(existing) = fs::read(target) {
         if existing == content {

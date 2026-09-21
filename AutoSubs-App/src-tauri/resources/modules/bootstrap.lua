@@ -84,7 +84,14 @@ end
 --         startup, so a Stop aimed at a predecessor never kills the fresh
 --         loop — and one persisted to disk by a stray SavePrefs is harmless.
 local function fusion_object()
-    return rawget(_G, "fusion") or rawget(_G, "fu")
+    local fu = rawget(_G, "fusion") or rawget(_G, "fu")
+    if fu == nil then
+        local r = rawget(_G, "resolve")
+        if r and type(r.Fusion) == "function" then
+            fu = r:Fusion()
+        end
+    end
+    return fu
 end
 
 local function bridge_alive(fu)
@@ -131,7 +138,11 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     local platform = detect_platform()
     _G.AUTOSUBS_PLATFORM = platform
     _G.AUTOSUBS_SEP = (platform == "Windows") and "\\" or "/"
-    _G.AUTOSUBS_MAILBOX = mailbox_dir(platform)
+    -- The installed launcher bakes the mailbox dir in (os.getenv answers are
+    -- ANSI bytes on Windows, which breaks when a profile name isn't in the
+    -- system code page); the env-derived path is the fallback for scripts
+    -- that can't carry a per-user value, e.g. the shared Linux package one.
+    _G.AUTOSUBS_MAILBOX = (opts and opts.mailbox_dir) or mailbox_dir(platform)
     _G.AutoSubs_base64 = base64_encode
 
     -- Launch-mode coordination (see the handshake comment above).

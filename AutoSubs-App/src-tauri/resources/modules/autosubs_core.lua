@@ -2559,7 +2559,16 @@ local function bridge_ack(id)
 end
 
 local function bridge_respond(id, body_json)
-    bridge_write("Global.AutoSubsBridge.Response", id .. ":" .. AutoSubs_base64(body_json))
+    -- Response strings can hold bytes ≥0x80 in two encodings at once: ANSI
+    -- code-page bytes from Resolve's API (names, paths) and UTF-8 from values
+    -- the app sent that we echo back. Neither survives as raw JSON text, so
+    -- each such byte is escaped as a \uE0xx private-use marker — the payload
+    -- stays pure ASCII and the app maps the markers back to bytes, decoding
+    -- each string as UTF-8-or-ANSI on its side.
+    local safe = body_json:gsub("[\128-\255]", function(c)
+        return string.format("\\u%04x", 0xE000 + c:byte())
+    end)
+    bridge_write("Global.AutoSubsBridge.Response", id .. ":" .. AutoSubs_base64(safe))
 end
 
 -- Claim a mailbox request so only one loop handles it. A raced takeover or

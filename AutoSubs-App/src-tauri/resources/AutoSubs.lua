@@ -36,5 +36,11 @@ end
 -- scriptlib ran it via fusion:Execute, which held Fusion's script executor for
 -- the whole session (see docs/resident-bridge-fusion-regression.md). A loop it
 -- left running exits on this takeover, which frees the executor again.
+-- mailbox_dir: the app substitutes an ANSI-safe [[path]] here on Windows so the
+-- Lua side never rebuilds it from LOCALAPPDATA — that env lookup is mangled
+-- when a profile name isn't representable in the system's ANSI code page. Left
+-- unsubstituted it reads as a nil global and bootstrap falls back to the env
+-- path (fine on macOS/Linux, where env strings are UTF-8).
 local boot = assert(loadfile(bootstrap_path))()
-boot(resources_folder, app_executable, false, { mode = "manual" })
+boot(resources_folder, app_executable, false,
+    { mode = "manual", mailbox_dir = __AUTOSUBS_MAILBOX_DIR__ })
