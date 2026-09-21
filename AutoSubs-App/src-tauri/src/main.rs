@@ -253,6 +253,12 @@ fn trigger_install_update(state: tauri::State<InstallSignal>) {
 /// Mirrors the previous `tauri.conf.json` window config. It starts hidden and is
 /// shown later (after the macOS traffic-light positioner is installed), matching the
 /// existing startup flow.
+///
+/// The native window and webview get an opaque background matching the page's
+/// `--background` colour for the current theme. Without it the OS paints its
+/// default (white / transparent) surface into the area exposed while the window
+/// is being enlarged, before the web content has re-laid-out to fill it. The
+/// frontend keeps this in sync when the user switches theme.
 fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     #[allow(unused_mut)]
     let mut builder =
@@ -282,7 +288,96 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
         builder = builder.zoom_hotkeys_enabled(true);
     }
 
-    builder.build()
+    // The window is still hidden here, so the colour lands before first paint.
+    let window = builder.build()?;
+    let dark = matches!(window.theme(), Ok(tauri::Theme::Dark));
+    if let Err(e) = window.set_background_color(Some(if dark {
+        tauri::window::Color(0, 0, 0, 255)
+    } else {
+        tauri::window::Color(255, 255, 255, 255)
+    })) {
+        tracing::warn!("Failed to set native window background: {}", e);
+    }
+    if let Err(e) = window.set_theme(Some(if dark {
+        tauri::Theme::Dark
+    } else {
+        tauri::Theme::Light
+    })) {
+        tracing::warn!("Failed to set native window theme: {}", e);
+    }
+    #[cfg(target_os = "macos")]
+    install_smooth_zoom(&window);
+    Ok(window)
+}
+
+/// Route the title-bar double-click / zoom button through a non-blocking
+/// animation so the web content re-lays-out on every frame of the zoom.
+///
+/// AppKit's own `zoom:` animates with a blocking `setFrame:display:animate:`
+/// loop on the main thread; WKWebView's layer commits from the web process
+/// can't be delivered while it spins, so the page only catches up once the
+/// animation ends (blank strip when growing, stale content snapping when
+/// shrinking). Driving the same frame change through the `animator` proxy
+/// runs it from the run loop instead, so each step is followed by a layout.
+#[cfg(target_os = "macos")]
+fn install_smooth_zoom(window: &tauri::WebviewWindow) {
+    use objc2::runtime::{AnyClass, AnyObject, Sel};
+    use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSWindow};
+    use objc2_foundation::NSRect;
+    use std::sync::Mutex;
+
+    // Frame to restore on the next zoom after we expanded to the screen.
+    static SAVED_FRAME: Mutex<Option<NSRect>> = Mutex::new(None);
+
+    fn rect_eq(a: NSRect, b: NSRect) -> bool {
+        (a.origin.x - b.origin.x).abs() < 1.0
+            && (a.origin.y - b.origin.y).abs() < 1.0
+            && (a.size.width - b.size.width).abs() < 1.0
+            && (a.size.height - b.size.height).abs() < 1.0
+    }
+
+    extern "C-unwind" fn zoom(this: &NSWindow, _sel: Sel, _sender: *mut AnyObject) {
+        let Some(screen) = this.screen() else { return };
+        let standard = screen.visibleFrame();
+        let current = this.frame();
+
+        let mut saved = SAVED_FRAME.lock().unwrap_or_else(|e| e.into_inner());
+        let target = match saved.take() {
+            Some(previous) if rect_eq(current, standard) => previous,
+            _ => {
+                if !rect_eq(current, standard) {
+                    *saved = Some(current);
+                }
+                standard
+            }
+        };
+        drop(saved);
+
+        // Same duration AppKit would use for its own (blocking) zoom animation.
+        let duration = this.animationResizeTime(target);
+        NSAnimationContext::beginGrouping();
+        NSAnimationContext::currentContext().setDuration(duration);
+        this.animator().setFrame_display(target, true);
+        NSAnimationContext::endGrouping();
+    }
+
+    let ns_window = match window.ns_window() {
+        Ok(ptr) => ptr,
+        Err(e) => {
+            tracing::warn!("Failed to get NSWindow for zoom override: {}", e);
+            return;
+        }
+    };
+
+    unsafe {
+        let obj: &AnyObject = &*(ns_window as *const AnyObject);
+        let cls: *const AnyClass = obj.class();
+        let imp: objc2::runtime::Imp =
+            std::mem::transmute(zoom as extern "C-unwind" fn(&NSWindow, Sel, *mut AnyObject));
+        // Added to tao's NSWindow subclass, so it overrides NSWindow's default.
+        // Returns false if a previous call already added it, which is fine.
+        objc2::ffi::class_addMethod(cls as *mut AnyClass, objc2::sel!(zoom:), imp, c"v@:@".as_ptr());
+    }
 }
 
 #[tauri::command]

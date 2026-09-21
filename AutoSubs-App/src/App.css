@@ -5,6 +5,7 @@
 
 @layer base {
     :root {
+        color-scheme: light;
         --background: 0 0% 100%;
         --foreground: 210 25% 7.8431%;
         --card: 180 6.6667% 97.0588%;
@@ -78,6 +79,7 @@
     }
 
     .dark {
+        color-scheme: dark;
         --background: 0 0% 0%;
         --foreground: 200 6.6667% 91.1765%;
         --card: 228 9.8039% 10%;
@@ -238,6 +240,14 @@
     transition: none;
 }
 
+body.app-panel-resizing,
+body.app-panel-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .animate-subtitle-sidebar-in,
     .animate-subtitle-sidebar-out {
@@ -360,4 +370,3 @@
         opacity: 0;
     }
 }
-

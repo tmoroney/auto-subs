@@ -89,6 +89,7 @@ function AppContentBody() {
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
   const mainContentRef = React.useRef<HTMLDivElement>(null)
+  const subtitlePanelRef = React.useRef<HTMLDivElement>(null)
   const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
   const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
   const wasMobileRef = React.useRef(false)
@@ -252,23 +253,41 @@ function AppContentBody() {
     if (isMobile) return
 
     event.preventDefault()
+    document.body.classList.add("app-panel-resizing")
     setIsSubtitleViewerResizing(true)
 
     const startX = event.clientX
     const startWidth = subtitlePanelWidth
     let latestWidth = startWidth
 
+    const maxWidth = getMaxSubtitlePanelWidth()
+    let frame: number | null = null
+
+    // Write the width straight to the DOM while dragging (one write per frame)
+    // so both panels aren't re-rendered on every pointermove; React state
+    // catches up once on release.
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const nextWidth = startWidth + startX - moveEvent.clientX
-      latestWidth = Math.min(
-        getMaxSubtitlePanelWidth(),
-        Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth),
-      )
-      setSubtitlePanelWidth(latestWidth)
+      latestWidth = Math.min(maxWidth, Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth))
+      if (frame !== null) return
+      frame = window.requestAnimationFrame(() => {
+        frame = null
+        const panel = subtitlePanelRef.current
+        if (panel) panel.style.width = `${latestWidth}px`
+      })
     }
 
     const handlePointerUp = () => {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+        frame = null
+      }
+      latestWidth = Math.min(getMaxSubtitlePanelWidth(), latestWidth)
+      const panel = subtitlePanelRef.current
+      if (panel) panel.style.width = `${latestWidth}px`
+      setSubtitlePanelWidth(latestWidth)
       setIsSubtitleViewerResizing(false)
+      document.body.classList.remove("app-panel-resizing")
       // Persist the user's chosen width once per drag, not per pointermove.
       updateSetting("subtitlePanelWidth", latestWidth)
       window.removeEventListener("pointermove", handlePointerMove)
@@ -298,7 +317,7 @@ function AppContentBody() {
 
   const subtitleViewerClassName = isMobile
     ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
-    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card`
+    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card [contain:layout_style]`
 
   return (
     <TooltipProvider>
@@ -317,6 +336,7 @@ function AppContentBody() {
               </div>
               {showSubtitleViewer && (
                 <div
+                  ref={subtitlePanelRef}
                   className={subtitleViewerClassName}
                   style={{
                     width: isMobile
