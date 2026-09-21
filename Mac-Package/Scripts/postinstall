@@ -35,9 +35,13 @@ UTILITY_PATH="$SCRIPTS_DIR/Utility"
 # it current across updates. `tee` runs as the console user so the app
 # (running as them) can rewrite the file.
 "${AS_USER[@]}" mkdir -p "$UTILITY_PATH"
+# Escape sed replacement metacharacters (& | \) — the console user's home is
+# arbitrary (directory-service homes can contain e.g. &).
+MAILBOX_PATH="${USER_HOME}/Library/Application Support/com.autosubs/resolve-bridge"
+MAILBOX_PATH_ESC="$(printf '%s' "$MAILBOX_PATH" | sed -e 's/[&|\\]/\\&/g')"
 sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
-    -e "s|\[\[__AUTOSUBS_MAILBOX_DIR__\]\]|[[${USER_HOME}/Library/Application Support/com.autosubs/resolve-bridge]]|g" \
+    -e "s|\[\[__AUTOSUBS_MAILBOX_DIR__\]\]|[[${MAILBOX_PATH_ESC}]]|g" \
     "$RESOURCES_PATH/AutoSubs.lua" | "${AS_USER[@]}" tee "$UTILITY_PATH/AutoSubs.lua" > /dev/null
 
 # 3.10.0 installed a startup scriptlib that ran the bridge via fusion:Execute,

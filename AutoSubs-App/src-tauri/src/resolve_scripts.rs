@@ -99,9 +99,16 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     // LOCALAPPDATA, which is mangled when the profile isn't representable in
     // the ANSI code page. `nil` keeps Lua's env-derived fallback (the Linux
     // packages share one pre-generated script across users).
-    let mailbox_expr = mailbox_dir()
-        .map(|d| lua_long_string(&lua_path_bytes(&d)))
-        .unwrap_or_else(|_| b"nil".to_vec());
+    let mailbox_expr = match mailbox_dir() {
+        Ok(dir) => {
+            // The dir is otherwise created lazily on the first request;
+            // GetShortPathNameW can only shorten a path that exists, and the
+            // 8.3 name is the fallback when the profile isn't ANSI-safe.
+            let _ = fs::create_dir_all(&dir);
+            lua_long_string(&lua_path_bytes(&dir))
+        }
+        Err(_) => b"nil".to_vec(),
+    };
 
     write_template(
         &resource_dir,

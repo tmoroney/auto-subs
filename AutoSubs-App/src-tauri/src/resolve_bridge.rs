@@ -184,20 +184,64 @@ fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     result
 }
 
+/// Strings the Lua side got from Resolve's API are ANSI code-page bytes on
+/// Windows (e.g. a Cyrillic user profile path inside a media path or clip
+/// name). Decode them losslessly so names round-trip: the frontend echoes
+/// values like `templateName` back and Lua compares them byte-for-byte.
+#[cfg(target_os = "windows")]
+fn ansi_codepage_to_utf8(bytes: &[u8]) -> String {
+    use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
+    unsafe {
+        let needed = MultiByteToWideChar(
+            CP_ACP,
+            0,
+            bytes.as_ptr(),
+            bytes.len() as i32,
+            std::ptr::null_mut(),
+            0,
+        );
+        if needed > 0 {
+            let mut wide = vec![0u16; needed as usize];
+            let written = MultiByteToWideChar(
+                CP_ACP,
+                0,
+                bytes.as_ptr(),
+                bytes.len() as i32,
+                wide.as_mut_ptr(),
+                needed,
+            );
+            if written > 0 {
+                wide.truncate(written as usize);
+                if let Ok(s) = String::from_utf16(&wide) {
+                    return s;
+                }
+            }
+        }
+    }
+    String::from_utf8_lossy(bytes).into_owned()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn ansi_codepage_to_utf8(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).into_owned()
+}
+
 /// Decode a `<id>:<base64 json>` response value. Returns the JSON body only
 /// when it is valid base64 and parseable JSON — anything else means we
-/// caught the prefs file half-written and should keep polling. Decoding is
-/// lossy rather than UTF-8-strict: strings the Lua side got from Resolve's
-/// API may be ANSI code-page bytes on Windows (e.g. a Cyrillic user profile
-/// path), and dropping the whole response would report a healthy bridge as
-/// unresponsive.
+/// caught the prefs file half-written and should keep polling. Payloads are
+/// normally UTF-8; non-UTF-8 payloads are decoded as the Windows ANSI code
+/// page so Resolve-supplied names survive instead of either being dropped
+/// (reporting a healthy bridge as unresponsive) or mangled.
 fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String>> {
     let (rid, encoded) = value.split_once(':')?;
     if rid != id {
         return None;
     }
     let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).ok()?;
-    let text = String::from_utf8_lossy(&bytes).into_owned();
+    let text = match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(err) => ansi_codepage_to_utf8(err.as_bytes()),
+    };
     serde_json::from_str::<serde_json::Value>(&text).ok()?;
     Some(Ok(text))
 }
