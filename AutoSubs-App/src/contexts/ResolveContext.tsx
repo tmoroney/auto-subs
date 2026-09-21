@@ -228,11 +228,14 @@ export function ResolveProvider({ children }: { children: React.ReactNode }) {
     const failed = result?.failed ?? 0;
     const total = result?.total ?? 0;
     if (failed > 0 && total > 0) {
-      const hint = result?.skipped
-        ? i18n.t("captions.send.skippedHint", { count: result.skipped })
-        : result?.noFusionComp
-          ? i18n.t("captions.send.blockedHint")
-          : result?.detail;
+      // Bounds-skips and blocked clips can co-occur; explain every cause.
+      const hints = [
+        result?.skipped ? i18n.t("captions.send.skippedHint") : null,
+        result?.noFusionComp ? i18n.t("captions.send.blockedHint") : null,
+      ]
+        .filter((h): h is string => h != null)
+        .join(" ");
+      const hint = hints !== "" ? hints : result?.detail;
       toast.warning(
         i18n.t("captions.send.placedPartial", { placed: total - failed, total }),
         { description: hint },
