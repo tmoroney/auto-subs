@@ -137,63 +137,73 @@ pub fn snap_timestamps_to_vad(
     for i in 0..segments.len().saturating_sub(1) {
         if segments[i].end > segments[i + 1].start {
             let boundary = (segments[i].end + segments[i + 1].start) / 2.0;
+            const MIN_WORD_DURATION: f64 = 0.01; // 10ms minimum word duration to prevent zero-duration collapse
 
-            // Adjust segment boundaries
-            segments[i].end = boundary;
-            segments[i + 1].start = boundary;
-
-            // Adjust words in preceding segment
-            // - If word crosses boundary (start < boundary < end), trim end to boundary
-            // - If word is entirely past boundary (start >= boundary), mark for removal
+            // 1. Adjust preceding segment words (ensure all end <= boundary without dropping any words)
             if let Some(words) = &mut segments[i].words {
-                for word in words.iter_mut() {
-                    if word.start < boundary && word.end > boundary {
-                        word.end = boundary;
-                    } else if word.start >= boundary {
-                        word.start = boundary;
-                        word.end = boundary;
+                let count = words.len();
+                if count > 0 {
+                    // Clamp last word to boundary
+                    if words[count - 1].end > boundary {
+                        words[count - 1].end = boundary;
+                        if words[count - 1].start >= boundary {
+                            words[count - 1].start = (boundary - MIN_WORD_DURATION).max(0.0);
+                        }
+                    }
+
+                    // Move backwards through words to ensure sequential start < end ordering
+                    for idx in (0..count - 1).rev() {
+                        if words[idx].end > words[idx + 1].start {
+                            words[idx].end = words[idx + 1].start;
+                            if words[idx].start >= words[idx].end {
+                                words[idx].start = (words[idx].end - MIN_WORD_DURATION).max(0.0);
+                            }
+                        }
                     }
                 }
-                // Remove zero-duration or invalid words
-                words.retain(|w| w.end > w.start);
             }
 
-            // Adjust words in succeeding segment
-            // - If word crosses boundary (start < boundary < end), trim start to boundary
-            // - If word is entirely before boundary (end <= boundary), mark for removal
+            // 2. Adjust succeeding segment words (ensure all start >= boundary without dropping any words)
             if let Some(words) = &mut segments[i + 1].words {
-                for word in words.iter_mut() {
-                    if word.start < boundary && word.end > boundary {
-                        word.start = boundary;
-                    } else if word.end <= boundary {
-                        word.start = boundary;
-                        word.end = boundary;
+                let count = words.len();
+                if count > 0 {
+                    // Clamp first word start to boundary
+                    if words[0].start < boundary {
+                        words[0].start = boundary;
+                        if words[0].end <= boundary {
+                            words[0].end = boundary + MIN_WORD_DURATION;
+                        }
+                    }
+
+                    // Move forwards through words to ensure sequential start < end ordering
+                    for idx in 1..count {
+                        if words[idx].start < words[idx - 1].end {
+                            words[idx].start = words[idx - 1].end;
+                            if words[idx].end <= words[idx].start {
+                                words[idx].end = words[idx].start + MIN_WORD_DURATION;
+                            }
+                        }
                     }
                 }
-                // Remove zero-duration or invalid words
-                words.retain(|w| w.end > w.start);
             }
 
-            // Recalculate segment bounds from remaining words after boundary adjustment
+            // 3. Recalculate true segment boundaries based on adjusted words
             if let Some(words) = &segments[i].words {
                 if let (Some(first), Some(last)) = (words.first(), words.last()) {
-                    segments[i].start = first.start;
+                    segments[i].start = segments[i].start.min(first.start);
                     segments[i].end = last.end;
-                } else {
-                    // No words left in segment - set to boundary point
-                    segments[i].start = boundary;
-                    segments[i].end = boundary;
                 }
+            } else {
+                segments[i].end = boundary;
             }
+
             if let Some(words) = &segments[i + 1].words {
                 if let (Some(first), Some(last)) = (words.first(), words.last()) {
                     segments[i + 1].start = first.start;
-                    segments[i + 1].end = last.end;
-                } else {
-                    // No words left in segment - set to boundary point
-                    segments[i + 1].start = boundary;
-                    segments[i + 1].end = boundary;
+                    segments[i + 1].end = segments[i + 1].end.max(last.end);
                 }
+            } else {
+                segments[i + 1].start = boundary;
             }
         }
     }
@@ -414,8 +424,12 @@ mod tests {
         // Word timestamps should also be clamped to the new boundaries
         let words0 = segments[0].words.as_ref().unwrap();
         let words1 = segments[1].words.as_ref().unwrap();
+        assert_eq!(words0.len(), 1, "first segment should preserve its word");
+        assert_eq!(words1.len(), 1, "second segment should preserve its word");
         assert_eq!(words0[0].end, 2.75); // "Hello" end clamped to boundary
         assert_eq!(words1[0].start, 2.75); // "world" start clamped to boundary
+        assert!(words0[0].end > words0[0].start);
+        assert!(words1[0].end > words1[0].start);
     }
 
     #[test]
@@ -441,32 +455,36 @@ mod tests {
         assert!((segments[0].end - 3.0).abs() < 0.001);
         assert!((segments[1].start - 3.0).abs() < 0.001);
 
-        // All words in first segment should have end <= 3.0
+        // All words in first segment should have end <= 3.0 (with minimum duration preserved)
         let words0 = segments[0].words.as_ref().unwrap();
+        assert_eq!(words0.len(), 2, "first segment should preserve both words");
         for word in words0 {
             assert!(word.end <= 3.0, "word end {} should be <= 3.0", word.end);
+            assert!(word.end > word.start, "word '{}' has zero/negative duration", word.text);
         }
 
-        // All words in second segment should have start >= 3.0
+        // All words in second segment should have start >= 3.0 (with minimum duration preserved)
         let words1 = segments[1].words.as_ref().unwrap();
+        assert_eq!(words1.len(), 2, "second segment should preserve both words");
         for word in words1 {
             assert!(word.start >= 3.0, "word start {} should be >= 3.0", word.start);
+            assert!(word.end > word.start, "word '{}' has zero/negative duration", word.text);
         }
     }
 
     #[test]
-    fn test_segment_overlap_removes_words_past_boundary() {
-        // Test that words entirely past the midpoint boundary are removed,
-        // and words crossing the boundary are trimmed without collapsing
+    fn test_segment_overlap_preserves_all_words() {
+        // Test that ALL words are preserved when segments overlap,
+        // with timestamps adjusted to maintain non-zero duration
         let mut segments = vec![
             make_segment(vec![
                 make_word("Hello", 1.0, 2.0),
                 make_word(" world", 2.0, 3.5), // crosses boundary at 3.0
-                make_word(" extra", 3.5, 4.0), // entirely past boundary, should be removed
+                make_word(" extra", 3.5, 4.0), // entirely past boundary
             ]),
             make_segment(vec![
                 make_word(" prev", 2.5, 3.5),  // crosses boundary at 3.0
-                make_word(" there", 3.0, 3.5), // entirely before boundary, should be removed
+                make_word(" there", 3.0, 3.5), // entirely before boundary
                 make_word("!", 3.5, 4.0),
             ]),
         ];
@@ -480,27 +498,40 @@ mod tests {
         assert!((segments[0].end - 3.0).abs() < 0.001);
         assert!((segments[1].start - 3.0).abs() < 0.001);
 
-        // First segment: "Hello" and " world" remain
+        // All 3 words in first segment should be preserved
         let words0 = segments[0].words.as_ref().unwrap();
-        assert_eq!(words0.len(), 2, "first segment should have 2 words after boundary fix");
+        assert_eq!(words0.len(), 3, "first segment should preserve all 3 words");
         assert_eq!(words0[0].text, "Hello");
         assert_eq!(words0[1].text, " world");
-        // " world" end should be trimmed to 3.0
+        assert_eq!(words0[2].text, " extra");
+
+        // " world" end should be trimmed to boundary (3.0)
         assert!((words0[1].end - 3.0).abs() < 0.001);
         assert!(words0[1].start < 3.0);
 
-        // Second segment: " prev" and "!" remain
+        // " extra" should be moved to end at boundary with minimum duration
+        assert!(words0[2].end <= 3.0);
+        assert!(words0[2].end > words0[2].start);
+
+        // All 3 words in second segment should be preserved
         let words1 = segments[1].words.as_ref().unwrap();
-        assert_eq!(words1.len(), 2, "second segment should have 2 words after boundary fix");
+        assert_eq!(words1.len(), 3, "second segment should preserve all 3 words");
         assert_eq!(words1[0].text, " prev");
-        assert_eq!(words1[1].text, "!");
-        // " prev" start should be trimmed to 3.0
+        assert_eq!(words1[1].text, " there");
+        assert_eq!(words1[2].text, "!");
+
+        // " prev" start should be trimmed to boundary (3.0)
         assert!((words1[0].start - 3.0).abs() < 0.001);
         assert!(words1[0].end > 3.0);
+
+        // " there" should start at or after boundary
+        assert!(words1[1].start >= 3.0);
+        assert!(words1[1].end > words1[1].start);
 
         // Verify no zero-duration words
         for word in words0.iter().chain(words1.iter()) {
             assert!(word.end > word.start, "word '{}' has zero/negative duration: [{}, {}]", word.text, word.start, word.end);
+            assert!(word.end - word.start >= 0.009, "word '{}' duration too small: {}", word.text, word.end - word.start);
         }
     }
 
