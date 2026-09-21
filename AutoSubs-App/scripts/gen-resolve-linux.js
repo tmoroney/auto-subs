@@ -23,6 +23,9 @@ const outDir = path.join(srcTauri, 'gen-resolve-linux');
 const REPLACEMENTS = {
   '[[__AUTOSUBS_RESOURCES_FOLDER__]]': '[[/usr/lib/autosubs/resources]]',
   '[[__AUTOSUBS_APP_EXECUTABLE__]]': '[[/usr/bin/autosubs]]',
+  // nil: the mailbox is per-user (XDG_DATA_HOME/HOME), and this script is
+  // shared by every user on the system — bootstrap derives it instead.
+  '[[__AUTOSUBS_MAILBOX_DIR__]]': 'nil',
 };
 
 // Start clean so files no longer generated (e.g. the old AutoSubs.scriptlib)

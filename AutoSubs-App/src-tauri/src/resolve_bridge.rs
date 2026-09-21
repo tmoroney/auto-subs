@@ -90,7 +90,7 @@ fn next_request_id() -> String {
 }
 
 /// `<data_local_dir>/com.autosubs/resolve-bridge`, matching the Lua side.
-fn mailbox_dir() -> Result<PathBuf, String> {
+pub(crate) fn mailbox_dir() -> Result<PathBuf, String> {
     dirs::data_local_dir()
         .map(|d| d.join("com.autosubs").join("resolve-bridge"))
         .ok_or_else(|| "could not determine the local data directory".to_string())
@@ -185,15 +185,19 @@ fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
 }
 
 /// Decode a `<id>:<base64 json>` response value. Returns the JSON body only
-/// when it is valid base64, UTF-8 and parseable JSON — anything else means we
-/// caught the prefs file half-written and should keep polling.
+/// when it is valid base64 and parseable JSON — anything else means we
+/// caught the prefs file half-written and should keep polling. Decoding is
+/// lossy rather than UTF-8-strict: strings the Lua side got from Resolve's
+/// API may be ANSI code-page bytes on Windows (e.g. a Cyrillic user profile
+/// path), and dropping the whole response would report a healthy bridge as
+/// unresponsive.
 fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String>> {
     let (rid, encoded) = value.split_once(':')?;
     if rid != id {
         return None;
     }
     let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).ok()?;
-    let text = String::from_utf8(bytes).ok()?;
+    let text = String::from_utf8_lossy(&bytes).into_owned();
     serde_json::from_str::<serde_json::Value>(&text).ok()?;
     Some(Ok(text))
 }
@@ -306,7 +310,12 @@ async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String
     let mut acked = false;
 
     loop {
-        if let Ok(text) = fs::read_to_string(&prefs_path) {
+        // Read bytes, not a UTF-8 string: Resolve writes prefs in the user's
+        // ANSI code page on Windows, so a non-ASCII profile path makes the
+        // file invalid UTF-8 and a strict read would report a healthy bridge
+        // as offline forever. Every key and value we parse is ASCII.
+        if let Ok(bytes) = fs::read(&prefs_path) {
+            let text = String::from_utf8_lossy(&bytes);
             if let Some(value) = pref_value(&text, "Response") {
                 if let Some(result) = decode_response(value, id) {
                     return result;
@@ -420,6 +429,9 @@ mod tests {
         // valid base64 but not JSON -> keep polling
         let not_json = base64::engine::general_purpose::STANDARD.encode("hello");
         assert!(decode_response(&format!("7:{}", not_json), "7").is_none());
+        // non-UTF-8 bytes (ANSI code page) -> decoded lossily, still parses
+        let ansi = base64::engine::general_purpose::STANDARD.encode(b"{\"ok\":\"\xC0\"}");
+        assert!(decode_response(&format!("7:{}", ansi), "7").is_some());
     }
 
     #[test]

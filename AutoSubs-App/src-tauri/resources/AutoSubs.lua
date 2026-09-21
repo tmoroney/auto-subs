@@ -36,5 +36,9 @@ end
 -- scriptlib ran it via fusion:Execute, which held Fusion's script executor for
 -- the whole session (see docs/resident-bridge-fusion-regression.md). A loop it
 -- left running exits on this takeover, which frees the executor again.
+-- mailbox_dir is baked in so the Lua side never has to rebuild the path from
+-- LOCALAPPDATA — that env lookup is mangled when a Windows profile name isn't
+-- representable in the system's ANSI code page.
 local boot = assert(loadfile(bootstrap_path))()
-boot(resources_folder, app_executable, false, { mode = "manual" })
+boot(resources_folder, app_executable, false,
+    { mode = "manual", mailbox_dir = [[__AUTOSUBS_MAILBOX_DIR__]] })
