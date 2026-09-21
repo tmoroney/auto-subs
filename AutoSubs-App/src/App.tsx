@@ -253,6 +253,7 @@ function AppContentBody() {
     if (isMobile) return
 
     event.preventDefault()
+    document.body.classList.add("app-panel-resizing")
     setIsSubtitleViewerResizing(true)
 
     const startX = event.clientX
@@ -285,6 +286,7 @@ function AppContentBody() {
       if (panel) panel.style.width = `${latestWidth}px`
       setSubtitlePanelWidth(latestWidth)
       setIsSubtitleViewerResizing(false)
+      document.body.classList.remove("app-panel-resizing")
       // Persist the user's chosen width once per drag, not per pointermove.
       updateSetting("subtitlePanelWidth", latestWidth)
       window.removeEventListener("pointermove", handlePointerMove)
@@ -314,7 +316,7 @@ function AppContentBody() {
 
   const subtitleViewerClassName = isMobile
     ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
-    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card`
+    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card [contain:layout_style]`
 
   return (
     <TooltipProvider>
@@ -322,7 +324,7 @@ function AppContentBody() {
           {/* Main Content Area with Resizable Panels */}
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[370px] flex-1 overflow-hidden">
+              <div className="min-h-0 min-w-[370px] flex-1 overflow-hidden [contain:layout_style]">
                 <TranscriptionPanel
                   onViewSubtitles={handleOpenSubtitleViewer}
                   onTranscriptCreated={handleTranscriptCreated}

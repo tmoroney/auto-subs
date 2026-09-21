@@ -33,7 +33,8 @@ function applyThemeClass(resolved: "dark" | "light") {
 function applyWindowBackground(resolved: "dark" | "light") {
   const color: [number, number, number, number] =
     resolved === "dark" ? [0, 0, 0, 255] : [255, 255, 255, 255]
-  getCurrentWindow().setBackgroundColor(color).catch(() => {})
+  getCurrentWindow().setBackgroundColor(color).catch((e) => console.warn("native window theme sync failed", e))
+  getCurrentWindow().setTheme(resolved).catch((e) => console.warn("native window theme sync failed", e))
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)

@@ -296,6 +296,11 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
     } else {
         tauri::window::Color(255, 255, 255, 255)
     }));
+    let _ = window.set_theme(Some(if dark {
+        tauri::Theme::Dark
+    } else {
+        tauri::Theme::Light
+    }));
     Ok(window)
 }
 

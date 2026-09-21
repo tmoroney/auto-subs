@@ -151,6 +151,9 @@
     {
       "identifier": "core:window:allow-set-background-color"
     },
+    {
+      "identifier": "core:window:allow-set-theme"
+    },
     "core:webview:allow-set-webview-zoom",
     "process:default",
     "shell:default",
