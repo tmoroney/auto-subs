@@ -306,37 +306,65 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
         tracing::warn!("Failed to set native window theme: {}", e);
     }
     #[cfg(target_os = "macos")]
-    disable_zoom_animation(&window);
+    install_smooth_zoom(&window);
     Ok(window)
 }
 
-/// Make the title-bar double-click / zoom-button resize instantaneous.
+/// Route the title-bar double-click / zoom button through a non-blocking
+/// animation so the web content re-lays-out on every frame of the zoom.
 ///
-/// AppKit animates `zoom:` with a blocking `setFrame:display:animate:` loop that
-/// starves WKWebView's layer commits, so the page only catches up once the
+/// AppKit's own `zoom:` animates with a blocking `setFrame:display:animate:`
+/// loop on the main thread; WKWebView's layer commits from the web process
+/// can't be delivered while it spins, so the page only catches up once the
 /// animation ends (blank strip when growing, stale content snapping when
-/// shrinking). `animationResizeTime:` is NSWindow's hook for that duration;
-/// returning 0 makes the frame change and the web content land together.
+/// shrinking). Driving the same frame change through the `animator` proxy
+/// runs it from the run loop instead, so each step is followed by a layout.
 #[cfg(target_os = "macos")]
-fn disable_zoom_animation(window: &tauri::WebviewWindow) {
+fn install_smooth_zoom(window: &tauri::WebviewWindow) {
     use objc2::runtime::{AnyClass, AnyObject, Sel};
+    use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSWindow};
+    use objc2_foundation::NSRect;
+    use std::sync::Mutex;
 
-    #[repr(C)]
-    struct CGRect {
-        x: f64,
-        y: f64,
-        width: f64,
-        height: f64,
+    const ZOOM_DURATION_SECS: f64 = 0.22;
+
+    // Frame to restore on the next zoom after we expanded to the screen.
+    static SAVED_FRAME: Mutex<Option<NSRect>> = Mutex::new(None);
+
+    fn rect_eq(a: NSRect, b: NSRect) -> bool {
+        (a.origin.x - b.origin.x).abs() < 1.0
+            && (a.origin.y - b.origin.y).abs() < 1.0
+            && (a.size.width - b.size.width).abs() < 1.0
+            && (a.size.height - b.size.height).abs() < 1.0
     }
 
-    extern "C-unwind" fn animation_resize_time(_this: &AnyObject, _sel: Sel, _frame: CGRect) -> f64 {
-        0.0
+    extern "C-unwind" fn zoom(this: &NSWindow, _sel: Sel, _sender: *mut AnyObject) {
+        let Some(screen) = this.screen() else { return };
+        let standard = screen.visibleFrame();
+        let current = this.frame();
+
+        let mut saved = SAVED_FRAME.lock().unwrap_or_else(|e| e.into_inner());
+        let target = match saved.take() {
+            Some(previous) if rect_eq(current, standard) => previous,
+            _ => {
+                if !rect_eq(current, standard) {
+                    *saved = Some(current);
+                }
+                standard
+            }
+        };
+        drop(saved);
+
+        NSAnimationContext::beginGrouping();
+        NSAnimationContext::currentContext().setDuration(ZOOM_DURATION_SECS);
+        this.animator().setFrame_display(target, true);
+        NSAnimationContext::endGrouping();
     }
 
     let ns_window = match window.ns_window() {
         Ok(ptr) => ptr,
         Err(e) => {
-            tracing::warn!("Failed to get NSWindow for zoom animation override: {}", e);
+            tracing::warn!("Failed to get NSWindow for zoom override: {}", e);
             return;
         }
     };
@@ -344,17 +372,11 @@ fn disable_zoom_animation(window: &tauri::WebviewWindow) {
     unsafe {
         let obj: &AnyObject = &*(ns_window as *const AnyObject);
         let cls: *const AnyClass = obj.class();
-        let imp: objc2::runtime::Imp = std::mem::transmute(
-            animation_resize_time as extern "C-unwind" fn(&AnyObject, Sel, CGRect) -> f64,
-        );
+        let imp: objc2::runtime::Imp =
+            std::mem::transmute(zoom as extern "C-unwind" fn(&NSWindow, Sel, *mut AnyObject));
         // Added to tao's NSWindow subclass, so it overrides NSWindow's default.
         // Returns false if a previous call already added it, which is fine.
-        objc2::ffi::class_addMethod(
-            cls as *mut AnyClass,
-            objc2::sel!(animationResizeTime:),
-            imp,
-            c"d@:{CGRect={CGPoint=dd}{CGSize=dd}}".as_ptr(),
-        );
+        objc2::ffi::class_addMethod(cls as *mut AnyClass, objc2::sel!(zoom:), imp, c"v@:@".as_ptr());
     }
 }
 
