@@ -1,4 +1,5 @@
 use crate::formatting::{PostProcessConfig, TextCase, TextDensity, process_segments};
+use crate::post_process::vad_snap::{snap_timestamps_to_vad, extract_vad_intervals, VadSnapConfig};
 use crate::types::{Callbacks, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -504,6 +505,12 @@ impl Engine {
         )
         .await?;
 
+        // Extract VAD intervals for post-processing timestamp correction.
+        // Shifted by the same user offset the engines bake into emitted
+        // timestamps so both share one timeline.
+        let vad_intervals =
+            extract_vad_intervals(&speech_segments, options.offset.unwrap_or(0.0));
+
         let num_samples: usize = speech_segments.iter().map(|s| s.samples.len()).sum();
         let audio_duration_sec = num_samples as f64 / 16000.0;
 
@@ -700,6 +707,21 @@ impl Engine {
             } else {
                 tracing::info!("forced alignment skipped because translation is enabled");
             }
+        }
+
+        // VAD-guided timestamp snapping: correct leading-edge drift, trailing
+        // overhang, and word overlaps against the detected speech regions.
+        // Only worthwhile for Whisper-derived word timings — forced alignment
+        // recomputes word timings acoustically, Parakeet/SenseVoice emit native
+        // word timings, and post-translation rebuilds words uniformly; snapping
+        // those to coarse VAD bounds would only degrade them.
+        let forced_alignment_ran =
+            enable_forced_alignment && translate_to.is_none() && !has_native_word_timestamps;
+        if !has_native_word_timestamps
+            && !forced_alignment_ran
+            && !post_translation_discards_word_timings
+        {
+            snap_timestamps_to_vad(&mut segments, &vad_intervals, &VadSnapConfig::default());
         }
 
         // Determine the final output language of the transcript.
