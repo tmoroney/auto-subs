@@ -29,7 +29,11 @@ use crate::resolve_bridge::{fusion_support_dir, mailbox_dir};
 
 const RESOURCES_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_RESOURCES_FOLDER__]]";
 const EXECUTABLE_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_APP_EXECUTABLE__]]";
-const MAILBOX_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_MAILBOX_DIR__]]";
+// Unlike the path placeholders this one is a bare Lua expression in the
+// template, so an unsubstituted copy reads it as a nil global — installers
+// that don't know about it (macOS pkg, shared Linux package) get the
+// env-derived path fallback automatically.
+const MAILBOX_PLACEHOLDER: &[u8] = b"__AUTOSUBS_MAILBOX_DIR__";
 
 /// Entry point from Tauri setup. Never fails the app: anything unexpected is a
 /// `tracing::warn` and we move on.
@@ -97,8 +101,7 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     let executable_bytes = lua_path_bytes(&app_executable);
     // Baked in so the Lua side doesn't have to rebuild the mailbox path from
     // LOCALAPPDATA, which is mangled when the profile isn't representable in
-    // the ANSI code page. `nil` keeps Lua's env-derived fallback (the Linux
-    // packages share one pre-generated script across users).
+    // the ANSI code page. `nil` keeps Lua's env-derived fallback.
     let mailbox_expr = match mailbox_dir() {
         Ok(dir) => {
             // The dir is otherwise created lazily on the first request;
@@ -149,16 +152,10 @@ fn write_template(
     let template = fs::read(&template_path)
         .map_err(|e| format!("read {}: {e}", template_path.display()))?;
 
-    let content = substitute(
-        template,
-        &[
-            (RESOURCES_PLACEHOLDER, lua_long_string(resources_bytes)),
-            (EXECUTABLE_PLACEHOLDER, lua_long_string(executable_bytes)),
-            // Unlike the paths above this replacement is a whole Lua
-            // expression — a `[[...]]` string or `nil` — not just bytes.
-            (MAILBOX_PLACEHOLDER, mailbox_expr.to_vec()),
-        ],
-    );
+    let content = substitute(template, resources_bytes, executable_bytes);
+    // Unlike the paths above, this replacement is a whole Lua expression —
+    // a `[[...]]` string or `nil` — not just path bytes.
+    let content = replace_all(content, MAILBOX_PLACEHOLDER, &mailbox_expr);
 
     if let Ok(existing) = fs::read(target) {
         if existing == content {
@@ -182,12 +179,12 @@ fn write_template(
 
 /// Byte-level placeholder substitution. Paths are injected as Lua long-string
 /// bytes, so this must run on the raw template bytes — never UTF-8 strings.
-fn substitute(template: Vec<u8>, replacements: &[(&[u8], Vec<u8>)]) -> Vec<u8> {
-    let mut out = template;
-    for (needle, replacement) in replacements {
-        out = replace_all(out, needle, replacement);
-    }
-    out
+fn substitute(template: Vec<u8>, resources: &[u8], executable: &[u8]) -> Vec<u8> {
+    replace_all(
+        replace_all(template, RESOURCES_PLACEHOLDER, &lua_long_string(resources)),
+        EXECUTABLE_PLACEHOLDER,
+        &lua_long_string(executable),
+    )
 }
 
 /// Wrap raw path bytes in a Lua long bracket so the `[[__AUTOSUBS_*__]]`
@@ -356,35 +353,17 @@ mod tests {
     }
 
     #[test]
-    fn substitute_replaces_all_placeholders() {
-        let template = concat!(
-            "a = [[__AUTOSUBS_RESOURCES_FOLDER__]]\n",
-            "b = [[__AUTOSUBS_APP_EXECUTABLE__]]\n",
-            "m = [[__AUTOSUBS_MAILBOX_DIR__]]\n",
-        )
-        .as_bytes()
-        .to_vec();
-        let out = substitute(
-            template,
-            &[
-                (RESOURCES_PLACEHOLDER, lua_long_string(b"/res")),
-                (EXECUTABLE_PLACEHOLDER, lua_long_string(b"C:\\app\\AutoSubs.exe")),
-                (MAILBOX_PLACEHOLDER, b"nil".to_vec()),
-            ],
-        );
-        assert_eq!(
-            out,
-            b"a = [[/res]]\nb = [[C:\\app\\AutoSubs.exe]]\nm = nil\n".to_vec()
-        );
+    fn substitute_replaces_both_placeholders() {
+        let template =
+            b"a = [[__AUTOSUBS_RESOURCES_FOLDER__]]\nb = [[__AUTOSUBS_APP_EXECUTABLE__]]\n".to_vec();
+        let out = substitute(template, b"/res", b"C:\\app\\AutoSubs.exe");
+        assert_eq!(out, b"a = [[/res]]\nb = [[C:\\app\\AutoSubs.exe]]\n".to_vec());
     }
 
     #[test]
     fn substitute_handles_repeated_and_absent_placeholders() {
         let template = b"[[__AUTOSUBS_RESOURCES_FOLDER__]]/x and [[__AUTOSUBS_RESOURCES_FOLDER__]]/y".to_vec();
-        let out = substitute(
-            template,
-            &[(RESOURCES_PLACEHOLDER, lua_long_string(b"R"))],
-        );
+        let out = substitute(template, b"R", b"E");
         assert_eq!(out, b"[[R]]/x and [[R]]/y".to_vec());
     }
 

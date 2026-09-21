@@ -184,135 +184,111 @@ fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     result
 }
 
-/// Length of the UTF-8 sequence starting at `i`: 1 for ASCII, 2-4 for a
-/// valid multibyte sequence, or `None` when the bytes at `i` aren't valid
-/// UTF-8.
-fn utf8_seq_len(bytes: &[u8], i: usize) -> Option<usize> {
-    let len = match bytes[i] {
-        0x00..=0x7F => 1,
-        0xC0..=0xDF => 2,
-        0xE0..=0xEF => 3,
-        0xF0..=0xF7 => 4,
-        _ => return None,
-    };
-    if i + len <= bytes.len() && std::str::from_utf8(&bytes[i..i + len]).is_ok() {
-        Some(len)
-    } else {
-        None
+/// Base of the `\uE0xx` private-use markers the Lua side writes for every
+/// byte ≥0x80 in a response (see `bridge_respond` in autosubs_core.lua).
+const BYTE_MARKER_BASE: u32 = 0xE000;
+
+fn is_byte_marker(c: char) -> bool {
+    (BYTE_MARKER_BASE..=BYTE_MARKER_BASE + 0xFF).contains(&(c as u32))
+}
+
+/// Rebuild a JSON string's original bytes from its markers, then decode the
+/// whole string: UTF-8 first (values the app sent get echoed back), else the
+/// system ANSI code page (strings Resolve's API returns — names, paths — on
+/// Windows). Decoding per string means a multi-byte DBCS char is handed to
+/// `MultiByteToWideChar` whole instead of byte-at-a-time.
+fn restore_json_string(s: &str) -> String {
+    if !s.chars().any(is_byte_marker) {
+        return s.to_owned();
+    }
+    let mut bytes = Vec::with_capacity(s.len());
+    for c in s.chars() {
+        let cp = c as u32;
+        if (BYTE_MARKER_BASE..=BYTE_MARKER_BASE + 0xFF).contains(&cp) {
+            bytes.push((cp - BYTE_MARKER_BASE) as u8);
+        } else {
+            let mut buf = [0u8; 4];
+            bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
+        }
+    }
+    match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(e) => ansi_to_string(e.as_bytes()),
     }
 }
 
-/// Whether `b` can begin a two-byte char in the system's ANSI code page —
-/// true on the Japanese/Chinese/Korean code pages where one ANSI char is
-/// two bytes. Non-Windows: ANSI payloads don't occur.
-#[cfg(target_os = "windows")]
-fn is_dbcs_lead_byte(b: u8) -> bool {
-    use windows_sys::Win32::Globalization::{IsDBCSLeadByteEx, CP_ACP};
-    unsafe { IsDBCSLeadByteEx(CP_ACP, b) != 0 }
-}
-
-#[cfg(not(target_os = "windows"))]
-fn is_dbcs_lead_byte(_b: u8) -> bool {
-    false
-}
-
-/// Decode `bytes` as ANSI code-page text and append it as UTF-8. The whole
-/// run goes through one `MultiByteToWideChar` call so DBCS pairs decode as
-/// single chars. On non-Windows platforms ANSI payloads don't occur; emit
-/// U+FFFD per byte.
-#[cfg(target_os = "windows")]
-fn ansi_bytes_to_utf8(out: &mut Vec<u8>, bytes: &[u8]) {
-    use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
-    unsafe {
-        let wide_len = MultiByteToWideChar(
-            CP_ACP,
-            0,
-            bytes.as_ptr(),
-            bytes.len() as i32,
-            std::ptr::null_mut(),
-            0,
-        );
-        if wide_len <= 0 {
-            out.extend_from_slice("\u{FFFD}".as_bytes());
-            return;
+/// Apply `restore_json_string` to every string in a parsed response,
+/// including object keys (they can carry names).
+fn restore_json_strings(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::String(s) => *s = restore_json_string(s),
+        serde_json::Value::Array(items) => {
+            items.iter_mut().for_each(restore_json_strings)
         }
-        let mut wide = vec![0u16; wide_len as usize];
-        let written = MultiByteToWideChar(
+        serde_json::Value::Object(map) => {
+            for (key, mut val) in std::mem::take(map) {
+                restore_json_strings(&mut val);
+                map.insert(restore_json_string(&key), val);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Decode ANSI code-page bytes as a string. Non-Windows builds never see
+/// ANSI payloads; lossy keeps the response usable.
+#[cfg(target_os = "windows")]
+fn ansi_to_string(bytes: &[u8]) -> String {
+    use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
+    // One UTF-16 unit per input byte is the worst case (DBCS pairs use one).
+    let mut wide = vec![0u16; bytes.len()];
+    let written = unsafe {
+        MultiByteToWideChar(
             CP_ACP,
             0,
             bytes.as_ptr(),
             bytes.len() as i32,
             wide.as_mut_ptr(),
-            wide_len,
-        );
-        if written <= 0 {
-            out.extend_from_slice("\u{FFFD}".as_bytes());
-            return;
-        }
-        out.extend_from_slice(
-            String::from_utf16_lossy(&wide[..written as usize]).as_bytes(),
-        );
+            wide.len() as i32,
+        )
+    };
+    if written > 0 {
+        String::from_utf16_lossy(&wide[..written as usize])
+    } else {
+        String::from_utf8_lossy(bytes).into_owned()
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn ansi_bytes_to_utf8(out: &mut Vec<u8>, bytes: &[u8]) {
-    for _ in bytes {
-        out.extend_from_slice("\u{FFFD}".as_bytes());
-    }
-}
-
-/// Transcode a JSON document that may mix encodings. On Windows the Lua
-/// side builds responses from both UTF-8 strings (values the app sent that
-/// Lua echoes back) and ANSI code-page bytes (strings Resolve's API
-/// returns, like clip names or paths) — a single document can contain
-/// both. JSON structure and escapes are pure ASCII, and no UTF-8 or ANSI
-/// byte ≥0x80 can equal `"` or `\`, so a flat pass over the bytes is
-/// enough: valid UTF-8 sequences pass through and each maximal run of
-/// other non-ASCII bytes decodes as ANSI.
-fn mixed_encoding_to_utf8(bytes: &[u8]) -> String {
-    let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 4);
-    let mut i = 0;
-    while i < bytes.len() {
-        if let Some(len) = utf8_seq_len(bytes, i) {
-            out.extend_from_slice(&bytes[i..i + len]);
-            i += len;
-            continue;
-        }
-        // ANSI run: consume bytes until valid UTF-8 resumes, keeping DBCS
-        // lead/trail pairs together so CJK code pages decode correctly.
-        let start = i;
-        while i < bytes.len() && utf8_seq_len(bytes, i).is_none() {
-            i += 1;
-            if is_dbcs_lead_byte(bytes[i - 1]) && i < bytes.len() {
-                i += 1;
-            }
-        }
-        ansi_bytes_to_utf8(&mut out, &bytes[start..i]);
-    }
-    // Every byte ≥0x80 was either a verified UTF-8 sequence or a transcoded
-    // char, and ASCII passes through — the output is valid UTF-8.
-    String::from_utf8(out).unwrap()
+fn ansi_to_string(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).into_owned()
 }
 
 /// Decode a `<id>:<base64 json>` response value. Returns the JSON body only
 /// when it is valid base64 and parseable JSON — anything else means we
-/// caught the prefs file half-written and should keep polling. Payloads are
-/// normally UTF-8; non-UTF-8 payloads go through mixed_encoding_to_utf8 so
-/// Resolve-supplied ANSI names survive instead of being dropped (a dropped
-/// response makes a healthy bridge look unresponsive).
+/// caught the prefs file half-written and should keep polling. The Lua side
+/// escapes every byte ≥0x80 as a \uE0xx marker, so payloads are pure ASCII
+/// and always parse; restore_json_strings maps the markers back and decodes
+/// each string UTF-8-or-ANSI. Loops started before that change can still
+/// emit raw ANSI bytes — a lossy parse keeps them answering (names may
+/// garble) instead of timing out and looking like a dead bridge.
 fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String>> {
     let (rid, encoded) = value.split_once(':')?;
     if rid != id {
         return None;
     }
     let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).ok()?;
-    let text = match std::str::from_utf8(&bytes) {
-        Ok(text) => text.to_string(),
-        Err(_) => mixed_encoding_to_utf8(&bytes),
-    };
-    serde_json::from_str::<serde_json::Value>(&text).ok()?;
-    Some(Ok(text))
+    match serde_json::from_slice::<serde_json::Value>(&bytes) {
+        Ok(mut json) => {
+            restore_json_strings(&mut json);
+            serde_json::to_string(&json).ok().map(Ok)
+        }
+        Err(_) => {
+            let text = String::from_utf8_lossy(&bytes).into_owned();
+            serde_json::from_str::<serde_json::Value>(&text).ok()?;
+            Some(Ok(text))
+        }
+    }
 }
 
 /// True when the prefs file shows the Lua loop alive but busy: an `Ack` for
@@ -548,18 +524,19 @@ mod tests {
     }
 
     #[test]
-    fn mixed_encoding_preserves_utf8_strings() {
-        // A payload mixing a valid UTF-8 string with ANSI bytes: the UTF-8
-        // part must survive byte-for-byte instead of being transcoded.
-        let mut doc = b"{\"a\":\"caf\xC3\xA9\",\"b\":\"".to_vec();
-        doc.extend_from_slice(&[0xC0u8, 0xD1, 0xD2]); // ANSI-only bytes
-        doc.extend_from_slice(b"\"}");
-        let text = mixed_encoding_to_utf8(&doc);
+    fn decode_response_restores_escaped_bytes() {
+        // The Lua side escapes every byte ≥0x80 as \uE0xx. A UTF-8 string's
+        // bytes decode back to UTF-8; ANSI bytes fall back to the ANSI decode
+        // (chars on Windows, U+FFFD elsewhere).
+        let doc = "{\"a\":\"\\uE0C3\\uE0A9\",\"b\":\"\\uE0C0\\uE0D1\\uE0D2\"}";
+        let v = format!("7:{}", base64::engine::general_purpose::STANDARD.encode(doc));
+        let text = decode_response(&v, "7").unwrap().unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["a"], "caf\u{e9}");
-        // The ANSI bytes decoded to something (chars on Windows, U+FFFD
-        // elsewhere) rather than dropping the response.
         assert!(parsed["b"].is_string());
+        // Unmarked non-ASCII strings (UTF-8 written by an older loop) pass
+        // through untouched.
+        assert_eq!(restore_json_string("caf\u{e9}"), "caf\u{e9}");
     }
 
     #[test]
