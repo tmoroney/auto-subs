@@ -326,8 +326,6 @@ fn install_smooth_zoom(window: &tauri::WebviewWindow) {
     use objc2_foundation::NSRect;
     use std::sync::Mutex;
 
-    const ZOOM_DURATION_SECS: f64 = 0.22;
-
     // Frame to restore on the next zoom after we expanded to the screen.
     static SAVED_FRAME: Mutex<Option<NSRect>> = Mutex::new(None);
 
@@ -355,8 +353,10 @@ fn install_smooth_zoom(window: &tauri::WebviewWindow) {
         };
         drop(saved);
 
+        // Same duration AppKit would use for its own (blocking) zoom animation.
+        let duration = this.animationResizeTime(target);
         NSAnimationContext::beginGrouping();
-        NSAnimationContext::currentContext().setDuration(ZOOM_DURATION_SECS);
+        NSAnimationContext::currentContext().setDuration(duration);
         this.animator().setFrame_display(target, true);
         NSAnimationContext::endGrouping();
     }
