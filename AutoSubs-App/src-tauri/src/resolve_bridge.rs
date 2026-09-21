@@ -184,29 +184,82 @@ fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     result
 }
 
-/// Append `byte` decoded as one ANSI code-page char. On non-Windows
-/// platforms ANSI payloads don't occur; emit U+FFFD.
-#[cfg(target_os = "windows")]
-fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
-    use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
-    let mut wide = [0u16; 1];
-    let written = unsafe {
-        MultiByteToWideChar(CP_ACP, 0, &byte, 1, wide.as_mut_ptr(), 1)
+/// Length of the UTF-8 sequence starting at `i`: 1 for ASCII, 2-4 for a
+/// valid multibyte sequence, or `None` when the bytes at `i` aren't valid
+/// UTF-8.
+fn utf8_seq_len(bytes: &[u8], i: usize) -> Option<usize> {
+    let len = match bytes[i] {
+        0x00..=0x7F => 1,
+        0xC0..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        0xF0..=0xF7 => 4,
+        _ => return None,
     };
-    if written == 1 {
-        if let Some(c) = char::from_u32(wide[0] as u32) {
-            let mut buf = [0u8; 4];
-            out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
-            return;
-        }
+    if i + len <= bytes.len() && std::str::from_utf8(&bytes[i..i + len]).is_ok() {
+        Some(len)
+    } else {
+        None
     }
-    out.extend_from_slice("\u{FFFD}".as_bytes());
+}
+
+/// Whether `b` can begin a two-byte char in the system's ANSI code page —
+/// true on the Japanese/Chinese/Korean code pages where one ANSI char is
+/// two bytes. Non-Windows: ANSI payloads don't occur.
+#[cfg(target_os = "windows")]
+fn is_dbcs_lead_byte(b: u8) -> bool {
+    use windows_sys::Win32::Globalization::{IsDBCSLeadByteEx, CP_ACP};
+    unsafe { IsDBCSLeadByteEx(CP_ACP, b) != 0 }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
-    let _ = byte;
-    out.extend_from_slice("\u{FFFD}".as_bytes());
+fn is_dbcs_lead_byte(_b: u8) -> bool {
+    false
+}
+
+/// Decode `bytes` as ANSI code-page text and append it as UTF-8. The whole
+/// run goes through one `MultiByteToWideChar` call so DBCS pairs decode as
+/// single chars. On non-Windows platforms ANSI payloads don't occur; emit
+/// U+FFFD per byte.
+#[cfg(target_os = "windows")]
+fn ansi_bytes_to_utf8(out: &mut Vec<u8>, bytes: &[u8]) {
+    use windows_sys::Win32::Globalization::{MultiByteToWideChar, CP_ACP};
+    unsafe {
+        let wide_len = MultiByteToWideChar(
+            CP_ACP,
+            0,
+            bytes.as_ptr(),
+            bytes.len() as i32,
+            std::ptr::null_mut(),
+            0,
+        );
+        if wide_len <= 0 {
+            out.extend_from_slice("\u{FFFD}".as_bytes());
+            return;
+        }
+        let mut wide = vec![0u16; wide_len as usize];
+        let written = MultiByteToWideChar(
+            CP_ACP,
+            0,
+            bytes.as_ptr(),
+            bytes.len() as i32,
+            wide.as_mut_ptr(),
+            wide_len,
+        );
+        if written <= 0 {
+            out.extend_from_slice("\u{FFFD}".as_bytes());
+            return;
+        }
+        out.extend_from_slice(
+            String::from_utf16_lossy(&wide[..written as usize]).as_bytes(),
+        );
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn ansi_bytes_to_utf8(out: &mut Vec<u8>, bytes: &[u8]) {
+    for _ in bytes {
+        out.extend_from_slice("\u{FFFD}".as_bytes());
+    }
 }
 
 /// Transcode a JSON document that may mix encodings. On Windows the Lua
@@ -215,35 +268,27 @@ fn ansi_byte_to_utf8(out: &mut Vec<u8>, byte: u8) {
 /// returns, like clip names or paths) — a single document can contain
 /// both. JSON structure and escapes are pure ASCII, and no UTF-8 or ANSI
 /// byte ≥0x80 can equal `"` or `\`, so a flat pass over the bytes is
-/// enough: valid UTF-8 sequences pass through and any other non-ASCII byte
-/// decodes as one ANSI char.
+/// enough: valid UTF-8 sequences pass through and each maximal run of
+/// other non-ASCII bytes decodes as ANSI.
 fn mixed_encoding_to_utf8(bytes: &[u8]) -> String {
     let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 4);
     let mut i = 0;
     while i < bytes.len() {
-        let b = bytes[i];
-        if b < 0x80 {
-            out.push(b);
-            i += 1;
-            continue;
-        }
-        // Expected UTF-8 sequence length from the lead byte.
-        let len = match b {
-            0xC0..=0xDF => 2,
-            0xE0..=0xEF => 3,
-            0xF0..=0xF7 => 4,
-            _ => 0,
-        };
-        if len > 0
-            && i + len <= bytes.len()
-            && std::str::from_utf8(&bytes[i..i + len]).is_ok()
-        {
+        if let Some(len) = utf8_seq_len(bytes, i) {
             out.extend_from_slice(&bytes[i..i + len]);
             i += len;
-        } else {
-            ansi_byte_to_utf8(&mut out, b);
-            i += 1;
+            continue;
         }
+        // ANSI run: consume bytes until valid UTF-8 resumes, keeping DBCS
+        // lead/trail pairs together so CJK code pages decode correctly.
+        let start = i;
+        while i < bytes.len() && utf8_seq_len(bytes, i).is_none() {
+            i += 1;
+            if is_dbcs_lead_byte(bytes[i - 1]) && i < bytes.len() {
+                i += 1;
+            }
+        }
+        ansi_bytes_to_utf8(&mut out, &bytes[start..i]);
     }
     // Every byte ≥0x80 was either a verified UTF-8 sequence or a transcoded
     // char, and ASCII passes through — the output is valid UTF-8.
