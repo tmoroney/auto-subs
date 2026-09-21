@@ -282,6 +282,7 @@ function AppContentBody() {
         window.cancelAnimationFrame(frame)
         frame = null
       }
+      latestWidth = Math.min(getMaxSubtitlePanelWidth(), latestWidth)
       const panel = subtitlePanelRef.current
       if (panel) panel.style.width = `${latestWidth}px`
       setSubtitlePanelWidth(latestWidth)

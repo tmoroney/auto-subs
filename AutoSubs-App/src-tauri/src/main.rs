@@ -291,16 +291,20 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
     // The window is still hidden here, so the colour lands before first paint.
     let window = builder.build()?;
     let dark = matches!(window.theme(), Ok(tauri::Theme::Dark));
-    let _ = window.set_background_color(Some(if dark {
+    if let Err(e) = window.set_background_color(Some(if dark {
         tauri::window::Color(0, 0, 0, 255)
     } else {
         tauri::window::Color(255, 255, 255, 255)
-    }));
-    let _ = window.set_theme(Some(if dark {
+    })) {
+        tracing::warn!("Failed to set native window background: {}", e);
+    }
+    if let Err(e) = window.set_theme(Some(if dark {
         tauri::Theme::Dark
     } else {
         tauri::Theme::Light
-    }));
+    })) {
+        tracing::warn!("Failed to set native window theme: {}", e);
+    }
     Ok(window)
 }
 
