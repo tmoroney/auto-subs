@@ -358,6 +358,11 @@ pub fn process_segments(
                 )
             }
         };
+        let words = if cfg.insert_interword_space {
+            restore_number_boundaries(words, &seg.text)
+        } else {
+            words
+        };
         for (w_idx, w) in words.into_iter().enumerate() {
             let is_first_in_seg = w_idx == 0;
             let segment_break = is_first_in_seg
@@ -444,6 +449,44 @@ pub fn process_segments(
 }
 
 // === Implementation details ===
+
+/// Word timestamps sometimes combine a word and the following number even
+/// though the engine's transcript separates them. Trust the transcript only
+/// for this explicit boundary, and divide the token's time between both words.
+fn restore_number_boundaries(words: Vec<WordTimestamp>, transcript: &str) -> Vec<WordTimestamp> {
+    let mut restored = Vec::with_capacity(words.len());
+    for word in words {
+        let boundary = word.text.char_indices().find_map(|(index, digit)| {
+            (digit.is_ascii_digit()
+                && word.text[..index].chars().last().is_some_and(char::is_alphabetic))
+                .then_some(index)
+        });
+        if let Some(index) = boundary {
+            let (left, right) = word.text.split_at(index);
+            let left_text = left.trim_start();
+            if !transcript.contains(word.text.trim())
+                && transcript.contains(&format!("{left_text} {right}"))
+            {
+                let left_chars = left_text.chars().count();
+                let total_chars = left_chars + right.chars().count();
+                let split_time = word.start
+                    + (word.end - word.start).max(0.0) * left_chars as f64 / total_chars as f64;
+                let mut first = word.clone();
+                first.text = left.to_string();
+                first.end = split_time;
+                let second_text = format!(" {right}");
+                let mut second = word;
+                second.text = second_text;
+                second.start = split_time;
+                restored.push(first);
+                restored.push(second);
+                continue;
+            }
+        }
+        restored.push(word);
+    }
+    restored
+}
 
 fn interpolate_segment_words(
     text: &str,
@@ -945,6 +988,56 @@ fn schedule_min_duration(cues: &mut [Segment], min_duration: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restores_space_before_number_when_word_token_loses_it() {
+        let segment = Segment {
+            start: 0.0,
+            end: 2.0,
+            text: "I will hit the 1000 pound club".into(),
+            speaker_id: None,
+            words: Some(vec![
+                WordTimestamp { text: "I".into(), start: 0.0, end: 0.1, probability: None },
+                WordTimestamp { text: " will".into(), start: 0.1, end: 0.3, probability: None },
+                WordTimestamp { text: " hit".into(), start: 0.3, end: 0.5, probability: None },
+                WordTimestamp { text: " the1000".into(), start: 0.5, end: 1.1, probability: None },
+                WordTimestamp { text: " pound".into(), start: 1.1, end: 1.5, probability: None },
+                WordTimestamp { text: " club".into(), start: 1.5, end: 2.0, probability: None },
+            ]),
+        };
+        let mut cfg = PostProcessConfig::latin();
+        cfg.max_chars_per_line = 80;
+        let cues = process_segments(&[segment], &cfg);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].text, "I will hit the 1000 pound club");
+        let words = cues[0].words.as_ref().unwrap();
+        let number_index = words.iter().position(|word| word.text == " 1000").unwrap();
+        assert_eq!(words[number_index - 1].text, " the");
+        assert_eq!(words[number_index - 1].end, words[number_index].start);
+        assert_eq!(words[number_index].end, 1.1);
+    }
+
+    #[test]
+    fn keeps_number_attached_when_transcript_does() {
+        let word = WordTimestamp {
+            text: " version2".into(),
+            start: 0.0,
+            end: 0.5,
+            probability: None,
+        };
+        let restored = restore_number_boundaries(vec![word], "Try version2 now");
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].text, " version2");
+
+        let ambiguous = WordTimestamp {
+            text: " the1000".into(),
+            start: 0.0,
+            end: 0.5,
+            probability: None,
+        };
+        let restored = restore_number_boundaries(vec![ambiguous], "the1000 and the 1000");
+        assert_eq!(restored.len(), 1);
+    }
 
     #[test]
     fn basic_split() {
