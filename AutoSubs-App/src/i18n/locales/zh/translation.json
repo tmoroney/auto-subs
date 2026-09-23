@@ -453,6 +453,12 @@
       "count_other": "{{count}} 条字幕",
       "matches_one": "{{count}} 个匹配",
       "matches_other": "{{count}} 个匹配"
+    },
+    "wordMove": {
+      "firstWord": "首词",
+      "lastWord": "末词",
+      "toPrevious": "首词上移 ({{shortcut}})",
+      "toNext": "末词下移 ({{shortcut}})"
     }
   },
   "gettingStarted": {

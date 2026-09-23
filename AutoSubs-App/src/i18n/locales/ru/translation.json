@@ -463,6 +463,12 @@
       "count_other": "{{count}} субтитров",
       "matches_one": "{{count}} совпадение",
       "matches_other": "{{count}} совпадений"
+    },
+    "wordMove": {
+      "firstWord": "Первое слово",
+      "lastWord": "Последнее слово",
+      "toPrevious": "Первое слово вверх ({{shortcut}})",
+      "toNext": "Последнее слово вниз ({{shortcut}})"
     }
   },
   "gettingStarted": {
