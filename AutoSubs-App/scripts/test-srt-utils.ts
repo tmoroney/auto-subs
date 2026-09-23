@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { parseSrt, generateSrt } from "../src/utils/srt-utils.ts";
+import { subtitleToBackendSegment } from "../src/api/formatting-api.ts";
+import type { Subtitle } from "../src/types.ts";
 
 const lfSrt = `1
 00:00:00,000 --> 00:00:02,000
@@ -43,5 +45,24 @@ const roundTrip = parseSrt(generateSrt([
 ]));
 assert.equal(roundTrip.length, 2);
 assert.equal(roundTrip[0].text, "Hello\nworld");
+
+// Documents imported before the timing fix contain string-valued word times.
+// Reformat must convert them before Tauri serializes the Rust command payload.
+const legacySubtitle = {
+  id: 0,
+  start: 0,
+  end: 2,
+  text: "Hello\nworld",
+  words: [
+    { word: "Hello", start: "0.000", end: "1.000", line_number: 0 },
+    { word: "\nworld", start: "1.000", end: "2.000", line_number: 1 },
+  ],
+} as unknown as Subtitle;
+const backendSegment = subtitleToBackendSegment(legacySubtitle);
+assert.deepEqual(backendSegment.words?.map(({ start, end }) => [start, end]), [
+  [0, 1],
+  [1, 2],
+]);
+assert.equal(backendSegment.text, "Hello\nworld");
 
 console.log("srt-utils tests passed");
