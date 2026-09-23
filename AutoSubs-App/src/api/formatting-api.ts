@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Subtitle, FormattingOptions, BackendSegment } from "@/types";
+import type { Subtitle, FormattingOptions, BackendSegment } from "@/types";
 
 /**
  * Convert frontend Subtitle format to backend segment format.
  */
-function subtitleToBackendSegment(subtitle: Subtitle): BackendSegment {
+export function subtitleToBackendSegment(subtitle: Subtitle): BackendSegment {
     return {
         start: subtitle.start,
         end: subtitle.end,
@@ -12,8 +12,10 @@ function subtitleToBackendSegment(subtitle: Subtitle): BackendSegment {
         speaker_id: subtitle.speaker_id,
         words: subtitle.words?.map(w => ({
             word: w.word,
-            start: w.start,
-            end: w.end,
+            // Imported SRTs used to persist interpolated timings as strings.
+            // Coerce so reformat_subtitles always receives f64 values.
+            start: Number(w.start),
+            end: Number(w.end),
             probability: w.probability,
         })),
     };

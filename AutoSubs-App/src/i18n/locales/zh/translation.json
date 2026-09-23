@@ -647,6 +647,7 @@
   },
   "errorDialog": {
     "addToTimelineFailed": "无法将字幕添加到时间线",
-    "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。"
+    "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。",
+    "reformatFailed": "重新排版失败"
   }
 }

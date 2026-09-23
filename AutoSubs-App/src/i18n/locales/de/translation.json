@@ -647,6 +647,7 @@
   },
   "errorDialog": {
     "addToTimelineFailed": "Untertitel konnten nicht zur Timeline hinzugefügt werden",
-    "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen."
+    "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen.",
+    "reformatFailed": "Formatfehler"
   }
 }

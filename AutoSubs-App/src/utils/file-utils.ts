@@ -747,8 +747,8 @@ function interpolateWordsFromText(text: string, start: number, end: number) {
   const wordDuration = wordCount > 0 ? duration / wordCount : 0;
   return wordTexts.map((word, idx) => ({
     word,
-    start: (segmentStart + idx * wordDuration).toFixed(3),
-    end: (segmentStart + (idx + 1) * wordDuration).toFixed(3),
+    start: Number((segmentStart + idx * wordDuration).toFixed(3)),
+    end: Number((segmentStart + (idx + 1) * wordDuration).toFixed(3)),
     line_number: 0,
   }));
 }

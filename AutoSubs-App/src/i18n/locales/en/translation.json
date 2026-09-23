@@ -667,6 +667,7 @@
   },
   "errorDialog": {
     "addToTimelineFailed": "Couldn't add subtitles to timeline",
-    "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'."
+    "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'.",
+    "reformatFailed": "Reformat failed"
   }
 }
