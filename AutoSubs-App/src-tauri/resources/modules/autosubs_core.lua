@@ -143,7 +143,8 @@ local titleStrings = {
     "Titolo Fusion", -- Italian
     "Fusionタイトル", -- Japanese
     "Fusion标题", -- Chinese
-    "퓨전 타이틀", -- Korean
+    "퓨전 타이틀", -- Korean (some Resolve versions)
+    "Fusion 타이틀", -- Korean (Resolve 21)
     "Tiêu đề Fusion", -- Vietnamese
     "Fusion Titles" -- Thai
 }
