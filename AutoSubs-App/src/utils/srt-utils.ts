@@ -1,4 +1,4 @@
-import { Subtitle } from "../types";
+import type { Subtitle } from "../types";
 
 // src/utils/srtUtils.ts
 export function formatTimecode(seconds: number): string {
@@ -99,27 +99,55 @@ export function generateSrt(subtitles: Subtitle[]): string {
         .join("\n");
 }
 
+const SRT_TIMESTAMP =
+    /^(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})$/;
+
+// Normalize Windows (CRLF) and old-Mac (CR) line endings so cue boundaries
+// and in-cue line breaks parse the same way on every platform.
+export function normalizeSrtLineEndings(srtData: string): string {
+    return srtData.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 // --- Helper function for robust SRT parsing ---
 export function parseSrt(srtData: string) {
-    // Normalize CRLF/CR line endings first: the block separator lookahead below
-    // requires two consecutive LFs, which "\r\n\r\n" never contains.
-    const normalized = srtData.replace(/\r\n?/g, '\n');
-    const regex = /(\d+)\s*\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\s*\n([\s\S]*?)(?=\n{2,}|$)/g;
+    const normalized = normalizeSrtLineEndings(srtData).trim();
+    if (!normalized) {
+        return [];
+    }
+
+    const blocks = normalized.split(/\n{2,}/);
     const segments: { id: string; start: number; end: number; text: string }[] = [];
-    let match;
     let idx = 0;
-    while ((match = regex.exec(normalized)) !== null) {
-        const [, , start, end, text] = match;
-        const startInSeconds = srtTimeToSeconds(start);
-        const endInSeconds = srtTimeToSeconds(end);
+
+    for (const block of blocks) {
+        const lines = block.split("\n");
+        if (lines.length === 0) continue;
+
+        let lineIndex = 0;
+        // Cue index is optional; some exporters omit it or put the timestamp first.
+        if (/^\d+$/.test(lines[0].trim())) {
+            lineIndex = 1;
+        }
+
+        const timestampLine = lines[lineIndex]?.trim() ?? "";
+        const match = timestampLine.match(SRT_TIMESTAMP);
+        if (!match) continue;
+
+        const text = lines
+            .slice(lineIndex + 1)
+            .map((line) => line.trimEnd())
+            .join("\n")
+            .trim();
+        if (!text) continue;
         segments.push({
             id: idx.toString(),
-            start: startInSeconds,
-            end: endInSeconds,
-            text: text.replace(/\n/g, ' ').trim(),
+            start: srtTimeToSeconds(match[1]),
+            end: srtTimeToSeconds(match[2]),
+            text,
         });
         idx++;
     }
+
     return segments;
 }
 
