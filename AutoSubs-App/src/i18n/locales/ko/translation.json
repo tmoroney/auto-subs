@@ -647,6 +647,7 @@
   },
   "errorDialog": {
     "addToTimelineFailed": "자막을 타임라인에 추가할 수 없습니다",
-    "clipsBlocked": "출력 트랙에 캡션을 배치할 수 없습니다. 'Add to New Track'을 시도해 보세요."
+    "clipsBlocked": "출력 트랙에 캡션을 배치할 수 없습니다. 'Add to New Track'을 시도해 보세요.",
+    "reformatFailed": "서식 변경 실패"
   }
 }

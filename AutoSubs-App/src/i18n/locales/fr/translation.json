@@ -647,6 +647,7 @@
   },
   "errorDialog": {
     "addToTimelineFailed": "Impossible d'ajouter les sous-titres à la timeline",
-    "clipsBlocked": "Impossible de placer les sous-titres sur la piste de sortie. Essayez 'Add to New Track'."
+    "clipsBlocked": "Impossible de placer les sous-titres sur la piste de sortie. Essayez 'Add to New Track'.",
+    "reformatFailed": "Échec du reformatage"
   }
 }

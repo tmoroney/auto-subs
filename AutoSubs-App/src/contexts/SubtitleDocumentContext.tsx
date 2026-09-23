@@ -251,8 +251,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       ?? generateSubtitleDocumentFilename(settings.audioInputMode === "file", fileInput, timelineId);
     const transcript = await readSubtitleDocument(filename);
     if (!transcript) {
-      console.error("Failed to read transcript");
-      return;
+      throw new Error("Failed to read transcript");
     }
 
     setCurrentSubtitleDocumentFilename(filename);
