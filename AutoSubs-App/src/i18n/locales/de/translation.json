@@ -452,6 +452,12 @@
       "count_other": "{{count}} Untertitel",
       "matches_one": "{{count}} Treffer",
       "matches_other": "{{count}} Treffer"
+    },
+    "wordMove": {
+      "firstWord": "Erstes Wort",
+      "lastWord": "Letztes Wort",
+      "toPrevious": "Erstes Wort nach oben ({{shortcut}})",
+      "toNext": "Letztes Wort nach unten ({{shortcut}})"
     }
   },
   "gettingStarted": {

@@ -466,6 +466,12 @@
       "count_other": "자막 {{count}}개",
       "matches_one": "{{count}}개 일치",
       "matches_other": "{{count}}개 일치"
+    },
+    "wordMove": {
+      "firstWord": "첫 단어",
+      "lastWord": "마지막 단어",
+      "toPrevious": "첫 단어 위로 이동 ({{shortcut}})",
+      "toNext": "마지막 단어 아래로 이동 ({{shortcut}})"
     }
   },
   "theme": {

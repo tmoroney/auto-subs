@@ -472,6 +472,12 @@
       "count_other": "{{count}} subtitles",
       "matches_one": "{{count}} match",
       "matches_other": "{{count}} matches"
+    },
+    "wordMove": {
+      "firstWord": "First word",
+      "lastWord": "Last word",
+      "toPrevious": "Move first word up ({{shortcut}})",
+      "toNext": "Move last word down ({{shortcut}})"
     }
   },
   "gettingStarted": {

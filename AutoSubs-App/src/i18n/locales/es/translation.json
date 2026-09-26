@@ -452,6 +452,12 @@
       "count_other": "{{count}} subtítulos",
       "matches_one": "{{count}} coincidencia",
       "matches_other": "{{count}} coincidencias"
+    },
+    "wordMove": {
+      "firstWord": "Primera palabra",
+      "lastWord": "Última palabra",
+      "toPrevious": "Subir primera palabra ({{shortcut}})",
+      "toNext": "Bajar última palabra ({{shortcut}})"
     }
   },
   "gettingStarted": {

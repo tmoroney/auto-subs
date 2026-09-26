@@ -452,6 +452,12 @@
       "count_other": "{{count}} sous-titres",
       "matches_one": "{{count}} résultat",
       "matches_other": "{{count}} résultats"
+    },
+    "wordMove": {
+      "firstWord": "Premier mot",
+      "lastWord": "Dernier mot",
+      "toPrevious": "Monter le premier mot ({{shortcut}})",
+      "toNext": "Descendre le dernier mot ({{shortcut}})"
     }
   },
   "gettingStarted": {

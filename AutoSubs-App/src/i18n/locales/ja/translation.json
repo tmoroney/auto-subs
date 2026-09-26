@@ -466,6 +466,12 @@
       "count_other": "字幕 {{count}} 件",
       "matches_one": "{{count}} 件一致",
       "matches_other": "{{count}} 件一致"
+    },
+    "wordMove": {
+      "firstWord": "最初の単語",
+      "lastWord": "最後の単語",
+      "toPrevious": "最初の単語を上へ ({{shortcut}})",
+      "toNext": "最後の単語を下へ ({{shortcut}})"
     }
   },
   "theme": {

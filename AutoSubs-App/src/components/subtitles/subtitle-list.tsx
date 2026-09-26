@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
+const MAX_MOVE_HISTORY = 100;
 
 interface SubtitleListProps {
     searchQuery?: string;
@@ -42,16 +43,33 @@ const SubtitleList = ({
     onMatchCountChange,
 }: SubtitleListProps) => {
     const { t } = useTranslation();
-    const { subtitles, updateSubtitles, speakers, updateSpeakers } = useSubtitleDocument();
+    const shortcutModifier = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl";
+    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, speakers, updateSpeakers } = useSubtitleDocument();
     const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
     const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
 
     const [draftText, setDraftText] = useState<string>("");
     const [originalText, setOriginalText] = useState<string>("");
     const inlineEditorRef = useRef<HTMLDivElement>(null);
+    const subtitlesRef = useRef(subtitles);
+    const lastSubtitlesPropRef = useRef(subtitles);
+    const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // A move replaces the editor's DOM text, so the browser's native text undo
+    // cannot restore the two affected subtitles. Keep a separate move history.
+    if (lastSubtitlesPropRef.current !== subtitles) {
+        if (subtitlesRef.current !== subtitles) {
+            moveHistoryRef.current = { past: [], future: [] };
+        }
+        subtitlesRef.current = subtitles;
+        lastSubtitlesPropRef.current = subtitles;
+    }
+    useEffect(() => {
+        moveHistoryRef.current = { past: [], future: [] };
+    }, [currentSubtitleDocumentFilename]);
 
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -213,15 +231,57 @@ const SubtitleList = ({
 
     const joinWords = (words: string[]) => words.join(" ");
 
+    const showSubtitles = (next: typeof subtitles, index: number) => {
+        subtitlesRef.current = next;
+        updateSubtitles(next);
+        const text = next[index]?.text ?? "";
+        setDraftText(text);
+        setOriginalText(text);
+        if (inlineEditorRef.current) {
+            const editor = inlineEditorRef.current;
+            editor.innerText = text;
+            const range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        }
+    };
+
+    const recordMove = (next: typeof subtitles, index: number) => {
+        const history = moveHistoryRef.current;
+        history.past.push(subtitlesRef.current);
+        if (history.past.length > MAX_MOVE_HISTORY) history.past.shift();
+        history.future = [];
+        showSubtitles(next, index);
+    };
+
+    const undoMove = (index: number) => {
+        const history = moveHistoryRef.current;
+        const previous = history.past.pop();
+        if (!previous) return;
+        history.future.push(subtitlesRef.current);
+        showSubtitles(previous, index);
+    };
+
+    const redoMove = (index: number) => {
+        const history = moveHistoryRef.current;
+        const next = history.future.pop();
+        if (!next) return;
+        history.past.push(subtitlesRef.current);
+        showSubtitles(next, index);
+    };
+
     const handleMoveFirstWordToPrev = (index: number) => {
         if (index <= 0) return;
-        const words = splitIntoWords(draftText);
+        const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
         if (words.length === 0) return;
 
         const first = words.shift();
         if (!first) return;
 
-        const newSubtitles = [...subtitles];
+        const newSubtitles = [...subtitlesRef.current];
         const prev = newSubtitles[index - 1];
         const curr = newSubtitles[index];
         if (!prev || !curr) return;
@@ -232,25 +292,18 @@ const SubtitleList = ({
         const nextCurrText = joinWords(words);
         newSubtitles[index - 1] = { ...prev, text: joinWords(prevWords) };
         newSubtitles[index] = { ...curr, text: nextCurrText };
-        updateSubtitles(newSubtitles);
-        setDraftText(nextCurrText);
-        setOriginalText(nextCurrText);
-
-        // keep contentEditable in sync immediately
-        if (inlineEditorRef.current) {
-            inlineEditorRef.current.innerText = nextCurrText;
-        }
+        recordMove(newSubtitles, index);
     };
 
     const handleMoveLastWordToNext = (index: number) => {
-        if (index >= subtitles.length - 1) return;
-        const words = splitIntoWords(draftText);
+        if (index >= subtitlesRef.current.length - 1) return;
+        const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
         if (words.length === 0) return;
 
         const last = words.pop();
         if (!last) return;
 
-        const newSubtitles = [...subtitles];
+        const newSubtitles = [...subtitlesRef.current];
         const next = newSubtitles[index + 1];
         const curr = newSubtitles[index];
         if (!next || !curr) return;
@@ -261,14 +314,7 @@ const SubtitleList = ({
         const nextCurrText = joinWords(words);
         newSubtitles[index] = { ...curr, text: nextCurrText };
         newSubtitles[index + 1] = { ...next, text: joinWords(nextWords) };
-        updateSubtitles(newSubtitles);
-        setDraftText(nextCurrText);
-        setOriginalText(nextCurrText);
-
-        // keep contentEditable in sync immediately
-        if (inlineEditorRef.current) {
-            inlineEditorRef.current.innerText = nextCurrText;
-        }
+        recordMove(newSubtitles, index);
     };
 
     const renderHighlightedText = (text: string, query: string) => {
@@ -425,24 +471,53 @@ const SubtitleList = ({
                                                 onInput={(e) => {
                                                     const nextText = (e.currentTarget.innerText ?? "").replace(/\r\n/g, "\n");
                                                     setDraftText(nextText);
-                                                    const existing = subtitles[index];
+                                                    // Native undo owns ordinary typing. A text edit starts a
+                                                    // new history so a later undo cannot discard that edit.
+                                                    moveHistoryRef.current = { past: [], future: [] };
+                                                    const existing = subtitlesRef.current[index];
                                                     if (!existing) return;
-                                                    const next = [...subtitles];
+                                                    const next = [...subtitlesRef.current];
                                                     next[index] = { ...existing, text: nextText };
+                                                    subtitlesRef.current = next;
                                                     updateSubtitles(next);
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                                 onKeyDown={(e) => {
+                                                    const modifier = e.metaKey || e.ctrlKey;
+                                                    if (modifier && !e.altKey) {
+                                                        if (e.key === "ArrowUp" && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            handleMoveFirstWordToPrev(index);
+                                                            return;
+                                                        }
+                                                        if (e.key === "ArrowDown" && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            handleMoveLastWordToNext(index);
+                                                            return;
+                                                        }
+                                                        if (e.key.toLowerCase() === "z" && !e.shiftKey && (moveHistoryRef.current.past.length || moveHistoryRef.current.future.length)) {
+                                                            e.preventDefault();
+                                                            undoMove(index);
+                                                            return;
+                                                        }
+                                                        if (((e.key.toLowerCase() === "z" && e.shiftKey) || (e.ctrlKey && e.key.toLowerCase() === "y")) && moveHistoryRef.current.future.length) {
+                                                            e.preventDefault();
+                                                            redoMove(index);
+                                                            return;
+                                                        }
+                                                    }
                                                     if (e.key === "Escape") {
                                                         e.preventDefault();
                                                         if (inlineEditorRef.current) {
                                                             inlineEditorRef.current.innerText = originalText;
                                                         }
                                                         setDraftText(originalText);
-                                                        const existing = subtitles[index];
+                                                        moveHistoryRef.current = { past: [], future: [] };
+                                                        const existing = subtitlesRef.current[index];
                                                         if (existing) {
-                                                            const next = [...subtitles];
+                                                            const next = [...subtitlesRef.current];
                                                             next[index] = { ...existing, text: originalText };
+                                                            subtitlesRef.current = next;
                                                             updateSubtitles(next);
                                                         }
                                                     }
@@ -475,11 +550,11 @@ const SubtitleList = ({
                                                         }}
                                                     >
                                                         <ArrowUp />
-                                                        First word
+                                                        {t("subtitles.wordMove.firstWord")}
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent className="max-w-60">
-                                                    <p>Move first word to previous subtitle while preserving word timing</p>
+                                                    <p>{t("subtitles.wordMove.toPrevious", { shortcut: `${shortcutModifier}+↑` })}</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
@@ -495,11 +570,11 @@ const SubtitleList = ({
                                                         }}
                                                     >
                                                         <ArrowDown />
-                                                        Last word
+                                                        {t("subtitles.wordMove.lastWord")}
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent className="max-w-52">
-                                                    <p>Move last word to next subtitle while preserving word timing</p>
+                                                    <p>{t("subtitles.wordMove.toNext", { shortcut: `${shortcutModifier}+↓` })}</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </ButtonGroup>
