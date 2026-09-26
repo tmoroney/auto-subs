@@ -128,7 +128,9 @@
       "customPromptDescription": "添加术语、名称或上下文以引导 Whisper。",
       "customPromptPlaceholder": "例如：OpenAI, DaVinci Resolve — Resolve 字幕编辑教程。",
       "customPromptLanguageWarning": "请使用与音频相同的语言书写 — 使用不同语言的提示可能导致转录错误。",
-      "customPromptWhisperOnly": "仅 Whisper 模型支持。"
+      "customPromptWhisperOnly": "仅 Whisper 模型支持。",
+      "customWordsTitle": "最大词数",
+      "customWordsDescription": "每行词数"
     },
     "censor": {
       "title": "审查词汇",
@@ -190,9 +192,11 @@
       "title": "高级选项"
     },
     "density": {
-      "word": "单词",
+      "word": "1个词",
       "characters": "字符数",
-      "usePresets": "使用预设"
+      "usePresets": "使用预设",
+      "words": "词数",
+      "charsTooltip": "{{name}}：每行{{count}}个字符"
     }
   },
   "speakerEditor": {

@@ -128,7 +128,9 @@
       "customPromptDescription": "Ajoutez des termes, noms ou contexte pour guider Whisper.",
       "customPromptPlaceholder": "Ex. : OpenAI, DaVinci Resolve — tutoriel sur le sous-titrage dans Resolve.",
       "customPromptLanguageWarning": "Rédigez dans la même langue que votre audio — un prompt dans une autre langue peut entraîner une transcription incorrecte.",
-      "customPromptWhisperOnly": "Pris en charge uniquement par les modèles Whisper."
+      "customPromptWhisperOnly": "Pris en charge uniquement par les modèles Whisper.",
+      "customWordsTitle": "Max mots",
+      "customWordsDescription": "Mots par ligne"
     },
     "censor": {
       "title": "Censurer des mots",
@@ -190,9 +192,11 @@
       "title": "Options avancées"
     },
     "density": {
-      "word": "Mot",
+      "word": "1 mot",
       "characters": "Caractères",
-      "usePresets": "Préréglages"
+      "usePresets": "Préréglages",
+      "words": "Mots",
+      "charsTooltip": "{{name}} : {{count}} caractères par ligne"
     }
   },
   "speakerEditor": {

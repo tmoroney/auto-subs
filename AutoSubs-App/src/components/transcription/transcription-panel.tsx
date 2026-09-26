@@ -52,6 +52,8 @@ export function TranscriptionPanel({
     textDensity,
     maxLinesPerSubtitle,
     customMaxCharsPerLine,
+    customMaxWordsPerLine,
+    customDensityUnit,
     textCase,
     removePunctuation,
     enableCensor,
@@ -75,6 +77,8 @@ export function TranscriptionPanel({
       textDensity: s.textDensity,
       maxLinesPerSubtitle: s.maxLinesPerSubtitle,
       customMaxCharsPerLine: s.customMaxCharsPerLine,
+      customMaxWordsPerLine: s.customMaxWordsPerLine,
+      customDensityUnit: s.customDensityUnit,
       textCase: s.textCase,
       removePunctuation: s.removePunctuation,
       enableCensor: s.enableCensor,
@@ -339,9 +343,15 @@ export function TranscriptionPanel({
             : null,
         density: textDensity,
         maxLines: Math.max(1, Math.floor(maxLinesPerSubtitle ?? 1)),
+        // Custom density sends only the active unit's limit; the backend
+        // prefers words for space-separated scripts.
         customMaxCharsPerLine:
-          textDensity === "custom"
+          textDensity === "custom" && customDensityUnit !== "words"
             ? Math.max(1, Math.floor(customMaxCharsPerLine ?? 1))
+            : undefined,
+        customMaxWordsPerLine:
+          textDensity === "custom" && customDensityUnit === "words"
+            ? Math.max(1, Math.floor(customMaxWordsPerLine ?? 1))
             : undefined,
         textCase,
         removePunctuation,

@@ -676,6 +676,7 @@ fn main() {
             transcription_api::ensure_models,
             transcription_api::cancel_transcription,
             transcription_api::reformat_subtitles,
+            transcription_api::density_char_limits,
             models::get_downloaded_models,
             models::delete_model,
             logging::get_backend_logs,

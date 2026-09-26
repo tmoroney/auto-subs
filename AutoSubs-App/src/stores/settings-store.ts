@@ -62,6 +62,8 @@ export const DEFAULT_SETTINGS: Settings = {
   activeCensorLists: [],
   customPrompt: "",
   customMaxCharsPerLine: 38,
+  customMaxWordsPerLine: 3,
+  customDensityUnit: "words",
 
   // Resolve settings
   selectedInputTracksByApp: {

@@ -44,6 +44,8 @@ export function TextFormattingPanel({
     const {
         textDensity,
         customMaxCharsPerLine,
+        customMaxWordsPerLine,
+        customDensityUnit,
         maxLinesPerSubtitle,
         textCase,
         removePunctuation,
@@ -54,6 +56,8 @@ export function TextFormattingPanel({
         useShallow((s) => ({
             textDensity: s.textDensity,
             customMaxCharsPerLine: s.customMaxCharsPerLine,
+            customMaxWordsPerLine: s.customMaxWordsPerLine,
+            customDensityUnit: s.customDensityUnit,
             maxLinesPerSubtitle: s.maxLinesPerSubtitle,
             textCase: s.textCase,
             removePunctuation: s.removePunctuation,
@@ -101,25 +105,50 @@ export function TextFormattingPanel({
                     </div>
                 )}
 
-                {/* Custom Max Chars Per Line (only shown when custom density is selected) */}
+                {/* Custom line limit (only shown when custom density is selected) */}
                 {!hideDensity && textDensity === "custom" && (
                     <div className="flex items-center justify-between">
                         <div>
-                            <Label className="text-sm font-medium">{t("actionBar.format.customCharsTitle")}</Label>
-                            <p className="text-xs text-muted-foreground">{t("actionBar.format.customCharsDescription")}</p>
+                            <Label className="text-sm font-medium">
+                                {customDensityUnit === "words"
+                                    ? t("actionBar.format.customWordsTitle")
+                                    : t("actionBar.format.customCharsTitle")}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                {customDensityUnit === "words"
+                                    ? t("actionBar.format.customWordsDescription")
+                                    : t("actionBar.format.customCharsDescription")}
+                            </p>
                         </div>
-                        <Input
-                            type="number"
-                            min="1"
-                            max="100"
-                            step="1"
-                            value={customMaxCharsPerLine}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
-                                updateSetting("customMaxCharsPerLine", n);
-                            }}
-                            className="w-20"
-                        />
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={customDensityUnit}
+                                onValueChange={(value) => updateSetting("customDensityUnit", value as "chars" | "words")}
+                            >
+                                <SelectTrigger className="w-28">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="chars">{t("actionBar.density.characters")}</SelectItem>
+                                    <SelectItem value="words">{t("actionBar.density.words")}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Input
+                                type="number"
+                                min="1"
+                                max={customDensityUnit === "words" ? "20" : "100"}
+                                step="1"
+                                value={customDensityUnit === "words" ? customMaxWordsPerLine : customMaxCharsPerLine}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
+                                    updateSetting(
+                                        customDensityUnit === "words" ? "customMaxWordsPerLine" : "customMaxCharsPerLine",
+                                        n,
+                                    );
+                                }}
+                                className="w-20"
+                            />
+                        </div>
                     </div>
                 )}
 

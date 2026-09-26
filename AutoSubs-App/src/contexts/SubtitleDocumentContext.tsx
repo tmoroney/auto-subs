@@ -269,7 +269,8 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     const segments = await rustReformatSubtitles(originalSegments, {
       maxLines: settings.maxLinesPerSubtitle,
       textDensity: settings.textDensity,
-      customMaxCharsPerLine: settings.textDensity === "custom" ? settings.customMaxCharsPerLine : undefined,
+      customMaxCharsPerLine: settings.textDensity === "custom" && settings.customDensityUnit !== "words" ? settings.customMaxCharsPerLine : undefined,
+      customMaxWordsPerLine: settings.textDensity === "custom" && settings.customDensityUnit === "words" ? settings.customMaxWordsPerLine : undefined,
       language: transcript.language,
       textCase: settings.textCase,
       removePunctuation: settings.removePunctuation,

@@ -190,6 +190,11 @@
           "takesValue": true
         },
         {
+          "name": "max-words-per-line",
+          "description": "Max words per line (custom density; overrides characters).",
+          "takesValue": true
+        },
+        {
           "name": "text-case",
           "description": "Text case: none, lowercase, uppercase, or titlecase.",
           "takesValue": true

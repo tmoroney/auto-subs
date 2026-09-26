@@ -34,6 +34,7 @@ autosubs --version
 - `--density` - Text density: `less`, `standard`, `more`, `single`, or `custom`
 - `--max-lines` - Maximum lines per subtitle
 - `--max-chars-per-line` - Custom max characters per line (use with `--density custom`)
+- `--max-words-per-line` - Max words per line (custom density; overrides characters)
 - `--text-case` - Text case: `none`, `lowercase`, `uppercase`, or `titlecase`
 - `--remove-punctuation` - Strip punctuation from transcript
 

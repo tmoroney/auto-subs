@@ -332,6 +332,7 @@ fn build_post_process_config(
     density: Option<TextDensity>,
     max_lines: Option<usize>,
     custom_max_chars_per_line: Option<usize>,
+    custom_max_words_per_line: Option<usize>,
     content_formatting: Option<ContentFormatting>,
     segments: &[Segment],
 ) -> PostProcessConfig {
@@ -349,9 +350,7 @@ fn build_post_process_config(
     if let Some(d) = density {
         pp_cfg.apply_density(d);
         if d == TextDensity::Custom {
-            if let Some(custom_cpl) = custom_max_chars_per_line {
-                pp_cfg.max_chars_per_line = custom_cpl;
-            }
+            pp_cfg.apply_custom_limit(custom_max_chars_per_line, custom_max_words_per_line);
         }
     }
     if let Some(ml) = max_lines {
@@ -443,6 +442,7 @@ impl Engine {
         max_lines: Option<usize>,
         density: Option<TextDensity>,
         custom_max_chars_per_line: Option<usize>,
+        custom_max_words_per_line: Option<usize>,
         content_formatting: Option<ContentFormatting>,
         cb: Option<Callbacks>,
     ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
@@ -752,6 +752,7 @@ impl Engine {
             density,
             max_lines,
             custom_max_chars_per_line,
+            custom_max_words_per_line,
             content_formatting,
             &segments,
         );

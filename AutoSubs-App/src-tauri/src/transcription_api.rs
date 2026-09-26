@@ -105,6 +105,7 @@ pub struct FrontendTranscribeOptions {
     pub density: Option<TextDensity>,
     pub max_lines: Option<usize>,
     pub custom_max_chars_per_line: Option<usize>,
+    pub custom_max_words_per_line: Option<usize>,
     // Content formatting (applied after structural line wrapping).
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
@@ -513,6 +514,7 @@ pub async fn transcribe_audio<R: Runtime>(
                 options.max_lines, // max_lines
                 options.density, // density
                 options.custom_max_chars_per_line, // custom_max_chars_per_line
+                options.custom_max_words_per_line, // custom_max_words_per_line
                 Some(content_formatting),
                 Some(callbacks),
             )
@@ -768,6 +770,7 @@ pub struct FrontendFormattingOptions {
     pub max_lines: Option<usize>,
     pub text_density: Option<String>,
     pub custom_max_chars_per_line: Option<usize>,
+    pub custom_max_words_per_line: Option<usize>,
     // Content formatting (applied after structural line wrapping).
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
@@ -832,11 +835,13 @@ pub async fn reformat_subtitles(
         };
         config.apply_density(density);
 
-        // If custom density, set max_chars_per_line directly from the provided value
+        // If custom density, apply the active unit's limit (words take priority
+        // for space-separated scripts; chars otherwise).
         if density == TextDensity::Custom {
-            if let Some(custom_cpl) = options.custom_max_chars_per_line {
-                config.max_chars_per_line = custom_cpl;
-            }
+            config.apply_custom_limit(
+                options.custom_max_chars_per_line,
+                options.custom_max_words_per_line,
+            );
         }
     }
     if let Some(ml) = options.max_lines {
@@ -878,4 +883,34 @@ pub async fn reformat_subtitles(
         .collect();
 
     Ok(result)
+}
+
+#[derive(Debug, Serialize)]
+pub struct DensityCharLimits {
+    pub less: usize,
+    pub standard: usize,
+    pub more: usize,
+}
+
+/// Max characters per line each density preset resolves to for `lang`
+/// ("auto" uses the Latin profile), so the UI can show real numbers.
+#[command]
+pub fn density_char_limits(lang: String) -> DensityCharLimits {
+    let base = PostProcessConfig::for_language(if lang.eq_ignore_ascii_case("auto") {
+        "en"
+    } else {
+        &lang
+    });
+
+    let resolve = |density: TextDensity| {
+        let mut cfg = base.clone();
+        cfg.apply_density(density);
+        cfg.max_chars_per_line
+    };
+
+    DensityCharLimits {
+        less: resolve(TextDensity::Less),
+        standard: resolve(TextDensity::Standard),
+        more: resolve(TextDensity::More),
+    }
 }

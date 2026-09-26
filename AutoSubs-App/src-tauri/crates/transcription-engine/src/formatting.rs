@@ -106,6 +106,9 @@ pub struct PostProcessConfig {
     /// Content formatting: case-insensitive list of words to censor (replaced with first+***+last).
     #[serde(default)]
     pub censored_words: Vec<String>,
+    /// Max words per rendered line (Custom density "words" unit). `None` = char limit only.
+    #[serde(default)]
+    pub max_words_per_line: Option<usize>,
 }
 
 impl Default for PostProcessConfig {
@@ -122,6 +125,7 @@ impl Default for PostProcessConfig {
             text_case: TextCase::None,
             remove_punctuation: false,
             censored_words: Vec::new(),
+            max_words_per_line: None,
         }
     }
 }
@@ -166,6 +170,19 @@ impl PostProcessConfig {
                 };
                 self.max_chars_per_line = ((self.max_chars_per_line as f64) * factor).round() as usize;
             }
+        }
+    }
+
+    /// Apply the Custom density limit. Words take priority when given, but only for
+    /// scripts that separate words with spaces; for no-space scripts (CJK, Thai…)
+    /// tokens are single characters, so fall back to the char limit / profile CPL.
+    pub fn apply_custom_limit(&mut self, max_chars: Option<usize>, max_words: Option<usize>) {
+        match max_words.filter(|w| *w >= 1) {
+            Some(w) if self.insert_interword_space => {
+                self.max_words_per_line = Some(w);
+                self.max_chars_per_line = usize::MAX;
+            }
+            _ => if let Some(c) = max_chars { self.max_chars_per_line = c; }
         }
     }
 
@@ -759,10 +776,13 @@ fn slice_chars(slice: &[Tok], cfg: &PostProcessConfig) -> usize {
 /// and line balance. No language dictionary is required.
 fn wrap_group(mut remaining: Vec<Tok>, cfg: &PostProcessConfig) -> Vec<Vec<Tok>> {
     let cap = cfg.max_chars_per_line.max(1);
+    let wcap = cfg.max_words_per_line.unwrap_or(usize::MAX).max(1);
     let mut lines = Vec::new();
 
-    while slice_chars(&remaining, cfg) > cap && remaining.len() > 1 {
-        let split = choose_line_break(&remaining, cfg, cap);
+    let fits = |slice: &[Tok]| slice_chars(slice, cfg) <= cap && slice.len() <= wcap;
+
+    while !fits(&remaining) && remaining.len() > 1 {
+        let split = choose_line_break(&remaining, cfg, cap, wcap);
         if split == 0 || split >= remaining.len() {
             break;
         }
@@ -777,14 +797,14 @@ fn wrap_group(mut remaining: Vec<Tok>, cfg: &PostProcessConfig) -> Vec<Vec<Tok>>
     lines
 }
 
-fn choose_line_break(tokens: &[Tok], cfg: &PostProcessConfig, cap: usize) -> usize {
+fn choose_line_break(tokens: &[Tok], cfg: &PostProcessConfig, cap: usize, wcap: usize) -> usize {
     let mut candidates = Vec::new();
     for index in 1..tokens.len() {
         if cfg.insert_interword_space && !tokens[index].leading_space {
             continue;
         }
         let left_len = slice_chars(&tokens[..index], cfg);
-        if left_len > cap {
+        if left_len > cap || index > wcap {
             continue;
         }
         if cfg.enforce_kinsoku && !is_kinsoku_break(tokens, index) {
@@ -797,16 +817,19 @@ fn choose_line_break(tokens: &[Tok], cfg: &PostProcessConfig, cap: usize) -> usi
     // preferable to emitting an arbitrarily long line.
     if candidates.is_empty() && cfg.enforce_kinsoku {
         for index in 1..tokens.len() {
-            if slice_chars(&tokens[..index], cfg) <= cap {
+            if slice_chars(&tokens[..index], cfg) <= cap && index <= wcap {
                 candidates.push((index, slice_chars(&tokens[..index], cfg), 0));
             }
         }
     }
 
     let total_len = slice_chars(tokens, cfg);
-    let line_count = total_len.div_ceil(cap);
+    let line_count = total_len
+        .div_ceil(cap)
+        .max(tokens.len().div_ceil(wcap))
+        .max(1);
     let target = total_len.div_ceil(line_count);
-    let natural_tolerance = cap / 3;
+    let natural_tolerance = cap.min(total_len) / 3;
 
     candidates
         .iter()
@@ -1069,6 +1092,98 @@ mod tests {
             }
         }
 
+    }
+
+    /// Build a segment whose word tokens mirror the engine's convention of a
+    /// leading space on every word but the first (punctuation stays attached).
+    fn segment_from_text(text: &str) -> Segment {
+        let words = text
+            .split_whitespace()
+            .enumerate()
+            .map(|(i, w)| WordTimestamp {
+                text: if i == 0 { w.to_string() } else { format!(" {w}") },
+                start: i as f64,
+                end: i as f64 + 0.4,
+                probability: None,
+            })
+            .collect();
+        Segment {
+            start: 0.0,
+            end: 60.0,
+            text: String::new(),
+            speaker_id: None,
+            words: Some(words),
+        }
+    }
+
+    const LONG_SENTENCES: &str = "For us, transhumanism is of the utmost importance \
+        to the evolution of humanity and the continual growth of the human race. \
+        Transhumanism will be the key to our survival in the near future.";
+
+    #[test]
+    fn custom_word_limit_wraps_by_words() {
+        let mut cfg = PostProcessConfig::latin();
+        cfg.apply_custom_limit(None, Some(3));
+        cfg.max_lines = 1;
+
+        assert_eq!(cfg.max_words_per_line, Some(3));
+        assert_eq!(cfg.max_chars_per_line, usize::MAX);
+
+        let seg = segment_from_text(LONG_SENTENCES);
+        let cues = process_segments(&[seg], &cfg);
+
+        for cue in &cues {
+            for line in cue.text.split('\n') {
+                let count = line.split_whitespace().count();
+                assert!(count <= 3, "line has {count} words (> 3): {line:?}");
+            }
+        }
+
+        // No text is lost: the joined cue words equal the input words.
+        let out_words: Vec<String> = cues
+            .iter()
+            .flat_map(|c| c.text.split_whitespace())
+            .map(|w| w.to_string())
+            .collect();
+        let in_words: Vec<String> = LONG_SENTENCES
+            .split_whitespace()
+            .map(|w| w.to_string())
+            .collect();
+        assert_eq!(out_words, in_words);
+    }
+
+    #[test]
+    fn custom_word_limit_one_word_per_line() {
+        let mut cfg = PostProcessConfig::latin();
+        cfg.apply_custom_limit(None, Some(1));
+        cfg.max_lines = 1;
+
+        let seg = segment_from_text(LONG_SENTENCES);
+        let cues = process_segments(&[seg], &cfg);
+
+        for cue in &cues {
+            for line in cue.text.split('\n') {
+                let count = line.split_whitespace().count();
+                assert_eq!(count, 1, "line is not exactly 1 word: {line:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn custom_word_limit_ignored_for_cjk() {
+        let mut cfg = PostProcessConfig::cjk();
+        let cpl = cfg.max_chars_per_line;
+        cfg.apply_custom_limit(None, Some(3));
+        assert_eq!(cfg.max_words_per_line, None);
+        assert_eq!(cfg.max_chars_per_line, cpl);
+    }
+
+    #[test]
+    fn custom_char_limit_still_applies() {
+        let mut cfg = PostProcessConfig::latin();
+        cfg.apply_custom_limit(Some(20), None);
+        assert_eq!(cfg.max_chars_per_line, 20);
+        assert_eq!(cfg.max_words_per_line, None);
     }
 
     #[test]

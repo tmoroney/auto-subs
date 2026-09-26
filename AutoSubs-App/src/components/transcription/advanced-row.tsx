@@ -173,7 +173,7 @@ function AdvancedOptionsPanel() {
   const alignmentSupersedesDtw = enableForcedAlignment && !translate;
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="px-4 pb-4 pt-3 space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-sm font-medium">

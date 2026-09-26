@@ -85,6 +85,18 @@ export async function reformatSubtitles(
 }
 
 /**
+ * Resolved max characters per line for each density preset in a language
+ * ("auto" uses the Latin profile), for showing real numbers in the UI.
+ */
+export async function getDensityCharLimits(lang: string): Promise<{
+    less: number;
+    standard: number;
+    more: number;
+}> {
+    return invoke("density_char_limits", { lang });
+}
+
+/**
  * Get default formatting options based on current settings.
  */
 export function getDefaultFormattingOptions(settings: {
@@ -92,6 +104,8 @@ export function getDefaultFormattingOptions(settings: {
     language: string;
     textDensity?: "less" | "standard" | "more" | "single" | "custom";
     customMaxCharsPerLine?: number;
+    customMaxWordsPerLine?: number;
+    customDensityUnit?: "chars" | "words";
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase";
     removePunctuation?: boolean;
     enableCensor?: boolean;
@@ -106,9 +120,13 @@ export function getDefaultFormattingOptions(settings: {
         censoredWords: settings.enableCensor ? (settings.censoredWords ?? []) : [],
     };
     
-    // Only include customMaxCharsPerLine if textDensity is "custom"
-    if (settings.textDensity === "custom" && settings.customMaxCharsPerLine !== undefined) {
-        options.customMaxCharsPerLine = settings.customMaxCharsPerLine;
+    // Custom density sends only the active unit's limit.
+    if (settings.textDensity === "custom") {
+        if (settings.customDensityUnit === "words" && settings.customMaxWordsPerLine !== undefined) {
+            options.customMaxWordsPerLine = settings.customMaxWordsPerLine;
+        } else if (settings.customMaxCharsPerLine !== undefined) {
+            options.customMaxCharsPerLine = settings.customMaxCharsPerLine;
+        }
     }
     
     return options;

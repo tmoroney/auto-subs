@@ -1,10 +1,22 @@
-use crate::transcription_api::{FrontendTranscribeOptions, transcribe_audio};
+use crate::transcription_api::{FrontendTranscribeOptions, density_char_limits, transcribe_audio};
 use std::fs;
 use tauri::test::{mock_builder, mock_context, noop_assets};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn density_char_limits_profiles() {
+        let en = density_char_limits("en".into());
+        assert_eq!((en.less, en.standard, en.more), (27, 38, 49));
+
+        let ja = density_char_limits("ja".into());
+        assert_eq!((ja.less, ja.standard, ja.more), (14, 20, 26));
+
+        let auto = density_char_limits("auto".into());
+        assert_eq!((auto.less, auto.standard, auto.more), (en.less, en.standard, en.more));
+    }
 
     // run with cargo test transcribe_audio_smoke -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
@@ -34,6 +46,7 @@ mod tests {
             density: None,
             max_lines: None,
             custom_max_chars_per_line: None,
+            custom_max_words_per_line: None,
             text_case: None,
             remove_punctuation: None,
             censored_words: None,
@@ -89,6 +102,7 @@ mod tests {
             density: None,
             max_lines: None,
             custom_max_chars_per_line: None,
+            custom_max_words_per_line: None,
             text_case: None,
             remove_punctuation: None,
             censored_words: None,

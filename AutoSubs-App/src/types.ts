@@ -161,6 +161,8 @@ export interface Settings {
     exportRange?: "entire" | "inout",
     customPrompt: string,
     customMaxCharsPerLine: number,
+    customMaxWordsPerLine: number,
+    customDensityUnit: "chars" | "words",
 
     // Adobe integrations
     selectedInputTracksByApp: Record<Integration, string[]>;
@@ -229,6 +231,7 @@ export interface TranscriptionOptions {
     density: "less" | "standard" | "more" | "single" | "custom",
     maxLines: number,
     customMaxCharsPerLine?: number | undefined,
+    customMaxWordsPerLine?: number | undefined,
     // Content formatting applied in the Rust backend.
     textCase: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation: boolean,
@@ -262,6 +265,7 @@ export interface FormattingOptions {
     maxLines?: number,
     textDensity?: "less" | "standard" | "more" | "single" | "custom",
     customMaxCharsPerLine?: number,
+    customMaxWordsPerLine?: number,
     language?: string,
     // Content formatting (applied by Rust backend after structural line wrapping).
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase",

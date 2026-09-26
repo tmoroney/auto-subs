@@ -128,7 +128,9 @@
       "customPromptDescription": "Добавьте термины, имена или контекст, чтобы подсказать Whisper.",
       "customPromptPlaceholder": "Например: OpenAI, DaVinci Resolve — урок по монтажу субтитров.",
       "customPromptLanguageWarning": "Пишите на языке аудио: подсказка на другом языке может привести к ошибкам распознавания.",
-      "customPromptWhisperOnly": "Поддерживается только моделями Whisper."
+      "customPromptWhisperOnly": "Поддерживается только моделями Whisper.",
+      "customWordsTitle": "Максимум слов",
+      "customWordsDescription": "Слов в строке"
     },
     "censor": {
       "title": "Цензура слов",
@@ -192,9 +194,11 @@
       "title": "Доп. параметры"
     },
     "density": {
-      "word": "Слово",
+      "word": "1 слово",
       "characters": "Символов",
-      "usePresets": "Пресеты"
+      "usePresets": "Пресеты",
+      "words": "Слов",
+      "charsTooltip": "{{name}}: {{count}} символов в строке"
     }
   },
   "speakerEditor": {

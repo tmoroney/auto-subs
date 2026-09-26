@@ -128,7 +128,9 @@
       "customPromptDescription": "Add terms, names, or context to guide Whisper.",
       "customPromptPlaceholder": "E.g. OpenAI, DaVinci Resolve — tutorial about subtitle editing.",
       "customPromptLanguageWarning": "Write in the same language as your audio — a prompt in a different language can cause incorrect transcription.",
-      "customPromptWhisperOnly": "Only supported by Whisper models."
+      "customPromptWhisperOnly": "Only supported by Whisper models.",
+      "customWordsTitle": "Max Words",
+      "customWordsDescription": "Words per line"
     },
     "censor": {
       "title": "Censor Words",
@@ -192,9 +194,11 @@
       "title": "Advanced Options"
     },
     "density": {
-      "word": "Word",
+      "word": "1 word",
       "characters": "Characters",
-      "usePresets": "Use presets"
+      "usePresets": "Use presets",
+      "words": "Words",
+      "charsTooltip": "{{name}}: {{count}} characters per line"
     }
   },
   "speakerEditor": {

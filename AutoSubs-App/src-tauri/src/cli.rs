@@ -204,6 +204,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         density,
         max_lines: arg_num(&m, "max-lines"),
         custom_max_chars_per_line: arg_num(&m, "max-chars-per-line"),
+        custom_max_words_per_line: arg_num(&m, "max-words-per-line"),
         text_case: arg_str(&m, "text-case"),
         remove_punctuation: Some(arg_flag(&m, "remove-punctuation")),
         censored_words: None,
