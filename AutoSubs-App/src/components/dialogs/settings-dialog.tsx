@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Gauge, Clock, GraduationCap, Terminal, ChevronDown, Ear } from "lucide-react";
+import { AudioLines, Gauge, Clock, Terminal, ChevronDown, Ear } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -108,11 +108,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (shouldReset) {
       resetSettings();
     }
-  };
-
-  const handleRestartOnboarding = () => {
-    updateSetting("onboardingCompleted", false);
-    onOpenChange(false);
   };
 
   const handleOpenLogsFolder = React.useCallback(async () => {
@@ -263,25 +258,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </Field>
               </FieldGroup>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleRestartOnboarding}
-                >
-                  <GraduationCap/>
-                  {t("settings.restartOnboarding")}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleOpenLogsFolder}
-                >
-                  <Terminal className="size-4" />
-                  {t("settings.openLogsFolder")}
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleOpenLogsFolder}
+              >
+                <Terminal className="size-4" />
+                {t("settings.openLogsFolder")}
+              </Button>
             </div>
 
             {/* Transcription Settings */}

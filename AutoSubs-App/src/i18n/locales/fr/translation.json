@@ -34,7 +34,6 @@
       "notFound": "Introuvable",
       "errorTitle": "Outil en ligne de commande"
     },
-    "restartOnboarding": "Redémarrer l'intégration",
     "openLogsFolder": "Ouvrir le dossier des logs",
     "reset": {
       "button": "Réinitialiser les paramètres",

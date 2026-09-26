@@ -34,7 +34,6 @@
       "notFound": "未找到",
       "errorTitle": "命令行工具"
     },
-    "restartOnboarding": "重新开始入门",
     "openLogsFolder": "打开日志文件夹",
     "reset": {
       "button": "重置设置",

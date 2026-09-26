@@ -401,7 +401,6 @@
       "notFound": "未検出",
       "errorTitle": "コマンドラインツール"
     },
-    "restartOnboarding": "オンボーディングを再開",
     "openLogsFolder": "ログフォルダを開く",
     "gpu": {
       "description": "GPUを使用して高速な文字起こし",
