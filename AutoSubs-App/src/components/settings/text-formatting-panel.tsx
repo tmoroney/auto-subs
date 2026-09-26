@@ -26,6 +26,8 @@ import { getActiveCensorWords } from "@/censor/merge"
 interface TextFormattingPanelProps {
     /** Show Cancel / Apply buttons at the bottom */
     showActions?: boolean
+    /** Hide the Text Density select row and its custom-chars row (shown elsewhere in the UI) */
+    hideDensity?: boolean
     onCancel?: () => void
     onApply?: () => void
     applyDisabled?: boolean
@@ -33,6 +35,7 @@ interface TextFormattingPanelProps {
 
 export function TextFormattingPanel({
     showActions = false,
+    hideDensity = false,
     onCancel,
     onApply,
     applyDisabled = false,
@@ -74,30 +77,32 @@ export function TextFormattingPanel({
         <div>
             <div className="p-4 space-y-3">
                 {/* Text Density */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Label className="text-sm font-medium">{t("actionBar.format.textDensityTitle")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textDensityDescription")}</p>
+                {!hideDensity && (
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <Label className="text-sm font-medium">{t("actionBar.format.textDensityTitle")}</Label>
+                            <p className="text-xs text-muted-foreground">{t("actionBar.format.textDensityDescription")}</p>
+                        </div>
+                        <Select
+                            value={textDensity}
+                            onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single" | "custom")}
+                        >
+                            <SelectTrigger className="w-32">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="single">{t("actionBar.format.textDensity.single")}</SelectItem>
+                                <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
+                                <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
+                                <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
+                                <SelectItem value="custom">{t("actionBar.format.textDensity.custom")}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Select
-                        value={textDensity}
-                        onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single" | "custom")}
-                    >
-                        <SelectTrigger className="w-32">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="single">{t("actionBar.format.textDensity.single")}</SelectItem>
-                            <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
-                            <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
-                            <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
-                            <SelectItem value="custom">{t("actionBar.format.textDensity.custom")}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+                )}
 
                 {/* Custom Max Chars Per Line (only shown when custom density is selected) */}
-                {textDensity === "custom" && (
+                {!hideDensity && textDensity === "custom" && (
                     <div className="flex items-center justify-between">
                         <div>
                             <Label className="text-sm font-medium">{t("actionBar.format.customCharsTitle")}</Label>

@@ -88,7 +88,6 @@
   },
   "actionBar": {
     "source": "Source",
-    "options": "Options",
     "subtitleStyle": "Caption Style",
     "subtitleStyleDescription": "Captions",
     "model": "Model",
@@ -184,6 +183,18 @@
       "useOmniAsr": "Use Auto with Omni-ASR",
       "nativeTranslation": "Model native translation",
       "googleTranslation": "Google Translate"
+    },
+    "rows": {
+      "advanced": "Advanced",
+      "density": "Density"
+    },
+    "advanced": {
+      "title": "Advanced Options"
+    },
+    "density": {
+      "word": "Word",
+      "characters": "Characters",
+      "usePresets": "Use presets"
     }
   },
   "speakerEditor": {

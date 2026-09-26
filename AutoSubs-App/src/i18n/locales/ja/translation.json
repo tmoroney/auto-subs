@@ -1,7 +1,6 @@
 {
   "actionBar": {
     "source": "ソース",
-    "options": "オプション",
     "subtitleStyle": "字幕スタイル",
     "subtitleStyleDescription": "字幕",
     "model": "モデル",
@@ -95,6 +94,18 @@
       "selectAll": "すべて選択",
       "selectedLabel": "{{label}} が選択されました",
       "trackN": "トラック {{n}}"
+    },
+    "rows": {
+      "advanced": "詳細設定",
+      "density": "密度"
+    },
+    "advanced": {
+      "title": "詳細オプション"
+    },
+    "density": {
+      "word": "単語",
+      "characters": "文字数",
+      "usePresets": "プリセットを使用"
     }
   },
   "common": {

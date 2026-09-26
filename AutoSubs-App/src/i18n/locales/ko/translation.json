@@ -1,7 +1,6 @@
 {
   "actionBar": {
     "source": "소스",
-    "options": "옵션",
     "subtitleStyle": "자막 스타일",
     "subtitleStyleDescription": "자막",
     "model": "모델",
@@ -95,6 +94,18 @@
       "selectAll": "모두 선택",
       "selectedLabel": "{{label}} 선택됨",
       "trackN": "트랙 {{n}}"
+    },
+    "rows": {
+      "advanced": "고급",
+      "density": "밀도"
+    },
+    "advanced": {
+      "title": "고급 옵션"
+    },
+    "density": {
+      "word": "단어",
+      "characters": "글자 수",
+      "usePresets": "프리셋 사용"
     }
   },
   "common": {

@@ -88,7 +88,6 @@
   },
   "actionBar": {
     "source": "来源",
-    "options": "选项",
     "subtitleStyle": "字幕样式",
     "subtitleStyleDescription": "字幕",
     "model": "模型",
@@ -182,6 +181,18 @@
       "useOmniAsr": "使用自动模式 + Omni-ASR",
       "nativeTranslation": "模型原生翻译",
       "googleTranslation": "Google翻译"
+    },
+    "rows": {
+      "advanced": "高级",
+      "density": "密度"
+    },
+    "advanced": {
+      "title": "高级选项"
+    },
+    "density": {
+      "word": "单词",
+      "characters": "字符数",
+      "usePresets": "使用预设"
     }
   },
   "speakerEditor": {

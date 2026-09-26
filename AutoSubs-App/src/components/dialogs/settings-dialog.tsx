@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AudioLines, Gauge, Clock, Terminal, ChevronDown, Ear } from "lucide-react";
+import { Gauge, Terminal, ChevronDown } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -53,16 +53,9 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const uiLanguage = useSettingsStore((s) => s.uiLanguage);
   const enableGpu = useSettingsStore((s) => s.enableGpu);
-  const enableVad = useSettingsStore((s) => s.enableVad);
-  const enableDTW = useSettingsStore((s) => s.enableDTW);
-  const enableForcedAlignment = useSettingsStore((s) => s.enableForcedAlignment);
-  const translate = useSettingsStore((s) => s.translate);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
-  // Mirrors the backend gate: forced alignment only actually runs (and only
-  // then turns DTW off) when translation is off — see engine.rs `enable_dtw`.
-  const alignmentSupersedesDtw = enableForcedAlignment && !translate;
   const deleteIconRef = useRef<DeleteIconHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = React.useState<string>("");
@@ -275,77 +268,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </h4>
 
               <FieldGroup className="gap-3">
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-purple-100 dark:bg-purple-900/30">
-                      <AudioLines className="size-4 text-purple-600 dark:text-purple-400" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{t("settings.forcedAlignment.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-2">
-                        {translate
-                          ? t("settings.forcedAlignment.translationIncompatible")
-                          : t("settings.forcedAlignment.description")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        checked={enableForcedAlignment}
-                        disabled={translate}
-                        onCheckedChange={(checked) =>
-                          updateSetting("enableForcedAlignment", checked)
-                        }
-                        aria-label={t("settings.forcedAlignment.title")}
-                      />
-                    </ItemActions>
-                  </Item>
-                </Field>
-
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-blue-100 dark:bg-blue-900/30">
-                      <Clock className="size-4 text-blue-600 dark:text-blue-400" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{t("settings.dtw.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-2">
-                        {alignmentSupersedesDtw
-                          ? t("settings.dtw.supersededByAlignment")
-                          : t("settings.dtw.description")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        checked={enableDTW}
-                        disabled={alignmentSupersedesDtw}
-                        onCheckedChange={(checked) => updateSetting("enableDTW", checked)}
-                        aria-label={t("settings.dtw.title")}
-                      />
-                    </ItemActions>
-                  </Item>
-                </Field>
-
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-emerald-100 dark:bg-emerald-900/30">
-                      <Ear className="size-4 text-emerald-600 dark:text-emerald-400" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{t("settings.speechDetection.title", "Speech Detection")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-2">
-                        {t("settings.speechDetection.description", "Skips silence; turn off if words are missed")}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        checked={enableVad}
-                        onCheckedChange={(checked) => updateSetting("enableVad", checked)}
-                        aria-label={t("settings.speechDetection.title", "Speech Detection")}
-                      />
-                    </ItemActions>
-                  </Item>
-                </Field>
-
                 <Field>
                   <Item variant="outline" size="sm">
                     <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">

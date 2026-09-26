@@ -88,7 +88,6 @@
   },
   "actionBar": {
     "source": "Quelle",
-    "options": "Optionen",
     "subtitleStyle": "Untertitelstil",
     "subtitleStyleDescription": "Untertitel",
     "model": "Modell",
@@ -182,6 +181,18 @@
       "useOmniAsr": "Auto mit Omni-ASR verwenden",
       "nativeTranslation": "Modell-eigene Übersetzung",
       "googleTranslation": "Google Translate"
+    },
+    "rows": {
+      "advanced": "Erweitert",
+      "density": "Dichte"
+    },
+    "advanced": {
+      "title": "Erweiterte Optionen"
+    },
+    "density": {
+      "word": "Wort",
+      "characters": "Zeichen",
+      "usePresets": "Vorgaben nutzen"
     }
   },
   "speakerEditor": {

@@ -25,7 +25,8 @@ import {
 } from "./source-section";
 import type { Integration } from "@/contexts/IntegrationContext";
 import { LanguageButton } from "./language-button";
-import { OptionsRow } from "./options-row";
+import { DensityRow } from "./density-row";
+import { AdvancedRow } from "./advanced-row";
 import { isSupportedMediaFile, type ProcessingStep } from "./utils";
 
 export interface TranscriptionPanelViewProps {
@@ -315,9 +316,21 @@ export function TranscriptionPanelView({
 
                     <CompactSettingsRow
                       number={formatSectionNumber(4)}
-                      label={t("actionBar.options", "Options")}
+                      label={t("actionBar.rows.density", "Density")}
+                      className="border-b"
                     >
-                      <OptionsRow />
+                      <DensityRow />
+                    </CompactSettingsRow>
+
+                    <CompactSettingsRow
+                      number={formatSectionNumber(5)}
+                      label={t("actionBar.rows.advanced", "Advanced")}
+                    >
+                      <AdvancedRow
+                        selectedModelEngine={
+                          modelsState[selectedModelIndex]?.engine
+                        }
+                      />
                     </CompactSettingsRow>
                   </Card>
 

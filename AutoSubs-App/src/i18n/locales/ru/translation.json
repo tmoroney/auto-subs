@@ -88,7 +88,6 @@
   },
   "actionBar": {
     "source": "Источник",
-    "options": "Параметры",
     "subtitleStyle": "Стиль титров",
     "subtitleStyleDescription": "Титры",
     "model": "Модель",
@@ -184,6 +183,18 @@
       "useOmniAsr": "Использовать Авто с Omni-ASR",
       "nativeTranslation": "Встроенный перевод модели",
       "googleTranslation": "Google Переводчик"
+    },
+    "rows": {
+      "advanced": "Прочее",
+      "density": "Плотность"
+    },
+    "advanced": {
+      "title": "Доп. параметры"
+    },
+    "density": {
+      "word": "Слово",
+      "characters": "Символов",
+      "usePresets": "Пресеты"
     }
   },
   "speakerEditor": {
