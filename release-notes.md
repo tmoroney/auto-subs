@@ -1,11 +1,18 @@
-**Resolve users: this fixes a serious 3.10.0 bug** where AutoSubs froze the Fusion page — caption controls stopped responding and text fields lost focus. The automatic start that caused it is gone.
+## What's New
+- Added word-timing refinement for Whisper: caption timings now snap to actual speech boundaries, reducing drift and overhang on word-level captions.
+- Added a Speech Detection toggle so you can turn off silence skipping when words are missed on band-limited audio like phone calls.
 
-To connect, run **Workspace → Scripts → AutoSubs** once per session, like before 3.10.0. Note the script can no longer open the AutoSubs app for you — Resolve's free edition removed that ability — so launch AutoSubs yourself first. **If you used 3.10.0, restart Resolve once after updating.**
+## Improvements
+- Reorganized transcription options into Density and Advanced sections, and simplified the settings dialog.
+- Improved the app's look and feel on macOS: smoother window zoom, faster sidebar resizing, and window colors that follow your app theme.
+- Changed the default caption style to Chalkboard Bold.
+- Improved reliability of the downloaded models list, which could appear empty until you ran a transcription.
 
 ## Bug Fixes
-- Fixed scripted Fusion controls and text fields freezing for the whole Resolve session.
-- Fixed Resolve crashing on quit while the AutoSubs bridge was running.
-- Fixed the caption template dropdown hanging on "Loading templates..." and the app briefly showing "Disconnected" on projects with large media pools.
-- Fixed caption preset thumbnails crashing Resolve 21.1 on save — they now render via timeline frame export instead.
-- Fixed caption preview failures leaving the playhead moved and silently stuck tracks — failures are now reported and the playhead is restored.
-- Fixed the Linux Resolve setup script failing on standard installs, and added Arch Linux setup documentation.
+- Fixed subtitles failing to reach the timeline in Resolve when the target video track was occupied, the most common Send failure on Resolve 21.
+- Fixed audio extraction failing on non-English installs of Resolve.
+- Fixed the Resolve connection dropping on Windows when the user folder name contains non-English characters.
+- Fixed the app crashing when transcribing long stretches of uninterrupted speech.
+- Fixed translation aborting when a single line failed; failed lines now keep their original text, and a clear error appears only if translation fails entirely.
+- Fixed imported SRT files with Windows line endings collapsing into a single caption.
+- Fixed words occasionally being dropped or collapsed when caption timings were refined.
