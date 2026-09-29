@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
@@ -303,7 +302,7 @@ export function TextFormattingPanel({
                                             </Button>
                                         </form>
 
-                                        <ScrollArea className="max-h-[150px] rounded-lg border bg-muted/20 p-3">
+                                        <div className="max-h-[150px] overflow-y-auto rounded-lg border bg-muted/20 p-3">
                                             {(censoredWords || []).length === 0 ? (
                                                 <div className="text-sm text-muted-foreground text-center py-4">
                                                     {t("actionBar.censor.empty")}
@@ -328,7 +327,7 @@ export function TextFormattingPanel({
                                                     ))}
                                                 </div>
                                             )}
-                                        </ScrollArea>
+                                        </div>
                                     </div>
                                 </div>
                                 <DialogFooter>
