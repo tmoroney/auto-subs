@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ScrollText, Settings2, Speech, Type } from "lucide-react";
+import { ScrollText, Settings2, Speech } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,16 +11,15 @@ import {
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { SpeakerSelector } from "@/components/settings/diarize-selector";
-import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
 import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 import { migrateCustomPrompt } from "./utils";
 
-interface AdvancedRowProps {
+interface OptionsRowProps {
   selectedModelEngine?: string;
 }
 
-export function AdvancedRow({ selectedModelEngine }: AdvancedRowProps) {
+export function OptionsRow({ selectedModelEngine }: OptionsRowProps) {
   const { t } = useTranslation();
   const enableDiarize = useSettingsStore((s) => s.enableDiarize);
   const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
@@ -30,8 +29,6 @@ export function AdvancedRow({ selectedModelEngine }: AdvancedRowProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [openSpeakerPopover, setOpenSpeakerPopover] = React.useState(false);
   const [openCustomPromptPopover, setOpenCustomPromptPopover] =
-    React.useState(false);
-  const [openTextFormattingPopover, setOpenTextFormattingPopover] =
     React.useState(false);
   const [openAdvancedPopover, setOpenAdvancedPopover] = React.useState(false);
   const [showPromptOptionLabel, setShowPromptOptionLabel] =
@@ -67,8 +64,8 @@ export function AdvancedRow({ selectedModelEngine }: AdvancedRowProps) {
       className={cn(
         "grid gap-2",
         showPromptOptionLabel
-          ? "grid-cols-[minmax(64px,1fr)_minmax(88px,1fr)_44px_44px]"
-          : "grid-cols-[minmax(64px,1fr)_44px_44px_44px]",
+          ? "grid-cols-[minmax(64px,1fr)_minmax(88px,1fr)_44px]"
+          : "grid-cols-[minmax(64px,1fr)_44px_44px]",
       )}
     >
       <Popover
@@ -86,7 +83,7 @@ export function AdvancedRow({ selectedModelEngine }: AdvancedRowProps) {
             title={`${speakersTitle}: ${diarizeLabel}`}
           >
             <Speech className="size-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
+            <span className="min-w-0 truncate text-sm leading-5 group-hover:text-primary transition-colors">
               {diarizeLabel}
             </span>
           </Button>
@@ -104,33 +101,6 @@ export function AdvancedRow({ selectedModelEngine }: AdvancedRowProps) {
         onCustomPromptChange={(value) => updateSetting("customPrompt", value)}
         disabled={selectedModelEngine !== "whisper"}
       />
-
-      <Popover
-        open={openTextFormattingPopover}
-        onOpenChange={setOpenTextFormattingPopover}
-      >
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="default"
-            aria-haspopup="listbox"
-            className="group h-10 w-11 min-w-0 justify-center rounded-lg bg-muted/35 px-2 dark:bg-muted"
-            aria-expanded={openTextFormattingPopover}
-            aria-label={`${t("actionBar.subtitleStyle", "Style")}: ${t("actionBar.subtitleStyleDescription", "Captions")}`}
-            title={`${t("actionBar.subtitleStyle", "Style")}: ${t("actionBar.subtitleStyleDescription", "Captions")}`}
-          >
-            <Type className="shrink-0 text-foreground group-hover:text-primary transition-colors" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-80 p-0"
-          align="center"
-          side="top"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <TextFormattingPanel hideDensity />
-        </PopoverContent>
-      </Popover>
 
       <Popover open={openAdvancedPopover} onOpenChange={setOpenAdvancedPopover}>
         <PopoverTrigger asChild>
@@ -302,7 +272,7 @@ function CustomPromptPopover({
               )}
             />
             {showLabel ? (
-              <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
+              <span className="min-w-0 truncate text-sm leading-5 group-hover:text-primary transition-colors">
                 {t("actionBar.format.customPromptButton", "Prompt")}
               </span>
             ) : null}

@@ -14,6 +14,10 @@ export default {
   			serif: ['var(--font-serif)'],
   			mono: ['var(--font-mono)']
   		},
+  		transitionDuration: {
+  			DEFAULT: '100ms',
+  			'250': '250ms'
+  		},
   		transitionTimingFunction: {
   			smooth: 'cubic-bezier(0.32, 0.72, 0, 1)'
   		},

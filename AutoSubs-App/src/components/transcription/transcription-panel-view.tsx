@@ -25,8 +25,8 @@ import {
 } from "./source-section";
 import type { Integration } from "@/contexts/IntegrationContext";
 import { LanguageButton } from "./language-button";
-import { DensityRow } from "./density-row";
-import { AdvancedRow } from "./advanced-row";
+import { FormatRow } from "./format-row";
+import { OptionsRow } from "./options-row";
 import { isSupportedMediaFile, type ProcessingStep } from "./utils";
 
 export interface TranscriptionPanelViewProps {
@@ -87,6 +87,7 @@ export function TranscriptionPanelView({
   const { t, i18n } = useTranslation();
   const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
+  const isCustomDensity = useSettingsStore((s) => s.textDensity === "custom");
 
   const [localSelectedFile, setLocalSelectedFile] = React.useState<
     string | null
@@ -270,7 +271,7 @@ export function TranscriptionPanelView({
                           onRefreshTracks={handleRefreshAudioTracks}
                           isRefreshingTracks={isRefreshingTracks}
                           className={cn(
-                            "row-start-1 col-start-1 transition-opacity duration-0",
+                            "row-start-1 col-start-1 transition-opacity",
                             audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
                           )}
                         />
@@ -279,7 +280,7 @@ export function TranscriptionPanelView({
                         selectedFile={selectedFile}
                         onSelectedFileChange={setSelectedFile}
                         className={cn(
-                          "row-start-1 col-start-1 transition-opacity duration-0",
+                          "row-start-1 col-start-1 transition-opacity",
                           audioInputMode !== "file" && "opacity-0 pointer-events-none"
                         )}
                       />
@@ -316,17 +317,18 @@ export function TranscriptionPanelView({
 
                     <CompactSettingsRow
                       number={formatSectionNumber(4)}
-                      label={t("actionBar.rows.density", "Density")}
+                      label={t("actionBar.rows.format", "Format")}
+                      alignTop={isCustomDensity}
                       className="border-b"
                     >
-                      <DensityRow />
+                      <FormatRow />
                     </CompactSettingsRow>
 
                     <CompactSettingsRow
                       number={formatSectionNumber(5)}
-                      label={t("actionBar.rows.advanced", "Advanced")}
+                      label={t("actionBar.rows.options", "Options")}
                     >
-                      <AdvancedRow
+                      <OptionsRow
                         selectedModelEngine={
                           modelsState[selectedModelIndex]?.engine
                         }

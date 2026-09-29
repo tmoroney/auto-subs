@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Gauge, Terminal, ChevronDown } from "lucide-react";
+import { Gauge, Terminal } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -7,10 +7,8 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -57,26 +55,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const { t, i18n } = useTranslation();
   const deleteIconRef = useRef<DeleteIconHandle>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = React.useState<string>("");
-  const [canScrollDown, setCanScrollDown] = React.useState(false);
-
-  const updateScrollHint = React.useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) {
-      setCanScrollDown(false);
-      return;
-    }
-    // Small tolerance so sub-pixel layout doesn't leave a stuck hint.
-    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setCanScrollDown(remaining > 2);
-  }, []);
-
-  const scrollToBottom = React.useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -154,44 +133,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [cliStatus, refreshCliStatus, t]);
 
-  React.useEffect(() => {
-    if (!open) {
-      setCanScrollDown(false);
-      return;
-    }
-
-    const el = scrollRef.current;
-    if (!el) return;
-
-    updateScrollHint();
-
-    const onScroll = () => updateScrollHint();
-    el.addEventListener("scroll", onScroll, { passive: true });
-
-    const resizeObserver = typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(() => updateScrollHint())
-      : null;
-    resizeObserver?.observe(el);
-    // Content height can change independently of the viewport (e.g. CLI section).
-    if (el.firstElementChild) {
-      resizeObserver?.observe(el.firstElementChild);
-    }
-
-    window.addEventListener("resize", updateScrollHint);
-
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", updateScrollHint);
-    };
-  }, [open, updateScrollHint, cliStatus, i18n.language]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form>
         <DialogContent
           className="gap-0 sm:max-w-[560px]"
           key={i18n.language}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader className="pb-4">
             <DialogTitle>{t("settings.title")}</DialogTitle>
@@ -205,176 +153,123 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="relative">
-            <div
-              ref={scrollRef}
-              className="max-h-[min(55vh,420px)] space-y-6 overflow-y-auto overscroll-contain pr-1 pb-4"
-            >
-            {/* Language Settings */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("settings.sections.language")}
-              </h4>
+          <div className="space-y-3">
+            <FieldGroup className="gap-3">
+              <Field>
+                <Item variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle>{t("settings.uiLanguage.title")}</ItemTitle>
+                    <ItemDescription className="text-xs leading-tight line-clamp-1">
+                      {t("settings.uiLanguage.description")}
+                    </ItemDescription>
+                  </ItemContent>
 
-              <FieldGroup>
+                  <ItemActions className="w-[170px] shrink-0 justify-end">
+                    <Select
+                      value={normalizeUiLanguage(uiLanguage)}
+                      onValueChange={(value) => {
+                        const normalized = normalizeUiLanguage(value);
+                        updateSetting("uiLanguage", normalized);
+                        initI18n(normalized);
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {uiLanguages.map((lang) => (
+                          <SelectItem key={lang.value} value={lang.value}>
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </ItemActions>
+                </Item>
+              </Field>
+
+              <Field>
+                <Item variant="outline" size="sm">
+                  <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
+                    <Gauge className="size-4 text-yellow-600 dark:text-yellow-400" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{t("settings.gpu.title")}</ItemTitle>
+                    <ItemDescription className="text-xs leading-tight line-clamp-1">
+                      {t("settings.gpu.description")}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Switch
+                      checked={enableGpu}
+                      onCheckedChange={(checked) => updateSetting("enableGpu", checked)}
+                    />
+                  </ItemActions>
+                </Item>
+              </Field>
+
+              {cliStatus && (
                 <Field>
                   <Item variant="outline" size="sm">
-                    <ItemContent>
-                      <ItemTitle>{t("settings.uiLanguage.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-1">
-                        {t("settings.uiLanguage.description")}
-                      </ItemDescription>
-                    </ItemContent>
-
-                    <ItemActions className="w-[170px] shrink-0 justify-end">
-                      <Select
-                        value={normalizeUiLanguage(uiLanguage)}
-                        onValueChange={(value) => {
-                          const normalized = normalizeUiLanguage(value);
-                          updateSetting("uiLanguage", normalized);
-                          initI18n(normalized);
-                        }}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uiLanguages.map((lang) => (
-                            <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </ItemActions>
-                  </Item>
-                </Field>
-              </FieldGroup>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleOpenLogsFolder}
-              >
-                <Terminal className="size-4" />
-                {t("settings.openLogsFolder")}
-              </Button>
-            </div>
-
-            {/* Transcription Settings */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("settings.sections.transcription")}
-              </h4>
-
-              <FieldGroup className="gap-3">
-                <Field>
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon" className="bg-yellow-100 dark:bg-yellow-900/30">
-                      <Gauge className="size-4 text-yellow-600 dark:text-yellow-400" />
+                    <ItemMedia variant="icon" className="bg-green-100 dark:bg-green-900/30">
+                      <Terminal className="size-4 text-green-600 dark:text-green-400" />
                     </ItemMedia>
                     <ItemContent>
-                      <ItemTitle>{t("settings.gpu.title")}</ItemTitle>
-                      <ItemDescription className="text-xs leading-tight line-clamp-1">
-                        {t("settings.gpu.description")}
+                      <ItemTitle>{t("settings.cli.title", "Command-line tool")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-2">
+                        {cliStatus.manageable
+                          ? highlightCommand(
+                              t(
+                                "settings.cli.description",
+                                "Install the {{cmd}} command so you can transcribe files from any terminal.",
+                                { cmd: "autosubs" }
+                              )
+                            )
+                          : cliStatus.note ?? ""}
                       </ItemDescription>
                     </ItemContent>
                     <ItemActions>
-                      <Switch
-                        checked={enableGpu}
-                        onCheckedChange={(checked) => updateSetting("enableGpu", checked)}
-                      />
+                      {cliStatus.manageable ? (
+                        <Button
+                          variant={cliStatus.installed ? "outline" : "secondary"}
+                          size="sm"
+                          disabled={cliBusy}
+                          onClick={handleCliToggle}
+                        >
+                          {cliStatus.installed
+                            ? t("settings.cli.remove", "Remove")
+                            : t("settings.cli.install", "Install")}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {cliStatus.installed
+                            ? t("settings.cli.available", "Available")
+                            : t("settings.cli.notFound", "Not found")}
+                        </span>
+                      )}
                     </ItemActions>
                   </Item>
                 </Field>
-              </FieldGroup>
-            </div>
+              )}
+            </FieldGroup>
 
-            {/* Command-line tool */}
-            {cliStatus && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {t("settings.sections.cli", "Command line")}
-                </h4>
-
-                <FieldGroup className="gap-3">
-                  <Field>
-                    <Item variant="outline" size="sm">
-                      <ItemMedia variant="icon" className="bg-green-100 dark:bg-green-900/30">
-                        <Terminal className="size-4 text-green-600 dark:text-green-400" />
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle>{t("settings.cli.title", "Command-line tool")}</ItemTitle>
-                        <ItemDescription className="text-xs leading-tight line-clamp-2">
-                          {cliStatus.manageable
-                            ? highlightCommand(
-                                t(
-                                  "settings.cli.description",
-                                  "Install the {{cmd}} command so you can transcribe files from any terminal.",
-                                  { cmd: "autosubs" }
-                                )
-                              )
-                            : cliStatus.note ?? ""}
-                        </ItemDescription>
-                      </ItemContent>
-                      <ItemActions>
-                        {cliStatus.manageable ? (
-                          <Button
-                            variant={cliStatus.installed ? "outline" : "secondary"}
-                            size="sm"
-                            disabled={cliBusy}
-                            onClick={handleCliToggle}
-                          >
-                            {cliStatus.installed
-                              ? t("settings.cli.remove", "Remove")
-                              : t("settings.cli.install", "Install")}
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {cliStatus.installed
-                              ? t("settings.cli.available", "Available")
-                              : t("settings.cli.notFound", "Not found")}
-                          </span>
-                        )}
-                      </ItemActions>
-                    </Item>
-                  </Field>
-                </FieldGroup>
-              </div>
-            )}
-            </div>
-
-            {canScrollDown && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-10 items-end justify-center bg-gradient-to-t from-background/80 to-transparent pb-2.5">
-                <button
-                  type="button"
-                  onClick={scrollToBottom}
-                  className="pointer-events-auto rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={t("common.scrollDown", "Scroll down")}
-                >
-                  <ChevronDown className="size-5 animate-bounce" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleResetSettings}
-              onMouseEnter={() => deleteIconRef.current?.startAnimation()}
-              onMouseLeave={() => deleteIconRef.current?.stopAnimation()}
-            >
-              <DeleteIcon ref={deleteIconRef} />
-              {t("settings.reset.button")}
-            </Button>
-            <DialogClose asChild>
-              <Button variant="secondary" size="sm">
-                {t("common.close")}
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" onClick={handleOpenLogsFolder}>
+                <Terminal className="size-4" />
+                {t("settings.openLogsFolder")}
               </Button>
-            </DialogClose>
-          </DialogFooter>
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={handleResetSettings}
+                onMouseEnter={() => deleteIconRef.current?.startAnimation()}
+                onMouseLeave={() => deleteIconRef.current?.stopAnimation()}
+              >
+                <DeleteIcon ref={deleteIconRef} />
+                {t("settings.reset.button")}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </form>
     </Dialog>

@@ -2,10 +2,6 @@
   "settings": {
     "title": "设置",
     "description": "配置您的 AutoSubs 偏好和选项。",
-    "sections": {
-      "transcription": "转录",
-      "language": "语言"
-    },
     "gpu": {
       "title": "GPU 加速",
       "description": "利用 GPU 进行更快的转录"
@@ -88,8 +84,6 @@
   },
   "actionBar": {
     "source": "来源",
-    "subtitleStyle": "字幕样式",
-    "subtitleStyleDescription": "字幕",
     "model": "模型",
     "common": {
       "auto": "自动",
@@ -185,18 +179,16 @@
       "googleTranslation": "Google翻译"
     },
     "rows": {
-      "advanced": "高级",
-      "density": "密度"
+      "format": "格式",
+      "options": "选项"
     },
     "advanced": {
       "title": "高级选项"
     },
     "density": {
-      "word": "1个词",
       "characters": "字符数",
-      "usePresets": "使用预设",
       "words": "词数",
-      "charsTooltip": "{{name}}：每行{{count}}个字符"
+      "charsShort": "{{count}}字符"
     }
   },
   "speakerEditor": {

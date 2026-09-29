@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
-import { useSettingsStore } from "@/stores/settings-store"
+import { DEFAULT_SETTINGS, useSettingsStore } from "@/stores/settings-store"
 import { getVersion } from "@tauri-apps/api/app"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
@@ -22,8 +22,8 @@ import {
   type SubtitleDocumentListItem,
 } from "@/utils/file-utils"
 
-const MIN_TRANSCRIPTION_PANEL_WIDTH = 370
-const MIN_SUBTITLE_PANEL_WIDTH = 280
+const MIN_TRANSCRIPTION_PANEL_WIDTH = 400
+const MIN_SUBTITLE_PANEL_WIDTH = 240
 const PANEL_GAP = 16
 const SUBTITLE_VIEWER_EXIT_ANIMATION_MS = 180
 
@@ -70,7 +70,9 @@ function AppContentBody() {
     Math.max(
       MIN_SUBTITLE_PANEL_WIDTH,
       Math.min(
-        useSettingsStore.getState().subtitlePanelWidth,
+        import.meta.env.DEV
+          ? DEFAULT_SETTINGS.subtitlePanelWidth
+          : useSettingsStore.getState().subtitlePanelWidth,
         window.innerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
       ),
     ),
@@ -288,8 +290,10 @@ function AppContentBody() {
       setSubtitlePanelWidth(latestWidth)
       setIsSubtitleViewerResizing(false)
       document.body.classList.remove("app-panel-resizing")
-      // Persist the user's chosen width once per drag, not per pointermove.
-      updateSetting("subtitlePanelWidth", latestWidth)
+      if (!import.meta.env.DEV) {
+        // Persist the user's chosen width once per drag, not per pointermove.
+        updateSetting("subtitlePanelWidth", latestWidth)
+      }
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
       window.removeEventListener("pointercancel", handlePointerUp)
@@ -325,7 +329,7 @@ function AppContentBody() {
           {/* Main Content Area with Resizable Panels */}
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[370px] flex-1 overflow-hidden">
+              <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
                 <TranscriptionPanel
                   onViewSubtitles={handleOpenSubtitleViewer}
                   onTranscriptCreated={handleTranscriptCreated}

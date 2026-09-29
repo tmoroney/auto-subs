@@ -107,14 +107,14 @@ export function SettingsDropdown() {
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() => setSettingsDialogOpen(true)}
-              className="cursor-pointer"
+              className="cursor-pointer transition-none"
             >
               <SettingsIcon />
               <span>{t("settings.title", "Settings")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setManageModelsOpen(true)}
-              className="cursor-pointer"
+              className="cursor-pointer transition-none"
             >
               <Shapes />
               <span>{t("models.manage.title", "Manage Models")}</span>
@@ -124,7 +124,7 @@ export function SettingsDropdown() {
           <DropdownMenuSeparator />
 
           <DropdownMenuGroup>
-            <DropdownMenuItem asChild className="cursor-pointer">
+            <DropdownMenuItem asChild className="cursor-pointer transition-none">
               <a
                 href="https://github.com/tmoroney/auto-subs"
                 target="_blank"
@@ -137,7 +137,7 @@ export function SettingsDropdown() {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setSupportDialogOpen(true)}
-              className="cursor-pointer focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
+              className="cursor-pointer transition-none focus:bg-pink-100 focus:text-pink-700 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-700 dark:focus:bg-pink-900/50 dark:focus:text-pink-500 dark:data-[highlighted]:bg-pink-900/50 dark:data-[highlighted]:text-pink-500"
             >
               <div className="group relative flex w-full items-center">
                 <Heart className="mr-2 size-4 text-pink-500 transition-all group-data-[highlighted]:fill-pink-500 group-focus:fill-pink-500" />

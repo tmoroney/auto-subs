@@ -122,7 +122,7 @@ const TabsList = React.forwardRef<
           className={cn(
             "absolute rounded-sm border border-transparent bg-background shadow-sm dark:border-input dark:bg-input/30",
             shouldAnimateTransition
-              ? "transition-all duration-300 ease-in-out"
+              ? "transition-all duration-200 ease-in-out"
               : "transition-none",
           )}
           style={indicatorStyle}

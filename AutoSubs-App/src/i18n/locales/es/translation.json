@@ -2,10 +2,6 @@
   "settings": {
     "title": "Ajustes",
     "description": "Configura tus preferencias y opciones de AutoSubs.",
-    "sections": {
-      "transcription": "Transcripción",
-      "language": "Idioma"
-    },
     "gpu": {
       "title": "Aceleración por GPU",
       "description": "Usa la GPU para una transcripción más rápida"
@@ -88,8 +84,6 @@
   },
   "actionBar": {
     "source": "Origen",
-    "subtitleStyle": "Estilo de subtítulos",
-    "subtitleStyleDescription": "Subtítulos",
     "model": "Modelo",
     "common": {
       "auto": "Auto",
@@ -185,18 +179,16 @@
       "googleTranslation": "Google Translate"
     },
     "rows": {
-      "advanced": "Avanzado",
-      "density": "Densidad"
+      "format": "Formato",
+      "options": "Opciones"
     },
     "advanced": {
       "title": "Opciones avanzadas"
     },
     "density": {
-      "word": "1 palabra",
       "characters": "Caracteres",
-      "usePresets": "Usar ajustes",
       "words": "Palabras",
-      "charsTooltip": "{{name}}: {{count}} caracteres por línea"
+      "charsShort": "{{count}} car."
     }
   },
   "speakerEditor": {

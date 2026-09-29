@@ -46,13 +46,13 @@ export function LanguageButton() {
           onMouseLeave={() => chevronsRef.current?.stopAnimation()}
         >
           <span className="flex min-w-0 items-center gap-2 overflow-hidden">
-            <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
+            <span className="min-w-0 truncate text-sm leading-5 group-hover:text-primary transition-colors">
               {sourceLanguageLabel}
             </span>
             {translate ? (
               <>
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 truncate text-sm font-semibold leading-none group-hover:text-primary transition-colors">
+                <span className="min-w-0 truncate text-sm leading-5 group-hover:text-primary transition-colors">
                   {targetLanguageLabel}
                 </span>
               </>

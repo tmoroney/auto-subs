@@ -165,7 +165,7 @@ export function IntegrationStatus() {
               <DropdownMenuItem
                 key={integration}
                 onClick={() => setSelectedIntegration(integration)}
-                className="cursor-pointer pl-1.5 pr-3"
+                className="cursor-pointer pl-1.5 pr-3 transition-none"
               >
                 <img
                   src={item.logo}
@@ -191,7 +191,7 @@ export function IntegrationStatus() {
                 onClick={() => {
                   void activeIntegration.refresh();
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer transition-none"
               >
                 <RotateCcw className="size-4" />
                 <span>{t("common.refresh", "Refresh connection")}</span>

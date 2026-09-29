@@ -1,8 +1,6 @@
 {
   "actionBar": {
     "source": "소스",
-    "subtitleStyle": "자막 스타일",
-    "subtitleStyleDescription": "자막",
     "model": "모델",
     "censor": {
       "title": "민감한 단어 검열",
@@ -98,18 +96,16 @@
       "trackN": "트랙 {{n}}"
     },
     "rows": {
-      "advanced": "고급",
-      "density": "밀도"
+      "format": "서식",
+      "options": "옵션"
     },
     "advanced": {
       "title": "고급 옵션"
     },
     "density": {
-      "word": "1단어",
       "characters": "글자 수",
-      "usePresets": "프리셋 사용",
       "words": "단어 수",
-      "charsTooltip": "{{name}}: 줄당 {{count}}자"
+      "charsShort": "{{count}}자"
     }
   },
   "common": {
@@ -425,10 +421,6 @@
       "button": "설정 초기화",
       "confirm": "자막 설정을 포함한 모든 설정을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
       "confirmTitle": "설정 초기화"
-    },
-    "sections": {
-      "language": "언어",
-      "transcription": "자막 생성"
     },
     "support": {
       "supportAutoSubs": "AutoSubs 지원",

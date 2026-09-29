@@ -1,8 +1,6 @@
 {
   "actionBar": {
     "source": "ソース",
-    "subtitleStyle": "字幕スタイル",
-    "subtitleStyleDescription": "字幕",
     "model": "モデル",
     "censor": {
       "title": "不適切な言葉を検閲",
@@ -98,18 +96,16 @@
       "trackN": "トラック {{n}}"
     },
     "rows": {
-      "advanced": "詳細設定",
-      "density": "密度"
+      "format": "書式",
+      "options": "オプション"
     },
     "advanced": {
       "title": "詳細オプション"
     },
     "density": {
-      "word": "1単語",
       "characters": "文字数",
-      "usePresets": "プリセットを使用",
       "words": "単語数",
-      "charsTooltip": "{{name}}：1行{{count}}文字"
+      "charsShort": "{{count}}文字"
     }
   },
   "common": {
@@ -425,10 +421,6 @@
       "button": "設定をリセット",
       "confirm": "すべての設定（文字起こし設定を含む）をリセットしてもよろしいですか？この操作は元に戻せません。",
       "confirmTitle": "設定をリセット"
-    },
-    "sections": {
-      "language": "言語",
-      "transcription": "文字起こし"
     },
     "support": {
       "supportAutoSubs": "AutoSubs をサポート",

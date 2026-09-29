@@ -2,10 +2,6 @@
   "settings": {
     "title": "Настройки",
     "description": "Настройте параметры и предпочтения AutoSubs.",
-    "sections": {
-      "transcription": "Транскрибация",
-      "language": "Язык"
-    },
     "gpu": {
       "title": "Ускорение на GPU",
       "description": "Использовать видеокарту для ускорения транскрибации"
@@ -88,8 +84,6 @@
   },
   "actionBar": {
     "source": "Источник",
-    "subtitleStyle": "Стиль титров",
-    "subtitleStyleDescription": "Титры",
     "model": "Модель",
     "common": {
       "auto": "Авто",
@@ -187,18 +181,16 @@
       "googleTranslation": "Google Переводчик"
     },
     "rows": {
-      "advanced": "Прочее",
-      "density": "Плотность"
+      "format": "Формат",
+      "options": "Опции"
     },
     "advanced": {
       "title": "Доп. параметры"
     },
     "density": {
-      "word": "1 слово",
       "characters": "Символов",
-      "usePresets": "Пресеты",
       "words": "Слов",
-      "charsTooltip": "{{name}}: {{count}} символов в строке"
+      "charsShort": "{{count}} симв."
     }
   },
   "speakerEditor": {
