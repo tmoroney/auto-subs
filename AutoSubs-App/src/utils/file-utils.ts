@@ -139,6 +139,8 @@ export interface StoredSubtitleDocument {
   language?: string;
   speakers: Speaker[];
   originalSegments: Subtitle[];
+  /** Unformatted source with user corrections, created on the first edited reformat. */
+  editedSegments?: Subtitle[];
   segments: Subtitle[];
   metadata: TranscriptMetadata;
   transcriptId?: string;
@@ -872,12 +874,12 @@ export async function loadSubtitleDocumentSubtitles(
 // Update the transcript file for the specified timeline with new speakers or subtitles
 export async function updateSubtitleDocument(
   filename: string,
-  opts: { subtitles?: Subtitle[]; speakers?: Speaker[] },
+  opts: { subtitles?: Subtitle[]; speakers?: Speaker[]; editedSegments?: Subtitle[] },
 ) {
-  const { speakers, subtitles } = opts;
+  const { speakers, subtitles, editedSegments } = opts;
 
   // if no speakers or subtitles, do nothing
-  if (!speakers && !subtitles) return;
+  if (!speakers && !subtitles && !editedSegments) return;
 
   // read current file
   let transcript = await readSubtitleDocument(filename);
@@ -891,6 +893,9 @@ export async function updateSubtitleDocument(
   }
   if (subtitles) {
     transcript.segments = subtitles;
+  }
+  if (editedSegments) {
+    transcript.editedSegments = editedSegments;
   }
 
   transcript.metadata = metadata;
