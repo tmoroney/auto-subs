@@ -114,3 +114,42 @@ jobs:
 
           # Upload new asset
           gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+
+      - name: Mark release as latest when all assets are present
+        if: steps.download-sigs.outputs.all_present == 'true'
+        run: |
+          set -Euo pipefail
+
+          # Every asset a complete release should carry. latest.json was just
+          # uploaded by the previous step, so it counts too.
+          REQUIRED_ASSETS=(
+            "AutoSubs-Mac-ARM.pkg"
+            "AutoSubs-Mac-Intel.pkg"
+            "AutoSubs-macos-aarch64.app.tar.gz"
+            "AutoSubs-macos-aarch64.app.tar.gz.sig"
+            "AutoSubs-macos-x86_64.app.tar.gz"
+            "AutoSubs-macos-x86_64.app.tar.gz.sig"
+            "AutoSubs-windows-x86_64.exe"
+            "AutoSubs-windows-x86_64.exe.sig"
+            "AutoSubs-linux-x86_64.deb"
+            "AutoSubs-linux-x86_64.rpm"
+            "latest.json"
+          )
+
+          ASSETS=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
+
+          MISSING_ASSETS=()
+          for ASSET in "${REQUIRED_ASSETS[@]}"; do
+            if ! grep -qxF "$ASSET" <<< "$ASSETS"; then
+              MISSING_ASSETS+=("$ASSET")
+            fi
+          done
+
+          if [ "${#MISSING_ASSETS[@]}" -gt 0 ]; then
+            echo "⏳ Release $TAG is still missing assets; leaving it unmarked:"
+            printf '   - %s\n' "${MISSING_ASSETS[@]}"
+            echo "   The workflow will be re-triggered when the remaining uploads finish."
+          else
+            echo "✅ All release assets present. Marking $TAG as latest."
+            gh release edit "$TAG" --repo "$REPO" --latest=true
+          fi

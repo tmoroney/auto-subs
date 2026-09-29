@@ -375,18 +375,19 @@ jobs:
 
   trigger-updater-json:
     name: Trigger updater JSON generation
-    needs: [build-mac]
+    needs: [build-mac, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Trigger generate-updater-json workflow
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # Generate the updater JSON once both Mac architectures are uploaded.
+          # Generate the updater JSON once the Mac and Linux builds are uploaded.
           # The same workflow is also triggered by the Windows upload script after
           # the Windows .exe and .sig are added. The workflow itself checks whether
-          # all required Mac + Windows signatures are present before generating
-          # latest.json, so whichever upload finishes last will actually produce it.
+          # all required signatures are present before generating latest.json, and
+          # whether every release asset (Mac, Windows, Linux) is present before
+          # marking the release as latest, so whichever upload finishes last wins.
           gh workflow run generate-updater-json.yml \
             --repo ${{ github.repository }} \
             -f tag="${{ env.TAG }}"
