@@ -454,6 +454,15 @@ pub fn process_segments(
 /// though the engine's transcript separates them. Trust the transcript only
 /// for this explicit boundary, and divide the token's time between both words.
 fn restore_number_boundaries(words: Vec<WordTimestamp>, transcript: &str) -> Vec<WordTimestamp> {
+    // Transcript tokens with edge punctuation removed. Comparing whole tokens
+    // keeps a candidate split honest: the separated pair must appear as two
+    // real transcript words, not as a substring of a longer word ("the 1000"
+    // inside "breathe 1000") or a prefix of a longer number ("the 10005").
+    let transcript_tokens: Vec<&str> = transcript
+        .split_whitespace()
+        .map(|token| token.trim_matches(|c: char| !c.is_alphanumeric()))
+        .filter(|token| !token.is_empty())
+        .collect();
     let mut restored = Vec::with_capacity(words.len());
     for word in words {
         let boundary = word.text.char_indices().find_map(|(index, digit)| {
@@ -463,12 +472,16 @@ fn restore_number_boundaries(words: Vec<WordTimestamp>, transcript: &str) -> Vec
         });
         if let Some(index) = boundary {
             let (left, right) = word.text.split_at(index);
-            let left_text = left.trim_start();
-            if !transcript.contains(word.text.trim())
-                && transcript.contains(&format!("{left_text} {right}"))
+            let merged = word.text.trim_matches(|c: char| !c.is_alphanumeric());
+            let left_text = left.trim_matches(|c: char| !c.is_alphanumeric());
+            let right_text = right.trim_matches(|c: char| !c.is_alphanumeric());
+            if !transcript_tokens.contains(&merged)
+                && transcript_tokens
+                    .windows(2)
+                    .any(|pair| pair[0] == left_text && pair[1] == right_text)
             {
                 let left_chars = left_text.chars().count();
-                let total_chars = left_chars + right.chars().count();
+                let total_chars = left_chars + right_text.chars().count();
                 let split_time = word.start
                     + (word.end - word.start).max(0.0) * left_chars as f64 / total_chars as f64;
                 let mut first = word.clone();
@@ -1037,6 +1050,43 @@ mod tests {
         };
         let restored = restore_number_boundaries(vec![ambiguous], "the1000 and the 1000");
         assert_eq!(restored.len(), 1);
+    }
+
+    #[test]
+    fn number_boundary_requires_whole_transcript_tokens() {
+        // "the 1000" is a substring of "breathe 1000" but not a token pair, so
+        // a merged "the1000" timestamp token must be left alone.
+        let word = WordTimestamp {
+            text: " the1000".into(),
+            start: 0.0,
+            end: 0.5,
+            probability: None,
+        };
+        let restored = restore_number_boundaries(vec![word], "breathe 1000 now");
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].text, " the1000");
+
+        // A longer transcript number is not evidence for the token's digits.
+        let word = WordTimestamp {
+            text: " the1000".into(),
+            start: 0.0,
+            end: 0.5,
+            probability: None,
+        };
+        let restored = restore_number_boundaries(vec![word], "the 10005 now");
+        assert_eq!(restored.len(), 1);
+
+        // Punctuation glued to either side still counts as a token boundary.
+        let word = WordTimestamp {
+            text: " the1000.".into(),
+            start: 0.0,
+            end: 0.5,
+            probability: None,
+        };
+        let restored = restore_number_boundaries(vec![word], "hit the 1000.");
+        assert_eq!(restored.len(), 2);
+        assert_eq!(restored[0].text, " the");
+        assert_eq!(restored[1].text, " 1000.");
     }
 
     #[test]
