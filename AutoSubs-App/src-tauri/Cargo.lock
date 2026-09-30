@@ -1123,8 +1123,10 @@ dependencies = [
  "hound",
  "knf-rs",
  "ndarray 0.16.1",
+ "ndarray 0.17.2",
  "ndarray-npy",
  "ort",
+ "realfft",
  "sysinfo",
  "tracing",
 ]
@@ -4286,6 +4288,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "realfft"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f821338fddb99d089116342c46e9f1fbf3828dba077674613e734e01d6ea8677"
+dependencies = [
+ "rustfft",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4397,10 +4408,12 @@ dependencies = [
  "system-configuration 0.5.1",
  "tokio",
  "tokio-native-tls",
+ "tokio-util",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams 0.4.2",
  "web-sys",
  "winreg 0.50.0",
 ]

@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enableVad: true,
   enableDiarize: false,
   maxSpeakers: null,
+  diarizeBackend: "sortformer",
   exportRange: "inout",
 
   // Text settings

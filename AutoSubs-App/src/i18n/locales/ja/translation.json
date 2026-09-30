@@ -79,7 +79,10 @@
       "countTitle": "話者数",
       "description": "異なる話者を識別",
       "disabled": "無効",
-      "title": "話者ラベル"
+      "title": "話者ラベル",
+      "liteTitle": "軽量な話者モデル",
+      "liteDescription": "軽量ですが精度はやや低め。",
+      "liteForced": "話者が9人以上の場合は常に使用されます。"
     },
     "tracks": {
       "exportRange": {
@@ -220,13 +223,23 @@
       "deleteModel": "モデルを削除",
       "description": "キャッシュされたモデルを削除してディスク容量を確保。",
       "empty": "ダウンロード済みのモデルが見つかりません",
-      "title": "モデル"
+      "title": "モデル",
+      "unused": "未使用"
     },
     "diarize": {
-      "label": "話者ダイアリゼーションモデル",
+      "label": "軽量な話者モデル",
       "description": "話者ラベリング用バンドル",
       "details": "話者のダイアリゼーションとラベリングに使用されます。",
-      "badge": "話者ラベル"
+      "badge": "話者ラベル",
+      "legacyNote": "オンの時、または話者が9人以上の時に使用。"
+    },
+    "diarizeSortformer": {
+      "label": "話者検出モデル",
+      "description": "話者ラベリング用バンドル",
+      "details": "話者のダイアリゼーションとラベリングに使用されます。",
+      "badge": "話者ラベル",
+      "licenseSummary": "OpenMDW 1.1 · 商用利用可",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX変換: altunenes"
     },
     "aligner": {
       "label": "MMS 強制アライメントモデル",

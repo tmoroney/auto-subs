@@ -43,6 +43,7 @@ mod tests {
             enable_forced_alignment: Some(false),
             enable_vad: None,
             max_speakers: None,
+            diarize_backend: None,
             density: None,
             max_lines: None,
             custom_max_chars_per_line: None,
@@ -55,6 +56,7 @@ mod tests {
             vad_model_path: None,
             diarize_segment_path: None,
             diarize_embedding_path: None,
+            diarize_sortformer_path: None,
             aligner_model_dir: None,
         };
 
@@ -99,6 +101,7 @@ mod tests {
             enable_forced_alignment: Some(false),
             enable_vad: Some(true),
             max_speakers: None,
+            diarize_backend: None,
             density: None,
             max_lines: None,
             custom_max_chars_per_line: None,
@@ -111,6 +114,7 @@ mod tests {
             vad_model_path: None,
             diarize_segment_path: None,
             diarize_embedding_path: None,
+            diarize_sortformer_path: None,
             aligner_model_dir: None,
         };
 

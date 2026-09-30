@@ -1,4 +1,4 @@
-import { Model } from "@/types";
+import { DiarizeBackend, Model } from "@/types";
 import manifestData from "../../models.json";
 
 /**
@@ -39,6 +39,7 @@ interface ManifestLicense {
 interface ManifestAuxiliaryModel {
   id: string;
   repo: string;
+  revision?: string;
   ui: ManifestUi;
   license?: ManifestLicense;
 }
@@ -46,6 +47,7 @@ interface ManifestAuxiliaryModel {
 interface ManifestFile {
   models: ManifestModel[];
   diarize: ManifestAuxiliaryModel;
+  diarizeSortformer: ManifestAuxiliaryModel;
   aligner: ManifestAuxiliaryModel;
 }
 
@@ -145,16 +147,41 @@ export const models: Model[] = manifest.models.map((m) =>
 );
 
 /**
- * Diarization model definition.
- * Handled separately from transcription models; its i18n keys use the
- * "diarize" base rather than being derived from its id ("speaker-diarize").
+ * The most speakers the default diarization model can label. Asking for more
+ * makes the backend fall back to the legacy model below.
  */
-export const diarizeModel: Model = toModel(
-  manifest.diarize.id,
-  "diarize",
-  manifest.diarize.ui,
-  "diarize"
-);
+export const SORTFORMER_MAX_SPEAKERS = 8;
+
+/**
+ * Default diarization model (Sortformer). Handled separately from
+ * transcription models; its i18n keys use the "diarizeSortformer" base.
+ */
+export const diarizeSortformerModel: Model = {
+  ...toModel(
+    manifest.diarizeSortformer.id,
+    "diarize",
+    manifest.diarizeSortformer.ui,
+    "diarizeSortformer"
+  ),
+  repositoryUrl: `https://huggingface.co/${manifest.diarizeSortformer.repo}/tree/${
+    manifest.diarizeSortformer.revision ?? "main"
+  }/nemotron-3-diarization`,
+  license: manifest.diarizeSortformer.license,
+  licenseText: {
+    summary: "models.diarizeSortformer.licenseSummary",
+    attribution: "models.diarizeSortformer.attribution",
+  },
+};
+
+/**
+ * Legacy diarization model (pyannote), kept for more than
+ * SORTFORMER_MAX_SPEAKERS speakers. Its i18n keys use the "diarize" base
+ * rather than being derived from its id ("speaker-diarize").
+ */
+export const diarizeModel: Model = {
+  ...toModel(manifest.diarize.id, "diarize", manifest.diarize.ui, "diarize"),
+  note: "models.diarize.legacyNote",
+};
 
 export const alignerModel: Model = {
   ...toModel(
@@ -165,7 +192,38 @@ export const alignerModel: Model = {
   ),
   repositoryUrl: `https://huggingface.co/${manifest.aligner.repo}`,
   license: manifest.aligner.license,
+  licenseText: {
+    summary: "models.aligner.licenseRestriction",
+    attribution: "models.aligner.attribution",
+  },
 };
+
+/**
+ * The downloaded non-transcription models (diarization, aligner) to list in
+ * Manage Models. Of the two speaker models, the one the current settings
+ * won't run is flagged unused: the lighter one runs when chosen or when the
+ * speaker limit is above what the default model can label.
+ */
+export function downloadedAuxiliaryModels(
+  downloaded: string[],
+  maxSpeakers: number | null,
+  diarizeBackend: DiarizeBackend,
+): Model[] {
+  const has = (m: Model) => downloaded.includes(m.value);
+  const liteInUse =
+    diarizeBackend === "pyannote" || (maxSpeakers ?? 0) > SORTFORMER_MAX_SPEAKERS;
+  const result: Model[] = [];
+  if (has(diarizeSortformerModel)) {
+    result.push({ ...diarizeSortformerModel, isDownloaded: true, unused: liteInUse });
+  }
+  if (has(diarizeModel)) {
+    result.push({ ...diarizeModel, isDownloaded: true, unused: !liteInUse });
+  }
+  if (has(alignerModel)) {
+    result.push({ ...alignerModel, isDownloaded: true });
+  }
+  return result;
+}
 
 /**
  * Check if a model's engine supports automatic language detection.

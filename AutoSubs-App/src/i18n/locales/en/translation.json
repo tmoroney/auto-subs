@@ -144,7 +144,10 @@
       "title": "Speaker Labels",
       "description": "Identify different speakers",
       "countTitle": "Number of Speakers",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "liteTitle": "Lighter Speaker Model",
+      "liteDescription": "Smaller download, less accurate.",
+      "liteForced": "Always used for 9 or more speakers."
     },
     "tracks": {
       "exportRange": {
@@ -235,13 +238,23 @@
       "empty": "No downloaded models found",
       "deleteModel": "Delete Model",
       "confirmTitle": "Are you sure?",
-      "confirmBody": "This will delete the {{model}} model from your device. If you use this model in future it will need to be downloaded again."
+      "confirmBody": "This will delete the {{model}} model from your device. If you use this model in future it will need to be downloaded again.",
+      "unused": "Unused"
     },
     "diarize": {
-      "label": "Speaker Diarization Model",
+      "label": "Lighter Speaker Model",
       "description": "Speaker labeling bundle",
       "details": "Used for speaker diarization and labeling.",
-      "badge": "Speaker Labels"
+      "badge": "Speaker Labels",
+      "legacyNote": "Used when switched on, or for 9+ speakers."
+    },
+    "diarizeSortformer": {
+      "label": "Speaker Detection Model",
+      "description": "Speaker labeling bundle",
+      "details": "Used for speaker diarization and labeling.",
+      "badge": "Speaker Labels",
+      "licenseSummary": "OpenMDW 1.1 · Commercial use allowed",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX conversion by altunenes"
     },
     "aligner": {
       "label": "MMS Forced Alignment Model",

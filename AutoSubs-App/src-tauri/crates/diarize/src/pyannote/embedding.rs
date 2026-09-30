@@ -1,4 +1,5 @@
-use crate::{plda::PLDA, session};
+use super::plda::PLDA;
+use crate::session;
 use eyre::{Context, ContextCompat, Result};
 use ndarray::{Array1, Array2};
 use ort::{session::Session, value::Tensor};

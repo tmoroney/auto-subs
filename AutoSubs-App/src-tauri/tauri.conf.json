@@ -163,6 +163,11 @@
           "takesValue": true
         },
         {
+          "name": "diarize-model",
+          "description": "Diarization model: sortformer (default, up to 8 speakers) or pyannote (lighter, any count).",
+          "takesValue": true
+        },
+        {
           "name": "forced-alignment",
           "description": "Refine word timestamps with the optional MMS forced aligner."
         },

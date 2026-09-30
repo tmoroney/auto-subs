@@ -106,7 +106,16 @@ export interface Model {
      */
     bestFor: string[]
     isDownloaded: boolean
+    /** i18n key for an extra line shown under the model in Manage Models. */
+    note?: string
+    /** Downloaded but not used with the current settings; safe to delete. */
+    unused?: boolean
     repositoryUrl?: string
+    /** i18n keys for the license summary and attribution lines in Manage Models. */
+    licenseText?: {
+        summary: string
+        attribution: string
+    }
     license?: {
         spdx: string
         url: string
@@ -144,6 +153,7 @@ export interface Settings {
     targetLanguage: string,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
     enableDTW: boolean,
     enableForcedAlignment: boolean,
     enableGpu: boolean,
@@ -228,6 +238,7 @@ export interface TranscriptionOptions {
     enableVad: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
     density: "less" | "standard" | "more" | "single" | "custom",
     maxLines: number,
     customMaxCharsPerLine?: number | undefined,
@@ -242,22 +253,32 @@ export interface TranscriptionOptions {
     vadModelPath?: string,
     diarizeSegmentPath?: string,
     diarizeEmbeddingPath?: string,
+    diarizeSortformerPath?: string,
     alignerModelDir?: string,
 }
 
+// Field names match the Rust structs' `#[serde(rename_all = "camelCase")]`.
 export interface EnsureModelsRequest {
     model: string,
-    enable_vad: boolean,
-    enable_diarize: boolean,
-    enable_forced_alignment: boolean,
+    enableVad: boolean,
+    enableDiarize: boolean,
+    enableForcedAlignment: boolean,
+    // Together these decide which diarization model is prepared (more than 8
+    // speakers always needs the lighter one).
+    maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
 }
 
+/** "sortformer" is the default speaker model; "pyannote" the lighter one. */
+export type DiarizeBackend = "sortformer" | "pyannote";
+
 export interface EnsureModelsResponse {
-    asr_model_path: string,
-    vad_model_path?: string,
-    diarize_segment_path?: string,
-    diarize_embedding_path?: string,
-    aligner_dir?: string,
+    asrModelPath: string,
+    vadModelPath?: string,
+    diarizeSegmentPath?: string,
+    diarizeEmbeddingPath?: string,
+    diarizeSortformerPath?: string,
+    alignerDir?: string,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

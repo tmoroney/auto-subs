@@ -16,6 +16,9 @@ knf-rs = { path = "crates/knf-rs", version = "0.3.2", features = [] }
 sysinfo = "0.37.2"
 ndarray-npy = { version = "0.9.1", default-features = false, features = ["npz"] }
 tracing = "0.1"
+realfft = "3"
+# The ndarray version `ort` is built against; only used to hand it zero-copy input views.
+ort-ndarray = { package = "ndarray", version = "0.17" }
 
 [features]
 default = []

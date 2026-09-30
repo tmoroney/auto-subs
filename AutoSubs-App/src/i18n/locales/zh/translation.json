@@ -142,7 +142,10 @@
       "title": "说话人标签",
       "description": "识别不同的说话人",
       "countTitle": "说话人数量",
-      "disabled": "已禁用"
+      "disabled": "已禁用",
+      "liteTitle": "轻量说话人模型",
+      "liteDescription": "更轻量，但准确度较低。",
+      "liteForced": "说话人为9位及以上时始终使用。"
     },
     "tracks": {
       "exportRange": {
@@ -231,13 +234,23 @@
       "empty": "未找到已下载的模型",
       "deleteModel": "删除模型",
       "confirmTitle": "您确定吗？",
-      "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。"
+      "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。",
+      "unused": "未使用"
     },
     "diarize": {
-      "label": "说话人分离模型",
+      "label": "轻量说话人模型",
       "description": "说话人标注包",
       "details": "用于说话人分离和标注。",
-      "badge": "说话人标签"
+      "badge": "说话人标签",
+      "legacyNote": "开启时或说话人为9位及以上时使用。"
+    },
+    "diarizeSortformer": {
+      "label": "说话人识别模型",
+      "description": "说话人标注包",
+      "details": "用于说话人分离和标注。",
+      "badge": "说话人标签",
+      "licenseSummary": "OpenMDW 1.1 · 允许商业使用",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX 转换：altunenes"
     },
     "aligner": {
       "label": "MMS 强制对齐模型",
