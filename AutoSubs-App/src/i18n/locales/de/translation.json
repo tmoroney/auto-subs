@@ -142,7 +142,10 @@
       "title": "Sprecher-Labels",
       "description": "Unterschiedliche Sprecher erkennen",
       "countTitle": "Anzahl der Sprecher",
-      "disabled": "Deaktiviert"
+      "disabled": "Deaktiviert",
+      "liteTitle": "Leichteres Sprechermodell",
+      "liteDescription": "Kleinerer Download, weniger genau.",
+      "liteForced": "Wird bei 9 oder mehr Sprechern immer genutzt."
     },
     "tracks": {
       "exportRange": {
@@ -235,17 +238,19 @@
       "unused": "Ungenutzt"
     },
     "diarize": {
-      "label": "Altes Sprechermodell",
+      "label": "Leichteres Sprechermodell",
       "description": "Sprecherkennzeichnungs-Bundle",
       "details": "Wird für Sprecherdiarisierung und Kennzeichnung verwendet.",
       "badge": "Sprecher-Labels",
-      "legacyNote": "Durch neueres Modell ersetzt. Nur für 9+ Sprecher."
+      "legacyNote": "Wird genutzt, wenn aktiviert, oder bei 9+ Sprechern."
     },
     "diarizeSortformer": {
-      "label": "Sprecher-Diarisierungsmodell",
+      "label": "Sprechererkennung",
       "description": "Sprecherkennzeichnungs-Bundle",
       "details": "Wird für Sprecherdiarisierung und Kennzeichnung verwendet.",
-      "badge": "Sprecher-Labels"
+      "badge": "Sprecher-Labels",
+      "licenseSummary": "OpenMDW 1.1 · Kommerzielle Nutzung erlaubt",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX von altunenes"
     },
     "aligner": {
       "label": "MMS-Modell für erzwungene Ausrichtung",

@@ -2,13 +2,19 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useSettingsStore } from "@/stores/settings-store";
+import { SORTFORMER_MAX_SPEAKERS } from "@/lib/models";
 import { useTranslation } from "react-i18next";
 
 export function SpeakerSelector() {
   const { t } = useTranslation();
   const enableDiarize = useSettingsStore((s) => s.enableDiarize);
   const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
+  const diarizeBackend = useSettingsStore((s) => s.diarizeBackend);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
+
+  // The default model can't label more speakers than this, so the lighter
+  // one always runs above it.
+  const liteForced = (maxSpeakers ?? 0) > SORTFORMER_MAX_SPEAKERS;
 
   // 0 = Auto, then 2-10 speakers (skips 1)
   const speakerValues = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -99,6 +105,27 @@ export function SpeakerSelector() {
               checked={enableDiarize}
               onCheckedChange={(checked: boolean) =>
                 updateSetting("enableDiarize", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">
+                {t("actionBar.speakers.liteTitle")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {liteForced
+                  ? t("actionBar.speakers.liteForced")
+                  : t("actionBar.speakers.liteDescription")}
+              </p>
+            </div>
+
+            <Switch
+              checked={liteForced || diarizeBackend === "pyannote"}
+              disabled={!enableDiarize || liteForced}
+              onCheckedChange={(checked: boolean) =>
+                updateSetting("diarizeBackend", checked ? "pyannote" : "sortformer")
               }
             />
           </div>

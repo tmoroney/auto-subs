@@ -49,6 +49,7 @@ export function TranscriptionPanel({
     enableVad,
     enableDiarize,
     maxSpeakers,
+    diarizeBackend,
     textDensity,
     maxLinesPerSubtitle,
     customMaxCharsPerLine,
@@ -74,6 +75,7 @@ export function TranscriptionPanel({
       enableVad: s.enableVad,
       enableDiarize: s.enableDiarize,
       maxSpeakers: s.maxSpeakers,
+      diarizeBackend: s.diarizeBackend,
       textDensity: s.textDensity,
       maxLinesPerSubtitle: s.maxLinesPerSubtitle,
       customMaxCharsPerLine: s.customMaxCharsPerLine,
@@ -313,6 +315,7 @@ export function TranscriptionPanel({
         enableDiarize,
         enableForcedAlignment: willUseForcedAlignment,
         maxSpeakers: speakerLimit,
+        diarizeBackend,
       };
 
       const [audioInfo, modelPaths] = await Promise.all([
@@ -344,6 +347,7 @@ export function TranscriptionPanel({
         enableGpu,
         enableDiarize,
         maxSpeakers: speakerLimit,
+        diarizeBackend,
         density: textDensity,
         maxLines: Math.max(1, Math.floor(maxLinesPerSubtitle ?? 1)),
         // Custom density sends only the active unit's limit; the backend

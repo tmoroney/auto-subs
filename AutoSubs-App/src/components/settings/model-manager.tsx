@@ -101,10 +101,10 @@ export function ManageModelsDialog({
                     {model.note ? (
                       <p className="text-xs text-muted-foreground">{t(model.note)}</p>
                     ) : null}
-                    {model.license ? (
+                    {model.license && model.licenseText ? (
                       <div className="mt-1 space-y-1 text-xs text-muted-foreground">
-                        <p>{t("models.aligner.licenseRestriction")}</p>
-                        <p>{t("models.aligner.attribution")}</p>
+                        <p>{t(model.licenseText.summary)}</p>
+                        <p>{t(model.licenseText.attribution)}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1">
                           {model.repositoryUrl ? (
                             <a

@@ -142,7 +142,10 @@
       "title": "Etiquetas de hablante",
       "description": "Identifica diferentes hablantes",
       "countTitle": "Número de hablantes",
-      "disabled": "Desactivado"
+      "disabled": "Desactivado",
+      "liteTitle": "Modelo de voz ligero",
+      "liteDescription": "Descarga menor, menos precisa.",
+      "liteForced": "Se usa siempre con 9 o más hablantes."
     },
     "tracks": {
       "exportRange": {
@@ -235,17 +238,19 @@
       "unused": "Sin uso"
     },
     "diarize": {
-      "label": "Modelo de hablantes antiguo",
+      "label": "Modelo de voz ligero",
       "description": "Paquete de etiquetado de hablantes",
       "details": "Se utiliza para la diarización y el etiquetado de hablantes.",
       "badge": "Etiquetas de hablante",
-      "legacyNote": "Sustituido por un modelo nuevo. Solo para 9+ hablantes."
+      "legacyNote": "Se usa si está activado o con 9+ hablantes."
     },
     "diarizeSortformer": {
-      "label": "Modelo de diarización de hablantes",
+      "label": "Detección de hablantes",
       "description": "Paquete de etiquetado de hablantes",
       "details": "Se utiliza para la diarización y el etiquetado de hablantes.",
-      "badge": "Etiquetas de hablante"
+      "badge": "Etiquetas de hablante",
+      "licenseSummary": "OpenMDW 1.1 · Uso comercial permitido",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX de altunenes"
     },
     "aligner": {
       "label": "Modelo MMS de alineación forzada",

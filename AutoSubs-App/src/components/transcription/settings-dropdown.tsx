@@ -38,6 +38,7 @@ export function SettingsDropdown() {
   const { theme, setTheme } = useTheme();
   const { modelsState, downloadedModelValues, handleDeleteModel, checkDownloadedModels } = useModels();
   const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
+  const diarizeBackend = useSettingsStore((s) => s.diarizeBackend);
   const [manageModelsOpen, setManageModelsOpen] = React.useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = React.useState(false);
@@ -47,7 +48,7 @@ export function SettingsDropdown() {
 
   const managerModels: Model[] = [
     ...modelsState,
-    ...downloadedAuxiliaryModels(downloadedModelValues, maxSpeakers),
+    ...downloadedAuxiliaryModels(downloadedModelValues, maxSpeakers, diarizeBackend),
   ];
 
   const handleThemeChange = (themeValue: string) => {

@@ -111,6 +111,11 @@ export interface Model {
     /** Downloaded but not used with the current settings; safe to delete. */
     unused?: boolean
     repositoryUrl?: string
+    /** i18n keys for the license summary and attribution lines in Manage Models. */
+    licenseText?: {
+        summary: string
+        attribution: string
+    }
     license?: {
         spdx: string
         url: string
@@ -148,6 +153,7 @@ export interface Settings {
     targetLanguage: string,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
     enableDTW: boolean,
     enableForcedAlignment: boolean,
     enableGpu: boolean,
@@ -232,6 +238,7 @@ export interface TranscriptionOptions {
     enableVad: boolean,
     enableDiarize: boolean,
     maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
     density: "less" | "standard" | "more" | "single" | "custom",
     maxLines: number,
     customMaxCharsPerLine?: number | undefined,
@@ -256,9 +263,14 @@ export interface EnsureModelsRequest {
     enableVad: boolean,
     enableDiarize: boolean,
     enableForcedAlignment: boolean,
-    // Decides which diarization model is prepared (more than 8 needs the legacy one).
+    // Together these decide which diarization model is prepared (more than 8
+    // speakers always needs the lighter one).
     maxSpeakers: number | null,
+    diarizeBackend: DiarizeBackend,
 }
+
+/** "sortformer" is the default speaker model; "pyannote" the lighter one. */
+export type DiarizeBackend = "sortformer" | "pyannote";
 
 export interface EnsureModelsResponse {
     asrModelPath: string,

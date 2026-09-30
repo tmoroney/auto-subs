@@ -142,7 +142,10 @@
       "title": "Labels de speaker",
       "description": "Identifier différents intervenants",
       "countTitle": "Nombre d’intervenants",
-      "disabled": "Désactivé"
+      "disabled": "Désactivé",
+      "liteTitle": "Modèle de voix léger",
+      "liteDescription": "Plus léger, mais moins précis.",
+      "liteForced": "Toujours utilisé à partir de 9 intervenants."
     },
     "tracks": {
       "exportRange": {
@@ -235,17 +238,19 @@
       "unused": "Inutilisé"
     },
     "diarize": {
-      "label": "Ancien modèle d’intervenants",
+      "label": "Modèle de voix léger",
       "description": "Pack de labels de speaker",
       "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.",
       "badge": "Labels de speaker",
-      "legacyNote": "Remplacé par un modèle récent. Sert pour 9+ intervenants."
+      "legacyNote": "Utilisé s’il est activé, ou dès 9 intervenants."
     },
     "diarizeSortformer": {
-      "label": "Modèle de diarisation des intervenants",
+      "label": "Détection de locuteurs",
       "description": "Pack de labels de speaker",
       "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.",
-      "badge": "Labels de speaker"
+      "badge": "Labels de speaker",
+      "licenseSummary": "OpenMDW 1.1 · Usage commercial autorisé",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX par altunenes"
     },
     "aligner": {
       "label": "Modèle MMS d’alignement forcé",

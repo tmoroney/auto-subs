@@ -79,7 +79,10 @@
       "countTitle": "화자 수",
       "description": "다른 화자 식별",
       "disabled": "비활성화됨",
-      "title": "화자 레이블"
+      "title": "화자 레이블",
+      "liteTitle": "가벼운 화자 모델",
+      "liteDescription": "가볍지만 정확도는 낮습니다.",
+      "liteForced": "화자가 9명 이상이면 항상 사용됩니다."
     },
     "tracks": {
       "exportRange": {
@@ -218,14 +221,16 @@
       "badge": "화자 라벨",
       "description": "화자 라벨링 번들",
       "details": "화자 분리 및 라벨링에 사용됩니다.",
-      "label": "이전 화자 모델",
-      "legacyNote": "새 모델로 대체되었습니다. 화자 9명 이상일 때만 사용됩니다."
+      "label": "가벼운 화자 모델",
+      "legacyNote": "켜져 있거나 화자가 9명 이상일 때 사용됩니다."
     },
     "diarizeSortformer": {
-      "label": "화자 분리 모델",
+      "label": "화자 감지 모델",
       "description": "화자 라벨링 번들",
       "details": "화자 분리 및 라벨링에 사용됩니다.",
-      "badge": "화자 라벨"
+      "badge": "화자 라벨",
+      "licenseSummary": "OpenMDW 1.1 · 상업적 사용 가능",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX 변환: altunenes"
     },
     "aligner": {
       "label": "MMS 강제 정렬 모델",

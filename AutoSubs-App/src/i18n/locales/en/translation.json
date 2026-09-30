@@ -144,7 +144,10 @@
       "title": "Speaker Labels",
       "description": "Identify different speakers",
       "countTitle": "Number of Speakers",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "liteTitle": "Lighter Speaker Model",
+      "liteDescription": "Smaller download, less accurate.",
+      "liteForced": "Always used for 9 or more speakers."
     },
     "tracks": {
       "exportRange": {
@@ -239,17 +242,19 @@
       "unused": "Unused"
     },
     "diarize": {
-      "label": "Legacy Speaker Model",
+      "label": "Lighter Speaker Model",
       "description": "Speaker labeling bundle",
       "details": "Used for speaker diarization and labeling.",
       "badge": "Speaker Labels",
-      "legacyNote": "Replaced by a newer model. Only used for 9+ speakers."
+      "legacyNote": "Used when switched on, or for 9+ speakers."
     },
     "diarizeSortformer": {
-      "label": "Speaker Diarization Model",
+      "label": "Speaker Detection Model",
       "description": "Speaker labeling bundle",
       "details": "Used for speaker diarization and labeling.",
-      "badge": "Speaker Labels"
+      "badge": "Speaker Labels",
+      "licenseSummary": "OpenMDW 1.1 · Commercial use allowed",
+      "attribution": "NVIDIA Nemotron-3-Diarization · ONNX conversion by altunenes"
     },
     "aligner": {
       "label": "MMS Forced Alignment Model",

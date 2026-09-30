@@ -294,9 +294,11 @@ user, so it matters more.
 **Status (2026-09-30):** items 1 to 5 are implemented. Sortformer is the
 default backend; `max_speakers` above 8 or `diarize_backend: "pyannote"`
 selects the pyannote backend. The ported model's raw probabilities match
-parakeet-rs on 10 minutes of audio. The frontend does not send
-`diarizeBackend` yet (Phase 2 UI), so every app user gets Sortformer, and the
-model is fetched from `altunenes/parakeet-rs` (fp32, 400 MB) until an
+parakeet-rs on 10 minutes of audio, and `tests/sortformer_audio.rs` checks on
+real audio that Sortformer keeps every utterance pyannote finds. The speaker
+settings have a "Lighter Speaker Model" switch that selects pyannote (part of
+the Phase 2 UI, pulled forward). The model is fetched from
+`altunenes/parakeet-rs` (fp32, 400 MB) pinned to commit `4d2a8bc`, until an
 AutoSubs-owned repo with the int8 file exists. Still open: the eval harness
 (Phase 0) that gates acceptance, and builds on macOS and Windows (only Linux
 without GPU features was built here).
