@@ -64,6 +64,9 @@ pub struct DiarizeModel {
     pub repo: String,
     /// The ONNX files that make up the bundle.
     pub files: Vec<String>,
+    /// Immutable HF revision for `files`. Only the Sortformer entry uses it.
+    #[serde(default)]
+    pub revision: Option<String>,
     #[serde(default)]
     pub ui: Option<Ui>,
 }
@@ -405,6 +408,11 @@ mod tests {
         assert!(s.repo.contains('/'), "sortformer repo must be owner/name");
         assert_eq!(s.files.len(), 1, "sortformer is a single ONNX file");
         assert_ne!(s.id, d.id, "diarize models need distinct ids");
+        let rev = s.revision.as_deref().expect("sortformer model must be pinned");
+        assert!(
+            rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit()),
+            "sortformer revision must be a full commit hash"
+        );
     }
 
     #[test]

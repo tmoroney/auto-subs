@@ -403,6 +403,7 @@
     "id": "speaker-diarize-sortformer",
     "repo": "altunenes/parakeet-rs",
     "files": ["nemotron-3-diarization/nemotron3_diar_v3.onnx"],
+    "revision": "4d2a8bc71f5c896ec40faa59732e6716295edaf2",
     "license": {
       "spdx": "OpenMDW-1.1",
       "url": "https://openmdw.ai/license/1-1/",

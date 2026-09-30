@@ -1,4 +1,4 @@
-use crate::manifest::{self, Engine as MEngine, FileSpec, ModelEntry, Source};
+use crate::manifest::{self, Engine as MEngine, FileEntry, FileSpec, ModelEntry, Source};
 use crate::types::{LabeledProgressFn, ProgressType};
 use eyre::{bail, eyre, Context, Result};
 use hf_hub::api::tokio::{ApiBuilder, Progress as HubProgress};
@@ -662,23 +662,58 @@ impl ModelManager {
         if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
 
         let d = manifest::diarize_sortformer();
-        let file = d
-            .files
-            .first()
-            .ok_or_else(|| eyre!("sortformer manifest entry is missing its model file"))?;
-        let had_cached = matches!(
-            self.find_cached_file(&d.repo, file),
-            Ok(Some(path)) if validate_model_file(&path).is_ok()
-        );
-
-        let path = self
-            .ensure_hub_model(&d.repo, file, progress, is_cancelled, 0.0, 100.0, "progressSteps.prepare.diarize")
+        let layout = Self::sortformer_layout()?;
+        let dir = self
+            .ensure_hf_flat(
+                layout.subdir,
+                &layout.key,
+                &d.repo,
+                &layout.files,
+                progress,
+                is_cancelled,
+                "progressSteps.prepare.diarize",
+            )
             .await?;
+        Ok(dir.join(layout.files[0].dest()))
+    }
 
-        if !had_cached {
-            if let Some(cb) = progress { cb(100, ProgressType::Prepare, "progressSteps.prepare.diarize"); }
+    /// Where the Sortformer model lives: `<cache>/diarize/<id>-<sha256>`, keyed by
+    /// repo, path and pinned revision the same way `flat_layout` keys pinned ASR
+    /// models, so a revision bump downloads fresh weights instead of reusing old ones.
+    fn sortformer_layout() -> Result<SortformerLayout> {
+        use sha2::{Digest, Sha256};
+
+        let d = manifest::diarize_sortformer();
+        let revision = d.revision.clone().unwrap_or_else(|| "main".to_string());
+        let files: Vec<FileSpec> = d
+            .files
+            .iter()
+            .map(|path| {
+                FileSpec::Detailed(FileEntry {
+                    path: path.clone(),
+                    dest: None,
+                    repo: None,
+                    revision: Some(revision.clone()),
+                })
+            })
+            .collect();
+        if files.is_empty() {
+            bail!("sortformer manifest entry is missing its model file");
         }
-        Ok(path)
+
+        let mut digest = Sha256::new();
+        for file in &files {
+            for value in [d.repo.as_str(), file.path(), file.dest(), file.revision()] {
+                digest.update((value.len() as u64).to_le_bytes());
+                digest.update(value.as_bytes());
+            }
+        }
+        Ok(SortformerLayout {
+            subdir: "diarize",
+            base: d.id.clone(),
+            key: format!("{}-{:x}", d.id, digest.finalize()),
+            files,
+        })
     }
 
     pub async fn ensure_aligner_model(
@@ -787,7 +822,8 @@ impl ModelManager {
     }
 
     pub fn delete_diarize_sortformer_model(&self) -> Result<()> {
-        self.delete_hf_repo(&manifest::diarize_sortformer().repo)
+        let layout = Self::sortformer_layout()?;
+        self.delete_flat_dir(layout.subdir, &layout.base, &layout.key)
     }
 
     pub fn cleanup_stale_locks(&self) -> Result<()> {
@@ -901,11 +937,10 @@ impl ModelManager {
             }
         }
 
-        let sortformer = manifest::diarize_sortformer();
-        let sortformer_files: Vec<&str> = sortformer.files.iter().map(|s| s.as_str()).collect();
-        if let Ok(Some(snapshot_dir)) = self.find_cached_snapshot_with_files(&sortformer.repo, &sortformer_files) {
-            if sortformer_files.iter().all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok()) {
-                models.insert(sortformer.id.clone());
+        if let (Ok(layout), Ok(cache_dir)) = (Self::sortformer_layout(), self.model_cache_dir()) {
+            let dir = cache_dir.join(layout.subdir).join(&layout.key);
+            if layout.files.iter().all(|f| validate_model_file(&dir.join(f.dest())).is_ok()) {
+                models.insert(manifest::diarize_sortformer().id.clone());
             }
         }
 
@@ -1434,6 +1469,14 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
             Err(e)
         }
     }
+}
+
+/// Cache location of the Sortformer diarization model; see `ModelManager::sortformer_layout`.
+struct SortformerLayout {
+    subdir: &'static str,
+    base: String,
+    key: String,
+    files: Vec<FileSpec>,
 }
 
 #[cfg(test)]
