@@ -60,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   removePunctuation: false,
   enableCensor: false,
   censoredWords: [],
+  censorStyle: "middle",
   activeCensorLists: [],
   customPrompt: "",
   customMaxCharsPerLine: 38,

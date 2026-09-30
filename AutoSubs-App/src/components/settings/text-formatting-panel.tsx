@@ -21,6 +21,7 @@ import { useSettingsStore } from "@/stores/settings-store"
 import { useTranslation } from "react-i18next"
 import { BUILT_IN_CENSOR_LISTS } from "@/censor/built-in-lists"
 import { getActiveCensorWords } from "@/censor/merge"
+import { CensorStyle } from "@/types"
 
 interface TextFormattingPanelProps {
     /** Show Cancel / Apply buttons at the bottom */
@@ -51,6 +52,7 @@ export function TextFormattingPanel({
         enableCensor,
         activeCensorLists,
         censoredWords,
+        censorStyle,
     } = useSettingsStore(
         useShallow((s) => ({
             textDensity: s.textDensity,
@@ -63,6 +65,7 @@ export function TextFormattingPanel({
             enableCensor: s.enableCensor,
             activeCensorLists: s.activeCensorLists,
             censoredWords: s.censoredWords,
+            censorStyle: s.censorStyle,
         })),
     )
     const updateSetting = useSettingsStore((s) => s.updateSetting)
@@ -233,6 +236,28 @@ export function TextFormattingPanel({
                                 </DialogHeader>
 
                                 <div className="grid gap-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <Label htmlFor="censor-style" className="text-sm font-medium">
+                                            {t("actionBar.censor.styleTitle")}
+                                        </Label>
+                                        <Select
+                                            value={censorStyle}
+                                            onValueChange={(value: CensorStyle) => updateSetting("censorStyle", value)}
+                                        >
+                                            <SelectTrigger id="censor-style" className="w-full sm:w-[240px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="middle">
+                                                    {t("actionBar.censor.styleMiddle")} (H***o)
+                                                </SelectItem>
+                                                <SelectItem value="whole">
+                                                    {t("actionBar.censor.styleWhole")} (*****)
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     {/* Word Lists Toggles */}
                                     <div className="space-y-2">
                                         <span className="text-sm font-medium">{t("actionBar.censor.lists")}</span>

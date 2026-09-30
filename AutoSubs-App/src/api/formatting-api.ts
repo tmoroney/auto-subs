@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Subtitle, FormattingOptions, BackendSegment } from "@/types";
+import { Subtitle, FormattingOptions, BackendSegment, CensorStyle } from "@/types";
 
 /**
  * Convert frontend Subtitle format to backend segment format.
@@ -110,6 +110,7 @@ export function getDefaultFormattingOptions(settings: {
     removePunctuation?: boolean;
     enableCensor?: boolean;
     censoredWords?: string[];
+    censorStyle?: CensorStyle;
 }): FormattingOptions {
     const options: FormattingOptions = {
         maxLines: settings.maxLinesPerSubtitle,
@@ -118,6 +119,7 @@ export function getDefaultFormattingOptions(settings: {
         textCase: settings.textCase ?? "none",
         removePunctuation: settings.removePunctuation ?? false,
         censoredWords: settings.enableCensor ? (settings.censoredWords ?? []) : [],
+        censorStyle: settings.censorStyle ?? "middle",
     };
     
     // Custom density sends only the active unit's limit.

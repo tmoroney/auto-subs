@@ -275,6 +275,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       textCase: settings.textCase,
       removePunctuation: settings.removePunctuation,
       censoredWords: settings.enableCensor ? getActiveCensorWords(settings) : [],
+      censorStyle: settings.censorStyle,
     });
 
     // Save reformatted segments and update state.

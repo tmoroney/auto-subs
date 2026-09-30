@@ -136,7 +136,10 @@
       "lists": "词汇列表",
       "customSection": "自定义词汇",
       "customSectionDescription": "输入要审查的个别词汇。",
-      "listWordCount": "{{count}} 个词"
+      "listWordCount": "{{count}} 个词",
+      "styleTitle": "屏蔽方式",
+      "styleMiddle": "中间字符",
+      "styleWhole": "整个单词"
     },
     "speakers": {
       "title": "说话人标签",

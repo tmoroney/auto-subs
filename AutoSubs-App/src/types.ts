@@ -125,6 +125,8 @@ export interface Model {
 }
 
 // Settings Interface
+export type CensorStyle = "middle" | "whole";
+
 export interface Settings {
     // Mode
     audioInputMode: "file" | "timeline",
@@ -167,6 +169,7 @@ export interface Settings {
     removePunctuation: boolean,
     enableCensor: boolean,
     censoredWords: Array<string>,
+    censorStyle: CensorStyle,
     activeCensorLists: Array<string>,  // IDs of CensorWordLists toggled on
     exportRange?: "entire" | "inout",
     customPrompt: string,
@@ -247,6 +250,7 @@ export interface TranscriptionOptions {
     textCase: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation: boolean,
     censoredWords: string[],
+    censorStyle: CensorStyle,
     customPrompt?: string,
     // Pre-resolved model paths from ensure_models.
     asrModelPath?: string,
@@ -292,6 +296,7 @@ export interface FormattingOptions {
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation?: boolean,
     censoredWords?: string[],
+    censorStyle?: CensorStyle,
 }
 
 // Segment format expected by the backend reformat command

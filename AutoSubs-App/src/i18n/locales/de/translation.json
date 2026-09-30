@@ -136,7 +136,10 @@
       "lists": "Wortlisten",
       "customSection": "Benutzerdefinierte Wörter",
       "customSectionDescription": "Einzelne Wörter zur Zensur eingeben.",
-      "listWordCount": "{{count}} Wörter"
+      "listWordCount": "{{count}} Wörter",
+      "styleTitle": "Zensurstil",
+      "styleMiddle": "Mittlere Buchstaben",
+      "styleWhole": "Ganzes Wort"
     },
     "speakers": {
       "title": "Sprecher-Labels",
