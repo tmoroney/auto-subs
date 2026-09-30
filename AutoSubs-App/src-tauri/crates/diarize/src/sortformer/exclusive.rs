@@ -30,8 +30,15 @@ pub struct ExclusiveConfig {
     /// Moving-average window (frames) applied to probabilities before picking a speaker.
     pub speaker_smoothing_frames: usize,
     /// Turns shorter than this (frames) are absorbed into an adjacent turn, if one is
-    /// within `merge_gap_frames`.
+    /// within `merge_gap_frames` and the model is not confident the short turn is a
+    /// different speaker (see `confident_turn_prob`).
     pub min_turn_frames: usize,
+    /// A short turn is kept as its own speaker when its speaker's mean probability over
+    /// it is at least this, and beats every close neighbour's speaker by
+    /// `confident_turn_margin`. That keeps quick replies ("Yeah.") from another person
+    /// while still absorbing flickers where the model is unsure.
+    pub confident_turn_prob: f32,
+    pub confident_turn_margin: f32,
     /// Same-speaker turns separated by less than this many silent frames are merged.
     pub merge_gap_frames: usize,
     /// Frames added at each end of a segment, never overlapping a neighbour.
@@ -46,6 +53,8 @@ impl Default for ExclusiveConfig {
             min_speech_frames: 15,
             speaker_smoothing_frames: 15,
             min_turn_frames: 40,
+            confident_turn_prob: 0.7,
+            confident_turn_margin: 0.3,
             merge_gap_frames: 50,
             pad_frames: 10,
         }
@@ -199,28 +208,39 @@ fn mean_prob(probs: &Array2<f32>, run: &Run, channel: usize) -> f32 {
 }
 
 /// Repeatedly give the shortest too-short turn to the adjacent turn whose speaker the model
-/// finds more likely over it. A short turn with no close neighbour is a real short
-/// utterance ("Yes.") and stays.
+/// finds more likely over it. A short turn stays when it has no close neighbour (a lone
+/// "Yes.") or when the model is confident it is a different speaker (a quick reply).
 fn absorb_short_turns(mut runs: Vec<Run>, probs: &Array2<f32>, config: &ExclusiveConfig) -> Vec<Run> {
+    let close = |a: &Run, b: &Run| b.start - a.end < config.merge_gap_frames;
+    // Channels of the close neighbours of `runs[i]`.
+    let neighbours = |runs: &[Run], i: usize| -> (Option<usize>, Option<usize>) {
+        let prev = (i > 0 && close(&runs[i - 1], &runs[i])).then(|| runs[i - 1].channel);
+        let next = (i + 1 < runs.len() && close(&runs[i], &runs[i + 1])).then(|| runs[i + 1].channel);
+        (prev, next)
+    };
+    let confident = |run: &Run, (prev, next): (Option<usize>, Option<usize>)| -> bool {
+        let own = mean_prob(probs, run, run.channel);
+        let rival = [prev, next]
+            .into_iter()
+            .flatten()
+            .map(|channel| mean_prob(probs, run, channel))
+            .fold(0.0f32, f32::max);
+        own >= config.confident_turn_prob && own - rival >= config.confident_turn_margin
+    };
+
     loop {
-        let close = |a: &Run, b: &Run| b.start - a.end < config.merge_gap_frames;
-        let candidate = runs
-            .iter()
-            .enumerate()
-            .filter(|(i, run)| {
-                run.len() < config.min_turn_frames
-                    && ((*i > 0 && close(&runs[i - 1], run))
-                        || (i + 1 < runs.len() && close(run, &runs[i + 1])))
+        let candidate = (0..runs.len())
+            .filter(|&i| runs[i].len() < config.min_turn_frames)
+            .filter(|&i| {
+                let near = neighbours(&runs, i);
+                (near.0.is_some() || near.1.is_some()) && !confident(&runs[i], near)
             })
-            .min_by_key(|(_, run)| run.len())
-            .map(|(i, _)| i);
+            .min_by_key(|&i| runs[i].len());
         let Some(i) = candidate else {
             return runs;
         };
 
-        let prev = (i > 0 && close(&runs[i - 1], &runs[i])).then(|| runs[i - 1].channel);
-        let next = (i + 1 < runs.len() && close(&runs[i], &runs[i + 1])).then(|| runs[i + 1].channel);
-        let channel = match (prev, next) {
+        let channel = match neighbours(&runs, i) {
             (Some(p), Some(n)) if mean_prob(probs, &runs[i], n) > mean_prob(probs, &runs[i], p) => n,
             (Some(p), _) => p,
             (None, Some(n)) => n,
@@ -329,13 +349,25 @@ mod tests {
     }
 
     #[test]
-    fn short_turn_between_speakers_is_absorbed() {
-        // A 0.2 s flip to speaker 2 in the middle of speaker 0.
+    fn uncertain_short_flip_is_absorbed() {
+        // A 0.2 s flip to speaker 2 in the middle of speaker 0, where the model is torn.
         let p = probs(
             500,
-            &[(0, 200, 0, 0.9), (200, 220, 2, 0.9), (200, 220, 0, 0.45), (220, 450, 0, 0.9)],
+            &[(0, 200, 0, 0.9), (200, 220, 2, 0.55), (200, 220, 0, 0.45), (220, 450, 0, 0.9)],
         );
         assert_eq!(frames(&run(&p, usize::MAX)), vec![(0, 450, 0)]);
+    }
+
+    #[test]
+    fn confident_short_reply_keeps_its_speaker() {
+        // Speaker 1 says "Yeah." (0.3 s) right after speaker 0, then speaker 0 carries on.
+        let p = probs(
+            600,
+            &[(0, 200, 0, 0.9), (210, 240, 1, 0.9), (250, 500, 0, 0.9)],
+        );
+        let turns = frames(&run(&p, usize::MAX));
+        assert_eq!(turns.len(), 3, "{turns:?}");
+        assert_eq!(turns.iter().map(|t| t.2).collect::<Vec<_>>(), vec![0, 1, 0]);
     }
 
     #[test]
@@ -379,10 +411,16 @@ mod tests {
 
     #[test]
     fn dropped_channels_do_not_leave_label_gaps() {
-        // Channel 1 only ever appears as a short flip that gets absorbed.
+        // Channel 1 only ever appears as an uncertain short flip that gets absorbed.
         let p = probs(
             800,
-            &[(0, 200, 0, 0.9), (200, 215, 1, 0.9), (215, 400, 0, 0.9), (500, 800, 2, 0.9)],
+            &[
+                (0, 200, 0, 0.9),
+                (200, 215, 1, 0.55),
+                (200, 215, 0, 0.45),
+                (215, 400, 0, 0.9),
+                (500, 800, 2, 0.9),
+            ],
         );
         let labels: Vec<usize> = run(&p, usize::MAX).iter().map(|t| t.speaker).collect();
         assert_eq!(labels, vec![0, 1]);
