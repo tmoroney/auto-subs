@@ -1,6 +1,6 @@
 use crate::formatting::{PostProcessConfig, TextCase, TextDensity, process_segments};
 use crate::post_process::vad_snap::{snap_timestamps_to_vad, extract_vad_intervals, VadSnapConfig};
-use crate::types::{Callbacks, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
+use crate::types::{Callbacks, DiarizeBackend, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -25,6 +25,7 @@ pub struct EngineConfig {
     pub vad_model_path: Option<String>,  // Path to Voice Activity Detection (VAD) model
     pub diarize_segment_model_path: Option<String>, // Optional path to diarization segmentation model; if None, it will be downloaded
     pub diarize_embedding_model_path: Option<String>, // Optional path to diarization embedding model; if None, it will be downloaded
+    pub diarize_sortformer_model_path: Option<String>, // Optional path to the Sortformer diarization model; if None, it will be downloaded
     pub aligner_model_dir: Option<String>,
     pub asr_model_path: Option<String>, // Optional pre-resolved ASR model path
 }
@@ -40,6 +41,7 @@ impl Default for EngineConfig {
             vad_model_path: None,
             diarize_segment_model_path: None,
             diarize_embedding_model_path: None,
+            diarize_sortformer_model_path: None,
             aligner_model_dir: None,
             asr_model_path: None,
         }
@@ -94,12 +96,28 @@ async fn prepare_speech_segments(
     is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
 ) -> eyre::Result<Vec<SpeechSegment>> {
     let speech_segments = if let Some(true) = options.enable_diarize {
-        let (seg_path, emb_path) = match (
-            &cfg.diarize_segment_model_path,
-            &cfg.diarize_embedding_model_path,
-        ) {
-            (Some(seg), Some(emb)) => (PathBuf::from(seg), PathBuf::from(emb)),
-            _ => models.ensure_diarize_models(progress, is_cancelled).await?,
+        let resolved = DiarizeBackend::resolve(options.diarize_backend, options.max_speakers);
+        tracing::info!("diarization backend: {resolved:?}");
+        let backend = match resolved {
+            DiarizeBackend::Sortformer => diarize::DiarizeBackend::Sortformer {
+                model_path: match &cfg.diarize_sortformer_model_path {
+                    Some(path) => PathBuf::from(path),
+                    None => models.ensure_diarize_sortformer_model(progress, is_cancelled).await?,
+                },
+            },
+            DiarizeBackend::Pyannote => {
+                let (segment_model_path, embedding_model_path) = match (
+                    &cfg.diarize_segment_model_path,
+                    &cfg.diarize_embedding_model_path,
+                ) {
+                    (Some(seg), Some(emb)) => (PathBuf::from(seg), PathBuf::from(emb)),
+                    _ => models.ensure_diarize_models(progress, is_cancelled).await?,
+                };
+                diarize::DiarizeBackend::Pyannote {
+                    segment_model_path,
+                    embedding_model_path,
+                }
+            }
         };
 
         let threshold = options
@@ -108,8 +126,7 @@ async fn prepare_speech_segments(
             .and_then(|a| a.diarize_threshold)
             .unwrap_or(0.5);
         let diarize_options = diarize::DiarizeOptions {
-            segment_model_path: seg_path,
-            embedding_model_path: emb_path,
+            backend,
             threshold,
             max_speakers: match options.max_speakers {
                 Some(0) | None => usize::MAX,
@@ -418,10 +435,20 @@ impl Engine {
 
         // Diarization models
         if options.enable_diarize.unwrap_or(false) {
-            if cfg.diarize_segment_model_path.is_none() || cfg.diarize_embedding_model_path.is_none() {
-                let (seg_path, emb_path) = self.models.ensure_diarize_models(progress, is_cancelled).await?;
-                cfg.diarize_segment_model_path = Some(seg_path.to_string_lossy().to_string());
-                cfg.diarize_embedding_model_path = Some(emb_path.to_string_lossy().to_string());
+            match DiarizeBackend::resolve(options.diarize_backend, options.max_speakers) {
+                DiarizeBackend::Sortformer => {
+                    if cfg.diarize_sortformer_model_path.is_none() {
+                        let path = self.models.ensure_diarize_sortformer_model(progress, is_cancelled).await?;
+                        cfg.diarize_sortformer_model_path = Some(path.to_string_lossy().to_string());
+                    }
+                }
+                DiarizeBackend::Pyannote => {
+                    if cfg.diarize_segment_model_path.is_none() || cfg.diarize_embedding_model_path.is_none() {
+                        let (seg_path, emb_path) = self.models.ensure_diarize_models(progress, is_cancelled).await?;
+                        cfg.diarize_segment_model_path = Some(seg_path.to_string_lossy().to_string());
+                        cfg.diarize_embedding_model_path = Some(emb_path.to_string_lossy().to_string());
+                    }
+                }
             }
         }
 

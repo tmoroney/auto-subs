@@ -398,6 +398,19 @@
     "files": ["segmentation-community-1.onnx", "embedding_model.onnx"],
     "ui": {"size": "40MB", "accuracy": 3, "image": "diarize.png", "languageSupport": {"kind": "multilingual"}}
   },
+  "_diarizeSortformer_comment": "Default speaker diarization model: NVIDIA Nemotron-3-Diarization (Sortformer v3, up to 8 speakers). The model above stays as the lighter option and handles more than 8 speakers.",
+  "diarizeSortformer": {
+    "id": "speaker-diarize-sortformer",
+    "repo": "altunenes/parakeet-rs",
+    "files": ["nemotron-3-diarization/nemotron3_diar_v3.onnx"],
+    "license": {
+      "spdx": "OpenMDW-1.1",
+      "url": "https://openmdw.ai/license/1-1/",
+      "attribution": "NVIDIA Nemotron-3-Diarization; ONNX conversion by altunenes",
+      "commercialUse": true
+    },
+    "ui": {"size": "400MB", "ramMb": 1024, "accuracy": 4.5, "image": "diarize.png", "languageSupport": {"kind": "multilingual"}}
+  },
   "_aligner_comment": "Optional MMS forced-alignment model, downloaded separately under CC BY-NC 4.0.",
   "aligner": {
     "id": "mms-forced-aligner",

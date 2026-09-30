@@ -38,6 +38,11 @@ autosubs --version
 - `--text-case` - Text case: `none`, `lowercase`, `uppercase`, or `titlecase`
 - `--remove-punctuation` - Strip punctuation from transcript
 
+**Speaker diarization:**
+- `--diarize` - Label each segment with its speaker
+- `--max-speakers` - Never label more than this many speakers
+- `--diarize-model` - `sortformer` (default; more accurate, up to 8 speakers) or `pyannote` (smaller download, less memory). More than 8 `--max-speakers` always uses `pyannote`
+
 **Translation:**
 - `--translate` - Translate transcript to English
 - `--target-language` - Target language code for translation

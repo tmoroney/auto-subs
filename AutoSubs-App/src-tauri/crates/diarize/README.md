@@ -1,3 +1,17 @@
+# diarize (AutoSubs)
+
+AutoSubs' speaker diarization crate. `diarize()` runs one of two backends:
+
+- **Sortformer** (default): NVIDIA Nemotron-3-Diarization, an end-to-end model
+  that handles overlapping speech and labels up to 8 speakers. Try it with
+  `cargo run --release --example sortformer -- audio.wav nemotron3_diar_v3.onnx`.
+- **Pyannote**: the original pyannote-rs pipeline described below. Smaller and
+  lighter on memory, and the only backend for more than 8 speakers.
+
+See [AUTOSUBS_IMPORT.md](AUTOSUBS_IMPORT.md) for provenance and
+[IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) for where this is heading. The rest
+of this file is the upstream pyannote-rs README.
+
 # pyannote-rs
 
 [![Crates](https://img.shields.io/crates/v/pyannote-rs?logo=rust)](https://crates.io/crates/pyannote-rs/)

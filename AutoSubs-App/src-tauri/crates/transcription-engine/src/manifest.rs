@@ -38,8 +38,11 @@ pub struct Manifest {
     pub models: Vec<ModelEntry>,
     /// Voice-activity detection model (auto-downloaded, not user-selectable).
     pub vad: VadModel,
-    /// Speaker diarization model (user-downloadable, has a UI card).
+    /// Lightweight speaker diarization bundle (pyannote segmentation + embedding).
     pub diarize: DiarizeModel,
+    /// Default speaker diarization model (Sortformer, a single ONNX file).
+    #[serde(rename = "diarizeSortformer")]
+    pub diarize_sortformer: DiarizeModel,
     pub aligner: AlignerModel,
 }
 
@@ -329,9 +332,14 @@ pub fn vad() -> &'static VadModel {
     &MANIFEST.vad
 }
 
-/// The speaker-diarization model.
+/// The lightweight (pyannote) speaker-diarization bundle.
 pub fn diarize() -> &'static DiarizeModel {
     &MANIFEST.diarize
+}
+
+/// The default (Sortformer) speaker-diarization model.
+pub fn diarize_sortformer() -> &'static DiarizeModel {
+    &MANIFEST.diarize_sortformer
 }
 
 pub fn aligner() -> &'static AlignerModel {
@@ -393,6 +401,10 @@ mod tests {
         assert!(d.repo.contains('/'), "diarize repo must be owner/name");
         assert!(!d.id.is_empty(), "diarize id must be set");
         assert!(!d.files.is_empty(), "diarize needs >=1 file");
+        let s = diarize_sortformer();
+        assert!(s.repo.contains('/'), "sortformer repo must be owner/name");
+        assert_eq!(s.files.len(), 1, "sortformer is a single ONNX file");
+        assert_ne!(s.id, d.id, "diarize models need distinct ids");
     }
 
     #[test]

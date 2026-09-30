@@ -61,6 +61,40 @@ pub struct AdvancedTranscribe {
     pub diarize_threshold: Option<f32>, // Threshold for diarization
 }
 
+/// Which speaker-diarization model to run.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DiarizeBackend {
+    /// NVIDIA Sortformer: more accurate, handles overlapping speech, up to 8 speakers.
+    #[default]
+    Sortformer,
+    /// pyannote + speaker embeddings: smaller download, less memory, any speaker count.
+    Pyannote,
+}
+
+impl DiarizeBackend {
+    /// Parse the frontend's value ("sortformer" / "pyannote"); anything else is `None`.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "sortformer" => Some(Self::Sortformer),
+            "pyannote" => Some(Self::Pyannote),
+            _ => None,
+        }
+    }
+
+    /// The backend that will actually run: Sortformer cannot label more speakers than
+    /// its output channels, so a larger `max_speakers` falls back to pyannote.
+    pub fn resolve(requested: Option<Self>, max_speakers: Option<usize>) -> Self {
+        match requested.unwrap_or_default() {
+            Self::Sortformer
+                if max_speakers.is_some_and(|n| n > diarize::SORTFORMER_MAX_SPEAKERS) =>
+            {
+                Self::Pyannote
+            }
+            backend => backend,
+        }
+    }
+}
+
 // TranscribeOptions references AdvancedTranscribe optionally
 #[derive(Clone, Debug)]
 pub struct TranscribeOptions {
@@ -84,6 +118,7 @@ pub struct TranscribeOptions {
     pub enable_diarize: Option<bool>, // Labels segments with speaker_id
     pub enable_forced_alignment: Option<bool>,
     pub max_speakers: Option<usize>, // Max number of speakers to detect (otherwise auto detection may create too many speakers)
+    pub diarize_backend: Option<DiarizeBackend>, // None = default (Sortformer); see DiarizeBackend::resolve
     pub advanced: Option<AdvancedTranscribe>, // Optional knobs
 }
 
@@ -99,6 +134,7 @@ impl Default for TranscribeOptions {
             enable_diarize: None,
             enable_forced_alignment: Some(false),
             max_speakers: None,
+            diarize_backend: None,
             advanced: None,
         }
     }
@@ -126,3 +162,38 @@ pub struct Segment {
 }
 
 pub use diarize::SpeechSegment;
+
+#[cfg(test)]
+mod diarize_backend_tests {
+    use super::DiarizeBackend;
+
+    #[test]
+    fn defaults_to_sortformer() {
+        assert_eq!(DiarizeBackend::resolve(None, None), DiarizeBackend::Sortformer);
+        assert_eq!(DiarizeBackend::resolve(None, Some(8)), DiarizeBackend::Sortformer);
+    }
+
+    #[test]
+    fn more_than_eight_speakers_falls_back_to_pyannote() {
+        assert_eq!(DiarizeBackend::resolve(None, Some(9)), DiarizeBackend::Pyannote);
+        assert_eq!(
+            DiarizeBackend::resolve(Some(DiarizeBackend::Sortformer), Some(10)),
+            DiarizeBackend::Pyannote
+        );
+    }
+
+    #[test]
+    fn explicit_pyannote_is_respected() {
+        assert_eq!(
+            DiarizeBackend::resolve(Some(DiarizeBackend::Pyannote), Some(2)),
+            DiarizeBackend::Pyannote
+        );
+    }
+
+    #[test]
+    fn parses_frontend_names() {
+        assert_eq!(DiarizeBackend::from_name("Sortformer"), Some(DiarizeBackend::Sortformer));
+        assert_eq!(DiarizeBackend::from_name("pyannote"), Some(DiarizeBackend::Pyannote));
+        assert_eq!(DiarizeBackend::from_name("fast"), None);
+    }
+}

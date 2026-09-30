@@ -5,11 +5,15 @@ use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
 
 pub fn create_session<P: AsRef<Path>>(path: P) -> Result<Session> {
+    create_session_with_threads(path, 1)
+}
+
+pub fn create_session_with_threads<P: AsRef<Path>>(path: P, intra_threads: usize) -> Result<Session> {
     let session = Session::builder()
         .map_err(|e| eyre!("{e}"))?
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|e| eyre!("{e}"))?
-        .with_intra_threads(1)
+        .with_intra_threads(intra_threads.max(1))
         .map_err(|e| eyre!("{e}"))?
         .with_inter_threads(1)
         .map_err(|e| eyre!("{e}"))?

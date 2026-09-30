@@ -291,6 +291,16 @@ user, so it matters more.
    DER and speaker count, with missed speech no worse than the current
    pipeline; builds pass for `mac-aarch`, `windows`, `linux` features.
 
+**Status (2026-09-30):** items 1 to 5 are implemented. Sortformer is the
+default backend; `max_speakers` above 8 or `diarize_backend: "pyannote"`
+selects the pyannote backend. The ported model's raw probabilities match
+parakeet-rs on 10 minutes of audio. The frontend does not send
+`diarizeBackend` yet (Phase 2 UI), so every app user gets Sortformer, and the
+model is fetched from `altunenes/parakeet-rs` (fp32, 400 MB) until an
+AutoSubs-owned repo with the int8 file exists. Still open: the eval harness
+(Phase 0) that gates acceptance, and builds on macOS and Windows (only Linux
+without GPU features was built here).
+
 ### Phase 2: int8 model and UI
 
 1. Produce and eval the int8 model; decide per platform.

@@ -176,6 +176,14 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         None => None,
     };
 
+    let diarize_backend = arg_str(&m, "diarize-model");
+    if let Some(name) = diarize_backend.as_deref() {
+        if transcription_engine::DiarizeBackend::from_name(name).is_none() {
+            eprintln!("autosubs: unknown diarize model '{name}' (expected sortformer or pyannote)");
+            flush_and_exit(2);
+        }
+    }
+
     let translate = arg_flag(&m, "translate");
     let forced_alignment = arg_flag(&m, "forced-alignment");
     if translate && forced_alignment {
@@ -201,6 +209,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         enable_forced_alignment: Some(forced_alignment),
         enable_vad: None,
         max_speakers: arg_num(&m, "max-speakers"),
+        diarize_backend,
         density,
         max_lines: arg_num(&m, "max-lines"),
         custom_max_chars_per_line: arg_num(&m, "max-chars-per-line"),
@@ -213,6 +222,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         vad_model_path: None,
         diarize_segment_path: None,
         diarize_embedding_path: None,
+        diarize_sortformer_path: None,
         aligner_model_dir: None,
     };
 

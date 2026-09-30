@@ -652,6 +652,35 @@ impl ModelManager {
         Ok((seg_path, emb_path))
     }
 
+    /// Ensure the Sortformer diarization model (a single ONNX file) is cached and return
+    /// its path. Repo and filename come from the manifest (`manifest::diarize_sortformer()`).
+    pub async fn ensure_diarize_sortformer_model(
+        &self,
+        progress: Option<&LabeledProgressFn>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<PathBuf> {
+        if let Some(is_cancelled) = is_cancelled { if is_cancelled() { bail!("Cancelled"); } }
+
+        let d = manifest::diarize_sortformer();
+        let file = d
+            .files
+            .first()
+            .ok_or_else(|| eyre!("sortformer manifest entry is missing its model file"))?;
+        let had_cached = matches!(
+            self.find_cached_file(&d.repo, file),
+            Ok(Some(path)) if validate_model_file(&path).is_ok()
+        );
+
+        let path = self
+            .ensure_hub_model(&d.repo, file, progress, is_cancelled, 0.0, 100.0, "progressSteps.prepare.diarize")
+            .await?;
+
+        if !had_cached {
+            if let Some(cb) = progress { cb(100, ProgressType::Prepare, "progressSteps.prepare.diarize"); }
+        }
+        Ok(path)
+    }
+
     pub async fn ensure_aligner_model(
         &self,
         progress: Option<&LabeledProgressFn>,
@@ -755,6 +784,10 @@ impl ModelManager {
 
     pub fn delete_diarize_model(&self) -> Result<()> {
         self.delete_hf_repo(&manifest::diarize().repo)
+    }
+
+    pub fn delete_diarize_sortformer_model(&self) -> Result<()> {
+        self.delete_hf_repo(&manifest::diarize_sortformer().repo)
     }
 
     pub fn cleanup_stale_locks(&self) -> Result<()> {
@@ -868,6 +901,14 @@ impl ModelManager {
             }
         }
 
+        let sortformer = manifest::diarize_sortformer();
+        let sortformer_files: Vec<&str> = sortformer.files.iter().map(|s| s.as_str()).collect();
+        if let Ok(Some(snapshot_dir)) = self.find_cached_snapshot_with_files(&sortformer.repo, &sortformer_files) {
+            if sortformer_files.iter().all(|f| validate_model_file(&snapshot_dir.join(f)).is_ok()) {
+                models.insert(sortformer.id.clone());
+            }
+        }
+
         let aligner = manifest::aligner();
         let aligner_files: Vec<&str> = aligner.files.iter().map(FileSpec::path).collect();
         // Same validation as diarize: partial/corrupt aligner files must not be reported
@@ -888,6 +929,9 @@ impl ModelManager {
     pub fn delete_cached_model(&self, model_name: &str) -> bool {
         if model_name == manifest::diarize().id {
             return self.delete_diarize_model().is_ok();
+        }
+        if model_name == manifest::diarize_sortformer().id {
+            return self.delete_diarize_sortformer_model().is_ok();
         }
         if model_name == manifest::aligner().id {
             return self.delete_hf_repo(&manifest::aligner().repo).is_ok();

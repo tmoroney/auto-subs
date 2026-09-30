@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
-    Callbacks, ContentFormatting, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
+    Callbacks, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
     Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
 };
 
@@ -102,6 +102,8 @@ pub struct FrontendTranscribeOptions {
     pub enable_forced_alignment: Option<bool>,
     pub enable_vad: Option<bool>,
     pub max_speakers: Option<usize>,
+    /// "sortformer" (default) or "pyannote"; see `transcription_engine::DiarizeBackend`.
+    pub diarize_backend: Option<String>,
     pub density: Option<TextDensity>,
     pub max_lines: Option<usize>,
     pub custom_max_chars_per_line: Option<usize>,
@@ -116,6 +118,7 @@ pub struct FrontendTranscribeOptions {
     pub vad_model_path: Option<String>,
     pub diarize_segment_path: Option<String>,
     pub diarize_embedding_path: Option<String>,
+    pub diarize_sortformer_path: Option<String>,
     pub aligner_model_dir: Option<String>,
 }
 
@@ -157,6 +160,7 @@ struct TranscribeOptionsLogView<'a> {
     enable_diarize: Option<bool>,
     enable_forced_alignment: Option<bool>,
     max_speakers: Option<usize>,
+    diarize_backend: Option<&'a str>,
     density: Option<String>,
     max_lines: Option<usize>,
     text_case: Option<&'a str>,
@@ -183,6 +187,7 @@ impl<'a> From<&'a FrontendTranscribeOptions> for TranscribeOptionsLogView<'a> {
             enable_diarize: o.enable_diarize,
             enable_forced_alignment: o.enable_forced_alignment,
             max_speakers: o.max_speakers,
+            diarize_backend: o.diarize_backend.as_deref(),
             density: o.density.as_ref().map(|d| format!("{:?}", d)),
             max_lines: o.max_lines,
             text_case: o.text_case.as_deref(),
@@ -204,6 +209,8 @@ pub struct EnsureModelsRequest {
     pub enable_vad: Option<bool>,
     pub enable_diarize: Option<bool>,
     pub enable_forced_alignment: Option<bool>,
+    pub max_speakers: Option<usize>,
+    pub diarize_backend: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -213,6 +220,7 @@ pub struct EnsureModelsResponse {
     pub vad_model_path: Option<String>,
     pub diarize_segment_path: Option<String>,
     pub diarize_embedding_path: Option<String>,
+    pub diarize_sortformer_path: Option<String>,
     pub aligner_dir: Option<String>,
 }
 
@@ -234,6 +242,8 @@ pub async fn ensure_models<R: Runtime>(
         enable_vad: request.enable_vad,
         enable_diarize: request.enable_diarize,
         enable_forced_alignment: request.enable_forced_alignment,
+        max_speakers: request.max_speakers.filter(|&n| n > 0),
+        diarize_backend: request.diarize_backend.as_deref().and_then(DiarizeBackend::from_name),
         ..Default::default()
     };
 
@@ -267,6 +277,7 @@ pub async fn ensure_models<R: Runtime>(
         vad_model_path: cfg.vad_model_path,
         diarize_segment_path: cfg.diarize_segment_model_path,
         diarize_embedding_path: cfg.diarize_embedding_model_path,
+        diarize_sortformer_path: cfg.diarize_sortformer_model_path,
         aligner_dir: cfg.aligner_model_dir,
     })
 }
@@ -379,6 +390,7 @@ pub async fn transcribe_audio<R: Runtime>(
             vad_model_path: options.vad_model_path.clone(),
             diarize_segment_model_path: options.diarize_segment_path.clone(),
             diarize_embedding_model_path: options.diarize_embedding_path.clone(),
+            diarize_sortformer_model_path: options.diarize_sortformer_path.clone(),
             aligner_model_dir: options.aligner_model_dir.clone(),
             asr_model_path: options.asr_model_path.clone(),
         };
@@ -402,6 +414,10 @@ pub async fn transcribe_audio<R: Runtime>(
             Some(0) => None,
             other => other,
         };
+        transcribe_options.diarize_backend = options
+            .diarize_backend
+            .as_deref()
+            .and_then(DiarizeBackend::from_name);
         // Handle translation - use target_language from frontend.
         // `translate_target` always carries the target (including "en").
         // `use_native_translation` requests the model's built-in translation
