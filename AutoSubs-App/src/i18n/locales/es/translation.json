@@ -231,9 +231,17 @@
       "empty": "No se encontraron modelos descargados",
       "deleteModel": "Eliminar modelo",
       "confirmTitle": "¿Estás seguro?",
-      "confirmBody": "Esto eliminará el modelo {{model}} de tu dispositivo. Si lo usas en el futuro, tendrás que descargarlo de nuevo."
+      "confirmBody": "Esto eliminará el modelo {{model}} de tu dispositivo. Si lo usas en el futuro, tendrás que descargarlo de nuevo.",
+      "unused": "Sin uso"
     },
     "diarize": {
+      "label": "Modelo de hablantes antiguo",
+      "description": "Paquete de etiquetado de hablantes",
+      "details": "Se utiliza para la diarización y el etiquetado de hablantes.",
+      "badge": "Etiquetas de hablante",
+      "legacyNote": "Sustituido por un modelo nuevo. Solo para 9+ hablantes."
+    },
+    "diarizeSortformer": {
       "label": "Modelo de diarización de hablantes",
       "description": "Paquete de etiquetado de hablantes",
       "details": "Se utiliza para la diarización y el etiquetado de hablantes.",

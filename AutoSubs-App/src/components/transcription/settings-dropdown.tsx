@@ -29,13 +29,15 @@ import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { SupportDialog } from "@/components/dialogs/support-dialog";
 import { ManageModelsDialog } from "@/components/settings/model-manager";
 import { useModels } from "@/contexts/ModelsContext";
-import { alignerModel, diarizeModel } from "@/lib/models";
+import { downloadedAuxiliaryModels } from "@/lib/models";
+import { useSettingsStore } from "@/stores/settings-store";
 import type { Model } from "@/types";
 
 export function SettingsDropdown() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { modelsState, downloadedModelValues, handleDeleteModel, checkDownloadedModels } = useModels();
+  const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
   const [manageModelsOpen, setManageModelsOpen] = React.useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = React.useState(false);
@@ -45,12 +47,7 @@ export function SettingsDropdown() {
 
   const managerModels: Model[] = [
     ...modelsState,
-    ...(downloadedModelValues.includes(diarizeModel.value)
-      ? [{ ...diarizeModel, isDownloaded: true }]
-      : []),
-    ...(downloadedModelValues.includes(alignerModel.value)
-      ? [{ ...alignerModel, isDownloaded: true }]
-      : []),
+    ...downloadedAuxiliaryModels(downloadedModelValues, maxSpeakers),
   ];
 
   const handleThemeChange = (themeValue: string) => {

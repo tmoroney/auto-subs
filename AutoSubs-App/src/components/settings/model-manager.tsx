@@ -93,8 +93,14 @@ export function ManageModelsDialog({
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm">{t(model.label)}</p>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t(model.badge)}</Badge>
+                      {model.unused ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("models.manage.unused")}</Badge>
+                      ) : null}
                     </div>
                     <p className="text-xs text-muted-foreground">{model.size}</p>
+                    {model.note ? (
+                      <p className="text-xs text-muted-foreground">{t(model.note)}</p>
+                    ) : null}
                     {model.license ? (
                       <div className="mt-1 space-y-1 text-xs text-muted-foreground">
                         <p>{t("models.aligner.licenseRestriction")}</p>

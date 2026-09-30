@@ -218,7 +218,14 @@
       "badge": "화자 라벨",
       "description": "화자 라벨링 번들",
       "details": "화자 분리 및 라벨링에 사용됩니다.",
-      "label": "화자 분리 모델"
+      "label": "이전 화자 모델",
+      "legacyNote": "새 모델로 대체되었습니다. 화자 9명 이상일 때만 사용됩니다."
+    },
+    "diarizeSortformer": {
+      "label": "화자 분리 모델",
+      "description": "화자 라벨링 번들",
+      "details": "화자 분리 및 라벨링에 사용됩니다.",
+      "badge": "화자 라벨"
     },
     "aligner": {
       "label": "MMS 강제 정렬 모델",
@@ -236,7 +243,8 @@
       "deleteModel": "모델 삭제",
       "description": "캐시된 모델을 삭제하여 디스크 공간을 확보하세요.",
       "empty": "다운로드된 모델이 없습니다",
-      "title": "모델"
+      "title": "모델",
+      "unused": "사용 안 함"
     },
     "moonshine_base": {
       "badge": "영어",

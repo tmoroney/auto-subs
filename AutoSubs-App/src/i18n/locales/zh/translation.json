@@ -231,9 +231,17 @@
       "empty": "未找到已下载的模型",
       "deleteModel": "删除模型",
       "confirmTitle": "您确定吗？",
-      "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。"
+      "confirmBody": "这将从您的设备中删除 {{model}} 模型。如果您将来使用此模型，需要重新下载。",
+      "unused": "未使用"
     },
     "diarize": {
+      "label": "旧版说话人模型",
+      "description": "说话人标注包",
+      "details": "用于说话人分离和标注。",
+      "badge": "说话人标签",
+      "legacyNote": "已被新模型取代。仅在9位及以上说话人时使用。"
+    },
+    "diarizeSortformer": {
       "label": "说话人分离模型",
       "description": "说话人标注包",
       "details": "用于说话人分离和标注。",

@@ -235,9 +235,17 @@
       "empty": "No downloaded models found",
       "deleteModel": "Delete Model",
       "confirmTitle": "Are you sure?",
-      "confirmBody": "This will delete the {{model}} model from your device. If you use this model in future it will need to be downloaded again."
+      "confirmBody": "This will delete the {{model}} model from your device. If you use this model in future it will need to be downloaded again.",
+      "unused": "Unused"
     },
     "diarize": {
+      "label": "Legacy Speaker Model",
+      "description": "Speaker labeling bundle",
+      "details": "Used for speaker diarization and labeling.",
+      "badge": "Speaker Labels",
+      "legacyNote": "Replaced by a newer model. Only used for 9+ speakers."
+    },
+    "diarizeSortformer": {
       "label": "Speaker Diarization Model",
       "description": "Speaker labeling bundle",
       "details": "Used for speaker diarization and labeling.",

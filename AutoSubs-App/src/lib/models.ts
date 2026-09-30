@@ -46,6 +46,7 @@ interface ManifestAuxiliaryModel {
 interface ManifestFile {
   models: ManifestModel[];
   diarize: ManifestAuxiliaryModel;
+  diarizeSortformer: ManifestAuxiliaryModel;
   aligner: ManifestAuxiliaryModel;
 }
 
@@ -145,16 +146,31 @@ export const models: Model[] = manifest.models.map((m) =>
 );
 
 /**
- * Diarization model definition.
- * Handled separately from transcription models; its i18n keys use the
- * "diarize" base rather than being derived from its id ("speaker-diarize").
+ * The most speakers the default diarization model can label. Asking for more
+ * makes the backend fall back to the legacy model below.
  */
-export const diarizeModel: Model = toModel(
-  manifest.diarize.id,
+export const SORTFORMER_MAX_SPEAKERS = 8;
+
+/**
+ * Default diarization model (Sortformer). Handled separately from
+ * transcription models; its i18n keys use the "diarizeSortformer" base.
+ */
+export const diarizeSortformerModel: Model = toModel(
+  manifest.diarizeSortformer.id,
   "diarize",
-  manifest.diarize.ui,
-  "diarize"
+  manifest.diarizeSortformer.ui,
+  "diarizeSortformer"
 );
+
+/**
+ * Legacy diarization model (pyannote), kept for more than
+ * SORTFORMER_MAX_SPEAKERS speakers. Its i18n keys use the "diarize" base
+ * rather than being derived from its id ("speaker-diarize").
+ */
+export const diarizeModel: Model = {
+  ...toModel(manifest.diarize.id, "diarize", manifest.diarize.ui, "diarize"),
+  note: "models.diarize.legacyNote",
+};
 
 export const alignerModel: Model = {
   ...toModel(
@@ -166,6 +182,34 @@ export const alignerModel: Model = {
   repositoryUrl: `https://huggingface.co/${manifest.aligner.repo}`,
   license: manifest.aligner.license,
 };
+
+/**
+ * The downloaded non-transcription models (diarization, aligner) to list in
+ * Manage Models. The legacy diarization model is flagged unused unless the
+ * speaker limit is above what the default model can label, since that is the
+ * only time it runs.
+ */
+export function downloadedAuxiliaryModels(
+  downloaded: string[],
+  maxSpeakers: number | null,
+): Model[] {
+  const has = (m: Model) => downloaded.includes(m.value);
+  const result: Model[] = [];
+  if (has(diarizeSortformerModel)) {
+    result.push({ ...diarizeSortformerModel, isDownloaded: true });
+  }
+  if (has(diarizeModel)) {
+    result.push({
+      ...diarizeModel,
+      isDownloaded: true,
+      unused: (maxSpeakers ?? 0) <= SORTFORMER_MAX_SPEAKERS,
+    });
+  }
+  if (has(alignerModel)) {
+    result.push({ ...alignerModel, isDownloaded: true });
+  }
+  return result;
+}
 
 /**
  * Check if a model's engine supports automatic language detection.

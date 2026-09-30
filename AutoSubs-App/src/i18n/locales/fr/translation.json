@@ -231,9 +231,17 @@
       "empty": "Aucun modèle téléchargé",
       "deleteModel": "Supprimer le modèle",
       "confirmTitle": "Êtes-vous sûr ?",
-      "confirmBody": "Cela supprimera le modèle {{model}} de votre appareil. Si vous l’utilisez plus tard, il devra être retéléchargé."
+      "confirmBody": "Cela supprimera le modèle {{model}} de votre appareil. Si vous l’utilisez plus tard, il devra être retéléchargé.",
+      "unused": "Inutilisé"
     },
     "diarize": {
+      "label": "Ancien modèle d’intervenants",
+      "description": "Pack de labels de speaker",
+      "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.",
+      "badge": "Labels de speaker",
+      "legacyNote": "Remplacé par un modèle récent. Sert pour 9+ intervenants."
+    },
+    "diarizeSortformer": {
       "label": "Modèle de diarisation des intervenants",
       "description": "Pack de labels de speaker",
       "details": "Utilisé pour la diarisation et l’étiquetage des intervenants.",

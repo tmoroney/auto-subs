@@ -231,9 +231,17 @@
       "empty": "Keine heruntergeladenen Modelle gefunden",
       "deleteModel": "Modell löschen",
       "confirmTitle": "Bist du sicher?",
-      "confirmBody": "Dadurch wird das Modell {{model}} von deinem Gerät gelöscht. Wenn du es später verwendest, muss es erneut heruntergeladen werden."
+      "confirmBody": "Dadurch wird das Modell {{model}} von deinem Gerät gelöscht. Wenn du es später verwendest, muss es erneut heruntergeladen werden.",
+      "unused": "Ungenutzt"
     },
     "diarize": {
+      "label": "Altes Sprechermodell",
+      "description": "Sprecherkennzeichnungs-Bundle",
+      "details": "Wird für Sprecherdiarisierung und Kennzeichnung verwendet.",
+      "badge": "Sprecher-Labels",
+      "legacyNote": "Durch neueres Modell ersetzt. Nur für 9+ Sprecher."
+    },
+    "diarizeSortformer": {
       "label": "Sprecher-Diarisierungsmodell",
       "description": "Sprecherkennzeichnungs-Bundle",
       "details": "Wird für Sprecherdiarisierung und Kennzeichnung verwendet.",
