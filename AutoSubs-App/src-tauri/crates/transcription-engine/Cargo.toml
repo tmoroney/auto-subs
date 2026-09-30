@@ -15,7 +15,7 @@ dirs = "5.0"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
-reqwest = { version = "0.11", default-features = true }
+reqwest = { version = "0.11", default-features = true, features = ["stream"] }
 hound = "3.5"
 tracing = "0.1"
 eyre = "0.6"
@@ -52,4 +52,4 @@ linux = ["vulkan"]
 default = ["mac-aarch"]
 
 [dev-dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util"] }

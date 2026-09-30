@@ -485,7 +485,18 @@ impl ModelManager {
 
             let repo = file.repo().unwrap_or(default_repo);
             let url = format!("{}/{}/resolve/{}/{}", hf_endpoint, repo, file.revision(), file.path());
-            download_to(&dest, &url).await?;
+            let mut last_pct = offset as i32;
+            download_to_with(&dest, &url, is_cancelled, |done, size| {
+                let (Some(cb), Some(size)) = (progress, size.filter(|&s| s > 0)) else {
+                    return;
+                };
+                let pct = (offset + scale * (done as f32 / size as f32).min(1.0)) as i32;
+                if pct != last_pct {
+                    last_pct = pct;
+                    cb(pct, ProgressType::Prepare, label);
+                }
+            })
+            .await?;
             validate_model_file(&dest).with_context(|| {
                 format!("Model validation failed for '{}' from '{repo}'", file.dest())
             })?;
@@ -1402,6 +1413,20 @@ fn remove_snapshot_file_and_blob(path: &Path) -> Result<()> {
 }
 
 async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
+    download_to_with(dest_path, url, None, |_, _| {}).await
+}
+
+/// [`download_to`] that can be cancelled mid-transfer, fails after
+/// `STALL_TIMEOUT_SECS` without data (a stalled connection otherwise hangs
+/// forever: reqwest has no read timeout), and reports `(bytes_done, total)`.
+async fn download_to_with(
+    dest_path: &Path,
+    url: &str,
+    is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    mut on_progress: impl FnMut(u64, Option<u64>),
+) -> Result<()> {
+    use futures::StreamExt;
+
     if let Some(parent) = dest_path.parent() { fs::create_dir_all(parent).ok(); }
     // Explicit client with a connect timeout so a dead/blocked endpoint fails fast
     // instead of hanging on connection setup. Callers that need a bound on the whole
@@ -1410,7 +1435,7 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
         .connect_timeout(std::time::Duration::from_secs(30))
         .build()
         .context("Failed to build HTTP client")?;
-    let mut resp = client.get(url).send().await.context("Failed to GET url")?;
+    let resp = client.get(url).send().await.context("Failed to GET url")?;
     if !resp.status().is_success() {
         bail!("Failed to download '{}': status {}", url, resp.status());
     }
@@ -1431,8 +1456,37 @@ async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
 
     let stream_result: Result<()> = async {
         let mut f = fs::File::create(&part_path).context("Failed to create temp download file")?;
-        while let Some(chunk) = resp.chunk().await.context("Failed to read response chunk")? {
-            std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+        let total = resp.content_length();
+        let mut done: u64 = 0;
+        let mut stream = resp.bytes_stream();
+        let mut tick = tokio::time::interval(std::time::Duration::from_millis(250));
+        let mut last_data = Instant::now();
+        loop {
+            // `StreamExt::next` is cancel-safe, so polling it against the ticker
+            // never loses data.
+            tokio::select! {
+                chunk = stream.next() => {
+                    let Some(chunk) = chunk else { break };
+                    let chunk = chunk.context("Failed to read response chunk")?;
+                    std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
+                    done += chunk.len() as u64;
+                    last_data = Instant::now();
+                    on_progress(done, total);
+                }
+                _ = tick.tick() => {
+                    if is_cancelled.is_some_and(|f| f()) {
+                        bail!("Model download cancelled");
+                    }
+                    if last_data.elapsed().as_secs() > STALL_TIMEOUT_SECS {
+                        bail!(
+                            "Timed out downloading '{}': no data for {}s (network stalled). \
+                             Check your connection and try again.",
+                            url,
+                            STALL_TIMEOUT_SECS
+                        );
+                    }
+                }
+            }
         }
         f.sync_all().context("Failed to sync download file")?;
         Ok(())
@@ -1482,6 +1536,64 @@ struct SortformerLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Serve one HTTP response that sends `first` bytes of a `total`-byte body,
+    /// then either the rest (`finish`) or nothing more while holding the
+    /// connection open, like a stalled CDN transfer.
+    async fn serve_once(total: usize, first: usize, finish: bool) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0u8; 1024];
+            let _ = socket.read(&mut request).await;
+            let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\r\n");
+            socket.write_all(header.as_bytes()).await.unwrap();
+            socket.write_all(&vec![7u8; first]).await.unwrap();
+            if finish {
+                socket.write_all(&vec![7u8; total - first]).await.unwrap();
+            } else {
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            }
+        });
+        format!("http://{addr}/model.onnx")
+    }
+
+    fn temp_dest(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("autosubs-dl-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir.join("model.onnx")
+    }
+
+    #[tokio::test]
+    async fn flat_download_reports_progress_and_finalizes() {
+        let url = serve_once(200_000, 50_000, true).await;
+        let dest = temp_dest("ok");
+        let mut last = (0, None);
+        download_to_with(&dest, &url, None, |done, total| last = (done, total))
+            .await
+            .unwrap();
+        assert_eq!(last, (200_000, Some(200_000)));
+        assert_eq!(fs::metadata(&dest).unwrap().len(), 200_000);
+        assert!(!dest.with_file_name("model.onnx.part").exists());
+    }
+
+    #[tokio::test]
+    async fn flat_download_cancels_while_the_transfer_is_stalled() {
+        let url = serve_once(200_000, 50_000, false).await;
+        let dest = temp_dest("cancel");
+        let started = Instant::now();
+        let cancelled = move || started.elapsed() > std::time::Duration::from_millis(500);
+        let err = download_to_with(&dest, &url, Some(&cancelled), |_, _| {})
+            .await
+            .unwrap_err();
+        assert!(format!("{err:#}").contains("cancelled"), "{err:#}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        assert!(!dest.exists());
+        assert!(!dest.with_file_name("model.onnx.part").exists());
+    }
 
     #[test]
     fn pinned_files_use_revision_aware_downloader_even_without_renaming() {
