@@ -106,6 +106,10 @@ export interface Model {
      */
     bestFor: string[]
     isDownloaded: boolean
+    /** i18n key for an extra line shown under the model in Manage Models. */
+    note?: string
+    /** Downloaded but not used with the current settings; safe to delete. */
+    unused?: boolean
     repositoryUrl?: string
     license?: {
         spdx: string
@@ -242,22 +246,27 @@ export interface TranscriptionOptions {
     vadModelPath?: string,
     diarizeSegmentPath?: string,
     diarizeEmbeddingPath?: string,
+    diarizeSortformerPath?: string,
     alignerModelDir?: string,
 }
 
+// Field names match the Rust structs' `#[serde(rename_all = "camelCase")]`.
 export interface EnsureModelsRequest {
     model: string,
-    enable_vad: boolean,
-    enable_diarize: boolean,
-    enable_forced_alignment: boolean,
+    enableVad: boolean,
+    enableDiarize: boolean,
+    enableForcedAlignment: boolean,
+    // Decides which diarization model is prepared (more than 8 needs the legacy one).
+    maxSpeakers: number | null,
 }
 
 export interface EnsureModelsResponse {
-    asr_model_path: string,
-    vad_model_path?: string,
-    diarize_segment_path?: string,
-    diarize_embedding_path?: string,
-    aligner_dir?: string,
+    asrModelPath: string,
+    vadModelPath?: string,
+    diarizeSegmentPath?: string,
+    diarizeEmbeddingPath?: string,
+    diarizeSortformerPath?: string,
+    alignerDir?: string,
 }
 
 // Formatting options for reformatting subtitles without re-transcribing

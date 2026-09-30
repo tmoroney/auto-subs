@@ -930,3 +930,51 @@ pub fn density_char_limits(lang: String) -> DensityCharLimits {
         more: resolve(TextDensity::More),
     }
 }
+
+#[cfg(test)]
+mod ensure_models_wire_format_tests {
+    use super::{EnsureModelsRequest, EnsureModelsResponse};
+
+    // The frontend (`EnsureModelsRequest` / `EnsureModelsResponse` in src/types.ts) uses
+    // these exact camelCase names. A mismatch deserializes silently to `None`.
+    #[test]
+    fn request_reads_camel_case_fields() {
+        let request: EnsureModelsRequest = serde_json::from_value(serde_json::json!({
+            "model": "small",
+            "enableVad": true,
+            "enableDiarize": true,
+            "enableForcedAlignment": false,
+            "maxSpeakers": 9,
+            "diarizeBackend": "pyannote",
+        }))
+        .unwrap();
+        assert_eq!(request.enable_vad, Some(true));
+        assert_eq!(request.enable_diarize, Some(true));
+        assert_eq!(request.enable_forced_alignment, Some(false));
+        assert_eq!(request.max_speakers, Some(9));
+        assert_eq!(request.diarize_backend.as_deref(), Some("pyannote"));
+    }
+
+    #[test]
+    fn response_writes_camel_case_fields() {
+        let response = EnsureModelsResponse {
+            asr_model_path: "asr".into(),
+            vad_model_path: Some("vad".into()),
+            diarize_segment_path: Some("seg".into()),
+            diarize_embedding_path: Some("emb".into()),
+            diarize_sortformer_path: Some("sortformer".into()),
+            aligner_dir: Some("aligner".into()),
+        };
+        let json = serde_json::to_value(&response).unwrap();
+        for key in [
+            "asrModelPath",
+            "vadModelPath",
+            "diarizeSegmentPath",
+            "diarizeEmbeddingPath",
+            "diarizeSortformerPath",
+            "alignerDir",
+        ] {
+            assert!(json.get(key).is_some(), "missing {key} in {json}");
+        }
+    }
+}

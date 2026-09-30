@@ -302,11 +302,17 @@ export function TranscriptionPanel({
     });
 
     try {
+      const speakerLimit =
+        typeof maxSpeakers === "number" && !isNaN(maxSpeakers)
+          ? Math.floor(maxSpeakers) || null
+          : null;
+
       const ensureModelsRequest: EnsureModelsRequest = {
         model: modelsState[model].value,
-        enable_vad: enableVad,
-        enable_diarize: enableDiarize,
-        enable_forced_alignment: willUseForcedAlignment,
+        enableVad,
+        enableDiarize,
+        enableForcedAlignment: willUseForcedAlignment,
+        maxSpeakers: speakerLimit,
       };
 
       const [audioInfo, modelPaths] = await Promise.all([
@@ -337,10 +343,7 @@ export function TranscriptionPanel({
         enableForcedAlignment: willUseForcedAlignment,
         enableGpu,
         enableDiarize,
-        maxSpeakers:
-          typeof maxSpeakers === "number" && !isNaN(maxSpeakers)
-            ? Math.floor(maxSpeakers) || null
-            : null,
+        maxSpeakers: speakerLimit,
         density: textDensity,
         maxLines: Math.max(1, Math.floor(maxLinesPerSubtitle ?? 1)),
         // Custom density sends only the active unit's limit; the backend
@@ -357,11 +360,12 @@ export function TranscriptionPanel({
         removePunctuation,
         censoredWords: enableCensor ? getActiveCensorWords(useSettingsStore.getState()) : [],
         customPrompt: customPrompt.trim() || undefined,
-        asrModelPath: modelPaths.asr_model_path,
-        vadModelPath: modelPaths.vad_model_path,
-        diarizeSegmentPath: modelPaths.diarize_segment_path,
-        diarizeEmbeddingPath: modelPaths.diarize_embedding_path,
-        alignerModelDir: modelPaths.aligner_dir,
+        asrModelPath: modelPaths.asrModelPath,
+        vadModelPath: modelPaths.vadModelPath,
+        diarizeSegmentPath: modelPaths.diarizeSegmentPath,
+        diarizeEmbeddingPath: modelPaths.diarizeEmbeddingPath,
+        diarizeSortformerPath: modelPaths.diarizeSortformerPath,
+        alignerModelDir: modelPaths.alignerDir,
       };
 
       const transcript = await invoke("transcribe_audio", { options });
