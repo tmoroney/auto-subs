@@ -18,7 +18,7 @@ pub use vad::get_segments;
 pub use types::{Callbacks, DiarizeBackend, LabeledProgressFn, NewSegmentFn, SegmentStage, SpeakersIdentifiedFn, TranscribeOptions, Segment, WordTimestamp, ProgressType};
 pub use model_manager::ModelManager;
 pub use utils::{get_translate_languages, get_whisper_languages};
-pub use formatting::{PostProcessConfig, process_segments, TextCase, TextDensity};
+pub use formatting::{CensorStyle, PostProcessConfig, process_segments, TextCase, TextDensity};
 
 /// Install whisper.cpp logging hooks so output is routed through Rust's tracing system
 /// instead of raw stderr, allowing filters to suppress chatty internal logs.

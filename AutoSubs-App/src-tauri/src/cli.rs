@@ -217,6 +217,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         text_case: arg_str(&m, "text-case"),
         remove_punctuation: Some(arg_flag(&m, "remove-punctuation")),
         censored_words: None,
+        censor_style: None,
         custom_prompt: arg_str(&m, "prompt"),
         asr_model_path: None,
         vad_model_path: None,

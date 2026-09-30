@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
-    Callbacks, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
+    Callbacks, CensorStyle, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
     Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
 };
 
@@ -112,6 +112,7 @@ pub struct FrontendTranscribeOptions {
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
     pub censored_words: Option<Vec<String>>,
+    pub censor_style: Option<CensorStyle>,
     pub custom_prompt: Option<String>,
     // Optional pre-resolved model paths (filled by ensure_models command).
     pub asr_model_path: Option<String>,
@@ -517,6 +518,7 @@ pub async fn transcribe_audio<R: Runtime>(
             text_case: parse_text_case(options.text_case.as_deref()),
             remove_punctuation: options.remove_punctuation.unwrap_or(false),
             censored_words: options.censored_words.clone().unwrap_or_default(),
+            censor_style: options.censor_style.unwrap_or_default(),
         };
 
         // Run transcription.
@@ -791,6 +793,7 @@ pub struct FrontendFormattingOptions {
     pub text_case: Option<String>,
     pub remove_punctuation: Option<bool>,
     pub censored_words: Option<Vec<String>>,
+    pub censor_style: Option<CensorStyle>,
 }
 
 /// Reformat subtitles with new formatting options without re-transcribing.
@@ -868,6 +871,7 @@ pub async fn reformat_subtitles(
     config.text_case = parse_text_case(options.text_case.as_deref());
     config.remove_punctuation = options.remove_punctuation.unwrap_or(false);
     config.censored_words = options.censored_words.clone().unwrap_or_default();
+    config.censor_style = options.censor_style.unwrap_or_default();
 
     // Run the formatting engine
     let formatted = process_segments(&engine_segments, &config);

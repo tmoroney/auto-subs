@@ -171,6 +171,7 @@ async fn main() -> Result<()> {
         text_case: TextCase::None,
         remove_punctuation: false,
         censored_words: vec![],
+        censor_style: Default::default(),
     };
 
     let mut engine = Engine::new(config);
