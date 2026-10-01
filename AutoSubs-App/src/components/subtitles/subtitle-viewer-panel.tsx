@@ -485,10 +485,19 @@ export function SubtitleViewerPanel({
   };
 
   const handleApplyReformat = async () => {
-    await flushPendingSubtitleSave();
-    const timelineId = timelineInfo?.timelineId || "";
-    await reformatSubtitles(useSettingsStore.getState(), null, timelineId);
-    setShowReformat(false);
+    try {
+      await flushPendingSubtitleSave();
+      const timelineId = timelineInfo?.timelineId || "";
+      await reformatSubtitles(useSettingsStore.getState(), null, timelineId);
+      setShowReformat(false);
+    } catch (error) {
+      console.error("Failed to reformat subtitles:", error);
+      const { title, message, detail } = describeError(
+        error,
+        t("errorDialog.reformatFailed"),
+      );
+      showError({ title, message, detail });
+    }
   };
 
   const handleAddToTimeline = async (

@@ -22,6 +22,7 @@
     "build:mac:x86_64": "dotenv -- npm run tauri build -- -- --no-default-features --features mac-x86_64",
     "upload:win": "powershell -ExecutionPolicy Bypass -File scripts/upload-windows-artifacts.ps1",
     "bump-version": "node scripts/bump-version.mjs",
+    "test": "node --experimental-strip-types --test \"scripts/*.test.ts\"",
     "setup-resolve": "node scripts/setup-resolve-dev.js"
   },
   "dependencies": {
