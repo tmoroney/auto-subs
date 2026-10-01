@@ -138,8 +138,8 @@
       "customSectionDescription": "Einzelne Wörter zur Zensur eingeben.",
       "listWordCount": "{{count}} Wörter",
       "styleTitle": "Zensurstil",
-      "styleMiddle": "Mittlere Buchstaben",
-      "styleWhole": "Ganzes Wort"
+      "styleMiddle": "Mitte (H***o)",
+      "styleWhole": "Ganzes Wort (*****)"
     },
     "speakers": {
       "title": "Sprecher-Labels",

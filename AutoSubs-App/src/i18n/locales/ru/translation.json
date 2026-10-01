@@ -140,8 +140,8 @@
       "customSectionDescription": "Введите отдельные слова для цензуры.",
       "listWordCount": "Слов: {{count}}",
       "styleTitle": "Стиль цензуры",
-      "styleMiddle": "Середина слова",
-      "styleWhole": "Всё слово"
+      "styleMiddle": "Середина (H***o)",
+      "styleWhole": "Всё слово (*****)"
     },
     "speakers": {
       "title": "Метки спикеров",

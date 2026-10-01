@@ -249,10 +249,10 @@ export function TextFormattingPanel({
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="middle">
-                                                    {t("actionBar.censor.styleMiddle")} (H***o)
+                                                    {t("actionBar.censor.styleMiddle")}
                                                 </SelectItem>
                                                 <SelectItem value="whole">
-                                                    {t("actionBar.censor.styleWhole")} (*****)
+                                                    {t("actionBar.censor.styleWhole")}
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>

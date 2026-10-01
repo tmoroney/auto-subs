@@ -14,8 +14,8 @@
       "customSectionDescription": "検閲する個別の単語を入力してください。",
       "listWordCount": "{{count}} 語",
       "styleTitle": "伏せ字の形式",
-      "styleMiddle": "中央の文字",
-      "styleWhole": "単語全体"
+      "styleMiddle": "中央の文字 (H***o)",
+      "styleWhole": "単語全体 (*****)"
     },
     "common": {
       "auto": "自動",

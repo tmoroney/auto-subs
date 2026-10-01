@@ -138,8 +138,8 @@
       "customSectionDescription": "Saisissez des mots individuels à censurer.",
       "listWordCount": "{{count}} mots",
       "styleTitle": "Style de censure",
-      "styleMiddle": "Lettres centrales",
-      "styleWhole": "Mot entier"
+      "styleMiddle": "Lettres centrales (H***o)",
+      "styleWhole": "Mot entier (*****)"
     },
     "speakers": {
       "title": "Labels de speaker",

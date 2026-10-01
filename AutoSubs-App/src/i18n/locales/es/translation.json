@@ -138,8 +138,8 @@
       "customSectionDescription": "Ingrese palabras individuales para censurar.",
       "listWordCount": "{{count}} palabras",
       "styleTitle": "Estilo de censura",
-      "styleMiddle": "Letras centrales",
-      "styleWhole": "Palabra completa"
+      "styleMiddle": "Letras centrales (H***o)",
+      "styleWhole": "Palabra compl. (*****)"
     },
     "speakers": {
       "title": "Etiquetas de hablante",

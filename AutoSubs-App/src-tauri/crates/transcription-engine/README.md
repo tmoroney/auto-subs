@@ -6,7 +6,7 @@ Whisper-rs, transcribe-rs ONNX engines, and AutoSubs' diarization/VAD pipeline w
 
 ```rust
 use transcription_engine::{
-    Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase,
+    Callbacks, CensorStyle, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase,
     TranscribeOptions,
 };
 
@@ -48,6 +48,7 @@ async fn main() -> eyre::Result<()> {
                 text_case: TextCase::None,
                 remove_punctuation: false,
                 censored_words: vec![],
+                censor_style: CensorStyle::Middle,
             }),
             Some(callbacks),
         )
@@ -76,5 +77,5 @@ Set `translate_target` on `TranscribeOptions`. The engine will use native transl
 ## Notes
 
 - `Engine::transcribe_audio` returns `(original_segments, formatted_segments, output_language)`.
-- `ContentFormatting` controls text case, punctuation stripping, and censored words.
+- `ContentFormatting` controls text case, punctuation stripping, censored words, and the censor style.
 - `PostProcessConfig` can be tuned directly if you need custom line/length limits.

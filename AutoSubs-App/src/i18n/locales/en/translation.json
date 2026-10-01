@@ -140,8 +140,8 @@
       "customSectionDescription": "Enter individual words to censor.",
       "listWordCount": "{{count}} words",
       "styleTitle": "Censor Style",
-      "styleMiddle": "Middle letters",
-      "styleWhole": "Whole word"
+      "styleMiddle": "Middle letters (H***o)",
+      "styleWhole": "Whole word (*****)"
     },
     "speakers": {
       "title": "Speaker Labels",

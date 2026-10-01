@@ -14,8 +14,8 @@
       "customSectionDescription": "검열할 개별 단어를 입력하세요.",
       "listWordCount": "{{count}}개 단어",
       "styleTitle": "검열 방식",
-      "styleMiddle": "가운데 글자",
-      "styleWhole": "단어 전체"
+      "styleMiddle": "가운데 글자 (H***o)",
+      "styleWhole": "단어 전체 (*****)"
     },
     "common": {
       "auto": "자동",
