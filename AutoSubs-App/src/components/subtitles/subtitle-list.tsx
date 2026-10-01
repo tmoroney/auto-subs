@@ -274,17 +274,17 @@ const SubtitleList = ({
     };
 
     const handleMoveFirstWordToPrev = (index: number) => {
-        if (index <= 0) return;
+        if (index <= 0) return false;
         const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
-        if (words.length === 0) return;
+        if (words.length === 0) return false;
 
         const first = words.shift();
-        if (!first) return;
+        if (!first) return false;
 
         const newSubtitles = [...subtitlesRef.current];
         const prev = newSubtitles[index - 1];
         const curr = newSubtitles[index];
-        if (!prev || !curr) return;
+        if (!prev || !curr) return false;
 
         const prevWords = splitIntoWords(prev.text ?? "");
         prevWords.push(first);
@@ -293,20 +293,21 @@ const SubtitleList = ({
         newSubtitles[index - 1] = { ...prev, text: joinWords(prevWords) };
         newSubtitles[index] = { ...curr, text: nextCurrText };
         recordMove(newSubtitles, index);
+        return true;
     };
 
     const handleMoveLastWordToNext = (index: number) => {
-        if (index >= subtitlesRef.current.length - 1) return;
+        if (index >= subtitlesRef.current.length - 1) return false;
         const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
-        if (words.length === 0) return;
+        if (words.length === 0) return false;
 
         const last = words.pop();
-        if (!last) return;
+        if (!last) return false;
 
         const newSubtitles = [...subtitlesRef.current];
         const next = newSubtitles[index + 1];
         const curr = newSubtitles[index];
-        if (!next || !curr) return;
+        if (!next || !curr) return false;
 
         const nextWords = splitIntoWords(next.text ?? "");
         nextWords.unshift(last);
@@ -315,6 +316,7 @@ const SubtitleList = ({
         newSubtitles[index] = { ...curr, text: nextCurrText };
         newSubtitles[index + 1] = { ...next, text: joinWords(nextWords) };
         recordMove(newSubtitles, index);
+        return true;
     };
 
     const renderHighlightedText = (text: string, query: string) => {
@@ -486,16 +488,18 @@ const SubtitleList = ({
                                                     const modifier = e.metaKey || e.ctrlKey;
                                                     if (modifier && !e.altKey) {
                                                         if (e.key === "ArrowUp" && !e.shiftKey) {
-                                                            e.preventDefault();
-                                                            handleMoveFirstWordToPrev(index);
+                                                            if (handleMoveFirstWordToPrev(index)) {
+                                                                e.preventDefault();
+                                                            }
                                                             return;
                                                         }
                                                         if (e.key === "ArrowDown" && !e.shiftKey) {
-                                                            e.preventDefault();
-                                                            handleMoveLastWordToNext(index);
+                                                            if (handleMoveLastWordToNext(index)) {
+                                                                e.preventDefault();
+                                                            }
                                                             return;
                                                         }
-                                                        if (e.key.toLowerCase() === "z" && !e.shiftKey && (moveHistoryRef.current.past.length || moveHistoryRef.current.future.length)) {
+                                                        if (e.key.toLowerCase() === "z" && !e.shiftKey && moveHistoryRef.current.past.length > 0) {
                                                             e.preventDefault();
                                                             undoMove(index);
                                                             return;
