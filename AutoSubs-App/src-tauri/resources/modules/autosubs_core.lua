@@ -571,7 +571,31 @@ local function cleanup_render_job()
         if snap.renderMode ~= nil then
             pcall(function() project:SetCurrentRenderMode(snap.renderMode) end)
         end
+        -- No preset snapshot to reload, and the API can't read render settings
+        -- back — the best possible restore is resetting the export flags and
+        -- frame range we pushed to conventional defaults rather than leaving
+        -- the user on audio-only settings.
+        pcall(function()
+            project:SetRenderSettings({
+                ExportVideo = true,
+                ExportAudio = true,
+                IsExportVideo = true,
+                IsExportAudio = true,
+                SelectAllFrames = true
+            })
+        end)
     end
+end
+
+local function render_job_progress(jobId)
+    local pct = nil
+    pcall(function()
+        local status = project:GetRenderJobStatus(jobId)
+        if type(status) == "table" then
+            pct = status["CompletionPercentage"]
+        end
+    end)
+    return pct
 end
 
 -- A queued-but-dead render job (e.g. a leftover AutoSubs job stuck in 'Ready')
@@ -579,7 +603,11 @@ end
 -- later export. Delete leftover AutoSubs jobs — identified by their unique
 -- export name prefix — so a genuine external render still blocks but a zombie
 -- of ours does not. Never touches the job tracked by the active export.
-local function remove_stale_export_jobs()
+--
+-- only_stalled: when Resolve reports a render in progress, only drop jobs
+-- whose completion percentage is provably not advancing — an AutoSubs render
+-- still running after its bridge state was lost must not be deleted mid-flight.
+local function remove_stale_export_jobs(only_stalled)
     local jobs = nil
     pcall(function() jobs = project:GetRenderJobList() end)
     if type(jobs) ~= "table" then return end
@@ -588,8 +616,20 @@ local function remove_stale_export_jobs()
             local name = tostring(job["OutputFilename"] or job["CustomName"] or "")
             local id = job["JobId"] or job["Id"]
             if id ~= nil and id ~= currentExportJob.pid and name:match("^autosubs%-exported%-audio%-") then
-                print("[AutoSubs] Removing stale render job " .. tostring(id) .. " (" .. name .. ")")
-                pcall(function() project:DeleteRenderJob(id) end)
+                local removable = true
+                if only_stalled then
+                    -- A live render's percentage ticks between two samples; a
+                    -- stalled or never-started job's does not. When the status
+                    -- can't be read, err on keeping the job.
+                    local first = render_job_progress(id)
+                    bmd.wait(0.3)
+                    local second = render_job_progress(id)
+                    removable = first ~= nil and first == second
+                end
+                if removable then
+                    print("[AutoSubs] Removing stale render job " .. tostring(id) .. " (" .. name .. ")")
+                    pcall(function() project:DeleteRenderJob(id) end)
+                end
             end
         end
     end
@@ -698,9 +738,11 @@ function GetExportProgress()
                 end
             end
 
-            -- A job Resolve queued but never started (still 'Ready' at 0%)
-            -- gets one restart before being reported as failed.
+            -- A job Resolve queued but never started (still 'Ready' at 0%,
+            -- no error) gets one restart before being reported as failed. A
+            -- job with a real error is never restarted.
             if detail and not currentExportJob.cancelled
+                and (jobError == nil or tostring(jobError) == "")
                 and (completionPercentage == nil or completionPercentage == 0)
                 and not currentExportJob.restartAttempted then
                 currentExportJob.restartAttempted = true
@@ -930,11 +972,15 @@ end
 function ExportAudio(req)
     local outputDir, inputTracks, exportRange = req.outputDir, req.inputTracks, req.exportRange
     -- Drop leftover AutoSubs render jobs from earlier exports so the Deliver
-    -- queue stays clean; a queued-but-dead one can also leave
-    -- IsRenderingInProgress() stuck true (see remove_stale_export_jobs).
-    remove_stale_export_jobs()
+    -- queue stays clean. With nothing rendering this is unconditionally safe;
+    -- a queued-but-dead one can also leave IsRenderingInProgress() stuck true.
+    if not project:IsRenderingInProgress() then
+        remove_stale_export_jobs(false)
+    end
     if project:IsRenderingInProgress() then
-        -- Give Resolve a beat to notice the stale job is gone, then re-check.
+        -- Busy: only drop jobs provably stalled (a live render must not be
+        -- deleted mid-flight), then give Resolve a beat and re-check.
+        remove_stale_export_jobs(true)
         bmd.wait(0.2)
     end
     if project:IsRenderingInProgress() then
@@ -1045,24 +1091,28 @@ function ExportAudio(req)
     -- cleanup_render_job() can put the Deliver page back afterwards.
     currentExportJob.renderSnapshot = snapshot_render_state()
 
-    -- 'Audio Only' is a stock preset, but its name is localized on non-English
-    -- Resolve installs, so the load can silently fail. Without it the job renders
-    -- with whatever preset was last selected and the app waits for a WAV that
-    -- never appears. Check the return and configure audio-only output directly.
-    local presetLoaded = project:LoadRenderPreset('Audio Only')
-    if not presetLoaded then
-        print("[AutoSubs] 'Audio Only' render preset not found; configuring WAV output directly")
-        local ok, fmtErr = pcall(function()
-            project:SetCurrentRenderFormatAndCodec('wav', 'LinearPCM')
-        end)
-        if not ok then
-            print("[AutoSubs] Failed to set WAV render format: " .. tostring(fmtErr))
-        end
-    end
-
-    project:SetRenderSettings(renderSettings)
-
+    -- Every mutation after the snapshot lives inside this pcall so a throw
+    -- anywhere still runs the start-failure path (reset_tracks +
+    -- cleanup_render_job) instead of leaving the user's Deliver settings
+    -- half-overwritten.
     local success, err = pcall(function()
+        -- 'Audio Only' is a stock preset, but its name is localized on non-English
+        -- Resolve installs, so the load can silently fail. Without it the job renders
+        -- with whatever preset was last selected and the app waits for a WAV that
+        -- never appears. Check the return and configure audio-only output directly.
+        local presetLoaded = project:LoadRenderPreset('Audio Only')
+        if not presetLoaded then
+            print("[AutoSubs] 'Audio Only' render preset not found; configuring WAV output directly")
+            local ok, fmtErr = pcall(function()
+                project:SetCurrentRenderFormatAndCodec('wav', 'LinearPCM')
+            end)
+            if not ok then
+                print("[AutoSubs] Failed to set WAV render format: " .. tostring(fmtErr))
+            end
+        end
+
+        project:SetRenderSettings(renderSettings)
+
         local pid = project:AddRenderJob()
         currentExportJob.pid = pid
         local started = project:StartRendering(pid)
@@ -1071,7 +1121,10 @@ function ExportAudio(req)
             -- still settling after the preset switch; try once more.
             print("[AutoSubs] StartRendering returned false; retrying once")
             bmd.wait(0.5)
-            project:StartRendering(pid)
+            started = project:StartRendering(pid)
+        end
+        if not started then
+            error("Resolve refused to start the render job (StartRendering returned false)")
         end
 
         -- Resolve may not immediately populate the job list. Prefer the job

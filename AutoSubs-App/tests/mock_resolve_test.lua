@@ -115,6 +115,15 @@ local function make_timeline(opts)
         return true
     end
     function tl:SetCurrentTimecode(tc) self.timecodes[#self.timecodes + 1] = tc end
+    function tl:GetCurrentTimecode() return self.currentTimecode or "00:00:00:00" end
+    function tl:GetIsTrackEnabled(_, idx)
+        return self.tracks[idx] ~= nil and self.tracks[idx].enabled ~= false
+    end
+    function tl:SetTrackEnable(_, idx, en)
+        if self.tracks[idx] then self.tracks[idx].enabled = en end
+        return true
+    end
+    function tl:GetMarkInOut() return self.markInOut end
     return tl
 end
 
@@ -196,6 +205,7 @@ resolve = {
     OpenPage = function() end,
 }
 fusion = { SetPrefs = function() end, GetPrefs = function() return nil end, SavePrefs = function() end }
+bmd = { wait = function() end, fileexists = function() return false end }
 
 AUTOSUBS_SEP = "/"
 AUTOSUBS_MAILBOX = "/tmp/luatest/mailbox"
@@ -224,10 +234,13 @@ project.GetMediaPool = function() return mp end
 local core = assert(loadfile(MODULES .. "/autosubs_core.lua"))()
 
 -- Inject lazy locals that Init() would populate: `timecode` for JumpToTime.
-local fake_timecode = { timecode_from_frame_auto = function(f, _, _)
-    return string.format("00:00:%02d:%02d", math.floor(f / 24), f % 24)
-end }
-for _, fname in ipairs({ "JumpToTime", "AddSubtitles" }) do
+local fake_timecode = {
+    timecode_from_frame_auto = function(f, _, _)
+        return string.format("00:00:%02d:%02d", math.floor(f / 24), f % 24)
+    end,
+    frame_from_timecode = function() return 0 end,
+}
+for _, fname in ipairs({ "JumpToTime", "AddSubtitles", "GetExportProgress" }) do
     local fn = _G[fname]
     local i = 1
     while true do
@@ -407,6 +420,263 @@ do
     for ti = 1, #tl.tracks do placed = placed + #track_items(tl, ti) end
     check(placed - 1 == 2, "both captions landed (one on a spill track)",
         "placed=" .. placed)
+end
+
+-- ---------------------------------------------------------------------------
+-- Export lifecycle (render job queue, snapshot/restore, start failures)
+-- ---------------------------------------------------------------------------
+
+-- Render-side project methods. `r` holds the fake Deliver state; each job is
+-- { JobId, rendering, pct, status, err, live }. A `live` job's Completion-
+-- Percentage ticks on every status read — how remove_stale_export_jobs(true)
+-- tells a running render apart from a stalled one.
+local function wire_render(opts)
+    opts = opts or {}
+    local r = {
+        jobs = {},
+        presets = {},
+        rendering = false,
+        nextId = 0,
+        deletedJobs = {},
+        loadedPresets = {},
+        deletedPresets = {},
+        savedPresets = {},
+        startCalls = 0,
+        renderSettings = nil,
+        audioOnly = opts.audioOnly ~= false,
+        savePreset = opts.savePreset ~= false,
+        failStarts = opts.failStarts or 0,
+        silentStarts = opts.silentStarts or 0,
+    }
+    function r:add_job(fields)
+        self.nextId = self.nextId + 1
+        local j = { JobId = "job-" .. self.nextId, rendering = false, pct = 0 }
+        for k, v in pairs(fields or {}) do j[k] = v end
+        self.jobs[#self.jobs + 1] = j
+        return j
+    end
+    function r:find_job(id)
+        for _, j in ipairs(self.jobs) do
+            if (j.JobId or j.Id) == id then return j end
+        end
+    end
+    function r:finish_job(id, err)
+        local j = self:find_job(id)
+        if j then
+            j.rendering = false
+            j.pct = err and 0 or 100
+            j.status = err and "Failed" or "Complete"
+            j.err = err
+        end
+        self.rendering = false
+    end
+    project.IsRenderingInProgress = function() return r.rendering end
+    project.GetRenderJobList = function() return r.jobs end
+    project.AddRenderJob = function()
+        return r:add_job({ CustomName = "autosubs-exported-audio-new.wav" }).JobId
+    end
+    project.DeleteRenderJob = function(_, id)
+        r.deletedJobs[#r.deletedJobs + 1] = id
+        for i, j in ipairs(r.jobs) do
+            if (j.JobId or j.Id) == id then table.remove(r.jobs, i) return true end
+        end
+        return true
+    end
+    project.StartRendering = function(_, id)
+        r.startCalls = r.startCalls + 1
+        if r.failStarts > 0 then
+            r.failStarts = r.failStarts - 1
+            return false
+        end
+        -- Silent start: Resolve claims success but the job never leaves Ready.
+        if r.silentStarts > 0 then
+            r.silentStarts = r.silentStarts - 1
+            return true
+        end
+        local j = r:find_job(id)
+        if j then j.rendering = true end
+        r.rendering = true
+        return true
+    end
+    project.StopRendering = function()
+        r.rendering = false
+        return true
+    end
+    project.GetRenderJobStatus = function(_, id)
+        local j = r:find_job(id)
+        if not j then return nil end
+        if j.live then j.pct = (j.pct or 0) + 1 end -- progress ticks each read
+        return {
+            JobStatus = j.rendering and "Rendering" or (j.status or "Ready"),
+            CompletionPercentage = j.pct or 0,
+            Error = j.err,
+        }
+    end
+    project.SaveAsNewRenderPreset = function(_, name)
+        if not r.savePreset then return false end
+        r.presets[name] = true
+        r.savedPresets[#r.savedPresets + 1] = name
+        return true
+    end
+    project.LoadRenderPreset = function(_, name)
+        if name == "Audio Only" then return r.audioOnly end
+        r.loadedPresets[#r.loadedPresets + 1] = name
+        return r.presets[name] == true
+    end
+    project.DeleteRenderPreset = function(_, name)
+        r.deletedPresets[#r.deletedPresets + 1] = name
+        r.presets[name] = nil
+        return true
+    end
+    project.SetRenderSettings = function(_, s) r.renderSettings = s; return true end
+    project.GetCurrentRenderFormatAndCodec = function()
+        return { format = "quicktime", codec = "h264" }
+    end
+    project.SetCurrentRenderFormatAndCodec = function(_, f, c)
+        r.fmt = tostring(f) .. ":" .. tostring(c)
+        return true
+    end
+    project.GetCurrentRenderMode = function() return 0 end
+    project.SetCurrentRenderMode = function(_, m) r.mode = m; return true end
+    return r
+end
+
+local function run_export(name, r)
+    tl = make_timeline({ trackCount = 1 })
+    -- an audio clip covering the range so get_clip_boundaries finds content
+    tl.tracks[1].items[1] = { handle = make_item(0, 24 * 60, nil) }
+    mp = make_media_pool(tl, {})
+    wire_project(tl, mp)
+    print("\n=== " .. name .. " ===")
+    return ExportAudio({
+        func = "ExportAudio",
+        outputDir = "/tmp/luatest/out",
+        inputTracks = { 1 },
+        exportRange = "entire",
+    }), r
+end
+
+local function has_value(list, v)
+    for _, x in ipairs(list) do if x == v then return true end end
+    return false
+end
+
+-- E1: happy path — job starts, completes, job + backup preset are cleaned up.
+do
+    local r = wire_render()
+    local res = run_export("export completes and restores render state", r)
+    check(res and res.started == true, "export started", tostring(res and res.error))
+    local pid = res and res.pid
+    check(pid ~= nil, "job id reported", tostring(pid))
+    r:finish_job(pid)
+    local prog = GetExportProgress()
+    check(prog and prog.completed == true, "progress reports completion", tostring(prog and prog.error))
+    check(has_value(r.deletedJobs, pid), "render job deleted after completion")
+    check(#r.savedPresets == 1, "user settings backed up to a temp preset")
+    check(has_value(r.loadedPresets, r.savedPresets[1]), "backup preset restored")
+    check(has_value(r.deletedPresets, r.savedPresets[1]), "backup preset deleted")
+end
+
+-- E2: idle queue — a leftover AutoSubs job is swept before the new export.
+do
+    local r = wire_render()
+    r:add_job({ JobId = "stale-1", OutputFilename = "autosubs-exported-audio-old.wav" })
+    local res = run_export("stale queue entry swept when idle", r)
+    check(res and res.started == true, "export started", tostring(res and res.error))
+    check(has_value(r.deletedJobs, "stale-1"), "stale job deleted")
+end
+
+-- E3: busy queue — an AutoSubs render still making progress must survive the
+-- sweep, and the new export reports busy instead of stealing the renderer.
+do
+    local r = wire_render()
+    r:add_job({ JobId = "live-1", OutputFilename = "autosubs-exported-audio-live.wav", live = true })
+    r.rendering = true -- Resolve is mid-render
+    local res = run_export("live render is not deleted; export reports busy", r)
+    check(res and res.error == true, "busy error returned", tostring(res and res.started))
+    check(not has_value(r.deletedJobs, "live-1"), "live job kept")
+    check(r:find_job("live-1") ~= nil, "live job still queued")
+end
+
+-- E3b: busy queue — a stalled leftover AutoSubs job IS swept, then the export
+-- can start once Resolve notices the queue is empty.
+do
+    local r = wire_render()
+    r:add_job({ JobId = "zombie-1", OutputFilename = "autosubs-exported-audio-zombie.wav" })
+    r.rendering = true -- Resolve still reports busy because of the zombie
+    -- deleting the zombie clears IsRenderingInProgress on the next check
+    local orig_delete = project.DeleteRenderJob
+    project.DeleteRenderJob = function(p, id)
+        local out = orig_delete(p, id)
+        r.rendering = false
+        return out
+    end
+    local res = run_export("stalled job swept while busy; export proceeds", r)
+    check(res and res.started == true, "export started after sweep", tostring(res and res.error))
+    check(has_value(r.deletedJobs, "zombie-1"), "stalled job deleted")
+end
+
+-- E4: job stays 'Ready' after start — one restart attempt, then completes.
+do
+    local r = wire_render({ silentStarts = 1 })
+    local res = run_export("stuck Ready job gets one restart", r)
+    check(res and res.started == true, "export started", tostring(res and res.error))
+    local pid = res and res.pid
+    -- First poll: job never left Ready at 0% -> restart fires.
+    local prog = GetExportProgress()
+    check(prog and prog.active == true, "still active after restart", tostring(prog and prog.error))
+    check(r.startCalls == 2, "StartRendering retried once", "calls=" .. r.startCalls)
+    r:finish_job(pid)
+    prog = GetExportProgress()
+    check(prog and prog.completed == true, "completes after restart")
+end
+
+-- E4b: a job that failed with a real error at 0% is NOT restarted.
+do
+    local r = wire_render()
+    local res = run_export("failed job is not restarted", r)
+    local pid = res and res.pid
+    r:finish_job(pid, "disk full")
+    local prog = GetExportProgress()
+    check(prog and prog.error == true, "error surfaced", tostring(prog and prog.completed))
+    check(r.startCalls == 1, "no restart for a real failure", "calls=" .. r.startCalls)
+end
+
+-- E5: StartRendering refuses twice — the start-failure path must still clean
+-- the job and restore the user's render settings.
+do
+    local r = wire_render({ failStarts = 2 })
+    local res = run_export("double start failure cleans up", r)
+    check(res and res.error == true, "error returned", tostring(res and res.started))
+    check(r.startCalls == 2, "StartRendering tried twice", "calls=" .. r.startCalls)
+    check(#r.deletedJobs >= 1, "abandoned job deleted")
+    check(has_value(r.loadedPresets, r.savedPresets[1] or ""), "user settings restored")
+    check(has_value(r.deletedPresets, r.savedPresets[1] or ""), "backup preset deleted")
+end
+
+-- E6: cancel mid-export deletes the job and restores settings.
+do
+    local r = wire_render()
+    local res = run_export("cancel cleans up", r)
+    check(res and res.started == true, "export started", tostring(res and res.error))
+    local pid = res and res.pid
+    local cancel = CancelExport()
+    check(cancel and cancel.success == true, "cancel succeeded", tostring(cancel and cancel.message))
+    check(has_value(r.deletedJobs, pid), "job deleted on cancel")
+    check(has_value(r.deletedPresets, r.savedPresets[1] or ""), "backup preset deleted")
+end
+
+-- E7: no 'Audio Only' preset and no temp-preset support — falls back to
+-- format/codec restore plus a render-settings reset, still completes.
+do
+    local r = wire_render({ audioOnly = false, savePreset = false })
+    local res = run_export("fallback restore without presets", r)
+    check(res and res.started == true, "export started", tostring(res and res.error))
+    r:finish_job(res and res.pid)
+    local prog = GetExportProgress()
+    check(prog and prog.completed == true, "completes", tostring(prog and prog.error))
+    check(r.fmt == "quicktime:h264", "format/codec restored", tostring(r.fmt))
+    check(r.mode == 0, "render mode restored", tostring(r.mode))
 end
 
 print(string.format("\n%d passed, %d failed", PASS, FAIL))
