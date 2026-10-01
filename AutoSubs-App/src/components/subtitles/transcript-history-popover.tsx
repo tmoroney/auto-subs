@@ -67,9 +67,9 @@ export function TranscriptHistoryPopover({
     null,
   );
   const {
-    setSubtitles,
-    setSpeakers,
-    setCurrentSubtitleDocumentFilename,
+    openStoredSubtitleDocument,
+    clearOpenSubtitleDocument,
+    flushPendingSubtitleSave,
     currentSubtitleDocumentFilename,
   } = useSubtitleDocument();
   const locale = i18n.resolvedLanguage || i18n.language || undefined;
@@ -99,12 +99,11 @@ export function TranscriptHistoryPopover({
 
   const openSubtitleDocument = async (filename: string) => {
     try {
+      await flushPendingSubtitleSave();
       const subtitleDocumentData = await readSubtitleDocument(filename);
       if (!subtitleDocumentData) return;
 
-      setSubtitles(subtitleDocumentData.segments || []);
-      setSpeakers(subtitleDocumentData.speakers || []);
-      setCurrentSubtitleDocumentFilename(filename);
+      openStoredSubtitleDocument(filename, subtitleDocumentData);
       suppressTooltip();
       setOpen(false);
       onTranscriptOpen();
@@ -117,9 +116,7 @@ export function TranscriptHistoryPopover({
     try {
       await deleteSubtitleDocument(filename);
       if (currentSubtitleDocumentFilename === filename) {
-        setSubtitles([]);
-        setSpeakers([]);
-        setCurrentSubtitleDocumentFilename(null);
+        clearOpenSubtitleDocument();
       }
       await onRefresh();
     } catch (error) {

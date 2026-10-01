@@ -111,7 +111,35 @@ export function subtitleExportWritePath(
   return chosenPath;
 }
 
-const MEDIA_EXTENSION = /\.(mp4|m4v|mov|mkv|avi|webm|mp3|wav|m4a|aac|flac|ogg|aiff|aif|wma)$/i;
+/** Extensions the file picker accepts, plus `aif` and `wma`. Longer names stay first. */
+const EXPORT_MEDIA_EXTENSIONS = [
+  "aiff",
+  "alac",
+  "flac",
+  "mpeg",
+  "webm",
+  "3gp",
+  "aac",
+  "aif",
+  "avi",
+  "m4a",
+  "m4v",
+  "mkv",
+  "mov",
+  "mp3",
+  "mp4",
+  "mpg",
+  "ogg",
+  "opus",
+  "wav",
+  "wma",
+  "wmv",
+];
+
+const MEDIA_EXTENSION = new RegExp(
+  `\\.(?:${[...EXPORT_MEDIA_EXTENSIONS].sort((a, b) => b.length - a.length).join("|")})$`,
+  "i",
+);
 
 /**
  * Suggested save name. Prefer the source file or timeline name. The stored
@@ -127,11 +155,31 @@ export function subtitleExportBaseName(
 }
 
 /**
- * Write the open transcript. Visible cues and speakers always win over the
- * saved copy, so a speaker rename or caption edit that has not reached disk
- * yet is still exported. When a saved document should exist but cannot be
- * read, this throws and writes nothing rather than a file missing language,
- * edit history, and source metadata.
+ * Human name for a stored transcript: the source file, otherwise the timeline.
+ * `displayName` is intentionally unused because it falls back to the storage id.
+ */
+export function subtitleDocumentSourceName(
+  document: {
+    metadata?: { sourceFileName?: string; timelineName?: string } | null;
+    sourceFileName?: string;
+    timelineName?: string;
+  } | null | undefined,
+): string | null {
+  if (!document) return null;
+  return (
+    cleanString(document.metadata?.sourceFileName) ||
+    cleanString(document.metadata?.timelineName) ||
+    cleanString(document.sourceFileName) ||
+    cleanString(document.timelineName) ||
+    null
+  );
+}
+
+/**
+ * Write one transcript. Edits made while the save dialog is open are included
+ * only when that same document is still open. If another transcript loads
+ * during the dialog, the file keeps the cues and saved metadata from the
+ * transcript the export started with. A missing saved document writes nothing.
  */
 export async function writeJsonTranscriptExport(input: {
   chosenPath: string | null | undefined;
@@ -139,8 +187,12 @@ export async function writeJsonTranscriptExport(input: {
   flush: () => Promise<void>;
   readDocument: () => Promise<RawTranscriptSource | null>;
   write: (path: string, contents: string) => Promise<void>;
-  visibleSubtitles: () => Subtitle[];
-  visibleSpeakers: () => Speaker[];
+  startedFilename: string | null;
+  currentFilename: () => string | null;
+  startedSubtitles: Subtitle[];
+  startedSpeakers: Speaker[];
+  liveSubtitles: () => Subtitle[];
+  liveSpeakers: () => Speaker[];
 }): Promise<"cancelled" | "written"> {
   const path = subtitleExportWritePath(input.chosenPath);
   if (!path) return "cancelled";
@@ -164,12 +216,13 @@ export async function writeJsonTranscriptExport(input: {
     }
   }
 
+  const sameDocument = input.currentFilename() === input.startedFilename;
   await input.write(
     path,
     serializeRawTranscriptExport({
       document,
-      subtitles: input.visibleSubtitles(),
-      speakers: input.visibleSpeakers(),
+      subtitles: sameDocument ? input.liveSubtitles() : input.startedSubtitles,
+      speakers: sameDocument ? input.liveSpeakers() : input.startedSpeakers,
     }),
   );
   return "written";

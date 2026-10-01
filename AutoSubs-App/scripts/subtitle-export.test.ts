@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { Speaker, Subtitle } from "../src/types.ts";
 import {
   buildRawTranscriptExport,
   canExportSubtitles,
   serializeRawTranscriptExport,
+  subtitleDocumentSourceName,
   subtitleExportBaseName,
   subtitleExportDialogOptions,
   subtitleExportWritePath,
@@ -73,6 +75,23 @@ const document: RawTranscriptSource = {
   },
 };
 
+function jsonExport(overrides: Partial<Parameters<typeof writeJsonTranscriptExport>[0]> = {}) {
+  return {
+    chosenPath: "/tmp/interview.json" as string | null,
+    hasSavedDocument: true,
+    flush: async () => {},
+    readDocument: async () => document,
+    write: async () => {},
+    startedFilename: "interview.json",
+    currentFilename: () => "interview.json",
+    startedSubtitles: [current],
+    startedSpeakers: speakers,
+    liveSubtitles: () => [current],
+    liveSpeakers: () => speakers,
+    ...overrides,
+  };
+}
+
 test("raw JSON keeps word timings, edits, and source metadata", () => {
   const exported = buildRawTranscriptExport({
     document,
@@ -138,9 +157,7 @@ test("visible cues and speakers win over a stale saved document", async () => {
   const calls: string[] = [];
   let written = "";
 
-  const outcome = await writeJsonTranscriptExport({
-    chosenPath: "/tmp/interview.json",
-    hasSavedDocument: true,
+  const outcome = await writeJsonTranscriptExport(jsonExport({
     flush: async () => {
       calls.push("flush");
       throw new Error("disk full");
@@ -157,9 +174,9 @@ test("visible cues and speakers win over a stale saved document", async () => {
       calls.push("write");
       written = contents;
     },
-    visibleSubtitles: () => [visibleCue],
-    visibleSpeakers: () => visibleSpeakers,
-  });
+    liveSubtitles: () => [visibleCue],
+    liveSpeakers: () => visibleSpeakers,
+  }));
 
   assert.equal(outcome, "written");
   assert.deepEqual(calls, ["flush", "read", "write"]);
@@ -173,36 +190,53 @@ test("visible cues and speakers win over a stale saved document", async () => {
   assert.equal(parsed.metadata.displayName, "interview");
 });
 
+test("a transcript loaded during the save dialog is not mixed in", async () => {
+  const other: Subtitle = { ...current, id: 4, text: "completely different", speaker_id: "9" };
+  const otherSpeakers = [{ ...speakers[0], name: "Someone else" }];
+  let written = "";
+
+  const outcome = await writeJsonTranscriptExport(jsonExport({
+    readDocument: async () => document,
+    write: async (_path, contents) => {
+      written = contents;
+    },
+    startedFilename: "interview.json",
+    currentFilename: () => "other.json",
+    startedSubtitles: [current],
+    startedSpeakers: speakers,
+    liveSubtitles: () => [other],
+    liveSpeakers: () => otherSpeakers,
+  }));
+
+  assert.equal(outcome, "written");
+  const parsed = JSON.parse(written);
+  assert.equal(parsed.segments[0].text, "Hello there");
+  assert.equal(parsed.speakers[0].name, "Alex");
+  assert.equal(parsed.language, "en");
+  assert.equal(parsed.originalSegments[0].text, "hello there");
+  assert.equal(parsed.metadata.sourceFileName, "interview.mp4");
+});
+
 test("a missing saved transcript does not write a partial JSON file", async () => {
   const writes: string[] = [];
   await assert.rejects(
-    () => writeJsonTranscriptExport({
-      chosenPath: "/tmp/interview.json",
-      hasSavedDocument: true,
-      flush: async () => {},
+    () => writeJsonTranscriptExport(jsonExport({
       readDocument: async () => null,
       write: async () => {
         writes.push("write");
       },
-      visibleSubtitles: () => [current],
-      visibleSpeakers: () => speakers,
-    }),
+    })),
     /Could not read the saved transcript/,
   );
   await assert.rejects(
-    () => writeJsonTranscriptExport({
-      chosenPath: "/tmp/interview.json",
-      hasSavedDocument: true,
-      flush: async () => {},
+    () => writeJsonTranscriptExport(jsonExport({
       readDocument: async () => {
         throw new Error("permission denied");
       },
       write: async () => {
         writes.push("write");
       },
-      visibleSubtitles: () => [current],
-      visibleSpeakers: () => speakers,
-    }),
+    })),
     /permission denied/,
   );
   assert.deepEqual(writes, []);
@@ -210,9 +244,8 @@ test("a missing saved transcript does not write a partial JSON file", async () =
 
 test("cancelling the save dialog skips the flush, read, and write", async () => {
   let called = false;
-  const outcome = await writeJsonTranscriptExport({
+  const outcome = await writeJsonTranscriptExport(jsonExport({
     chosenPath: null,
-    hasSavedDocument: true,
     flush: async () => {
       called = true;
     },
@@ -223,9 +256,7 @@ test("cancelling the save dialog skips the flush, read, and write", async () => 
     write: async () => {
       called = true;
     },
-    visibleSubtitles: () => [current],
-    visibleSpeakers: () => speakers,
-  });
+  }));
   assert.equal(outcome, "cancelled");
   assert.equal(called, false);
 });
@@ -241,6 +272,55 @@ test("mark in and out fall back to the saved document fields", () => {
     markIn: 3,
     markOut: 8,
   });
+});
+
+test("stored transcripts are named from their source, not a storage id or display name", () => {
+  assert.equal(
+    subtitleDocumentSourceName({
+      metadata: { sourceFileName: "talk.wmv", timelineName: "Timeline 1" },
+    }),
+    "talk.wmv",
+  );
+  assert.equal(
+    subtitleDocumentSourceName({ timelineName: "Timeline 1" }),
+    "Timeline 1",
+  );
+  assert.equal(
+    subtitleDocumentSourceName({ metadata: {} }),
+    null,
+  );
+  assert.equal(
+    subtitleExportBaseName(
+      subtitleDocumentSourceName({ sourceFileName: "talk.wmv" }),
+      "old-show__tr_20261001120000_ab12cd34.json",
+    ),
+    "talk",
+  );
+});
+
+test("every accepted media extension is removed from the suggested export name", () => {
+  const utils = readFileSync(
+    new URL("../src/components/transcription/utils.ts", import.meta.url),
+    "utf8",
+  );
+  const listed = utils.match(/SUPPORTED_MEDIA_EXTENSIONS = \[([\s\S]*?)\]/);
+  assert.ok(listed, "supported media extensions should be listed");
+  const extensions = [...listed[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(extensions.includes("wmv"));
+  assert.ok(extensions.includes("opus"));
+  for (const extension of [...extensions, "aif", "wma"]) {
+    assert.equal(
+      subtitleExportBaseName(`interview.${extension}`, null),
+      "interview",
+      extension,
+    );
+    assert.equal(
+      subtitleExportBaseName(`interview.${extension.toUpperCase()}`, null),
+      "interview",
+      extension,
+    );
+  }
+  assert.equal(subtitleExportBaseName("Episode 1.2", null), "Episode 1.2");
 });
 
 test("the suggested export name uses the readable source, not the storage id", () => {
