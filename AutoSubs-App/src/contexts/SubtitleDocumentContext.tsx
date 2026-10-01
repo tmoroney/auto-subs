@@ -19,6 +19,15 @@ import {
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
+import {
+  canExportSubtitles,
+  cuesForRawTranscriptExport,
+  serializeRawTranscriptExport,
+  subtitleExportDialogOptions,
+  subtitleExportWritePath,
+  type RawTranscriptSource,
+  type SubtitleExportFormat,
+} from '@/utils/subtitle-export';
 import { loadFontForLanguage } from '@/lib/font-loader';
 import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
 
@@ -59,7 +68,7 @@ interface SubtitleDocumentContextType {
   flushPendingSubtitleSave: () => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
-  exportSubtitlesAs: (format: 'srt' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
+  exportSubtitlesAs: (format: SubtitleExportFormat, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
 }
@@ -304,7 +313,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   };
 
   async function exportSubtitlesAs(
-    format: 'srt' | 'txt', 
+    format: SubtitleExportFormat,
     subtitlesParam?: Subtitle[],
     speakersParam?: Speaker[]
   ) {
@@ -312,7 +321,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     const speakersToExport = speakersParam || speakers;
     
     try {
-      if (!subtitlesToExport || subtitlesToExport.length === 0) {
+      if (!canExportSubtitles(subtitlesToExport)) {
         throw new Error('No subtitles available to export');
       }
 
@@ -327,19 +336,39 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
           console.warn('Failed to extract filename from path, using default:', error);
         }
       }
-      
-      const defaultPath = format === 'srt' ? `${baseName}.srt` : `${baseName}.txt`;
-      const filters = format === 'srt'
-        ? [{ name: 'SRT Files', extensions: ['srt'] }]
-        : [{ name: 'Text Files', extensions: ['txt'] }];
 
-      const filePath = await save({
+      const { defaultPath, filters } = subtitleExportDialogOptions(format, baseName);
+      const filePath = subtitleExportWritePath(await save({
         defaultPath,
         filters,
-      });
+      }));
 
       if (!filePath) {
         console.log('Save was canceled');
+        return;
+      }
+
+      if (format === 'json') {
+        let document: RawTranscriptSource | null = null;
+        if (currentSubtitleDocumentFilename) {
+          try {
+            await flushPendingSubtitleSave();
+            document = await readSubtitleDocument(currentSubtitleDocumentFilename);
+          } catch (error) {
+            console.warn('Exporting JSON from the open transcript:', error);
+          }
+        }
+        const cues = cuesForRawTranscriptExport(
+          document,
+          subtitlesToExport,
+          speakersToExport,
+        );
+        await writeTextFile(filePath, serializeRawTranscriptExport({
+          document,
+          subtitles: cues.subtitles,
+          speakers: cues.speakers,
+        }));
+        console.log('JSON transcript file saved successfully to', filePath);
         return;
       }
 

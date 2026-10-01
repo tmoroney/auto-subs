@@ -68,6 +68,8 @@
     "selected": "已选择：",
     "importFile": "导入文件",
     "exportAsSrt": "导出为 SRT",
+    "exportAsTxt": "导出为 TXT",
+    "exportAsJson": "导出为 JSON",
     "fileDialog": {
       "subtitleFiles": "字幕文件"
     },
@@ -79,6 +81,10 @@
       "txt": {
         "title": "转录文本 (.txt)",
         "description": "适用于 LLM 的纯文本导出，在可用时包含说话人标签。"
+      },
+      "json": {
+        "title": "原始 JSON (.json)",
+        "description": "含逐词时间、说话人和修改。"
       }
     }
   },

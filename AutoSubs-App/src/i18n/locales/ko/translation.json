@@ -140,6 +140,8 @@
     "button": "내보내기 / 가져오기",
     "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
     "exportAsSrt": "SRT로 내보내기",
+    "exportAsTxt": "TXT로 내보내기",
+    "exportAsJson": "JSON으로 내보내기",
     "exportFormats": {
       "srt": {
         "description": "YouTube, VLC 같은 앱에서 사용하는 표준 자막 형식입니다. 타임스탬프를 포함합니다.",
@@ -148,6 +150,10 @@
       "txt": {
         "description": "가능한 경우 화자 라벨을 포함하는 LLM용 일반 텍스트 내보내기입니다.",
         "title": "전사문 (.txt)"
+      },
+      "json": {
+        "title": "원본 JSON (.json)",
+        "description": "단어 시간, 화자, 수정 내용 포함"
       }
     },
     "exportTab": "내보내기",

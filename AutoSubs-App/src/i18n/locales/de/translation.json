@@ -68,6 +68,8 @@
     "selected": "Ausgewählt:",
     "importFile": "Datei importieren",
     "exportAsSrt": "Als SRT exportieren",
+    "exportAsTxt": "Als TXT exportieren",
+    "exportAsJson": "Als JSON exportieren",
     "fileDialog": {
       "subtitleFiles": "Untertiteldateien"
     },
@@ -79,6 +81,10 @@
       "txt": {
         "title": "Transkript (.txt)",
         "description": "Reiner Text mit Sprecherlabels für LLMs."
+      },
+      "json": {
+        "title": "JSON-Rohdaten (.json)",
+        "description": "Wortzeiten, Sprecher und Ihre Änderungen."
       }
     }
   },
