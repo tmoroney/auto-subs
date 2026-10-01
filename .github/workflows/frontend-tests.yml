@@ -1,0 +1,29 @@
+name: Frontend tests
+
+on:
+  pull_request:
+    paths:
+      - 'AutoSubs-App/**'
+      - '.github/workflows/frontend-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'AutoSubs-App/**'
+      - '.github/workflows/frontend-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AutoSubs-App/package-lock.json
+      - run: npm ci --prefix AutoSubs-App
+      - run: npm test --prefix AutoSubs-App
