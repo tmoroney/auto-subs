@@ -20,6 +20,7 @@ import {
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 import { loadFontForLanguage } from '@/lib/font-loader';
+import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
 
 function getTranscriptSourceType(
   audioInputMode: "file" | "timeline",
@@ -258,14 +259,27 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     setCurrentSubtitleDocumentSourceName(
       sourceNameFrom(transcript.metadata) ?? currentSubtitleDocumentSourceName,
     );
-    const originalSegments: Subtitle[] = transcript.originalSegments || transcript.segments || [];
+    const source: Subtitle[] = transcript.editedSegments ?? transcript.originalSegments ?? transcript.segments ?? [];
+    // Normalize engine tokens without content formatting so unchanged words
+    // keep their original spelling, punctuation and timing. Compare the saved
+    // display text with its word tokens to recover manual corrections.
+    const normalizedSource = await rustReformatSubtitles(source, {
+      language: transcript.language,
+      textDensity: 'custom',
+      customMaxCharsPerLine: 100000,
+      maxLines: 1,
+      textCase: 'none',
+      removePunctuation: false,
+      censoredWords: [],
+    });
+    const editedSource = preserveSubtitleEdits(normalizedSource, transcript.segments ?? [], transcript.language);
 
     // Single Rust call applies BOTH structural splitting and content formatting
     // (case, punctuation removal, censoring) in one pass. We pass the transcript's
     // stored language (the detected / output language at transcription time) so
     // Rust's language-aware profile selection (CPL, function words, kinsoku, etc.)
     // stays consistent. If missing, Rust falls back to the Latin default.
-    const segments = await rustReformatSubtitles(originalSegments, {
+    const segments = await rustReformatSubtitles(editedSource.segments, {
       maxLines: settings.maxLinesPerSubtitle,
       textDensity: settings.textDensity,
       customMaxCharsPerLine: settings.textDensity === "custom" && settings.customDensityUnit !== "words" ? settings.customMaxCharsPerLine : undefined,
@@ -277,8 +291,12 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     });
 
     // Save reformatted segments and update state.
-    // Use updateSubtitleDocument (not saveSubtitleDocument) to preserve originalSegments unchanged.
-    await updateSubtitleDocument(filename, { subtitles: segments });
+    // Keep the raw transcription intact and persist corrections separately so
+    // another reformat (including after reopening the app) retains them.
+    await updateSubtitleDocument(filename, {
+      subtitles: segments,
+      editedSegments: editedSource.changed ? editedSource.segments : undefined,
+    });
     console.log("Subtitle list updated with", segments.length, "subtitles");
     setSpeakers(transcript.speakers || []);
     setSubtitles(segments);
