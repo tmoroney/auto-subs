@@ -14,9 +14,10 @@ export interface SubtitleExportDialogOptions {
  * (`processing_time_sec`, cues without ids). The app then stores a richer
  * document: the cues on screen (including later edits), per-word line numbers,
  * `originalSegments`, and `editedSegments` once captions have been corrected.
- * This export follows that saved document so the file matches the open
- * transcript. It leaves out app-storage details: the on-disk filename, the
- * transcript id, and the absolute source path.
+ * The cues and speakers are the ones on screen. The saved document supplies
+ * language, processing time, the original and edited sources, and source
+ * metadata. App-storage details stay out: the on-disk filename, the transcript
+ * id, and the absolute source path.
  */
 export interface RawTranscriptExport {
   language?: string;
@@ -110,23 +111,89 @@ export function subtitleExportWritePath(
   return chosenPath;
 }
 
+const MEDIA_EXTENSION = /\.(mp4|m4v|mov|mkv|avi|webm|mp3|wav|m4a|aac|flac|ogg|aiff|aif|wma)$/i;
+
 /**
- * Cues to write after a pending save has been flushed.
- * Saved segments win when present, so edits made while the save dialog was
- * open are included. Otherwise the cues passed into export are used.
+ * Suggested save name. Prefer the source file or timeline name. The stored
+ * document name ends in `__tr_<id>`, which is only a fallback and is removed.
  */
-export function cuesForRawTranscriptExport(
-  document: RawTranscriptSource | null | undefined,
-  subtitles: Subtitle[],
-  speakers: Speaker[] = [],
-): { subtitles: Subtitle[]; speakers: Speaker[] } {
-  return {
-    subtitles:
-      Array.isArray(document?.segments) && document.segments.length > 0
-        ? document.segments
-        : subtitles,
-    speakers: Array.isArray(document?.speakers) ? document.speakers : speakers,
-  };
+export function subtitleExportBaseName(
+  sourceName: string | null | undefined,
+  storageFilename: string | null | undefined,
+): string {
+  const fromSource = readableExportStem(sourceName, true);
+  if (fromSource) return fromSource;
+  return readableExportStem(stripTranscriptId(storageFilename), false) || "subtitles";
+}
+
+/**
+ * Write the open transcript. Visible cues and speakers always win over the
+ * saved copy, so a speaker rename or caption edit that has not reached disk
+ * yet is still exported. When a saved document should exist but cannot be
+ * read, this throws and writes nothing rather than a file missing language,
+ * edit history, and source metadata.
+ */
+export async function writeJsonTranscriptExport(input: {
+  chosenPath: string | null | undefined;
+  hasSavedDocument: boolean;
+  flush: () => Promise<void>;
+  readDocument: () => Promise<RawTranscriptSource | null>;
+  write: (path: string, contents: string) => Promise<void>;
+  visibleSubtitles: () => Subtitle[];
+  visibleSpeakers: () => Speaker[];
+}): Promise<"cancelled" | "written"> {
+  const path = subtitleExportWritePath(input.chosenPath);
+  if (!path) return "cancelled";
+
+  let document: RawTranscriptSource | null = null;
+  if (input.hasSavedDocument) {
+    try {
+      await input.flush();
+    } catch {
+      // The open cues are still exported. A failed flush must not substitute
+      // the older saved cues.
+    }
+    try {
+      document = await input.readDocument();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Could not read the saved transcript: ${detail}`);
+    }
+    if (!document) {
+      throw new Error("Could not read the saved transcript");
+    }
+  }
+
+  await input.write(
+    path,
+    serializeRawTranscriptExport({
+      document,
+      subtitles: input.visibleSubtitles(),
+      speakers: input.visibleSpeakers(),
+    }),
+  );
+  return "written";
+}
+
+function stripTranscriptId(filename: string | null | undefined): string | undefined {
+  if (!filename) return undefined;
+  const withoutExtension = filename.replace(/\.[^/.\\]+$/, "");
+  const marker = "__tr_";
+  const index = withoutExtension.lastIndexOf(marker);
+  if (index <= 0) return withoutExtension;
+  return withoutExtension.slice(0, index);
+}
+
+function readableExportStem(
+  value: string | null | undefined,
+  stripMediaExtension: boolean,
+): string | undefined {
+  if (typeof value !== "string") return undefined;
+  let name = value.trim();
+  if (!name) return undefined;
+  if (stripMediaExtension) name = name.replace(MEDIA_EXTENSION, "");
+  name = name.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  return name || undefined;
 }
 
 export function buildRawTranscriptExport(input: {

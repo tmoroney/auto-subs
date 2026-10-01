@@ -21,11 +21,10 @@ import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api
 import { generateSrt, parseSrt } from '@/utils/srt-utils';
 import {
   canExportSubtitles,
-  cuesForRawTranscriptExport,
-  serializeRawTranscriptExport,
+  subtitleExportBaseName,
   subtitleExportDialogOptions,
   subtitleExportWritePath,
-  type RawTranscriptSource,
+  writeJsonTranscriptExport,
   type SubtitleExportFormat,
 } from '@/utils/subtitle-export';
 import { loadFontForLanguage } from '@/lib/font-loader';
@@ -92,6 +91,12 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   // cycles from accumulating in the V8 heap when the user types quickly.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{ subtitles: Subtitle[]; filename: string } | null>(null);
+  // Export reads these after the save dialog closes, so an edit made while
+  // the dialog is open is included even if the file write has not finished.
+  const subtitlesRef = useRef(subtitles);
+  const speakersRef = useRef(speakers);
+  subtitlesRef.current = subtitles;
+  speakersRef.current = speakers;
   const { timelineInfo: resolveTimeline } = useResolve();
   const { timelineInfo: adobeTimeline } = useAdobe();
   const { selectedIntegration } = useIntegration();
@@ -325,17 +330,18 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         throw new Error('No subtitles available to export');
       }
 
-      // Use transcript name as base filename if available, otherwise fall back to default
-      let baseName = 'subtitles';
+      let storageName: string | null = null;
       if (currentSubtitleDocumentFilename) {
         try {
-          const filename = await basename(currentSubtitleDocumentFilename);
-          // Remove the file extension
-          baseName = filename.replace(/\.[^/.]+$/, '');
+          storageName = await basename(currentSubtitleDocumentFilename);
         } catch (error) {
           console.warn('Failed to extract filename from path, using default:', error);
         }
       }
+      const baseName = subtitleExportBaseName(
+        currentSubtitleDocumentSourceName,
+        storageName,
+      );
 
       const { defaultPath, filters } = subtitleExportDialogOptions(format, baseName);
       const filePath = subtitleExportWritePath(await save({
@@ -349,26 +355,18 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       }
 
       if (format === 'json') {
-        let document: RawTranscriptSource | null = null;
-        if (currentSubtitleDocumentFilename) {
-          try {
-            await flushPendingSubtitleSave();
-            document = await readSubtitleDocument(currentSubtitleDocumentFilename);
-          } catch (error) {
-            console.warn('Exporting JSON from the open transcript:', error);
-          }
+        const outcome = await writeJsonTranscriptExport({
+          chosenPath: filePath,
+          hasSavedDocument: Boolean(currentSubtitleDocumentFilename),
+          flush: flushPendingSubtitleSave,
+          readDocument: () => readSubtitleDocument(currentSubtitleDocumentFilename as string),
+          write: writeTextFile,
+          visibleSubtitles: () => subtitlesRef.current,
+          visibleSpeakers: () => speakersRef.current,
+        });
+        if (outcome === 'written') {
+          console.log('JSON transcript file saved successfully to', filePath);
         }
-        const cues = cuesForRawTranscriptExport(
-          document,
-          subtitlesToExport,
-          speakersToExport,
-        );
-        await writeTextFile(filePath, serializeRawTranscriptExport({
-          document,
-          subtitles: cues.subtitles,
-          speakers: cues.speakers,
-        }));
-        console.log('JSON transcript file saved successfully to', filePath);
         return;
       }
 
