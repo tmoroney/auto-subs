@@ -212,16 +212,31 @@ export function exportSequenceAudio(
     }
     rqItem.outputModule(1).file = new File(outputPath);
 
-    // Verify the resolved output path ends in .wav; abort early if not.
+    // AE rewrites the extension to whatever the active output module produces.
+    // Without a 'WAV' template it keeps the default module (often a movie
+    // container): any audio-capable container is fine because the
+    // transcription pipeline normalizes the file through ffmpeg either way.
+    // Only formats that cannot hold audio still abort early.
     var resolvedPath: string = rqItem.outputModule(1).file.fsName;
     if (!resolvedPath.toLowerCase().match(/\.wav$/)) {
-      try { rqItem.remove(); } catch (_) {}
-      return JSON.stringify({
-        success: false,
-        error:
-          "Output module is not WAV (resolved path: " + resolvedPath + "). " +
-          "Configure an output-module template named 'WAV' in After Effects.",
-      });
+      if (!resolvedPath.toLowerCase().match(/\.(mp4|mov|m4a|aac|mp3|avi|mxf|aif|aiff|wma|flac)$/)) {
+        try { rqItem.remove(); } catch (_) {}
+        return JSON.stringify({
+          success: false,
+          error:
+            "Output module cannot contain audio (resolved path: " + resolvedPath + "). " +
+            "Configure an output-module template named 'WAV' in After Effects.",
+        });
+      }
+      log(
+        "Output module is not WAV — exporting " + resolvedPath +
+        " and letting transcription convert it via ffmpeg."
+      );
+      outputPath = resolvedPath;
+      var lastSep = Math.max(resolvedPath.lastIndexOf("/"), resolvedPath.lastIndexOf("\\"));
+      if (lastSep >= 0) {
+        filename = resolvedPath.substring(lastSep + 1);
+      }
     }
 
     // Snapshot work area before potentially changing it
