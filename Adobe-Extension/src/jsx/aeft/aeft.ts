@@ -187,6 +187,16 @@ export function exportSequenceAudio(
       }
     }
 
+    // Muting above persists until this runs, so every exit path — early error
+    // returns included — must go through it or the comp stays muted.
+    var restoreAudioLayers = function () {
+      for (var m = 0; m < audioLayers.length; m++) {
+        try {
+          audioLayers[m].layer.audioEnabled = audioLayers[m].originalAudioState;
+        } catch (_) {}
+      }
+    };
+
     var timestamp = new Date().getTime();
     var compName = activeComp.name.replace(/[^a-zA-Z0-9]/g, "_");
     var filename = compName + "_audio_" + timestamp + ".wav";
@@ -223,6 +233,7 @@ export function exportSequenceAudio(
     if (!resolvedPath.toLowerCase().match(/\.wav$/)) {
       if (!resolvedPath.toLowerCase().match(/\.(mp4|mov|m4a|aac|mp3|avi|mxf|aif|aiff|wma|flac)$/)) {
         try { rqItem.remove(); } catch (_) {}
+        restoreAudioLayers();
         return JSON.stringify({
           success: false,
           error:
@@ -255,6 +266,7 @@ export function exportSequenceAudio(
         var recheckValue = recheck ? String(recheck["Audio Output"] || "") : "";
         if (recheckValue.toLowerCase().match(/off/)) {
           try { rqItem.remove(); } catch (_) {}
+          restoreAudioLayers();
           return JSON.stringify({
             success: false,
             error:
@@ -301,9 +313,7 @@ export function exportSequenceAudio(
       status = rqItem.status;
     } finally {
       // 1. RESTORE ORIGINAL AUDIO STATES
-      for (var m = 0; m < audioLayers.length; m++) {
-        audioLayers[m].layer.audioEnabled = audioLayers[m].originalAudioState;
-      }
+      restoreAudioLayers();
 
       // 2. Remove the temporary render queue item
       try {
@@ -327,6 +337,37 @@ export function exportSequenceAudio(
             "Check the output module can produce audio.",
         });
       }
+
+      // A container that can hold audio still renders video-only when Audio
+      // Output stayed off, so a real file isn't proof of an audio stream.
+      // Re-importing and checking hasAudio is the reliable test; when AE can't
+      // re-import the file at all, ffmpeg may still read it (e.g. MXF), so an
+      // import failure downgrades to a warning rather than a false failure.
+      var footage: any = null;
+      try {
+        footage = app.project.importFile(new ImportOptions(outFile));
+      } catch (_) {
+        log("Could not re-import " + outputPath + " to verify it has audio");
+      }
+      if (footage) {
+        var hasAudio = false;
+        try {
+          hasAudio = footage.hasAudio === true;
+        } catch (_) {}
+        try {
+          footage.remove();
+        } catch (_) {}
+        if (!hasAudio) {
+          return JSON.stringify({
+            success: false,
+            error:
+              "Rendered file has no audio stream: " + outputPath + ". " +
+              "Enable Audio Output on the output module, or configure an " +
+              "output-module template named 'WAV' in After Effects.",
+          });
+        }
+      }
+
       log("Audio exported successfully: " + outputPath);
       return JSON.stringify({
         success: true,
@@ -338,6 +379,9 @@ export function exportSequenceAudio(
       return JSON.stringify({ success: false, error: "Export failed or was cancelled" });
     }
   } catch (e: any) {
+    try {
+      restoreAudioLayers();
+    } catch (_) {}
     return JSON.stringify({ success: false, error: e.toString() });
   }
 }
