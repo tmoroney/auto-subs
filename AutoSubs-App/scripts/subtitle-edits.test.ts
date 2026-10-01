@@ -76,4 +76,77 @@ legacyDisplay[0].words[1].end = 3;
 const legacy = preserveSubtitleEdits(legacySource, legacyDisplay);
 assert.deepEqual(words(legacy.segments), ['We', 'visited', 'London.', 'Goodbye!']);
 assert.equal(legacy.segments.at(-1)?.words[0].start, 4);
+
+// Joining words merges their timed span instead of corrupting the suffix.
+const joinable = [cue('one two three')];
+const joinedEdit = preserveSubtitleEdits(joinable, [{ ...joinable[0], text: 'one twothree' }]);
+assert.deepEqual(words(joinedEdit.segments), ['one', 'twothree']);
+assert.equal(joinedEdit.segments[0].text, 'one twothree');
+assert.deepEqual(joinedEdit.segments[0].words[0], joinable[0].words[0]);
+assert.equal(joinedEdit.segments[0].words[1].start, 1);
+assert.equal(joinedEdit.segments[0].words[1].end, 3);
+
+// Moving a first word to the previous cue only edits text, so timings survive.
+const movePrevSource = [cue('Hello', ['Hello'], 0), cue('world', ['world'], 1)];
+const movePrev = preserveSubtitleEdits(movePrevSource, [
+    { ...movePrevSource[0], text: 'Hello world' },
+    { ...movePrevSource[1], text: '' },
+]);
+assert.deepEqual(words(movePrev.segments), ['Hello', 'world']);
+assert.deepEqual(movePrev.segments[0].words[0], movePrevSource[0].words[0]);
+assert.deepEqual(movePrev.segments[1].words.map(word => [word.start, word.end]), [[1, 2]]);
+
+const movePrevMultiSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
+const movePrevMulti = preserveSubtitleEdits(movePrevMultiSource, [
+    { ...movePrevMultiSource[0], text: 'a b c' },
+    { ...movePrevMultiSource[1], text: 'd' },
+]);
+assert.deepEqual(movePrevMulti.segments.flatMap(segment => segment.words.map(word => [word.word.trim(), word.start, word.end])), [
+    ['a', 0, 1], ['b', 1, 2], ['c', 2, 3], ['d', 3, 4],
+]);
+
+// Moving a last word to the next cue keeps its timing too.
+const moveNextSource = [cue('Hello', ['Hello'], 0), cue('world', ['world'], 1)];
+const moveNext = preserveSubtitleEdits(moveNextSource, [
+    { ...moveNextSource[0], text: '' },
+    { ...moveNextSource[1], text: 'Hello world' },
+]);
+assert.deepEqual(words(moveNext.segments), ['Hello', 'world']);
+assert.deepEqual(moveNext.segments[0].words[0], moveNextSource[0].words[0]);
+assert.deepEqual(moveNext.segments[1].words.map(word => [word.start, word.end]), [[1, 2]]);
+
+const moveNextMultiSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
+const moveNextMulti = preserveSubtitleEdits(moveNextMultiSource, [
+    { ...moveNextMultiSource[0], text: 'a' },
+    { ...moveNextMultiSource[1], text: 'b c d' },
+]);
+assert.deepEqual(moveNextMulti.segments.flatMap(segment => segment.words.map(word => [word.word.trim(), word.start, word.end])), [
+    ['a', 0, 1], ['b', 1, 2], ['c', 2, 3], ['d', 3, 4],
+]);
+
+// A cue with no word tokens still honours an edit inside its timed range.
+const wordless = { id: 0, start: 5, end: 7, text: 'Old line', words: [], speaker_id: '1' } as Subtitle;
+const wordlessEdit = preserveSubtitleEdits([wordless], [{ ...wordless, text: 'New line here' }]);
+assert.deepEqual(words(wordlessEdit.segments), ['New', 'line', 'here']);
+assert.equal(wordlessEdit.segments[0].text, 'New line here');
+assert.equal(wordlessEdit.segments[0].words[0].start, 5);
+assert.equal(wordlessEdit.segments[0].words[2].end, 7);
+
+// Edits in two non-adjacent cues apply independently; untouched cues keep
+// their source words.
+const spaced = [cue('one'), cue('two', ['two'], 4), cue('three', ['three'], 8)];
+const spacedEdit = preserveSubtitleEdits(spaced, [
+    { ...spaced[0], text: 'uno' },
+    spaced[1],
+    { ...spaced[2], text: 'tres' },
+]);
+assert.deepEqual(words(spacedEdit.segments), ['uno', 'two', 'tres']);
+assert.deepEqual(spacedEdit.segments[1].words[0], spaced[1].words[0]);
+
+// Clearing a cue removes only its own words.
+const partial = [cue('one'), cue('two', ['two'], 4)];
+const cleared = preserveSubtitleEdits(partial, [partial[0], { ...partial[1], text: '' }]);
+assert.deepEqual(words(cleared.segments), ['one']);
+assert.deepEqual(cleared.segments[0].words[0], partial[0].words[0]);
+
 console.log('Subtitle edit regression checks passed.');
