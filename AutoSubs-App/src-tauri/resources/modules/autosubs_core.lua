@@ -102,7 +102,12 @@ local currentExportJob = {
     trackStates = nil,
     clipBoundaries = nil,
     -- Captured before ExportAudio, restored by restore_user_state() in AddSubtitles.
-    savedMarks = nil -- raw GetMarkInOut() dict (relative frame values)
+    savedMarks = nil, -- raw GetMarkInOut() dict (relative frame values)
+    -- Render config captured before ExportAudio pushes audio-only settings,
+    -- restored by cleanup_render_job() on every export exit path.
+    renderSnapshot = nil,
+    -- One-shot flag: a job that never left the queue gets a single restart.
+    restartAttempted = false
 }
 
 -- Helper that wraps a Resolve-facing operation in pcall and returns a
@@ -524,6 +529,72 @@ local function restore_user_state()
     currentExportJob.savedMarks = nil
 end
 
+-- Snapshot the user's render configuration before ExportAudio overwrites it.
+-- A temporary preset captures the whole deliver state (format, codec, target
+-- dir, export flags); the format/codec + render-mode reads are a fallback for
+-- Resolve versions where SaveAsNewRenderPreset fails.
+local function snapshot_render_state()
+    local snap = { presetName = nil, formatCodec = nil, renderMode = nil }
+    pcall(function()
+        local name = "AutoSubs-Backup-" .. os.date("!%Y%m%d-%H%M%S") .. "-" .. tostring(math.random(1000, 9999))
+        if project:SaveAsNewRenderPreset(name) then
+            snap.presetName = name
+        end
+    end)
+    pcall(function() snap.formatCodec = project:GetCurrentRenderFormatAndCodec() end)
+    pcall(function() snap.renderMode = project:GetCurrentRenderMode() end)
+    return snap
+end
+
+-- Remove our render job from the Deliver queue and restore the user's
+-- pre-export render configuration. Called on every export exit path
+-- (complete/fail/cancel) so the Deliver page is left as it was found.
+local function cleanup_render_job()
+    local pid = currentExportJob.pid
+    if pid ~= nil then
+        pcall(function() project:DeleteRenderJob(pid) end)
+        currentExportJob.pid = nil
+    end
+
+    local snap = currentExportJob.renderSnapshot
+    currentExportJob.renderSnapshot = nil
+    if snap == nil then return end
+    if snap.presetName ~= nil then
+        pcall(function() project:LoadRenderPreset(snap.presetName) end)
+        pcall(function() project:DeleteRenderPreset(snap.presetName) end)
+    else
+        if type(snap.formatCodec) == "table" and snap.formatCodec["format"] and snap.formatCodec["codec"] then
+            pcall(function()
+                project:SetCurrentRenderFormatAndCodec(snap.formatCodec["format"], snap.formatCodec["codec"])
+            end)
+        end
+        if snap.renderMode ~= nil then
+            pcall(function() project:SetCurrentRenderMode(snap.renderMode) end)
+        end
+    end
+end
+
+-- A queued-but-dead render job (e.g. a leftover AutoSubs job stuck in 'Ready')
+-- can leave IsRenderingInProgress() reporting true forever, blocking every
+-- later export. Delete leftover AutoSubs jobs — identified by their unique
+-- export name prefix — so a genuine external render still blocks but a zombie
+-- of ours does not. Never touches the job tracked by the active export.
+local function remove_stale_export_jobs()
+    local jobs = nil
+    pcall(function() jobs = project:GetRenderJobList() end)
+    if type(jobs) ~= "table" then return end
+    for _, job in ipairs(jobs) do
+        if type(job) == "table" then
+            local name = tostring(job["OutputFilename"] or job["CustomName"] or "")
+            local id = job["JobId"] or job["Id"]
+            if id ~= nil and id ~= currentExportJob.pid and name:match("^autosubs%-exported%-audio%-") then
+                print("[AutoSubs] Removing stale render job " .. tostring(id) .. " (" .. name .. ")")
+                pcall(function() project:DeleteRenderJob(id) end)
+            end
+        end
+    end
+end
+
 local function check_track_empty(trackIndex, markIn, markOut)
     trackIndex = tonumber(trackIndex)
     local timeline = project:GetCurrentTimeline()
@@ -594,26 +665,12 @@ function GetExportProgress()
                 pid = currentExportJob.pid
             }
         else
-            -- Export completed - check if it was cancelled or completed normally
-            currentExportJob.active = false
-
-            -- Reset track states and open edit page
-            reset_tracks()
-
-            if currentExportJob.cancelled then
-                return {
-                    active = false,
-                    progress = currentExportJob.progress,
-                    cancelled = true,
-                    message = "Export was cancelled"
-                }
-            end
-
             -- IsRenderingInProgress() going false only means Resolve stopped
             -- rendering — it does NOT mean the job actually succeeded. Check
             -- the job's real status so a silently failed render (e.g. bad
             -- output path, disk full, no encoder) is reported as an error
             -- instead of a fabricated success with a non-existent file.
+            -- The check runs before cleanup_render_job() deletes the job.
             --
             -- Resolve localizes JobStatus (e.g. "Finalizado", "Concluído",
             -- "Завершено"), so we cannot compare only to the English word
@@ -639,6 +696,43 @@ function GetExportProgress()
                 if jobStatus then
                     detail = detail .. ": " .. tostring(jobStatus)
                 end
+            end
+
+            -- A job Resolve queued but never started (still 'Ready' at 0%)
+            -- gets one restart before being reported as failed.
+            if detail and not currentExportJob.cancelled
+                and (completionPercentage == nil or completionPercentage == 0)
+                and not currentExportJob.restartAttempted then
+                currentExportJob.restartAttempted = true
+                print("[AutoSubs] Render job never started; attempting one restart")
+                local restartOk, restarted = pcall(function()
+                    return project:StartRendering(currentExportJob.pid)
+                end)
+                if restartOk and restarted ~= false then
+                    return {
+                        active = true,
+                        progress = currentExportJob.progress,
+                        message = "Export in progress...",
+                        pid = currentExportJob.pid
+                    }
+                end
+            end
+
+            -- Export completed - check if it was cancelled or completed normally
+            currentExportJob.active = false
+
+            -- Reset track states and open edit page, then drop our render job
+            -- and restore the user's pre-export render configuration.
+            reset_tracks()
+            cleanup_render_job()
+
+            if currentExportJob.cancelled then
+                return {
+                    active = false,
+                    progress = currentExportJob.progress,
+                    cancelled = true,
+                    message = "Export was cancelled"
+                }
             end
 
             if detail then
@@ -692,6 +786,7 @@ function CancelExport()
         reset_tracks()
 
         if success then
+            cleanup_render_job()
             currentExportJob.cancelled = true
             currentExportJob.active = false
             return {
@@ -834,11 +929,19 @@ end
 -- positional argument.
 function ExportAudio(req)
     local outputDir, inputTracks, exportRange = req.outputDir, req.inputTracks, req.exportRange
-    -- Check if another export is already in progress
+    -- Drop leftover AutoSubs render jobs from earlier exports so the Deliver
+    -- queue stays clean; a queued-but-dead one can also leave
+    -- IsRenderingInProgress() stuck true (see remove_stale_export_jobs).
+    remove_stale_export_jobs()
+    if project:IsRenderingInProgress() then
+        -- Give Resolve a beat to notice the stale job is gone, then re-check.
+        bmd.wait(0.2)
+    end
     if project:IsRenderingInProgress() then
         return {
             error = true,
-            message = "Another export is already in progress"
+            message = "Another export is already in progress",
+            detail = "Resolve is rendering another job. Wait for it to finish or stop it on the Deliver page, then try again."
         }
     end
 
@@ -850,7 +953,9 @@ function ExportAudio(req)
         cancelled = false,
         startTime = os.time(),
         audioInfo = nil,
-        trackStates = nil
+        trackStates = nil,
+        renderSnapshot = nil,
+        restartAttempted = false
     }
 
     local timeline = project:GetCurrentTimeline()
@@ -936,6 +1041,10 @@ function ExportAudio(req)
     -- Must switch to Deliver page to start render and customise settings (wierd quirk of Resolve API)
     resolve:OpenPage("deliver")
 
+    -- Capture the user's render configuration before we overwrite it, so
+    -- cleanup_render_job() can put the Deliver page back afterwards.
+    currentExportJob.renderSnapshot = snapshot_render_state()
+
     -- 'Audio Only' is a stock preset, but its name is localized on non-English
     -- Resolve installs, so the load can silently fail. Without it the job renders
     -- with whatever preset was last selected and the app waits for a WAV that
@@ -956,7 +1065,14 @@ function ExportAudio(req)
     local success, err = pcall(function()
         local pid = project:AddRenderJob()
         currentExportJob.pid = pid
-        project:StartRendering(pid)
+        local started = project:StartRendering(pid)
+        if not started then
+            -- Resolve occasionally refuses the start while the Deliver page is
+            -- still settling after the preset switch; try once more.
+            print("[AutoSubs] StartRendering returned false; retrying once")
+            bmd.wait(0.5)
+            project:StartRendering(pid)
+        end
 
         -- Resolve may not immediately populate the job list. Prefer the job
         -- whose ID matches the PID we just added; if it isn't visible yet, fall
@@ -1018,6 +1134,7 @@ function ExportAudio(req)
     -- Handle export start result
     if not success then
         reset_tracks()
+        cleanup_render_job()
         currentExportJob.active = false
         local detail = tostring(err or "unknown error")
         print("[AutoSubs] ExportAudio failed to start: " .. detail)
