@@ -175,6 +175,19 @@ const regrouped = preserveSubtitleEdits(groupsSource, [
 assert.deepEqual(regrouped.segments.map(segment => segment.text), ['a b c', 'd']);
 assert.deepEqual(regrouped.segments.flatMap(segment => segment.words.map(word => [word.start, word.end])), [[0, 1], [1, 2], [2, 3], [3, 4]]);
 
+// Legacy tokenization finds each edit's group by time, not display index, so
+// a later caption's edit cannot merge into an earlier caption.
+const legacyGroups = [cue('one two three'), cue('four five', ['four', 'five'], 4)];
+const legacyRegrouped = preserveSubtitleEdits(legacyGroups, [
+    { ...legacyGroups[0], words: [{ word: 'one two three', start: 0, end: 3, line_number: 0 }] },
+    { ...legacyGroups[1], text: 'four six' },
+]);
+assert.equal(legacyRegrouped.segments.length, 2);
+assert.deepEqual(legacyRegrouped.segments[0].words, legacyGroups[0].words);
+assert.deepEqual(legacyRegrouped.segments[1].words.map(word => word.word.trim()), ['four', 'six']);
+assert.equal(legacyRegrouped.segments[1].words[0].start, 4);
+assert.equal(legacyRegrouped.segments[1].words[1].end, 6);
+
 // Clearing a cue removes only its own words.
 const partial = [cue('one'), cue('two', ['two'], 4)];
 const cleared = preserveSubtitleEdits(partial, [partial[0], { ...partial[1], text: '' }]);
