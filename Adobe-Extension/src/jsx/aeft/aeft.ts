@@ -124,9 +124,11 @@ export function getSelectedClipsTimeRange(_sequence: any) {
 /**
  * Exports the active composition's audio as a WAV file via the Render Queue.
  *
- * Note: The user must have a render queue output-module template named "WAV"
- * configured in After Effects. If that template is missing, the render will
- * use the current default module settings.
+ * Note: Without a render queue output-module template named "WAV" the render
+ * falls back to whatever container the default output module produces. Any
+ * audio-capable container works — the transcription pipeline normalizes it
+ * through ffmpeg — but audio must actually be enabled on the module and the
+ * file must exist afterwards, both verified below.
  */
 export function exportSequenceAudio(
   outputFolder: string,
@@ -185,6 +187,16 @@ export function exportSequenceAudio(
       }
     }
 
+    // Muting above persists until this runs, so every exit path — early error
+    // returns included — must go through it or the comp stays muted.
+    var restoreAudioLayers = function () {
+      for (var m = 0; m < audioLayers.length; m++) {
+        try {
+          audioLayers[m].layer.audioEnabled = audioLayers[m].originalAudioState;
+        } catch (_) {}
+      }
+    };
+
     var timestamp = new Date().getTime();
     var compName = activeComp.name.replace(/[^a-zA-Z0-9]/g, "_");
     var filename = compName + "_audio_" + timestamp + ".wav";
@@ -212,16 +224,60 @@ export function exportSequenceAudio(
     }
     rqItem.outputModule(1).file = new File(outputPath);
 
-    // Verify the resolved output path ends in .wav; abort early if not.
+    // AE rewrites the extension to whatever the active output module produces.
+    // Without a 'WAV' template it keeps the default module (often a movie
+    // container): any audio-capable container is fine because the
+    // transcription pipeline normalizes the file through ffmpeg either way.
+    // Only formats that cannot hold audio still abort early.
     var resolvedPath: string = rqItem.outputModule(1).file.fsName;
     if (!resolvedPath.toLowerCase().match(/\.wav$/)) {
-      try { rqItem.remove(); } catch (_) {}
-      return JSON.stringify({
-        success: false,
-        error:
-          "Output module is not WAV (resolved path: " + resolvedPath + "). " +
-          "Configure an output-module template named 'WAV' in After Effects.",
-      });
+      if (!resolvedPath.toLowerCase().match(/\.(mp4|mov|m4a|aac|mp3|avi|mxf|aif|aiff|wma|flac)$/)) {
+        try { rqItem.remove(); } catch (_) {}
+        restoreAudioLayers();
+        return JSON.stringify({
+          success: false,
+          error:
+            "Output module cannot contain audio (resolved path: " + resolvedPath + "). " +
+            "Configure an output-module template named 'WAV' in After Effects.",
+        });
+      }
+      log(
+        "Output module is not WAV — exporting " + resolvedPath +
+        " and letting transcription convert it via ffmpeg."
+      );
+      outputPath = resolvedPath;
+      var lastSep = Math.max(resolvedPath.lastIndexOf("/"), resolvedPath.lastIndexOf("\\"));
+      if (lastSep >= 0) {
+        filename = resolvedPath.substring(lastSep + 1);
+      }
+    }
+
+    // A container that can hold audio still renders silently when the output
+    // module's Audio Output is off — producing a video-only file with no audio
+    // track. Turn it on when the settings object exposes the key, and bail out
+    // with a clear error if the module refuses to enable it.
+    try {
+      var omSettings: any = rqItem.outputModule(1).getSettings();
+      var audioOutput = omSettings ? String(omSettings["Audio Output"] || "") : "";
+      if (audioOutput.toLowerCase().match(/off/)) {
+        log("Output module has Audio Output off — enabling it.");
+        rqItem.outputModule(1).setSettings({ "Audio Output": "Audio Output On" });
+        var recheck: any = rqItem.outputModule(1).getSettings();
+        var recheckValue = recheck ? String(recheck["Audio Output"] || "") : "";
+        if (recheckValue.toLowerCase().match(/off/)) {
+          try { rqItem.remove(); } catch (_) {}
+          restoreAudioLayers();
+          return JSON.stringify({
+            success: false,
+            error:
+              "Output module has audio disabled and would not enable it. " +
+              "Configure an output-module template named 'WAV' in After Effects.",
+          });
+        }
+      }
+    } catch (_) {
+      // getSettings/setSettings unsupported — the post-render file check below
+      // is the last line of defence.
     }
 
     // Snapshot work area before potentially changing it
@@ -257,9 +313,7 @@ export function exportSequenceAudio(
       status = rqItem.status;
     } finally {
       // 1. RESTORE ORIGINAL AUDIO STATES
-      for (var m = 0; m < audioLayers.length; m++) {
-        audioLayers[m].layer.audioEnabled = audioLayers[m].originalAudioState;
-      }
+      restoreAudioLayers();
 
       // 2. Remove the temporary render queue item
       try {
@@ -272,6 +326,48 @@ export function exportSequenceAudio(
     }
 
     if (status === RQItemStatus.DONE) {
+      // DONE only means AE finished writing — a video-only or zero-byte file
+      // would still leave the app waiting for audio that isn't there.
+      var outFile = new File(outputPath);
+      if (!outFile.exists || outFile.length === 0) {
+        return JSON.stringify({
+          success: false,
+          error:
+            "Render reported success but no file was written: " + outputPath + ". " +
+            "Check the output module can produce audio.",
+        });
+      }
+
+      // A container that can hold audio still renders video-only when Audio
+      // Output stayed off, so a real file isn't proof of an audio stream.
+      // Re-importing and checking hasAudio is the reliable test; when AE can't
+      // re-import the file at all, ffmpeg may still read it (e.g. MXF), so an
+      // import failure downgrades to a warning rather than a false failure.
+      var footage: any = null;
+      try {
+        footage = app.project.importFile(new ImportOptions(outFile));
+      } catch (_) {
+        log("Could not re-import " + outputPath + " to verify it has audio");
+      }
+      if (footage) {
+        var hasAudio = false;
+        try {
+          hasAudio = footage.hasAudio === true;
+        } catch (_) {}
+        try {
+          footage.remove();
+        } catch (_) {}
+        if (!hasAudio) {
+          return JSON.stringify({
+            success: false,
+            error:
+              "Rendered file has no audio stream: " + outputPath + ". " +
+              "Enable Audio Output on the output module, or configure an " +
+              "output-module template named 'WAV' in After Effects.",
+          });
+        }
+      }
+
       log("Audio exported successfully: " + outputPath);
       return JSON.stringify({
         success: true,
@@ -283,6 +379,9 @@ export function exportSequenceAudio(
       return JSON.stringify({ success: false, error: "Export failed or was cancelled" });
     }
   } catch (e: any) {
+    try {
+      restoreAudioLayers();
+    } catch (_) {}
     return JSON.stringify({ success: false, error: e.toString() });
   }
 }
