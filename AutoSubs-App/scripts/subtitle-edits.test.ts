@@ -94,7 +94,7 @@ const movePrev = preserveSubtitleEdits(movePrevSource, [
 ]);
 assert.deepEqual(words(movePrev.segments), ['Hello', 'world']);
 assert.deepEqual(movePrev.segments[0].words[0], movePrevSource[0].words[0]);
-assert.deepEqual(movePrev.segments[1].words.map(word => [word.start, word.end]), [[1, 2]]);
+assert.deepEqual(movePrev.segments.flatMap(segment => segment.words.map(word => [word.start, word.end])), [[0, 1], [1, 2]]);
 
 const movePrevMultiSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
 const movePrevMulti = preserveSubtitleEdits(movePrevMultiSource, [
@@ -112,8 +112,7 @@ const moveNext = preserveSubtitleEdits(moveNextSource, [
     { ...moveNextSource[1], text: 'Hello world' },
 ]);
 assert.deepEqual(words(moveNext.segments), ['Hello', 'world']);
-assert.deepEqual(moveNext.segments[0].words[0], moveNextSource[0].words[0]);
-assert.deepEqual(moveNext.segments[1].words.map(word => [word.start, word.end]), [[1, 2]]);
+assert.deepEqual(moveNext.segments.flatMap(segment => segment.words.map(word => [word.start, word.end])), [[0, 1], [1, 2]]);
 
 const moveNextMultiSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
 const moveNextMulti = preserveSubtitleEdits(moveNextMultiSource, [
@@ -142,6 +141,39 @@ const spacedEdit = preserveSubtitleEdits(spaced, [
 ]);
 assert.deepEqual(words(spacedEdit.segments), ['uno', 'two', 'tres']);
 assert.deepEqual(spacedEdit.segments[1].words[0], spaced[1].words[0]);
+
+// A word moved into another speaker's caption takes that caption's speaker
+// and group, so the next reformat does not split it back out.
+const speakerA = { id: 0, start: 0, end: 1, text: 'Hello', speaker_id: 'A',
+    words: [{ word: 'Hello', start: 0, end: 1, line_number: 0 }] } as Subtitle;
+const speakerB = { id: 1, start: 1, end: 2, text: 'world', speaker_id: 'B',
+    words: [{ word: 'world', start: 1, end: 2, line_number: 0 }] } as Subtitle;
+const movedUp = preserveSubtitleEdits([speakerA, speakerB], [
+    { ...speakerA, text: 'Hello world' },
+    { ...speakerB, text: '' },
+]);
+assert.equal(movedUp.segments.length, 1);
+assert.equal(movedUp.segments[0].speaker_id, 'A');
+assert.equal(movedUp.segments[0].text, 'Hello world');
+assert.deepEqual(movedUp.segments[0].words.map(word => [word.start, word.end]), [[0, 1], [1, 2]]);
+
+const movedDown = preserveSubtitleEdits([speakerA, speakerB], [
+    { ...speakerA, text: '' },
+    { ...speakerB, text: 'Hello world' },
+]);
+assert.equal(movedDown.segments.length, 1);
+assert.equal(movedDown.segments[0].speaker_id, 'B');
+assert.equal(movedDown.segments[0].text, 'Hello world');
+assert.deepEqual(movedDown.segments[0].words.map(word => [word.start, word.end]), [[0, 1], [1, 2]]);
+
+// The same regrouping applies when the move only crosses source groups.
+const groupsSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
+const regrouped = preserveSubtitleEdits(groupsSource, [
+    { ...groupsSource[0], text: 'a b c' },
+    { ...groupsSource[1], text: 'd' },
+]);
+assert.deepEqual(regrouped.segments.map(segment => segment.text), ['a b c', 'd']);
+assert.deepEqual(regrouped.segments.flatMap(segment => segment.words.map(word => [word.start, word.end])), [[0, 1], [1, 2], [2, 3], [3, 4]]);
 
 // Clearing a cue removes only its own words.
 const partial = [cue('one'), cue('two', ['two'], 4)];

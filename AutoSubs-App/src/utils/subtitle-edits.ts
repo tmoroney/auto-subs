@@ -101,15 +101,22 @@ export function preserveSubtitleEdits(
     for (const run of runs) {
         const a = run[0].from;
         const b = run[run.length - 1].to;
-        // Edited tokens remember their displayed cue for the speaker, and
-        // whether they lead it for the spacing rule.
-        const edited = run.flatMap(entry =>
-            tokenize(normalize(entry.cue.text)).map((token, index) => ({
+        // Edited tokens remember their displayed cue for the speaker, its
+        // destination source group so moved words stay where they were put,
+        // and whether they lead it for the spacing rule.
+        let lastGroup: number | undefined;
+        const edited = run.flatMap(entry => {
+            const destGroup = aligned && entry.to > entry.from
+                ? sourceWords[entry.from].group
+                : (lastGroup ?? sourceWords[a]?.group ?? sourceWords[a - 1]?.group ?? 0);
+            lastGroup = destGroup;
+            return tokenize(normalize(entry.cue.text)).map((token, index) => ({
                 text: token,
                 speaker: entry.cue.speaker_id,
+                destGroup,
                 firstOfCue: index === 0,
-            })),
-        );
+            }));
+        });
         const runWords = run.flatMap(entry => entry.words);
         const runFrom = runWords.length ? Number(runWords[0].start) : Number(run[0].cue.start);
         const runTo = runWords.length ? Number(runWords[runWords.length - 1].end) : Number(run[run.length - 1].cue.end);
@@ -144,14 +151,11 @@ export function preserveSubtitleEdits(
                     if (usesSpaces && !token.firstOfCue && !/^\s/.test(word.word)) {
                         word.word = ` ${word.word}`;
                     }
-                    replacements.push({ word, group: source.group, speaker: source.speaker });
+                    replacements.push({ word, group: token.destGroup, speaker: token.speaker });
                 } else {
-                    const group = replacements.length
-                        ? replacements[replacements.length - 1].group
-                        : (sourceWords[a]?.group ?? sourceWords[a - 1]?.group ?? 0);
                     replacements.push({
                         word: { word: `${usesSpaces ? ' ' : ''}${token.text}`, start: runFrom, end: runFrom, line_number: 0 } as Word,
-                        group,
+                        group: token.destGroup,
                         speaker: token.speaker,
                     });
                 }
@@ -190,7 +194,6 @@ export function preserveSubtitleEdits(
                 const insertAt = sourceWords.findIndex(entry => Number(entry.word.start) >= runFrom);
                 start = insertAt >= 0 ? insertAt : sourceWords.length;
             }
-            const group = sourceWords[start]?.group ?? sourceWords[start - 1]?.group ?? 0;
             const weight = edited.reduce((sum, token) => sum + Array.from(token.text).length, 0);
             let consumed = 0;
             const replacements = edited.map(token => {
@@ -202,7 +205,7 @@ export function preserveSubtitleEdits(
                 } as Word;
                 consumed += Array.from(token.text).length;
                 word.end = weight ? runFrom + (runTo - runFrom) * consumed / weight : runFrom;
-                return { word, group, speaker: token.speaker };
+                return { word, group: token.destGroup, speaker: token.speaker };
             });
             patches.push({ start, count, words: replacements });
         }
