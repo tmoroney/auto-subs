@@ -136,7 +136,10 @@
       "lists": "Listes de mots",
       "customSection": "Mots personnalisés",
       "customSectionDescription": "Saisissez des mots individuels à censurer.",
-      "listWordCount": "{{count}} mots"
+      "listWordCount": "{{count}} mots",
+      "styleTitle": "Style de censure",
+      "styleMiddle": "Lettres centrales (H***o)",
+      "styleWhole": "Mot entier (*****)"
     },
     "speakers": {
       "title": "Labels de speaker",

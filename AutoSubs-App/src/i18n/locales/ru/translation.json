@@ -138,7 +138,10 @@
       "noLists": "Списки слов недоступны.",
       "customSection": "Свои слова",
       "customSectionDescription": "Введите отдельные слова для цензуры.",
-      "listWordCount": "Слов: {{count}}"
+      "listWordCount": "Слов: {{count}}",
+      "styleTitle": "Стиль цензуры",
+      "styleMiddle": "Середина (H***o)",
+      "styleWhole": "Всё слово (*****)"
     },
     "speakers": {
       "title": "Метки спикеров",

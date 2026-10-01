@@ -81,6 +81,15 @@ impl Default for TextCase {
     fn default() -> Self { Self::None }
 }
 
+/// Which letters to replace when a word matches the censor list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CensorStyle {
+    #[default]
+    Middle,
+    Whole,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostProcessConfig {
     /// Max characters per rendered line (CPL)
@@ -103,9 +112,11 @@ pub struct PostProcessConfig {
     /// Content formatting: strip non-letter/digit/whitespace/apostrophe characters from rendered text.
     #[serde(default)]
     pub remove_punctuation: bool,
-    /// Content formatting: case-insensitive list of words to censor (replaced with first+***+last).
+    /// Content formatting: case-insensitive list of words to censor.
     #[serde(default)]
     pub censored_words: Vec<String>,
+    #[serde(default)]
+    pub censor_style: CensorStyle,
     /// Max words per rendered line (Custom density "words" unit). `None` = char limit only.
     #[serde(default)]
     pub max_words_per_line: Option<usize>,
@@ -125,6 +136,7 @@ impl Default for PostProcessConfig {
             text_case: TextCase::None,
             remove_punctuation: false,
             censored_words: Vec::new(),
+            censor_style: CensorStyle::default(),
             max_words_per_line: None,
         }
     }
@@ -579,14 +591,15 @@ fn strip_punct_chars(s: &str) -> String {
     PUNCT_RE.replace_all(s, "").into_owned()
 }
 
-/// Port of the JS `getCensoredVersion`: first + '*' * (len-2) + last, or all '*' if ≤3 chars.
-fn censored_replacement(clean: &str) -> String {
+/// Middle keeps the first and last letters of words longer than three characters.
+/// Whole masks every character; both styles fully mask short words.
+fn censored_replacement(clean: &str, style: CensorStyle) -> String {
     let chars: Vec<char> = clean.chars().collect();
     let n = chars.len();
     if n == 0 {
         return String::new();
     }
-    if n > 3 {
+    if style == CensorStyle::Middle && n > 3 {
         let mut out = String::with_capacity(n);
         out.push(chars[0]);
         for _ in 0..(n - 2) { out.push('*'); }
@@ -630,7 +643,7 @@ fn apply_content_formatting(t: &mut Tok, cfg: &PostProcessConfig, censor_set: &H
         let clean = strip_punct_chars(&t.word);
         let clean_trim = clean.trim();
         if !clean_trim.is_empty() && censor_set.contains(&clean_trim.to_lowercase()) {
-            let replacement = censored_replacement(clean_trim);
+            let replacement = censored_replacement(clean_trim, cfg.censor_style);
             // Replace the first occurrence of `clean_trim` within `t.word` to preserve any
             // surrounding characters (e.g. internal apostrophes) — mirrors JS `word.replace(clean, censored)`.
             if let Some(idx) = t.word.find(clean_trim) {
@@ -1661,6 +1674,55 @@ mod tests {
         // Surrounding words untouched.
         assert!(joined.contains("Hello"), "expected Hello preserved: {}", joined);
         assert!(joined.contains("world"), "expected world preserved: {}", joined);
+    }
+
+    #[test]
+    fn censor_styles_mask_short_and_unicode_words() {
+        for (word, middle, whole) in [
+            ("Hello", "H***o", "*****"),
+            ("Ass", "***", "***"),
+            ("école", "é***e", "*****"),
+            ("", "", ""),
+        ] {
+            assert_eq!(censored_replacement(word, CensorStyle::Middle), middle);
+            assert_eq!(censored_replacement(word, CensorStyle::Whole), whole);
+        }
+    }
+
+    #[test]
+    fn whole_word_censor_preserves_punctuation_and_word_timings() {
+        let mut cfg = PostProcessConfig::default();
+        cfg.censored_words = vec!["HELLO".into(), "fantastic".into()];
+        let source = make_hello_world_seg();
+        let middle = process_segments(&[source.clone()], &cfg);
+        cfg.censor_style = CensorStyle::Whole;
+        let whole = process_segments(&[source.clone()], &cfg);
+        assert_eq!(whole[0].text, "*****, ********* world!");
+        let middle_words = middle[0].words.as_ref().unwrap();
+        let whole_words = whole[0].words.as_ref().unwrap();
+        for (before, after) in middle_words.iter().zip(whole_words) {
+            assert_eq!((before.start, before.end), (after.start, after.end));
+        }
+        assert_eq!(source.words.unwrap()[0].text, "Hello");
+
+        cfg.remove_punctuation = true;
+        cfg.text_case = TextCase::Uppercase;
+        let combined = process_segments(&[make_hello_world_seg()], &cfg);
+        assert_eq!(combined[0].text, "***** ********* WORLD");
+
+        cfg.censored_words.clear();
+        let disabled = process_segments(&[make_hello_world_seg()], &cfg);
+        assert_eq!(disabled[0].text, "HELLO FANTASTIC WORLD");
+    }
+
+    #[test]
+    fn missing_censor_style_keeps_legacy_middle_mask() {
+        let mut saved = serde_json::to_value(PostProcessConfig::default()).unwrap();
+        saved.as_object_mut().unwrap().remove("censor_style");
+        let restored: PostProcessConfig = serde_json::from_value(saved).unwrap();
+        assert_eq!(restored.censor_style, CensorStyle::Middle);
+        assert_eq!(serde_json::to_string(&CensorStyle::Whole).unwrap(), "\"whole\"");
+        assert_eq!(serde_json::from_str::<CensorStyle>("\"middle\"").unwrap(), CensorStyle::Middle);
     }
 
     #[test]
