@@ -124,9 +124,11 @@ export function getSelectedClipsTimeRange(_sequence: any) {
 /**
  * Exports the active composition's audio as a WAV file via the Render Queue.
  *
- * Note: The user must have a render queue output-module template named "WAV"
- * configured in After Effects. If that template is missing, the render will
- * use the current default module settings.
+ * Note: Without a render queue output-module template named "WAV" the render
+ * falls back to whatever container the default output module produces. Any
+ * audio-capable container works — the transcription pipeline normalizes it
+ * through ffmpeg — but audio must actually be enabled on the module and the
+ * file must exist afterwards, both verified below.
  */
 export function exportSequenceAudio(
   outputFolder: string,
@@ -239,6 +241,33 @@ export function exportSequenceAudio(
       }
     }
 
+    // A container that can hold audio still renders silently when the output
+    // module's Audio Output is off — producing a video-only file with no audio
+    // track. Turn it on when the settings object exposes the key, and bail out
+    // with a clear error if the module refuses to enable it.
+    try {
+      var omSettings: any = rqItem.outputModule(1).getSettings();
+      var audioOutput = omSettings ? String(omSettings["Audio Output"] || "") : "";
+      if (audioOutput.toLowerCase().match(/off/)) {
+        log("Output module has Audio Output off — enabling it.");
+        rqItem.outputModule(1).setSettings({ "Audio Output": "Audio Output On" });
+        var recheck: any = rqItem.outputModule(1).getSettings();
+        var recheckValue = recheck ? String(recheck["Audio Output"] || "") : "";
+        if (recheckValue.toLowerCase().match(/off/)) {
+          try { rqItem.remove(); } catch (_) {}
+          return JSON.stringify({
+            success: false,
+            error:
+              "Output module has audio disabled and would not enable it. " +
+              "Configure an output-module template named 'WAV' in After Effects.",
+          });
+        }
+      }
+    } catch (_) {
+      // getSettings/setSettings unsupported — the post-render file check below
+      // is the last line of defence.
+    }
+
     // Snapshot work area before potentially changing it
     var originalStart = activeComp.workAreaStart;
     var originalDuration = activeComp.workAreaDuration;
@@ -287,6 +316,17 @@ export function exportSequenceAudio(
     }
 
     if (status === RQItemStatus.DONE) {
+      // DONE only means AE finished writing — a video-only or zero-byte file
+      // would still leave the app waiting for audio that isn't there.
+      var outFile = new File(outputPath);
+      if (!outFile.exists || outFile.length === 0) {
+        return JSON.stringify({
+          success: false,
+          error:
+            "Render reported success but no file was written: " + outputPath + ". " +
+            "Check the output module can produce audio.",
+        });
+      }
       log("Audio exported successfully: " + outputPath);
       return JSON.stringify({
         success: true,
