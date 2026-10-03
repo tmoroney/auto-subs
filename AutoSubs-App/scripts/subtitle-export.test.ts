@@ -261,7 +261,7 @@ test("cancelling the save dialog skips the flush, read, and write", async () => 
   assert.equal(called, false);
 });
 
-test("a display name that fell back to the storage filename is omitted", () => {
+test("a display name that fell back to the storage filename loses only its id", () => {
   const fallback = buildRawTranscriptExport({
     document: {
       metadata: {
@@ -272,7 +272,7 @@ test("a display name that fell back to the storage filename is omitted", () => {
     },
     subtitles: [current],
   });
-  assert.deepEqual(fallback.metadata, { sourceType: "standalone" });
+  assert.deepEqual(fallback.metadata, { displayName: "interview", sourceType: "standalone" });
 
   const real = buildRawTranscriptExport({
     document: {

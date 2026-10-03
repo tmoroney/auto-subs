@@ -297,8 +297,8 @@ function pickMetadata(
   const savedDisplayName = cleanString(meta.displayName);
   // A display name holding the transcript id is the storage-name fallback.
   const displayName =
-    savedDisplayName && transcriptId && savedDisplayName.includes(transcriptId)
-      ? undefined
+    savedDisplayName && transcriptId
+      ? cleanString(savedDisplayName.replace(`__${transcriptId}`, ""))
       : savedDisplayName;
   const sourceType = cleanString(meta.sourceType ?? document.sourceType);
   const sourceFileName = cleanString(meta.sourceFileName ?? document.sourceFileName);
