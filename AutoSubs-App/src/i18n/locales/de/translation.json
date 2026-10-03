@@ -68,6 +68,7 @@
     "selected": "Ausgewählt:",
     "importFile": "Datei importieren",
     "exportAsSrt": "Als SRT exportieren",
+    "exportAsSrtSpeakers": "Als SRT mit Sprechern",
     "fileDialog": {
       "subtitleFiles": "Untertiteldateien"
     },
@@ -75,6 +76,10 @@
       "srt": {
         "title": "Untertitel (.srt)",
         "description": "Untertitel mit Zeitstempeln für Player und Plattformen."
+      },
+      "srtSpeakers": {
+        "title": "SRT mit Sprechern",
+        "description": "Sprechername in jeder Zeile."
       },
       "txt": {
         "title": "Transkript (.txt)",

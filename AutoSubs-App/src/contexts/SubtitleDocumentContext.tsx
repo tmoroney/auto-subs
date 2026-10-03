@@ -59,7 +59,7 @@ interface SubtitleDocumentContextType {
   flushPendingSubtitleSave: () => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
-  exportSubtitlesAs: (format: 'srt' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
+  exportSubtitlesAs: (format: 'srt' | 'srt-speakers' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
 }
@@ -304,7 +304,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   };
 
   async function exportSubtitlesAs(
-    format: 'srt' | 'txt', 
+    format: 'srt' | 'srt-speakers' | 'txt',
     subtitlesParam?: Subtitle[],
     speakersParam?: Speaker[]
   ) {
@@ -328,8 +328,9 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         }
       }
       
-      const defaultPath = format === 'srt' ? `${baseName}.srt` : `${baseName}.txt`;
-      const filters = format === 'srt'
+      const isSrt = format === 'srt' || format === 'srt-speakers';
+      const defaultPath = isSrt ? `${baseName}.srt` : `${baseName}.txt`;
+      const filters = isSrt
         ? [{ name: 'SRT Files', extensions: ['srt'] }]
         : [{ name: 'Text Files', extensions: ['txt'] }];
 
@@ -343,7 +344,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         return;
       }
 
-      if (format === 'srt') {
+      if (format === 'srt' || format === 'srt-speakers') {
         console.log('Generating SRT data from subtitles (first 3 items):', subtitlesToExport.slice(0, 3));
         console.log('Subtitles array length:', subtitlesToExport.length);
 
@@ -359,7 +360,10 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
           });
         }
 
-        let srtData = generateSrt(subtitlesToExport);
+        let srtData = generateSrt(subtitlesToExport, {
+          includeSpeakerLabels: format === 'srt-speakers',
+          speakers: speakersToExport,
+        });
 
         if (!srtData || srtData.trim() === '') {
           console.error('Generated SRT data is empty');
