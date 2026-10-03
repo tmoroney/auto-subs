@@ -68,6 +68,9 @@
     "selected": "Selected:",
     "importFile": "Import File",
     "exportAsSrt": "Export as SRT",
+    "exportAsTxt": "Export as TXT",
+    "exportAsJson": "Export as JSON",
+    "exportFailed": "Couldn't save the export file.",
     "fileDialog": {
       "subtitleFiles": "Subtitle Files"
     },
@@ -79,6 +82,10 @@
       "txt": {
         "title": "Transcript (.txt)",
         "description": "Plain text transcript with speaker labels for LLMs."
+      },
+      "json": {
+        "title": "Raw JSON (.json)",
+        "description": "Word timings, speakers, and your edits."
       }
     }
   },

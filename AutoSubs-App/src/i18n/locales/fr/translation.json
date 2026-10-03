@@ -68,6 +68,9 @@
     "selected": "Sélectionné :",
     "importFile": "Importer le fichier",
     "exportAsSrt": "Exporter en SRT",
+    "exportAsTxt": "Exporter en TXT",
+    "exportAsJson": "Exporter en JSON",
+    "exportFailed": "Impossible d'enregistrer le fichier exporté.",
     "fileDialog": {
       "subtitleFiles": "Fichiers de sous-titres"
     },
@@ -79,6 +82,10 @@
       "txt": {
         "title": "Transcription (.txt)",
         "description": "Texte brut avec étiquettes de locuteur pour LLM."
+      },
+      "json": {
+        "title": "JSON brut (.json)",
+        "description": "Temps des mots, locuteurs et modifications."
       }
     }
   },
