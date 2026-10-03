@@ -73,7 +73,7 @@ interface SubtitleDocumentContextType {
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
   openStoredSubtitleDocument: (filename: string, transcript: any) => void;
-  clearOpenSubtitleDocument: () => void;
+  closeDeletedSubtitleDocument: (filename: string) => void;
 }
 
 const SubtitleDocumentContext = createContext<SubtitleDocumentContextType | null>(null);
@@ -494,12 +494,15 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     loadFontForLanguage(transcript?.language);
   };
 
-  const clearOpenSubtitleDocument = () => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
+  const closeDeletedSubtitleDocument = (filename: string) => {
+    if (pendingSaveRef.current?.filename === filename) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      pendingSaveRef.current = null;
     }
-    pendingSaveRef.current = null;
+    if (documentFilenameRef.current !== filename) return;
     setSubtitles([]);
     setSpeakers([]);
     setCurrentSubtitleDocumentFilename(null);
@@ -526,7 +529,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       importSubtitles,
       loadSubtitles,
       openStoredSubtitleDocument,
-      clearOpenSubtitleDocument,
+      closeDeletedSubtitleDocument,
     }}>
       {children}
     </SubtitleDocumentContext.Provider>

@@ -68,7 +68,7 @@ export function TranscriptHistoryPopover({
   );
   const {
     openStoredSubtitleDocument,
-    clearOpenSubtitleDocument,
+    closeDeletedSubtitleDocument,
     flushPendingSubtitleSave,
     currentSubtitleDocumentFilename,
   } = useSubtitleDocument();
@@ -115,9 +115,7 @@ export function TranscriptHistoryPopover({
   const handleDeleteSubtitleDocument = async (filename: string) => {
     try {
       await deleteSubtitleDocument(filename);
-      if (currentSubtitleDocumentFilename === filename) {
-        clearOpenSubtitleDocument();
-      }
+      closeDeletedSubtitleDocument(filename);
       await onRefresh();
     } catch (error) {
       console.error("Failed to delete subtitle document:", error);

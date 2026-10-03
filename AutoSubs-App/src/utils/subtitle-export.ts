@@ -293,7 +293,13 @@ function pickMetadata(
   if (!document) return undefined;
   const meta = document.metadata ?? {};
   const picked: RawTranscriptExportMetadata = {};
-  const displayName = cleanString(stripTranscriptIdSuffix(meta.displayName));
+  const transcriptId = cleanString(meta.transcriptId ?? document.transcriptId);
+  const savedDisplayName = cleanString(meta.displayName);
+  // A display name holding the transcript id is the storage-name fallback.
+  const displayName =
+    savedDisplayName && transcriptId && savedDisplayName.includes(transcriptId)
+      ? undefined
+      : savedDisplayName;
   const sourceType = cleanString(meta.sourceType ?? document.sourceType);
   const sourceFileName = cleanString(meta.sourceFileName ?? document.sourceFileName);
   const timelineId = cleanString(meta.timelineId ?? document.timelineId);

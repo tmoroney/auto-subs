@@ -261,12 +261,26 @@ test("cancelling the save dialog skips the flush, read, and write", async () => 
   assert.equal(called, false);
 });
 
-test("a display name that fell back to the storage filename loses its id", () => {
-  const legacy = buildRawTranscriptExport({
-    document: { metadata: { displayName: "interview__tr_20261001120000_ab12cd34" } },
+test("a display name that fell back to the storage filename is omitted", () => {
+  const fallback = buildRawTranscriptExport({
+    document: {
+      metadata: {
+        displayName: "interview__tr_20261001120000_ab12cd34",
+        transcriptId: "tr_20261001120000_ab12cd34",
+        sourceType: "standalone",
+      },
+    },
     subtitles: [current],
   });
-  assert.equal(legacy.metadata?.displayName, "interview");
+  assert.deepEqual(fallback.metadata, { sourceType: "standalone" });
+
+  const real = buildRawTranscriptExport({
+    document: {
+      metadata: { displayName: "report__tr_final", transcriptId: "tr_20261001120000_ab12cd34" },
+    },
+    subtitles: [current],
+  });
+  assert.equal(real.metadata?.displayName, "report__tr_final");
 
   const dotted = buildRawTranscriptExport({
     document: { metadata: { displayName: "Episode 1.2" } },
