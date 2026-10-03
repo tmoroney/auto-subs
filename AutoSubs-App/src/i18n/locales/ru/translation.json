@@ -68,6 +68,7 @@
     "selected": "Выбрано:",
     "importFile": "Импортировать файл",
     "exportAsSrt": "Экспортировать в SRT",
+    "exportAsSrtSpeakers": "SRT со спикерами",
     "fileDialog": {
       "subtitleFiles": "Файлы субтитров"
     },
@@ -75,6 +76,10 @@
       "srt": {
         "title": "Субтитры (.srt)",
         "description": "Субтитры с таймингами для плееров и платформ."
+      },
+      "srtSpeakers": {
+        "title": "SRT со спикерами",
+        "description": "Имя спикера в каждой реплике."
       },
       "txt": {
         "title": "Транскрипт (.txt)",

@@ -20,34 +20,12 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import { Subtitle, Speaker } from "@/types";
+import { resolveSpeakerLabel, speakerIdBase } from "@/utils/speaker-label";
 
 const TRANSCRIPT_INDEX_FILENAME = "transcript-index.json";
 
 function normalizeTranscriptText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
-}
-
-function resolveSpeakerLabel(
-  speakerId: string,
-  speakers: Speaker[],
-  speakerIdBase: number,
-): string {
-  const numericSpeakerId = Number(speakerId);
-  const speakerIndex = Number.isFinite(numericSpeakerId)
-    ? numericSpeakerId - speakerIdBase
-    : -1;
-  const speakerName =
-    speakerIndex >= 0 ? speakers[speakerIndex]?.name?.trim() : "";
-
-  if (speakerName) {
-    return speakerName;
-  }
-
-  if (Number.isFinite(numericSpeakerId)) {
-    return `Speaker ${numericSpeakerId}`;
-  }
-
-  return `Speaker ${speakerId}`;
 }
 
 export function generateTranscriptTxt(
@@ -82,16 +60,12 @@ export function generateTranscriptTxt(
       .trim();
   }
 
-  const speakerIdBase = normalizedSubtitles.some(
-    (subtitle) => subtitle.speaker_id === "0",
-  )
-    ? 0
-    : 1;
+  const idBase = speakerIdBase(normalizedSubtitles);
   const groupedBlocks: Array<{ speakerLabel: string; text: string }> = [];
 
   for (const subtitle of normalizedSubtitles) {
     const speakerLabel = subtitle.speaker_id
-      ? resolveSpeakerLabel(subtitle.speaker_id, speakers, speakerIdBase)
+      ? resolveSpeakerLabel(subtitle.speaker_id, speakers, idBase)
       : "Transcript";
     const previousBlock = groupedBlocks[groupedBlocks.length - 1];
 

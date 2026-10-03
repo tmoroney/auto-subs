@@ -1,4 +1,11 @@
-import type { Subtitle } from "../types";
+import type { Speaker, Subtitle } from "../types";
+import { speakerIdBase, srtCueSpeakerLabel } from "./speaker-label.ts";
+
+export interface GenerateSrtOptions {
+    /** When true, prefix each cue that has an identified speaker. Defaults to plain text. */
+    includeSpeakerLabels?: boolean;
+    speakers?: Speaker[];
+}
 
 // src/utils/srtUtils.ts
 export function formatTimecode(seconds: number): string {
@@ -11,7 +18,7 @@ export function formatTimecode(seconds: number): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
 
-export function generateSrt(subtitles: Subtitle[]): string {
+export function generateSrt(subtitles: Subtitle[], options?: GenerateSrtOptions): string {
     console.log('Generating SRT from subtitles:', subtitles);
 
     if (!subtitles || !Array.isArray(subtitles)) {
@@ -83,11 +90,24 @@ export function generateSrt(subtitles: Subtitle[]): string {
         sanitized[i].end = end;
     }
 
+    const includeSpeakerLabels = options?.includeSpeakerLabels === true;
+    const speakers = options?.speakers ?? [];
+    const idBase = speakerIdBase(
+        sanitized.filter((sub) => String(sub.text ?? "").trim().length > 0),
+    );
+
     return sanitized
         .map((sub, i) => {
             const start = Number(sub.start);
             const end = Number(sub.end);
             let text = sub.text !== undefined ? String(sub.text).trim() : '';
+
+            if (includeSpeakerLabels && text) {
+                const label = srtCueSpeakerLabel(sub.speaker_id, speakers, idBase);
+                if (label) {
+                    text = `${label}: ${text}`;
+                }
+            }
 
             if (isNaN(start) || isNaN(end) || !text) {
                 return ''; // Skip invalid or empty entries
