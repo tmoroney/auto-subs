@@ -142,6 +142,7 @@
     "exportAsSrt": "SRT としてエクスポート",
     "exportAsTxt": "TXT としてエクスポート",
     "exportAsJson": "JSON としてエクスポート",
+    "exportFailed": "書き出しファイルを保存できませんでした。",
     "importFile": "ファイルをインポート",
     "importTab": "インポート",
     "exportTab": "エクスポート",

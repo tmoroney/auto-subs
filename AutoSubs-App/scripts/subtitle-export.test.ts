@@ -261,6 +261,21 @@ test("cancelling the save dialog skips the flush, read, and write", async () => 
   assert.equal(called, false);
 });
 
+test("a display name that fell back to the storage filename loses its id", () => {
+  const legacy = buildRawTranscriptExport({
+    document: { metadata: { displayName: "interview__tr_20261001120000_ab12cd34" } },
+    subtitles: [current],
+  });
+  assert.equal(legacy.metadata?.displayName, "interview");
+
+  const dotted = buildRawTranscriptExport({
+    document: { metadata: { displayName: "Episode 1.2" } },
+    subtitles: [current],
+  });
+  assert.equal(dotted.metadata?.displayName, "Episode 1.2");
+  assert.equal(subtitleExportBaseName(null, "episode-1.2__tr_20261001120000_ab12cd34.json"), "episode-1.2");
+});
+
 test("mark in and out fall back to the saved document fields", () => {
   const exported = buildRawTranscriptExport({
     document: { mark_in: 3, mark_out: 8, metadata: { displayName: "clip" } },

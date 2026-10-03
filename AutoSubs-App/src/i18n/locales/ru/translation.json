@@ -70,6 +70,7 @@
     "exportAsSrt": "Экспортировать в SRT",
     "exportAsTxt": "Экспортировать в TXT",
     "exportAsJson": "Экспортировать в JSON",
+    "exportFailed": "Не удалось сохранить файл экспорта.",
     "fileDialog": {
       "subtitleFiles": "Файлы субтитров"
     },

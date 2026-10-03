@@ -142,6 +142,7 @@
     "exportAsSrt": "SRT로 내보내기",
     "exportAsTxt": "TXT로 내보내기",
     "exportAsJson": "JSON으로 내보내기",
+    "exportFailed": "내보낸 파일을 저장하지 못했습니다.",
     "exportFormats": {
       "srt": {
         "description": "YouTube, VLC 같은 앱에서 사용하는 표준 자막 형식입니다. 타임스탬프를 포함합니다.",

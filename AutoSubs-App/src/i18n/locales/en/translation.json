@@ -70,6 +70,7 @@
     "exportAsSrt": "Export as SRT",
     "exportAsTxt": "Export as TXT",
     "exportAsJson": "Export as JSON",
+    "exportFailed": "Couldn't save the export file.",
     "fileDialog": {
       "subtitleFiles": "Subtitle Files"
     },

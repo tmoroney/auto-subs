@@ -230,11 +230,14 @@ export async function writeJsonTranscriptExport(input: {
 
 function stripTranscriptId(filename: string | null | undefined): string | undefined {
   if (!filename) return undefined;
-  const withoutExtension = filename.replace(/\.[^/.\\]+$/, "");
-  const marker = "__tr_";
-  const index = withoutExtension.lastIndexOf(marker);
-  if (index <= 0) return withoutExtension;
-  return withoutExtension.slice(0, index);
+  return stripTranscriptIdSuffix(filename.replace(/\.json$/i, ""));
+}
+
+/** Removes a trailing `__tr_<id>` that names stored documents. */
+function stripTranscriptIdSuffix(name: string | null | undefined): string | undefined {
+  if (!name) return undefined;
+  const match = name.match(/^(.+)__tr_[A-Za-z0-9_]+$/);
+  return match ? match[1] : name;
 }
 
 function readableExportStem(
@@ -290,7 +293,7 @@ function pickMetadata(
   if (!document) return undefined;
   const meta = document.metadata ?? {};
   const picked: RawTranscriptExportMetadata = {};
-  const displayName = cleanString(meta.displayName);
+  const displayName = cleanString(stripTranscriptIdSuffix(meta.displayName));
   const sourceType = cleanString(meta.sourceType ?? document.sourceType);
   const sourceFileName = cleanString(meta.sourceFileName ?? document.sourceFileName);
   const timelineId = cleanString(meta.timelineId ?? document.timelineId);

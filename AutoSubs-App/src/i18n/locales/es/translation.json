@@ -70,6 +70,7 @@
     "exportAsSrt": "Exportar como SRT",
     "exportAsTxt": "Exportar como TXT",
     "exportAsJson": "Exportar como JSON",
+    "exportFailed": "No se pudo guardar el archivo exportado.",
     "fileDialog": {
       "subtitleFiles": "Archivos de subtítulos"
     },

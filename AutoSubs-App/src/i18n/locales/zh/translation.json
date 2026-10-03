@@ -70,6 +70,7 @@
     "exportAsSrt": "导出为 SRT",
     "exportAsTxt": "导出为 TXT",
     "exportAsJson": "导出为 JSON",
+    "exportFailed": "无法保存导出文件。",
     "fileDialog": {
       "subtitleFiles": "字幕文件"
     },

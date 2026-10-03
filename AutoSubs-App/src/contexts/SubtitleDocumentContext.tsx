@@ -7,6 +7,8 @@ import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir, basename } from '@tauri-apps/api/path';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import {
   generateSubtitleDocumentFilename,
   generateTranscriptTxt,
@@ -416,6 +418,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       }
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);
+      toast.error(i18n.t("importExport.exportFailed"));
     }
   }
 
