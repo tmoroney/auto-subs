@@ -400,21 +400,22 @@ impl ParakeetModel {
             state: DecoderState,
             /// Sum of log-softmax over emitted tokens and blanks.
             score: f64,
-            /// Accumulated bonus of the in-progress keyword path, always
-            /// equal to `node_score(trie)` (refunded on divergence).
+            /// Accumulated bonus of the current keyword path, always equal to
+            /// `node_score(trie)` (refunded on divergence).
             boost: f64,
-            /// Permanent bonus locked in by completed keywords; already
-            /// includes the current node's score when `trie` is terminal.
+            /// Permanent bonus locked in by completed keywords.
             committed: f64,
-            /// `committed` plus the in-progress score (0 at terminal nodes,
-            /// whose score is already inside `committed`).
-            bonus: f64,
+            /// How much of `boost` is already inside `committed` — kept so a
+            /// keyword that extends another keyword's prefix ("cats" through
+            /// "cat") locks only its own incremental score instead of
+            /// double-crediting the shared prefix.
+            absorbed: f64,
             trie: usize,
         }
 
         impl Hyp {
             fn rank(&self, alpha: f64) -> f64 {
-                self.score + alpha * self.bonus
+                self.score + alpha * (self.committed + self.boost - self.absorbed)
             }
         }
 
@@ -426,7 +427,7 @@ impl ParakeetModel {
             score: 0.0,
             boost: 0.0,
             committed: 0.0,
-            bonus: 0.0,
+            absorbed: 0.0,
             // Parakeet's BPE pieces carry the word-start marker inside the
             // piece, so hypotheses start at the root.
             trie: graph.initial_state(None),
@@ -503,7 +504,7 @@ impl ParakeetModel {
                                 score: hyp.score + logp,
                                 boost: hyp.boost,
                                 committed: hyp.committed,
-                                bonus: hyp.bonus,
+                                absorbed: hyp.absorbed,
                                 trie: hyp.trie,
                             });
                         } else {
@@ -511,16 +512,18 @@ impl ParakeetModel {
                             // `boost` tracks the in-progress path score
                             // (negative deltas refund it when the hypothesis
                             // diverges). Reaching a keyword-final node locks
-                            // that score into `committed`, which is never
-                            // refunded — a completed keyword keeps its credit
-                            // while partial matches that die still refund.
+                            // only the not-yet-committed part of that score
+                            // into `committed`, which is never refunded — a
+                            // completed keyword keeps its credit, dead
+                            // partial matches refund, and an extension like
+                            // "cats" past "cat" credits just its extra score.
                             let boost = hyp.boost + bonus as f64;
-                            let terminal = graph.is_terminal(trie);
-                            let committed = if terminal {
-                                hyp.committed + boost
-                            } else {
-                                hyp.committed
-                            };
+                            let mut committed = hyp.committed;
+                            let mut absorbed = hyp.absorbed.min(boost);
+                            if graph.is_terminal(trie) {
+                                committed += boost - absorbed;
+                                absorbed = boost;
+                            }
                             let mut tokens = hyp.tokens.clone();
                             tokens.push(token);
                             let mut timestamps = hyp.timestamps.clone();
@@ -532,7 +535,7 @@ impl ParakeetModel {
                                 score: hyp.score + logp,
                                 boost,
                                 committed,
-                                bonus: committed + if terminal { 0.0 } else { boost },
+                                absorbed,
                                 trie,
                             });
                         }
