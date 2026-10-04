@@ -493,6 +493,16 @@
       "lastWord": "末词",
       "toPrevious": "首词上移 ({{shortcut}})",
       "toNext": "末词下移 ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "编辑时间",
+      "start": "开始",
+      "end": "结束",
+      "errors": {
+        "invalid": "请使用 00:01:23.450 格式",
+        "order": "结束时间须晚于开始时间",
+        "overlap": "与其他字幕重叠"
+      }
     }
   },
   "gettingStarted": {

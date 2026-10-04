@@ -513,6 +513,16 @@
       "lastWord": "Last word",
       "toPrevious": "Move first word up ({{shortcut}})",
       "toNext": "Move last word down ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "Edit timing",
+      "start": "Start",
+      "end": "End",
+      "errors": {
+        "invalid": "Use a time like 00:01:23.450",
+        "order": "End must be after start",
+        "overlap": "Overlaps another caption"
+      }
     }
   },
   "gettingStarted": {

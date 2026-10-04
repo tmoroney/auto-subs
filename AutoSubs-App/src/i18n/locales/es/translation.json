@@ -493,6 +493,16 @@
       "lastWord": "Última palabra",
       "toPrevious": "Subir primera palabra ({{shortcut}})",
       "toNext": "Bajar última palabra ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "Editar tiempos",
+      "start": "Inicio",
+      "end": "Fin",
+      "errors": {
+        "invalid": "Usa un formato como 00:01:23.450",
+        "order": "El fin debe ir después del inicio",
+        "overlap": "Se solapa con otro subtítulo"
+      }
     }
   },
   "gettingStarted": {
