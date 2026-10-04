@@ -103,10 +103,11 @@ impl CohereModel {
     /// spaces, so the pieces can be matched against plain text.
     pub fn set_keywords(&mut self, keywords: &[String]) {
         let text = format!(" {}", keywords.join(", "));
-        self.context_ids = keyword_boost::tokenize_text(&self.vocab, &text)
-            .into_iter()
-            .map(i64::from)
-            .collect();
+        let mut ids = keyword_boost::tokenize_text(&self.vocab, &text);
+        // The context shares the model's 1024-position window with the
+        // generated text — leave room for output.
+        ids.truncate(keyword_boost::MAX_CONTEXT_TOKENS);
+        self.context_ids = ids.into_iter().map(i64::from).collect();
     }
 
     /// Languages supported by the Cohere export.
@@ -274,7 +275,7 @@ impl CohereModel {
             other => other,
         };
 
-        let language_token = format!("<|{}|>", requested);
+        let language_token = format!("<|{requested}|>");
         let chosen_language = if self.token_to_id.contains_key(&language_token) {
             requested
         } else {
@@ -285,8 +286,8 @@ impl CohereModel {
             "<|startofcontext|>".to_string(),
             "<|startoftranscript|>".to_string(),
             "<|emo:undefined|>".to_string(),
-            format!("<|{}|>", chosen_language),
-            format!("<|{}|>", chosen_language),
+            format!("<|{chosen_language}|>"),
+            format!("<|{chosen_language}|>"),
             "<|pnc|>".to_string(),
             "<|noitn|>".to_string(),
             "<|notimestamp|>".to_string(),

@@ -155,10 +155,11 @@ impl CanaryModel {
     /// model during training.
     pub fn set_keywords(&mut self, keywords: &[String]) {
         let text = format!(" {}", keywords.join(", "));
-        self.context_ids = keyword_boost::tokenize_text(&self.vocab.pieces(), &text)
-            .into_iter()
-            .map(i64::from)
-            .collect();
+        let mut ids = keyword_boost::tokenize_text(&self.vocab.pieces(), &text);
+        // The context shares the model's 1024-position window with the
+        // generated text — leave room for output.
+        ids.truncate(keyword_boost::MAX_CONTEXT_TOKENS);
+        self.context_ids = ids.into_iter().map(i64::from).collect();
     }
 
     /// Languages supported by the loaded variant.

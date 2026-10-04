@@ -63,6 +63,8 @@ pub struct ParakeetModel {
     boost: Option<KeywordGraph>,
     /// Decode-time boost multiplier (NeMo `boosting_tree_alpha`).
     boost_alpha: f32,
+    /// Cancellation probe polled inside the (slower) boosted decode loop.
+    abort: Option<std::sync::Arc<dyn Fn() -> bool + Send + Sync>>,
 }
 
 impl ParakeetModel {
@@ -95,7 +97,15 @@ impl ParakeetModel {
             vocab_size,
             boost: None,
             boost_alpha: crate::keyword_boost::DEFAULT_BOOST_ALPHA,
+            abort: None,
         })
+    }
+
+    /// Set a cancellation probe polled every few encoder frames during
+    /// boosted decode (the greedy path decodes a chunk fast enough that the
+    /// pipeline-level check between chunks is sufficient).
+    pub fn set_abort(&mut self, abort: Option<std::sync::Arc<dyn Fn() -> bool + Send + Sync>>) {
+        self.abort = abort;
     }
 
     /// Compile a boosting tree from keyword phrases against this model's vocab.
@@ -414,6 +424,11 @@ impl ParakeetModel {
         }];
 
         for t in 0..encodings_len {
+            // The boosted loop can issue dozens of decoder calls per frame;
+            // poll cancellation regularly so a long chunk still stops promptly.
+            if t % 16 == 0 && self.abort.as_ref().map(|a| a()).unwrap_or(false) {
+                return Err(TranscribeError::Inference("Transcription cancelled".to_string()));
+            }
             let encoder_step = encodings.slice(ndarray::s![t, ..]);
             let encoder_step_dyn = encoder_step.to_owned().into_dyn();
 
@@ -444,13 +459,31 @@ impl ParakeetModel {
                     };
                     let log_probs = log_softmax(vocab_logits);
 
-                    // Expand over the top-BEAM tokens including blank.
+                    // Candidates: the raw top-BEAM tokens plus blank plus
+                    // every token the keyword graph can advance on from this
+                    // hypothesis — boosting must be able to pull a keyword
+                    // token into the candidate set even when the model ranks
+                    // it below the beam. Top-K is kept by bounded insertion,
+                    // not a full vocab sort.
                     let mut top: Vec<(i32, f64)> = Vec::with_capacity(BEAM + 1);
                     for (idx, &lp) in log_probs.iter().enumerate() {
-                        top.push((idx as i32, lp));
+                        if top.len() == BEAM && lp <= top[BEAM - 1].1 {
+                            continue;
+                        }
+                        let pos = top.partition_point(|&(_, s)| s >= lp);
+                        top.insert(pos, (idx as i32, lp));
+                        if top.len() > BEAM {
+                            top.pop();
+                        }
                     }
-                    top.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                    top.truncate(BEAM);
+                    if !top.iter().any(|&(token, _)| token == self.blank_idx) {
+                        top.push((self.blank_idx, log_probs[self.blank_idx as usize]));
+                    }
+                    for &token in graph.transitions(hyp.trie).keys() {
+                        if !top.iter().any(|&(t2, _)| t2 == token) {
+                            top.push((token, log_probs[token as usize]));
+                        }
+                    }
 
                     for (token, logp) in top {
                         if token == self.blank_idx {
@@ -473,7 +506,13 @@ impl ParakeetModel {
                                 timestamps,
                                 state: new_state.clone(),
                                 score: hyp.score + logp,
-                                boost: hyp.boost + bonus as f64,
+                                // Emitted tokens are permanent evidence: only
+                                // positive bonuses accumulate for ranking, so
+                                // a completed keyword keeps its credit instead
+                                // of being refunded on the next unrelated
+                                // token (the trie state itself still tracks
+                                // the true position for future bonuses).
+                                boost: hyp.boost + (bonus as f64).max(0.0),
                                 trie,
                             });
                         }

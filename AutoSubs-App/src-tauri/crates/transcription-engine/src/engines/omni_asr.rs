@@ -10,7 +10,7 @@ use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::keyword_boost::{self, KeywordGraph};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{bail, eyre, Context, Result};
-use ndarray::{Array2, Array3};
+use ndarray::Array3;
 use ort::session::Session;
 use std::collections::HashMap;
 use std::path::Path;
@@ -120,7 +120,7 @@ impl OmniAsrEngine {
     }
 
     /// Greedy CTC decoding: argmax per frame, collapse repeats, skip blanks.
-    fn decode(&self, logits: &Array2<f32>) -> String {
+    fn decode(&self, logits: ndarray::ArrayView2<f32>) -> String {
         let mut prev_id: i64 = -1;
         let mut text = String::new();
 
@@ -231,14 +231,13 @@ impl OnnxEngine for OmniAsrEngine {
 
         let logits_3d = Array3::from_shape_vec((n, frames, vocab), data.to_vec())
             .map_err(|e| eyre!("Failed to reshape logits: {e}"))?;
-        let logits_2d = logits_3d.index_axis(ndarray::Axis(0), 0).to_owned();
 
         // `outputs` borrows `self.session`, so release it before the decode step.
         drop(outputs);
 
         let text = match &self.boost {
             Some(graph) => self.decode_boosted(&logits_3d, graph),
-            None => self.decode(&logits_2d),
+            None => self.decode(logits_3d.index_axis(ndarray::Axis(0), 0)),
         };
 
         Ok(TranscriptionResult {

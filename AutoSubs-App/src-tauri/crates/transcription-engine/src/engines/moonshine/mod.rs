@@ -125,10 +125,7 @@ impl MoonshineEngine {
 
         Ok(Self {
             model,
-            params: MoonshineParams {
-                max_length: None,
-                ..Default::default()
-            },
+            params: MoonshineParams::default(),
             detected_lang: moonshine_lang_from_variant(variant).map(|s| s.to_string()),
         })
     }
@@ -163,6 +160,7 @@ impl OnnxEngine for MoonshineEngine {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transcribe_moonshine(
     model_path: &Path,
     variant: MoonshineVariant,

@@ -18,6 +18,8 @@
 
 use std::collections::HashMap;
 
+use transcribe_rs::decode::parse_byte_token;
+
 /// Bonus for the first token of a phrase (NeMo `context_score`).
 pub const CONTEXT_SCORE: f32 = 1.0;
 /// Depth multiplier for later tokens (NeMo recommendation for TDT/CTC is 2.0,
@@ -31,6 +33,9 @@ pub const DEFAULT_BEAM_SIZE: usize = 4;
 /// Upper bounds mirroring the keyword validation in the reference API.
 pub const MAX_KEYWORDS: usize = 500;
 pub const MAX_KEYWORD_CHARS: usize = 100;
+/// Cap on tokenized context injected into canary/cohere prompts: their
+/// generation window is ~1024 positions and the prompt shares it.
+pub const MAX_CONTEXT_TOKENS: usize = 400;
 
 /// Split a free-form prompt into keyword phrases: comma- or newline-separated,
 /// trimmed, deduplicated case-insensitively (first spelling wins).
@@ -39,14 +44,22 @@ pub fn parse_keywords(prompt: &str) -> Vec<String> {
     let mut keywords = Vec::new();
     for item in prompt.split([',', '\n']) {
         let phrase: String = item.split_whitespace().collect::<Vec<_>>().join(" ");
-        if phrase.is_empty()
-            || phrase.chars().count() > MAX_KEYWORD_CHARS
-            || !seen.insert(phrase.to_lowercase())
-        {
+        if phrase.is_empty() {
+            continue;
+        }
+        if phrase.chars().count() > MAX_KEYWORD_CHARS {
+            tracing::warn!(
+                "Keyword phrase over {MAX_KEYWORD_CHARS} chars skipped: {:?}",
+                phrase.chars().take(40).collect::<String>()
+            );
+            continue;
+        }
+        if !seen.insert(phrase.to_lowercase()) {
             continue;
         }
         keywords.push(phrase);
         if keywords.len() >= MAX_KEYWORDS {
+            tracing::warn!("Keyword limit of {MAX_KEYWORDS} reached; remaining phrases ignored");
             break;
         }
     }
@@ -58,15 +71,25 @@ pub fn parse_keywords(prompt: &str) -> Vec<String> {
 /// left out.
 struct PieceIndex<'a> {
     piece_to_id: HashMap<&'a str, i32>,
+    /// SentencePiece byte-fallback pieces (`<0xNN>`), keyed by byte value —
+    /// the only `<...>` pieces that can appear inside real text.
+    byte_to_id: HashMap<u8, i32>,
     lengths: Vec<usize>,
 }
 
 impl<'a> PieceIndex<'a> {
     fn new(vocab: &'a [String]) -> Self {
         let mut piece_to_id: HashMap<&str, i32> = HashMap::with_capacity(vocab.len());
+        let mut byte_to_id: HashMap<u8, i32> = HashMap::new();
         let mut lengths: Vec<usize> = Vec::new();
         for (id, piece) in vocab.iter().enumerate() {
-            if piece.is_empty() || piece.starts_with('<') {
+            if piece.is_empty() {
+                continue;
+            }
+            if piece.starts_with('<') {
+                if let Some(byte) = parse_byte_token(piece) {
+                    byte_to_id.entry(byte).or_insert(id as i32);
+                }
                 continue;
             }
             if piece_to_id.insert(piece.as_str(), id as i32).is_none() {
@@ -75,11 +98,16 @@ impl<'a> PieceIndex<'a> {
         }
         lengths.sort_unstable_by(|a, b| b.cmp(a));
         lengths.dedup();
-        Self { piece_to_id, lengths }
+        Self {
+            piece_to_id,
+            byte_to_id,
+            lengths,
+        }
     }
 
     /// Greedy-match `bytes` starting at `pos`. When `shortest` is true the
-    /// smallest matching piece wins, otherwise the largest.
+    /// smallest matching piece wins, otherwise the largest. Byte-fallback
+    /// pieces match last: a single raw byte only when no piece covers it.
     fn match_at(&self, bytes: &[u8], pos: usize, shortest: bool) -> Option<(i32, usize)> {
         let lens: &[usize] = &self.lengths;
         let iter: Box<dyn Iterator<Item = &usize>> = if shortest {
@@ -97,7 +125,7 @@ impl<'a> PieceIndex<'a> {
                 }
             }
         }
-        None
+        self.byte_to_id.get(&bytes[pos]).map(|&id| (id, 1))
     }
 }
 
@@ -152,8 +180,7 @@ pub fn tokenize_keyword(vocab: &[String], text: &str) -> Option<Vec<i32>> {
 /// BPE splits explicitly; with only the vocab list available (no tokenizer
 /// model) two extreme segmentations capture most of the variation the model
 /// may emit. On character vocabularies both coincide and one path is returned.
-pub fn tokenize_keyword_variants(vocab: &[String], text: &str) -> Vec<Vec<i32>> {
-    let index = PieceIndex::new(vocab);
+fn tokenize_keyword_variants(index: &PieceIndex, text: &str) -> Vec<Vec<i32>> {
     let spaced = format!(" {}", text.trim());
     let bytes = spaced.as_bytes();
     let mut variants = Vec::new();
@@ -259,10 +286,13 @@ impl KeywordGraph {
     /// longest- and shortest-match tokenization of each keyword so the graph
     /// still rewards the piece split the model actually emits.
     pub fn from_keywords(vocab: &[String], keywords: &[String]) -> Option<Self> {
+        // One vocabulary index shared across every keyword — building it per
+        // phrase would re-allocate the whole table up to MAX_KEYWORDS times.
+        let index = PieceIndex::new(vocab);
         Self::build(
             keywords
                 .iter()
-                .flat_map(|k| tokenize_keyword_variants(vocab, k)),
+                .flat_map(|k| tokenize_keyword_variants(&index, k)),
         )
     }
 
@@ -403,7 +433,25 @@ pub fn ctc_greedy_decode_boosted(
             for v in 0..vocab_size {
                 frame_buf[v] = logits[[b, t, v]];
             }
-            let (max_id, next_state) = graph.boosted_argmax(&frame_buf, state, alpha);
+            let (mut max_id, mut next_state) = graph.boosted_argmax(&frame_buf, state, alpha);
+
+            // A boosted argmax that lands on the previous token can never emit
+            // (it would collapse as a repeat), and keeping it would starve the
+            // blank the model wants between doubled letters (the two `l`s in
+            // "ball"). Fall back to the raw argmax in that case; if the raw
+            // pick is also the repeat, normal collapse semantics apply.
+            if max_id as i64 == prev_id {
+                let raw_id = frame_buf
+                    .iter()
+                    .enumerate()
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(idx, _)| idx as i32)
+                    .unwrap_or(blank_id as i32);
+                if raw_id as i64 != prev_id {
+                    max_id = raw_id;
+                    next_state = graph.advance(state, max_id).1;
+                }
+            }
             let max_id = max_id as i64;
 
             if max_id != blank_id && max_id != prev_id {
@@ -446,6 +494,26 @@ mod tests {
         assert_eq!(tokenize_keyword(&v, "Kaliko"), Some(vec![1, 2, 3]));
         assert_eq!(tokenize_keyword(&v, "calico"), Some(vec![4]));
         assert_eq!(tokenize_keyword(&v, "unmatchable!"), None);
+    }
+
+    #[test]
+    fn ctc_boost_does_not_suppress_doubled_letters() {
+        // Vocab: 0=blank, 3="l" is the boosted keyword token.
+        let graph = KeywordGraph::build(vec![vec![3]]).unwrap();
+        // f0: l loses to b raw, wins boosted. f1: blank wins raw but l wins
+        // boosted — the repeat must collapse as a blank, not starve it.
+        // f2: l wins plainly and must emit a second time.
+        let logits = ndarray::Array3::from_shape_vec(
+            (1, 3, 4),
+            vec![
+                0.0f32, 0.1, 0.9, 0.8, // f0
+                0.9, 0.0, 0.0, 0.85, // f1
+                0.0, 0.0, 0.0, 0.9, // f2
+            ],
+        )
+        .unwrap();
+        let res = ctc_greedy_decode_boosted(&logits.view(), &[3], 0, &graph, 1.0, None);
+        assert_eq!(res[0].tokens, vec![3, 3]);
     }
 
     #[test]

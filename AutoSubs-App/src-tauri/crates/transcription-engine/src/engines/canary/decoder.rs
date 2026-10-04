@@ -28,6 +28,7 @@ pub fn decode_autoregressive(
 
     let eos_id = vocab.eos_token_id();
     let mut greedy = GreedyDecoder::new(eos_id);
+    let prompt_len = prompt_tokens.len();
     let mut all_tokens = prompt_tokens;
 
     // Limit decode steps so total tokens (prompt + generated) stays within
@@ -91,7 +92,9 @@ pub fn decode_autoregressive(
         })?;
     }
 
-    let text = vocab.decode_tokens(&all_tokens);
+    // Decode only generated tokens: the prompt tail can carry keyword
+    // context text that must not leak into the transcript.
+    let text = vocab.decode_tokens(&all_tokens[prompt_len..]);
     Ok(text)
 }
 
@@ -106,7 +109,7 @@ fn extract_decoder_mems_shape(decoder: &Session) -> Result<(usize, usize), Trans
 
     match mems_input.dtype() {
         ValueType::Tensor { shape, .. } => {
-            let dims: &[i64] = &shape;
+            let dims: &[i64] = shape;
             if dims.len() != 4 {
                 return Err(TranscribeError::Inference(format!(
                     "Expected 4D decoder_mems, got {}D",
@@ -119,16 +122,12 @@ fn extract_decoder_mems_shape(decoder: &Session) -> Result<(usize, usize), Trans
 
             if num_layers <= 0 || hidden_dim <= 0 {
                 return Err(TranscribeError::Inference(format!(
-                    "decoder_mems has dynamic num_layers ({}) or hidden_dim ({}); expected fixed",
-                    num_layers, hidden_dim
+                    "decoder_mems has dynamic num_layers ({num_layers}) or hidden_dim ({hidden_dim}); expected fixed"
                 )));
             }
 
             Ok((num_layers as usize, hidden_dim as usize))
         }
-        other => Err(TranscribeError::Inference(format!(
-            "decoder_mems input is not a tensor: {:?}",
-            other
-        ))),
+        other => Err(TranscribeError::Inference(format!("decoder_mems input is not a tensor: {other:?}"))),
     }
 }

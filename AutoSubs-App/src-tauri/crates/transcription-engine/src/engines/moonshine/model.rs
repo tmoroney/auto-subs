@@ -173,11 +173,8 @@ impl MoonshineModel {
         max_length: usize,
     ) -> Result<Vec<i64>, TranscribeError> {
         let audio_duration = samples.len() as f32 / SAMPLE_RATE as f32;
-        if audio_duration < 0.1 || audio_duration > 64.0 {
-            return Err(TranscribeError::Inference(format!(
-                "Audio duration must be between 0.1s and 64s, got {:.2}s",
-                audio_duration
-            )));
+        if !(0.1..=64.0).contains(&audio_duration) {
+            return Err(TranscribeError::Inference(format!("Audio duration must be between 0.1s and 64s, got {audio_duration:.2}s")));
         }
 
         let audio = Array2::from_shape_vec((1, samples.len()), samples.to_vec())?;
@@ -296,7 +293,7 @@ impl KVCache {
         for i in 0..num_layers {
             for attention_type in &["decoder", "encoder"] {
                 for kv_type in &["key", "value"] {
-                    let key = format!("past_key_values.{}.{}.{}", i, attention_type, kv_type);
+                    let key = format!("past_key_values.{i}.{attention_type}.{kv_type}");
                     let empty_tensor = ArrayD::<f32>::zeros(IxDyn(&[0, num_heads, 1, head_dim]));
                     cache.insert(key, empty_tensor);
                 }
@@ -312,7 +309,7 @@ impl KVCache {
         for i in 0..self.num_layers {
             for attention_type in &["decoder", "encoder"] {
                 for kv_type in &["key", "value"] {
-                    let key = format!("past_key_values.{}.{}.{}", i, attention_type, kv_type);
+                    let key = format!("past_key_values.{i}.{attention_type}.{kv_type}");
                     if let Some(tensor) = self.cache.get(&key) {
                         inputs.push((key, tensor.clone()));
                     }
@@ -335,8 +332,8 @@ impl KVCache {
                 }
 
                 for kv_type in &["key", "value"] {
-                    let output_key = format!("present.{}.{}.{}", i, attention_type, kv_type);
-                    let cache_key = format!("past_key_values.{}.{}.{}", i, attention_type, kv_type);
+                    let output_key = format!("present.{i}.{attention_type}.{kv_type}");
+                    let cache_key = format!("past_key_values.{i}.{attention_type}.{kv_type}");
 
                     if let Some(output) = outputs.get(&output_key) {
                         let tensor = output.try_extract_array::<f32>()?;

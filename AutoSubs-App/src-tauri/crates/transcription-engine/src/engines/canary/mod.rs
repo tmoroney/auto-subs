@@ -71,6 +71,7 @@ impl OnnxEngine for CanaryEngine {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transcribe_canary(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,

@@ -119,7 +119,7 @@ impl SenseVoiceModel {
     fn parse_metadata(session: &Session) -> Result<SenseVoiceMetadata, TranscribeError> {
         let comment = session::read_metadata_str(session, "comment")
             .map_err(|e| {
-                TranscribeError::Config(format!("failed to read metadata 'comment': {}", e))
+                TranscribeError::Config(format!("failed to read metadata 'comment': {e}"))
             })?
             .unwrap_or_default();
         let is_funasr_nano = comment.contains("Nano");
@@ -320,7 +320,7 @@ impl SenseVoiceModel {
             *meta
                 .lang2id
                 .get(language)
-                .ok_or_else(|| TranscribeError::Config(format!("Unknown language: {}", language)))?
+                .ok_or_else(|| TranscribeError::Config(format!("Unknown language: {language}")))?
         };
         let language_arr = ndarray::arr1(&[lang_id]);
 
