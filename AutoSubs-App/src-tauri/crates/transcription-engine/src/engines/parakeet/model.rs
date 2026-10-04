@@ -493,9 +493,25 @@ impl ParakeetModel {
                     if !top.iter().any(|&(token, _)| token == self.blank_idx) {
                         top.push((self.blank_idx, log_probs[self.blank_idx as usize]));
                     }
-                    for &token in graph.transitions(hyp.trie).keys() {
+                    // Keyword candidates: only the trie transitions whose
+                    // boosted score could plausibly survive pruning — the
+                    // best BEAM of them — so a large keyword list can't
+                    // explode the per-round expansion count.
+                    let mut kw: Vec<(i32, f64)> = Vec::with_capacity(BEAM + 1);
+                    for (&token, &bonus) in graph.transitions(hyp.trie) {
+                        let boosted = log_probs[token as usize] + alpha * bonus as f64;
+                        if kw.len() == BEAM && boosted <= kw[BEAM - 1].1 {
+                            continue;
+                        }
+                        let pos = kw.partition_point(|&(_, s)| s >= boosted);
+                        kw.insert(pos, (token, log_probs[token as usize]));
+                        if kw.len() > BEAM {
+                            kw.pop();
+                        }
+                    }
+                    for (token, lp) in kw {
                         if !top.iter().any(|&(t2, _)| t2 == token) {
-                            top.push((token, log_probs[token as usize]));
+                            top.push((token, lp));
                         }
                     }
 
