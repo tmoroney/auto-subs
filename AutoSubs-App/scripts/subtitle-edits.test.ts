@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { preserveSubtitleEdits } from '../src/utils/subtitle-edits.ts';
+import { moveEdgeWord } from '../src/utils/word-move.ts';
 import type { Subtitle } from '../src/types.ts';
 
 function cue(text: string, tokens = text.split(' '), start = 0): Subtitle {
@@ -193,5 +194,61 @@ const partial = [cue('one'), cue('two', ['two'], 4)];
 const cleared = preserveSubtitleEdits(partial, [partial[0], { ...partial[1], text: '' }]);
 assert.deepEqual(words(cleared.segments), ['one']);
 assert.deepEqual(cleared.segments[0].words[0], partial[0].words[0]);
+
+// #445: a word moved with its timing still lands in its destination caption
+// on Reformat, although the moved captions' text matches their words.
+const timedSource = [cue('a b', ['a', 'b'], 0), cue('c d', ['c', 'd'], 2)];
+const timedDown = moveEdgeWord(timedSource, 0, 'next', 'a b');
+assert.ok(timedDown);
+const reformattedDown = preserveSubtitleEdits(timedSource, timedDown.subtitles);
+assert.equal(reformattedDown.changed, true);
+assert.deepEqual(reformattedDown.segments.map(segment => segment.text), ['a', 'b c d']);
+assert.deepEqual(reformattedDown.segments.flatMap(segment => segment.words.map(word => [word.start, word.end])), [[0, 1], [1, 2], [2, 3], [3, 4]]);
+
+const timedUp = moveEdgeWord(timedSource, 1, 'previous', 'c d');
+assert.ok(timedUp);
+assert.deepEqual(preserveSubtitleEdits(timedSource, timedUp.subtitles).segments.map(segment => segment.text), ['a b c', 'd']);
+
+// Several moved words outnumbering the destination's own still join it.
+const longSource = [cue('a b c d', ['a', 'b', 'c', 'd'], 0), cue('e', ['e'], 4)];
+let longDisplay = longSource;
+for (let moves = 0; moves < 3; moves++) {
+    const result = moveEdgeWord(longDisplay, 0, 'next', longDisplay[0].text);
+    assert.ok(result);
+    longDisplay = result.subtitles;
+}
+assert.deepEqual(longDisplay.map(segment => segment.text), ['a', 'b c d e']);
+assert.deepEqual(preserveSubtitleEdits(longSource, longDisplay).segments.map(segment => segment.text), ['a', 'b c d e']);
+
+// A caption that took a word from each neighbour keeps its own group, so
+// Reformat does not merge it into either neighbour.
+const bothSides = [cue('x y', ['x', 'y'], 0), cue('b c', ['b', 'c'], 2), cue('d e', ['d', 'e'], 4)];
+const tookLeft = moveEdgeWord(bothSides, 2, 'previous', 'd e');
+assert.ok(tookLeft);
+const tookBoth = moveEdgeWord(tookLeft.subtitles, 0, 'next', 'x y');
+assert.ok(tookBoth);
+assert.deepEqual(tookBoth.subtitles.map(segment => segment.text), ['x', 'y b c d', 'e']);
+assert.deepEqual(preserveSubtitleEdits(bothSides, tookBoth.subtitles).segments.map(segment => segment.text), ['x', 'y b c d', 'e']);
+
+// Emptying a caption removes it, and the words join their new speaker.
+const timedSpeakers = moveEdgeWord([speakerA, speakerB], 0, 'next', 'Hello');
+assert.ok(timedSpeakers);
+assert.equal(timedSpeakers.subtitles.length, 1);
+const reformattedSpeakers = preserveSubtitleEdits([speakerA, speakerB], timedSpeakers.subtitles);
+assert.equal(reformattedSpeakers.segments.length, 1);
+assert.equal(reformattedSpeakers.segments[0].speaker_id, 'B');
+assert.equal(reformattedSpeakers.segments[0].text, 'Hello world');
+
+// A move between captions of one source group needs no correction, and
+// reopening an already preserved move finds nothing new.
+const oneGroup = [cue('a b c d', ['a', 'b', 'c', 'd'])];
+const oneGroupDisplay = [
+    { ...cue('a b'), words: oneGroup[0].words.slice(0, 2) },
+    { ...cue('c d', ['c', 'd'], 2), words: oneGroup[0].words.slice(2) },
+];
+const withinGroup = moveEdgeWord(oneGroupDisplay, 0, 'next', 'a b');
+assert.ok(withinGroup);
+assert.equal(preserveSubtitleEdits(oneGroup, withinGroup.subtitles).changed, false);
+assert.equal(preserveSubtitleEdits(reformattedDown.segments, timedDown.subtitles).changed, false);
 
 console.log('Subtitle edit regression checks passed.');
