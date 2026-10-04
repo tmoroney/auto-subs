@@ -68,6 +68,7 @@
     "selected": "Seleccionado:",
     "importFile": "Importar archivo",
     "exportAsSrt": "Exportar como SRT",
+    "exportAsSrtSpeakers": "SRT con hablantes",
     "fileDialog": {
       "subtitleFiles": "Archivos de subtítulos"
     },
@@ -75,6 +76,10 @@
       "srt": {
         "title": "Subtítulos (.srt)",
         "description": "Subtítulos con marcas de tiempo para reproductores."
+      },
+      "srtSpeakers": {
+        "title": "SRT con hablantes",
+        "description": "Nombre del hablante en cada línea."
       },
       "txt": {
         "title": "Transcripción (.txt)",
