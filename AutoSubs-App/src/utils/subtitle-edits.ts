@@ -82,14 +82,17 @@ export function preserveSubtitleEdits(
     const aligned = sourceWords.length === flat;
 
     // A caption retimed by hand carries word timings the formatter would not
-    // produce from the source (it only clamps word ends to the caption end).
-    // Those timings become the source, so Reformat keeps the new times.
+    // produce from the source. The formatter only clamps word ends to a
+    // caption end it cut short at the next caption's start. Retimed timings
+    // become the source, so Reformat keeps the new times.
     if (aligned) {
         for (const entry of displayCues) {
             const cueEnd = Number(entry.cue.end);
+            const nextStart = Number(displayed[entry.cueIndex + 1]?.start);
+            const clampTo = Math.abs(cueEnd - nextStart) <= 0.001 ? cueEnd : Infinity;
             const retimed = entry.words.some((word, offset) => {
                 const source = sourceWords[entry.from + offset].word;
-                const end = Math.min(Number(source.end), cueEnd);
+                const end = Math.min(Number(source.end), clampTo);
                 const start = Math.min(Number(source.start), end);
                 return Math.abs(Number(word.start) - start) > 0.001 || Math.abs(Number(word.end) - end) > 0.001;
             });

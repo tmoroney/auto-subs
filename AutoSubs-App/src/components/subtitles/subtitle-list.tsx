@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
@@ -144,8 +144,20 @@ const SubtitleList = ({
         onMatchCountChange?.(filteredSubtitleItems.length);
     }, [filteredSubtitleItems.length, onMatchCountChange]);
 
+    // Keep the row whose timing is being edited mounted while it scrolls out
+    // of view, so its unsaved times survive.
+    const [timingSubtitleId, setTimingSubtitleId] = useState<number | null>(null);
+    const pinnedRow = timingSubtitleId === null
+        ? -1
+        : filteredSubtitleItems.findIndex(item => item.subtitle.id === timingSubtitleId);
+    const rangeExtractor = useCallback((range: Range) => {
+        const rows = defaultRangeExtractor(range);
+        return pinnedRow < 0 || rows.includes(pinnedRow) ? rows : [...rows, pinnedRow].sort((a, b) => a - b);
+    }, [pinnedRow]);
+
     const rowVirtualizer = useVirtualizer({
         count: filteredSubtitleItems.length,
+        rangeExtractor,
         getScrollElement: () => containerRef.current?.parentElement ?? null,
         estimateSize: () => ESTIMATED_SUBTITLE_ROW_HEIGHT,
         getItemKey: (index: number) => filteredSubtitleItems[index]?.subtitle.id ?? index,
@@ -407,6 +419,7 @@ const SubtitleList = ({
                                             start={subtitle.start}
                                             end={subtitle.end}
                                             onSave={(start, end) => retimeCaption(index, start, end)}
+                                            onOpenChange={(open) => setTimingSubtitleId(open ? subtitle.id : null)}
                                             className={isSelected ? "" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"}
                                         />
                                         {subtitle.speaker_id && speakers.length > 0 ? (

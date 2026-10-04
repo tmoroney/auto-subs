@@ -12,10 +12,11 @@ interface CaptionTimingEditorProps {
     end: number;
     /** Apply the new times, or return why they were rejected. */
     onSave: (start: number, end: number) => RetimeError | null;
+    onOpenChange?: (open: boolean) => void;
     className?: string;
 }
 
-export function CaptionTimingEditor({ start, end, onSave, className = "" }: CaptionTimingEditorProps) {
+export function CaptionTimingEditor({ start, end, onSave, onOpenChange, className = "" }: CaptionTimingEditorProps) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [startText, setStartText] = useState("");
@@ -29,6 +30,7 @@ export function CaptionTimingEditor({ start, end, onSave, className = "" }: Capt
             setError(null);
         }
         setOpen(next);
+        onOpenChange?.(next);
     };
 
     const save = () => {
@@ -39,7 +41,7 @@ export function CaptionTimingEditor({ start, end, onSave, className = "" }: Capt
             setError(result);
             return;
         }
-        setOpen(false);
+        handleOpenChange(false);
     };
 
     const field = (id: string, label: string, value: string, onChange: (value: string) => void) => (
@@ -81,7 +83,15 @@ export function CaptionTimingEditor({ start, end, onSave, className = "" }: Capt
                     <Clock className="size-3.5" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 bg-card" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent
+                align="start"
+                className="w-64 bg-card"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                    // The popover closes itself; keep Escape from also closing the panel.
+                    if (e.key === "Escape") e.stopPropagation();
+                }}
+            >
                 <div className="grid gap-3">
                     <div className="grid grid-cols-2 gap-2">
                         {field("caption-timing-start", t("subtitles.timing.start"), startText, setStartText)}
@@ -91,7 +101,7 @@ export function CaptionTimingEditor({ start, end, onSave, className = "" }: Capt
                         <p role="alert" className="text-xs text-destructive">{t(`subtitles.timing.errors.${error}`)}</p>
                     ) : null}
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleOpenChange(false)}>
                             {t("common.cancel")}
                         </Button>
                         <Button size="sm" className="h-7 text-xs" onClick={save}>

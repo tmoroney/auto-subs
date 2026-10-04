@@ -56,12 +56,21 @@ export function retimeSubtitle(
     if (words?.length && timed) {
         const from = Number(words[0].start);
         const span = Number(words[words.length - 1].end) - from;
-        const map = (time: number) => round3(span > 0 ? start + (time - from) * (end - start) / span : start);
-        words = words.map(word => ({
-            ...word,
-            start: map(Number(word.start)),
-            end: span > 0 ? map(Number(word.end)) : end,
-        }));
+        if (span > 0) {
+            const map = (time: number) => round3(start + (time - from) * (end - start) / span);
+            words = words.map(word => ({ ...word, start: map(Number(word.start)), end: map(Number(word.end)) }));
+        } else {
+            // Words with no duration (e.g. from an imported cue) are spread
+            // across the new range by length, as typed words are on Reformat.
+            const lengths = words.map(word => Math.max(1, Array.from(word.word.trim()).length));
+            const total = lengths.reduce((sum, length) => sum + length, 0);
+            let consumed = 0;
+            words = words.map((word, index) => {
+                const wordStart = round3(start + (end - start) * consumed / total);
+                consumed += lengths[index];
+                return { ...word, start: wordStart, end: round3(start + (end - start) * consumed / total) };
+            });
+        }
     }
 
     const next = [...subtitles];

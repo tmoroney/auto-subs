@@ -86,8 +86,22 @@ test("Reformat keeps a retimed caption's new times", () => {
   assert.deepEqual(corrected.segments[1].words.map(word => [word.word.trim(), word.start, word.end]), [["c", 2.5, 3.5], ["e", 3.5, 4.5]]);
 });
 
+test("Reformat keeps a single-word caption shortened at its end", () => {
+  const source = [cue(0, [["a", 0, 1]]), cue(1, [["c", 3, 5]])];
+  const kept = preserveSubtitleEdits(source, retimed(source, 1, 3, 4.5));
+  assert.equal(kept.changed, true);
+  assert.deepEqual([kept.segments[1].start, kept.segments[1].end], [3, 4.5]);
+});
+
 test("word ends clamped by the formatter are not mistaken for a retime", () => {
-  const source = captions();
+  // The next caption starts before "b" ends, so the formatter cuts it short.
+  const source = [cue(0, [["a", 0, 1], ["b", 1, 2]]), cue(1, [["c", 1.8, 3]])];
   const clamped = [{ ...source[0], end: 1.8, words: [source[0].words[0], { ...source[0].words[1], end: 1.8 }] }, source[1]];
   assert.equal(preserveSubtitleEdits(source, clamped).changed, false);
+});
+
+test("words with no duration are spread across the new range by length", () => {
+  const subtitles = [cue(0, [["hi", 2, 2], ["there", 2, 2]])];
+  const next = retimed(subtitles, 0, 2, 2.7);
+  assert.deepEqual(next[0].words.map(word => [word.start, word.end]), [[2, 2.2], [2.2, 2.7]]);
 });
