@@ -423,15 +423,16 @@ impl ParakeetModel {
         }
 
         /// Bonus bookkeeping for emitting `token` from `hyp`: the new trie
-        /// state, commit list, permanent credit, live path score, and the
-        /// ranking bonus. The beam's candidate shortlist uses the same
-        /// formula as the actual expansion, so shortlisting by post-emit
-        /// rank never drops a candidate the beam would have favored.
+        /// state, permanent credit, live path score, ranking bonus, and
+        /// whether a keyword completed. The beam's candidate shortlist uses
+        /// the same formula as the actual expansion, so shortlisting by
+        /// post-emit rank never drops a candidate the beam would have
+        /// favored — and it never has to copy commit histories to do so.
         fn emit_bonus(
             graph: &KeywordGraph,
             hyp: &Hyp,
             token: i32,
-        ) -> (usize, Vec<(usize, f64)>, f64, f64, f64) {
+        ) -> (usize, f64, f64, f64, bool) {
             let (bonus, trie) = graph.advance(hyp.trie, token);
             let boost = hyp.boost + bonus as f64;
             // Strict ancestors only: reaching a node that already completed
@@ -444,14 +445,13 @@ impl ParakeetModel {
                 .map(|&(_, s)| s)
                 .fold(0.0f64, f64::max);
             let mut committed = hyp.committed;
-            let mut commits = hyp.commits.clone();
             let mut bonus_rank = committed + boost - covered;
-            if graph.is_terminal(trie) {
+            let completed = graph.is_terminal(trie);
+            if completed {
                 committed += boost - covered;
-                commits.push((trie, boost));
                 bonus_rank = committed;
             }
-            (trie, commits, committed, boost, bonus_rank)
+            (trie, committed, boost, bonus_rank, completed)
         }
 
         let initial_state = self.create_decoder_state()?;
@@ -534,7 +534,7 @@ impl ParakeetModel {
                     // following keyword is never dropped pre-emptively.
                     let mut kw: Vec<(i32, f64)> = Vec::with_capacity(BEAM + 1);
                     for &token in graph.transitions(hyp.trie).keys() {
-                        let (_, _, _, _, bonus_rank) = emit_bonus(graph, &hyp, token);
+                        let (_, _, _, bonus_rank, _) = emit_bonus(graph, &hyp, token);
                         let rank = hyp.score + log_probs[token as usize] + alpha * bonus_rank;
                         if kw.len() == BEAM && rank <= kw[BEAM - 1].1 {
                             continue;
@@ -573,8 +573,12 @@ impl ParakeetModel {
                             // "cats" through "cat" credit only the extra
                             // score, while a divergent step drops coverage
                             // and a following keyword scores in full.
-                            let (trie, commits, committed, boost, bonus_rank) =
+                            let (trie, committed, boost, bonus_rank, completed) =
                                 emit_bonus(graph, &hyp, token);
+                            let mut commits = hyp.commits.clone();
+                            if completed {
+                                commits.push((trie, boost));
+                            }
                             let mut tokens = hyp.tokens.clone();
                             tokens.push(token);
                             let mut timestamps = hyp.timestamps.clone();
