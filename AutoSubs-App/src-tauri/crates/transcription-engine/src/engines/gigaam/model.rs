@@ -7,12 +7,12 @@ use ort::session::Session;
 use ort::value::TensorRef;
 use std::path::Path;
 
-use transcribe_rs::decode::{ctc_greedy_decode, sentencepiece_to_text};
-use transcribe_rs::decode::tokens::load_vocab;
-use transcribe_rs::features::{compute_mel, MelConfig, WindowType};
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::TranscribeError;
-use transcribe_rs::TranscriptionResult;
+use crate::vendor::decode::{ctc_greedy_decode, sentencepiece_to_text};
+use crate::vendor::decode::tokens::load_vocab;
+use crate::vendor::features::{compute_mel, MelConfig, WindowType};
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::TranscribeError;
+use crate::vendor::TranscriptionResult;
 
 use crate::keyword_boost::{self, KeywordGraph};
 

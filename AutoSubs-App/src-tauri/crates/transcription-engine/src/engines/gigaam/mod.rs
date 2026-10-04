@@ -6,8 +6,8 @@ use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::Quantization;
-use transcribe_rs::TranscriptionResult;
+use crate::vendor::onnx::Quantization;
+use crate::vendor::TranscriptionResult;
 
 use self::model::GigaAMModel;
 

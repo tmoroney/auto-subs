@@ -9,11 +9,11 @@ use ort::value::TensorRef;
 use std::collections::HashMap;
 use std::path::Path;
 
-use transcribe_rs::decode::{ctc_greedy_decode, CtcDecoderResult, SymbolTable};
-use transcribe_rs::features::{apply_cmvn, apply_lfr, compute_mel, MelConfig, WindowType};
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::TranscribeError;
-use transcribe_rs::{TranscriptionResult, TranscriptionSegment};
+use crate::vendor::decode::{ctc_greedy_decode, CtcDecoderResult, SymbolTable};
+use crate::vendor::features::{apply_cmvn, apply_lfr, compute_mel, MelConfig, WindowType};
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::TranscribeError;
+use crate::vendor::{TranscriptionResult, TranscriptionSegment};
 
 use crate::keyword_boost::{self, KeywordGraph};
 

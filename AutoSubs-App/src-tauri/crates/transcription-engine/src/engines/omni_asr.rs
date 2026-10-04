@@ -14,8 +14,8 @@ use ndarray::Array3;
 use ort::session::Session;
 use std::collections::HashMap;
 use std::path::Path;
-use transcribe_rs::onnx::session::create_session_with_threads;
-use transcribe_rs::TranscriptionResult;
+use crate::vendor::onnx::session::create_session_with_threads;
+use crate::vendor::TranscriptionResult;
 
 pub struct OmniAsrEngine {
     session: Session,

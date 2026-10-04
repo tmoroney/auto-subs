@@ -4,8 +4,8 @@ use ort::value::ValueType;
 use ort::value::{DynValue, Tensor};
 
 use super::vocab::Vocab;
-use transcribe_rs::decode::GreedyDecoder;
-use transcribe_rs::TranscribeError;
+use crate::vendor::decode::GreedyDecoder;
+use crate::vendor::TranscribeError;
 
 pub fn decode_autoregressive(
     decoder: &mut Session,

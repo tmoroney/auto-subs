@@ -11,8 +11,8 @@ use ort::value::Tensor;
 
 use super::decoder::decode_autoregressive;
 use super::vocab::Vocab;
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::{TranscribeError, TranscriptionResult};
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::{TranscribeError, TranscriptionResult};
 
 use crate::keyword_boost;
 

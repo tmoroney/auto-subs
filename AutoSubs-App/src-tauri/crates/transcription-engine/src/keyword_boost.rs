@@ -18,7 +18,7 @@
 
 use std::collections::HashMap;
 
-use transcribe_rs::decode::parse_byte_token;
+use crate::vendor::decode::parse_byte_token;
 
 /// Bonus for the first token of a phrase (NeMo `context_score`).
 pub const CONTEXT_SCORE: f32 = 1.0;
@@ -472,7 +472,7 @@ impl KeywordGraph {
 }
 
 /// CTC greedy decode with keyword boosting — same collapse semantics and
-/// result contract as `transcribe_rs::decode::ctc_greedy_decode`, but each
+/// result contract as `crate::vendor::decode::ctc_greedy_decode`, but each
 /// frame's argmax runs over `log_softmax(logits) + alpha * bonus` instead of
 /// raw logits. The graph state only advances when a token is actually emitted
 /// (blank and collapsed repeat frames keep it).
@@ -486,14 +486,14 @@ pub fn ctc_greedy_decode_boosted(
     graph: &KeywordGraph,
     alpha: f32,
     boundary_token: Option<i32>,
-) -> Vec<transcribe_rs::decode::CtcDecoderResult> {
+) -> Vec<crate::vendor::decode::CtcDecoderResult> {
     let batch_size = logits.shape()[0];
     let vocab_size = logits.shape()[2];
     let mut results = Vec::with_capacity(batch_size);
 
     for b in 0..batch_size {
         let num_frames = logits_lengths[b] as usize;
-        let mut result = transcribe_rs::decode::CtcDecoderResult {
+        let mut result = crate::vendor::decode::CtcDecoderResult {
             tokens: Vec::new(),
             timestamps: Vec::new(),
         };

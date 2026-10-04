@@ -3,6 +3,7 @@ pub mod audio;
 pub mod engine;
 pub mod keyword_boost;
 pub mod engines;
+pub mod vendor;
 pub mod manifest;
 pub mod model_manager;
 pub mod vad;

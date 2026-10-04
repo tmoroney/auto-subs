@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use transcribe_rs::TranscribeError;
+use crate::vendor::TranscribeError;
 
 pub struct Vocab {
     token_to_id_map: HashMap<String, i64>,

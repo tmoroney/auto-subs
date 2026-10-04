@@ -12,9 +12,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use transcribe_rs::decode::{parse_byte_token, GreedyDecoder};
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::{TranscribeError, TranscriptionResult};
+use crate::vendor::decode::{parse_byte_token, GreedyDecoder};
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::{TranscribeError, TranscriptionResult};
 
 use crate::keyword_boost::{self, KeywordGraph};
 

@@ -12,9 +12,9 @@ use ort::session::Session;
 use ort::session::SessionInputValue;
 use ort::value::DynValue;
 
-use transcribe_rs::decode::{load_vocab, parse_byte_token, GreedyDecoder};
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::{TranscribeError, TranscriptionResult};
+use crate::vendor::decode::{load_vocab, parse_byte_token, GreedyDecoder};
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::{TranscribeError, TranscriptionResult};
 
 use crate::keyword_boost;
 

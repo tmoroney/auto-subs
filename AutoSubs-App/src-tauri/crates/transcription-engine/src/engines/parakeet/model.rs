@@ -14,9 +14,9 @@ use ort::value::TensorRef;
 use regex::Regex;
 use std::path::Path;
 
-use transcribe_rs::decode::tokens::load_vocab;
-use transcribe_rs::onnx::{session, Quantization};
-use transcribe_rs::{TranscribeError, TranscriptionResult, TranscriptionSegment};
+use crate::vendor::decode::tokens::load_vocab;
+use crate::vendor::onnx::{session, Quantization};
+use crate::vendor::{TranscribeError, TranscriptionResult, TranscriptionSegment};
 
 use crate::keyword_boost::{KeywordGraph, DEFAULT_BEAM_SIZE};
 
@@ -131,7 +131,7 @@ impl ParakeetModel {
         samples: &[f32],
     ) -> Result<TranscriptionResult, TranscribeError> {
         const LEAD_MS: u32 = 250;
-        let padded = transcribe_rs::audio::prepend_silence(samples, LEAD_MS);
+        let padded = crate::audio::prepend_silence(samples, LEAD_MS);
         let timestamped_result = self.transcribe_samples_internal(padded)?;
         let segments = convert_to_hierarchical_word_segments(&timestamped_result);
 
