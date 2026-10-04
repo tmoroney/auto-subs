@@ -504,14 +504,14 @@ impl ParakeetModel {
                             continue;
                         }
                         let pos = kw.partition_point(|&(_, s)| s >= boosted);
-                        kw.insert(pos, (token, log_probs[token as usize]));
+                        kw.insert(pos, (token, boosted));
                         if kw.len() > BEAM {
                             kw.pop();
                         }
                     }
-                    for (token, lp) in kw {
+                    for (token, _) in kw {
                         if !top.iter().any(|&(t2, _)| t2 == token) {
-                            top.push((token, lp));
+                            top.push((token, log_probs[token as usize]));
                         }
                     }
 
