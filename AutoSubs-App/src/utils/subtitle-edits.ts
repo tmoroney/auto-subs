@@ -81,6 +81,27 @@ export function preserveSubtitleEdits(
     }
     const aligned = sourceWords.length === flat;
 
+    // A caption retimed by hand carries word timings the formatter would not
+    // produce from the source (it only clamps word ends to the caption end).
+    // Those timings become the source, so Reformat keeps the new times.
+    if (aligned) {
+        for (const entry of displayCues) {
+            const cueEnd = Number(entry.cue.end);
+            const retimed = entry.words.some((word, offset) => {
+                const source = sourceWords[entry.from + offset].word;
+                const end = Math.min(Number(source.end), cueEnd);
+                const start = Math.min(Number(source.start), end);
+                return Math.abs(Number(word.start) - start) > 0.001 || Math.abs(Number(word.end) - end) > 0.001;
+            });
+            if (!retimed) continue;
+            entry.changed = true;
+            entry.words.forEach((word, offset) => {
+                const source = sourceWords[entry.from + offset];
+                sourceWords[entry.from + offset] = { ...source, word: { ...source.word, start: word.start, end: word.end } };
+            });
+        }
+    }
+
     // Maximal runs of consecutive edited cues get patched as one unit so a word
     // moved between cues keeps its timing.
     const runs: typeof displayCues[] = [];
