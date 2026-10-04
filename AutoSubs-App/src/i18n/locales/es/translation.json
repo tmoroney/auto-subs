@@ -124,10 +124,10 @@
       "customCharsDescription": "Caracteres por línea",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vocabulario y contexto",
-      "customPromptDescription": "Agrega términos, nombres o contexto para guiar a Whisper.",
+      "customPromptDescription": "Agrega términos o nombres para mejorar la transcripción.",
       "customPromptPlaceholder": "Ej.: OpenAI, DaVinci Resolve — tutorial de edición de subtítulos en Resolve.",
       "customPromptLanguageWarning": "Escribe en el mismo idioma que tu audio — un prompt en otro idioma puede causar una transcripción incorrecta.",
-      "customPromptWhisperOnly": "Solo es compatible con modelos Whisper.",
+      "customPromptHint": "Separa nombres o términos con comas.",
       "customWordsTitle": "Máx. palabras",
       "customWordsDescription": "Palabras por línea"
     },

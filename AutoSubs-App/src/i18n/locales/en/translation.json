@@ -124,10 +124,10 @@
       "customCharsDescription": "Characters per line",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vocabulary & Context",
-      "customPromptDescription": "Add terms, names, or context to guide Whisper.",
+      "customPromptDescription": "Add terms, names, or context to improve transcription.",
       "customPromptPlaceholder": "E.g. OpenAI, DaVinci Resolve — tutorial about subtitle editing.",
       "customPromptLanguageWarning": "Write in the same language as your audio — a prompt in a different language can cause incorrect transcription.",
-      "customPromptWhisperOnly": "Only supported by Whisper models.",
+      "customPromptHint": "Separate names or terms with commas.",
       "customWordsTitle": "Max Words",
       "customWordsDescription": "Words per line"
     },

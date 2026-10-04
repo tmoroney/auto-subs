@@ -57,7 +57,8 @@ pub struct AdvancedTranscribe {
     pub n_threads: Option<i32>, // Number of threads used for decoding. Defaults to min(4, std::thread::hardware_concurrency()).
     pub temperature: Option<f32>, // Temperature for sampling. Defaults to 0.7.
     pub max_text_ctx: Option<i32>, // The maximum number of tokens to keep in the text context. Defaults to 16000.
-    pub init_prompt: Option<String>, // Initial prompt for the model.
+    pub init_prompt: Option<String>, // Initial prompt for the model (whisper only).
+    pub keywords: Option<Vec<String>>, // Keyword phrases to boost during decoding (non-whisper engines). Parsed from the same custom prompt as init_prompt.
     pub diarize_threshold: Option<f32>, // Threshold for diarization
 }
 

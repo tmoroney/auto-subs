@@ -124,10 +124,10 @@
       "customCharsDescription": "Zeichen pro Zeile",
       "customPromptButton": "Prompt",
       "customPromptTitle": "Vokabular & Kontext",
-      "customPromptDescription": "Begriffe, Namen oder Kontext hinzufügen, um Whisper zu leiten.",
+      "customPromptDescription": "Begriffe oder Namen für bessere Erkennung hinzufügen.",
       "customPromptPlaceholder": "Z.B. OpenAI, DaVinci Resolve – Tutorial über Untertitelbearbeitung.",
       "customPromptLanguageWarning": "In der gleichen Sprache wie das Audio schreiben – ein Prompt in einer anderen Sprache kann zu falschen Transkriptionen führen.",
-      "customPromptWhisperOnly": "Nur von Whisper-Modellen unterstuetzt.",
+      "customPromptHint": "Namen oder Begriffe mit Kommas trennen.",
       "customWordsTitle": "Max. Wörter",
       "customWordsDescription": "Wörter pro Zeile"
     },

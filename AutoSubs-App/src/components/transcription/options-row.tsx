@@ -15,11 +15,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 import { migrateCustomPrompt } from "./utils";
 
-interface OptionsRowProps {
-  selectedModelEngine?: string;
-}
-
-export function OptionsRow({ selectedModelEngine }: OptionsRowProps) {
+export function OptionsRow() {
   const { t } = useTranslation();
   const enableDiarize = useSettingsStore((s) => s.enableDiarize);
   const maxSpeakers = useSettingsStore((s) => s.maxSpeakers);
@@ -99,7 +95,6 @@ export function OptionsRow({ selectedModelEngine }: OptionsRowProps) {
         showLabel={showPromptOptionLabel}
         customPrompt={customPrompt}
         onCustomPromptChange={(value) => updateSetting("customPrompt", value)}
-        disabled={selectedModelEngine !== "whisper"}
       />
 
       <Popover open={openAdvancedPopover} onOpenChange={setOpenAdvancedPopover}>
@@ -210,7 +205,6 @@ interface CustomPromptPopoverProps {
   showLabel: boolean;
   customPrompt: string;
   onCustomPromptChange: (value: string) => void;
-  disabled?: boolean;
 }
 
 function CustomPromptPopover({
@@ -219,7 +213,6 @@ function CustomPromptPopover({
   showLabel,
   customPrompt,
   onCustomPromptChange,
-  disabled = false,
 }: CustomPromptPopoverProps) {
   const { t } = useTranslation();
   const [localPrompt, setLocalPrompt] = React.useState("");
@@ -239,31 +232,17 @@ function CustomPromptPopover({
   }, [open, localPrompt, customPrompt, onCustomPromptChange]);
 
   return (
-    <Popover open={open} onOpenChange={(next) => onOpenChange(next && !disabled)}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <span
-          className="min-w-0"
-          title={
-            disabled ? t("actionBar.format.customPromptWhisperOnly") : undefined
-          }
-        >
+        <span className="min-w-0">
           <Button
             variant="ghost"
             size="default"
             aria-haspopup="listbox"
-            disabled={disabled}
             className="group relative h-10 w-full min-w-0 justify-center gap-1.5 rounded-lg bg-muted/35 px-2 dark:bg-muted"
             aria-expanded={open}
-            aria-label={
-              disabled
-                ? t("actionBar.format.customPromptWhisperOnly")
-                : t("actionBar.format.customPromptTitle")
-            }
-            title={
-              disabled
-                ? t("actionBar.format.customPromptWhisperOnly")
-                : t("actionBar.format.customPromptTitle")
-            }
+            aria-label={t("actionBar.format.customPromptTitle")}
+            title={t("actionBar.format.customPromptTitle")}
           >
             <ScrollText
               className={cn(
@@ -312,7 +291,7 @@ function CustomPromptPopover({
         <div className="border-t bg-muted/30">
           <div className="px-4 py-3">
             <p className="text-xs text-muted-foreground">
-              {t("actionBar.format.customPromptWhisperOnly")}
+              {t("actionBar.format.customPromptHint")}
             </p>
           </div>
         </div>

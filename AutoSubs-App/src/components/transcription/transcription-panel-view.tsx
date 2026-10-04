@@ -328,11 +328,7 @@ export function TranscriptionPanelView({
                       number={formatSectionNumber(5)}
                       label={t("actionBar.rows.options", "Options")}
                     >
-                      <OptionsRow
-                        selectedModelEngine={
-                          modelsState[selectedModelIndex]?.engine
-                        }
-                      />
+                      <OptionsRow />
                     </CompactSettingsRow>
                   </Card>
 

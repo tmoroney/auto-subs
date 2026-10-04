@@ -1,14 +1,15 @@
 //! Cohere speech recognition backend.
 
+mod model;
+
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::{
-    cohere::{CohereModel, CohereParams},
-    Quantization,
-};
-use transcribe_rs::{SpeechModel, TranscriptionResult};
+use transcribe_rs::onnx::Quantization;
+use transcribe_rs::TranscriptionResult;
+
+use self::model::{CohereModel, CohereParams};
 
 // Cohere decodes autoregressively per clip; cap chunk length to bound work/memory.
 const MAX_SEGMENT_SECONDS: f64 = 30.0;
@@ -19,18 +20,27 @@ pub struct CohereEngine {
     detected_lang: Option<String>,
 }
 
-impl OnnxEngine for CohereEngine {
-    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
-
-    fn load(model_path: &Path) -> Result<Self> {
-        let model = CohereModel::load(model_path, &Quantization::Int4)
+impl CohereEngine {
+    fn load_with_keywords(model_path: &Path, keywords: &[String]) -> Result<Self> {
+        let mut model = CohereModel::load(model_path, &Quantization::Int4)
             .map_err(|e| eyre!("Failed to load Cohere model: {}", e))?;
+        if !keywords.is_empty() {
+            model.set_keywords(keywords);
+        }
 
         Ok(Self {
             model,
             params: CohereParams::default(),
             detected_lang: None,
         })
+    }
+}
+
+impl OnnxEngine for CohereEngine {
+    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
+
+    fn load(model_path: &Path) -> Result<Self> {
+        Self::load_with_keywords(model_path, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
@@ -75,12 +85,19 @@ pub async fn transcribe_cohere(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || CohereEngine::load(model_path))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        CohereEngine::load_with_keywords(model_path, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
 
-    let supported_languages = engine.model.capabilities().languages;
+    let supported_languages = engine.model.languages();
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(
             "Cohere does not support source language '{}'. Supported languages: {}",
