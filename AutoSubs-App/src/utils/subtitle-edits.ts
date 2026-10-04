@@ -93,20 +93,19 @@ export function preserveSubtitleEdits(
         }
     }
     // The source group a caption belongs to. For a caption that gained words
-    // from a neighbour, that is the group the neighbour does not share.
+    // from its neighbours, that is a group neither neighbour shares.
     const homeGroup = (cueIndex: number) => {
         const groups = groupsOf(displayCues[cueIndex]);
-        const first = groups[0];
-        const last = groups[groups.length - 1];
-        if (first === last) return first;
+        if (groups.every(group => group === groups[0])) return groups[0];
         const previous = displayCues.slice(0, cueIndex).reverse().find(entry => entry.to > entry.from);
         const following = displayCues.slice(cueIndex + 1).find(entry => entry.to > entry.from);
-        const sharesStart = previous !== undefined && sourceWords[previous.to - 1].group === first;
-        const sharesEnd = following !== undefined && sourceWords[following.from].group === last;
-        if (sharesStart && !sharesEnd) return last;
-        if (sharesEnd && !sharesStart) return first;
-        const count = (group: number) => groups.filter(value => value === group).length;
-        return count(last) > count(first) ? last : first;
+        const shared = new Set<number>();
+        if (previous) shared.add(sourceWords[previous.to - 1].group);
+        if (following) shared.add(sourceWords[following.from].group);
+        const own = groups.filter(group => !shared.has(group));
+        const candidates = own.length ? own : groups;
+        const count = (group: number) => candidates.filter(value => value === group).length;
+        return candidates.reduce((best, group) => (count(group) > count(best) ? group : best));
     };
 
     // Maximal runs of consecutive edited cues get patched as one unit so a word

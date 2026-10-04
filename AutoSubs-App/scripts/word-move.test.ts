@@ -109,6 +109,19 @@ test("edited text that no longer matches its words moves only the text", () => {
   assert.equal(result.subtitles[1].start, 2.1);
 });
 
+test("a correction anywhere in the caption keeps the move text-only", () => {
+  const subtitles = [cue(0, [["one", 0, 1], ["two", 1.2, 2], ["three", 2.2, 3]]), cue(1, [["four", 3.5, 4]])];
+  for (const edited of ["one eleven three", "one three"]) {
+    const result = moveEdgeWord(subtitles, 0, "next", edited);
+    assert.ok(result);
+    assert.equal(result.subtitles[1].text, "three four");
+    assert.deepEqual(result.subtitles[0].words, subtitles[0].words, `${edited}: words stay with their caption`);
+    assert.deepEqual(result.subtitles[1].words, subtitles[1].words);
+    assert.deepEqual([result.subtitles[0].start, result.subtitles[0].end], [0, 3]);
+    assert.equal(result.subtitles[1].start, 3.5);
+  }
+});
+
 test("typed words without timings stay text-only instead of losing their caption", () => {
   const subtitles = [cue(0, [["one", 0, 1]]), cue(1, [["two", 1.2, 2]])];
   const result = moveEdgeWord(subtitles, 1, "previous", "two extra");

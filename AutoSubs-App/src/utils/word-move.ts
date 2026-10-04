@@ -13,17 +13,26 @@ const splitIntoWords = (text: string) => {
     return trimmed ? trimmed.split(/\s+/g) : [];
 };
 
-/**
- * How many words at one edge of a caption render exactly as `token`, or 0
- * when the edited text no longer matches its word timings there.
- */
+const separated = (words: Word[], index: number) =>
+    /^\s/.test(words[index].word) || words[index].line_number !== words[index - 1].line_number;
+
+/** Whether a caption's text still reads exactly as its timed words. */
+function matchesWords(words: Word[], text: string): boolean {
+    let rendered = '';
+    words.forEach((word, index) => {
+        const piece = word.word.trim();
+        if (rendered && piece && separated(words, index)) rendered += ' ';
+        rendered += piece;
+    });
+    return rendered === splitIntoWords(text).join(' ');
+}
+
+/** How many words at one edge of a caption render exactly as `token`, or 0. */
 function edgeWordCount(words: Word[], token: string, fromEnd: boolean): number {
-    const separated = (index: number) =>
-        /^\s/.test(words[index].word) || words[index].line_number !== words[index - 1].line_number;
     let text = '';
     for (let count = 1; count <= words.length; count++) {
         const index = fromEnd ? words.length - count : count - 1;
-        if (count > 1 && separated(fromEnd ? index + 1 : index)) return 0;
+        if (count > 1 && separated(words, fromEnd ? index + 1 : index)) return 0;
         const piece = words[index].word.trim();
         text = fromEnd ? piece + text : text + piece;
         if (text === token) return count;
@@ -60,8 +69,10 @@ export function moveEdgeWord(
     const targetText = (toPrevious ? [...targetTokens, token] : [token, ...targetTokens]).join(' ');
     const next = [...subtitles];
 
+    // Timings only describe the caption while its text is unedited. After a
+    // correction they no longer say where its remaining words are spoken.
     const words = current.words ?? [];
-    const count = edgeWordCount(words, token, !toPrevious);
+    const count = matchesWords(words, currentText) ? edgeWordCount(words, token, !toPrevious) : 0;
     const moved = toPrevious ? words.slice(0, count) : words.slice(words.length - count);
     const remaining = toPrevious ? words.slice(count) : words.slice(0, words.length - count);
     const movedStart = Number(moved[0]?.start);

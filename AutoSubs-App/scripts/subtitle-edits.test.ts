@@ -220,6 +220,16 @@ for (let moves = 0; moves < 3; moves++) {
 assert.deepEqual(longDisplay.map(segment => segment.text), ['a', 'b c d e']);
 assert.deepEqual(preserveSubtitleEdits(longSource, longDisplay).segments.map(segment => segment.text), ['a', 'b c d e']);
 
+// A caption that took a word from each neighbour keeps its own group, so
+// Reformat does not merge it into either neighbour.
+const bothSides = [cue('x y', ['x', 'y'], 0), cue('b c', ['b', 'c'], 2), cue('d e', ['d', 'e'], 4)];
+const tookLeft = moveEdgeWord(bothSides, 2, 'previous', 'd e');
+assert.ok(tookLeft);
+const tookBoth = moveEdgeWord(tookLeft.subtitles, 0, 'next', 'x y');
+assert.ok(tookBoth);
+assert.deepEqual(tookBoth.subtitles.map(segment => segment.text), ['x', 'y b c d', 'e']);
+assert.deepEqual(preserveSubtitleEdits(bothSides, tookBoth.subtitles).segments.map(segment => segment.text), ['x', 'y b c d', 'e']);
+
 // Emptying a caption removes it, and the words join their new speaker.
 const timedSpeakers = moveEdgeWord([speakerA, speakerB], 0, 'next', 'Hello');
 assert.ok(timedSpeakers);
