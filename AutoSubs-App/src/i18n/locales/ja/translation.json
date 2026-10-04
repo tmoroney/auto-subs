@@ -507,6 +507,16 @@
       "lastWord": "最後の単語",
       "toPrevious": "最初の単語を上へ ({{shortcut}})",
       "toNext": "最後の単語を下へ ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "タイミングを編集",
+      "start": "開始",
+      "end": "終了",
+      "errors": {
+        "invalid": "00:01:23.450 の形式で入力",
+        "order": "終了は開始より後にしてください",
+        "overlap": "他の字幕と重なっています"
+      }
     }
   },
   "theme": {

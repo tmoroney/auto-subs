@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CaptionTimingEditor } from "@/components/subtitles/caption-timing-editor"
+import { retimeSubtitle } from "@/utils/caption-timing"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -142,8 +144,20 @@ const SubtitleList = ({
         onMatchCountChange?.(filteredSubtitleItems.length);
     }, [filteredSubtitleItems.length, onMatchCountChange]);
 
+    // Keep the row whose timing is being edited mounted while it scrolls out
+    // of view, so its unsaved times survive.
+    const [timingSubtitleId, setTimingSubtitleId] = useState<number | null>(null);
+    const pinnedRow = timingSubtitleId === null
+        ? -1
+        : filteredSubtitleItems.findIndex(item => item.subtitle.id === timingSubtitleId);
+    const rangeExtractor = useCallback((range: Range) => {
+        const rows = defaultRangeExtractor(range);
+        return pinnedRow < 0 || rows.includes(pinnedRow) ? rows : [...rows, pinnedRow].sort((a, b) => a - b);
+    }, [pinnedRow]);
+
     const rowVirtualizer = useVirtualizer({
         count: filteredSubtitleItems.length,
+        rangeExtractor,
         getScrollElement: () => containerRef.current?.parentElement ?? null,
         estimateSize: () => ESTIMATED_SUBTITLE_ROW_HEIGHT,
         getItemKey: (index: number) => filteredSubtitleItems[index]?.subtitle.id ?? index,
@@ -319,6 +333,17 @@ const SubtitleList = ({
         return true;
     };
 
+    const retimeCaption = (index: number, start: number, end: number) => {
+        const result = retimeSubtitle(subtitlesRef.current, index, start, end);
+        if ("error" in result) return result.error;
+        // Like a text edit, a retime starts a new move history so undoing a
+        // move cannot silently revert it.
+        moveHistoryRef.current = { past: [], future: [] };
+        subtitlesRef.current = result.subtitles;
+        updateSubtitles(result.subtitles);
+        return null;
+    };
+
     const renderHighlightedText = (text: string, query: string) => {
         if (!query.trim() || !text) return text;
 
@@ -390,6 +415,13 @@ const SubtitleList = ({
                                         >
                                             {formatTimecode(subtitle.start)}
                                         </button>
+                                        <CaptionTimingEditor
+                                            start={subtitle.start}
+                                            end={subtitle.end}
+                                            onSave={(start, end) => retimeCaption(index, start, end)}
+                                            onOpenChange={(open) => setTimingSubtitleId(open ? subtitle.id : null)}
+                                            className={isSelected ? "" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"}
+                                        />
                                         {subtitle.speaker_id && speakers.length > 0 ? (
                                             editingSubtitleId === subtitle.id ? (
                                                 <Popover

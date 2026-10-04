@@ -507,6 +507,16 @@
       "lastWord": "마지막 단어",
       "toPrevious": "첫 단어 위로 이동 ({{shortcut}})",
       "toNext": "마지막 단어 아래로 이동 ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "타이밍 편집",
+      "start": "시작",
+      "end": "끝",
+      "errors": {
+        "invalid": "00:01:23.450 형식으로 입력하세요",
+        "order": "끝은 시작보다 뒤여야 합니다",
+        "overlap": "다른 자막과 겹칩니다"
+      }
     }
   },
   "theme": {

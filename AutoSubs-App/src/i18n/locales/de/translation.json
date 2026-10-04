@@ -493,6 +493,16 @@
       "lastWord": "Letztes Wort",
       "toPrevious": "Erstes Wort nach oben ({{shortcut}})",
       "toNext": "Letztes Wort nach unten ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "Timing bearbeiten",
+      "start": "Start",
+      "end": "Ende",
+      "errors": {
+        "invalid": "Zeit z. B. als 00:01:23.450",
+        "order": "Ende muss nach dem Start liegen",
+        "overlap": "Überschneidet andere Untertitel"
+      }
     }
   },
   "gettingStarted": {

@@ -493,6 +493,16 @@
       "lastWord": "Dernier mot",
       "toPrevious": "Monter le premier mot ({{shortcut}})",
       "toNext": "Descendre le dernier mot ({{shortcut}})"
+    },
+    "timing": {
+      "edit": "Modifier le minutage",
+      "start": "Début",
+      "end": "Fin",
+      "errors": {
+        "invalid": "Format attendu : 00:01:23.450",
+        "order": "La fin doit suivre le début",
+        "overlap": "Chevauche un autre sous-titre"
+      }
     }
   },
   "gettingStarted": {
