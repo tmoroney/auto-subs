@@ -1,0 +1,28 @@
+[package]
+name = "whisper-bench"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Standalone benchmark: whisper-rs (AutoSubs' Whisper path) vs transcribe.cpp"
+publish = false
+
+[workspace]
+
+[dependencies]
+hound = "3.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+whisper-rs = { version = "=0.16.0", default-features = false, optional = true }
+transcribe-cpp = { version = "=0.3.1", default-features = false, optional = true }
+
+[features]
+# Both libraries statically link their own ggml (0.9.5 vs 0.25.3), so they can
+# never be linked into the same binary. Build one engine per binary.
+wcpp = ["dep:whisper-rs"]
+tcpp = ["dep:transcribe-cpp"]
+metal = ["whisper-rs?/metal", "transcribe-cpp?/metal"]
+coreml = ["whisper-rs?/coreml"]
+
+[profile.release]
+debug = false
