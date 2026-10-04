@@ -1,16 +1,17 @@
 //! SenseVoice speech recognition backend.
 
+mod model;
+
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{
     LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions, WordTimestamp,
 };
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::{
-    sense_voice::{SenseVoiceModel, SenseVoiceParams},
-    Quantization,
-};
-use transcribe_rs::{TranscriptionSegment, TranscriptionResult};
+use crate::vendor::onnx::Quantization;
+use crate::vendor::{TranscriptionSegment, TranscriptionResult};
+
+use self::model::{SenseVoiceModel, SenseVoiceParams};
 
 // SenseVoice processes a whole clip in one non-autoregressive pass; cap chunk
 // length to bound memory on very long speech segments.
@@ -78,12 +79,13 @@ fn sense_voice_segments_to_words(segments: &[TranscriptionSegment], base_offset:
     words
 }
 
-impl OnnxEngine for SenseVoiceEngine {
-    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
-
-    fn load(model_path: &Path) -> Result<Self> {
-        let model = SenseVoiceModel::load(model_path, &Quantization::Int8)
+impl SenseVoiceEngine {
+    fn load_with_keywords(model_path: &Path, keywords: &[String]) -> Result<Self> {
+        let mut model = SenseVoiceModel::load(model_path, &Quantization::Int8)
             .map_err(|e| eyre!("Failed to load SenseVoice model: {}", e))?;
+        if !keywords.is_empty() {
+            model.set_keywords(keywords, None);
+        }
 
         Ok(Self {
             model,
@@ -93,6 +95,14 @@ impl OnnxEngine for SenseVoiceEngine {
             },
             detected_lang: None,
         })
+    }
+}
+
+impl OnnxEngine for SenseVoiceEngine {
+    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
+
+    fn load(model_path: &Path) -> Result<Self> {
+        Self::load_with_keywords(model_path, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
@@ -128,7 +138,14 @@ pub async fn transcribe_sense_voice(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || SenseVoiceEngine::load(model_path))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        SenseVoiceEngine::load_with_keywords(model_path, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }

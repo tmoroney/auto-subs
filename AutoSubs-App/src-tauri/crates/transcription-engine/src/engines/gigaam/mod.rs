@@ -1,18 +1,30 @@
-//! GigaAM (Sber) Russian speech recognition backend.
+//! GigaAM (Sber) speech recognition backend.
+
+mod model;
 
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::{
-    gigaam::{GigaAMModel, GigaAMParams},
-    Quantization,
-};
-use transcribe_rs::TranscriptionResult;
+use crate::vendor::onnx::Quantization;
+use crate::vendor::TranscriptionResult;
+
+use self::model::GigaAMModel;
 
 pub struct GigaamEngine {
     model: GigaAMModel,
-    params: GigaAMParams,
+}
+
+impl GigaamEngine {
+    fn load_with_keywords(model_path: &Path, keywords: &[String]) -> Result<Self> {
+        let mut model = GigaAMModel::load(model_path, &Quantization::Int8)
+            .map_err(|e| eyre!("Failed to load GigaAM model: {}", e))?;
+        if !keywords.is_empty() {
+            model.set_keywords(keywords, None);
+        }
+
+        Ok(Self { model })
+    }
 }
 
 impl OnnxEngine for GigaamEngine {
@@ -21,18 +33,12 @@ impl OnnxEngine for GigaamEngine {
     const MAX_SEGMENT_SECONDS: f64 = 25.0;
 
     fn load(model_path: &Path) -> Result<Self> {
-        let model = GigaAMModel::load(model_path, &Quantization::Int8)
-            .map_err(|e| eyre!("Failed to load GigaAM model: {}", e))?;
-
-        Ok(Self {
-            model,
-            params: GigaAMParams::default(),
-        })
+        Self::load_with_keywords(model_path, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
         self.model
-            .transcribe_with(samples, &self.params)
+            .transcribe_with(samples)
             .map_err(|e| eyre!("GigaAM transcription failed: {}", e))
     }
 
@@ -65,7 +71,14 @@ pub async fn transcribe_gigaam(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || GigaamEngine::load(model_path))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        GigaamEngine::load_with_keywords(model_path, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }

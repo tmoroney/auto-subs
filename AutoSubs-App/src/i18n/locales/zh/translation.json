@@ -131,10 +131,10 @@
       "customCharsDescription": "每行字符数",
       "customPromptButton": "提示",
       "customPromptTitle": "词汇和上下文",
-      "customPromptDescription": "添加术语、名称或上下文以引导 Whisper。",
+      "customPromptDescription": "添加术语、名称或上下文以提高转录准确性。",
       "customPromptPlaceholder": "例如：OpenAI, DaVinci Resolve — Resolve 字幕编辑教程。",
       "customPromptLanguageWarning": "请使用与音频相同的语言书写 — 使用不同语言的提示可能导致转录错误。",
-      "customPromptWhisperOnly": "仅 Whisper 模型支持。",
+      "customPromptHint": "用逗号分隔不同的名称或术语。",
       "customWordsTitle": "最大词数",
       "customWordsDescription": "每行词数"
     },
