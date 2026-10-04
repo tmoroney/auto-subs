@@ -168,8 +168,8 @@ assert.equal(speakerExport.defaultPath, "clip.srt");
 assert.deepEqual(speakerExport.filters, [
   { name: "SRT Files", extensions: ["srt"] },
 ]);
-assert.match(speakerExport.content, /Alex: Hello\nworld/);
-assert.match(speakerExport.content, /Blair: Second cue/);
+assert.match(speakerExport.buildContent(), /Alex: Hello\nworld/);
+assert.match(speakerExport.buildContent(), /Blair: Second cue/);
 
 const plainExport = buildSubtitleExportFile(
   "srt",
@@ -178,7 +178,7 @@ const plainExport = buildSubtitleExportFile(
   [speaker("Alex"), speaker("Blair")],
 );
 assert.equal(plainExport.defaultPath, "clip.srt");
-assert.equal(plainExport.content.includes("Alex"), false);
+assert.equal(plainExport.buildContent().includes("Alex"), false);
 
 const txtExport = buildSubtitleExportFile(
   "txt",
@@ -190,6 +190,6 @@ assert.equal(txtExport.defaultPath, "clip.txt");
 assert.deepEqual(txtExport.filters, [
   { name: "Text Files", extensions: ["txt"] },
 ]);
-assert.match(txtExport.content, /Alex:\nHello world/);
+assert.match(txtExport.buildContent(), /Alex:\nHello world/);
 
 console.log("srt-utils tests passed");

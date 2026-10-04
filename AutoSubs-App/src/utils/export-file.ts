@@ -8,7 +8,9 @@ export type SubtitleExportFormat = "srt" | "srt-speakers" | "txt";
 export interface SubtitleExportFile {
   defaultPath: string;
   filters: { name: string; extensions: string[] }[];
-  content: string;
+  /** Produces the file body. Call only after the user picks a save path —
+   * canceled dialogs should not pay for the generation work. */
+  buildContent: () => string;
 }
 
 /**
@@ -31,11 +33,12 @@ export function buildSubtitleExportFile(
         ? { name: "SRT Files", extensions: ["srt"] }
         : { name: "Text Files", extensions: ["txt"] },
     ],
-    content: isSrt
-      ? generateSrt(subtitles, {
-          includeSpeakerLabels: format === "srt-speakers",
-          speakers,
-        })
-      : generateTranscriptTxt(subtitles, speakers),
+    buildContent: () =>
+      isSrt
+        ? generateSrt(subtitles, {
+            includeSpeakerLabels: format === "srt-speakers",
+            speakers,
+          })
+        : generateTranscriptTxt(subtitles, speakers),
   };
 }

@@ -345,12 +345,13 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         return;
       }
 
-      if (!exportFile.content || exportFile.content.trim() === '') {
+      const content = exportFile.buildContent();
+      if (!content || content.trim() === '') {
         console.error(`Generated ${format} data is empty`);
         throw new Error(`Generated ${format} data is empty`);
       }
 
-      await writeTextFile(filePath, exportFile.content);
+      await writeTextFile(filePath, content);
       console.log(`${format} file saved successfully to`, filePath);
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);
