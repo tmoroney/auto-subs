@@ -69,6 +69,9 @@
     "importFile": "Importar archivo",
     "exportAsSrt": "Exportar como SRT",
     "exportAsSrtSpeakers": "SRT con hablantes",
+    "exportAsTxt": "Exportar como TXT",
+    "exportAsJson": "Exportar como JSON",
+    "exportFailed": "No se pudo guardar el archivo exportado.",
     "fileDialog": {
       "subtitleFiles": "Archivos de subtítulos"
     },
@@ -84,6 +87,10 @@
       "txt": {
         "title": "Transcripción (.txt)",
         "description": "Texto plano con etiquetas de hablante para LLMs."
+      },
+      "json": {
+        "title": "JSON en bruto (.json)",
+        "description": "Tiempos por palabra, hablantes y ediciones."
       }
     }
   },

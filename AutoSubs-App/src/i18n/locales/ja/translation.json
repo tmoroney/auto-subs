@@ -141,6 +141,9 @@
     "dropHere": "ファイルをここにドロップするかクリックして選択",
     "exportAsSrt": "SRT としてエクスポート",
     "exportAsSrtSpeakers": "話者付きSRT",
+    "exportAsTxt": "TXT としてエクスポート",
+    "exportAsJson": "JSON としてエクスポート",
+    "exportFailed": "書き出しファイルを保存できませんでした。",
     "importFile": "ファイルをインポート",
     "importTab": "インポート",
     "exportTab": "エクスポート",
@@ -161,6 +164,10 @@
       "txt": {
         "title": "文字起こし (.txt)",
         "description": "利用可能な場合は話者ラベルを含む、LLM 向けのプレーンテキスト書き出しです。"
+      },
+      "json": {
+        "title": "生JSON (.json)",
+        "description": "単語の時刻、話者と編集を含みます。"
       }
     }
   },

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Captions, FileText, LucideIcon, Users } from "lucide-react"
+import { Captions, FileJson, FileText, LucideIcon, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useTranslation } from "react-i18next"
@@ -42,6 +42,13 @@ const EXPORT_FORMATS: ExportFormatConfig[] = [
         titleKey: 'importExport.exportFormats.txt.title',
         descriptionKey: 'importExport.exportFormats.txt.description',
         ariaLabelKey: 'importExport.exportAsTxt',
+    },
+    {
+        format: 'json',
+        icon: FileJson,
+        titleKey: 'importExport.exportFormats.json.title',
+        descriptionKey: 'importExport.exportFormats.json.description',
+        ariaLabelKey: 'importExport.exportAsJson',
     },
 ]
 

@@ -3,42 +3,59 @@ import { generateSrt } from "./srt-utils.ts";
 import { generateTranscriptTxt } from "./transcript-txt.ts";
 
 /** Export formats offered by the subtitle export menu. */
-export type SubtitleExportFormat = "srt" | "srt-speakers" | "txt";
+export type SubtitleExportFormat = "srt" | "srt-speakers" | "txt" | "json";
 
-export interface SubtitleExportFile {
+/**
+ * Formats whose file body is built straight from cues and speakers. `json`
+ * also needs the saved document, so it is written by
+ * `writeJsonTranscriptExport` in `./subtitle-export.ts` instead.
+ */
+export type SubtitleExportTextFormat = Exclude<SubtitleExportFormat, "json">;
+
+export interface SubtitleExportDialogOptions {
   defaultPath: string;
   filters: { name: string; extensions: string[] }[];
-  /** Produces the file body. Call only after the user picks a save path —
-   * canceled dialogs should not pay for the generation work. */
-  buildContent: () => string;
+}
+
+/** Save-dialog options for one export format. */
+export function subtitleExportDialogOptions(
+  format: SubtitleExportFormat,
+  baseName: string,
+): SubtitleExportDialogOptions {
+  switch (format) {
+    case "srt":
+    case "srt-speakers":
+      return {
+        defaultPath: `${baseName}.srt`,
+        filters: [{ name: "SRT Files", extensions: ["srt"] }],
+      };
+    case "txt":
+      return {
+        defaultPath: `${baseName}.txt`,
+        filters: [{ name: "Text Files", extensions: ["txt"] }],
+      };
+    case "json":
+      return {
+        defaultPath: `${baseName}.json`,
+        filters: [{ name: "JSON Files", extensions: ["json"] }],
+      };
+  }
 }
 
 /**
- * Turns an export-menu selection into the file the save dialog should write.
- * Only `srt-speakers` prefixes cues with speaker names; plain `srt` stays
- * caption text only, and `txt` is the speaker-grouped transcript.
+ * Builds the file body for an srt or txt export. Only `srt-speakers` prefixes
+ * cues with speaker names; plain `srt` stays caption text only, and `txt` is
+ * the speaker-grouped transcript.
  */
-export function buildSubtitleExportFile(
-  format: SubtitleExportFormat,
-  baseName: string,
+export function buildSubtitleExportContent(
+  format: SubtitleExportTextFormat,
   subtitles: Subtitle[],
   speakers: Speaker[],
-): SubtitleExportFile {
-  const isSrt = format === "srt" || format === "srt-speakers";
-
-  return {
-    defaultPath: `${baseName}.${isSrt ? "srt" : "txt"}`,
-    filters: [
-      isSrt
-        ? { name: "SRT Files", extensions: ["srt"] }
-        : { name: "Text Files", extensions: ["txt"] },
-    ],
-    buildContent: () =>
-      isSrt
-        ? generateSrt(subtitles, {
-            includeSpeakerLabels: format === "srt-speakers",
-            speakers,
-          })
-        : generateTranscriptTxt(subtitles, speakers),
-  };
+): string {
+  return format === "txt"
+    ? generateTranscriptTxt(subtitles, speakers)
+    : generateSrt(subtitles, {
+        includeSpeakerLabels: format === "srt-speakers",
+        speakers,
+      });
 }

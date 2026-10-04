@@ -7,6 +7,8 @@ import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir, basename } from '@tauri-apps/api/path';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import {
   generateSubtitleDocumentFilename,
   resolveSubtitleDocumentFilename,
@@ -14,11 +16,21 @@ import {
   saveSubtitleDocument,
   updateSubtitleDocument,
   type TranscriptSourceType,
-  type TranscriptMetadata,
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
 import { parseSrt } from '@/utils/srt-utils';
-import { buildSubtitleExportFile, type SubtitleExportFormat } from '@/utils/export-file';
+import {
+  buildSubtitleExportContent,
+  subtitleExportDialogOptions,
+  type SubtitleExportFormat,
+} from '@/utils/export-file';
+import {
+  canExportSubtitles,
+  subtitleDocumentSourceName,
+  subtitleExportBaseName,
+  subtitleExportWritePath,
+  writeJsonTranscriptExport,
+} from '@/utils/subtitle-export';
 import { loadFontForLanguage } from '@/lib/font-loader';
 import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
 
@@ -62,6 +74,8 @@ interface SubtitleDocumentContextType {
   exportSubtitlesAs: (format: SubtitleExportFormat, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
+  openStoredSubtitleDocument: (filename: string, transcript: any) => void;
+  closeDeletedSubtitleDocument: (filename: string) => void;
 }
 
 const SubtitleDocumentContext = createContext<SubtitleDocumentContextType | null>(null);
@@ -76,13 +90,19 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   // Prefer the source audio file's name, else the timeline it came from.
   // Deliberately excludes `displayName`, which falls back to the generated
   // document filename and would surface an id like `example__tr_2026…`.
-  const sourceNameFrom = (metadata?: Partial<TranscriptMetadata> | null) =>
-    metadata?.sourceFileName?.trim() || metadata?.timelineName?.trim() || null;
+  const documentFilenameRef = useRef(currentSubtitleDocumentFilename);
+  documentFilenameRef.current = currentSubtitleDocumentFilename;
 
   // Debounce subtitle file writes to prevent concurrent read-parse-stringify-write
   // cycles from accumulating in the V8 heap when the user types quickly.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{ subtitles: Subtitle[]; filename: string } | null>(null);
+  // Export reads these after the save dialog closes. They are used only when
+  // the same document is still open, so a different transcript cannot mix in.
+  const subtitlesRef = useRef(subtitles);
+  const speakersRef = useRef(speakers);
+  subtitlesRef.current = subtitles;
+  speakersRef.current = speakers;
   const { timelineInfo: resolveTimeline } = useResolve();
   const { timelineInfo: adobeTimeline } = useAdobe();
   const { selectedIntegration } = useIntegration();
@@ -98,13 +118,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       if (transcript) {
         console.log("Transcript loaded:", transcript);
         setCurrentSubtitleDocumentFilename(filename);
-        setCurrentSubtitleDocumentSourceName(
-          sourceNameFrom(transcript.metadata) ??
-            sourceNameFrom({
-              sourceFileName: transcript.sourceFileName,
-              timelineName: transcript.timelineName,
-            }),
-        );
+        setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
@@ -257,7 +271,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
 
     setCurrentSubtitleDocumentFilename(filename);
     setCurrentSubtitleDocumentSourceName(
-      sourceNameFrom(transcript.metadata) ?? currentSubtitleDocumentSourceName,
+      subtitleDocumentSourceName(transcript) ?? currentSubtitleDocumentSourceName,
     );
     const source: Subtitle[] = transcript.editedSegments ?? transcript.originalSegments ?? transcript.segments ?? [];
     // Normalize engine tokens without content formatting so unchanged words
@@ -312,40 +326,63 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     const speakersToExport = speakersParam || speakers;
     
     try {
-      if (!subtitlesToExport || subtitlesToExport.length === 0) {
+      if (!canExportSubtitles(subtitlesToExport)) {
         throw new Error('No subtitles available to export');
       }
 
-      // Use transcript name as base filename if available, otherwise fall back to default
-      let baseName = 'subtitles';
-      if (currentSubtitleDocumentFilename) {
+      const startedFilename = currentSubtitleDocumentFilename;
+      const startedSubtitles = subtitlesToExport;
+      const startedSpeakers = speakersToExport;
+
+      let storageName: string | null = null;
+      if (startedFilename) {
         try {
-          const filename = await basename(currentSubtitleDocumentFilename);
-          // Remove the file extension
-          baseName = filename.replace(/\.[^/.]+$/, '');
+          storageName = await basename(startedFilename);
         } catch (error) {
           console.warn('Failed to extract filename from path, using default:', error);
         }
       }
-      
-      const exportFile = buildSubtitleExportFile(
-        format,
-        baseName,
-        subtitlesToExport,
-        speakersToExport,
+      const baseName = subtitleExportBaseName(
+        currentSubtitleDocumentSourceName,
+        storageName,
       );
 
-      const filePath = await save({
-        defaultPath: exportFile.defaultPath,
-        filters: exportFile.filters,
-      });
+      const { defaultPath, filters } = subtitleExportDialogOptions(format, baseName);
+      const filePath = subtitleExportWritePath(await save({
+        defaultPath,
+        filters,
+      }));
 
       if (!filePath) {
         console.log('Save was canceled');
         return;
       }
 
-      const content = exportFile.buildContent();
+      if (format === 'json') {
+        const outcome = await writeJsonTranscriptExport({
+          chosenPath: filePath,
+          hasSavedDocument: Boolean(startedFilename),
+          flush: flushPendingSubtitleSave,
+          readDocument: () => readSubtitleDocument(startedFilename as string),
+          write: writeTextFile,
+          startedFilename,
+          currentFilename: () => documentFilenameRef.current,
+          startedSubtitles,
+          startedSpeakers,
+          liveSubtitles: () => subtitlesRef.current,
+          liveSpeakers: () => speakersRef.current,
+        });
+        if (outcome === 'written') {
+          console.log('JSON transcript file saved successfully to', filePath);
+        }
+        return;
+      }
+
+      const sameDocument = documentFilenameRef.current === startedFilename;
+      const exportSubtitles = sameDocument ? subtitlesRef.current : startedSubtitles;
+      const exportSpeakers = sameDocument ? speakersRef.current : startedSpeakers;
+
+      const content = buildSubtitleExportContent(format, exportSubtitles, exportSpeakers);
       if (!content || content.trim() === '') {
         console.error(`Generated ${format} data is empty`);
         throw new Error(`Generated ${format} data is empty`);
@@ -355,6 +392,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       console.log(`${format} file saved successfully to`, filePath);
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);
+      toast.error(i18n.t("importExport.exportFailed"));
     }
   }
 
@@ -419,6 +457,33 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     }
   }
 
+  const openStoredSubtitleDocument = (filename: string, transcript: any) => {
+    setSubtitles(transcript?.segments || []);
+    setSpeakers(transcript?.speakers || []);
+    setCurrentSubtitleDocumentFilename(filename);
+    setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
+    if (typeof transcript?.mark_in === "number") {
+      setMarkIn(transcript.mark_in);
+    }
+    loadFontForLanguage(transcript?.language);
+  };
+
+  const closeDeletedSubtitleDocument = (filename: string) => {
+    if (pendingSaveRef.current?.filename === filename) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      pendingSaveRef.current = null;
+    }
+    if (documentFilenameRef.current !== filename) return;
+    setSubtitles([]);
+    setSpeakers([]);
+    setCurrentSubtitleDocumentFilename(null);
+    setCurrentSubtitleDocumentSourceName(null);
+    setMarkIn(0);
+  };
+
   return (
     <SubtitleDocumentContext.Provider value={{
       subtitles,
@@ -437,6 +502,8 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       exportSubtitlesAs,
       importSubtitles,
       loadSubtitles,
+      openStoredSubtitleDocument,
+      closeDeletedSubtitleDocument,
     }}>
       {children}
     </SubtitleDocumentContext.Provider>

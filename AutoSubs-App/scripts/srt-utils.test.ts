@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { parseSrt, generateSrt } from "../src/utils/srt-utils.ts";
-import { buildSubtitleExportFile } from "../src/utils/export-file.ts";
+import {
+  buildSubtitleExportContent,
+  subtitleExportDialogOptions,
+} from "../src/utils/export-file.ts";
 import { subtitleToBackendSegment } from "../src/api/formatting-api.ts";
 import type { Speaker, Subtitle } from "../src/types.ts";
 
@@ -158,38 +161,38 @@ assert.equal(multilineCues[0].text, "Host DJ: Hi");
 
 // The export menu's "SRT with speakers" entry must reach the provider as a
 // labeled .srt, while plain "Subtitles (.srt)" stays unlabeled.
-const speakerExport = buildSubtitleExportFile(
-  "srt-speakers",
-  "clip",
-  spoken,
-  [speaker("Alex"), speaker("Blair")],
-);
-assert.equal(speakerExport.defaultPath, "clip.srt");
-assert.deepEqual(speakerExport.filters, [
+const speakerOptions = subtitleExportDialogOptions("srt-speakers", "clip");
+assert.equal(speakerOptions.defaultPath, "clip.srt");
+assert.deepEqual(speakerOptions.filters, [
   { name: "SRT Files", extensions: ["srt"] },
 ]);
-assert.match(speakerExport.buildContent(), /Alex: Hello\nworld/);
-assert.match(speakerExport.buildContent(), /Blair: Second cue/);
+const speakerContent = buildSubtitleExportContent(
+  "srt-speakers",
+  spoken,
+  [speaker("Alex"), speaker("Blair")],
+);
+assert.match(speakerContent, /Alex: Hello\nworld/);
+assert.match(speakerContent, /Blair: Second cue/);
 
-const plainExport = buildSubtitleExportFile(
+const plainOptions = subtitleExportDialogOptions("srt", "clip");
+assert.equal(plainOptions.defaultPath, "clip.srt");
+const plainContent = buildSubtitleExportContent(
   "srt",
-  "clip",
   spoken,
   [speaker("Alex"), speaker("Blair")],
 );
-assert.equal(plainExport.defaultPath, "clip.srt");
-assert.equal(plainExport.buildContent().includes("Alex"), false);
+assert.equal(plainContent.includes("Alex"), false);
 
-const txtExport = buildSubtitleExportFile(
-  "txt",
-  "clip",
-  spoken,
-  [speaker("Alex"), speaker("Blair")],
-);
-assert.equal(txtExport.defaultPath, "clip.txt");
-assert.deepEqual(txtExport.filters, [
+const txtOptions = subtitleExportDialogOptions("txt", "clip");
+assert.equal(txtOptions.defaultPath, "clip.txt");
+assert.deepEqual(txtOptions.filters, [
   { name: "Text Files", extensions: ["txt"] },
 ]);
-assert.match(txtExport.buildContent(), /Alex:\nHello world/);
+const txtContent = buildSubtitleExportContent(
+  "txt",
+  spoken,
+  [speaker("Alex"), speaker("Blair")],
+);
+assert.match(txtContent, /Alex:\nHello world/);
 
 console.log("srt-utils tests passed");

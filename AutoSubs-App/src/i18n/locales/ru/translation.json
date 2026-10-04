@@ -69,6 +69,9 @@
     "importFile": "Импортировать файл",
     "exportAsSrt": "Экспортировать в SRT",
     "exportAsSrtSpeakers": "SRT со спикерами",
+    "exportAsTxt": "Экспортировать в TXT",
+    "exportAsJson": "Экспортировать в JSON",
+    "exportFailed": "Не удалось сохранить файл экспорта.",
     "fileDialog": {
       "subtitleFiles": "Файлы субтитров"
     },
@@ -84,6 +87,10 @@
       "txt": {
         "title": "Транскрипт (.txt)",
         "description": "Текст с метками спикера для LLM."
+      },
+      "json": {
+        "title": "Исходный JSON (.json)",
+        "description": "Тайминги слов, спикеры и правки."
       }
     }
   },
