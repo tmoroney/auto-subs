@@ -400,14 +400,21 @@ impl ParakeetModel {
             state: DecoderState,
             /// Sum of log-softmax over emitted tokens and blanks.
             score: f64,
-            /// Sum of graph bonuses over emitted tokens.
+            /// Accumulated bonus of the in-progress keyword path, always
+            /// equal to `node_score(trie)` (refunded on divergence).
             boost: f64,
+            /// Permanent bonus locked in by completed keywords; already
+            /// includes the current node's score when `trie` is terminal.
+            committed: f64,
+            /// `committed` plus the in-progress score (0 at terminal nodes,
+            /// whose score is already inside `committed`).
+            bonus: f64,
             trie: usize,
         }
 
         impl Hyp {
             fn rank(&self, alpha: f64) -> f64 {
-                self.score + alpha * self.boost
+                self.score + alpha * self.bonus
             }
         }
 
@@ -418,6 +425,8 @@ impl ParakeetModel {
             state: initial_state,
             score: 0.0,
             boost: 0.0,
+            committed: 0.0,
+            bonus: 0.0,
             // Parakeet's BPE pieces carry the word-start marker inside the
             // piece, so hypotheses start at the root.
             trie: graph.initial_state(None),
@@ -493,10 +502,25 @@ impl ParakeetModel {
                                 state: hyp.state.clone(),
                                 score: hyp.score + logp,
                                 boost: hyp.boost,
+                                committed: hyp.committed,
+                                bonus: hyp.bonus,
                                 trie: hyp.trie,
                             });
                         } else {
                             let (bonus, trie) = graph.advance(hyp.trie, token);
+                            // `boost` tracks the in-progress path score
+                            // (negative deltas refund it when the hypothesis
+                            // diverges). Reaching a keyword-final node locks
+                            // that score into `committed`, which is never
+                            // refunded — a completed keyword keeps its credit
+                            // while partial matches that die still refund.
+                            let boost = hyp.boost + bonus as f64;
+                            let terminal = graph.is_terminal(trie);
+                            let committed = if terminal {
+                                hyp.committed + boost
+                            } else {
+                                hyp.committed
+                            };
                             let mut tokens = hyp.tokens.clone();
                             tokens.push(token);
                             let mut timestamps = hyp.timestamps.clone();
@@ -506,13 +530,9 @@ impl ParakeetModel {
                                 timestamps,
                                 state: new_state.clone(),
                                 score: hyp.score + logp,
-                                // Emitted tokens are permanent evidence: only
-                                // positive bonuses accumulate for ranking, so
-                                // a completed keyword keeps its credit instead
-                                // of being refunded on the next unrelated
-                                // token (the trie state itself still tracks
-                                // the true position for future bonuses).
-                                boost: hyp.boost + (bonus as f64).max(0.0),
+                                boost,
+                                committed,
+                                bonus: committed + if terminal { 0.0 } else { boost },
                                 trie,
                             });
                         }

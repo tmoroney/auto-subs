@@ -100,14 +100,16 @@ impl CohereModel {
 
     /// Tokenize `keywords` into the decoder's context slot, as a
     /// comma-separated phrase list. `load_vocab` already turned `▁` into
-    /// spaces, so the pieces can be matched against plain text.
+    /// spaces, so the pieces can be matched against plain text. Whole phrases
+    /// only — keywords that would push the context past the cap are dropped
+    /// whole, since the context shares the model's 1024-position window with
+    /// the generated text.
     pub fn set_keywords(&mut self, keywords: &[String]) {
-        let text = format!(" {}", keywords.join(", "));
-        let mut ids = keyword_boost::tokenize_text(&self.vocab, &text);
-        // The context shares the model's 1024-position window with the
-        // generated text — leave room for output.
-        ids.truncate(keyword_boost::MAX_CONTEXT_TOKENS);
-        self.context_ids = ids.into_iter().map(i64::from).collect();
+        self.context_ids =
+            keyword_boost::tokenize_context(&self.vocab, keywords, keyword_boost::MAX_CONTEXT_TOKENS)
+                .into_iter()
+                .map(i64::from)
+                .collect();
     }
 
     /// Languages supported by the Cohere export.

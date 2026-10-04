@@ -48,10 +48,8 @@ pub fn parse_keywords(prompt: &str) -> Vec<String> {
             continue;
         }
         if phrase.chars().count() > MAX_KEYWORD_CHARS {
-            tracing::warn!(
-                "Keyword phrase over {MAX_KEYWORD_CHARS} chars skipped: {:?}",
-                phrase.chars().take(40).collect::<String>()
-            );
+            // No content in the log: prompt phrases can contain private names.
+            tracing::warn!("Keyword phrase over {MAX_KEYWORD_CHARS} chars skipped");
             continue;
         }
         if !seen.insert(phrase.to_lowercase()) {
@@ -129,12 +127,7 @@ impl<'a> PieceIndex<'a> {
     }
 }
 
-/// Tokenize arbitrary text into model piece ids by greedy longest-match.
-/// Characters that match no piece are skipped rather than failing, so this
-/// always succeeds; used for canary/cohere context-slot injection where a
-/// partial tokenization is still useful.
-pub fn tokenize_text(vocab: &[String], text: &str) -> Vec<i32> {
-    let index = PieceIndex::new(vocab);
+fn tokenize_text_with(index: &PieceIndex, text: &str) -> Vec<i32> {
     let bytes = text.as_bytes();
     let mut ids = Vec::new();
     let mut pos = 0;
@@ -146,6 +139,40 @@ pub fn tokenize_text(vocab: &[String], text: &str) -> Vec<i32> {
             }
             None => pos += 1,
         }
+    }
+    ids
+}
+
+/// Tokenize arbitrary text into model piece ids by greedy longest-match.
+/// Characters that match no piece are skipped rather than failing, so this
+/// always succeeds; used for canary/cohere context-slot injection where a
+/// partial tokenization is still useful.
+pub fn tokenize_text(vocab: &[String], text: &str) -> Vec<i32> {
+    tokenize_text_with(&PieceIndex::new(vocab), text)
+}
+
+/// Tokenize keyword phrases for context-slot injection (canary/cohere),
+/// producing " kw1, kw2, ...". Only whole phrases are included: once the
+/// context would exceed `max_tokens`, remaining keywords are dropped with a
+/// warning rather than cut mid-phrase.
+pub fn tokenize_context(vocab: &[String], keywords: &[String], max_tokens: usize) -> Vec<i32> {
+    let index = PieceIndex::new(vocab);
+    let sep = tokenize_text_with(&index, ",");
+    let mut ids = Vec::new();
+    let mut first = true;
+    for kw in keywords {
+        let mut piece_ids = tokenize_text_with(&index, &format!(" {}", kw.trim()));
+        if !first {
+            piece_ids.splice(0..0, sep.iter().copied());
+        }
+        first = false;
+        if ids.len() + piece_ids.len() > max_tokens {
+            tracing::warn!(
+                "Keyword context truncated at {max_tokens} tokens; remaining phrases omitted"
+            );
+            break;
+        }
+        ids.extend(piece_ids);
     }
     ids
 }
@@ -212,6 +239,8 @@ struct Node {
     token_score: f32,
     /// Accumulated bonus along the best path from the root to this node.
     node_score: f32,
+    /// This node completes at least one keyword.
+    terminal: bool,
     /// Longest proper suffix of this node that is also a keyword prefix.
     fail: usize,
     next: HashMap<i32, usize>,
@@ -230,6 +259,7 @@ impl KeywordGraph {
             nodes: vec![Node {
                 token_score: 0.0,
                 node_score: 0.0,
+                terminal: false,
                 fail: 0,
                 next: HashMap::new(),
             }],
@@ -263,6 +293,7 @@ impl KeywordGraph {
                         graph.nodes.push(Node {
                             token_score,
                             node_score,
+                            terminal: false,
                             fail: 0,
                             next: HashMap::new(),
                         });
@@ -272,6 +303,7 @@ impl KeywordGraph {
                     }
                 }
             }
+            graph.nodes[node].terminal = true;
         }
         if !inserted {
             return None;
@@ -375,6 +407,19 @@ impl KeywordGraph {
     /// previous state). Log-softmax normalizing puts every engine's outputs
     /// on the same scale as the graph scores.
     pub fn boosted_argmax(&self, logits: &[f32], state: usize, alpha: f32) -> (i32, usize) {
+        self.boosted_argmax_except(logits, state, alpha, -1)
+    }
+
+    /// Same as `boosted_argmax` but never selects `exclude` — used when the
+    /// top boosted token cannot emit (e.g. a CTC repeat that would collapse)
+    /// and the next-best emittable boosted token should win instead.
+    pub fn boosted_argmax_except(
+        &self,
+        logits: &[f32],
+        state: usize,
+        alpha: f32,
+        exclude: i32,
+    ) -> (i32, usize) {
         let transitions = self.transitions(state);
         let max = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
         let sum: f32 = logits.iter().map(|&l| (l - max).exp()).sum();
@@ -383,6 +428,9 @@ impl KeywordGraph {
         let mut best = f32::NEG_INFINITY;
         let mut best_id = -1i32;
         for (v, &l) in logits.iter().enumerate() {
+            if v as i32 == exclude {
+                continue;
+            }
             let bonus = transitions.get(&(v as i32)).copied().unwrap_or(0.0);
             let score = l - log_z + alpha * bonus;
             if score > best {
@@ -391,6 +439,12 @@ impl KeywordGraph {
             }
         }
         (best_id, self.advance(state, best_id).1)
+    }
+
+    /// Whether `state` completes a keyword. Beam decoders lock a completed
+    /// phrase's bonus into their permanent credit at this point.
+    pub fn is_terminal(&self, state: usize) -> bool {
+        self.nodes[state].terminal
     }
 
     #[cfg(test)]
@@ -438,8 +492,10 @@ pub fn ctc_greedy_decode_boosted(
             // A boosted argmax that lands on the previous token can never emit
             // (it would collapse as a repeat), and keeping it would starve the
             // blank the model wants between doubled letters (the two `l`s in
-            // "ball"). Fall back to the raw argmax in that case; if the raw
-            // pick is also the repeat, normal collapse semantics apply.
+            // "ball"). If the raw argmax is not the repeat, re-pick the best
+            // boosted token excluding it so other keyword candidates still
+            // outrank the raw choice; if the raw pick is also the repeat,
+            // normal collapse semantics apply.
             if max_id as i64 == prev_id {
                 let raw_id = frame_buf
                     .iter()
@@ -448,8 +504,10 @@ pub fn ctc_greedy_decode_boosted(
                     .map(|(idx, _)| idx as i32)
                     .unwrap_or(blank_id as i32);
                 if raw_id as i64 != prev_id {
-                    max_id = raw_id;
-                    next_state = graph.advance(state, max_id).1;
+                    let (id, state2) =
+                        graph.boosted_argmax_except(&frame_buf, state, alpha, max_id);
+                    max_id = id;
+                    next_state = state2;
                 }
             }
             let max_id = max_id as i64;
