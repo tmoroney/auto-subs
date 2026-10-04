@@ -422,6 +422,38 @@ impl ParakeetModel {
             }
         }
 
+        /// Bonus bookkeeping for emitting `token` from `hyp`: the new trie
+        /// state, commit list, permanent credit, live path score, and the
+        /// ranking bonus. The beam's candidate shortlist uses the same
+        /// formula as the actual expansion, so shortlisting by post-emit
+        /// rank never drops a candidate the beam would have favored.
+        fn emit_bonus(
+            graph: &KeywordGraph,
+            hyp: &Hyp,
+            token: i32,
+        ) -> (usize, Vec<(usize, f64)>, f64, f64, f64) {
+            let (bonus, trie) = graph.advance(hyp.trie, token);
+            let boost = hyp.boost + bonus as f64;
+            // Strict ancestors only: reaching a node that already completed
+            // the same keyword is a new occurrence ("cat cat") and credits
+            // in full.
+            let covered = hyp
+                .commits
+                .iter()
+                .filter(|&&(node, _)| node != trie && graph.is_ancestor(node, trie))
+                .map(|&(_, s)| s)
+                .fold(0.0f64, f64::max);
+            let mut committed = hyp.committed;
+            let mut commits = hyp.commits.clone();
+            let mut bonus_rank = committed + boost - covered;
+            if graph.is_terminal(trie) {
+                committed += boost - covered;
+                commits.push((trie, boost));
+                bonus_rank = committed;
+            }
+            (trie, commits, committed, boost, bonus_rank)
+        }
+
         let initial_state = self.create_decoder_state()?;
         let mut beam = vec![Hyp {
             tokens: Vec::new(),
@@ -494,17 +526,21 @@ impl ParakeetModel {
                         top.push((self.blank_idx, log_probs[self.blank_idx as usize]));
                     }
                     // Keyword candidates: only the trie transitions whose
-                    // boosted score could plausibly survive pruning — the
+                    // post-emit rank could plausibly survive pruning — the
                     // best BEAM of them — so a large keyword list can't
-                    // explode the per-round expansion count.
+                    // explode the per-round expansion count. Ranked exactly
+                    // like the expansion does (score + alpha * bonus, with
+                    // committed keyword credit included), so a viable
+                    // following keyword is never dropped pre-emptively.
                     let mut kw: Vec<(i32, f64)> = Vec::with_capacity(BEAM + 1);
-                    for (&token, &bonus) in graph.transitions(hyp.trie) {
-                        let boosted = log_probs[token as usize] + alpha * bonus as f64;
-                        if kw.len() == BEAM && boosted <= kw[BEAM - 1].1 {
+                    for &token in graph.transitions(hyp.trie).keys() {
+                        let (_, _, _, _, bonus_rank) = emit_bonus(graph, &hyp, token);
+                        let rank = hyp.score + log_probs[token as usize] + alpha * bonus_rank;
+                        if kw.len() == BEAM && rank <= kw[BEAM - 1].1 {
                             continue;
                         }
-                        let pos = kw.partition_point(|&(_, s)| s >= boosted);
-                        kw.insert(pos, (token, boosted));
+                        let pos = kw.partition_point(|&(_, s)| s >= rank);
+                        kw.insert(pos, (token, rank));
                         if kw.len() > BEAM {
                             kw.pop();
                         }
@@ -529,38 +565,16 @@ impl ParakeetModel {
                                 trie: hyp.trie,
                             });
                         } else {
-                            let (bonus, trie) = graph.advance(hyp.trie, token);
                             // `boost` tracks the current keyword path score
                             // (negative deltas refund it on divergence). A
                             // completed keyword's score is locked into
-                            // `committed`, which is never refunded. `covered`
-                            // is the portion of `boost` already committed by
-                            // a completed keyword still on this path — the
-                            // deepest such commit, whose score contains the
-                            // shallower ones. So "cats" through "cat" credits
-                            // only its extra score, while a divergent step
-                            // drops the coverage and a following keyword
-                            // scores in full.
-                            let boost = hyp.boost + bonus as f64;
-                            let covered = hyp
-                                .commits
-                                .iter()
-                                // Strict ancestors only: reaching a node that
-                                // already completed the same keyword is a new
-                                // occurrence ("cat cat") and credits in full.
-                                .filter(|&&(node, _)| {
-                                    node != trie && graph.is_ancestor(node, trie)
-                                })
-                                .map(|&(_, s)| s)
-                                .fold(0.0f64, f64::max);
-                            let mut committed = hyp.committed;
-                            let mut commits = hyp.commits.clone();
-                            let mut bonus_rank = committed + boost - covered;
-                            if graph.is_terminal(trie) {
-                                committed += boost - covered;
-                                commits.push((trie, boost));
-                                bonus_rank = committed;
-                            }
+                            // `committed`, which is never refunded; `commits`
+                            // records each completed node so extensions like
+                            // "cats" through "cat" credit only the extra
+                            // score, while a divergent step drops coverage
+                            // and a following keyword scores in full.
+                            let (trie, commits, committed, boost, bonus_rank) =
+                                emit_bonus(graph, &hyp, token);
                             let mut tokens = hyp.tokens.clone();
                             tokens.push(token);
                             let mut timestamps = hyp.timestamps.clone();
