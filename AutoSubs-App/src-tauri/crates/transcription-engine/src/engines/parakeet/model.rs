@@ -529,7 +529,12 @@ impl ParakeetModel {
                             let covered = hyp
                                 .commits
                                 .iter()
-                                .filter(|&&(node, _)| graph.is_ancestor(node, trie))
+                                // Strict ancestors only: reaching a node that
+                                // already completed the same keyword is a new
+                                // occurrence ("cat cat") and credits in full.
+                                .filter(|&&(node, _)| {
+                                    node != trie && graph.is_ancestor(node, trie)
+                                })
                                 .map(|&(_, s)| s)
                                 .fold(0.0f64, f64::max);
                             let mut committed = hyp.committed;
