@@ -9,7 +9,6 @@ import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { downloadDir, basename } from '@tauri-apps/api/path';
 import {
   generateSubtitleDocumentFilename,
-  generateTranscriptTxt,
   resolveSubtitleDocumentFilename,
   readSubtitleDocument,
   saveSubtitleDocument,
@@ -18,7 +17,8 @@ import {
   type TranscriptMetadata,
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
-import { generateSrt, parseSrt } from '@/utils/srt-utils';
+import { parseSrt } from '@/utils/srt-utils';
+import { buildSubtitleExportFile, type SubtitleExportFormat } from '@/utils/export-file';
 import { loadFontForLanguage } from '@/lib/font-loader';
 import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
 
@@ -59,7 +59,7 @@ interface SubtitleDocumentContextType {
   flushPendingSubtitleSave: () => Promise<void>;
   processTranscriptionResults: (transcript: any, settings: Settings, fileInput: string | null, timelineId: string) => Promise<string>;
   reformatSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
-  exportSubtitlesAs: (format: 'srt' | 'srt-speakers' | 'txt', subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
+  exportSubtitlesAs: (format: SubtitleExportFormat, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
 }
@@ -304,7 +304,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   };
 
   async function exportSubtitlesAs(
-    format: 'srt' | 'srt-speakers' | 'txt',
+    format: SubtitleExportFormat,
     subtitlesParam?: Subtitle[],
     speakersParam?: Speaker[]
   ) {
@@ -328,15 +328,16 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         }
       }
       
-      const isSrt = format === 'srt' || format === 'srt-speakers';
-      const defaultPath = isSrt ? `${baseName}.srt` : `${baseName}.txt`;
-      const filters = isSrt
-        ? [{ name: 'SRT Files', extensions: ['srt'] }]
-        : [{ name: 'Text Files', extensions: ['txt'] }];
+      const exportFile = buildSubtitleExportFile(
+        format,
+        baseName,
+        subtitlesToExport,
+        speakersToExport,
+      );
 
       const filePath = await save({
-        defaultPath,
-        filters,
+        defaultPath: exportFile.defaultPath,
+        filters: exportFile.filters,
       });
 
       if (!filePath) {
@@ -344,45 +345,13 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         return;
       }
 
-      if (format === 'srt' || format === 'srt-speakers') {
-        console.log('Generating SRT data from subtitles (first 3 items):', subtitlesToExport.slice(0, 3));
-        console.log('Subtitles array length:', subtitlesToExport.length);
-
-        // Log the structure of the first subtitle if it exists
-        if (subtitlesToExport.length > 0) {
-          console.log('First subtitle structure:', {
-            keys: Object.keys(subtitlesToExport[0]),
-            values: Object.entries(subtitlesToExport[0]).map(([key, value]) => ({
-              key,
-              type: typeof value,
-              value: value
-            }))
-          });
-        }
-
-        let srtData = generateSrt(subtitlesToExport, {
-          includeSpeakerLabels: format === 'srt-speakers',
-          speakers: speakersToExport,
-        });
-
-        if (!srtData || srtData.trim() === '') {
-          console.error('Generated SRT data is empty');
-          throw new Error('Generated SRT data is empty');
-        }
-
-        await writeTextFile(filePath, srtData);
-        console.log('SRT file saved successfully to', filePath);
-      } else {
-        const transcriptText = generateTranscriptTxt(subtitlesToExport, speakersToExport);
-
-        if (!transcriptText || transcriptText.trim() === '') {
-          console.error('Generated transcript text is empty');
-          throw new Error('Generated transcript text is empty');
-        }
-
-        await writeTextFile(filePath, transcriptText);
-        console.log('TXT transcript file saved successfully to', filePath);
+      if (!exportFile.content || exportFile.content.trim() === '') {
+        console.error(`Generated ${format} data is empty`);
+        throw new Error(`Generated ${format} data is empty`);
       }
+
+      await writeTextFile(filePath, exportFile.content);
+      console.log(`${format} file saved successfully to`, filePath);
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);
     }

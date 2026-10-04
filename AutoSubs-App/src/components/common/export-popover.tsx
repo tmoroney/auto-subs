@@ -3,8 +3,9 @@ import { Captions, FileText, LucideIcon, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useTranslation } from "react-i18next"
+import type { SubtitleExportFormat } from "@/utils/export-file"
 
-export type ExportFormat = 'srt' | 'srt-speakers' | 'txt';
+export type ExportFormat = SubtitleExportFormat;
 
 interface ExportFormatConfig {
     format: ExportFormat

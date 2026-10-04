@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { parseSrt, generateSrt } from "../src/utils/srt-utils.ts";
+import { buildSubtitleExportFile } from "../src/utils/export-file.ts";
 import { subtitleToBackendSegment } from "../src/api/formatting-api.ts";
 import type { Speaker, Subtitle } from "../src/types.ts";
 
@@ -131,14 +132,64 @@ const paddedIdSrt = generateSrt(
 );
 assert.match(paddedIdSrt, /Alex: Hi/);
 
+// An empty cue for speaker 0 must not stop the transcript from being detected
+// as zero-based: speaker 1 is Blair, not whatever sits at index 0.
 const emptyCueSrt = generateSrt(
   [
     { id: 0, start: 0, end: 1, text: "  ", words: [], speaker_id: "0" },
     { id: 1, start: 2, end: 3, text: "Hi", words: [], speaker_id: "1" },
   ],
-  { includeSpeakerLabels: true, speakers: [speaker("Alex")] },
+  { includeSpeakerLabels: true, speakers: [speaker("Alex"), speaker("Blair")] },
 );
-assert.match(emptyCueSrt, /Alex: Hi/);
+assert.match(emptyCueSrt, /Blair: Hi/);
+assert.equal(emptyCueSrt.includes("Alex"), false);
 assert.equal(emptyCueSrt.includes("Speaker 0"), false);
+
+// A renamed speaker with embedded line breaks must not inject extra cues into
+// the exported file: whitespace collapses to a single-line label.
+const multilineNameSrt = generateSrt(
+  [{ id: 0, start: 0, end: 1, text: "Hi", words: [], speaker_id: "1" }],
+  { includeSpeakerLabels: true, speakers: [speaker("Host\n\nDJ")] },
+);
+assert.match(multilineNameSrt, /Host DJ: Hi/);
+const multilineCues = parseSrt(multilineNameSrt);
+assert.equal(multilineCues.length, 1, "label line breaks must not split the cue");
+assert.equal(multilineCues[0].text, "Host DJ: Hi");
+
+// The export menu's "SRT with speakers" entry must reach the provider as a
+// labeled .srt, while plain "Subtitles (.srt)" stays unlabeled.
+const speakerExport = buildSubtitleExportFile(
+  "srt-speakers",
+  "clip",
+  spoken,
+  [speaker("Alex"), speaker("Blair")],
+);
+assert.equal(speakerExport.defaultPath, "clip.srt");
+assert.deepEqual(speakerExport.filters, [
+  { name: "SRT Files", extensions: ["srt"] },
+]);
+assert.match(speakerExport.content, /Alex: Hello\nworld/);
+assert.match(speakerExport.content, /Blair: Second cue/);
+
+const plainExport = buildSubtitleExportFile(
+  "srt",
+  "clip",
+  spoken,
+  [speaker("Alex"), speaker("Blair")],
+);
+assert.equal(plainExport.defaultPath, "clip.srt");
+assert.equal(plainExport.content.includes("Alex"), false);
+
+const txtExport = buildSubtitleExportFile(
+  "txt",
+  "clip",
+  spoken,
+  [speaker("Alex"), speaker("Blair")],
+);
+assert.equal(txtExport.defaultPath, "clip.txt");
+assert.deepEqual(txtExport.filters, [
+  { name: "Text Files", extensions: ["txt"] },
+]);
+assert.match(txtExport.content, /Alex:\nHello world/);
 
 console.log("srt-utils tests passed");

@@ -92,9 +92,7 @@ export function generateSrt(subtitles: Subtitle[], options?: GenerateSrtOptions)
 
     const includeSpeakerLabels = options?.includeSpeakerLabels === true;
     const speakers = options?.speakers ?? [];
-    const idBase = speakerIdBase(
-        sanitized.filter((sub) => String(sub.text ?? "").trim().length > 0),
-    );
+    const idBase = speakerIdBase(sanitized);
 
     return sanitized
         .map((sub, i) => {

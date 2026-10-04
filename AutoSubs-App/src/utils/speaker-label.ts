@@ -20,8 +20,12 @@ export function resolveSpeakerLabel(
   const speakerIndex = Number.isFinite(numericSpeakerId)
     ? numericSpeakerId - idBase
     : -1;
+  // Renamed speakers are user input: collapse embedded whitespace so a name
+  // cannot inject extra lines into SRT cues or transcript blocks.
   const speakerName =
-    speakerIndex >= 0 ? speakers[speakerIndex]?.name?.trim() : "";
+    speakerIndex >= 0
+      ? speakers[speakerIndex]?.name?.replace(/\s+/g, " ").trim()
+      : "";
 
   if (speakerName) {
     return speakerName;
@@ -31,7 +35,7 @@ export function resolveSpeakerLabel(
     return `Speaker ${numericSpeakerId}`;
   }
 
-  return `Speaker ${speakerId}`;
+  return `Speaker ${speakerId.replace(/\s+/g, " ").trim()}`;
 }
 
 /**
