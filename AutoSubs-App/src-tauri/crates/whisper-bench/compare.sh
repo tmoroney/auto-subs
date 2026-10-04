@@ -8,34 +8,43 @@
 # then runs the report bin on the combined results file.
 #
 # Usage: ./compare.sh [--models tiny,base,small,large-v3-turbo] [--model-dir DIR]
-#                     [--lang en] [--no-gpu] AUDIO...
+#                     [--lang en] [--threads N] [--no-gpu] AUDIO...
 
 set -e
 cd "$(dirname "$0")"
 
 MODELS="tiny,base,small,large-v3-turbo"
 MODEL_DIR="${MODEL_DIR:-$HOME/Library/Caches/com.autosubs}"
-LANG="en"
+BENCH_LANG="en"
 NO_GPU=0
-AUDIO=""
+THREADS=""
+AUDIO=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --models) MODELS="$2"; shift 2 ;;
         --model-dir) MODEL_DIR="$2"; shift 2 ;;
-        --lang) LANG="$2"; shift 2 ;;
+        --lang) BENCH_LANG="$2"; shift 2 ;;
+        --threads) THREADS="$2"; shift 2 ;;
         --no-gpu) NO_GPU=1; shift ;;
         --help|-h)
             sed -n '2,10p' "$0"
             exit 0 ;;
         --*) echo "unknown flag: $1" >&2; exit 2 ;;
-        *) AUDIO="$AUDIO $1"; shift ;;
+        *) AUDIO+=("$1"); shift ;;
     esac
 done
 
-if [ -z "$AUDIO" ]; then
-    echo "usage: $0 [--models csv] [--model-dir DIR] [--lang en] [--no-gpu] AUDIO..." >&2
+if [ ${#AUDIO[@]} -eq 0 ]; then
+    echo "usage: $0 [--models csv] [--model-dir DIR] [--lang en] [--threads N] [--no-gpu] AUDIO..." >&2
     exit 2
+fi
+
+# Optional --threads passthrough: when unset we don't pass --threads so the
+# binary's default (available_parallelism) applies.
+THREAD_ARGS=()
+if [ -n "$THREADS" ]; then
+    THREAD_ARGS=(--threads "$THREADS")
 fi
 
 # Feature selection: Metal + CoreML on Apple Silicon unless --no-gpu.
@@ -55,45 +64,49 @@ fi
 
 # Build both engine binaries with separate target dirs: whisper-rs and
 # transcribe-cpp each statically link their own ggml, so they must stay in
-# separate binaries (and separate caches keep rebuilds honest).
+# separate binaries (and separate caches keep rebuilds honest). The report
+# bin has no engine dependencies and builds with no features.
 echo "building wcpp binary (--features $WCPP_FEATURES) ..."
 cargo build --release --features "$WCPP_FEATURES" --target-dir target-wcpp
 echo "building tcpp binary (--features $TCPP_FEATURES) ..."
 cargo build --release --features "$TCPP_FEATURES" --target-dir target-tcpp
-cargo build --release --features wcpp --target-dir target-report --bin report
+cargo build --release --target-dir target-report --bin report
 
 WCPP_BIN=target-wcpp/release/whisper-bench
 TCPP_BIN=target-tcpp/release/whisper-bench
 REPORT_BIN=target-report/release/report
 
-# Convert audio: anything that is not already a 16 kHz mono WAV goes through
-# ffmpeg into a temp dir. A sibling .txt reference is carried over so the
-# report's "WER vs reference" column still works.
+# Convert audio: anything that is not already a 16 kHz mono pcm_s16le /
+# pcm_f32le WAV goes through ffmpeg into a temp dir. A sibling .txt reference
+# is carried over so the report's "WER vs reference" column still works.
 TMPD="$(mktemp -d /tmp/whisper-bench.XXXXXX)"
 trap 'rm -rf "$TMPD"' EXIT
 
-WAVS=""
+WAVS=()
 i=0
-for src in $AUDIO; do
+for src in "${AUDIO[@]}"; do
     i=$((i + 1))
     is16k=0
     case "$src" in
         *.wav|*.WAV)
-            # Check header cheaply with ffmpeg (which we need anyway for
-            # conversion); fall back to assuming conversion is required.
+            # One ffprobe call: e.g. "pcm_s16le,16000,1". Anything else needs
+            # conversion (load_wav only accepts 16 kHz mono s16/f32).
             if command -v ffprobe >/dev/null 2>&1; then
-                rate="$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate,channels -of csv=p=0 "$src" 2>/dev/null | head -1)"
-                ch="$(ffprobe -v error -select_streams a:0 -show_entries stream=channels -of csv=p=0 "$src" 2>/dev/null | head -1)"
-                if [ "$rate" = "16000" ] && [ "$ch" = "1" ]; then
-                    is16k=1
-                fi
+                info="$(ffprobe -v error -select_streams a:0 \
+                    -show_entries stream=codec_name,sample_rate,channels \
+                    -of csv=p=0 "$src" 2>/dev/null | head -1)"
+                case "$info" in
+                    pcm_s16le,16000,1|pcm_f32le,16000,1) is16k=1 ;;
+                esac
             fi
             ;;
     esac
     ref=""
+    srcdir="$(dirname "$src")"
+    srcbase="$(basename "$src")"
     case "$src" in
-        *.wav|*.WAV) ref="$(dirname "$src")/$(basename "$src" .wav).txt"
-                     [ -f "$ref" ] || ref="$(dirname "$src")/$(basename "$src" .WAV).txt" ;;
+        *.wav) ref="$srcdir/${srcbase%.wav}.txt" ;;
+        *.WAV) ref="$srcdir/${srcbase%.WAV}.txt" ;;
         *) ref="${src%.*}.txt" ;;
     esac
     [ -f "$ref" ] || ref=""
@@ -115,7 +128,7 @@ for src in $AUDIO; do
             ref="$TMPD/audio$i.txt"
         fi
     fi
-    WAVS="$WAVS $dst"
+    WAVS+=("$dst")
     echo "audio: $dst"
 done
 
@@ -133,6 +146,11 @@ find_model() {
     echo "$m"
 }
 
+AUDIO_ARGS=()
+for w in "${WAVS[@]}"; do
+    AUDIO_ARGS+=(--audio "$w")
+done
+
 OLD_IFS="$IFS"
 IFS=','
 for name in $MODELS; do
@@ -144,17 +162,17 @@ for name in $MODELS; do
     fi
     echo "== model: $model_path"
     echo "-- wcpp beam5 (AutoSubs today, DTW on)"
-    "$WCPP_BIN" --model "$model_path" --lang "$LANG" --decode beam5 \
-        --label "wcpp-beam5" --out "$RESULTS" \
-        $(for w in $WAVS; do printf -- '--audio %s ' "$w"; done)
+    "$WCPP_BIN" --model "$model_path" --lang "$BENCH_LANG" --decode beam5 \
+        "${THREAD_ARGS[@]+"${THREAD_ARGS[@]}"}" \
+        --label "wcpp-beam5" --out "$RESULTS" "${AUDIO_ARGS[@]}"
     echo "-- wcpp greedy"
-    "$WCPP_BIN" --model "$model_path" --lang "$LANG" --decode greedy \
-        --label "wcpp-greedy" --out "$RESULTS" \
-        $(for w in $WAVS; do printf -- '--audio %s ' "$w"; done)
+    "$WCPP_BIN" --model "$model_path" --lang "$BENCH_LANG" --decode greedy \
+        "${THREAD_ARGS[@]+"${THREAD_ARGS[@]}"}" \
+        --label "wcpp-greedy" --out "$RESULTS" "${AUDIO_ARGS[@]}"
     echo "-- tcpp greedy"
-    "$TCPP_BIN" --model "$model_path" --lang "$LANG" --decode greedy \
-        --label "tcpp-greedy" --out "$RESULTS" \
-        $(for w in $WAVS; do printf -- '--audio %s ' "$w"; done)
+    "$TCPP_BIN" --model "$model_path" --lang "$BENCH_LANG" --decode greedy \
+        "${THREAD_ARGS[@]+"${THREAD_ARGS[@]}"}" \
+        --label "tcpp-greedy" --out "$RESULTS" "${AUDIO_ARGS[@]}"
     IFS=','
 done
 IFS="$OLD_IFS"

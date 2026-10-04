@@ -148,7 +148,7 @@ fn main() {
         println!(
             "| engine | decode | dtw | load_ms | transcribe_s | x realtime | peak RSS MB | WER vs AutoSubs today | WER vs reference |"
         );
-        println!("|---|---|---|---|---|---|---|---|---|---|");
+        println!("|---|---|---|---|---|---|---|---|---|");
         for (engine, decode, dtw) in &cfgs {
             let rs: Vec<&&Row> = rows
                 .iter()

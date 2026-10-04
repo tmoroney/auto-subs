@@ -32,7 +32,7 @@ with ffmpeg, then runs per model: **wcpp beam5 + DTW** (AutoSubs today),
 **wcpp greedy**, **tcpp greedy**, and prints a report.
 
 Useful flags: `--model-dir DIR`, `--lang <code|auto>` (default `en`),
-`--no-gpu`. Place a `<audio>.txt` next to each input to get a "WER vs
+`--threads N` (forwarded to all three runs), `--no-gpu`. Place a `<audio>.txt` next to each input to get a "WER vs
 reference" column.
 
 Direct usage:
@@ -49,7 +49,7 @@ target-tcpp/release/whisper-bench \
   --model .../ggml-large-v3-turbo.bin \
   --audio clip.wav --decode greedy --label tcpp-greedy --out results.jsonl
 
-cargo run --release --features wcpp --bin report -- results.jsonl
+cargo run --release --bin report -- results.jsonl
 ```
 
 ## Columns
@@ -65,9 +65,12 @@ cargo run --release --features wcpp --bin report -- results.jsonl
 
 Each engine load runs one untimed warm-up on the first 10 s of the first file
 before timing starts. transcribe.cpp uses segment timestamps and its default
-Whisper decode settings; `n_threads` is passed via `SessionOptions` (0 =
-library default when `--threads` is not given... `--threads` defaults to
-`available_parallelism` here).
+Whisper decode settings; `--threads` sets the thread count for both engines,
+defaulting to `available_parallelism`. Note that AutoSubs today passes no
+`n_threads` unless the user sets it in advanced settings, so the app actually
+runs whisper.cpp's own default of `min(4, hardware_concurrency)` (whisper.cpp
+src/whisper.cpp:5910 in whisper-rs-sys 0.15.0). On Metal this barely matters;
+on CPU, pass `--threads 4` to match the app's default.
 
 ## Caveats
 
