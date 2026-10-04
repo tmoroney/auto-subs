@@ -1,9 +1,9 @@
 import * as React from "react"
-import { Captions, FileJson, FileText, LucideIcon } from "lucide-react"
-import type { SubtitleExportFormat } from "@/utils/subtitle-export"
+import { Captions, FileJson, FileText, LucideIcon, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useTranslation } from "react-i18next"
+import type { SubtitleExportFormat } from "@/utils/export-file"
 
 export type ExportFormat = SubtitleExportFormat;
 
@@ -28,6 +28,13 @@ const EXPORT_FORMATS: ExportFormatConfig[] = [
         titleKey: 'importExport.exportFormats.srt.title',
         descriptionKey: 'importExport.exportFormats.srt.description',
         ariaLabelKey: 'importExport.exportAsSrt',
+    },
+    {
+        format: 'srt-speakers',
+        icon: Users,
+        titleKey: 'importExport.exportFormats.srtSpeakers.title',
+        descriptionKey: 'importExport.exportFormats.srtSpeakers.description',
+        ariaLabelKey: 'importExport.exportAsSrtSpeakers',
     },
     {
         format: 'txt',

@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import i18n from '@/i18n';
 import {
   generateSubtitleDocumentFilename,
-  generateTranscriptTxt,
   resolveSubtitleDocumentFilename,
   readSubtitleDocument,
   saveSubtitleDocument,
@@ -19,15 +18,18 @@ import {
   type TranscriptSourceType,
 } from '../utils/file-utils';
 import { reformatSubtitles as rustReformatSubtitles } from '@/api/formatting-api';
-import { generateSrt, parseSrt } from '@/utils/srt-utils';
+import { parseSrt } from '@/utils/srt-utils';
+import {
+  buildSubtitleExportContent,
+  subtitleExportDialogOptions,
+  type SubtitleExportFormat,
+} from '@/utils/export-file';
 import {
   canExportSubtitles,
   subtitleDocumentSourceName,
   subtitleExportBaseName,
-  subtitleExportDialogOptions,
   subtitleExportWritePath,
   writeJsonTranscriptExport,
-  type SubtitleExportFormat,
 } from '@/utils/subtitle-export';
 import { loadFontForLanguage } from '@/lib/font-loader';
 import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
@@ -380,42 +382,14 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       const exportSubtitles = sameDocument ? subtitlesRef.current : startedSubtitles;
       const exportSpeakers = sameDocument ? speakersRef.current : startedSpeakers;
 
-      if (format === 'srt') {
-        console.log('Generating SRT data from subtitles (first 3 items):', exportSubtitles.slice(0, 3));
-        console.log('Subtitles array length:', exportSubtitles.length);
-
-        // Log the structure of the first subtitle if it exists
-        if (exportSubtitles.length > 0) {
-          console.log('First subtitle structure:', {
-            keys: Object.keys(exportSubtitles[0]),
-            values: Object.entries(exportSubtitles[0]).map(([key, value]) => ({
-              key,
-              type: typeof value,
-              value: value
-            }))
-          });
-        }
-
-        let srtData = generateSrt(exportSubtitles);
-
-        if (!srtData || srtData.trim() === '') {
-          console.error('Generated SRT data is empty');
-          throw new Error('Generated SRT data is empty');
-        }
-
-        await writeTextFile(filePath, srtData);
-        console.log('SRT file saved successfully to', filePath);
-      } else {
-        const transcriptText = generateTranscriptTxt(exportSubtitles, exportSpeakers);
-
-        if (!transcriptText || transcriptText.trim() === '') {
-          console.error('Generated transcript text is empty');
-          throw new Error('Generated transcript text is empty');
-        }
-
-        await writeTextFile(filePath, transcriptText);
-        console.log('TXT transcript file saved successfully to', filePath);
+      const content = buildSubtitleExportContent(format, exportSubtitles, exportSpeakers);
+      if (!content || content.trim() === '') {
+        console.error(`Generated ${format} data is empty`);
+        throw new Error(`Generated ${format} data is empty`);
       }
+
+      await writeTextFile(filePath, content);
+      console.log(`${format} file saved successfully to`, filePath);
     } catch (error) {
       console.error(`Failed to save ${format} file`, error);
       toast.error(i18n.t("importExport.exportFailed"));

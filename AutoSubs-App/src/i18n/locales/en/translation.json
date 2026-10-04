@@ -68,6 +68,7 @@
     "selected": "Selected:",
     "importFile": "Import File",
     "exportAsSrt": "Export as SRT",
+    "exportAsSrtSpeakers": "Export SRT with speakers",
     "exportAsTxt": "Export as TXT",
     "exportAsJson": "Export as JSON",
     "exportFailed": "Couldn't save the export file.",
@@ -78,6 +79,10 @@
       "srt": {
         "title": "Subtitles (.srt)",
         "description": "Timed subtitles for video players and platforms."
+      },
+      "srtSpeakers": {
+        "title": "SRT with speakers",
+        "description": "Speaker name on each caption."
       },
       "txt": {
         "title": "Transcript (.txt)",

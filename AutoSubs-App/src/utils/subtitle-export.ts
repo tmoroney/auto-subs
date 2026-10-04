@@ -1,12 +1,5 @@
 import type { Speaker, Subtitle } from "@/types";
 
-export type SubtitleExportFormat = "srt" | "txt" | "json";
-
-export interface SubtitleExportDialogOptions {
-  defaultPath: string;
-  filters: Array<{ name: string; extensions: string[] }>;
-}
-
 /**
  * Word-level transcript written by the Export menu.
  *
@@ -70,29 +63,6 @@ export interface RawTranscriptSource {
     markOut?: number;
     transcriptId?: string;
   };
-}
-
-export function subtitleExportDialogOptions(
-  format: SubtitleExportFormat,
-  baseName: string,
-): SubtitleExportDialogOptions {
-  switch (format) {
-    case "srt":
-      return {
-        defaultPath: `${baseName}.srt`,
-        filters: [{ name: "SRT Files", extensions: ["srt"] }],
-      };
-    case "txt":
-      return {
-        defaultPath: `${baseName}.txt`,
-        filters: [{ name: "Text Files", extensions: ["txt"] }],
-      };
-    case "json":
-      return {
-        defaultPath: `${baseName}.json`,
-        filters: [{ name: "JSON Files", extensions: ["json"] }],
-      };
-  }
 }
 
 export function canExportSubtitles(

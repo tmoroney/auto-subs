@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { Speaker, Subtitle } from "../src/types.ts";
+import { subtitleExportDialogOptions } from "../src/utils/export-file.ts";
 import {
   buildRawTranscriptExport,
   canExportSubtitles,
   serializeRawTranscriptExport,
   subtitleDocumentSourceName,
   subtitleExportBaseName,
-  subtitleExportDialogOptions,
   subtitleExportWritePath,
   writeJsonTranscriptExport,
   type RawTranscriptSource,

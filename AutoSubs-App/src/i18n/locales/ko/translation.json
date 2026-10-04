@@ -140,6 +140,7 @@
     "button": "내보내기 / 가져오기",
     "dropHere": "파일을 여기에 놓거나 클릭하여 선택",
     "exportAsSrt": "SRT로 내보내기",
+    "exportAsSrtSpeakers": "화자 포함 SRT",
     "exportAsTxt": "TXT로 내보내기",
     "exportAsJson": "JSON으로 내보내기",
     "exportFailed": "내보낸 파일을 저장하지 못했습니다.",
@@ -147,6 +148,10 @@
       "srt": {
         "description": "YouTube, VLC 같은 앱에서 사용하는 표준 자막 형식입니다. 타임스탬프를 포함합니다.",
         "title": "자막 (.srt)"
+      },
+      "srtSpeakers": {
+        "title": "화자 포함 SRT",
+        "description": "각 자막 앞에 화자 이름을 넣습니다."
       },
       "txt": {
         "description": "가능한 경우 화자 라벨을 포함하는 LLM용 일반 텍스트 내보내기입니다.",

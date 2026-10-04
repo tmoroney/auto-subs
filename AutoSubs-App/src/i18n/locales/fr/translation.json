@@ -68,6 +68,7 @@
     "selected": "Sélectionné :",
     "importFile": "Importer le fichier",
     "exportAsSrt": "Exporter en SRT",
+    "exportAsSrtSpeakers": "SRT avec locuteurs",
     "exportAsTxt": "Exporter en TXT",
     "exportAsJson": "Exporter en JSON",
     "exportFailed": "Impossible d'enregistrer le fichier exporté.",
@@ -78,6 +79,10 @@
       "srt": {
         "title": "Sous-titres (.srt)",
         "description": "Sous-titres avec horodatage pour lecteurs et plateformes."
+      },
+      "srtSpeakers": {
+        "title": "SRT avec locuteurs",
+        "description": "Nom du locuteur sur chaque ligne."
       },
       "txt": {
         "title": "Transcription (.txt)",

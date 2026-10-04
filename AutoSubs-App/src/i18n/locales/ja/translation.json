@@ -140,6 +140,7 @@
     "button": "エクスポート / インポート",
     "dropHere": "ファイルをここにドロップするかクリックして選択",
     "exportAsSrt": "SRT としてエクスポート",
+    "exportAsSrtSpeakers": "話者付きSRT",
     "exportAsTxt": "TXT としてエクスポート",
     "exportAsJson": "JSON としてエクスポート",
     "exportFailed": "書き出しファイルを保存できませんでした。",
@@ -155,6 +156,10 @@
       "srt": {
         "title": "字幕 (.srt)",
         "description": "YouTube や VLC などで使える標準的な字幕形式です。タイムスタンプを含みます。"
+      },
+      "srtSpeakers": {
+        "title": "話者付きSRT",
+        "description": "各字幕の先頭に話者名を付けます。"
       },
       "txt": {
         "title": "文字起こし (.txt)",
