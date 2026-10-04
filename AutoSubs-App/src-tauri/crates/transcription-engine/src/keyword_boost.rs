@@ -241,6 +241,9 @@ struct Node {
     node_score: f32,
     /// This node completes at least one keyword.
     terminal: bool,
+    /// Node this one was inserted under — used to tell whether a completed
+    /// keyword's node is still on the current path.
+    parent: usize,
     /// Longest proper suffix of this node that is also a keyword prefix.
     fail: usize,
     next: HashMap<i32, usize>,
@@ -260,6 +263,7 @@ impl KeywordGraph {
                 token_score: 0.0,
                 node_score: 0.0,
                 terminal: false,
+                parent: 0,
                 fail: 0,
                 next: HashMap::new(),
             }],
@@ -294,6 +298,7 @@ impl KeywordGraph {
                             token_score,
                             node_score,
                             terminal: false,
+                            parent: node,
                             fail: 0,
                             next: HashMap::new(),
                         });
@@ -445,6 +450,19 @@ impl KeywordGraph {
     /// phrase's bonus into their permanent credit at this point.
     pub fn is_terminal(&self, state: usize) -> bool {
         self.nodes[state].terminal
+    }
+
+    /// Whether `anc` is `node` or an ancestor of it (root excluded). Beam
+    /// decoders use this to tell whether a previously committed keyword
+    /// node still lies on the current path.
+    pub fn is_ancestor(&self, anc: usize, mut node: usize) -> bool {
+        while node != 0 {
+            if node == anc {
+                return true;
+            }
+            node = self.nodes[node].parent;
+        }
+        false
     }
 
     #[cfg(test)]

@@ -405,17 +405,20 @@ impl ParakeetModel {
             boost: f64,
             /// Permanent bonus locked in by completed keywords.
             committed: f64,
-            /// How much of `boost` is already inside `committed` — kept so a
-            /// keyword that extends another keyword's prefix ("cats" through
-            /// "cat") locks only its own incremental score instead of
-            /// double-crediting the shared prefix.
-            absorbed: f64,
+            /// Trie node and path score of each completed keyword — used to
+            /// tell how much of `boost` is already inside `committed` when a
+            /// keyword extends a completed prefix. Nested commits keep the
+            /// deepest one's score (it already contains the shallower ones).
+            commits: Vec<(usize, f64)>,
+            /// Ranking bonus: `committed` plus the part of `boost` not yet
+            /// covered by a commit on the current path.
+            bonus: f64,
             trie: usize,
         }
 
         impl Hyp {
             fn rank(&self, alpha: f64) -> f64 {
-                self.score + alpha * (self.committed + self.boost - self.absorbed)
+                self.score + alpha * self.bonus
             }
         }
 
@@ -427,7 +430,8 @@ impl ParakeetModel {
             score: 0.0,
             boost: 0.0,
             committed: 0.0,
-            absorbed: 0.0,
+            commits: Vec::new(),
+            bonus: 0.0,
             // Parakeet's BPE pieces carry the word-start marker inside the
             // piece, so hypotheses start at the root.
             trie: graph.initial_state(None),
@@ -504,25 +508,37 @@ impl ParakeetModel {
                                 score: hyp.score + logp,
                                 boost: hyp.boost,
                                 committed: hyp.committed,
-                                absorbed: hyp.absorbed,
+                                commits: hyp.commits.clone(),
+                                bonus: hyp.bonus,
                                 trie: hyp.trie,
                             });
                         } else {
                             let (bonus, trie) = graph.advance(hyp.trie, token);
-                            // `boost` tracks the in-progress path score
-                            // (negative deltas refund it when the hypothesis
-                            // diverges). Reaching a keyword-final node locks
-                            // only the not-yet-committed part of that score
-                            // into `committed`, which is never refunded — a
-                            // completed keyword keeps its credit, dead
-                            // partial matches refund, and an extension like
-                            // "cats" past "cat" credits just its extra score.
+                            // `boost` tracks the current keyword path score
+                            // (negative deltas refund it on divergence). A
+                            // completed keyword's score is locked into
+                            // `committed`, which is never refunded. `covered`
+                            // is the portion of `boost` already committed by
+                            // a completed keyword still on this path — the
+                            // deepest such commit, whose score contains the
+                            // shallower ones. So "cats" through "cat" credits
+                            // only its extra score, while a divergent step
+                            // drops the coverage and a following keyword
+                            // scores in full.
                             let boost = hyp.boost + bonus as f64;
+                            let covered = hyp
+                                .commits
+                                .iter()
+                                .filter(|&&(node, _)| graph.is_ancestor(node, trie))
+                                .map(|&(_, s)| s)
+                                .fold(0.0f64, f64::max);
                             let mut committed = hyp.committed;
-                            let mut absorbed = hyp.absorbed.min(boost);
+                            let mut commits = hyp.commits.clone();
+                            let mut bonus_rank = committed + boost - covered;
                             if graph.is_terminal(trie) {
-                                committed += boost - absorbed;
-                                absorbed = boost;
+                                committed += boost - covered;
+                                commits.push((trie, boost));
+                                bonus_rank = committed;
                             }
                             let mut tokens = hyp.tokens.clone();
                             tokens.push(token);
@@ -535,7 +551,8 @@ impl ParakeetModel {
                                 score: hyp.score + logp,
                                 boost,
                                 committed,
-                                absorbed,
+                                commits,
+                                bonus: bonus_rank,
                                 trie,
                             });
                         }
