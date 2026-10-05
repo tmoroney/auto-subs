@@ -56,6 +56,9 @@ const SubtitleList = ({
     const lastSubtitlesPropRef = useRef(subtitles);
     const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
+    // Arrow keys move through the speaker list ahead of the assigned speaker.
+    // The tab stop has to follow that highlight, or Tab jumps back to the assignment.
+    const [speakerFocusIndex, setSpeakerFocusIndex] = useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -280,6 +283,7 @@ const SubtitleList = ({
         // Like a text edit, this starts a new move history so undoing a word
         // move cannot put the caption back on its old speaker.
         moveHistoryRef.current = { past: [], future: [] };
+        setSpeakerFocusIndex(speakerIndex);
         subtitlesRef.current = next;
         updateSubtitles(next);
     };
@@ -292,6 +296,10 @@ const SubtitleList = ({
         if (next === null) return;
         event.preventDefault();
         event.stopPropagation();
+        options.forEach((option, optionIndex) => {
+            option.tabIndex = optionIndex === next ? 0 : -1;
+        });
+        setSpeakerFocusIndex(next);
         if (next !== current) options[next]?.focus();
     };
 
@@ -419,6 +427,7 @@ const SubtitleList = ({
                                                     onOpenChange={(open) => {
                                                         if (!open) {
                                                             setEditingSubtitleId(null);
+                                                            setSpeakerFocusIndex(null);
                                                         }
                                                     }}
                                                 >
@@ -447,13 +456,14 @@ const SubtitleList = ({
                                                                 >
                                                                     {speakers.map((speaker, speakerIndex) => {
                                                                         const selected = speakerIndex === getSpeakerIndex(subtitle.speaker_id);
+                                                                        const tabStop = speakerIndex === (speakerFocusIndex ?? getSpeakerIndex(subtitle.speaker_id));
                                                                         return (
                                                                             <button
                                                                                 key={speakerIndex}
                                                                                 type="button"
                                                                                 role="option"
                                                                                 aria-selected={selected}
-                                                                                tabIndex={selected ? 0 : -1}
+                                                                                tabIndex={tabStop ? 0 : -1}
                                                                                 className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${selected ? "bg-muted" : ""}`}
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
@@ -503,6 +513,7 @@ const SubtitleList = ({
                                                     className="ml-auto text-xs p-2 h-6"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        setSpeakerFocusIndex(null);
                                                         setEditingSubtitleId(subtitle.id);
                                                     }}
                                                 >

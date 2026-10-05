@@ -81,6 +81,12 @@ export function preserveSubtitleEdits(
     }
     const aligned = sourceWords.length === flat;
 
+    // A word belongs to the caption that contains its midpoint. A caption that
+    // merely overlaps the next one must not claim that neighbor's words.
+    const ownedBy = (word: Word, from: number, to: number) => {
+        const midpoint = (Number(word.start) + Number(word.end)) / 2;
+        return midpoint >= from && midpoint < to;
+    };
     // Giving one caption to another speaker leaves its text matching its words,
     // so the comparison above misses it. Without this, Reformat rebuilds the
     // caption from the source speaker and the correction is lost. Older
@@ -92,7 +98,7 @@ export function preserveSubtitleEdits(
         const to = entry.words.length ? Number(entry.words[entry.words.length - 1].end) : Number(entry.cue.end);
         const sourceSpeakers = aligned
             ? sourceWords.slice(entry.from, entry.to)
-            : sourceWords.filter(word => Number(word.word.end) > from + 0.0001 && Number(word.word.start) < to - 0.0001);
+            : sourceWords.filter(word => ownedBy(word.word, from, to));
         if (sourceSpeakers.some(word => word.speaker !== speaker)) entry.changed = true;
     }
 
@@ -201,12 +207,13 @@ export function preserveSubtitleEdits(
             patches.push({ start: a, count: b - a, words: replacements });
         } else {
             // Older formatter versions may have used a different token count.
-            // Limit the replacement to the run's timed source range.
-            let start = sourceWords.findIndex(entry => Number(entry.word.end) > runFrom + 0.0001);
+            // Replace the source words whose midpoint is inside this run, so a
+            // caption that overlaps its neighbor does not take that neighbor's words.
+            let start = sourceWords.findIndex(entry => ownedBy(entry.word, runFrom, runTo));
             let count = 0;
             if (start >= 0) {
                 let end = start;
-                while (end < sourceWords.length && Number(sourceWords[end].word.start) < runTo - 0.0001) end++;
+                while (end < sourceWords.length && ownedBy(sourceWords[end].word, runFrom, runTo)) end++;
                 count = end - start;
             } else {
                 const insertAt = sourceWords.findIndex(entry => Number(entry.word.start) >= runFrom);

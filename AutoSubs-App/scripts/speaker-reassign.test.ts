@@ -64,6 +64,18 @@ test("Reformat keeps a speaker correction when the token counts differ", () => {
   assert.equal(preserveSubtitleEdits(source, [{ ...legacy[0], speaker_id: "1" }]).changed, false);
 });
 
+test("a legacy caption that overlaps the next speaker does not replace it", () => {
+  const source = [cue("a b", "1", 0), cue("c d", "2", 2)];
+  const overlapping = [{ ...source[0], words: [{ word: "a b", start: 0, end: 2.1, line_number: 0 }] }, source[1]];
+  assert.equal(preserveSubtitleEdits(source, overlapping).changed, false);
+
+  const changed = preserveSubtitleEdits(source, [{ ...overlapping[0], speaker_id: "3" }, source[1]]);
+  assert.equal(changed.changed, true);
+  assert.equal(changed.segments[0].speaker_id, "3");
+  assert.equal(changed.segments[1].text, "c d");
+  assert.equal(changed.segments[1].speaker_id, "2");
+});
+
 test("a speaker change keeps a text correction on the same caption", () => {
   const source = [cue("a b", "1", 0), cue("c d", "1", 2)];
   const kept = preserveSubtitleEdits(source, [source[0], { ...source[1], speaker_id: "2", text: "c e" }]);
