@@ -493,7 +493,8 @@
       "lastWord": "Última palabra",
       "toPrevious": "Subir primera palabra ({{shortcut}})",
       "toNext": "Bajar última palabra ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "Cambiar locutor"
   },
   "gettingStarted": {
     "title": "Bienvenido a AutoSubs",

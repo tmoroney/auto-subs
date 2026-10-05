@@ -503,7 +503,8 @@
       "lastWord": "Последнее слово",
       "toPrevious": "Первое слово вверх ({{shortcut}})",
       "toNext": "Последнее слово вниз ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "Сменить говорящего"
   },
   "gettingStarted": {
     "title": "Добро пожаловать в AutoSubs",

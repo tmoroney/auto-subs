@@ -493,7 +493,8 @@
       "lastWord": "末词",
       "toPrevious": "首词上移 ({{shortcut}})",
       "toNext": "末词下移 ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "更改说话人"
   },
   "gettingStarted": {
     "title": "欢迎使用 AutoSubs",

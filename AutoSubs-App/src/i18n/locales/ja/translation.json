@@ -507,7 +507,8 @@
       "lastWord": "最後の単語",
       "toPrevious": "最初の単語を上へ ({{shortcut}})",
       "toNext": "最後の単語を下へ ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "話者を変更"
   },
   "theme": {
     "toggle": "テーマを切り替え"
