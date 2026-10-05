@@ -19,18 +19,17 @@ whisper.cpp calls this function with
 decode window. Inside, `n_audio_tokens = n_frames/2` becomes `ne[2]` of the
 tensor passed to `median_filter`, which does
 `WHISPER_ASSERT(filter_width < a->ne[2])`. On a decode window of ≤ 15 mel
-frames (~0.15 s — short speech bursts near the end of a seek region) the
-assert fires and the process aborts. AutoSubs enables DTW by default, so this
+frames (~0.15 s) the assert fires and the process aborts. AutoSubs enables DTW by default, so this
 crashes real users on long files.
 
 Skipping DTW in that window is safe: tokens default to `t_dtw = -1` and the
 transcription engine treats `t_dtw < 0` as "no DTW anchor" and falls back to
-interpolated word timing.
+whisper.cpp's native token timestamps (`t0`/`t1`) for that window.
 
 ## Upstream status
 
-Unguarded on whisper.cpp master as of 2026-10. A matching upstream patch is
-kept alongside this repo's bench artifacts.
+Unguarded on whisper.cpp master as of 2026-10 (same assert in
+`median_filter`, same `n_frames` formula at the call site).
 
 ## Removal
 
