@@ -76,6 +76,13 @@ test("a legacy caption that overlaps the next speaker does not replace it", () =
   assert.equal(changed.segments[1].speaker_id, "2");
 });
 
+test("a legacy correction replaces a word that runs past the caption", () => {
+  const source = [cue("a b", "1", 0)];
+  const displayed = [{ ...source[0], text: "a x", end: 1.4, words: [{ word: "a b", start: 0, end: 1.4, line_number: 0 }] }];
+  const kept = preserveSubtitleEdits(source, displayed);
+  assert.deepEqual(kept.segments.flatMap(segment => segment.words.map(word => word.word.trim())), ["a", "x"]);
+});
+
 test("a speaker change keeps a text correction on the same caption", () => {
   const source = [cue("a b", "1", 0), cue("c d", "1", 2)];
   const kept = preserveSubtitleEdits(source, [source[0], { ...source[1], speaker_id: "2", text: "c e" }]);
