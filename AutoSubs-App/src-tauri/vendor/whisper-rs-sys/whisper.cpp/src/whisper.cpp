@@ -8815,6 +8815,12 @@ static void whisper_exp_compute_token_level_timestamps_dtw(
     WHISPER_ASSERT(n_frames <= n_audio_ctx * 2);
     WHISPER_ASSERT(ctx->params.dtw_aheads_preset != WHISPER_AHEADS_NONE);
 
+    // AutoSubs patch: median_filter asserts filter_width < n_audio_tokens, which aborts on
+    // very short decode windows. Skip DTW there; tokens keep t_dtw = -1.
+    if (n_frames/2 <= medfilt_width) {
+        return;
+    }
+
     // FIXME: Allocating mem everytime we call this func
     // Our ggml buffer should be pre-allocated somewhere during init and reused
     // when we call this function
