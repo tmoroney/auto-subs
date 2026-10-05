@@ -26,3 +26,6 @@ coreml = ["whisper-rs?/coreml"]
 
 [profile.release]
 debug = false
+
+[patch.crates-io]
+whisper-rs-sys = { path = "../../vendor/whisper-rs-sys" }
