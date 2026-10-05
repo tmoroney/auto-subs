@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { preserveSubtitleEdits } from "../src/utils/subtitle-edits.ts";
+import { nextSpeakerOption, reassignCaptionSpeaker } from "../src/utils/speaker-reassign.ts";
 import type { Subtitle } from "../src/types.ts";
 
 function cue(text: string, speakerId = "1", start = 0): Subtitle {
@@ -33,6 +34,34 @@ test("Reformat keeps a caption moved to another speaker", () => {
   assert.deepEqual(timed(kept.segments[0]), timed(source[0]));
   assert.deepEqual(timed(kept.segments[1]), timed(source[1]));
   assert.equal(JSON.stringify(source), snapshot);
+});
+
+test("removing the last zero-based caption keeps every speaker in place", () => {
+  const subtitles = [cue("a", "0", 0), cue("b", "1", 1), cue("c", "2", 2)];
+  const moved = reassignCaptionSpeaker(subtitles, 0, 1, 0);
+  assert.ok(moved);
+  assert.deepEqual(moved.map(segment => segment.speaker_id), ["2", "2", "3"]);
+  assert.equal(moved[0].text, "a");
+  assert.deepEqual(reassignCaptionSpeaker([cue("a", "0"), cue("b", "0", 1)], 0, 1, 0)?.map(segment => segment.speaker_id), ["1", "0"]);
+  assert.equal(reassignCaptionSpeaker(subtitles, 1, 1, 0), null);
+});
+
+test("arrow keys move within the speaker list", () => {
+  assert.equal(nextSpeakerOption(0, 3, "ArrowDown"), 1);
+  assert.equal(nextSpeakerOption(0, 3, "ArrowUp"), 0);
+  assert.equal(nextSpeakerOption(0, 3, "End"), 2);
+  assert.equal(nextSpeakerOption(1, 3, "Home"), 0);
+  assert.equal(nextSpeakerOption(1, 3, "Enter"), null);
+});
+
+test("Reformat keeps a speaker correction when the token counts differ", () => {
+  const source = [cue("c d", "1", 2)];
+  const legacy = [{ ...source[0], speaker_id: "2", words: [{ word: "c d", start: 2, end: 4, line_number: 0 }] }];
+  const kept = preserveSubtitleEdits(source, legacy);
+  assert.equal(kept.changed, true);
+  assert.equal(kept.segments[0].speaker_id, "2");
+  assert.equal(kept.segments[0].text, "c d");
+  assert.equal(preserveSubtitleEdits(source, [{ ...legacy[0], speaker_id: "1" }]).changed, false);
 });
 
 test("a speaker change keeps a text correction on the same caption", () => {

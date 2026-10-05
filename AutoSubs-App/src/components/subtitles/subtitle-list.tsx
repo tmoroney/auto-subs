@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { nextSpeakerOption, reassignCaptionSpeaker } from "@/utils/speaker-reassign"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -274,16 +275,24 @@ const SubtitleList = ({
     };
 
     const assignSpeaker = (index: number, speakerIndex: number) => {
-        const existing = subtitlesRef.current[index];
-        const speakerId = String(speakerIndex + speakerIdBase);
-        if (!existing || existing.speaker_id === speakerId) return;
+        const next = reassignCaptionSpeaker(subtitlesRef.current, index, speakerIndex, speakerIdBase);
+        if (!next) return;
         // Like a text edit, this starts a new move history so undoing a word
         // move cannot put the caption back on its old speaker.
         moveHistoryRef.current = { past: [], future: [] };
-        const next = [...subtitlesRef.current];
-        next[index] = { ...existing, speaker_id: speakerId };
         subtitlesRef.current = next;
         updateSubtitles(next);
+    };
+
+    const moveSpeakerOption = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]'));
+        const current = options.indexOf(document.activeElement as HTMLButtonElement);
+        if (current < 0) return;
+        const next = nextSpeakerOption(current, options.length, event.key);
+        if (next === null) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (next !== current) options[next]?.focus();
     };
 
     const handleMoveFirstWordToPrev = (index: number) => {
@@ -430,7 +439,12 @@ const SubtitleList = ({
                                                         <div>
                                                             <div className="mb-3 space-y-1 border-b pb-3 pr-8">
                                                                 <p id={`assign-speaker-${subtitle.id}`} className="text-xs text-muted-foreground">{t("subtitles.changeSpeaker")}</p>
-                                                                <div role="listbox" aria-labelledby={`assign-speaker-${subtitle.id}`} className="max-h-40 space-y-0.5 overflow-y-auto">
+                                                                <div
+                                                                    role="listbox"
+                                                                    aria-labelledby={`assign-speaker-${subtitle.id}`}
+                                                                    className="max-h-40 space-y-0.5 overflow-y-auto"
+                                                                    onKeyDown={moveSpeakerOption}
+                                                                >
                                                                     {speakers.map((speaker, speakerIndex) => {
                                                                         const selected = speakerIndex === getSpeakerIndex(subtitle.speaker_id);
                                                                         return (
@@ -439,7 +453,8 @@ const SubtitleList = ({
                                                                                 type="button"
                                                                                 role="option"
                                                                                 aria-selected={selected}
-                                                                                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted ${selected ? "bg-muted" : ""}`}
+                                                                                tabIndex={selected ? 0 : -1}
+                                                                                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${selected ? "bg-muted" : ""}`}
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     assignSpeaker(index, speakerIndex);

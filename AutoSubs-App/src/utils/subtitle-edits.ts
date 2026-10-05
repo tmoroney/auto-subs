@@ -83,14 +83,17 @@ export function preserveSubtitleEdits(
 
     // Giving one caption to another speaker leaves its text matching its words,
     // so the comparison above misses it. Without this, Reformat rebuilds the
-    // caption from the source speaker and the correction is lost.
-    if (aligned) {
-        for (const entry of displayCues) {
-            const speaker = entry.cue.speaker_id;
-            if (speaker && sourceWords.slice(entry.from, entry.to).some(word => word.speaker !== speaker)) {
-                entry.changed = true;
-            }
-        }
+    // caption from the source speaker and the correction is lost. Older
+    // transcripts whose token counts no longer line up are matched by time.
+    for (const entry of displayCues) {
+        const speaker = entry.cue.speaker_id;
+        if (!speaker) continue;
+        const from = entry.words.length ? Number(entry.words[0].start) : Number(entry.cue.start);
+        const to = entry.words.length ? Number(entry.words[entry.words.length - 1].end) : Number(entry.cue.end);
+        const sourceSpeakers = aligned
+            ? sourceWords.slice(entry.from, entry.to)
+            : sourceWords.filter(word => Number(word.word.end) > from + 0.0001 && Number(word.word.start) < to - 0.0001);
+        if (sourceSpeakers.some(word => word.speaker !== speaker)) entry.changed = true;
     }
 
     // Maximal runs of consecutive edited cues get patched as one unit so a word
