@@ -12,6 +12,17 @@
 
 set -e
 cd "$(dirname "$0")"
+CRATE_DIR="$(pwd -P)"
+
+# Cargo reads .cargo/config.toml files starting at the *cwd*, so building from
+# here picks up src-tauri/.cargo/config.toml and its -mmacosx-version-min=13.3
+# rustflag. On the Xcode 27 toolchain that makes every proc-macro dylib come out
+# malformed ("mis-aligned LINKEDIT string pool") and the build dies in serde.
+# The bench binaries never ship, so build them from a neutral cwd that inherits
+# no project config; MACOSX_DEPLOYMENT_TARGET stays unset too.
+cargo_bench() {
+    (cd / && cargo build --release --manifest-path "$CRATE_DIR/Cargo.toml" "$@")
+}
 
 MODELS="tiny,base,small,large-v3-turbo"
 MODEL_DIR="${MODEL_DIR:-$HOME/Library/Caches/com.autosubs}"
@@ -67,10 +78,10 @@ fi
 # separate binaries (and separate caches keep rebuilds honest). The report
 # bin has no engine dependencies and builds with no features.
 echo "building wcpp binary (--features $WCPP_FEATURES) ..."
-cargo build --release --features "$WCPP_FEATURES" --target-dir target-wcpp
+cargo_bench --features "$WCPP_FEATURES" --target-dir "$CRATE_DIR/target-wcpp"
 echo "building tcpp binary (--features $TCPP_FEATURES) ..."
-cargo build --release --features "$TCPP_FEATURES" --target-dir target-tcpp
-cargo build --release --target-dir target-report --bin report
+cargo_bench --features "$TCPP_FEATURES" --target-dir "$CRATE_DIR/target-tcpp"
+cargo_bench --target-dir "$CRATE_DIR/target-report" --bin report
 
 WCPP_BIN=target-wcpp/release/whisper-bench
 TCPP_BIN=target-tcpp/release/whisper-bench
