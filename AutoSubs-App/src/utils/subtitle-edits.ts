@@ -89,12 +89,16 @@ export function preserveSubtitleEdits(
         const following = displayCues.find(entry => entry.cueIndex > cueIndex);
         return following ? cueStart(following) : Number.POSITIVE_INFINITY;
     };
-    // A source word belongs to a caption when it starts inside that caption,
-    // even if it runs past the saved end. The range stops at the next caption,
-    // so an overlap does not take the neighbor's words.
+    // A source word belongs to a caption when it starts inside it, or when its
+    // midpoint does, so a word that starts just before the saved caption is
+    // still part of the correction. The range stops at the next caption, so an
+    // overlap does not take the neighbor's words.
     const ownedBy = (word: Word, from: number, to: number) => {
         const start = Number(word.start);
-        return start >= from - 0.0001 && start < to;
+        const midpoint = (start + Number(word.end)) / 2;
+        const startsInside = start >= from - 0.0001 && start < to;
+        const midpointInside = midpoint >= from - 0.0001 && midpoint < to;
+        return startsInside || midpointInside;
     };
     // Giving one caption to another speaker leaves its text matching its words,
     // so the comparison above misses it. Without this, Reformat rebuilds the
@@ -216,8 +220,8 @@ export function preserveSubtitleEdits(
             patches.push({ start: a, count: b - a, words: replacements });
         } else {
             // Older formatter versions may have used a different token count.
-            // Replace words that start inside this run, including one that runs
-            // past the saved end, and stop at the next caption.
+            // Replace words that start in this run or whose midpoint does, and
+            // stop at the next caption.
             const limit = Math.min(runTo, followingStart(run[run.length - 1].cueIndex));
             let start = sourceWords.findIndex(entry => ownedBy(entry.word, runFrom, limit));
             let count = 0;
