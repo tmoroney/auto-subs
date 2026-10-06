@@ -85,25 +85,27 @@ export function preserveSubtitleEdits(
         entry.words.length ? Number(entry.words[0].start) : Number(entry.cue.start);
     const cueEnd = (entry: typeof displayCues[number]) =>
         entry.words.length ? Number(entry.words[entry.words.length - 1].end) : Number(entry.cue.end);
-    const followingStart = (cueIndex: number) => {
-        const following = displayCues.find(entry => entry.cueIndex > cueIndex);
-        return following ? cueStart(following) : Number.POSITIVE_INFINITY;
-    };
-    const precedingEnd = (cueIndex: number) => {
-        const previous = displayCues.slice().reverse().find(entry => entry.cueIndex < cueIndex);
-        return previous ? cueEnd(previous) : Number.NEGATIVE_INFINITY;
-    };
-    // A source word belongs to a caption when it starts inside it. A word that
-    // only starts slightly earlier still belongs here when its midpoint does,
-    // unless that start falls inside the previous caption. The range stops at
-    // the next caption, so an overlap does not take a neighbor's words.
-    const ownedBy = (word: Word, from: number, to: number, earlierEnd: number) => {
-        const start = Number(word.start);
-        const midpoint = (start + Number(word.end)) / 2;
-        const startsInside = start >= from - 0.0001 && start < to;
-        const midpointInside = midpoint >= from - 0.0001 && midpoint < to && start >= earlierEnd - 0.0001;
-        return startsInside || midpointInside;
-    };
+    // Each source word belongs to the display caption that covers the most of
+    // it. An equal split goes to the later caption. One rule covers a word that
+    // runs past a caption, one that starts early, and an overlap in either
+    // direction, so a caption edit cannot take a neighbor's word or leave its own.
+    const bounds = displayCues.map(entry => ({ from: cueStart(entry), to: cueEnd(entry) }));
+    const owner = aligned ? [] : sourceWords.map(entry => {
+        const start = Number(entry.word.start);
+        const end = Number(entry.word.end);
+        let best = -1;
+        let bestOverlap = 0;
+        bounds.forEach((bound, index) => {
+            const overlap = Math.min(end, bound.to) - Math.max(start, bound.from);
+            const better = overlap > bestOverlap + 0.0001;
+            const tied = overlap > 0.0001 && Math.abs(overlap - bestOverlap) <= 0.0001 && index > best;
+            if (better || tied) {
+                best = index;
+                bestOverlap = Math.max(bestOverlap, overlap);
+            }
+        });
+        return best;
+    });
     // Giving one caption to another speaker leaves its text matching its words,
     // so the comparison above misses it. Without this, Reformat rebuilds the
     // caption from the source speaker and the correction is lost. Older
@@ -111,11 +113,9 @@ export function preserveSubtitleEdits(
     for (const entry of displayCues) {
         const speaker = entry.cue.speaker_id;
         if (!speaker) continue;
-        const from = cueStart(entry);
-        const to = Math.min(cueEnd(entry), followingStart(entry.cueIndex));
         const sourceSpeakers = aligned
             ? sourceWords.slice(entry.from, entry.to)
-            : sourceWords.filter(word => ownedBy(word.word, from, to, precedingEnd(entry.cueIndex)));
+            : sourceWords.filter((_, index) => owner[index] === entry.cueIndex);
         if (sourceSpeakers.some(word => word.speaker !== speaker)) entry.changed = true;
     }
 
@@ -224,19 +224,24 @@ export function preserveSubtitleEdits(
             patches.push({ start: a, count: b - a, words: replacements });
         } else {
             // Older formatter versions may have used a different token count.
-            // Replace words that start in this run, or whose midpoint does when
-            // they did not start in the previous caption, and stop at the next one.
-            const limit = Math.min(runTo, followingStart(run[run.length - 1].cueIndex));
-            const earlierEnd = precedingEnd(run[0].cueIndex);
-            let start = sourceWords.findIndex(entry => ownedBy(entry.word, runFrom, limit, earlierEnd));
-            let count = 0;
-            if (start >= 0) {
-                let end = start;
-                while (end < sourceWords.length && ownedBy(sourceWords[end].word, runFrom, limit, earlierEnd)) end++;
-                count = end - start;
-            } else {
+            // Replace every source word this run owns, including a later
+            // contiguous run, and leave words owned by another caption in place.
+            const runCues = new Set(run.map(entry => entry.cueIndex));
+            const owned = sourceWords.map((_, index) => index).filter(index => runCues.has(owner[index]));
+            const spans: { start: number; end: number }[] = [];
+            for (const index of owned) {
+                const span = spans[spans.length - 1];
+                if (span && span.end === index) span.end = index + 1;
+                else spans.push({ start: index, end: index + 1 });
+            }
+            let start = spans[0]?.start ?? -1;
+            let count = spans[0] ? spans[0].end - spans[0].start : 0;
+            if (start < 0) {
                 const insertAt = sourceWords.findIndex(entry => Number(entry.word.start) >= runFrom);
                 start = insertAt >= 0 ? insertAt : sourceWords.length;
+            }
+            for (const span of spans.slice(1)) {
+                patches.push({ start: span.start, count: span.end - span.start, words: [] });
             }
             const group = sourceWords[start]?.group ?? sourceWords[start - 1]?.group ?? 0;
             const weight = edited.reduce((sum, token) => sum + Array.from(token.text).length, 0);

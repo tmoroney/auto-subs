@@ -103,6 +103,16 @@ test("a legacy correction does not replace the previous caption's overlapping wo
   assert.deepEqual(kept.segments.map(segment => [segment.text, segment.speaker_id]), [["keep", "1"], ["changed", "2"]]);
 });
 
+test("an overlapping previous caption still gives the next caption its own first word", () => {
+  const source = [cue("prev", "1", 0), cue("old extra", "2", 1)];
+  const displayed = [
+    { ...source[0], end: 1.6, words: [{ word: "prev", start: 0, end: 1.6, line_number: 0 }] },
+    { ...source[1], text: "fixed", words: [{ word: "old extra", start: 1.4, end: 3, line_number: 0 }] },
+  ];
+  const kept = preserveSubtitleEdits(source, displayed);
+  assert.deepEqual(kept.segments.map(segment => [segment.text, segment.speaker_id]), [["prev", "1"], ["fixed", "2"]]);
+});
+
 test("a speaker change keeps a text correction on the same caption", () => {
   const source = [cue("a b", "1", 0), cue("c d", "1", 2)];
   const kept = preserveSubtitleEdits(source, [source[0], { ...source[1], speaker_id: "2", text: "c e" }]);
