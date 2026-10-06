@@ -81,6 +81,44 @@ export function preserveSubtitleEdits(
     }
     const aligned = sourceWords.length === flat;
 
+    const cueStart = (entry: typeof displayCues[number]) =>
+        entry.words.length ? Number(entry.words[0].start) : Number(entry.cue.start);
+    const cueEnd = (entry: typeof displayCues[number]) =>
+        entry.words.length ? Number(entry.words[entry.words.length - 1].end) : Number(entry.cue.end);
+    // Each source word belongs to the display caption that covers the most of
+    // it. An equal split goes to the later caption. One rule covers a word that
+    // runs past a caption, one that starts early, and an overlap in either
+    // direction, so a caption edit cannot take a neighbor's word or leave its own.
+    const bounds = displayCues.map(entry => ({ from: cueStart(entry), to: cueEnd(entry) }));
+    const owner = aligned ? [] : sourceWords.map(entry => {
+        const start = Number(entry.word.start);
+        const end = Number(entry.word.end);
+        let best = -1;
+        let bestOverlap = 0;
+        bounds.forEach((bound, index) => {
+            const overlap = Math.min(end, bound.to) - Math.max(start, bound.from);
+            const better = overlap > bestOverlap + 0.0001;
+            const tied = overlap > 0.0001 && Math.abs(overlap - bestOverlap) <= 0.0001 && index > best;
+            if (better || tied) {
+                best = index;
+                bestOverlap = Math.max(bestOverlap, overlap);
+            }
+        });
+        return best;
+    });
+    // Giving one caption to another speaker leaves its text matching its words,
+    // so the comparison above misses it. Without this, Reformat rebuilds the
+    // caption from the source speaker and the correction is lost. Older
+    // transcripts whose token counts no longer line up are matched by time.
+    for (const entry of displayCues) {
+        const speaker = entry.cue.speaker_id;
+        if (!speaker) continue;
+        const sourceSpeakers = aligned
+            ? sourceWords.slice(entry.from, entry.to)
+            : sourceWords.filter((_, index) => owner[index] === entry.cueIndex);
+        if (sourceSpeakers.some(word => word.speaker !== speaker)) entry.changed = true;
+    }
+
     // Maximal runs of consecutive edited cues get patched as one unit so a word
     // moved between cues keeps its timing.
     const runs: typeof displayCues[] = [];
@@ -186,16 +224,24 @@ export function preserveSubtitleEdits(
             patches.push({ start: a, count: b - a, words: replacements });
         } else {
             // Older formatter versions may have used a different token count.
-            // Limit the replacement to the run's timed source range.
-            let start = sourceWords.findIndex(entry => Number(entry.word.end) > runFrom + 0.0001);
-            let count = 0;
-            if (start >= 0) {
-                let end = start;
-                while (end < sourceWords.length && Number(sourceWords[end].word.start) < runTo - 0.0001) end++;
-                count = end - start;
-            } else {
+            // Replace every source word this run owns, including a later
+            // contiguous run, and leave words owned by another caption in place.
+            const runCues = new Set(run.map(entry => entry.cueIndex));
+            const owned = sourceWords.map((_, index) => index).filter(index => runCues.has(owner[index]));
+            const spans: { start: number; end: number }[] = [];
+            for (const index of owned) {
+                const span = spans[spans.length - 1];
+                if (span && span.end === index) span.end = index + 1;
+                else spans.push({ start: index, end: index + 1 });
+            }
+            let start = spans[0]?.start ?? -1;
+            let count = spans[0] ? spans[0].end - spans[0].start : 0;
+            if (start < 0) {
                 const insertAt = sourceWords.findIndex(entry => Number(entry.word.start) >= runFrom);
                 start = insertAt >= 0 ? insertAt : sourceWords.length;
+            }
+            for (const span of spans.slice(1)) {
+                patches.push({ start: span.start, count: span.end - span.start, words: [] });
             }
             const group = sourceWords[start]?.group ?? sourceWords[start - 1]?.group ?? 0;
             const weight = edited.reduce((sum, token) => sum + Array.from(token.text).length, 0);

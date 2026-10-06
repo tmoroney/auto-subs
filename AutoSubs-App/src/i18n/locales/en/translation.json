@@ -513,7 +513,8 @@
       "lastWord": "Last word",
       "toPrevious": "Move first word up ({{shortcut}})",
       "toNext": "Move last word down ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "Change speaker"
   },
   "gettingStarted": {
     "title": "Welcome to AutoSubs",

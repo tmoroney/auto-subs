@@ -507,7 +507,8 @@
       "lastWord": "마지막 단어",
       "toPrevious": "첫 단어 위로 이동 ({{shortcut}})",
       "toNext": "마지막 단어 아래로 이동 ({{shortcut}})"
-    }
+    },
+    "changeSpeaker": "화자 변경"
   },
   "theme": {
     "toggle": "테마 전환"

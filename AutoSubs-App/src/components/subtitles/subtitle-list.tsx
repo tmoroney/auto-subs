@@ -4,11 +4,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { nextSpeakerOption, reassignCaptionSpeaker } from "@/utils/speaker-reassign"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -55,6 +56,9 @@ const SubtitleList = ({
     const lastSubtitlesPropRef = useRef(subtitles);
     const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
+    // Arrow keys move through the speaker list ahead of the assigned speaker.
+    // The tab stop has to follow that highlight, or Tab jumps back to the assignment.
+    const [speakerFocusIndex, setSpeakerFocusIndex] = useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -273,6 +277,32 @@ const SubtitleList = ({
         showSubtitles(next, index);
     };
 
+    const assignSpeaker = (index: number, speakerIndex: number) => {
+        const next = reassignCaptionSpeaker(subtitlesRef.current, index, speakerIndex, speakerIdBase);
+        if (!next) return;
+        // Like a text edit, this starts a new move history so undoing a word
+        // move cannot put the caption back on its old speaker.
+        moveHistoryRef.current = { past: [], future: [] };
+        setSpeakerFocusIndex(speakerIndex);
+        subtitlesRef.current = next;
+        updateSubtitles(next);
+    };
+
+    const moveSpeakerOption = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]'));
+        const current = options.indexOf(document.activeElement as HTMLButtonElement);
+        if (current < 0) return;
+        const next = nextSpeakerOption(current, options.length, event.key);
+        if (next === null) return;
+        event.preventDefault();
+        event.stopPropagation();
+        options.forEach((option, optionIndex) => {
+            option.tabIndex = optionIndex === next ? 0 : -1;
+        });
+        setSpeakerFocusIndex(next);
+        if (next !== current) options[next]?.focus();
+    };
+
     const handleMoveFirstWordToPrev = (index: number) => {
         if (index <= 0) return false;
         const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
@@ -397,12 +427,14 @@ const SubtitleList = ({
                                                     onOpenChange={(open) => {
                                                         if (!open) {
                                                             setEditingSubtitleId(null);
+                                                            setSpeakerFocusIndex(null);
                                                         }
                                                     }}
                                                 >
                                                     <PopoverTrigger asChild>
                                                         <Button
                                                             variant="outline"
+                                                            title={t("subtitles.changeSpeaker")}
                                                             className="ml-auto text-xs p-2 h-6"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
@@ -414,6 +446,37 @@ const SubtitleList = ({
                                                     </PopoverTrigger>
                                                     <PopoverContent align="end" className="relative bg-card" onClick={(e) => e.stopPropagation()}>
                                                         <div>
+                                                            <div className="mb-3 space-y-1 border-b pb-3 pr-8">
+                                                                <p id={`assign-speaker-${subtitle.id}`} className="text-xs text-muted-foreground">{t("subtitles.changeSpeaker")}</p>
+                                                                <div
+                                                                    role="listbox"
+                                                                    aria-labelledby={`assign-speaker-${subtitle.id}`}
+                                                                    className="max-h-40 space-y-0.5 overflow-y-auto"
+                                                                    onKeyDown={moveSpeakerOption}
+                                                                >
+                                                                    {speakers.map((speaker, speakerIndex) => {
+                                                                        const selected = speakerIndex === getSpeakerIndex(subtitle.speaker_id);
+                                                                        const tabStop = speakerIndex === (speakerFocusIndex ?? getSpeakerIndex(subtitle.speaker_id));
+                                                                        return (
+                                                                            <button
+                                                                                key={speakerIndex}
+                                                                                type="button"
+                                                                                role="option"
+                                                                                aria-selected={selected}
+                                                                                tabIndex={tabStop ? 0 : -1}
+                                                                                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${selected ? "bg-muted" : ""}`}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    assignSpeaker(index, speakerIndex);
+                                                                                }}
+                                                                            >
+                                                                                <Check className={`size-3.5 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`} />
+                                                                                <span className="truncate">{speaker.name || t("subtitles.unknownSpeaker")}</span>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
                                                             {(() => {
                                                                 const idx = getSpeakerIndex(subtitle.speaker_id);
                                                                 const speaker = speakers[idx];
@@ -446,9 +509,11 @@ const SubtitleList = ({
                                             ) : (
                                                 <Button
                                                     variant="outline"
+                                                    title={t("subtitles.changeSpeaker")}
                                                     className="ml-auto text-xs p-2 h-6"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        setSpeakerFocusIndex(null);
                                                         setEditingSubtitleId(subtitle.id);
                                                     }}
                                                 >
