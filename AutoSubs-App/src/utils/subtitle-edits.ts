@@ -89,15 +89,19 @@ export function preserveSubtitleEdits(
         const following = displayCues.find(entry => entry.cueIndex > cueIndex);
         return following ? cueStart(following) : Number.POSITIVE_INFINITY;
     };
-    // A source word belongs to a caption when it starts inside it, or when its
-    // midpoint does, so a word that starts just before the saved caption is
-    // still part of the correction. The range stops at the next caption, so an
-    // overlap does not take the neighbor's words.
-    const ownedBy = (word: Word, from: number, to: number) => {
+    const precedingEnd = (cueIndex: number) => {
+        const previous = displayCues.slice().reverse().find(entry => entry.cueIndex < cueIndex);
+        return previous ? cueEnd(previous) : Number.NEGATIVE_INFINITY;
+    };
+    // A source word belongs to a caption when it starts inside it. A word that
+    // only starts slightly earlier still belongs here when its midpoint does,
+    // unless that start falls inside the previous caption. The range stops at
+    // the next caption, so an overlap does not take a neighbor's words.
+    const ownedBy = (word: Word, from: number, to: number, earlierEnd: number) => {
         const start = Number(word.start);
         const midpoint = (start + Number(word.end)) / 2;
         const startsInside = start >= from - 0.0001 && start < to;
-        const midpointInside = midpoint >= from - 0.0001 && midpoint < to;
+        const midpointInside = midpoint >= from - 0.0001 && midpoint < to && start >= earlierEnd - 0.0001;
         return startsInside || midpointInside;
     };
     // Giving one caption to another speaker leaves its text matching its words,
@@ -111,7 +115,7 @@ export function preserveSubtitleEdits(
         const to = Math.min(cueEnd(entry), followingStart(entry.cueIndex));
         const sourceSpeakers = aligned
             ? sourceWords.slice(entry.from, entry.to)
-            : sourceWords.filter(word => ownedBy(word.word, from, to));
+            : sourceWords.filter(word => ownedBy(word.word, from, to, precedingEnd(entry.cueIndex)));
         if (sourceSpeakers.some(word => word.speaker !== speaker)) entry.changed = true;
     }
 
@@ -220,14 +224,15 @@ export function preserveSubtitleEdits(
             patches.push({ start: a, count: b - a, words: replacements });
         } else {
             // Older formatter versions may have used a different token count.
-            // Replace words that start in this run or whose midpoint does, and
-            // stop at the next caption.
+            // Replace words that start in this run, or whose midpoint does when
+            // they did not start in the previous caption, and stop at the next one.
             const limit = Math.min(runTo, followingStart(run[run.length - 1].cueIndex));
-            let start = sourceWords.findIndex(entry => ownedBy(entry.word, runFrom, limit));
+            const earlierEnd = precedingEnd(run[0].cueIndex);
+            let start = sourceWords.findIndex(entry => ownedBy(entry.word, runFrom, limit, earlierEnd));
             let count = 0;
             if (start >= 0) {
                 let end = start;
-                while (end < sourceWords.length && ownedBy(sourceWords[end].word, runFrom, limit)) end++;
+                while (end < sourceWords.length && ownedBy(sourceWords[end].word, runFrom, limit, earlierEnd)) end++;
                 count = end - start;
             } else {
                 const insertAt = sourceWords.findIndex(entry => Number(entry.word.start) >= runFrom);
