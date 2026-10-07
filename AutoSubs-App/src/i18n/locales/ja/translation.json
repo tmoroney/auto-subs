@@ -688,6 +688,8 @@
   "errorDialog": {
     "addToTimelineFailed": "字幕をタイムラインに追加できませんでした",
     "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。",
-    "reformatFailed": "再整形に失敗"
+    "reformatFailed": "再整形に失敗",
+    "copyLogsAndReport": "ログをコピーして報告",
+    "copied": "クリップボードにコピーしました"
   }
 }

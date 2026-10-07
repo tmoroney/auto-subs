@@ -698,6 +698,8 @@
   "errorDialog": {
     "addToTimelineFailed": "Не удалось добавить субтитры на таймлайн",
     "clipsBlocked": "Не удалось разместить титры на выходной дорожке. Попробуйте 'Add to New Track'.",
-    "reformatFailed": "Ошибка форматирования"
+    "reformatFailed": "Ошибка форматирования",
+    "copyLogsAndReport": "Сообщить с логами",
+    "copied": "Логи скопированы!"
   }
 }

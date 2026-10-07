@@ -165,11 +165,11 @@ export function ErrorReportDialog({
             onClick={handleCopyAndReport}
           >
             {copied ? (
-              "Copied to Clipboard!"
+              t("errorDialog.copied", "Copied to Clipboard!")
             ) : (
               <>
                 <ExternalLink className="size-4" />
-                Copy Logs & Report
+                {t("errorDialog.copyLogsAndReport", "Copy Logs & Report")}
               </>
             )}
           </AlertDialogAction>
