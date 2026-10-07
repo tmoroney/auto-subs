@@ -690,6 +690,10 @@
     "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。",
     "reformatFailed": "重新排版失败",
     "copyLogsAndReport": "复制日志并报告",
-    "copied": "已复制到剪贴板！"
+    "copied": "已复制到剪贴板！",
+    "sameLanguageSourceAndTarget": {
+      "title": "源语言和目标语言相同",
+      "message": "翻译前请选择不同的源语言或目标语言。"
+    }
   }
 }

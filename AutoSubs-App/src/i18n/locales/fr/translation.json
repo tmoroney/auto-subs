@@ -690,6 +690,10 @@
     "clipsBlocked": "Impossible de placer les sous-titres sur la piste de sortie. Essayez 'Add to New Track'.",
     "reformatFailed": "Échec du reformatage",
     "copyLogsAndReport": "Copier logs et signaler",
-    "copied": "Logs copiés !"
+    "copied": "Logs copiés !",
+    "sameLanguageSourceAndTarget": {
+      "title": "Langues source et cible identiques",
+      "message": "Choisissez une autre langue source ou cible avant de traduire."
+    }
   }
 }

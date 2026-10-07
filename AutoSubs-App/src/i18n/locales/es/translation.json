@@ -690,6 +690,10 @@
     "clipsBlocked": "No se pudieron colocar los subtítulos en la pista de salida. Prueba 'Add to New Track'.",
     "reformatFailed": "Error al reformatear",
     "copyLogsAndReport": "Copiar logs y reportar",
-    "copied": "¡Logs copiados!"
+    "copied": "¡Logs copiados!",
+    "sameLanguageSourceAndTarget": {
+      "title": "El idioma de origen y destino es el mismo",
+      "message": "Elige otro idioma de origen o de destino antes de traducir."
+    }
   }
 }

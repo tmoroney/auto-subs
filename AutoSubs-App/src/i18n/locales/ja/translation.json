@@ -690,6 +690,10 @@
     "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。",
     "reformatFailed": "再整形に失敗",
     "copyLogsAndReport": "ログをコピーして報告",
-    "copied": "クリップボードにコピーしました"
+    "copied": "クリップボードにコピーしました",
+    "sameLanguageSourceAndTarget": {
+      "title": "元の言語と翻訳先の言語が同じです",
+      "message": "翻訳する前に、元の言語または翻訳先の言語を変更してください。"
+    }
   }
 }

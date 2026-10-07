@@ -12,6 +12,12 @@ export interface ErrorPayload {
    * the dialog stays compact.
    */
   detail?: string
+  /**
+   * Set to `false` for problems the user fixes themselves (e.g. an invalid
+   * setting caught before any work starts). The dialog then offers only
+   * Close, because a bug report would have no logs or failure to describe.
+   */
+  reportable?: boolean
 }
 
 interface ErrorDialogContextValue {
@@ -58,6 +64,7 @@ export function ErrorDialogProvider({
         title={payload?.title ?? ""}
         message={payload?.message ?? ""}
         detail={payload?.detail}
+        reportable={payload?.reportable ?? true}
       />
     </ErrorDialogContext.Provider>
   )
