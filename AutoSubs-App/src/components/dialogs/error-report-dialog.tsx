@@ -25,6 +25,7 @@ interface ErrorReportDialogProps {
   title: string
   message: string
   detail?: string
+  reportable?: boolean
 }
 
 const GITHUB_ISSUE_BASE = "https://github.com/tmoroney/auto-subs/issues/new"
@@ -51,6 +52,7 @@ function mapOsForIssue(p: string | undefined): string {
  * Provides two options:
  *  - Close the dialog
  *  - Copy logs to clipboard and open a pre-filled GitHub issue
+ * Non-reportable errors (user-fixable input problems) show only Close.
  */
 export function ErrorReportDialog({
   open,
@@ -58,6 +60,7 @@ export function ErrorReportDialog({
   title,
   message,
   detail,
+  reportable = true,
 }: ErrorReportDialogProps) {
   const { t } = useTranslation()
   const [appVersion, setAppVersion] = React.useState<string>("")
@@ -152,27 +155,33 @@ export function ErrorReportDialog({
         </AlertDialogHeader>
 
         <AlertDialogFooter className="pt-3">
-          <Button
-            variant="outline"
-            onClick={handleOpenLogsFolder}
-          >
-            <Terminal className="size-4" />
-            logs/
-          </Button>
-          <div className="flex-1" />
-          <AlertDialogCancel>{t("common.close", "Close")}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleCopyAndReport}
-          >
-            {copied ? (
-              "Copied to Clipboard!"
-            ) : (
-              <>
-                <ExternalLink className="size-4" />
-                Copy Logs & Report
-              </>
-            )}
-          </AlertDialogAction>
+          {reportable ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleOpenLogsFolder}
+              >
+                <Terminal className="size-4" />
+                logs/
+              </Button>
+              <div className="flex-1" />
+              <AlertDialogCancel>{t("common.close", "Close")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleCopyAndReport}
+              >
+                {copied ? (
+                  t("errorDialog.copied", "Copied to Clipboard!")
+                ) : (
+                  <>
+                    <ExternalLink className="size-4" />
+                    {t("errorDialog.copyLogsAndReport", "Copy Logs & Report")}
+                  </>
+                )}
+              </AlertDialogAction>
+            </>
+          ) : (
+            <AlertDialogAction>{t("common.close", "Close")}</AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -688,6 +688,12 @@
   "errorDialog": {
     "addToTimelineFailed": "Untertitel konnten nicht zur Timeline hinzugefügt werden",
     "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen.",
-    "reformatFailed": "Formatfehler"
+    "reformatFailed": "Formatfehler",
+    "copyLogsAndReport": "Logs kopieren & melden",
+    "copied": "Logs kopiert!",
+    "sameLanguageSourceAndTarget": {
+      "title": "Quell- und Zielsprache sind gleich",
+      "message": "Bitte wähle vor dem Übersetzen eine andere Quell- oder Zielsprache."
+    }
   }
 }

@@ -708,6 +708,12 @@
   "errorDialog": {
     "addToTimelineFailed": "Couldn't add subtitles to timeline",
     "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'.",
-    "reformatFailed": "Reformat failed"
+    "reformatFailed": "Reformat failed",
+    "copyLogsAndReport": "Copy Logs & Report",
+    "copied": "Copied to Clipboard!",
+    "sameLanguageSourceAndTarget": {
+      "title": "Source and target language are the same",
+      "message": "Please choose a different source or target language before translating."
+    }
   }
 }
