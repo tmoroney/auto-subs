@@ -1,137 +1,118 @@
-import type { Subtitle, Word } from '../types';
+import type { Subtitle } from '../types';
 
-const MIN_CUE_DURATION = 0.001;
-const GAP_EPSILON = 0.0001;
+/** Shortest span an added caption gets before it borrows time from a neighbour. */
+export const MIN_INSERTED_DURATION = 0.5;
+/** Span of a caption added after the last one, where no neighbour bounds it. */
+export const TAIL_INSERTED_DURATION = 2;
 
-function nextSubtitleId(subtitles: Subtitle[]): number {
-    let max = -1;
-    for (const cue of subtitles) {
-        if (cue.id > max) max = cue.id;
+const NO_SPACE_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+
+const reindex = (subtitles: Subtitle[]) => subtitles.map((cue, id) => ({ ...cue, id }));
+
+/**
+ * Choose the span for a caption added after `current`:
+ * 1. the gap before `next`, when it lasts at least MIN_INSERTED_DURATION;
+ * 2. otherwise the silence between `current`'s last word and `next`'s first
+ *    word, trimming both cues to it, when that lasts long enough;
+ * 3. otherwise the second half of `current`, up to where `next` starts.
+ * Returns null when `next` starts no later than `current`, leaving no room.
+ */
+function insertedSpan(current: Subtitle, next: Subtitle | undefined) {
+    const start = Number(current.start);
+    const end = Number(current.end);
+    if (!next) {
+        return { start: end, end: end + TAIL_INSERTED_DURATION, currentEnd: end, nextStart: undefined };
     }
-    return max + 1;
+    const nextStart = Number(next.start);
+    if (nextStart - end >= MIN_INSERTED_DURATION) {
+        return { start: end, end: nextStart, currentEnd: end, nextStart };
+    }
+
+    const lastWord = current.words?.[current.words.length - 1];
+    const firstWord = next.words?.[0];
+    const from = Math.min(end, Math.max(start, lastWord ? Number(lastWord.end) : end));
+    const to = Math.max(nextStart, Math.min(Number(next.end), firstWord ? Number(firstWord.start) : nextStart));
+    if (to - from >= MIN_INSERTED_DURATION) {
+        return { start: from, end: to, currentEnd: from, nextStart: to };
+    }
+
+    const limit = Math.min(end, nextStart);
+    if (limit <= start) return null;
+    const middle = (start + limit) / 2;
+    return { start: middle, end: limit, currentEnd: middle, nextStart };
 }
 
-function reindexIds(subtitles: Subtitle[]): Subtitle[] {
-    return subtitles.map((cue, index) => ({ ...cue, id: index }));
-}
+/**
+ * Insert an empty caption after `index`, following `insertedSpan`. Words stay
+ * on the captions that own them. Returns the input unchanged when there is
+ * no room for a caption.
+ */
+export function insertCaptionAfter(subtitles: Subtitle[], index: number): Subtitle[] {
+    const current = subtitles[index];
+    if (!current) return subtitles;
+    const next = subtitles[index + 1];
+    const span = insertedSpan(current, next);
+    if (!span) return subtitles;
 
-function joinCaptionText(a: string, b: string): string {
-    const left = (a ?? '').trim();
-    const right = (b ?? '').trim();
-    if (!left) return right;
-    if (!right) return left;
-    return `${left} ${right}`;
-}
-
-function mergeWords(left: Word[], right: Word[]): Word[] {
-    if (!left.length) return [...right];
-    if (!right.length) return [...left];
-    const merged = [...left, ...right];
-    const lastLine = left[left.length - 1]?.line_number ?? 0;
-    return merged.map((word, index) => {
-        if (index < left.length) return word;
-        if (index === left.length && right[0] && word.line_number === right[0].line_number) {
-            return word;
-        }
-        return { ...word, line_number: lastLine };
-    });
-}
-
-function emptyCaption(start: number, end: number, speaker_id?: string, id = 0): Subtitle {
-    const safeEnd = end > start ? end : start + MIN_CUE_DURATION;
-    return {
-        id,
-        start,
-        end: safeEnd,
+    const result = [...subtitles];
+    result[index] = { ...current, end: span.currentEnd };
+    if (next && span.nextStart !== undefined) {
+        result[index + 1] = { ...next, start: span.nextStart };
+    }
+    result.splice(index + 1, 0, {
+        id: 0,
+        start: span.start,
+        end: span.end,
         text: '',
         words: [],
-        speaker_id,
-    };
-}
-
-/** Insert an empty caption immediately after `index`. */
-export function insertCaptionAfter(subtitles: Subtitle[], index: number): Subtitle[] {
-    if (index < 0 || index >= subtitles.length) return subtitles;
-
-    const current = subtitles[index];
-    const next = subtitles[index + 1];
-    const updated = subtitles.map(cue => ({ ...cue }));
-
-    let newStart: number;
-    let newEnd: number;
-
-    if (next) {
-        const gap = Number(next.start) - Number(current.end);
-        if (gap > GAP_EPSILON) {
-            newStart = Number(current.end);
-            newEnd = Number(next.start);
-        } else {
-            const boundary = (Number(current.end) + Number(next.start)) / 2;
-            newStart = boundary;
-            newEnd = Number(next.start) > boundary ? Number(next.start) : boundary + MIN_CUE_DURATION;
-            updated[index] = { ...current, end: boundary };
-        }
-    } else {
-        newStart = Number(current.end);
-        newEnd = newStart + MIN_CUE_DURATION;
-    }
-
-    const inserted = emptyCaption(
-        newStart,
-        newEnd,
-        current.speaker_id ?? next?.speaker_id,
-        nextSubtitleId(subtitles),
-    );
-
-    const result = [
-        ...updated.slice(0, index + 1),
-        inserted,
-        ...updated.slice(index + 1),
-    ];
-    return reindexIds(result);
+        speaker_id: current.speaker_id ?? next?.speaker_id,
+    });
+    return reindex(result);
 }
 
 export type DeleteCaptionResult =
-    | { ok: true; subtitles: Subtitle[] }
+    | { ok: true; subtitles: Subtitle[]; selectedIndex: number }
     | { ok: false; reason: 'out_of_range' | 'only_caption' };
 
-/** Remove the caption at `index`, merging any words into a neighbor. */
+/**
+ * Remove the caption at `index`. An empty caption is dropped. A caption with
+ * text joins the previous caption (the next one when it is first), keeping
+ * its words and their timings so none are lost; the merged caption keeps the
+ * receiving caption's speaker. The only caption cannot be removed.
+ * `selectedIndex` is the caption that received the text.
+ */
 export function deleteCaptionAt(subtitles: Subtitle[], index: number): DeleteCaptionResult {
-    if (index < 0 || index >= subtitles.length) {
-        return { ok: false, reason: 'out_of_range' };
-    }
-    if (subtitles.length === 1) {
-        return { ok: false, reason: 'only_caption' };
-    }
-
     const target = subtitles[index];
-    const hasWords = (target.words?.length ?? 0) > 0 || (target.text ?? '').trim().length > 0;
-    const next = [...subtitles];
+    if (!target) return { ok: false, reason: 'out_of_range' };
+    if (subtitles.length === 1) return { ok: false, reason: 'only_caption' };
 
-    if (!hasWords) {
-        next.splice(index, 1);
-        return { ok: true, subtitles: reindexIds(next) };
+    const result = [...subtitles];
+    result.splice(index, 1);
+    const receiver = index > 0 ? index - 1 : 0;
+    if (!(target.text ?? '').trim() && !target.words?.length) {
+        return { ok: true, subtitles: reindex(result), selectedIndex: receiver };
     }
 
-    if (index > 0) {
-        const prev = next[index - 1];
-        next[index - 1] = {
-            ...prev,
-            text: joinCaptionText(prev.text, target.text),
-            words: mergeWords(prev.words ?? [], target.words ?? []),
-            end: Math.max(Number(prev.end), Number(target.end)),
-        };
-        next.splice(index, 1);
-        return { ok: true, subtitles: reindexIds(next) };
-    }
-
-    const neighbor = next[1];
-    next[1] = {
-        ...neighbor,
-        text: joinCaptionText(target.text, neighbor.text),
-        words: mergeWords(target.words ?? [], neighbor.words ?? []),
-        start: Math.min(Number(target.start), Number(neighbor.start)),
+    const [first, second] = index > 0 ? [subtitles[index - 1], target] : [target, subtitles[1]];
+    const firstWords = first.words ?? [];
+    const left = (first.text ?? '').trimEnd();
+    const right = (second.text ?? '').trimStart();
+    const spaced = !NO_SPACE_SCRIPT.test(left.slice(-1)) && !NO_SPACE_SCRIPT.test(right.charAt(0));
+    const separator = left && right && spaced ? ' ' : '';
+    // The formatter separates words that lack a leading space only across a
+    // line change, so give the joining word one to render the same text.
+    const secondWords = (second.words ?? []).map((word, wordIndex) =>
+        wordIndex === 0 && separator && firstWords.length && !/^\s/.test(word.word)
+            && word.line_number === firstWords[firstWords.length - 1].line_number
+            ? { ...word, word: ` ${word.word}` }
+            : word,
+    );
+    result[receiver] = {
+        ...subtitles[index > 0 ? index - 1 : 1],
+        start: Math.min(Number(first.start), Number(second.start)),
+        end: Math.max(Number(first.end), Number(second.end)),
+        text: `${left}${separator}${right}`,
+        words: [...firstWords, ...secondWords],
     };
-    next.splice(index, 1);
-    return { ok: true, subtitles: reindexIds(next) };
+    return { ok: true, subtitles: reindex(result), selectedIndex: receiver };
 }
