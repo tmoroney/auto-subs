@@ -498,8 +498,7 @@
       "addAfter": "Ajouter sous-titre",
       "addAfterTitle": "Insérer un sous-titre vide en dessous",
       "deleteCaption": "Supprimer",
-      "deleteCaptionTitle": "Retirer ce sous-titre de la liste",
-      "deleteOnlyCaption": "Gardez au moins un sous-titre"
+      "deleteCaptionTitle": "Supprime le sous-titre, son texte rejoint le voisin"
     }
   },
   "gettingStarted": {

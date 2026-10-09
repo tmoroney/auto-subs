@@ -518,8 +518,7 @@
       "addAfter": "Add caption",
       "addAfterTitle": "Insert an empty caption below this one",
       "deleteCaption": "Delete",
-      "deleteCaptionTitle": "Remove this caption from the list",
-      "deleteOnlyCaption": "Keep at least one caption in the transcript"
+      "deleteCaptionTitle": "Delete caption, its text joins the nearest one"
     }
   },
   "gettingStarted": {

@@ -498,8 +498,7 @@
       "addAfter": "Untertitel hinzufügen",
       "addAfterTitle": "Leeren Untertitel darunter einfügen",
       "deleteCaption": "Löschen",
-      "deleteCaptionTitle": "Diesen Untertitel aus der Liste entfernen",
-      "deleteOnlyCaption": "Mindestens ein Untertitel muss bleiben"
+      "deleteCaptionTitle": "Untertitel löschen, Text wandert zum Nachbarn"
     }
   },
   "gettingStarted": {

@@ -54,7 +54,10 @@ const SubtitleList = ({
     const inlineEditorRef = useRef<HTMLDivElement>(null);
     const subtitlesRef = useRef(subtitles);
     const lastSubtitlesPropRef = useRef(subtitles);
-    const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
+    // Each snapshot remembers the row to select when it is restored, since
+    // adding or removing a caption shifts the rows after it.
+    type MoveSnapshot = { subtitles: typeof subtitles; index: number };
+    const moveHistoryRef = useRef<{ past: MoveSnapshot[]; future: MoveSnapshot[] }>({ past: [], future: [] });
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -116,7 +119,7 @@ const SubtitleList = ({
         return 0;
     }, [speakerIdBase, speakers.length]);
 
-    const filteredSubtitleItems = useMemo(() => {
+    const searchMatches = useMemo(() => {
         const query = searchQuery ?? "";
         return subtitles
             .map((subtitle, index) => ({ subtitle, index }))
@@ -139,9 +142,21 @@ const SubtitleList = ({
             });
     }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
 
+    // The row being edited stays visible during a search, so a caption that is
+    // added, or edited until it no longer matches, keeps its editor.
+    const filteredSubtitleItems = useMemo(() => {
+        const index = selectedIndex ?? -1;
+        const selected = subtitles[index];
+        if (!selected || searchMatches.some(item => item.index === index)) return searchMatches;
+        const items = [...searchMatches];
+        const at = items.findIndex(item => item.index > index);
+        items.splice(at < 0 ? items.length : at, 0, { subtitle: selected, index });
+        return items;
+    }, [searchMatches, selectedIndex, subtitles]);
+
     useEffect(() => {
-        onMatchCountChange?.(filteredSubtitleItems.length);
-    }, [filteredSubtitleItems.length, onMatchCountChange]);
+        onMatchCountChange?.(searchMatches.length);
+    }, [searchMatches.length, onMatchCountChange]);
 
     const rowVirtualizer = useVirtualizer({
         count: filteredSubtitleItems.length,
@@ -250,28 +265,33 @@ const SubtitleList = ({
         }
     };
 
-    const recordMove = (next: typeof subtitles, index: number) => {
+    /** `index` is the row to select afterwards; `restoreIndex` is the row to
+     * select when this change is undone. */
+    const recordMove = (next: typeof subtitles, index: number, restoreIndex = index) => {
         const history = moveHistoryRef.current;
-        history.past.push(subtitlesRef.current);
+        history.past.push({ subtitles: subtitlesRef.current, index: restoreIndex });
         if (history.past.length > MAX_MOVE_HISTORY) history.past.shift();
         history.future = [];
         showSubtitles(next, index);
+        if (index !== selectedIndex) setSelectedIndex(index);
+    };
+
+    const restoreMove = (from: MoveSnapshot[], to: MoveSnapshot[], index: number) => {
+        const snapshot = from.pop();
+        if (!snapshot) return;
+        to.push({ subtitles: subtitlesRef.current, index });
+        showSubtitles(snapshot.subtitles, snapshot.index);
+        if (snapshot.index !== selectedIndex) setSelectedIndex(snapshot.index);
     };
 
     const undoMove = (index: number) => {
         const history = moveHistoryRef.current;
-        const previous = history.past.pop();
-        if (!previous) return;
-        history.future.push(subtitlesRef.current);
-        showSubtitles(previous, index);
+        restoreMove(history.past, history.future, index);
     };
 
     const redoMove = (index: number) => {
         const history = moveHistoryRef.current;
-        const next = history.future.pop();
-        if (!next) return;
-        history.past.push(subtitlesRef.current);
-        showSubtitles(next, index);
+        restoreMove(history.future, history.past, index);
     };
 
     const handleMoveFirstWordToPrev = (index: number) => {
@@ -299,16 +319,14 @@ const SubtitleList = ({
 
     const handleInsertCaptionAfter = (index: number) => {
         const next = insertCaptionAfter(subtitlesRef.current, index);
-        recordMove(next, index + 1);
-        setSelectedIndex(index + 1);
+        if (next === subtitlesRef.current) return;
+        recordMove(next, index + 1, index);
     };
 
     const handleDeleteCaption = (index: number) => {
         const result = deleteCaptionAt(subtitlesRef.current, index);
         if (!result.ok) return;
-        const nextIndex = Math.min(index, result.subtitles.length - 1);
-        recordMove(result.subtitles, nextIndex);
-        setSelectedIndex(nextIndex);
+        recordMove(result.subtitles, result.selectedIndex, index);
     };
 
     const handleMoveLastWordToNext = (index: number) => {
@@ -392,32 +410,6 @@ const SubtitleList = ({
                         onClick={() => selectSubtitle(index)}
                     >
                                     <div className="flex w-full items-center gap-2">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                    disabled={subtitles.length <= 1}
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteCaption(index);
-                                                    }}
-                                                    aria-label={t("subtitles.captionActions.deleteCaption")}
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-60">
-                                                <p>
-                                                    {subtitles.length <= 1
-                                                        ? t("subtitles.captionActions.deleteOnlyCaption")
-                                                        : t("subtitles.captionActions.deleteCaptionTitle")}
-                                                </p>
-                                            </TooltipContent>
-                                        </Tooltip>
                                         <button
                                             type="button"
                                             title={t("subtitles.jumpToTimeline")}
@@ -500,7 +492,29 @@ const SubtitleList = ({
                                                 </Button>
                                             )
                                         ) : null}
-
+                                        {subtitles.length > 1 ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={`size-6 shrink-0 text-muted-foreground transition-opacity group-hover:opacity-100 focus-visible:opacity-100 ${subtitle.speaker_id && speakers.length > 0 ? "" : "ml-auto"} ${isSelected ? "opacity-100" : "opacity-0"}`}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteCaption(index);
+                                                        }}
+                                                        aria-label={t("subtitles.captionActions.deleteCaption")}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-60">
+                                                    <p>{t("subtitles.captionActions.deleteCaptionTitle")}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : null}
                                     </div>
                                     <div className="relative w-full">
                                         {isSelected ? (
@@ -632,7 +646,7 @@ const SubtitleList = ({
                                                     type="button"
                                                     variant="outline"
                                                     size="icon"
-                                                    className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                    className={`size-7 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 ${isSelected ? "opacity-100" : "opacity-0"}`}
                                                     onMouseDown={(e) => e.preventDefault()}
                                                     onClick={(e) => {
                                                         e.stopPropagation();

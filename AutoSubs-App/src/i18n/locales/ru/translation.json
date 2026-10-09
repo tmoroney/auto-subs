@@ -508,8 +508,7 @@
       "addAfter": "Добавить субтитр",
       "addAfterTitle": "Вставить пустой субтитр ниже",
       "deleteCaption": "Удалить",
-      "deleteCaptionTitle": "Убрать этот субтитр из списка",
-      "deleteOnlyCaption": "Нужен хотя бы один субтитр"
+      "deleteCaptionTitle": "Удалить субтитр, текст перейдёт в соседний"
     }
   },
   "gettingStarted": {

@@ -498,8 +498,7 @@
       "addAfter": "Añadir subtítulo",
       "addAfterTitle": "Inserta un subtítulo vacío debajo",
       "deleteCaption": "Eliminar",
-      "deleteCaptionTitle": "Quitar este subtítulo de la lista",
-      "deleteOnlyCaption": "Debe quedar al menos un subtítulo"
+      "deleteCaptionTitle": "Elimina el subtítulo y une su texto al vecino"
     }
   },
   "gettingStarted": {
